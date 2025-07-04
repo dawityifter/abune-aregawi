@@ -1,0 +1,716 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #fafafa;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+}
+
+h1 {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 1.75rem;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+h3 {
+    font-size: 1.25rem;
+}
+
+p {
+    margin-bottom: 1rem;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    text-align: center;
+}
+
+.btn-primary {
+    background-color: #8B4513;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #A0522D;
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background-color: #2E8B57;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #3CB371;
+    transform: translateY(-2px);
+}
+
+.btn-accent {
+    background-color: #DAA520;
+    color: white;
+}
+
+.btn-accent:hover {
+    background-color: #F4A460;
+    transform: translateY(-2px);
+}
+
+.btn-outline {
+    background-color: transparent;
+    color: #8B4513;
+    border: 2px solid #8B4513;
+}
+
+.btn-outline:hover {
+    background-color: #8B4513;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.btn-small {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+
+/* Hero Section */
+.hero {
+    background: linear-gradient(135deg, #8B4513 0%, #A0522D 50%, #DAA520 100%);
+    color: white;
+    padding: 3rem 0;
+    text-align: center;
+}
+
+.church-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.church-logo i {
+    font-size: 3rem;
+    color: #DAA520;
+}
+
+.church-logo h1 {
+    font-size: 1.5rem;
+    color: white;
+    margin: 0;
+}
+
+.welcome-headline {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: white;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+    line-height: 1.8;
+}
+
+.service-info {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2rem;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+.service-times h3, .address h3 {
+    color: #DAA520;
+    margin-bottom: 1rem;
+}
+
+.service-times p, .address p {
+    margin-bottom: 0.5rem;
+}
+
+.map-link {
+    color: #DAA520;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.map-link:hover {
+    text-decoration: underline;
+}
+
+.cta-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* Sections */
+section {
+    padding: 4rem 0;
+}
+
+section:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+/* What's Happening Section */
+.events-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.event-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    gap: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.event-card:hover {
+    transform: translateY(-4px);
+}
+
+.event-date {
+    background: #8B4513;
+    color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    min-width: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.event-date .day {
+    font-size: 1.5rem;
+    font-weight: 700;
+    display: block;
+}
+
+.event-date .month {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+.event-details h3 {
+    color: #8B4513;
+    margin-bottom: 0.5rem;
+}
+
+.event-details p {
+    margin-bottom: 1rem;
+    color: #666;
+}
+
+.announcements {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.announcement-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+.announcement {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.announcement i {
+    color: #8B4513;
+    font-size: 1.2rem;
+}
+
+/* Watch or Listen Section */
+.media-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.video-player {
+    background: #2c3e50;
+    border-radius: 12px;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+}
+
+.video-placeholder {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    background: linear-gradient(45deg, #34495e, #2c3e50);
+}
+
+.video-placeholder i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: #DAA520;
+}
+
+.media-links {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+.media-link {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #333;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.media-link:hover {
+    transform: translateY(-2px);
+    color: #8B4513;
+}
+
+.media-link i {
+    color: #8B4513;
+    font-size: 1.2rem;
+}
+
+/* Participation Section */
+.participation-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.participation-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.participation-card:hover {
+    transform: translateY(-4px);
+}
+
+.participation-card i {
+    font-size: 3rem;
+    color: #8B4513;
+    margin-bottom: 1rem;
+}
+
+.participation-card h3 {
+    color: #8B4513;
+    margin-bottom: 1rem;
+}
+
+.participation-card p {
+    color: #666;
+    margin-bottom: 1.5rem;
+}
+
+/* Stay Connected Section */
+.connection-options {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.contact-info, .social-media {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.contact-item i {
+    color: #8B4513;
+    font-size: 1.2rem;
+}
+
+.social-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.social-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background: #8B4513;
+    color: white;
+    border-radius: 50%;
+    text-decoration: none;
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+
+.social-link:hover {
+    transform: translateY(-2px);
+    background: #A0522D;
+}
+
+/* Newcomer Welcome Section */
+.welcome-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.welcome-info {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-info ul {
+    list-style: none;
+    padding: 0;
+}
+
+.welcome-info li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.welcome-info li:before {
+    content: "✓";
+    color: #8B4513;
+    font-weight: bold;
+    position: absolute;
+    left: 0;
+}
+
+.welcome-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.connect-form {
+    display: grid;
+    gap: 1rem;
+}
+
+.connect-form input,
+.connect-form textarea {
+    padding: 12px;
+    border: 2px solid #eee;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.connect-form input:focus,
+.connect-form textarea:focus {
+    outline: none;
+    border-color: #8B4513;
+}
+
+.connect-form textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Grow Spiritually Section */
+.spiritual-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.devotional, .spiritual-resources {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.devotional-content {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border-left: 4px solid #8B4513;
+}
+
+.devotional-content p:first-child {
+    font-style: italic;
+    color: #8B4513;
+    font-weight: 500;
+}
+
+.resource-links {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+.resource-link {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #333;
+    transition: background-color 0.3s ease;
+}
+
+.resource-link:hover {
+    background: #e9ecef;
+    color: #8B4513;
+}
+
+.resource-link i {
+    color: #8B4513;
+    font-size: 1.2rem;
+}
+
+/* Footer */
+.footer {
+    background: #2c3e50;
+    color: white;
+    padding: 3rem 0 1rem;
+}
+
+.footer-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.footer-section h3 {
+    color: #DAA520;
+    margin-bottom: 1rem;
+}
+
+.footer-section ul {
+    list-style: none;
+    padding: 0;
+}
+
+.footer-section ul li {
+    margin-bottom: 0.5rem;
+}
+
+.footer-section a {
+    color: #bdc3c7;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-section a:hover {
+    color: #DAA520;
+}
+
+.footer-social {
+    display: flex;
+    gap: 1rem;
+}
+
+.footer-social a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: #34495e;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+}
+
+.footer-social a:hover {
+    background: #DAA520;
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 2rem;
+    border-top: 1px solid #34495e;
+    color: #bdc3c7;
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+    .container {
+        padding: 0 40px;
+    }
+    
+    h1 {
+        font-size: 2.5rem;
+    }
+    
+    h2 {
+        font-size: 2rem;
+    }
+    
+    .church-logo h1 {
+        font-size: 2rem;
+    }
+    
+    .welcome-headline {
+        font-size: 2.5rem;
+    }
+    
+    .service-info {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .cta-buttons {
+        grid-template-columns: repeat(2, 1fr);
+        max-width: 600px;
+    }
+    
+    .events-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .announcement-list {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .media-content {
+        grid-template-columns: 2fr 1fr;
+    }
+    
+    .participation-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .connection-options {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .welcome-content {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .spiritual-content {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .footer-content {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .events-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .cta-buttons {
+        grid-template-columns: repeat(4, 1fr);
+        max-width: none;
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Focus styles for accessibility */
+.btn:focus,
+.media-link:focus,
+.social-link:focus,
+.resource-link:focus {
+    outline: 2px solid #DAA520;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .btn-primary {
+        background-color: #000;
+        color: #fff;
+    }
+    
+    .btn-secondary {
+        background-color: #000;
+        color: #fff;
+    }
+} 
