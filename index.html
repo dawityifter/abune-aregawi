@@ -13,34 +13,38 @@
     <header class="hero">
         <div class="container">
             <div class="hero-content">
+                <div class="language-switcher">
+                    <button class="lang-btn" data-lang="en">English</button>
+                    <button class="lang-btn active" data-lang="ti">ትግርኛ</button>
+                </div>
                 <div class="church-logo">
                     <i class="fas fa-cross"></i>
-                    <h1>Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church</h1>
+                    <h1 data-en="Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church" data-ti="ደብረ ጸሓይ አቡነ አረጋዊ ትግራይ ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን">ደብረ ጸሓይ አቡነ አረጋዊ ትግራይ ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን</h1>
                 </div>
-                <h2 class="welcome-headline">Welcome to Our Spiritual Home</h2>
-                <p class="hero-subtitle">እንኳዕ ናብ ቤተ ክርስትያን ኦርቶዶክስ ትግራይ ኣቡነ ኣረጋዊ ብደሓን መጻእኩም!</p>
+                <h2 class="welcome-headline" data-en="Welcome to Our Spiritual Home" data-ti="ናብ መንበረ ስፍሓትና ብደሓን መጻእኩም">ናብ መንበረ ስፍሓትና ብደሓን መጻእኩም</h2>
+                <p class="hero-subtitle" data-en="Welcome to Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church" data-ti="እንኳዕ ናብ ቤተ ክርስትያን ኦርቶዶክስ ትግራይ ኣቡነ ኣረጋዊ ብደሓን መጻእኩም!">እንኳዕ ናብ ቤተ ክርስትያን ኦርቶዶክስ ትግራይ ኣቡነ ኣረጋዊ ብደሓን መጻእኩም!</p>
                 
                 <div class="service-info">
                     <div class="service-times">
-                        <h3>Service Times</h3>
-                        <p><strong>Sunday:</strong> 9:00 AM - 12:00 PM</p>
-                        <p><strong>Wednesday:</strong> 6:00 PM - 8:00 PM</p>
-                        <p><strong>Friday:</strong> 6:00 PM - 8:00 PM</p>
+                        <h3 data-en="Service Times" data-ti="ግዜ ኣገልግሎት">ግዜ ኣገልግሎት</h3>
+                        <p><strong data-en="Sunday:" data-ti="ሰንበት:">ሰንበት:</strong> <span data-en="9:00 AM - 12:00 PM" data-ti="9:00 ቀትሪ - 12:00 ቀትሪ">9:00 ቀትሪ - 12:00 ቀትሪ</span></p>
+                        <p><strong data-en="Wednesday:" data-ti="ረቡዕ:">ረቡዕ:</strong> <span data-en="6:00 PM - 8:00 PM" data-ti="6:00 ማለደ - 8:00 ማለደ">6:00 ማለደ - 8:00 ማለደ</span></p>
+                        <p><strong data-en="Friday:" data-ti="ዓርቢ:">ዓርቢ:</strong> <span data-en="6:00 PM - 8:00 PM" data-ti="6:00 ማለደ - 8:00 ማለደ">6:00 ማለደ - 8:00 ማለደ</span></p>
                     </div>
                     <div class="address">
-                        <h3>Location</h3>
+                        <h3 data-en="Location" data-ti="ኩነታት">ኩነታት</h3>
                         <p><i class="fas fa-map-marker-alt"></i> 1621 S Jupiter Rd, Garland, TX 75042</p>
                         <a href="https://maps.google.com/maps?q=1621+S+Jupiter+Rd,+Garland,+TX+75042" target="_blank" class="map-link">
-                            <i class="fas fa-directions"></i> Get Directions
+                            <i class="fas fa-directions"></i> <span data-en="Get Directions" data-ti="ኣዛምድ">ኣዛምድ</span>
                         </a>
                     </div>
                 </div>
 
                 <div class="cta-buttons">
-                    <button class="btn btn-primary">Plan a Visit</button>
-                    <button class="btn btn-secondary" onclick="window.open('https://www.facebook.com/abunearegawitx/', '_blank')">Watch Live</button>
-                    <button class="btn btn-accent">Give Online</button>
-                    <button class="btn btn-outline">View Dues / Login</button>
+                    <button class="btn btn-primary" data-en="Plan a Visit" data-ti="ምብጻሕ ኣዘዝምድ">ምብጻሕ ኣዘዝምድ</button>
+                    <button class="btn btn-secondary" onclick="window.open('https://www.facebook.com/abunearegawitx/', '_blank')" data-en="Watch Live" data-ti="ብቀጥታ ርኣይ">ብቀጥታ ርኣይ</button>
+                    <button class="btn btn-accent" data-en="Give Online" data-ti="ብድሕሪት ሃብ">ብድሕሪት ሃብ</button>
+                    <button class="btn btn-outline" data-en="View Dues / Login" data-ti="ክፍሊት ርኣይ / እተኻ">ክፍሊት ርኣይ / እተኻ</button>
                 </div>
             </div>
         </div>
@@ -49,7 +53,7 @@
     <!-- What's Happening Section -->
     <section class="whats-happening">
         <div class="container">
-            <h2>What's Happening</h2>
+            <h2 data-en="What's Happening" data-ti="ምን እዩ ዘጋጥም">ምን እዩ ዘጋጥም</h2>
             <div class="events-grid">
                 <div class="event-card">
                     <div class="event-date">
@@ -105,7 +109,7 @@
     <!-- Watch or Listen Section -->
     <section class="watch-listen">
         <div class="container">
-            <h2>Watch or Listen</h2>
+            <h2 data-en="Watch or Listen" data-ti="ርኣይ ወይ ሰምዕ">ርኣይ ወይ ሰምዕ</h2>
             <div class="media-content">
                 <div class="video-player">
                     <div class="video-placeholder">
@@ -116,15 +120,15 @@
                 <div class="media-links">
                     <a href="https://www.facebook.com/abunearegawitx/" target="_blank" class="media-link">
                         <i class="fas fa-video"></i>
-                        <span>Watch Live Stream</span>
+                        <span data-en="Watch Live Stream" data-ti="ብቀጥታ ርኣይ">ብቀጥታ ርኣይ</span>
                     </a>
                     <a href="#" class="media-link">
                         <i class="fas fa-headphones"></i>
-                        <span>Sermon Archive</span>
+                        <span data-en="Sermon Archive" data-ti="ናይ ስብከት መዝገብ">ናይ ስብከት መዝገብ</span>
                     </a>
                     <a href="#" class="media-link">
                         <i class="fas fa-users"></i>
-                        <span>Join Zoom Prayer</span>
+                        <span data-en="Join Zoom Prayer" data-ti="ብዙም ጸሎት ተጸምብር">ብዙም ጸሎት ተጸምብር</span>
                     </a>
                 </div>
             </div>
@@ -134,25 +138,25 @@
     <!-- Participation Made Easy -->
     <section class="participation">
         <div class="container">
-            <h2>Participation Made Easy</h2>
+            <h2 data-en="Participation Made Easy" data-ti="ክፍሊት ቀሊል እዩ">ክፍሊት ቀሊል እዩ</h2>
             <div class="participation-grid">
                 <div class="participation-card">
                     <i class="fas fa-hands-helping"></i>
-                    <h3>Volunteer</h3>
-                    <p>Join our ministry teams and serve our community</p>
-                    <button class="btn btn-primary">Sign Up</button>
+                    <h3 data-en="Volunteer" data-ti="ተጋሩ">ተጋሩ</h3>
+                    <p data-en="Join our ministry teams and serve our community" data-ti="ኣብ ጕጅለ ኣገልግሎትና ተጸምብር እሞ ንማሕበረሰብና ኣገልግል">ኣብ ጕጅለ ኣገልግሎትና ተጸምብር እሞ ንማሕበረሰብና ኣገልግል</p>
+                    <button class="btn btn-primary" data-en="Sign Up" data-ti="ኣኽትም">ኣኽትም</button>
                 </div>
                 <div class="participation-card">
                     <i class="fas fa-gift"></i>
-                    <h3>Give Online</h3>
-                    <p>Support our church with secure online giving</p>
-                    <button class="btn btn-primary">Donate</button>
+                    <h3 data-en="Give Online" data-ti="ብድሕሪት ሃብ">ብድሕሪት ሃብ</h3>
+                    <p data-en="Support our church with secure online giving" data-ti="ቤተ ክርስቲያንና ብድሕሪት ሃብ ሓጋዚ እዩ">ቤተ ክርስቲያንና ብድሕሪት ሃብ ሓጋዚ እዩ</p>
+                    <button class="btn btn-primary" data-en="Donate" data-ti="ሃብ">ሃብ</button>
                 </div>
                 <div class="participation-card">
                     <i class="fas fa-user-circle"></i>
-                    <h3>Member Portal</h3>
-                    <p>Access your dues and member information</p>
-                    <button class="btn btn-primary">Login</button>
+                    <h3 data-en="Member Portal" data-ti="ደገ ኣባል">ደገ ኣባል</h3>
+                    <p data-en="Access your dues and member information" data-ti="ክፍሊትካን ሓበሬታ ኣባልካን ኣብርር">ክፍሊትካን ሓበሬታ ኣባልካን ኣብርር</p>
+                    <button class="btn btn-primary" data-en="Login" data-ti="እተኻ">እተኻ</button>
                 </div>
             </div>
         </div>
@@ -161,7 +165,7 @@
     <!-- Stay Connected -->
     <section class="stay-connected">
         <div class="container">
-            <h2>Stay Connected</h2>
+            <h2 data-en="Stay Connected" data-ti="ተራኺልካ ክትነብር">ተራኺልካ ክትነብር</h2>
             <div class="connection-options">
                 <div class="contact-info">
                     <h3>Contact Our Leaders</h3>
@@ -195,7 +199,7 @@
     <!-- Newcomer Welcome -->
     <section class="newcomer-welcome">
         <div class="container">
-            <h2>New to Our Church?</h2>
+            <h2 data-en="New to Our Church?" data-ti="ሓድሽ እኹም ኣብ ቤተ ክርስቲያንና?">ሓድሽ እኹም ኣብ ቤተ ክርስቲያንና?</h2>
             <div class="welcome-content">
                 <div class="welcome-info">
                     <h3>What to Expect</h3>
@@ -223,7 +227,7 @@
     <!-- Grow Spiritually -->
     <section class="grow-spiritually">
         <div class="container">
-            <h2>Grow Spiritually</h2>
+            <h2 data-en="Grow Spiritually" data-ti="ብመንፈስ ክትሰፍሕ">ብመንፈስ ክትሰፍሕ</h2>
             <div class="spiritual-content">
                 <div class="devotional">
                     <h3>Daily Devotional</h3>

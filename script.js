@@ -1,13 +1,66 @@
 // DOM Content Loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize all functionality
+    initializeLanguageSwitcher();
     initializeForms();
     initializeSmoothScrolling();
-    initializeLanguageToggle();
     initializeEmergencyAlerts();
     initializeVideoPlayer();
     initializeMobileMenu();
 });
+
+// Language switcher functionality
+function initializeLanguageSwitcher() {
+    const langButtons = document.querySelectorAll('.lang-btn');
+    const currentLang = localStorage.getItem('preferredLanguage') || 'ti'; // Default to Tigrigna
+    
+    // Set initial language
+    setLanguage(currentLang);
+    
+    // Update button states
+    langButtons.forEach(btn => {
+        if (btn.dataset.lang === currentLang) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Add click event listeners
+    langButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const lang = this.dataset.lang;
+            setLanguage(lang);
+            
+            // Update button states
+            langButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Save preference
+            localStorage.setItem('preferredLanguage', lang);
+        });
+    });
+}
+
+// Set language for all elements
+function setLanguage(lang) {
+    const elements = document.querySelectorAll('[data-en][data-ti]');
+    
+    elements.forEach(element => {
+        if (lang === 'en') {
+            element.textContent = element.dataset.en;
+        } else {
+            element.textContent = element.dataset.ti;
+        }
+    });
+    
+    // Update document direction for RTL languages if needed
+    if (lang === 'ti') {
+        document.documentElement.setAttribute('dir', 'ltr'); // Tigrigna is LTR
+    } else {
+        document.documentElement.setAttribute('dir', 'ltr');
+    }
+}
 
 // Form handling
 function initializeForms() {
@@ -277,22 +330,7 @@ function initializeSmoothScrolling() {
     });
 }
 
-    // Language toggle functionality
-function initializeLanguageToggle() {
-    // This would be implemented with a language switcher
-    // For now, we'll add a simple language indicator
-    const heroSubtitle = document.querySelector('.hero-subtitle');
-    if (heroSubtitle) {
-        heroSubtitle.addEventListener('click', function() {
-            // Toggle between English and Tigrigna
-            if (this.textContent.includes('እንኳዕ')) {
-                this.textContent = 'Welcome to Abune Aregawi Tigray Orthodox Church';
-            } else {
-                this.textContent = 'እንኳዕ ናብ ቤተ ክርስትያን ኦርቶዶክስ ትግራይ ኣቡነ ኣረጋዊ ብደሓን መጻእኩም!';
-            }
-        });
-    }
-}
+    
 
 // Emergency alerts
 function initializeEmergencyAlerts() {
