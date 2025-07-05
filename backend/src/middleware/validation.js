@@ -328,12 +328,10 @@ exports.validateMemberQuery = [
   query('role')
     .optional()
     .isIn([
-      'Member',
-      'Treasurer',
-      'Church Secretary',
-      'Administrator',
-      'Priest',
-      'Board Member'
+      'member',
+      'accountant',
+      'auditor',
+      'clergy'
     ])
     .withMessage('Invalid role filter'),
   

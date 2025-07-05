@@ -122,24 +122,18 @@ const HeroSection: React.FC = () => {
           >
             {t('watch.live')}
           </button>
+          <Link to="/member-status" className="btn btn-accent">
+            <i className="fas fa-chart-bar mr-2"></i>
+            {t('member.status')}
+          </Link>
           {currentUser ? (
-            <Link to="/dashboard" className="btn btn-accent">
+            <Link to="/dashboard" className="btn btn-outline">
               <i className="fas fa-user mr-2"></i>
               {t('member.dashboard')}
             </Link>
           ) : (
-            <Link to="/register" className="btn btn-accent">
+            <Link to="/register" className="btn btn-outline">
               {t('register.member')}
-            </Link>
-          )}
-          {currentUser ? (
-            <Link to="/profile" className="btn btn-outline">
-              <i className="fas fa-user-circle mr-2"></i>
-              {t('view.profile')}
-            </Link>
-          ) : (
-            <Link to="/login" className="btn btn-outline">
-              {t('sign.in')}
             </Link>
           )}
         </div>

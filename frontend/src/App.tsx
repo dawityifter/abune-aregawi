@@ -10,6 +10,7 @@ import Profile from './components/Profile';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Navigation from './components/Navigation';
 import CreditsPage from './components/CreditsPage';
+import MemberStatus from './components/MemberStatus';
 import './index.css';
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
                 } 
               />
               <Route path="/credits" element={<CreditsPage />} />
+              <Route path="/member-status" element={<MemberStatus />} />
               {/* Add more routes here as we build them */}
             </Routes>
           </div>

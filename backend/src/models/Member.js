@@ -169,14 +169,12 @@ module.exports = (sequelize) => {
     },
     role: {
       type: DataTypes.ENUM(
-        'Member',
-        'Treasurer',
-        'Church Secretary',
-        'Administrator',
-        'Priest',
-        'Board Member'
+        'member',
+        'accountant',
+        'auditor',
+        'clergy'
       ),
-      defaultValue: 'Member'
+      defaultValue: 'member'
     },
     isActive: {
       type: DataTypes.BOOLEAN,

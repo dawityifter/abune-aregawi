@@ -28,32 +28,32 @@ router.put('/profile', validateProfileUpdate, memberController.updateProfile);
 
 // Admin routes (require admin role)
 router.get('/all', 
-  roleMiddleware(['Administrator', 'Church Secretary', 'Priest']), 
+  roleMiddleware(['accountant', 'auditor', 'clergy']), 
   validateMemberQuery, 
   memberController.getAllMembers
 );
 
 router.get('/:id', 
-  roleMiddleware(['Administrator', 'Church Secretary', 'Priest']), 
+  roleMiddleware(['accountant', 'auditor', 'clergy']), 
   validateMemberId, 
   memberController.getMemberById
 );
 
 router.put('/:id', 
-  roleMiddleware(['Administrator', 'Church Secretary']), 
+  roleMiddleware(['accountant', 'clergy']), 
   validateMemberId, 
   memberController.updateMember
 );
 
 router.delete('/:id', 
-  roleMiddleware(['Administrator']), 
+  roleMiddleware(['accountant']), 
   validateMemberId, 
   memberController.deleteMember
 );
 
-// Treasurer routes (require treasurer role)
+// Financial routes (require accountant/auditor role)
 router.get('/:id/contributions', 
-  roleMiddleware(['Treasurer', 'Administrator']), 
+  roleMiddleware(['accountant', 'auditor']), 
   validateMemberId, 
   memberController.getMemberContributions
 );
