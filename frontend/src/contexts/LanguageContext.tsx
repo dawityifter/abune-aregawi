@@ -129,6 +129,8 @@ const translations = {
     'widowed': 'Widowed',
     'address': 'Address',
     'date.joined.parish': 'Date Joined Parish',
+    'baptism.name': 'Baptism Name',
+    'baptism.name.placeholder': 'Enter your baptism name',
     'baptism.status': 'Baptism Status',
     'baptized': 'Baptized',
     'not.baptized': 'Not Baptized',
@@ -138,6 +140,13 @@ const translations = {
     'communicant.member': 'Communicant Member',
     'yes': 'Yes',
     'no': 'No',
+    'street.line1': 'Street Address',
+    'apartment.no': 'Apartment No. (optional)',
+    'city': 'City',
+    'state': 'State',
+    'zip.code': 'Zip Code',
+    'interested.in.serving': 'Interested in Serving',
+    'select.option': 'Select option',
   },
   ti: {
     // Hero Section
@@ -256,6 +265,8 @@ const translations = {
     'widowed': 'ዝተረስዐት',
     'address': 'ኩነታት',
     'date.joined.parish': 'ዕለተ መዓስ ቤተ ክርስቲያን',
+    'baptism.name': 'ስም ዕርድ',
+    'baptism.name.placeholder': 'ስም ዕርድካ ኣእትው',
     'baptism.status': 'ዕርድ ምጥምታ',
     'baptized': 'ዝተጠምተ',
     'not.baptized': 'ዘይተጠምተ',
@@ -265,6 +276,13 @@ const translations = {
     'communicant.member': 'ኣባል ተሳታፊ',
     'yes': 'እወ',
     'no': 'ኣይኮነን',
+    'street.line1': 'ደብቲ መንገዲ',
+    'apartment.no': 'ቤት ቁጽሪ (ኣማራጺ)',
+    'city': 'ከተማ',
+    'state': 'ግዛት',
+    'zip.code': 'ዚፕ ኮድ',
+    'interested.in.serving': 'ኣብ ኣገልግሎት ተሻጋሪ',
+    'select.option': 'ምረጽ',
   }
 };
 

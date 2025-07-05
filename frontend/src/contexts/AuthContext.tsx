@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { 
   User, 
+  UserCredential,
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signOut,
@@ -17,7 +18,7 @@ import { auth, db } from '../firebase';
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
-  signUp: (email: string, password: string, displayName: string) => Promise<void>;
+  signUp: (email: string, password: string, displayName: string) => Promise<UserCredential>;
   signIn: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -69,6 +70,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.warn('Could not create user profile in Firestore:', firestoreError.message);
         // Continue even if Firestore fails - user is still created in Firebase Auth
       }
+      
+      return result;
     } catch (error: any) {
       throw new Error(error.message);
     }

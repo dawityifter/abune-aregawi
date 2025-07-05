@@ -32,7 +32,7 @@ module.exports = (sequelize) => {
       }
     },
     gender: {
-      type: DataTypes.ENUM('Male', 'Female', 'Prefer not to say'),
+      type: DataTypes.ENUM('Male', 'Female'),
       allowNull: false
     },
     dateOfBirth: {
@@ -46,7 +46,7 @@ module.exports = (sequelize) => {
 
     // 🏡 Contact & Address
     phoneNumber: {
-      type: DataTypes.STRING(20),
+      type: DataTypes.STRING(25),
       allowNull: false,
       validate: {
         notEmpty: true
@@ -61,9 +61,13 @@ module.exports = (sequelize) => {
         notEmpty: true
       }
     },
-    streetAddress: {
+    streetLine1: {
       type: DataTypes.STRING(255),
       allowNull: false
+    },
+    apartmentNo: {
+      type: DataTypes.STRING(50),
+      allowNull: true
     },
     city: {
       type: DataTypes.STRING(100),
@@ -97,7 +101,7 @@ module.exports = (sequelize) => {
       allowNull: true
     },
     emergencyContactPhone: {
-      type: DataTypes.STRING(20),
+      type: DataTypes.STRING(25),
       allowNull: true
     },
 
@@ -106,48 +110,14 @@ module.exports = (sequelize) => {
       type: DataTypes.DATEONLY,
       allowNull: true
     },
-    isBaptized: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false
-    },
-    baptismDate: {
-      type: DataTypes.DATEONLY,
-      allowNull: true
-    },
-    isChrismated: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false
-    },
-    chrismationDate: {
-      type: DataTypes.DATEONLY,
-      allowNull: true
-    },
-    isCommunicantMember: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false
-    },
-    spiritualFather: {
-      type: DataTypes.STRING(200),
-      allowNull: true
-    },
-    nameDay: {
+    baptismName: {
       type: DataTypes.STRING(100),
       allowNull: true,
-      comment: 'Patron saint name day'
+      comment: 'Baptism name'
     },
-    liturgicalRole: {
-      type: DataTypes.ENUM(
-        'None',
-        'Deacon',
-        'Subdeacon', 
-        'Reader',
-        'Choir',
-        'Altar Server',
-        'Sisterhood',
-        'Brotherhood',
-        'Other'
-      ),
-      defaultValue: 'None'
+    interestedInServing: {
+      type: DataTypes.STRING(10),
+      allowNull: true
     },
     ministries: {
       type: DataTypes.TEXT,
@@ -176,6 +146,12 @@ module.exports = (sequelize) => {
     },
 
     // 🌐 Account / System Access
+    firebaseUid: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+      unique: true,
+      comment: 'Firebase Authentication UID'
+    },
     loginEmail: {
       type: DataTypes.STRING(255),
       allowNull: false,
@@ -186,7 +162,7 @@ module.exports = (sequelize) => {
     },
     password: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true, // Optional since Firebase handles authentication
       validate: {
         len: [8, 255]
       }
@@ -236,7 +212,7 @@ module.exports = (sequelize) => {
         }
       },
       beforeUpdate: async (member) => {
-        if (member.changed('password')) {
+        if (member.changed('password') && member.password) {
           member.password = await bcrypt.hash(member.password, 12);
         }
       }
@@ -245,6 +221,9 @@ module.exports = (sequelize) => {
 
   // Instance methods
   Member.prototype.comparePassword = async function(candidatePassword) {
+    if (!this.password) {
+      return false; // No password stored, so no match possible
+    }
     return await bcrypt.compare(candidatePassword, this.password);
   };
 

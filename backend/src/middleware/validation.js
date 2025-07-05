@@ -34,15 +34,15 @@ exports.validateMemberRegistration = [
   // Contact & Address
   body('phoneNumber')
     .trim()
-    .matches(/^[\+]?[1-9][\d]{0,15}$/)
-    .withMessage('Phone number must be a valid number'),
+    .isLength({ min: 1, max: 25 })
+    .withMessage('Phone number is required and must be less than 25 characters'),
   
   body('email')
     .isEmail()
     .normalizeEmail()
     .withMessage('Email must be a valid email address'),
   
-  body('streetAddress')
+  body('streetLine1')
     .trim()
     .isLength({ min: 1, max: 255 })
     .withMessage('Street address is required and must be less than 255 characters'),
@@ -69,6 +69,7 @@ exports.validateMemberRegistration = [
   
   // Family Information
   body('isHeadOfHousehold')
+    .optional()
     .isBoolean()
     .withMessage('Head of household must be true or false'),
   
@@ -87,8 +88,8 @@ exports.validateMemberRegistration = [
   body('emergencyContactPhone')
     .optional()
     .trim()
-    .matches(/^[\+]?[1-9][\d]{0,15}$/)
-    .withMessage('Emergency contact phone must be a valid number'),
+    .isLength({ max: 25 })
+    .withMessage('Emergency contact phone must be less than 25 characters'),
   
   // Spiritual Information
   body('dateJoinedParish')
@@ -97,6 +98,7 @@ exports.validateMemberRegistration = [
     .withMessage('Date joined parish must be a valid date'),
   
   body('isBaptized')
+    .optional()
     .isBoolean()
     .withMessage('Baptized must be true or false'),
   
@@ -106,6 +108,7 @@ exports.validateMemberRegistration = [
     .withMessage('Baptism date must be a valid date'),
   
   body('isChrismated')
+    .optional()
     .isBoolean()
     .withMessage('Chrismated must be true or false'),
   
@@ -115,6 +118,7 @@ exports.validateMemberRegistration = [
     .withMessage('Chrismation date must be a valid date'),
   
   body('isCommunicantMember')
+    .optional()
     .isBoolean()
     .withMessage('Communicant member must be true or false'),
   
@@ -131,6 +135,7 @@ exports.validateMemberRegistration = [
     .withMessage('Name day must be less than 100 characters'),
   
   body('liturgicalRole')
+    .optional()
     .isIn([
       'None',
       'Deacon',
@@ -163,15 +168,21 @@ exports.validateMemberRegistration = [
     .withMessage('Tithe participation must be true or false'),
   
   // Account
+  body('firebaseUid')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 128 })
+    .withMessage('Firebase UID must be less than 128 characters'),
+  
   body('loginEmail')
     .isEmail()
     .normalizeEmail()
     .withMessage('Login email must be a valid email address'),
   
   body('password')
+    .optional()
     .isLength({ min: 8 })
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number'),
+    .withMessage('Password must be at least 8 characters long'),
   
   body('role')
     .optional()
@@ -243,8 +254,8 @@ exports.validateProfileUpdate = [
   body('phoneNumber')
     .optional()
     .trim()
-    .matches(/^[\+]?[1-9][\d]{0,15}$/)
-    .withMessage('Phone number must be a valid number'),
+    .isLength({ min: 1, max: 25 })
+    .withMessage('Phone number must be less than 25 characters'),
   
   body('email')
     .optional()
@@ -274,7 +285,19 @@ exports.validateProfileUpdate = [
     .optional()
     .trim()
     .isLength({ min: 1, max: 20 })
-    .withMessage('Postal code must be less than 20 characters')
+    .withMessage('Postal code must be less than 20 characters'),
+
+  body('emergencyContactName')
+    .optional()
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Emergency contact name must be less than 200 characters'),
+
+  body('emergencyContactPhone')
+    .optional()
+    .trim()
+    .isLength({ max: 25 })
+    .withMessage('Emergency contact phone must be less than 25 characters')
 ];
 
 // Member ID validation

@@ -16,7 +16,15 @@ const HeroSection: React.FC = () => {
   };
 
   return (
-    <header className="hero-gradient text-white py-12 relative">
+    <header
+      className="hero-gradient text-white py-12 relative"
+      style={{
+        backgroundImage: `linear-gradient(135deg, #8B4513cc 0%, #A0522Dcc 50%, #DAA520cc 100%), url('/mezemiran3.jpg')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
       <div className="container mx-auto px-4 text-center">
         {/* Language Switcher and Auth Links */}
         <div className="absolute top-5 right-5 flex gap-2 z-10">

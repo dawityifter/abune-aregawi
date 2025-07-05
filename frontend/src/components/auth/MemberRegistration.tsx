@@ -11,103 +11,99 @@ import {
   AccountStep
 } from './RegistrationSteps';
 
-interface Child {
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  dateOfBirth: string;
-  gender: 'Male' | 'Female';
-  isBaptized: boolean;
-  baptismDate?: string;
-  nameDay?: string;
-}
-
 interface RegistrationForm {
   // Personal Information
   firstName: string;
-  middleName?: string;
+  middleName: string;
   lastName: string;
-  gender: 'Male' | 'Female' | 'Prefer not to say';
+  gender: 'Male' | 'Female';
   dateOfBirth: string;
-  maritalStatus: 'Single' | 'Married' | 'Divorced' | 'Widowed';
+  maritalStatus: string;
   
   // Contact & Address
   phoneNumber: string;
   email: string;
-  streetAddress: string;
+  streetLine1: string;
+  apartmentNo: string;
   city: string;
   state: string;
   postalCode: string;
   country: string;
   
   // Family Information
-  isHeadOfHousehold: boolean;
-  spouseName?: string;
+  spouseName: string;
+  spouseContactPhone: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   
   // Spiritual Information
-  dateJoinedParish?: string;
-  isBaptized: boolean;
-  baptismDate?: string;
-  isChrismated: boolean;
-  chrismationDate?: string;
-  isCommunicantMember: boolean;
-  spiritualFather?: string;
-  nameDay?: string;
-  liturgicalRole: string;
+  dateJoinedParish: string;
+  baptismName: string;
+  interestedInServing: string;
   ministries: string[];
-  languagePreference: 'English' | 'Tigrigna' | 'Amharic';
+  languagePreference: string;
   
   // Contribution
-  preferredGivingMethod: 'Cash' | 'Online' | 'Envelope' | 'Check';
+  preferredGivingMethod: string;
   titheParticipation: boolean;
   
   // Account
   loginEmail: string;
   password: string;
   confirmPassword: string;
-  
-  // Children
-  children: Child[];
 }
 
 const translations = {
   en: {
     title: 'Member Registration',
     personalInfo: 'Personal Information',
-    contactInfo: 'Contact & Address',
+    contactAddress: 'Contact & Address',
     familyInfo: 'Family Information',
     spiritualInfo: 'Spiritual Information',
-    contributionInfo: 'Contribution & Giving',
+    contributionInfo: 'Contribution Information',
     accountInfo: 'Account Information',
-    childrenInfo: 'Children Information',
-    submit: 'Register',
+    submit: 'Submit Registration',
     next: 'Next',
     previous: 'Previous',
-    addChild: 'Add Child',
-    removeChild: 'Remove',
     required: 'Required',
     optional: 'Optional'
   },
   ti: {
     title: 'ደምድም ምዝገባ',
-    personalInfo: 'ውልቃዊ ሓፈሻዊ ሓፈሻዊ',
-    contactInfo: 'ኣድራሻ እንተሃልዩ',
+    personalInfo: 'ውልቃዊ ሓፈሻዊ',
+    contactAddress: 'ኣድራሻ እንተሃልዩ',
     familyInfo: 'ስድራቤት ሓፈሻዊ',
     spiritualInfo: 'መንፈሳዊ ሓፈሻዊ',
-    contributionInfo: 'ዋጋ ምሃብ',
+    contributionInfo: 'ወፈራ ሓፈሻዊ',
     accountInfo: 'ኣካውንት ሓፈሻዊ',
-    childrenInfo: 'ህጻናት ሓፈሻዊ',
-    submit: 'ደምድም ምዝገባ',
+    submit: 'ምዝገባ ስደድ',
     next: 'ቀጺሉ',
-    previous: 'ቅድሚ ሕሉፍ',
-    addChild: 'ህጻን ምድማር',
-    removeChild: 'ምስረቕ',
+    previous: 'ቅድሚ',
     required: 'የድለ',
     optional: 'ኣማራጺ'
   }
 };
+
+// Phone number formatter
+export function formatPhoneNumber(value: string) {
+  const cleaned = value.replace(/\D/g, '');
+  const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
+  if (!match) return value;
+  let formatted = '';
+  if (match[1]) {
+    formatted = `(${match[1]}`;
+    if (match[1].length === 3) {
+      formatted += ')';
+    }
+  }
+  if (match[2]) {
+    formatted += match[2].length > 0 ? ` ${match[2]}` : '';
+  }
+  if (match[3]) {
+    formatted += match[3].length > 0 ? `-${match[3]}` : '';
+  }
+  return formatted.trim();
+}
 
 const MemberRegistration: React.FC = () => {
   const { language } = useLanguage();
@@ -118,37 +114,31 @@ const MemberRegistration: React.FC = () => {
     firstName: '',
     middleName: '',
     lastName: '',
-    gender: 'Prefer not to say',
+    gender: 'Male',
     dateOfBirth: '',
     maritalStatus: 'Single',
     phoneNumber: '',
     email: '',
-    streetAddress: '',
+    streetLine1: '',
+    apartmentNo: '',
     city: '',
     state: '',
     postalCode: '',
     country: 'United States',
-    isHeadOfHousehold: false,
     spouseName: '',
+    spouseContactPhone: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
     dateJoinedParish: '',
-    isBaptized: false,
-    baptismDate: '',
-    isChrismated: false,
-    chrismationDate: '',
-    isCommunicantMember: false,
-    spiritualFather: '',
-    nameDay: '',
-    liturgicalRole: 'None',
+    baptismName: '',
+    interestedInServing: '',
     ministries: [],
     languagePreference: 'English',
     preferredGivingMethod: 'Cash',
     titheParticipation: false,
     loginEmail: '',
     password: '',
-    confirmPassword: '',
-    children: []
+    confirmPassword: ''
   });
 
   const [errors, setErrors] = useState<Partial<RegistrationForm>>({});
@@ -156,43 +146,15 @@ const MemberRegistration: React.FC = () => {
   const [error, setError] = useState('');
 
   const handleInputChange = (field: keyof RegistrationForm, value: any) => {
+    // Auto-format phone number
+    if (field === 'phoneNumber') {
+      value = formatPhoneNumber(value);
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
     }
-  };
-
-  const addChild = () => {
-    setFormData(prev => ({
-      ...prev,
-      children: [...prev.children, {
-        firstName: '',
-        middleName: '',
-        lastName: '',
-        dateOfBirth: '',
-        gender: 'Male',
-        isBaptized: false,
-        baptismDate: '',
-        nameDay: ''
-      }]
-    }));
-  };
-
-  const removeChild = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      children: prev.children.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateChild = (index: number, field: keyof Child, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      children: prev.children.map((child, i) => 
-        i === index ? { ...child, [field]: value } : child
-      )
-    }));
   };
 
   const validateStep = (step: number): boolean => {
@@ -208,7 +170,7 @@ const MemberRegistration: React.FC = () => {
       case 2: // Contact & Address
         if (!formData.phoneNumber) newErrors.phoneNumber = 'Phone number is required';
         if (!formData.email) newErrors.email = 'Email is required';
-        if (!formData.streetAddress) newErrors.streetAddress = 'Street address is required';
+        if (!formData.streetLine1) newErrors.streetLine1 = 'Street line 1 is required';
         if (!formData.city) newErrors.city = 'City is required';
         if (!formData.state) newErrors.state = 'State is required';
         if (!formData.postalCode) newErrors.postalCode = 'Postal code is required';
@@ -226,7 +188,7 @@ const MemberRegistration: React.FC = () => {
       
       case 6: // Account Information
         if (!formData.loginEmail) newErrors.loginEmail = 'Login email is required';
-        if (!formData.password) newErrors.password = 'Password is required';
+        if (!formData.password) newErrors.password = 'Password is required for Firebase authentication';
         if (formData.password !== formData.confirmPassword) {
           newErrors.confirmPassword = 'Passwords do not match';
         }
@@ -235,9 +197,6 @@ const MemberRegistration: React.FC = () => {
         }
         break;
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -258,9 +217,51 @@ const MemberRegistration: React.FC = () => {
       try {
         setLoading(true);
         
-        // Create Firebase Auth account
+        // Create Firebase Auth account first
         const displayName = `${formData.firstName} ${formData.lastName}`;
-        await signUp(formData.loginEmail, formData.password, displayName);
+        const userCredential = await signUp(formData.loginEmail, formData.password, displayName);
+        
+        // Prepare registration data with Firebase UID
+        const registrationData = {
+          // Personal Information
+          firstName: formData.firstName,
+          middleName: formData.middleName,
+          lastName: formData.lastName,
+          gender: formData.gender,
+          dateOfBirth: formData.dateOfBirth,
+          maritalStatus: formData.maritalStatus,
+          
+          // Contact & Address
+          phoneNumber: formData.phoneNumber,
+          email: formData.email,
+          streetLine1: formData.streetLine1,
+          apartmentNo: formData.apartmentNo,
+          city: formData.city,
+          state: formData.state,
+          postalCode: formData.postalCode,
+          country: formData.country,
+          
+          // Family Information - Handle married vs single differently
+          spouseName: formData.maritalStatus === 'Married' ? formData.spouseName : null,
+          emergencyContactName: formData.maritalStatus === 'Married' ? formData.spouseName : formData.emergencyContactName,
+          emergencyContactPhone: formData.maritalStatus === 'Married' ? formData.spouseContactPhone : formData.emergencyContactPhone,
+          
+          // Spiritual Information
+          dateJoinedParish: formData.dateJoinedParish,
+          baptismName: formData.baptismName,
+          interestedInServing: formData.interestedInServing,
+          ministries: formData.ministries,
+          languagePreference: formData.languagePreference,
+          
+          // Contribution
+          preferredGivingMethod: formData.preferredGivingMethod,
+          titheParticipation: formData.titheParticipation,
+          
+          // Account
+          firebaseUid: userCredential.user.uid,
+          loginEmail: formData.loginEmail,
+          role: 'Member'
+        };
         
         // Also register with backend API for additional member data
         const response = await fetch('/api/members/register', {
@@ -268,7 +269,7 @@ const MemberRegistration: React.FC = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(registrationData),
         });
         
         if (response.ok) {
@@ -279,6 +280,14 @@ const MemberRegistration: React.FC = () => {
           // Handle backend errors
           const errorData = await response.json();
           console.error('Backend registration failed:', errorData);
+          
+          // Show validation errors if any
+          if (errorData.errors && Array.isArray(errorData.errors)) {
+            const errorMessages = errorData.errors.map((err: any) => `${err.path}: ${err.msg}`).join(', ');
+            setError(`Registration failed: ${errorMessages}`);
+          } else {
+            setError(errorData.message || 'Registration failed');
+          }
         }
       } catch (error: any) {
         console.error('Registration error:', error);

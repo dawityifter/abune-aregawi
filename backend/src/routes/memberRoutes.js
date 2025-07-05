@@ -15,8 +15,9 @@ const roleMiddleware = require('../middleware/role');
 router.post('/register', validateMemberRegistration, memberController.register);
 router.post('/login', validateLogin, memberController.login);
 
-// Firebase Auth profile route (no JWT required)
+// Firebase Auth profile routes (no JWT required)
 router.get('/profile/firebase/:uid', memberController.getProfileByFirebaseUid);
+router.put('/profile/firebase/:uid', memberController.updateProfileByFirebaseUid);
 
 // Protected routes (require authentication)
 router.use(authMiddleware);

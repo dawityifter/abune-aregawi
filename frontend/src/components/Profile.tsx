@@ -9,18 +9,21 @@ interface ProfileData {
   createdAt: string;
   isActive: boolean;
   phoneNumber?: string;
-  address?: string;
   dateOfBirth?: string;
   gender?: string;
   maritalStatus?: string;
   emergencyContact?: string;
   emergencyPhone?: string;
-  spiritualFather?: string;
-  nameDay?: string;
-  liturgicalRole?: string;
   ministries?: string[];
   languagePreference?: string;
   dateJoinedParish?: string;
+  baptismName?: string;
+  interestedInServing?: string;
+  streetLine1?: string;
+  apartmentNo?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
 }
 
 interface BackendMemberData {
@@ -33,35 +36,50 @@ interface BackendMemberData {
   maritalStatus: string;
   phoneNumber: string;
   email: string;
-  streetAddress: string;
-  city: string;
-  state: string;
+  streetLine1: string;
+  apartmentNo?: string;
+  city?: string;
+  state?: string;
   postalCode: string;
   country: string;
-  isHeadOfHousehold: boolean;
   spouseName?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   dateJoinedParish?: string;
-  isBaptized: boolean;
-  baptismDate?: string;
-  isChrismated: boolean;
-  chrismationDate?: string;
-  isCommunicantMember: boolean;
-  spiritualFather?: string;
-  nameDay?: string;
-  liturgicalRole: string;
+  baptismName?: string;
+  interestedInServing?: string;
   ministries?: string;
   languagePreference: string;
+  memberId?: string;
   preferredGivingMethod: string;
   titheParticipation: boolean;
   loginEmail: string;
   role: string;
   isActive: boolean;
-  memberId?: string;
+  lastLogin?: string;
   createdAt: string;
   updatedAt: string;
-  children?: any[];
+}
+
+// Phone number formatter
+function formatPhoneNumber(value: string) {
+  const cleaned = value.replace(/\D/g, '');
+  const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
+  if (!match) return value;
+  let formatted = '';
+  if (match[1]) {
+    formatted = `(${match[1]}`;
+    if (match[1].length === 3) {
+      formatted += ')';
+    }
+  }
+  if (match[2]) {
+    formatted += match[2].length > 0 ? ` ${match[2]}` : '';
+  }
+  if (match[3]) {
+    formatted += match[3].length > 0 ? `-${match[3]}` : '';
+  }
+  return formatted.trim();
 }
 
 const Profile: React.FC = () => {
@@ -76,7 +94,29 @@ const Profile: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
 
   // Form state
-  const [formData, setFormData] = useState<Partial<ProfileData>>({});
+  const [formData, setFormData] = useState<ProfileData>({
+    displayName: '',
+    email: '',
+    role: '',
+    createdAt: '',
+    isActive: true,
+    phoneNumber: '',
+    dateOfBirth: '',
+    gender: '',
+    maritalStatus: '',
+    emergencyContact: '',
+    emergencyPhone: '',
+    ministries: [],
+    languagePreference: 'English',
+    dateJoinedParish: '',
+    baptismName: '',
+    interestedInServing: '',
+    streetLine1: '',
+    apartmentNo: '',
+    city: '',
+    state: '',
+    postalCode: ''
+  });
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -85,7 +125,29 @@ const Profile: React.FC = () => {
           // Fetch Firebase profile
           const userProfile = await getUserProfile(currentUser.uid);
           setProfile(userProfile);
-          setFormData(userProfile);
+          setFormData(userProfile as ProfileData || {
+            displayName: '',
+            email: '',
+            role: '',
+            createdAt: '',
+            isActive: true,
+            phoneNumber: '',
+            dateOfBirth: '',
+            gender: '',
+            maritalStatus: '',
+            emergencyContact: '',
+            emergencyPhone: '',
+            ministries: [],
+            languagePreference: 'English',
+            dateJoinedParish: '',
+            baptismName: '',
+            interestedInServing: '',
+            streetLine1: '',
+            apartmentNo: '',
+            city: '',
+            state: '',
+            postalCode: ''
+          });
 
           // Fetch backend member data
           try {
@@ -107,21 +169,48 @@ const Profile: React.FC = () => {
                 dateOfBirth: result.data.member.dateOfBirth,
                 gender: result.data.member.gender,
                 maritalStatus: result.data.member.maritalStatus,
-                address: `${result.data.member.streetAddress}, ${result.data.member.city}, ${result.data.member.state} ${result.data.member.postalCode}`,
                 emergencyContact: result.data.member.emergencyContactName,
                 emergencyPhone: result.data.member.emergencyContactPhone,
-                spiritualFather: result.data.member.spiritualFather,
-                nameDay: result.data.member.nameDay,
-                liturgicalRole: result.data.member.liturgicalRole,
                 ministries: result.data.member.ministries ? JSON.parse(result.data.member.ministries) : [],
                 languagePreference: result.data.member.languagePreference,
                 dateJoinedParish: result.data.member.dateJoinedParish,
+                baptismName: result.data.member.baptismName,
+                interestedInServing: result.data.member.interestedInServing,
+                streetLine1: result.data.member.streetLine1,
+                apartmentNo: result.data.member.apartmentNo,
+                city: result.data.member.city,
+                state: result.data.member.state,
+                postalCode: result.data.member.postalCode,
               };
               
               setProfile(mergedData);
               setFormData(mergedData);
             } else {
               console.warn('Backend profile not found, using Firebase data only');
+              setProfile(userProfile);
+              setFormData(userProfile as ProfileData || {
+                displayName: '',
+                email: '',
+                role: '',
+                createdAt: '',
+                isActive: true,
+                phoneNumber: '',
+                dateOfBirth: '',
+                gender: '',
+                maritalStatus: '',
+                emergencyContact: '',
+                emergencyPhone: '',
+                ministries: [],
+                languagePreference: 'English',
+                dateJoinedParish: '',
+                baptismName: '',
+                interestedInServing: '',
+                streetLine1: '',
+                apartmentNo: '',
+                city: '',
+                state: '',
+                postalCode: ''
+              });
             }
           } catch (backendError) {
             console.warn('Could not fetch backend data:', backendError);
@@ -141,9 +230,13 @@ const Profile: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    let newValue = value;
+    if (name === 'phoneNumber') {
+      newValue = formatPhoneNumber(value);
+    }
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: newValue
     }));
   };
 
@@ -160,11 +253,47 @@ const Profile: React.FC = () => {
         await updateUserProfile(formData.displayName);
       }
 
-      // Update profile data in Firestore
+      // Update profile data in Firestore (only basic info)
       await updateUserProfileData(currentUser.uid, {
-        ...formData,
+        displayName: formData.displayName,
+        email: formData.email,
+        role: formData.role,
         updatedAt: new Date().toISOString()
       });
+
+      // Update detailed profile data in backend API
+      const backendUpdateData = {
+        phoneNumber: formData.phoneNumber,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+        maritalStatus: formData.maritalStatus,
+        emergencyContactName: formData.emergencyContact,
+        emergencyContactPhone: formData.emergencyPhone,
+        ministries: formData.ministries ? JSON.stringify(formData.ministries) : null,
+        languagePreference: formData.languagePreference,
+        dateJoinedParish: formData.dateJoinedParish,
+        baptismName: formData.baptismName,
+        interestedInServing: formData.interestedInServing,
+        streetLine1: formData.streetLine1,
+        apartmentNo: formData.apartmentNo,
+        city: formData.city,
+        state: formData.state,
+        postalCode: formData.postalCode
+      };
+
+      // Send update to backend API
+      const response = await fetch(`/api/members/profile/firebase/${currentUser.uid}?email=${encodeURIComponent(currentUser.email || '')}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(backendUpdateData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update profile in backend');
+      }
 
       setProfile(prev => prev ? { ...prev, ...formData } as ProfileData : null);
       setEditing(false);
@@ -181,7 +310,29 @@ const Profile: React.FC = () => {
   };
 
   const handleCancel = () => {
-    setFormData(profile || {});
+    setFormData(profile || {
+      displayName: '',
+      email: '',
+      role: '',
+      createdAt: '',
+      isActive: true,
+      phoneNumber: '',
+      dateOfBirth: '',
+      gender: '',
+      maritalStatus: '',
+      emergencyContact: '',
+      emergencyPhone: '',
+      ministries: [],
+      languagePreference: 'English',
+      dateJoinedParish: '',
+      baptismName: '',
+      interestedInServing: '',
+      streetLine1: '',
+      apartmentNo: '',
+      city: '',
+      state: '',
+      postalCode: ''
+    });
     setEditing(false);
     setError(null);
   };
@@ -393,18 +544,88 @@ const Profile: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('address')}
+                      {t('street.line1')}
                     </label>
                     {editing ? (
-                      <textarea
-                        name="address"
-                        value={formData.address || ''}
+                      <input
+                        type="text"
+                        name="streetLine1"
+                        value={formData.streetLine1 || ''}
                         onChange={handleInputChange}
-                        rows={3}
+                        required
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
                     ) : (
-                      <p className="text-gray-900">{profile.address || t('not.provided')}</p>
+                      <p className="text-gray-900">{profile.streetLine1 || t('not.provided')}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('apartment.no')}
+                    </label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        name="apartmentNo"
+                        value={formData.apartmentNo || ''}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{profile.apartmentNo || t('not.provided')}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('city')}
+                    </label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        name="city"
+                        value={formData.city || ''}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{profile.city || t('not.provided')}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('state')}
+                    </label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        name="state"
+                        value={formData.state || ''}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{profile.state || t('not.provided')}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('zip.code')}
+                    </label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        name="postalCode"
+                        value={formData.postalCode || ''}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{profile.postalCode || t('not.provided')}</p>
                     )}
                   </div>
                 </div>
@@ -414,63 +635,6 @@ const Profile: React.FC = () => {
                   <h3 className="text-md font-medium text-gray-900 border-b pb-2">
                     {t('church.information')}
                   </h3>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('spiritual.father')}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="text"
-                        name="spiritualFather"
-                        value={formData.spiritualFather || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.spiritualFather || t('not.provided')}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('name.day')}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="text"
-                        name="nameDay"
-                        value={formData.nameDay || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.nameDay || t('not.provided')}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('liturgical.role')}
-                    </label>
-                    {editing ? (
-                      <select
-                        name="liturgicalRole"
-                        value={formData.liturgicalRole || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                        <option value="None">{t('none')}</option>
-                        <option value="Reader">{t('reader')}</option>
-                        <option value="Deacon">{t('deacon')}</option>
-                        <option value="Priest">{t('priest')}</option>
-                        <option value="Choir Member">{t('choir.member')}</option>
-                        <option value="Sunday School Teacher">{t('sunday.school.teacher')}</option>
-                      </select>
-                    ) : (
-                      <p className="text-gray-900">{profile.liturgicalRole || t('none')}</p>
-                    )}
-                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -485,6 +649,7 @@ const Profile: React.FC = () => {
                       >
                         <option value="English">English</option>
                         <option value="Tigrigna">Tigrigna</option>
+                        <option value="Amharic">Amharic</option>
                       </select>
                     ) : (
                       <p className="text-gray-900">{profile.languagePreference || 'English'}</p>
@@ -529,6 +694,24 @@ const Profile: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('baptism.name')}
+                    </label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        name="baptismName"
+                        value={formData.baptismName || ''}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder={t('baptism.name.placeholder')}
+                      />
+                    ) : (
+                      <p className="text-gray-900">{profile.baptismName || t('not.provided')}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('date.joined.parish')}
                     </label>
                     {editing ? (
@@ -548,31 +731,22 @@ const Profile: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('baptism.status')}
+                      {t('interested.in.serving')}
                     </label>
-                    <p className="text-gray-900">
-                      {backendData?.isBaptized ? t('baptized') : t('not.baptized')}
-                      {backendData?.baptismDate && ` - ${new Date(backendData.baptismDate).toLocaleDateString()}`}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('chrismation.status')}
-                    </label>
-                    <p className="text-gray-900">
-                      {backendData?.isChrismated ? t('chrismated') : t('not.chrismated')}
-                      {backendData?.chrismationDate && ` - ${new Date(backendData.chrismationDate).toLocaleDateString()}`}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('communicant.member')}
-                    </label>
-                    <p className="text-gray-900">
-                      {backendData?.isCommunicantMember ? t('yes') : t('no')}
-                    </p>
+                    {editing ? (
+                      <select
+                        name="interestedInServing"
+                        value={formData.interestedInServing || ''}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      >
+                        <option value="">{t('select.option')}</option>
+                        <option value="Yes">{t('yes')}</option>
+                        <option value="No">{t('no')}</option>
+                      </select>
+                    ) : (
+                      <p className="text-gray-900">{profile.interestedInServing || t('not.provided')}</p>
+                    )}
                   </div>
                 </div>
               </div>

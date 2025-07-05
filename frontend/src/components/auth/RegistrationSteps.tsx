@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatPhoneNumber } from './MemberRegistration';
 
 // Step 1: Personal Information
 export const PersonalInfoStep: React.FC<{
@@ -64,7 +65,6 @@ export const PersonalInfoStep: React.FC<{
         >
           <option value="Male">Male</option>
           <option value="Female">Female</option>
-          <option value="Prefer not to say">Prefer not to say</option>
         </select>
       </div>
       
@@ -110,7 +110,7 @@ export const ContactAddressStep: React.FC<{
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t.contactInfo}</h3>
+    <h3 className="text-xl font-semibold text-gray-800">{t.contactAddress}</h3>
     
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
@@ -124,7 +124,7 @@ export const ContactAddressStep: React.FC<{
           className={`w-full px-3 py-2 border rounded-md ${
             errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
           }`}
-          placeholder="+1 (555) 123-4567"
+          placeholder="(555) 123-4567"
         />
         {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>}
       </div>
@@ -150,13 +150,26 @@ export const ContactAddressStep: React.FC<{
         </label>
         <input
           type="text"
-          value={formData.streetAddress}
-          onChange={(e) => handleInputChange('streetAddress', e.target.value)}
+          value={formData.streetLine1}
+          onChange={(e) => handleInputChange('streetLine1', e.target.value)}
           className={`w-full px-3 py-2 border rounded-md ${
-            errors.streetAddress ? 'border-red-500' : 'border-gray-300'
+            errors.streetLine1 ? 'border-red-500' : 'border-gray-300'
           }`}
         />
-        {errors.streetAddress && <p className="text-red-500 text-sm mt-1">{errors.streetAddress}</p>}
+        {errors.streetLine1 && <p className="text-red-500 text-sm mt-1">{errors.streetLine1}</p>}
+      </div>
+      
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Apartment/Suite Number
+        </label>
+        <input
+          type="text"
+          value={formData.apartmentNo}
+          onChange={(e) => handleInputChange('apartmentNo', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          placeholder="Apt 123"
+        />
       </div>
       
       <div>
@@ -231,61 +244,60 @@ export const FamilyInfoStep: React.FC<{
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-6">
     <h3 className="text-xl font-semibold text-gray-800">{t.familyInfo}</h3>
-    
     <div className="space-y-4">
-      <div className="flex items-center">
-        <input
-          type="checkbox"
-          id="isHeadOfHousehold"
-          checked={formData.isHeadOfHousehold}
-          onChange={(e) => handleInputChange('isHeadOfHousehold', e.target.checked)}
-          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-        />
-        <label htmlFor="isHeadOfHousehold" className="ml-2 text-sm text-gray-700">
-          Head of Household
-        </label>
-      </div>
-      
-      {formData.maritalStatus === 'Married' && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Spouse Name
-          </label>
-          <input
-            type="text"
-            value={formData.spouseName}
-            onChange={(e) => handleInputChange('spouseName', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          />
+      {formData.maritalStatus === 'Married' ? (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Spouse Name
+            </label>
+            <input
+              type="text"
+              value={formData.spouseName}
+              onChange={(e) => handleInputChange('spouseName', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Spouse Contact Phone
+            </label>
+            <input
+              type="tel"
+              value={formData.spouseContactPhone || ''}
+              onChange={(e) => handleInputChange('spouseContactPhone', formatPhoneNumber(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              placeholder="(555) 123-4567"
+            />
+          </div>
+        </>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Emergency Contact Name
+            </label>
+            <input
+              type="text"
+              value={formData.emergencyContactName}
+              onChange={(e) => handleInputChange('emergencyContactName', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Emergency Contact Phone
+            </label>
+            <input
+              type="tel"
+              value={formData.emergencyContactPhone}
+              onChange={(e) => handleInputChange('emergencyContactPhone', formatPhoneNumber(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              placeholder="(555) 123-4567"
+            />
+          </div>
         </div>
       )}
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Emergency Contact Name
-          </label>
-          <input
-            type="text"
-            value={formData.emergencyContactName}
-            onChange={(e) => handleInputChange('emergencyContactName', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Emergency Contact Phone
-          </label>
-          <input
-            type="tel"
-            value={formData.emergencyContactPhone}
-            onChange={(e) => handleInputChange('emergencyContactPhone', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            placeholder="+1 (555) 123-4567"
-          />
-        </div>
-      </div>
     </div>
   </div>
 );
@@ -299,11 +311,10 @@ export const SpiritualInfoStep: React.FC<{
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-6">
     <h3 className="text-xl font-semibold text-gray-800">{t.spiritualInfo}</h3>
-    
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Date Joined Parish
+          Date Joined Parish (Estimated)
         </label>
         <input
           type="date"
@@ -312,127 +323,39 @@ export const SpiritualInfoStep: React.FC<{
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
         />
       </div>
-      
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Name Day / Patron Saint
+          Baptism Name
         </label>
         <input
           type="text"
-          value={formData.nameDay}
-          onChange={(e) => handleInputChange('nameDay', e.target.value)}
+          value={formData.baptismName || ''}
+          onChange={(e) => handleInputChange('baptismName', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          placeholder="e.g., St. John, St. Mary"
+          placeholder="Enter Baptism Name"
         />
       </div>
-      
-      <div className="flex items-center">
-        <input
-          type="checkbox"
-          id="isBaptized"
-          checked={formData.isBaptized}
-          onChange={(e) => handleInputChange('isBaptized', e.target.checked)}
-          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-        />
-        <label htmlFor="isBaptized" className="ml-2 text-sm text-gray-700">
-          Baptized
-        </label>
-      </div>
-      
-      {formData.isBaptized && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Date of Baptism
-          </label>
-          <input
-            type="date"
-            value={formData.baptismDate}
-            onChange={(e) => handleInputChange('baptismDate', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          />
-        </div>
-      )}
-      
-      <div className="flex items-center">
-        <input
-          type="checkbox"
-          id="isChrismated"
-          checked={formData.isChrismated}
-          onChange={(e) => handleInputChange('isChrismated', e.target.checked)}
-          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-        />
-        <label htmlFor="isChrismated" className="ml-2 text-sm text-gray-700">
-          Chrismated
-        </label>
-      </div>
-      
-      {formData.isChrismated && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Date of Chrismation
-          </label>
-          <input
-            type="date"
-            value={formData.chrismationDate}
-            onChange={(e) => handleInputChange('chrismationDate', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          />
-        </div>
-      )}
-      
-      <div className="flex items-center">
-        <input
-          type="checkbox"
-          id="isCommunicantMember"
-          checked={formData.isCommunicantMember}
-          onChange={(e) => handleInputChange('isCommunicantMember', e.target.checked)}
-          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-        />
-        <label htmlFor="isCommunicantMember" className="ml-2 text-sm text-gray-700">
-          Communicant Member
-        </label>
-      </div>
-      
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Spiritual Father
-        </label>
-        <input
-          type="text"
-          value={formData.spiritualFather}
-          onChange={(e) => handleInputChange('spiritualFather', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          placeholder="e.g., Fr. Michael"
-        />
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Liturgical Role
+          Interested in Serving?
         </label>
         <select
-          value={formData.liturgicalRole}
-          onChange={(e) => handleInputChange('liturgicalRole', e.target.value)}
+          value={formData.interestedInServing || ''}
+          onChange={(e) => handleInputChange('interestedInServing', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
         >
-          <option value="None">None</option>
-          <option value="Deacon">Deacon</option>
-          <option value="Subdeacon">Subdeacon</option>
-          <option value="Reader">Reader</option>
-          <option value="Choir">Choir</option>
-          <option value="Altar Server">Altar Server</option>
-          <option value="Sisterhood">Sisterhood</option>
-          <option value="Brotherhood">Brotherhood</option>
-          <option value="Other">Other</option>
+          <option value="">Select</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+          <option value="Maybe">Maybe</option>
         </select>
       </div>
-      
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Language Preference
         </label>
         <select
-          value={formData.languagePreference}
+          value={formData.languagePreference || 'English'}
           onChange={(e) => handleInputChange('languagePreference', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
         >

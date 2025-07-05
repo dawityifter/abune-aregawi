@@ -28,7 +28,8 @@ exports.register = async (req, res) => {
       // Contact & Address
       phoneNumber,
       email,
-      streetAddress,
+      streetLine1,
+      apartmentNo,
       city,
       state,
       postalCode,
@@ -42,14 +43,8 @@ exports.register = async (req, res) => {
       
       // Spiritual Information
       dateJoinedParish,
-      isBaptized,
-      baptismDate,
-      isChrismated,
-      chrismationDate,
-      isCommunicantMember,
-      spiritualFather,
-      nameDay,
-      liturgicalRole,
+      baptismName,
+      interestedInServing,
       ministries,
       languagePreference,
       
@@ -58,6 +53,7 @@ exports.register = async (req, res) => {
       titheParticipation,
       
       // Account
+      firebaseUid,
       loginEmail,
       password,
       role,
@@ -100,30 +96,26 @@ exports.register = async (req, res) => {
       maritalStatus,
       phoneNumber,
       email,
-      streetAddress,
+      streetLine1,
+      apartmentNo,
       city,
       state,
       postalCode,
       country,
-      isHeadOfHousehold,
+      isHeadOfHousehold: isHeadOfHousehold || false,
       spouseName,
       emergencyContactName,
       emergencyContactPhone,
       dateJoinedParish,
-      isBaptized,
-      baptismDate,
-      isChrismated,
-      chrismationDate,
-      isCommunicantMember,
-      spiritualFather,
-      nameDay,
-      liturgicalRole,
-      ministries: ministries ? JSON.stringify(ministries) : null,
+      baptismName,
+      interestedInServing,
+      ministries: ministries && Array.isArray(ministries) ? JSON.stringify(ministries) : null,
       languagePreference,
       preferredGivingMethod,
       titheParticipation,
+      firebaseUid,
       loginEmail,
-      password,
+      password: password || null, // Password is optional since Firebase handles auth
       role: role || 'Member'
     });
 
@@ -571,6 +563,53 @@ exports.getProfileByFirebaseUid = async (req, res) => {
 
   } catch (error) {
     console.error('Get profile by Firebase UID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Update member profile by Firebase UID
+exports.updateProfileByFirebaseUid = async (req, res) => {
+  try {
+    const { uid } = req.params;
+
+    // Find member by email from Firebase Auth
+    const member = await Member.findOne({
+      where: { 
+        email: req.query.email || '' // We'll pass email as query param
+      }
+    });
+
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member not found'
+      });
+    }
+
+    // Remove sensitive fields that shouldn't be updated via this endpoint
+    const { password, role, isActive, memberId, loginEmail, ...updateData } = req.body;
+
+    await member.update(updateData);
+
+    // Fetch updated member
+    const updatedMember = await Member.findByPk(member.id, {
+      include: [{
+        model: Child,
+        as: 'children'
+      }]
+    });
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: { member: updatedMember }
+    });
+
+  } catch (error) {
+    console.error('Update profile by Firebase UID error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
