@@ -9,6 +9,7 @@ import Dashboard from './components/Dashboard';
 import Profile from './components/Profile';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Navigation from './components/Navigation';
+import CreditsPage from './components/CreditsPage';
 import './index.css';
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+              <Route path="/credits" element={<CreditsPage />} />
               {/* Add more routes here as we build them */}
             </Routes>
           </div>
