@@ -1,0 +1,28 @@
+{
+  "name": "abune-aregawi-church",
+  "version": "1.0.0",
+  "description": "Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church Website",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "cd frontend && npm start",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "start:frontend": "cd frontend && npm start",
+    "start:backend": "cd backend && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "church",
+    "tigray",
+    "orthodox",
+    "react",
+    "nodejs",
+    "firebase"
+  ],
+  "author": "Abune Aregawi Church",
+  "license": "MIT"
+} 

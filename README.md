@@ -1,173 +1,129 @@
-# Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church Website
+# Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church
 
-A mobile-first web application homepage designed to help parishioners stay active, engaged, and connected by combining spiritual enrichment with digital convenience.
+A modern, bilingual church website built with React, Node.js, and Firebase.
 
-## 🌟 Features
+## 🏗️ Project Structure
 
-### Top Banner (Hero Section)
-- Church name and logo with cross icon
-- Welcoming headline in both English and Tigrigna
-- Service times and location with Google Maps integration
-- Call-to-action buttons: Plan a Visit, Watch Live, Give Online, View Dues / Login
+```
+abune-aregawi/
+├── frontend/                 # React + TypeScript + TailwindCSS
+│   ├── src/
+│   │   ├── components/       # React components
+│   │   ├── contexts/         # React contexts (Language, Auth)
+│   │   ├── firebase.ts       # Firebase configuration
+│   │   └── ...
+│   ├── package.json
+│   └── tailwind.config.js
+├── backend/                  # Node.js + Express (coming soon)
+├── package.json              # Root package.json with scripts
+└── README.md
+```
 
-### What's Happening Section
-- Calendar of upcoming church events with RSVP functionality
-- Featured announcements with icons
-- Emergency alerts system
-- Multilingual support (English and Tigrigna)
+## 🚀 Quick Start
 
-### Watch or Listen Section
-- Video player for recent sermons and livestreams
-- Links to sermon archives
-- Zoom integration for online prayer sessions
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
 
-### Participation Made Easy
-- Volunteer signup forms
-- Online giving with one-time and recurring options
-- Member portal for dues management
+### Installation
+```bash
+# Install all dependencies (frontend + backend)
+npm run install:all
 
-### Stay Connected
-- Contact information for church leaders
-- Social media integration (Facebook, WhatsApp, Instagram)
-- Community engagement tools
+# Or install individually:
+npm install                    # Root dependencies
+cd frontend && npm install     # Frontend dependencies
+cd ../backend && npm install   # Backend dependencies (when ready)
+```
 
-### Newcomer Welcome Section
-- Information about what to expect during services
-- Church mission and beliefs
-- Connect form for new visitors
+### Development
+```bash
+# Start frontend only
+npm run start:frontend
 
-### Grow Spiritually
-- Daily devotional content
-- Bible study resources
-- Spiritual discussion forums
+# Start backend only (when ready)
+npm run start:backend
+
+# Start both frontend and backend
+npm run dev
+```
+
+### Build for Production
+```bash
+npm run build
+```
+
+## 🛠️ Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| **Frontend** | React + TypeScript + TailwindCSS | Modern, responsive UI |
+| **Backend** | Node.js + Express | API and business logic |
+| **Database** | PostgreSQL | Structured data storage |
+| **Auth** | Firebase Auth | User authentication |
+| **Deployment** | Vercel (frontend) + Railway/Render (backend) | Hosting |
+
+## 🌐 Features
+
+### ✅ Implemented
+- **Bilingual Support**: English and Tigrigna languages
+- **Responsive Design**: Mobile-first approach
+- **Modern UI**: TailwindCSS with custom components
+- **Language Persistence**: Remembers user's language preference
+- **Cultural Design**: Respectful of Tigray Orthodox traditions
+
+### 🚧 In Progress
+- Firebase Authentication
+- Backend API development
+- Database integration
+- Admin panel
+
+### 📋 Planned
+- Member portal
+- Online giving
+- Event management
+- Email notifications
+- PDF reports
 
 ## 🎨 Design Philosophy
 
-- **Mobile-first**: Optimized for mobile devices with responsive design
+- **Mobile-first**: Optimized for mobile devices
 - **Culturally respectful**: Honors Tigray Orthodox Christian traditions
-- **Clean and accessible**: Easy navigation and readability
-- **Warm and welcoming**: Community-oriented design with spiritual warmth
+- **Accessible**: WCAG compliant design
+- **Fast**: Optimized performance and loading times
 
-## 🛠️ Technical Stack
+## 🔧 Environment Variables
 
-- **HTML5**: Semantic markup for accessibility
-- **CSS3**: Modern styling with Flexbox and Grid
-- **JavaScript**: Interactive functionality and form handling
-- **Font Awesome**: Icons for visual elements
-- **Google Fonts**: Inter font family for clean typography
+Create a `.env` file in the frontend directory:
 
-## 🚀 Getting Started
-
-1. **Clone or download** the project files
-2. **Open `index.html`** in your web browser
-3. **No build process required** - it's a static website
-
-### File Structure
-```
-abune-aregawi/
-├── index.html          # Main HTML file
-├── styles.css          # CSS styles
-├── script.js           # JavaScript functionality
-├── README.md           # This file
-├── 01.md              # Project notes
-└── 02.md              # Design specifications
+```env
+REACT_APP_FIREBASE_API_KEY=your_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_auth_domain
+REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
 ```
 
-## 📱 Responsive Design
-
-The website is fully responsive and optimized for:
-- **Mobile phones** (320px and up)
-- **Tablets** (768px and up)
-- **Desktop computers** (1024px and up)
-
-## 🌐 Multilingual Support
-
-- **English**: Primary language
-- **Tigrigna**: Secondary language with proper Unicode support
-- Language toggle functionality in the hero section
-
-## ♿ Accessibility Features
-
-- Semantic HTML structure
-- ARIA labels and roles
-- Keyboard navigation support
-- High contrast mode support
-- Screen reader compatibility
-- Focus indicators for interactive elements
-
-## 🎯 Interactive Features
-
-### Forms
-- **Connect Form**: For new visitors
-- **RSVP Forms**: For event attendance
-- **Donation Forms**: Online giving with multiple options
-- **Login Forms**: Member portal access
-
-### Modals
-- Interactive popup forms
-- Form validation
-- Success notifications
-- Loading states
-
-### Emergency Alerts
-- Prominent notification system
-- Dismissible alerts
-- Important announcements
-
-## 🎨 Color Scheme
-
-- **Primary Brown**: #8B4513 (Saddle Brown) - Represents earth and tradition
-- **Secondary Green**: #2E8B57 (Sea Green) - Growth and life
-- **Accent Gold**: #DAA520 (Goldenrod) - Divine light and spirituality
-- **Neutral Grays**: For text and backgrounds
-
-## 📞 Contact Information
-
-The website includes placeholder contact information that should be updated with actual church details:
-
-- **Address**: 1621 S Jupiter Rd, Garland, TX 75042
-- **Phone**: (555) 123-4567
-- **Email**: info@abunearegawi.org
-- **Facebook**: [https://www.facebook.com/abunearegawitx/](https://www.facebook.com/abunearegawitx/)
-
-## 🔧 Customization
-
-### Updating Content
-1. Edit `index.html` to update text content
-2. Modify `styles.css` for design changes
-3. Update `script.js` for functionality changes
-
-### Adding Features
-- The modular structure makes it easy to add new sections
-- CSS Grid and Flexbox provide flexible layouts
-- JavaScript is organized into clear functions
-
-## 📋 Browser Support
+## 📱 Browser Support
 
 - Chrome (latest)
 - Firefox (latest)
 - Safari (latest)
 - Edge (latest)
-- Mobile browsers (iOS Safari, Chrome Mobile)
+- Mobile browsers
 
 ## 🤝 Contributing
 
-This is a church website project. To contribute:
-1. Review the design specifications in `02.md`
-2. Ensure changes maintain cultural sensitivity
-3. Test on mobile devices
-4. Maintain accessibility standards
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ## 📄 License
 
-This project is created for the Abune Aregawi Tigray Orthodox Church community.
-
-## 🙏 Acknowledgments
-
-- Tigray Orthodox Christian community
-- Font Awesome for icons
-- Google Fonts for typography
-- Modern web standards for accessibility
+This project is created for the Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church community.
 
 ---
 

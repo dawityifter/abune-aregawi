@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@300;400;500;600;700&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-800 text-white hover:bg-primary-900 focus:ring-primary-500 transform hover:-translate-y-0.5;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary-800 text-white hover:bg-secondary-900 focus:ring-secondary-500 transform hover:-translate-y-0.5;
+  }
+  
+  .btn-accent {
+    @apply bg-accent-800 text-white hover:bg-accent-900 focus:ring-accent-500 transform hover:-translate-y-0.5;
+  }
+  
+  .btn-outline {
+    @apply bg-transparent text-primary-800 border-primary-800 hover:bg-primary-800 hover:text-white focus:ring-primary-500;
+  }
+  
+  .btn-small {
+    @apply px-4 py-2 text-sm;
+  }
+  
+  .lang-btn {
+    @apply bg-white/20 border-2 border-white/30 text-white px-4 py-2 rounded-full cursor-pointer text-sm font-medium transition-all duration-300 backdrop-blur-sm hover:bg-white/30 hover:border-white/50;
+  }
+  
+  .lang-btn.active {
+    @apply bg-accent-800 border-accent-800 text-white;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-lg p-6 transition-transform duration-300 hover:-translate-y-1;
+  }
+  
+  .section-title {
+    @apply text-3xl font-bold text-center mb-8 text-gray-900;
+  }
+  
+  .hero-gradient {
+    background: linear-gradient(135deg, #8B4513 0%, #A0522D 50%, #DAA520 100%);
+  }
+}
+
+@layer utilities {
+  .text-tigrigna {
+    font-family: 'Noto Sans Ethiopic', serif;
+  }
+  
+  .glass-effect {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+  
+  .nav-link {
+    @apply text-gray-600 hover:text-gray-900 transition-colors duration-200;
+  }
+  
+  .nav-link-active {
+    @apply text-primary-600 font-medium;
+  }
+}
