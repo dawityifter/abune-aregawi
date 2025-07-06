@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { formatPhoneNumber } from './auth/MemberRegistration';
 
 interface Child {
   id?: string;
@@ -12,8 +13,6 @@ interface Child {
   email?: string;
   baptismName?: string;
   isBaptized: boolean;
-  baptismDate?: string;
-  nameDay?: string;
 }
 
 const ChildrenManagement: React.FC = () => {
@@ -31,9 +30,7 @@ const ChildrenManagement: React.FC = () => {
     phone: '',
     email: '',
     baptismName: '',
-    isBaptized: false,
-    baptismDate: '',
-    nameDay: ''
+    isBaptized: false
   });
 
   const fetchChildren = useCallback(async () => {
@@ -134,9 +131,7 @@ const ChildrenManagement: React.FC = () => {
       phone: '',
       email: '',
       baptismName: '',
-      isBaptized: false,
-      baptismDate: '',
-      nameDay: ''
+      isBaptized: false
     });
   };
 
@@ -246,7 +241,7 @@ const ChildrenManagement: React.FC = () => {
                 <input
                   type="tel"
                   value={formData.phone || ''}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  onChange={(e) => setFormData({...formData, phone: formatPhoneNumber(e.target.value)})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -275,29 +270,7 @@ const ChildrenManagement: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Baptism Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.baptismDate || ''}
-                  onChange={(e) => setFormData({...formData, baptismDate: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name Day
-                </label>
-                <input
-                  type="text"
-                  value={formData.nameDay || ''}
-                  onChange={(e) => setFormData({...formData, nameDay: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
 
               <div className="flex items-center">
                 <input

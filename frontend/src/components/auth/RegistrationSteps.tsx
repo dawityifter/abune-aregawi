@@ -508,8 +508,6 @@ interface Child {
   email?: string;
   baptismName?: string;
   isBaptized: boolean;
-  baptismDate?: string;
-  nameDay?: string;
 }
 
 interface ChildrenStepProps {
@@ -528,9 +526,7 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
     phone: '',
     email: '',
     baptismName: '',
-    isBaptized: false,
-    baptismDate: '',
-    nameDay: ''
+    isBaptized: false
   });
 
   const addChild = () => {
@@ -545,9 +541,7 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
         phone: '',
         email: '',
         baptismName: '',
-        isBaptized: false,
-        baptismDate: '',
-        nameDay: ''
+        isBaptized: false
       });
     }
   };
@@ -638,7 +632,7 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
             <input
               type="tel"
               value={newChild.phone || ''}
-              onChange={(e) => setNewChild({...newChild, phone: e.target.value})}
+              onChange={(e) => setNewChild({...newChild, phone: formatPhoneNumber(e.target.value)})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -663,30 +657,6 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
               type="text"
               value={newChild.baptismName || ''}
               onChange={(e) => setNewChild({...newChild, baptismName: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Baptism Date
-            </label>
-            <input
-              type="date"
-              value={newChild.baptismDate || ''}
-              onChange={(e) => setNewChild({...newChild, baptismDate: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Name Day
-            </label>
-            <input
-              type="text"
-              value={newChild.nameDay || ''}
-              onChange={(e) => setNewChild({...newChild, nameDay: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
