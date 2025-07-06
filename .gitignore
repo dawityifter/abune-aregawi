@@ -18,7 +18,9 @@ dist/
 
 # Member data files (contain personal information)
 frontend/src/utils/members-2024.json
-frontend/src/utils/*MemberData*.ts
+frontend/src/utils/fullMemberData.ts
+frontend/src/utils/completeMemberData.ts
+frontend/src/utils/memberDataParser.ts
 out/
 
 # Runtime data
@@ -207,9 +209,6 @@ dist
 
 # Member data files (will be stored in database)
 scripts/parsedMembers.json
-frontend/src/utils/fullMemberData.ts
-frontend/src/utils/completeMemberData.ts
-frontend/src/utils/memberDataParser.ts
 members-2024.md
 members.md
 .DS_Store

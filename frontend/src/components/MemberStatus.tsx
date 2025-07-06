@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { MemberData } from '../utils/memberDataParser';
-import { allMembersData } from '../utils/fullMemberData';
+import { allMembersData } from '../utils/mockMemberData';
 
 const MemberStatus: React.FC = () => {
   const { t } = useLanguage();
