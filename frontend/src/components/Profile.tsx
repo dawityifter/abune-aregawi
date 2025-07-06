@@ -268,7 +268,7 @@ const Profile: React.FC = () => {
       };
 
       // Send update to backend API
-      const response = await fetch(`/api/members/profile/firebase/${currentUser.uid}?email=${encodeURIComponent(currentUser.email || '')}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?email=${encodeURIComponent(currentUser.email || '')}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -37,7 +37,7 @@ const ChildrenManagement: React.FC = () => {
   const fetchChildren = useCallback(async () => {
     try {
       // First get the member profile to get the member ID
-      const profileResponse = await fetch(`/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -48,7 +48,7 @@ const ChildrenManagement: React.FC = () => {
         const memberId = profileData.data.member.id;
         
         // Now fetch children using the member ID
-        const childrenResponse = await fetch(`/api/members/${memberId}/children`, {
+        const childrenResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}/children`, {
           headers: {
             'Content-Type': 'application/json'
           }
@@ -77,7 +77,7 @@ const ChildrenManagement: React.FC = () => {
     
     try {
       // Get member ID first
-      const profileResponse = await fetch(`/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -91,8 +91,8 @@ const ChildrenManagement: React.FC = () => {
       const memberId = profileData.data.member.id;
       
       const url = editingChild 
-        ? `/api/members/children/${editingChild.id}`
-        : `/api/members/${memberId}/children`;
+        ? `${process.env.REACT_APP_API_URL}/api/members/children/${editingChild.id}`
+        : `${process.env.REACT_APP_API_URL}/api/members/${memberId}/children`;
       
       const method = editingChild ? 'PUT' : 'POST';
       
@@ -123,7 +123,7 @@ const ChildrenManagement: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this child?')) return;
 
     try {
-      const response = await fetch(`/api/members/children/${childId}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/children/${childId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
