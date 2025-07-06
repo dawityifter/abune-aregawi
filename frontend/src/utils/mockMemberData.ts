@@ -1,4 +1,29 @@
-import { MemberData } from './memberDataParser';
+// MemberData interface definition (standalone for deployment)
+export interface MemberData {
+  id: number;
+  name: string;
+  phone: string;
+  year: string;
+  paymentMethod: string;
+  monthlyPayment: number;
+  totalAmountDue: number;
+  jan: number;
+  feb: number;
+  mar: number;
+  apr: number;
+  may: number;
+  jun: number;
+  jul: number;
+  aug: number;
+  sep: number;
+  oct: number;
+  nov: number;
+  dec: number;
+  totalCollected: number;
+  balanceDue: number;
+  paidUpTo: string;
+  householdCount: number;
+}
 
 // Mock member data for deployment - contains only sample data
 export const mockMembersData: MemberData[] = [
