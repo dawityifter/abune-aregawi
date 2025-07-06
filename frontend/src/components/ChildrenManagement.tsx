@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Child {
@@ -36,13 +36,7 @@ const ChildrenManagement: React.FC = () => {
     nameDay: ''
   });
 
-  useEffect(() => {
-    if (currentUser) {
-      fetchChildren();
-    }
-  }, [currentUser]);
-
-  const fetchChildren = async () => {
+  const fetchChildren = useCallback(async () => {
     try {
       const response = await fetch(`/api/members/${currentUser?.uid}/children`, {
         headers: {
@@ -59,7 +53,13 @@ const ChildrenManagement: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchChildren();
+    }
+  }, [currentUser, fetchChildren]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,7 +96,7 @@ const ChildrenManagement: React.FC = () => {
   };
 
   const handleDelete = async (childId: string) => {
-    if (!confirm('Are you sure you want to delete this child?')) return;
+    if (!window.confirm('Are you sure you want to delete this child?')) return;
 
     try {
       const response = await fetch(`/api/members/children/${childId}`, {

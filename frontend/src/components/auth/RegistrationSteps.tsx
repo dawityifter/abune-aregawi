@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { formatPhoneNumber } from './MemberRegistration';
 
 // Step 1: Personal Information
-export const PersonalInfoStep: React.FC<{
+const PersonalInfoStep: React.FC<{
   formData: any;
   handleInputChange: (field: any, value: any) => void;
   errors: any;
@@ -103,7 +103,7 @@ export const PersonalInfoStep: React.FC<{
 );
 
 // Step 2: Contact & Address
-export const ContactAddressStep: React.FC<{
+const ContactAddressStep: React.FC<{
   formData: any;
   handleInputChange: (field: any, value: any) => void;
   errors: any;
@@ -236,7 +236,7 @@ export const ContactAddressStep: React.FC<{
 );
 
 // Step 3: Family Information
-export const FamilyInfoStep: React.FC<{
+const FamilyInfoStep: React.FC<{
   formData: any;
   handleInputChange: (field: any, value: any) => void;
   errors: any;
@@ -303,7 +303,7 @@ export const FamilyInfoStep: React.FC<{
 );
 
 // Step 4: Spiritual Information
-export const SpiritualInfoStep: React.FC<{
+const SpiritualInfoStep: React.FC<{
   formData: any;
   handleInputChange: (field: any, value: any) => void;
   errors: any;
@@ -369,7 +369,7 @@ export const SpiritualInfoStep: React.FC<{
 );
 
 // Step 5: Contribution & Giving
-export const ContributionStep: React.FC<{
+const ContributionStep: React.FC<{
   formData: any;
   handleInputChange: (field: any, value: any) => void;
   errors: any;
@@ -420,7 +420,7 @@ export const ContributionStep: React.FC<{
 );
 
 // Step 6: Account Information
-export const AccountStep: React.FC<{
+const AccountStep: React.FC<{
   formData: any;
   handleInputChange: (field: any, value: any) => void;
   errors: any;
@@ -518,7 +518,7 @@ interface ChildrenStepProps {
   errors?: any;
 }
 
-export const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange, errors }) => {
+const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange, errors }) => {
   const [newChild, setNewChild] = useState<Child>({
     firstName: '',
     middleName: '',
@@ -764,12 +764,12 @@ export const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildren
    );
  };
 
- export {
-   PersonalInfoStep,
-   ContactAddressStep,
-   FamilyInfoStep,
-   ChildrenStep,
-   SpiritualInfoStep,
-   ContributionStep,
-   AccountStep
- }; 
+export {
+  PersonalInfoStep,
+  ContactAddressStep,
+  FamilyInfoStep,
+  ChildrenStep,
+  SpiritualInfoStep,
+  ContributionStep,
+  AccountStep
+}; 
