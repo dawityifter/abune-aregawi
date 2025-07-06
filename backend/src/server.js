@@ -77,13 +77,20 @@ app.use((error, req, res, next) => {
 const startServer = async () => {
   try {
     // Test database connection
+    console.log('🔌 Connecting to database...');
+    console.log(`📊 Database: ${process.env.DB_NAME} on ${process.env.DB_HOST}:${process.env.DB_PORT}`);
     await sequelize.authenticate();
     console.log('✅ Database connection established successfully.');
     
     // Sync database (in development)
     if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ force: false });
+      console.log('🔄 Syncing database models (preserving existing data)...');
+      await sequelize.sync({ force: false }); // force: false preserves existing data
       console.log('✅ Database synchronized.');
+      
+      // Log table information
+      const tables = await sequelize.showAllSchemas();
+      console.log('📋 Available tables:', tables.map(t => t.name).join(', '));
     }
     
     // Start server

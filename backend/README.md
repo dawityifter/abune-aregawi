@@ -281,6 +281,28 @@ FRONTEND_URL=https://your-domain.com
 
 This project is created for the Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church community.
 
+## Database Management
+
+### Important: Data Preservation
+The database is configured to **preserve existing data** by default. All sync operations use `force: false` to prevent accidental data loss.
+
+### Available Database Scripts
+
+- **`npm run db:init`** - Initialize database tables (preserves existing data)
+- **`npm run db:sync`** - Sync database models (preserves existing data)
+- **`npm run db:reset`** - **DANGER**: Reset database (drops all tables and data)
+
+### When to Use Each Script
+
+- **Development setup**: Use `npm run db:init` to create tables for the first time
+- **Schema changes**: Use `npm run db:sync` to apply model changes
+- **Complete reset**: Use `npm run db:reset` only when you want to delete all data
+
+### Data Loss Prevention
+- The server automatically syncs with `force: false` on startup
+- The initialization script now preserves existing data
+- The reset script requires explicit confirmation before dropping tables
+
 ---
 
 *Built with ❤️ for the Tigray Orthodox Christian community* 

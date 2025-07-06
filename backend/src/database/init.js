@@ -9,10 +9,11 @@ const initializeDatabase = async () => {
     await sequelize.authenticate();
     console.log('✅ Database connection established successfully.');
     
-    // Sync all models (create tables)
+    // Sync all models (create tables if they don't exist)
     console.log('🔄 Syncing database models...');
-    await sequelize.sync({ force: true }); // force: true will drop existing tables
-    console.log('✅ Database tables created successfully.');
+    console.log('⚠️  WARNING: This will preserve existing data. Use force: true only if you want to drop all tables.');
+    await sequelize.sync({ force: false }); // force: false preserves existing data
+    console.log('✅ Database tables synchronized successfully.');
     
     console.log('🎉 Database initialization completed!');
     console.log('📊 Available tables:');

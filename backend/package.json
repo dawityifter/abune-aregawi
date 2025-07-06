@@ -8,6 +8,8 @@
     "dev": "nodemon src/server.js",
     "test": "jest",
     "db:init": "node src/database/init.js",
+    "db:reset": "node src/database/reset.js",
+    "db:test": "node src/database/test.js",
     "db:sync": "node -e \"require('./src/models').sequelize.sync({force: false}).then(() => process.exit(0))\""
   },
   "dependencies": {
