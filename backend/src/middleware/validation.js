@@ -20,8 +20,8 @@ exports.validateMemberRegistration = [
     .withMessage('Last name is required and must be between 1 and 100 characters'),
   
   body('gender')
-    .isIn(['Male', 'Female', 'Prefer not to say'])
-    .withMessage('Gender must be Male, Female, or Prefer not to say'),
+    .isIn(['Male', 'Female'])
+    .withMessage('Gender must be Male or Female'),
   
   body('dateOfBirth')
     .isISO8601()
