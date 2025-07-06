@@ -187,6 +187,8 @@ const Profile: React.FC = () => {
               setFormData(mergedData);
             } else {
               console.warn('Backend profile not found, using Firebase data only');
+              // Show a warning that registration is needed
+              setError('You are logged in with Firebase but need to complete your member registration. Some features may not be available.');
               setProfile(userProfile);
               setFormData(userProfile as ProfileData || {
                 displayName: '',
@@ -292,6 +294,9 @@ const Profile: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        if (errorData.code === 'REGISTRATION_REQUIRED') {
+          throw new Error('Please complete your registration first. You are logged in with Firebase but need to register your member profile.');
+        }
         throw new Error(errorData.message || 'Failed to update profile in backend');
       }
 
@@ -350,12 +355,23 @@ const Profile: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-600 text-lg mb-4">Profile not found</div>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
-          >
-            Retry
-          </button>
+          <p className="text-gray-600 mb-4">
+            You are logged in with Firebase but haven't completed your member registration yet.
+          </p>
+          <div className="space-x-4">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
+            >
+              Retry
+            </button>
+            <button 
+              onClick={() => window.location.href = '/register'} 
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+            >
+              Complete Registration
+            </button>
+          </div>
         </div>
       </div>
     );

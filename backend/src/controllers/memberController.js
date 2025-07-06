@@ -585,7 +585,8 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
     if (!member) {
       return res.status(404).json({
         success: false,
-        message: 'Member not found'
+        message: 'Member not found. Please complete your registration first.',
+        code: 'REGISTRATION_REQUIRED'
       });
     }
 
