@@ -9,6 +9,7 @@ import NewcomerSection from './sections/NewcomerSection';
 import GrowSpirituallySection from './sections/GrowSpirituallySection';
 import DashboardPreviewSection from './sections/DashboardPreviewSection';
 import Footer from './sections/Footer';
+import { Link } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
   const { language } = useLanguage();
@@ -16,6 +17,13 @@ const HomePage: React.FC = () => {
   return (
     <div className={`min-h-screen ${language === 'ti' ? 'text-tigrigna' : ''}`}>
       <HeroSection />
+      <div className="flex justify-center my-6">
+        <Link to="/donate">
+          <button className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-8 rounded-lg text-lg shadow-lg transition duration-200">
+            Donate
+          </button>
+        </Link>
+      </div>
       <WhatsHappeningSection />
       <WatchListenSection />
       <ParticipationSection />
