@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           email,
           displayName,
           createdAt: new Date().toISOString(),
-          role: 'Member',
+          role: 'member',
           isActive: true
         });
         console.log('User profile created in Firestore');
@@ -139,7 +139,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         email: currentUser?.email || '',
         displayName: currentUser?.displayName || 'User',
         createdAt: new Date().toISOString(),
-        role: 'Member',
+        role: 'member',
         isActive: true
       };
       await setDoc(doc(db, 'users', uid), defaultProfile);
@@ -154,7 +154,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           email: currentUser?.email || '',
           displayName: currentUser?.displayName || 'User',
           createdAt: new Date().toISOString(),
-          role: 'Member',
+          role: 'member',
           isActive: true
         };
       }

@@ -260,7 +260,7 @@ const MemberRegistration: React.FC = () => {
           // Account
           firebaseUid: userCredential.user.uid,
           loginEmail: formData.loginEmail,
-          role: 'Member'
+          role: 'member'
         };
         
         // Also register with backend API for additional member data

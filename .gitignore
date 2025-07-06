@@ -15,6 +15,10 @@ pnpm-debug.log*
 # Build outputs
 build/
 dist/
+
+# Member data files (contain personal information)
+frontend/src/utils/members-2024.json
+frontend/src/utils/*MemberData*.ts
 out/
 
 # Runtime data

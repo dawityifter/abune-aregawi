@@ -116,7 +116,7 @@ exports.register = async (req, res) => {
       firebaseUid,
       loginEmail,
       password: password || null, // Password is optional since Firebase handles auth
-      role: role || 'Member'
+      role: role || 'member'
     });
 
     // Add children if provided

@@ -7,6 +7,7 @@ import ParticipationSection from './sections/ParticipationSection';
 import StayConnectedSection from './sections/StayConnectedSection';
 import NewcomerSection from './sections/NewcomerSection';
 import GrowSpirituallySection from './sections/GrowSpirituallySection';
+import DashboardPreviewSection from './sections/DashboardPreviewSection';
 import Footer from './sections/Footer';
 
 const HomePage: React.FC = () => {
@@ -18,6 +19,7 @@ const HomePage: React.FC = () => {
       <WhatsHappeningSection />
       <WatchListenSection />
       <ParticipationSection />
+      <DashboardPreviewSection />
       <StayConnectedSection />
       <NewcomerSection />
       <GrowSpirituallySection />
