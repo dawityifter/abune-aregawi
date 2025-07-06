@@ -131,19 +131,27 @@ const PersonalInfoStep: React.FC<{
             <span className="ml-2">{t('no')}</span>
           </label>
         </div>
-        {/* If not head of household, show spouse email */}
+        {/* If not head of household, show head of household email */}
         {!formData.isHeadOfHousehold && (
           <div className="mt-2">
+            <div className="mb-2 text-xs text-blue-700 bg-blue-50 rounded p-2">
+              {t('head.of.household.email.help')}
+            </div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('spouse.email')} <span className="text-red-500">*</span>
+              {t('head.of.household.email')} <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
-              value={formData.spouseEmail}
-              onChange={(e) => handleInputChange('spouseEmail', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              placeholder="spouse@email.com"
+              value={formData.headOfHouseholdEmail || ''}
+              onChange={(e) => handleInputChange('headOfHouseholdEmail', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md ${
+                errors.headOfHouseholdEmail ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="headofhousehold@email.com"
             />
+            {errors.headOfHouseholdEmail && (
+              <p className="text-red-500 text-sm mt-1">{errors.headOfHouseholdEmail}</p>
+            )}
           </div>
         )}
       </div>

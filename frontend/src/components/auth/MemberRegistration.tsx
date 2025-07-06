@@ -37,6 +37,7 @@ interface RegistrationForm {
   // Head of Household
   isHeadOfHousehold: boolean;
   spouseEmail: string;
+  headOfHouseholdEmail: string;
   hasDependents: boolean;
   
   // Contact & Address
@@ -111,6 +112,7 @@ const MemberRegistration: React.FC = () => {
     maritalStatus: 'Single',
     isHeadOfHousehold: true,
     spouseEmail: '',
+    headOfHouseholdEmail: '',
     hasDependents: false,
     phoneNumber: '',
     email: '',
@@ -161,6 +163,10 @@ const MemberRegistration: React.FC = () => {
         if (!formData.firstName) newErrors.firstName = t('first.name.required');
         if (!formData.lastName) newErrors.lastName = t('last.name.required');
         if (!formData.dateOfBirth) newErrors.dateOfBirth = t('date.of.birth.required');
+        // Validate head of household email if not head of household
+        if (!formData.isHeadOfHousehold && !formData.headOfHouseholdEmail) {
+          newErrors.headOfHouseholdEmail = t('head.of.household.email.not.found');
+        }
         break;
       
       case 2: // Contact & Address
@@ -236,7 +242,8 @@ const MemberRegistration: React.FC = () => {
           maritalStatus: formData.maritalStatus,
           // Head of Household
           isHeadOfHousehold: formData.isHeadOfHousehold,
-          spouseEmail: formData.spouseEmail,
+          spouseEmail: formData.maritalStatus === 'Married' ? formData.spouseEmail : null,
+          headOfHouseholdEmail: formData.headOfHouseholdEmail,
           // Contact & Address
           phoneNumber: formData.phoneNumber,
           email: formData.email,

@@ -75,15 +75,77 @@ exports.validateMemberRegistration = [
   
   body('spouseName')
     .optional()
-    .trim()
-    .isLength({ max: 200 })
-    .withMessage('Spouse name must be less than 200 characters'),
+    .custom((value, { req }) => {
+      // Only validate spouse name if marital status is Married
+      if (req.body.maritalStatus === 'Married') {
+        if (!value || value.trim() === '') {
+          throw new Error('Spouse name is required for married members');
+        }
+        if (value.trim().length > 200) {
+          throw new Error('Spouse name must be less than 200 characters');
+        }
+      }
+      return true;
+    })
+    .trim(),
   
   body('spouseEmail')
     .optional()
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Spouse email must be a valid email address'),
+    .custom((value, { req }) => {
+      // Only validate spouse email if marital status is Married
+      if (req.body.maritalStatus === 'Married') {
+        if (!value || value.trim() === '') {
+          throw new Error('Spouse email is required for married members');
+        }
+        // Use a simple email regex for validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
+          throw new Error('Spouse email must be a valid email address');
+        }
+      }
+      return true;
+    })
+    .normalizeEmail(),
+  
+  body('headOfHouseholdEmail')
+    .optional()
+    .custom(async (value, { req }) => {
+      // Only validate head of household email if user is not head of household
+      if (!req.body.isHeadOfHousehold) {
+        if (!value || value.trim() === '') {
+          throw new Error('Head of household email is required when you are not the head of household');
+        }
+        
+        // Use a simple email regex for validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
+          throw new Error('Head of household email must be a valid email address');
+        }
+        
+        // Check if the email exists in the database and belongs to a head of household
+        try {
+          const { Member } = require('../models');
+          const existingMember = await Member.findOne({
+            where: { 
+              email: value,
+              isHeadOfHousehold: true,
+              isActive: true
+            }
+          });
+          
+          if (!existingMember) {
+            throw new Error('No active head of household found with this email address. Please register as head of household or provide a valid head of household email.');
+          }
+        } catch (error) {
+          if (error.message.includes('No active head of household found')) {
+            throw error;
+          }
+          throw new Error('Error validating head of household email');
+        }
+      }
+      return true;
+    })
+    .normalizeEmail(),
   
   body('emergencyContactName')
     .optional()

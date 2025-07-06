@@ -90,19 +90,37 @@ exports.register = async (req, res) => {
     // --- FAMILY LOGIC ---
     let familyId = null;
     let finalSpouseEmail = spouseEmail || null;
+    
     if (isHeadOfHousehold) {
       // Will set familyId to member.id after creation
-    } else if (finalSpouseEmail) {
-      // Look up spouse by email
-      const spouse = await Member.findOne({ where: { email: finalSpouseEmail } });
-      if (spouse) {
-        familyId = spouse.familyId || spouse.id;
-      } else {
+    } else {
+      // For non-head-of-household members, they must provide headOfHouseholdEmail
+      const headOfHouseholdEmail = req.body.headOfHouseholdEmail;
+      if (!headOfHouseholdEmail) {
         return res.status(400).json({
           success: false,
-          message: 'Spouse not found. Please ensure your spouse registers first or check the email.'
+          message: 'Head of household email is required when you are not the head of household'
         });
       }
+      
+      // Look up head of household by email
+      const headOfHousehold = await Member.findOne({ 
+        where: { 
+          email: headOfHouseholdEmail,
+          isHeadOfHousehold: true,
+          isActive: true
+        } 
+      });
+      
+      if (!headOfHousehold) {
+        return res.status(400).json({
+          success: false,
+          message: 'No active head of household found with this email address. Please register as head of household or provide a valid head of household email.'
+        });
+      }
+      
+      // Use the head of household's family ID
+      familyId = headOfHousehold.familyId || headOfHousehold.id;
     }
 
     // Create member

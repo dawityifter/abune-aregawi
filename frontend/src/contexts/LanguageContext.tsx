@@ -221,6 +221,9 @@ const translations = {
     // Head of Household
     'head.of.household': 'Are you the head of your household?',
     'head.of.household.help': 'If your spouse has not registered yet, please select Yes to register as the head of household. Only the head of household should add children/dependents.',
+    'head.of.household.email': 'Head of Household Email',
+    'head.of.household.email.help': 'Enter the email address of the existing head of household member. If this email is not found, you must register as head of household.',
+    'head.of.household.email.not.found': 'No member found with this email address. Please register as head of household or provide a valid head of household email.',
     'has.dependents': 'I have children or dependents to register',
     'has.dependents.help': 'Check this box if you want to add children or dependents during registration. You can also add them later from your dashboard.',
     'spouse.email': "Spouse's Email",
@@ -435,6 +438,9 @@ const translations = {
     // Head of Household
     'head.of.household': 'ንስኻ መራሒ ቤተሰብካ እኹም ዲኻ?',
     'head.of.household.help': 'መርዓኻ እንተዘይተመዝገበ እዩ፣ እቶም እንተሃልዩ እሞ መራሒ ቤተሰብ ክትኮን እተኻ እሞ ኣኽትም። መራሒ ቤተሰብ ጥራይ እዩ ውልዲ/ተራኺል ክውስኽ ዘለዎ።',
+    'head.of.household.email': 'ኢመይል መራሒ ቤተሰብ',
+    'head.of.household.email.help': 'ኢመይል ናይቲ ዘሎ መራሒ ቤተሰብ ኣባል ኣእትው። እዚ ኢመይል እንተዘይተረኽበ፣ መራሒ ቤተሰብ ክትኮን እተኻ እሞ ኣኽትም።',
+    'head.of.household.email.not.found': 'ብዚዝክር ኢመይል ኣባል ኣይተረኽበን። መራሒ ቤተሰብ ክትኮን እተኻ እሞ ኣኽትም ወይ ትኽክለኛ ኢመይል መራሒ ቤተሰብ ሃብ።',
     'has.dependents': 'ውልዲ ወይ ተራኺል ክኣኽትም እየ ዘለኹ',
     'has.dependents.help': 'እዚ ሳጹን እንተተሓትት ውልዲ ወይ ተራኺል ክትውስኽ እትደሊ እንተኾንካ። ካብ ዳሽቦርድካ ድማ ክትውስኾም ትኽእል እኹም።',
     'spouse.email': 'ኢመይል መርዓ',
