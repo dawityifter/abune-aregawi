@@ -168,6 +168,8 @@ dist
 # https://nextjs.org/blog/next-9-1#public-directory-support
 # public
 # Note: frontend/public is tracked for React app static assets
+# Only ignore root public directory, not frontend/public
+/public
 
 # vuepress build output
 .vuepress/dist
