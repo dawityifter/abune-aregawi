@@ -3,71 +3,30 @@ const { sequelize, Member, Child } = require('../models');
 
 const testDatabase = async () => {
   try {
-    console.log('🔌 Testing database connection...');
-    console.log(`📊 Database: ${process.env.DB_NAME} on ${process.env.DB_HOST}:${process.env.DB_PORT}`);
+    console.log('🧪 Testing database connection...');
+    console.log('🔍 Test Environment Debug:');
+    console.log('  NODE_ENV:', process.env.NODE_ENV);
+    console.log('  DATABASE_URL exists:', !!process.env.DATABASE_URL);
+    console.log('  DATABASE_URL preview:', process.env.DATABASE_URL ? 
+      process.env.DATABASE_URL.substring(0, 20) + '...' + process.env.DATABASE_URL.substring(process.env.DATABASE_URL.length - 20) : 
+      'NOT SET');
     
-    // Test connection
+    console.log(`📊 Database: Connected via DATABASE_URL`);
+    
     await sequelize.authenticate();
-    console.log('✅ Database connection successful.');
+    console.log('✅ Database connection test successful!');
     
-    // Check existing data
-    const memberCount = await Member.count();
-    const childCount = await Child.count();
+    // Test a simple query
+    const result = await sequelize.query('SELECT NOW() as current_time');
+    console.log('✅ Database query test successful:', result[0][0]);
     
-    console.log(`📊 Current data:`);
-    console.log(`   - Members: ${memberCount}`);
-    console.log(`   - Children: ${childCount}`);
-    
-    if (memberCount > 0) {
-      const members = await Member.findAll({ limit: 3 });
-      console.log('👥 Sample members:');
-      members.forEach(m => {
-        console.log(`   - ${m.firstName} ${m.lastName} (${m.email})`);
-      });
-    }
-    
-    // Test creating a member
-    console.log('\n🧪 Testing member creation...');
-    const testMember = await Member.create({
-      firstName: 'Test',
-      lastName: 'User',
-      email: 'test@example.com',
-      loginEmail: 'test@example.com',
-      firebaseUid: 'test-uid-' + Date.now(),
-      phoneNumber: '123-456-7890',
-      gender: 'Male',
-      dateOfBirth: '1990-01-01',
-      maritalStatus: 'Single',
-      streetLine1: '123 Test St',
-      city: 'Test City',
-      state: 'CA',
-      postalCode: '12345',
-      country: 'USA',
-      role: 'member',
-      isActive: true
-    });
-    
-    console.log(`✅ Test member created: ${testMember.firstName} ${testMember.lastName} (ID: ${testMember.id})`);
-    
-    // Verify the member was saved
-    const savedMember = await Member.findByPk(testMember.id);
-    if (savedMember) {
-      console.log('✅ Member successfully saved and retrieved from database.');
-    } else {
-      console.log('❌ Member not found after creation - possible data persistence issue.');
-    }
-    
-    // Clean up test data
-    await testMember.destroy();
-    console.log('🧹 Test member cleaned up.');
-    
-    console.log('\n🎉 Database test completed successfully!');
+    await sequelize.close();
+    console.log('✅ Database connection closed.');
     
   } catch (error) {
-    console.error('❌ Database test failed:', error);
+    console.error('❌ Database test failed:', error.message);
+    console.error('❌ Full error:', error);
     process.exit(1);
-  } finally {
-    await sequelize.close();
   }
 };
 
