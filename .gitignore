@@ -198,6 +198,14 @@ dist
 *~
 
 # OS generated files
+
+# Member data files (will be stored in database)
+scripts/parsedMembers.json
+frontend/src/utils/fullMemberData.ts
+frontend/src/utils/completeMemberData.ts
+frontend/src/utils/memberDataParser.ts
+members-2024.md
+members.md
 .DS_Store
 .DS_Store?
 ._*
