@@ -35,15 +35,28 @@ const ChildrenManagement: React.FC = () => {
 
   const fetchChildren = useCallback(async () => {
     try {
-      const response = await fetch(`/api/members/${currentUser?.uid}/children`, {
+      // First get the member profile to get the member ID
+      const profileResponse = await fetch(`/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
-          'Authorization': `Bearer ${await currentUser?.getIdToken()}`
+          'Content-Type': 'application/json'
         }
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setChildren(data.data.children || []);
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        const memberId = profileData.data.member.id;
+        
+        // Now fetch children using the member ID
+        const childrenResponse = await fetch(`/api/members/${memberId}/children`, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (childrenResponse.ok) {
+          const data = await childrenResponse.json();
+          setChildren(data.data.children || []);
+        }
       }
     } catch (error) {
       console.error('Error fetching children:', error);
@@ -62,17 +75,30 @@ const ChildrenManagement: React.FC = () => {
     e.preventDefault();
     
     try {
+      // Get member ID first
+      const profileResponse = await fetch(`/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}`, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!profileResponse.ok) {
+        throw new Error('Failed to get member profile');
+      }
+      
+      const profileData = await profileResponse.json();
+      const memberId = profileData.data.member.id;
+      
       const url = editingChild 
         ? `/api/members/children/${editingChild.id}`
-        : `/api/members/${currentUser?.uid}/children`;
+        : `/api/members/${memberId}/children`;
       
       const method = editingChild ? 'PUT' : 'POST';
       
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await currentUser?.getIdToken()}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(formData)
       });
@@ -99,7 +125,7 @@ const ChildrenManagement: React.FC = () => {
       const response = await fetch(`/api/members/children/${childId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${await currentUser?.getIdToken()}`
+          'Content-Type': 'application/json'
         }
       });
 

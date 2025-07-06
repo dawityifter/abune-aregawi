@@ -24,6 +24,25 @@ interface ProfileData {
   city?: string;
   state?: string;
   postalCode?: string;
+  children?: BackendChildData[];
+}
+
+interface BackendChildData {
+  id: string;
+  memberId: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
+  phone?: string;
+  email?: string;
+  baptismName?: string;
+  isBaptized: boolean;
+  baptismDate?: string;
+  nameDay?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface BackendMemberData {
@@ -59,6 +78,7 @@ interface BackendMemberData {
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
+  children?: BackendChildData[];
 }
 
 // Phone number formatter
@@ -181,6 +201,7 @@ const Profile: React.FC = () => {
                 city: result.data.member.city,
                 state: result.data.member.state,
                 postalCode: result.data.member.postalCode,
+                children: result.data.member.children || []
               };
               
               setProfile(mergedData);
@@ -765,6 +786,32 @@ const Profile: React.FC = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Children Information */}
+                {profile.children && profile.children.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="text-md font-medium text-gray-900 border-b pb-2">
+                      Children & Dependents
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {profile.children.map((child: BackendChildData) => (
+                        <div key={child.id} className="bg-gray-50 p-4 rounded-lg">
+                          <h4 className="font-medium text-gray-900">
+                            {child.firstName} {child.middleName} {child.lastName}
+                          </h4>
+                          <div className="text-sm text-gray-600 mt-2 space-y-1">
+                            <p><strong>Date of Birth:</strong> {new Date(child.dateOfBirth).toLocaleDateString()}</p>
+                            <p><strong>Gender:</strong> {child.gender}</p>
+                            {child.phone && <p><strong>Phone:</strong> {child.phone}</p>}
+                            {child.email && <p><strong>Email:</strong> {child.email}</p>}
+                            {child.baptismName && <p><strong>Baptism Name:</strong> {child.baptismName}</p>}
+                            <p><strong>Baptized:</strong> {child.isBaptized ? 'Yes' : 'No'}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
