@@ -38,6 +38,7 @@ exports.register = async (req, res) => {
       // Family Information
       isHeadOfHousehold,
       spouseName,
+      spouseEmail,
       emergencyContactName,
       emergencyContactPhone,
       
@@ -86,6 +87,24 @@ exports.register = async (req, res) => {
       });
     }
 
+    // --- FAMILY LOGIC ---
+    let familyId = null;
+    let finalSpouseEmail = spouseEmail || null;
+    if (isHeadOfHousehold) {
+      // Will set familyId to member.id after creation
+    } else if (finalSpouseEmail) {
+      // Look up spouse by email
+      const spouse = await Member.findOne({ where: { email: finalSpouseEmail } });
+      if (spouse) {
+        familyId = spouse.familyId || spouse.id;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Spouse not found. Please ensure your spouse registers first or check the email.'
+        });
+      }
+    }
+
     // Create member
     const member = await Member.create({
       firstName,
@@ -104,6 +123,7 @@ exports.register = async (req, res) => {
       country,
       isHeadOfHousehold: isHeadOfHousehold || false,
       spouseName,
+      spouseEmail: finalSpouseEmail,
       emergencyContactName,
       emergencyContactPhone,
       dateJoinedParish,
@@ -116,13 +136,19 @@ exports.register = async (req, res) => {
       firebaseUid,
       loginEmail,
       password: password || null, // Password is optional since Firebase handles auth
-      role: role || 'member'
+      role: role || 'member',
+      familyId: familyId // may be null, will update if HoH
     });
 
-    // Add children if provided
-    if (children && Array.isArray(children) && children.length > 0) {
+    // If head of household, set familyId to own id
+    if (isHeadOfHousehold) {
+      member.familyId = member.id;
+      await member.save();
+    }
+
+    // Add children if provided and HoH
+    if (isHeadOfHousehold && children && Array.isArray(children) && children.length > 0) {
       const childrenData = children.map(child => {
-        // Remove baptismDate and nameDay fields if they're empty or invalid
         const { baptismDate, nameDay, ...cleanChild } = child;
         return {
           ...cleanChild,

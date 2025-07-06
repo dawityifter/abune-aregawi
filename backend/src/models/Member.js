@@ -92,6 +92,16 @@ module.exports = (sequelize) => {
       type: DataTypes.BOOLEAN,
       defaultValue: false
     },
+    familyId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      comment: 'Links family members together. Head of household has familyId = their own id'
+    },
+    spouseEmail: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Email of spouse for family linking'
+    },
     spouseName: {
       type: DataTypes.STRING(200),
       allowNull: true

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { formatDateForDisplay } from '../utils/dateUtils';
 
 interface ProfileData {
   displayName: string;
@@ -45,42 +46,6 @@ interface BackendChildData {
   updatedAt: string;
 }
 
-interface BackendMemberData {
-  id: string;
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  gender: string;
-  dateOfBirth: string;
-  maritalStatus: string;
-  phoneNumber: string;
-  email: string;
-  streetLine1: string;
-  apartmentNo?: string;
-  city?: string;
-  state?: string;
-  postalCode: string;
-  country: string;
-  spouseName?: string;
-  emergencyContactName?: string;
-  emergencyContactPhone?: string;
-  dateJoinedParish?: string;
-  baptismName?: string;
-  interestedInServing?: string;
-  ministries?: string;
-  languagePreference: string;
-  memberId?: string;
-  preferredGivingMethod: string;
-  titheParticipation: boolean;
-  loginEmail: string;
-  role: string;
-  isActive: boolean;
-  lastLogin?: string;
-  createdAt: string;
-  updatedAt: string;
-  children?: BackendChildData[];
-}
-
 // Phone number formatter
 function formatPhoneNumber(value: string) {
   const cleaned = value.replace(/\D/g, '');
@@ -104,9 +69,8 @@ function formatPhoneNumber(value: string) {
 
 const Profile: React.FC = () => {
   const { currentUser, getUserProfile, updateUserProfileData, updateUserProfile } = useAuth();
-  const { t, language, setLanguage } = useLanguage();
+  const { t } = useLanguage();
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [backendData, setBackendData] = useState<BackendMemberData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -180,7 +144,6 @@ const Profile: React.FC = () => {
 
             if (response.ok) {
               const result = await response.json();
-              setBackendData(result.data.member);
               
               // Merge backend data with Firebase data
               const mergedData = {
@@ -496,7 +459,7 @@ const Profile: React.FC = () => {
                       {t('member.since')}
                     </label>
                     <p className="text-gray-900">
-                      {new Date(profile.createdAt).toLocaleDateString()}
+                      {formatDateForDisplay(profile.createdAt)}
                     </p>
                   </div>
 
@@ -531,7 +494,7 @@ const Profile: React.FC = () => {
                       />
                     ) : (
                       <p className="text-gray-900">
-                        {profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : t('not.provided')}
+                        {profile.dateOfBirth ? formatDateForDisplay(profile.dateOfBirth) : t('not.provided')}
                       </p>
                     )}
                   </div>
@@ -761,7 +724,7 @@ const Profile: React.FC = () => {
                       />
                     ) : (
                       <p className="text-gray-900">
-                        {profile.dateJoinedParish ? new Date(profile.dateJoinedParish).toLocaleDateString() : t('not.provided')}
+                        {profile.dateJoinedParish ? formatDateForDisplay(profile.dateJoinedParish) : t('not.provided')}
                       </p>
                     )}
                   </div>
@@ -800,7 +763,7 @@ const Profile: React.FC = () => {
                             {child.firstName} {child.middleName} {child.lastName}
                           </h4>
                           <div className="text-sm text-gray-600 mt-2 space-y-1">
-                            <p><strong>Date of Birth:</strong> {new Date(child.dateOfBirth).toLocaleDateString()}</p>
+                            <p><strong>Date of Birth:</strong> {formatDateForDisplay(child.dateOfBirth)}</p>
                             <p><strong>Gender:</strong> {child.gender}</p>
                             {child.phone && <p><strong>Phone:</strong> {child.phone}</p>}
                             {child.email && <p><strong>Email:</strong> {child.email}</p>}

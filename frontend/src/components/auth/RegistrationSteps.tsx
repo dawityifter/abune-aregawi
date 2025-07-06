@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { formatPhoneNumber } from './MemberRegistration';
+import { formatDateForDisplay } from '../../utils/dateUtils';
 
 // Step 1: Personal Information
 const PersonalInfoStep: React.FC<{
@@ -9,12 +10,12 @@ const PersonalInfoStep: React.FC<{
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t.personalInfo}</h3>
+    <h3 className="text-xl font-semibold text-gray-800">{t('personalInfo')}</h3>
     
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          First Name <span className="text-red-500">*</span>
+          {t('first.name')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -29,7 +30,7 @@ const PersonalInfoStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Middle Name
+          {t('middle.name')}
         </label>
         <input
           type="text"
@@ -41,7 +42,7 @@ const PersonalInfoStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Last Name <span className="text-red-500">*</span>
+          {t('last.name')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -56,21 +57,21 @@ const PersonalInfoStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Gender <span className="text-red-500">*</span>
+          {t('gender')} <span className="text-red-500">*</span>
         </label>
         <select
           value={formData.gender}
           onChange={(e) => handleInputChange('gender', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
         >
-          <option value="Male">Male</option>
-          <option value="Female">Female</option>
+          <option value="Male">{t('male')}</option>
+          <option value="Female">{t('female')}</option>
         </select>
       </div>
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Date of Birth <span className="text-red-500">*</span>
+          {t('date.of.birth')} <span className="text-red-500">*</span>
         </label>
         <input
           type="date"
@@ -85,19 +86,88 @@ const PersonalInfoStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Marital Status <span className="text-red-500">*</span>
+          {t('marital.status')} <span className="text-red-500">*</span>
         </label>
         <select
           value={formData.maritalStatus}
           onChange={(e) => handleInputChange('maritalStatus', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
         >
-          <option value="Single">Single</option>
-          <option value="Married">Married</option>
-          <option value="Divorced">Divorced</option>
-          <option value="Widowed">Widowed</option>
+          <option value="Single">{t('single')}</option>
+          <option value="Married">{t('married')}</option>
+          <option value="Divorced">{t('divorced')}</option>
+          <option value="Widowed">{t('widowed')}</option>
         </select>
       </div>
+
+      {/* Head of Household Question */}
+      <div className="md:col-span-2">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t('head.of.household')}
+          <span className="text-red-500">*</span>
+        </label>
+        <div className="mb-2 text-xs text-blue-700 bg-blue-50 rounded p-2">
+          {t('head.of.household.help')}
+        </div>
+        <div className="flex items-center gap-6">
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              name="isHeadOfHousehold"
+              checked={formData.isHeadOfHousehold === true}
+              onChange={() => handleInputChange('isHeadOfHousehold', true)}
+              className="form-radio"
+            />
+            <span className="ml-2">{t('yes')}</span>
+          </label>
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              name="isHeadOfHousehold"
+              checked={formData.isHeadOfHousehold === false}
+              onChange={() => handleInputChange('isHeadOfHousehold', false)}
+              className="form-radio"
+            />
+            <span className="ml-2">{t('no')}</span>
+          </label>
+        </div>
+        {/* If not head of household, show spouse email */}
+        {!formData.isHeadOfHousehold && (
+          <div className="mt-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('spouse.email')} <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              value={formData.spouseEmail}
+              onChange={(e) => handleInputChange('spouseEmail', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              placeholder="spouse@email.com"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Has Dependents Question - Only show if head of household */}
+      {formData.isHeadOfHousehold && (
+        <div className="md:col-span-2">
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="hasDependents"
+              checked={formData.hasDependents}
+              onChange={(e) => handleInputChange('hasDependents', e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="hasDependents" className="ml-2 block text-sm font-medium text-gray-700">
+              {t('has.dependents')}
+            </label>
+          </div>
+          <div className="mt-1 text-xs text-gray-600">
+            {t('has.dependents.help')}
+          </div>
+        </div>
+      )}
     </div>
   </div>
 );
@@ -110,12 +180,12 @@ const ContactAddressStep: React.FC<{
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t.contactAddress}</h3>
+    <h3 className="text-xl font-semibold text-gray-800">{t('contactAddress')}</h3>
     
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Phone Number <span className="text-red-500">*</span>
+          {t('phone.number')} <span className="text-red-500">*</span>
         </label>
         <input
           type="tel"
@@ -131,7 +201,7 @@ const ContactAddressStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Email Address <span className="text-red-500">*</span>
+          {t('email.address')} <span className="text-red-500">*</span>
         </label>
         <input
           type="email"
@@ -146,7 +216,7 @@ const ContactAddressStep: React.FC<{
       
       <div className="md:col-span-2">
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Street Address <span className="text-red-500">*</span>
+          {t('street.address')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -161,7 +231,7 @@ const ContactAddressStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Apartment/Suite Number
+          {t('apartment.suite.number')}
         </label>
         <input
           type="text"
@@ -174,7 +244,7 @@ const ContactAddressStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          City <span className="text-red-500">*</span>
+          {t('city')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -189,7 +259,7 @@ const ContactAddressStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          State/Province <span className="text-red-500">*</span>
+          {t('state.province')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -204,7 +274,7 @@ const ContactAddressStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Postal Code <span className="text-red-500">*</span>
+          {t('postal.code')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -219,7 +289,7 @@ const ContactAddressStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Country <span className="text-red-500">*</span>
+          {t('country')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -243,13 +313,13 @@ const FamilyInfoStep: React.FC<{
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t.familyInfo}</h3>
+    <h3 className="text-xl font-semibold text-gray-800">{t('familyInfo')}</h3>
     <div className="space-y-4">
       {formData.maritalStatus === 'Married' ? (
         <>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Spouse Name
+              {t('spouse.name')}
             </label>
             <input
               type="text"
@@ -260,7 +330,19 @@ const FamilyInfoStep: React.FC<{
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Spouse Contact Phone
+              {t('spouse.email')}
+            </label>
+            <input
+              type="email"
+              value={formData.spouseEmail || ''}
+              onChange={(e) => handleInputChange('spouseEmail', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              placeholder="spouse@email.com"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('spouse.contact.phone')}
             </label>
             <input
               type="tel"
@@ -275,7 +357,7 @@ const FamilyInfoStep: React.FC<{
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Emergency Contact Name
+              {t('emergency.contact.name')}
             </label>
             <input
               type="text"
@@ -286,7 +368,7 @@ const FamilyInfoStep: React.FC<{
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Emergency Contact Phone
+              {t('emergency.contact.phone')}
             </label>
             <input
               type="tel"
@@ -310,11 +392,11 @@ const SpiritualInfoStep: React.FC<{
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t.spiritualInfo}</h3>
+    <h3 className="text-xl font-semibold text-gray-800">{t('spiritualInfo')}</h3>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Date Joined Parish (Estimated)
+          {t('date.joined.parish')}
         </label>
         <input
           type="date"
@@ -325,7 +407,7 @@ const SpiritualInfoStep: React.FC<{
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Baptism Name
+          {t('baptism.name')}
         </label>
         <input
           type="text"
@@ -337,31 +419,31 @@ const SpiritualInfoStep: React.FC<{
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Interested in Serving?
+          {t('interested.in.serving')}
         </label>
         <select
           value={formData.interestedInServing || ''}
           onChange={(e) => handleInputChange('interestedInServing', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
         >
-          <option value="">Select</option>
-          <option value="Yes">Yes</option>
-          <option value="No">No</option>
-          <option value="Maybe">Maybe</option>
+          <option value="">{t('select')}</option>
+          <option value="Yes">{t('yes')}</option>
+          <option value="No">{t('no')}</option>
+          <option value="Maybe">{t('maybe')}</option>
         </select>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Language Preference
+          {t('language.preference')}
         </label>
         <select
           value={formData.languagePreference || 'English'}
           onChange={(e) => handleInputChange('languagePreference', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
         >
-          <option value="English">English</option>
-          <option value="Tigrigna">Tigrigna</option>
-          <option value="Amharic">Amharic</option>
+          <option value="English">{t('english')}</option>
+          <option value="Tigrigna">{t('tigrigna')}</option>
+          <option value="Amharic">{t('amharic')}</option>
         </select>
       </div>
     </div>
@@ -376,22 +458,22 @@ const ContributionStep: React.FC<{
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t.contributionInfo}</h3>
+    <h3 className="text-xl font-semibold text-gray-800">{t('contributionInfo')}</h3>
     
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Preferred Giving Method
+          {t('preferred.giving.method')}
         </label>
         <select
           value={formData.preferredGivingMethod}
           onChange={(e) => handleInputChange('preferredGivingMethod', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
         >
-          <option value="Cash">Cash</option>
-          <option value="Online">Online</option>
-          <option value="Envelope">Envelope</option>
-          <option value="Check">Check</option>
+          <option value="Cash">{t('cash')}</option>
+          <option value="Online">{t('online')}</option>
+          <option value="Envelope">{t('envelope')}</option>
+          <option value="Check">{t('check')}</option>
         </select>
       </div>
       
@@ -404,15 +486,14 @@ const ContributionStep: React.FC<{
           className="h-4 w-4 text-blue-600 border-gray-300 rounded"
         />
         <label htmlFor="titheParticipation" className="ml-2 text-sm text-gray-700">
-          Participate in Tithe/Pledge Program
+          {t('participate.in.tithe.pledge.program')}
         </label>
       </div>
       
       <div className="bg-blue-50 p-4 rounded-md">
-        <h4 className="font-medium text-blue-900 mb-2">Member ID Information</h4>
+        <h4 className="font-medium text-blue-900 mb-2">{t('member.id.information')}</h4>
         <p className="text-sm text-blue-700">
-          A unique member ID will be automatically generated upon registration. 
-          This ID will be used for envelope tracking and contribution records.
+          {t('member.id.help')}
         </p>
       </div>
     </div>
@@ -427,12 +508,12 @@ const AccountStep: React.FC<{
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t.accountInfo}</h3>
+    <h3 className="text-xl font-semibold text-gray-800">{t('accountInfo')}</h3>
     
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Login Email <span className="text-red-500">*</span>
+          {t('login.email')} <span className="text-red-500">*</span>
         </label>
         <input
           type="email"
@@ -449,7 +530,7 @@ const AccountStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Password <span className="text-red-500">*</span>
+          {t('password')} <span className="text-red-500">*</span>
         </label>
         <input
           type="password"
@@ -464,7 +545,7 @@ const AccountStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Confirm Password <span className="text-red-500">*</span>
+          {t('confirm.password')} <span className="text-red-500">*</span>
         </label>
         <input
           type="password"
@@ -479,20 +560,19 @@ const AccountStep: React.FC<{
     </div>
     
     <div className="bg-yellow-50 p-4 rounded-md">
-      <h4 className="font-medium text-yellow-900 mb-2">Password Requirements</h4>
+      <h4 className="font-medium text-yellow-900 mb-2">{t('password.requirements')}</h4>
       <ul className="text-sm text-yellow-700 space-y-1">
-        <li>• At least 8 characters long</li>
-        <li>• Contains at least one uppercase letter</li>
-        <li>• Contains at least one lowercase letter</li>
-        <li>• Contains at least one number</li>
+        <li>• {t('at.least.8.characters')}</li>
+        <li>• {t('contains.at.least.one.uppercase')}</li>
+        <li>• {t('contains.at.least.one.lowercase')}</li>
+        <li>• {t('contains.at.least.one.number')}</li>
       </ul>
     </div>
     
     <div className="bg-green-50 p-4 rounded-md">
-      <h4 className="font-medium text-green-900 mb-2">Account Access</h4>
+      <h4 className="font-medium text-green-900 mb-2">{t('account.access')}</h4>
       <p className="text-sm text-green-700">
-        After registration, you'll be able to access your member portal to view your profile, 
-        update information, and manage your contributions.
+        {t('account.access.help')}
       </p>
     </div>
   </div>
@@ -514,9 +594,10 @@ interface ChildrenStepProps {
   children: Child[];
   onChildrenChange: (children: Child[]) => void;
   errors?: any;
+  t: any;
 }
 
-const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange, errors }) => {
+const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange, errors, t }) => {
   const [newChild, setNewChild] = useState<Child>({
     firstName: '',
     middleName: '',
@@ -553,19 +634,19 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Children & Dependents</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">{t('children.dependents')}</h3>
         <p className="text-sm text-gray-600 mb-6">
-          Add information about your children or dependents. This is optional and can be updated later.
+          {t('children.dependents.help')}
         </p>
       </div>
 
       {/* Add New Child Form */}
       <div className="bg-gray-50 p-4 rounded-lg">
-        <h4 className="text-md font-medium text-gray-900 mb-4">Add New Child</h4>
+        <h4 className="text-md font-medium text-gray-900 mb-4">{t('add.new.child')}</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              First Name *
+              {t('first.name')} *
             </label>
             <input
               type="text"
@@ -577,7 +658,7 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Middle Name
+              {t('middle.name')}
             </label>
             <input
               type="text"
@@ -589,7 +670,7 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Last Name *
+              {t('last.name')} *
             </label>
             <input
               type="text"
@@ -601,7 +682,7 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date of Birth *
+              {t('date.of.birth')} *
             </label>
             <input
               type="date"
@@ -613,21 +694,21 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Gender *
+              {t('gender')} *
             </label>
             <select
               value={newChild.gender}
               onChange={(e) => setNewChild({...newChild, gender: e.target.value as 'Male' | 'Female'})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
+              <option value="Male">{t('male')}</option>
+              <option value="Female">{t('female')}</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Phone
+              {t('phone')}
             </label>
             <input
               type="tel"
@@ -639,7 +720,7 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
+              {t('email')}
             </label>
             <input
               type="email"
@@ -651,7 +732,7 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Baptism Name
+              {t('baptism.name')}
             </label>
             <input
               type="text"
@@ -670,7 +751,7 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <label htmlFor="isBaptized" className="ml-2 block text-sm text-gray-900">
-              Is Baptized
+              {t('is.baptized')}
             </label>
           </div>
         </div>
@@ -682,7 +763,7 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
             disabled={!newChild.firstName || !newChild.lastName || !newChild.dateOfBirth}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            Add Child
+            {t('add.child')}
           </button>
         </div>
       </div>
@@ -690,7 +771,7 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
       {/* Existing Children List */}
       {children.length > 0 && (
         <div>
-          <h4 className="text-md font-medium text-gray-900 mb-4">Added Children</h4>
+          <h4 className="text-md font-medium text-gray-900 mb-4">{t('added.children')}</h4>
           <div className="space-y-3">
             {children.map((child, index) => (
               <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
@@ -700,13 +781,13 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
                       {child.firstName} {child.middleName} {child.lastName}
                     </h5>
                     <p className="text-sm text-gray-600">
-                      Born: {new Date(child.dateOfBirth).toLocaleDateString()} | 
-                      Gender: {child.gender} | 
-                      Baptized: {child.isBaptized ? 'Yes' : 'No'}
+                      {t('born')}: {formatDateForDisplay(child.dateOfBirth)} | 
+                      {t('gender')}: {child.gender} | 
+                      {t('baptized')}: {child.isBaptized ? t('yes') : t('no')}
                     </p>
                     {child.baptismName && (
                       <p className="text-sm text-gray-600">
-                        Baptism Name: {child.baptismName}
+                        {t('baptism.name')}: {child.baptismName}
                       </p>
                     )}
                   </div>
@@ -715,7 +796,7 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
                     onClick={() => removeChild(index)}
                     className="text-red-600 hover:text-red-800 ml-2"
                   >
-                    Remove
+                    {t('remove')}
                   </button>
                 </div>
               </div>
@@ -726,8 +807,8 @@ const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange,
 
       {children.length === 0 && (
         <div className="text-center py-8 text-gray-500">
-          <p>No children added yet.</p>
-          <p className="text-sm mt-2">You can add children now or manage them later from your dashboard.</p>
+          <p>{t('no.children.added')}</p>
+          <p className="text-sm mt-2">{t('add.children.now')}</p>
         </div>
              )}
      </div>

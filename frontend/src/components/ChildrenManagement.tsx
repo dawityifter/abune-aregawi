@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { formatPhoneNumber } from './auth/MemberRegistration';
+import { formatDateForDisplay } from '../utils/dateUtils';
 
 interface Child {
   id?: string;
@@ -375,7 +376,7 @@ const ChildrenManagement: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(child.dateOfBirth).toLocaleDateString()}
+                      {formatDateForDisplay(child.dateOfBirth)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {child.gender}

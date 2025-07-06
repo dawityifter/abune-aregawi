@@ -35,8 +35,8 @@ graph TB
 
 | Service | Platform | Status | URL |
 |---------|----------|--------|-----|
-| **Frontend** | Vercel | ✅ Deployed | [Live Site](https://your-vercel-url.vercel.app) |
-| **Backend API** | Render | ✅ Deployed | [API Endpoint](https://your-render-app.onrender.com) |
+| **Frontend** | Vercel | ✅ Deployed | [Live Site](https://abune-aregawi.vercel.app/) |
+| **Backend API** | Render | ✅ Deployed | [API Endpoint](https://abune-aregawi.onrender.com) |
 | **Database** | Neon | ✅ Hosted | PostgreSQL Cloud |
 | **Authentication** | Firebase | ✅ Active | Firebase Auth |
 
@@ -107,7 +107,7 @@ REACT_APP_FIREBASE_PROJECT_ID=your_project_id
 REACT_APP_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 REACT_APP_FIREBASE_APP_ID=your_app_id
-REACT_APP_API_URL=https://your-render-app.onrender.com
+REACT_APP_API_URL=https://abune-aregawi.onrender.com
 ```
 
 ### Backend Environment Variables (Render)
@@ -115,7 +115,7 @@ REACT_APP_API_URL=https://your-render-app.onrender.com
 NODE_ENV=production
 DATABASE_URL=postgresql://username:password@host:port/database?sslmode=require
 JWT_SECRET=your_jwt_secret_key
-FRONTEND_URL=https://your-vercel-url.vercel.app
+FRONTEND_URL=https://abune-aregawi.vercel.app
 PORT=10000
 ```
 

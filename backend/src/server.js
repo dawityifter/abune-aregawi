@@ -101,11 +101,10 @@ const startServer = async () => {
     
     // Sync database (in development)
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 Syncing database models (preserving existing data)...');
+      console.log('🔄 Syncing database models...');
       try {
-        await sequelize.sync({ force: false }); // force: false preserves existing data
+        await sequelize.sync({ force: false }); // Revert to force: false
         console.log('✅ Database synchronized.');
-        
         // Log table information
         const tables = await sequelize.showAllSchemas();
         console.log('📋 Available tables:', tables.map(t => t.name).join(', '));

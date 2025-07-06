@@ -34,6 +34,10 @@ interface RegistrationForm {
   gender: 'Male' | 'Female';
   dateOfBirth: string;
   maritalStatus: string;
+  // Head of Household
+  isHeadOfHousehold: boolean;
+  spouseEmail: string;
+  hasDependents: boolean;
   
   // Contact & Address
   phoneNumber: string;
@@ -71,37 +75,6 @@ interface RegistrationForm {
   confirmPassword: string;
 }
 
-const translations = {
-  en: {
-    title: 'Member Registration',
-    personalInfo: 'Personal Information',
-    contactAddress: 'Contact & Address',
-    familyInfo: 'Family Information',
-    spiritualInfo: 'Spiritual Information',
-    contributionInfo: 'Contribution Information',
-    accountInfo: 'Account Information',
-    submit: 'Submit Registration',
-    next: 'Next',
-    previous: 'Previous',
-    required: 'Required',
-    optional: 'Optional'
-  },
-  ti: {
-    title: 'ደምድም ምዝገባ',
-    personalInfo: 'ውልቃዊ ሓፈሻዊ',
-    contactAddress: 'ኣድራሻ እንተሃልዩ',
-    familyInfo: 'ስድራቤት ሓፈሻዊ',
-    spiritualInfo: 'መንፈሳዊ ሓፈሻዊ',
-    contributionInfo: 'ወፈራ ሓፈሻዊ',
-    accountInfo: 'ኣካውንት ሓፈሻዊ',
-    submit: 'ምዝገባ ስደድ',
-    next: 'ቀጺሉ',
-    previous: 'ቅድሚ',
-    required: 'የድለ',
-    optional: 'ኣማራጺ'
-  }
-};
-
 // Phone number formatter
 export function formatPhoneNumber(value: string) {
   const cleaned = value.replace(/\D/g, '');
@@ -124,8 +97,9 @@ export function formatPhoneNumber(value: string) {
 }
 
 const MemberRegistration: React.FC = () => {
-  const { language } = useLanguage();
-  const t = translations[language];
+  const { t } = useLanguage();
+  const { signUp } = useAuth();
+  const navigate = useNavigate();
   
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<RegistrationForm>({
@@ -135,6 +109,9 @@ const MemberRegistration: React.FC = () => {
     gender: 'Male',
     dateOfBirth: '',
     maritalStatus: 'Single',
+    isHeadOfHousehold: true,
+    spouseEmail: '',
+    hasDependents: false,
     phoneNumber: '',
     email: '',
     streetLine1: '',
@@ -181,19 +158,19 @@ const MemberRegistration: React.FC = () => {
 
     switch (step) {
       case 1: // Personal Information
-        if (!formData.firstName) newErrors.firstName = 'First name is required';
-        if (!formData.lastName) newErrors.lastName = 'Last name is required';
-        if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
+        if (!formData.firstName) newErrors.firstName = t('first.name.required');
+        if (!formData.lastName) newErrors.lastName = t('last.name.required');
+        if (!formData.dateOfBirth) newErrors.dateOfBirth = t('date.of.birth.required');
         break;
       
       case 2: // Contact & Address
-        if (!formData.phoneNumber) newErrors.phoneNumber = 'Phone number is required';
-        if (!formData.email) newErrors.email = 'Email is required';
-        if (!formData.streetLine1) newErrors.streetLine1 = 'Street line 1 is required';
-        if (!formData.city) newErrors.city = 'City is required';
-        if (!formData.state) newErrors.state = 'State is required';
-        if (!formData.postalCode) newErrors.postalCode = 'Postal code is required';
-        if (!formData.country) newErrors.country = 'Country is required';
+        if (!formData.phoneNumber) newErrors.phoneNumber = t('phone.number.required');
+        if (!formData.email) newErrors.email = t('email.required');
+        if (!formData.streetLine1) newErrors.streetLine1 = t('street.line1.required');
+        if (!formData.city) newErrors.city = t('city.required');
+        if (!formData.state) newErrors.state = t('state.required');
+        if (!formData.postalCode) newErrors.postalCode = t('postal.code.required');
+        if (!formData.country) newErrors.country = t('country.required');
         break;
       
       case 3: // Family Information - No required fields for this step
@@ -209,13 +186,13 @@ const MemberRegistration: React.FC = () => {
         break;
       
       case 7: // Account Information
-        if (!formData.loginEmail) newErrors.loginEmail = 'Login email is required';
-        if (!formData.password) newErrors.password = 'Password is required for Firebase authentication';
+        if (!formData.loginEmail) newErrors.loginEmail = t('login.email.required');
+        if (!formData.password) newErrors.password = t('password.required');
         if (formData.password !== formData.confirmPassword) {
-          newErrors.confirmPassword = 'Passwords do not match';
+          newErrors.confirmPassword = t('passwords.dont.match');
         }
         if (formData.password && formData.password.length < 8) {
-          newErrors.password = 'Password must be at least 8 characters long';
+          newErrors.password = t('password.too.short');
         }
         break;
     }
@@ -224,16 +201,21 @@ const MemberRegistration: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const { signUp } = useAuth();
-  const navigate = useNavigate();
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateStep(currentStep)) return;
     
     if (currentStep < 7) {
-      setCurrentStep(prev => prev + 1);
+      // Handle conditional step navigation
+      let nextStep = currentStep + 1;
+      
+      // If moving from step 3 to step 4, check if we should skip step 4
+      if (currentStep === 3 && !(formData.isHeadOfHousehold && formData.hasDependents)) {
+        nextStep = 5; // Skip step 4 (Children) and go to step 5 (Spiritual)
+      }
+      
+      setCurrentStep(nextStep);
     } else {
       // Submit the form
       try {
@@ -252,7 +234,9 @@ const MemberRegistration: React.FC = () => {
           gender: formData.gender,
           dateOfBirth: formData.dateOfBirth,
           maritalStatus: formData.maritalStatus,
-          
+          // Head of Household
+          isHeadOfHousehold: formData.isHeadOfHousehold,
+          spouseEmail: formData.spouseEmail,
           // Contact & Address
           phoneNumber: formData.phoneNumber,
           email: formData.email,
@@ -262,26 +246,21 @@ const MemberRegistration: React.FC = () => {
           state: formData.state,
           postalCode: formData.postalCode,
           country: formData.country,
-          
           // Family Information - Handle married vs single differently
           spouseName: formData.maritalStatus === 'Married' ? formData.spouseName : null,
           emergencyContactName: formData.maritalStatus === 'Married' ? formData.spouseName : formData.emergencyContactName,
           emergencyContactPhone: formData.maritalStatus === 'Married' ? formData.spouseContactPhone : formData.emergencyContactPhone,
-          
           // Children Information
           children: formData.children,
-          
           // Spiritual Information
           dateJoinedParish: formData.dateJoinedParish,
           baptismName: formData.baptismName,
           interestedInServing: formData.interestedInServing,
           ministries: formData.ministries,
           languagePreference: formData.languagePreference,
-          
           // Contribution
           preferredGivingMethod: formData.preferredGivingMethod,
           titheParticipation: formData.titheParticipation,
-          
           // Account
           firebaseUid: userCredential.user.uid,
           loginEmail: formData.loginEmail,
@@ -323,6 +302,18 @@ const MemberRegistration: React.FC = () => {
     }
   };
 
+  const getDisplayStepNumber = (step: number): number => {
+    // If step 4 (Children) should be skipped, adjust the display
+    if (step >= 4 && !(formData.isHeadOfHousehold && formData.hasDependents)) {
+      return step + 1;
+    }
+    return step;
+  };
+
+  const getTotalSteps = (): number => {
+    return formData.isHeadOfHousehold && formData.hasDependents ? 7 : 6;
+  };
+
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -332,7 +323,12 @@ const MemberRegistration: React.FC = () => {
       case 3:
         return <FamilyInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
       case 4:
-        return <ChildrenStep children={formData.children} onChildrenChange={(children) => handleInputChange('children', children)} errors={errors} />;
+        if (formData.isHeadOfHousehold && formData.hasDependents) {
+          return <ChildrenStep children={formData.children} onChildrenChange={(children) => handleInputChange('children', children)} errors={errors} t={t} />;
+        } else {
+          // If not head of household or no dependents, skip to spiritual info
+          return <SpiritualInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
+        }
       case 5:
         return <SpiritualInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
       case 6:
@@ -348,26 +344,35 @@ const MemberRegistration: React.FC = () => {
     <div className="max-w-4xl mx-auto p-6">
       <div className="bg-white rounded-lg shadow-lg p-8">
         <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
-          {t.title}
+          {t('title')}
         </h2>
         
         {/* Progress indicator */}
         <div className="mb-8">
           <div className="flex justify-between items-center">
-            {[1, 2, 3, 4, 5, 6, 7].map((step) => (
-              <div key={step} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  step <= currentStep ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-                }`}>
-                  {step}
-                </div>
-                {step < 7 && (
-                  <div className={`w-16 h-1 mx-2 ${
-                    step < currentStep ? 'bg-blue-600' : 'bg-gray-300'
-                  }`} />
-                )}
-              </div>
-            ))}
+            {(() => {
+              const totalSteps = getTotalSteps();
+              const steps = [];
+              for (let i = 1; i <= totalSteps; i++) {
+                const displayStep = getDisplayStepNumber(i);
+                const isActive = displayStep <= currentStep;
+                steps.push(
+                  <div key={i} className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      isActive ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
+                    }`}>
+                      {displayStep}
+                    </div>
+                    {i < totalSteps && (
+                      <div className={`w-16 h-1 mx-2 ${
+                        isActive ? 'bg-blue-600' : 'bg-gray-300'
+                      }`} />
+                    )}
+                  </div>
+                );
+              }
+              return steps;
+            })()}
           </div>
         </div>
         
@@ -384,10 +389,19 @@ const MemberRegistration: React.FC = () => {
             {currentStep > 1 && (
               <button
                 type="button"
-                onClick={() => setCurrentStep(prev => prev - 1)}
+                onClick={() => {
+                  let prevStep = currentStep - 1;
+                  
+                  // If moving from step 5 to step 4, check if we should skip step 4
+                  if (currentStep === 5 && !(formData.isHeadOfHousehold && formData.hasDependents)) {
+                    prevStep = 3; // Skip step 4 (Children) and go to step 3 (Family)
+                  }
+                  
+                  setCurrentStep(prevStep);
+                }}
                 className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
               >
-                {t.previous}
+                {t('previous')}
               </button>
             )}
             
@@ -396,7 +410,7 @@ const MemberRegistration: React.FC = () => {
               disabled={loading}
               className="ml-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Processing...' : (currentStep === 7 ? t.submit : t.next)}
+              {loading ? 'Processing...' : (currentStep === 7 ? t('submit') : t('next'))}
             </button>
           </div>
         </form>
