@@ -121,10 +121,14 @@ exports.register = async (req, res) => {
 
     // Add children if provided
     if (children && Array.isArray(children) && children.length > 0) {
-      const childrenData = children.map(child => ({
-        ...child,
-        memberId: member.id
-      }));
+      const childrenData = children.map(child => {
+        // Remove baptismDate and nameDay fields if they're empty or invalid
+        const { baptismDate, nameDay, ...cleanChild } = child;
+        return {
+          ...cleanChild,
+          memberId: member.id
+        };
+      });
       await Child.bulkCreate(childrenData);
     }
 
@@ -292,10 +296,14 @@ exports.updateProfile = async (req, res) => {
       
       // Add new children
       if (req.body.children.length > 0) {
-        const childrenData = req.body.children.map(child => ({
-          ...child,
-          memberId: member.id
-        }));
+        const childrenData = req.body.children.map(child => {
+          // Remove baptismDate and nameDay fields if they're empty or invalid
+          const { baptismDate, nameDay, ...cleanChild } = child;
+          return {
+            ...cleanChild,
+            memberId: member.id
+          };
+        });
         await Child.bulkCreate(childrenData);
       }
     }
@@ -659,9 +667,12 @@ exports.addChild = async (req, res) => {
       });
     }
 
+    // Remove baptismDate and nameDay fields if they're empty or invalid
+    const { baptismDate, nameDay, ...cleanChildData } = childData;
+
     // Create child
     const child = await Child.create({
-      ...childData,
+      ...cleanChildData,
       memberId
     });
 
@@ -694,7 +705,10 @@ exports.updateChild = async (req, res) => {
       });
     }
 
-    await child.update(updateData);
+    // Remove baptismDate and nameDay fields if they're empty or invalid
+    const { baptismDate, nameDay, ...cleanUpdateData } = updateData;
+
+    await child.update(cleanUpdateData);
 
     res.json({
       success: true,
