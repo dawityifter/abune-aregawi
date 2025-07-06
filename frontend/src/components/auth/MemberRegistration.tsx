@@ -6,10 +6,25 @@ import {
   PersonalInfoStep,
   ContactAddressStep,
   FamilyInfoStep,
+  ChildrenStep,
   SpiritualInfoStep,
   ContributionStep,
   AccountStep
 } from './RegistrationSteps';
+
+interface Child {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: 'Male' | 'Female';
+  phone?: string;
+  email?: string;
+  baptismName?: string;
+  isBaptized: boolean;
+  baptismDate?: string;
+  nameDay?: string;
+}
 
 interface RegistrationForm {
   // Personal Information
@@ -35,6 +50,9 @@ interface RegistrationForm {
   spouseContactPhone: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
+  
+  // Children Information
+  children: Child[];
   
   // Spiritual Information
   dateJoinedParish: string;
@@ -129,6 +147,7 @@ const MemberRegistration: React.FC = () => {
     spouseContactPhone: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
+    children: [],
     dateJoinedParish: '',
     baptismName: '',
     interestedInServing: '',
@@ -180,13 +199,16 @@ const MemberRegistration: React.FC = () => {
       case 3: // Family Information - No required fields for this step
         break;
       
-      case 4: // Spiritual Information - No required fields for this step
+      case 4: // Children Information - No required fields for this step
         break;
       
-      case 5: // Contribution - No required fields for this step
+      case 5: // Spiritual Information - No required fields for this step
         break;
       
-      case 6: // Account Information
+      case 6: // Contribution - No required fields for this step
+        break;
+      
+      case 7: // Account Information
         if (!formData.loginEmail) newErrors.loginEmail = 'Login email is required';
         if (!formData.password) newErrors.password = 'Password is required for Firebase authentication';
         if (formData.password !== formData.confirmPassword) {
@@ -210,7 +232,7 @@ const MemberRegistration: React.FC = () => {
     
     if (!validateStep(currentStep)) return;
     
-    if (currentStep < 6) {
+    if (currentStep < 7) {
       setCurrentStep(prev => prev + 1);
     } else {
       // Submit the form
@@ -245,6 +267,9 @@ const MemberRegistration: React.FC = () => {
           spouseName: formData.maritalStatus === 'Married' ? formData.spouseName : null,
           emergencyContactName: formData.maritalStatus === 'Married' ? formData.spouseName : formData.emergencyContactName,
           emergencyContactPhone: formData.maritalStatus === 'Married' ? formData.spouseContactPhone : formData.emergencyContactPhone,
+          
+          // Children Information
+          children: formData.children,
           
           // Spiritual Information
           dateJoinedParish: formData.dateJoinedParish,
@@ -307,10 +332,12 @@ const MemberRegistration: React.FC = () => {
       case 3:
         return <FamilyInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
       case 4:
-        return <SpiritualInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
+        return <ChildrenStep children={formData.children} onChildrenChange={(children) => handleInputChange('children', children)} errors={errors} />;
       case 5:
-        return <ContributionStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
+        return <SpiritualInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
       case 6:
+        return <ContributionStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
+      case 7:
         return <AccountStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
       default:
         return <div>Step {currentStep}</div>;
@@ -327,14 +354,14 @@ const MemberRegistration: React.FC = () => {
         {/* Progress indicator */}
         <div className="mb-8">
           <div className="flex justify-between items-center">
-            {[1, 2, 3, 4, 5, 6].map((step) => (
+            {[1, 2, 3, 4, 5, 6, 7].map((step) => (
               <div key={step} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                   step <= currentStep ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
                 }`}>
                   {step}
                 </div>
-                {step < 6 && (
+                {step < 7 && (
                   <div className={`w-16 h-1 mx-2 ${
                     step < currentStep ? 'bg-blue-600' : 'bg-gray-300'
                   }`} />
@@ -369,7 +396,7 @@ const MemberRegistration: React.FC = () => {
               disabled={loading}
               className="ml-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Processing...' : (currentStep === 6 ? t.submit : t.next)}
+              {loading ? 'Processing...' : (currentStep === 7 ? t.submit : t.next)}
             </button>
           </div>
         </form>

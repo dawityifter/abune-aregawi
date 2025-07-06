@@ -58,4 +58,10 @@ router.get('/:id/contributions',
   memberController.getMemberContributions
 );
 
+// Children management routes (require authentication)
+router.get('/:memberId/children', memberController.getMemberChildren);
+router.post('/:memberId/children', memberController.addChild);
+router.put('/children/:childId', memberController.updateChild);
+router.delete('/children/:childId', memberController.deleteChild);
+
 module.exports = router; 

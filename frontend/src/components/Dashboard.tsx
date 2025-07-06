@@ -284,6 +284,35 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* Children Management Card */}
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
+                      <i className="fas fa-child text-pink-800"></i>
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Children & Dependents
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Manage family members
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <button 
+                    onClick={() => window.location.href = '/children'}
+                    className="w-full bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 transition-colors"
+                  >
+                    Manage Children
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Settings Card */}
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-6">

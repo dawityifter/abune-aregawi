@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { formatPhoneNumber } from './MemberRegistration';
 
 // Step 1: Personal Information
@@ -496,4 +496,280 @@ export const AccountStep: React.FC<{
       </p>
     </div>
   </div>
-); 
+);
+
+interface Child {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: 'Male' | 'Female';
+  phone?: string;
+  email?: string;
+  baptismName?: string;
+  isBaptized: boolean;
+  baptismDate?: string;
+  nameDay?: string;
+}
+
+interface ChildrenStepProps {
+  children: Child[];
+  onChildrenChange: (children: Child[]) => void;
+  errors?: any;
+}
+
+export const ChildrenStep: React.FC<ChildrenStepProps> = ({ children, onChildrenChange, errors }) => {
+  const [newChild, setNewChild] = useState<Child>({
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    dateOfBirth: '',
+    gender: 'Male',
+    phone: '',
+    email: '',
+    baptismName: '',
+    isBaptized: false,
+    baptismDate: '',
+    nameDay: ''
+  });
+
+  const addChild = () => {
+    if (newChild.firstName && newChild.lastName && newChild.dateOfBirth) {
+      onChildrenChange([...children, newChild]);
+      setNewChild({
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        dateOfBirth: '',
+        gender: 'Male',
+        phone: '',
+        email: '',
+        baptismName: '',
+        isBaptized: false,
+        baptismDate: '',
+        nameDay: ''
+      });
+    }
+  };
+
+  const removeChild = (index: number) => {
+    onChildrenChange(children.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Children & Dependents</h3>
+        <p className="text-sm text-gray-600 mb-6">
+          Add information about your children or dependents. This is optional and can be updated later.
+        </p>
+      </div>
+
+      {/* Add New Child Form */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <h4 className="text-md font-medium text-gray-900 mb-4">Add New Child</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              First Name *
+            </label>
+            <input
+              type="text"
+              value={newChild.firstName}
+              onChange={(e) => setNewChild({...newChild, firstName: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Middle Name
+            </label>
+            <input
+              type="text"
+              value={newChild.middleName || ''}
+              onChange={(e) => setNewChild({...newChild, middleName: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Last Name *
+            </label>
+            <input
+              type="text"
+              value={newChild.lastName}
+              onChange={(e) => setNewChild({...newChild, lastName: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date of Birth *
+            </label>
+            <input
+              type="date"
+              value={newChild.dateOfBirth}
+              onChange={(e) => setNewChild({...newChild, dateOfBirth: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Gender *
+            </label>
+            <select
+              value={newChild.gender}
+              onChange={(e) => setNewChild({...newChild, gender: e.target.value as 'Male' | 'Female'})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone
+            </label>
+            <input
+              type="tel"
+              value={newChild.phone || ''}
+              onChange={(e) => setNewChild({...newChild, phone: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              value={newChild.email || ''}
+              onChange={(e) => setNewChild({...newChild, email: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Baptism Name
+            </label>
+            <input
+              type="text"
+              value={newChild.baptismName || ''}
+              onChange={(e) => setNewChild({...newChild, baptismName: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Baptism Date
+            </label>
+            <input
+              type="date"
+              value={newChild.baptismDate || ''}
+              onChange={(e) => setNewChild({...newChild, baptismDate: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Name Day
+            </label>
+            <input
+              type="text"
+              value={newChild.nameDay || ''}
+              onChange={(e) => setNewChild({...newChild, nameDay: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isBaptized"
+              checked={newChild.isBaptized}
+              onChange={(e) => setNewChild({...newChild, isBaptized: e.target.checked})}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="isBaptized" className="ml-2 block text-sm text-gray-900">
+              Is Baptized
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={addChild}
+            disabled={!newChild.firstName || !newChild.lastName || !newChild.dateOfBirth}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            Add Child
+          </button>
+        </div>
+      </div>
+
+      {/* Existing Children List */}
+      {children.length > 0 && (
+        <div>
+          <h4 className="text-md font-medium text-gray-900 mb-4">Added Children</h4>
+          <div className="space-y-3">
+            {children.map((child, index) => (
+              <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h5 className="font-medium text-gray-900">
+                      {child.firstName} {child.middleName} {child.lastName}
+                    </h5>
+                    <p className="text-sm text-gray-600">
+                      Born: {new Date(child.dateOfBirth).toLocaleDateString()} | 
+                      Gender: {child.gender} | 
+                      Baptized: {child.isBaptized ? 'Yes' : 'No'}
+                    </p>
+                    {child.baptismName && (
+                      <p className="text-sm text-gray-600">
+                        Baptism Name: {child.baptismName}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeChild(index)}
+                    className="text-red-600 hover:text-red-800 ml-2"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {children.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <p>No children added yet.</p>
+          <p className="text-sm mt-2">You can add children now or manage them later from your dashboard.</p>
+        </div>
+             )}
+     </div>
+   );
+ };
+
+ export {
+   PersonalInfoStep,
+   ContactAddressStep,
+   FamilyInfoStep,
+   ChildrenStep,
+   SpiritualInfoStep,
+   ContributionStep,
+   AccountStep
+ }; 

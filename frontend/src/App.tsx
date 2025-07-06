@@ -12,6 +12,7 @@ import Navigation from './components/Navigation';
 import CreditsPage from './components/CreditsPage';
 import MemberStatus from './components/MemberStatus';
 import DonatePage from './components/DonatePage';
+import ChildrenManagement from './components/ChildrenManagement';
 import './index.css';
 
 function App() {
@@ -44,6 +45,7 @@ function App() {
               <Route path="/credits" element={<CreditsPage />} />
               <Route path="/member-status" element={<MemberStatus />} />
               <Route path="/donate" element={<DonatePage />} />
+        <Route path="/children" element={<ProtectedRoute><ChildrenManagement /></ProtectedRoute>} />
               {/* Add more routes here as we build them */}
             </Routes>
           </div>

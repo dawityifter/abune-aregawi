@@ -35,6 +35,21 @@ module.exports = (sequelize) => {
       type: DataTypes.ENUM('Male', 'Female'),
       allowNull: false
     },
+    phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true
+    },
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      validate: {
+        isEmail: true
+      }
+    },
+    baptismName: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
     isBaptized: {
       type: DataTypes.BOOLEAN,
       defaultValue: false

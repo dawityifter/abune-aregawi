@@ -615,4 +615,126 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
       message: 'Internal server error'
     });
   }
+};
+
+// Children Management Endpoints
+
+// Get all children for a member
+exports.getMemberChildren = async (req, res) => {
+  try {
+    const { memberId } = req.params;
+
+    const children = await Child.findAll({
+      where: { memberId },
+      order: [['dateOfBirth', 'ASC']]
+    });
+
+    res.json({
+      success: true,
+      data: { children }
+    });
+
+  } catch (error) {
+    console.error('Get member children error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Add a child to a member
+exports.addChild = async (req, res) => {
+  try {
+    const { memberId } = req.params;
+    const childData = req.body;
+
+    // Verify member exists
+    const member = await Member.findByPk(memberId);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member not found'
+      });
+    }
+
+    // Create child
+    const child = await Child.create({
+      ...childData,
+      memberId
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Child added successfully',
+      data: { child }
+    });
+
+  } catch (error) {
+    console.error('Add child error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Update a child
+exports.updateChild = async (req, res) => {
+  try {
+    const { childId } = req.params;
+    const updateData = req.body;
+
+    const child = await Child.findByPk(childId);
+    if (!child) {
+      return res.status(404).json({
+        success: false,
+        message: 'Child not found'
+      });
+    }
+
+    await child.update(updateData);
+
+    res.json({
+      success: true,
+      message: 'Child updated successfully',
+      data: { child }
+    });
+
+  } catch (error) {
+    console.error('Update child error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Delete a child
+exports.deleteChild = async (req, res) => {
+  try {
+    const { childId } = req.params;
+
+    const child = await Child.findByPk(childId);
+    if (!child) {
+      return res.status(404).json({
+        success: false,
+        message: 'Child not found'
+      });
+    }
+
+    await child.destroy();
+
+    res.json({
+      success: true,
+      message: 'Child deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete child error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
 }; 
