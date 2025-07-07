@@ -758,7 +758,7 @@ const Profile: React.FC = () => {
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {profile.children.map((child: BackendChildData) => (
-                        <div key={child.id} className="bg-gray-50 p-4 rounded-lg">
+                        <div key={child.id} className="bg-gray-50 p-4 rounded-lg w-full">
                           <h4 className="font-medium text-gray-900">
                             {child.firstName} {child.middleName} {child.lastName}
                           </h4>
