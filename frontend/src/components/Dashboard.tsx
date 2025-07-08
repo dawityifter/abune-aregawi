@@ -75,8 +75,7 @@ const Dashboard: React.FC = () => {
   };
 
   const handleDonate = () => {
-    alert('Donate functionality coming soon!');
-    // TODO: Navigate to donation page
+    window.location.href = '/donate';
   };
 
   const handleManageAccount = () => {
