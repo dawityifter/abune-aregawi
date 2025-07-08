@@ -750,32 +750,61 @@ const Profile: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Children Information */}
-                {profile.children && profile.children.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-md font-medium text-gray-900 border-b pb-2">
-                      Children & Dependents
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {profile.children.map((child: BackendChildData) => (
-                        <div key={child.id} className="bg-gray-50 p-4 rounded-lg w-full">
-                          <h4 className="font-medium text-gray-900">
-                            {child.firstName} {child.middleName} {child.lastName}
-                          </h4>
-                          <div className="text-sm text-gray-600 mt-2 space-y-1">
-                            <p><strong>Date of Birth:</strong> {formatDateForDisplay(child.dateOfBirth)}</p>
-                            <p><strong>Gender:</strong> {child.gender}</p>
-                            {child.phone && <p><strong>Phone:</strong> {child.phone}</p>}
-                            {child.email && <p><strong>Email:</strong> {child.email}</p>}
-                            {child.baptismName && <p><strong>Baptism Name:</strong> {child.baptismName}</p>}
-                            <p><strong>Baptized:</strong> {child.isBaptized ? 'Yes' : 'No'}</p>
+              </div>
+
+              {/* Children Information - Full Width */}
+              {profile.children && profile.children.length > 0 && (
+                <div className="mt-8 space-y-4">
+                  <h3 className="text-md font-medium text-gray-900 border-b pb-2">
+                    {t('children.and.dependents')}
+                  </h3>
+                  <div className="flex flex-col gap-4">
+                    {profile.children.map((child: BackendChildData) => (
+                      <div key={child.id} className="bg-gray-50 p-4 rounded-lg w-full">
+                        <h4 className="font-medium text-gray-900 mb-3">
+                          {child.firstName} {child.middleName} {child.lastName}
+                        </h4>
+                        <div className="grid grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('date.of.birth')}</label>
+                              <p className="text-gray-900">{formatDateForDisplay(child.dateOfBirth)}</p>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('gender')}</label>
+                              <p className="text-gray-900">{child.gender}</p>
+                            </div>
+                            {child.phone && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')}</label>
+                                <p className="text-gray-900">{child.phone}</p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-4">
+                            {child.email && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
+                                <p className="text-gray-900">{child.email}</p>
+                              </div>
+                            )}
+                            {child.baptismName && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptism.name')}</label>
+                                <p className="text-gray-900">{child.baptismName}</p>
+                              </div>
+                            )}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptized')}</label>
+                              <p className="text-gray-900">{child.isBaptized ? t('yes') : t('no')}</p>
+                            </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               {editing && (

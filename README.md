@@ -2,6 +2,19 @@
 
 A modern, bilingual church management system built with React, Node.js, and Firebase, featuring member registration, children management, and online giving capabilities.
 
+## 🎯 Project Objectives
+
+This application is designed to address the comprehensive needs of church management. For a detailed overview of what this system intends to accomplish, see our **[Project Objectives](Objective.md)** document.
+
+The system aims to:
+- Centralize leadership activities and documentation
+- Streamline membership and contribution tracking  
+- Digitize financial tracking and reporting
+- Enhance communication and engagement
+- Provide secure role-based access control
+- Foster accountability through clear visibility
+- Support bilingual operations (English/Tigrigna)
+
 ## 🏗️ Architecture Overview
 
 ```mermaid

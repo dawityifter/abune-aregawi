@@ -148,6 +148,9 @@ const translations = {
     'interested.in.serving': 'Interested in Serving',
     'select.option': 'Select option',
     
+    // Children and Dependents Section
+    'children.and.dependents': 'Children & Dependents',
+    
     // Member Status
     'member.status': 'Member Status',
     'search.members': 'Search Members',
@@ -444,6 +447,9 @@ const translations = {
     'has.dependents': 'ውልዲ ወይ ተራኺል ክኣኽትም እየ ዘለኹ',
     'has.dependents.help': 'እዚ ሳጹን እንተተሓትት ውልዲ ወይ ተራኺል ክትውስኽ እትደሊ እንተኾንካ። ካብ ዳሽቦርድካ ድማ ክትውስኾም ትኽእል እኹም።',
     'spouse.email': 'ኢመይል መርዓ',
+    
+    // Children and Dependents Section
+    'children.and.dependents': 'ውልዲ እንተሃልዩ ተራኺል',
     
     // Processing
     'processing': 'Processing...',
