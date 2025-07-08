@@ -1,73 +1,244 @@
 // Role-based access control utilities
 
-export type UserRole = 'member' | 'accountant' | 'auditor' | 'clergy';
+export type UserRole = 'admin' | 'church_leadership' | 'treasurer' | 'secretary' | 'member' | 'guest';
 
 export interface RolePermissions {
+  // Profile Management
   canViewOwnProfile: boolean;
   canEditOwnProfile: boolean;
-  canSubmitDonation: boolean;
-  canViewFinancialRecords: boolean;
-  canEditFinancialRecords: boolean;
   canViewAllMembers: boolean;
   canEditAllMembers: boolean;
   canDeleteMembers: boolean;
-  canViewSpiritualRecords: boolean;
-  canEditSpiritualRecords: boolean;
+  canRegisterMembers: boolean;
+  
+  // Financial Management
+  canSubmitDonation: boolean;
+  canViewFinancialRecords: boolean;
+  canEditFinancialRecords: boolean;
+  canGenerateFinancialReports: boolean;
+  canTrackContributions: boolean;
+  
+  // Event & Communication
+  canManageEvents: boolean;
+  canSendCommunications: boolean;
+  canViewEventPlanning: boolean;
+  
+  // System Administration
+  canAccessAdminPanel: boolean;
+  canManageRoles: boolean;
+  canViewSystemLogs: boolean;
+  
+  // Documentation
+  canManageDocumentation: boolean;
+  canViewLeadershipActivities: boolean;
+  
+  // Public Access
+  canViewPublicInfo: boolean;
 }
 
 export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
-  member: {
+  admin: {
+    // Profile Management
     canViewOwnProfile: true,
     canEditOwnProfile: true,
-    canSubmitDonation: true,
-    canViewFinancialRecords: false,
-    canEditFinancialRecords: false,
-    canViewAllMembers: false,
-    canEditAllMembers: false,
-    canDeleteMembers: false,
-    canViewSpiritualRecords: false,
-    canEditSpiritualRecords: false,
-  },
-  accountant: {
-    canViewOwnProfile: true,
-    canEditOwnProfile: true,
-    canSubmitDonation: true,
-    canViewFinancialRecords: true,
-    canEditFinancialRecords: true,
     canViewAllMembers: true,
     canEditAllMembers: true,
     canDeleteMembers: true,
-    canViewSpiritualRecords: false,
-    canEditSpiritualRecords: false,
-  },
-  auditor: {
-    canViewOwnProfile: true,
-    canEditOwnProfile: true,
+    canRegisterMembers: true,
+    
+    // Financial Management
     canSubmitDonation: true,
     canViewFinancialRecords: true,
-    canEditFinancialRecords: false,
-    canViewAllMembers: true,
-    canEditAllMembers: false,
-    canDeleteMembers: false,
-    canViewSpiritualRecords: false,
-    canEditSpiritualRecords: false,
+    canEditFinancialRecords: true,
+    canGenerateFinancialReports: true,
+    canTrackContributions: true,
+    
+    // Event & Communication
+    canManageEvents: true,
+    canSendCommunications: true,
+    canViewEventPlanning: true,
+    
+    // System Administration
+    canAccessAdminPanel: true,
+    canManageRoles: true,
+    canViewSystemLogs: true,
+    
+    // Documentation
+    canManageDocumentation: true,
+    canViewLeadershipActivities: true,
+    
+    // Public Access
+    canViewPublicInfo: true,
   },
-  clergy: {
+  church_leadership: {
+    // Profile Management
     canViewOwnProfile: true,
     canEditOwnProfile: true,
-    canSubmitDonation: true,
-    canViewFinancialRecords: false,
-    canEditFinancialRecords: false,
     canViewAllMembers: true,
     canEditAllMembers: true,
     canDeleteMembers: false,
-    canViewSpiritualRecords: true,
-    canEditSpiritualRecords: true,
+    canRegisterMembers: true,
+    
+    // Financial Management
+    canSubmitDonation: true,
+    canViewFinancialRecords: true,
+    canEditFinancialRecords: false,
+    canGenerateFinancialReports: true,
+    canTrackContributions: false,
+    
+    // Event & Communication
+    canManageEvents: true,
+    canSendCommunications: true,
+    canViewEventPlanning: true,
+    
+    // System Administration
+    canAccessAdminPanel: false,
+    canManageRoles: false,
+    canViewSystemLogs: false,
+    
+    // Documentation
+    canManageDocumentation: true,
+    canViewLeadershipActivities: true,
+    
+    // Public Access
+    canViewPublicInfo: true,
+  },
+  treasurer: {
+    // Profile Management
+    canViewOwnProfile: true,
+    canEditOwnProfile: true,
+    canViewAllMembers: true,
+    canEditAllMembers: false,
+    canDeleteMembers: false,
+    canRegisterMembers: false,
+    
+    // Financial Management
+    canSubmitDonation: true,
+    canViewFinancialRecords: true,
+    canEditFinancialRecords: true,
+    canGenerateFinancialReports: true,
+    canTrackContributions: true,
+    
+    // Event & Communication
+    canManageEvents: false,
+    canSendCommunications: false,
+    canViewEventPlanning: false,
+    
+    // System Administration
+    canAccessAdminPanel: false,
+    canManageRoles: false,
+    canViewSystemLogs: false,
+    
+    // Documentation
+    canManageDocumentation: false,
+    canViewLeadershipActivities: false,
+    
+    // Public Access
+    canViewPublicInfo: true,
+  },
+  secretary: {
+    // Profile Management
+    canViewOwnProfile: true,
+    canEditOwnProfile: true,
+    canViewAllMembers: true,
+    canEditAllMembers: true,
+    canDeleteMembers: false,
+    canRegisterMembers: true,
+    
+    // Financial Management
+    canSubmitDonation: true,
+    canViewFinancialRecords: false,
+    canEditFinancialRecords: false,
+    canGenerateFinancialReports: false,
+    canTrackContributions: false,
+    
+    // Event & Communication
+    canManageEvents: true,
+    canSendCommunications: true,
+    canViewEventPlanning: true,
+    
+    // System Administration
+    canAccessAdminPanel: false,
+    canManageRoles: false,
+    canViewSystemLogs: false,
+    
+    // Documentation
+    canManageDocumentation: true,
+    canViewLeadershipActivities: true,
+    
+    // Public Access
+    canViewPublicInfo: true,
+  },
+  member: {
+    // Profile Management
+    canViewOwnProfile: true,
+    canEditOwnProfile: true,
+    canViewAllMembers: false,
+    canEditAllMembers: false,
+    canDeleteMembers: false,
+    canRegisterMembers: false,
+    
+    // Financial Management
+    canSubmitDonation: true,
+    canViewFinancialRecords: false,
+    canEditFinancialRecords: false,
+    canGenerateFinancialReports: false,
+    canTrackContributions: false,
+    
+    // Event & Communication
+    canManageEvents: false,
+    canSendCommunications: false,
+    canViewEventPlanning: false,
+    
+    // System Administration
+    canAccessAdminPanel: false,
+    canManageRoles: false,
+    canViewSystemLogs: false,
+    
+    // Documentation
+    canManageDocumentation: false,
+    canViewLeadershipActivities: false,
+    
+    // Public Access
+    canViewPublicInfo: true,
+  },
+  guest: {
+    // Profile Management
+    canViewOwnProfile: false,
+    canEditOwnProfile: false,
+    canViewAllMembers: false,
+    canEditAllMembers: false,
+    canDeleteMembers: false,
+    canRegisterMembers: false,
+    
+    // Financial Management
+    canSubmitDonation: false,
+    canViewFinancialRecords: false,
+    canEditFinancialRecords: false,
+    canGenerateFinancialReports: false,
+    canTrackContributions: false,
+    
+    // Event & Communication
+    canManageEvents: false,
+    canSendCommunications: false,
+    canViewEventPlanning: false,
+    
+    // System Administration
+    canAccessAdminPanel: false,
+    canManageRoles: false,
+    canViewSystemLogs: false,
+    
+    // Documentation
+    canManageDocumentation: false,
+    canViewLeadershipActivities: false,
+    
+    // Public Access
+    canViewPublicInfo: true,
   },
 };
 
 export const getRolePermissions = (role: UserRole): RolePermissions => {
-  return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.member;
+  return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.guest;
 };
 
 export const hasPermission = (
@@ -84,20 +255,45 @@ export const canAccessRoute = (userRole: UserRole, requiredPermissions: (keyof R
 
 export const getRoleDisplayName = (role: UserRole): string => {
   const displayNames: Record<UserRole, string> = {
+    admin: 'Admin/Super Admin',
+    church_leadership: 'Church Leadership',
+    treasurer: 'Treasurer',
+    secretary: 'Secretary',
     member: 'Member',
-    accountant: 'Accountant',
-    auditor: 'Auditor',
-    clergy: 'Clergy',
+    guest: 'Guest',
   };
-  return displayNames[role] || 'Member';
+  return displayNames[role] || 'Guest';
 };
 
 export const getRoleDescription = (role: UserRole): string => {
   const descriptions: Record<UserRole, string> = {
-    member: 'Can view and edit own profile, submit donation',
-    accountant: 'Can view and edit own profile, submit donation, edit financial records, view all financial records',
-    auditor: 'Can view and edit own profile, submit donation, view all financial reports',
-    clergy: 'Can view and edit own profile, submit donation, view spiritual records',
+    admin: 'Full system access - can manage all aspects of the church management system',
+    church_leadership: 'Access to member management, financial reports, event planning, and leadership activities',
+    treasurer: 'Financial management, contribution tracking, and reporting capabilities',
+    secretary: 'Member registration, documentation, and communication management',
+    member: 'Basic access to own profile and limited features like donation submission',
+    guest: 'Public access to general information only',
   };
-  return descriptions[role] || 'Basic member access';
+  return descriptions[role] || 'Public access to general information only';
+};
+
+// Helper functions for common permission checks
+export const canManageMembers = (role: UserRole): boolean => {
+  return hasPermission(role, 'canViewAllMembers') && hasPermission(role, 'canEditAllMembers');
+};
+
+export const canManageFinances = (role: UserRole): boolean => {
+  return hasPermission(role, 'canViewFinancialRecords') && hasPermission(role, 'canEditFinancialRecords');
+};
+
+export const canViewFinances = (role: UserRole): boolean => {
+  return hasPermission(role, 'canViewFinancialRecords');
+};
+
+export const canManageEvents = (role: UserRole): boolean => {
+  return hasPermission(role, 'canManageEvents');
+};
+
+export const canManageDocumentation = (role: UserRole): boolean => {
+  return hasPermission(role, 'canManageDocumentation');
 }; 

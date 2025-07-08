@@ -434,6 +434,65 @@ exports.getAllMembers = async (req, res) => {
   }
 };
 
+// Get all members (Firebase auth - admin only)
+exports.getAllMembersFirebase = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search, role, isActive } = req.query;
+    const offset = (page - 1) * limit;
+
+    const whereClause = {};
+    
+    if (search) {
+      whereClause[Op.or] = [
+        { firstName: { [Op.iLike]: `%${search}%` } },
+        { lastName: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } },
+        { memberId: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    if (role) {
+      whereClause.role = role;
+    }
+
+    if (isActive !== undefined) {
+      whereClause.isActive = isActive === 'true';
+    }
+
+    const { count, rows: members } = await Member.findAndCountAll({
+      where: whereClause,
+      include: [{
+        model: Child,
+        as: 'children'
+      }],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: {
+        members,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(count / limit),
+          totalMembers: count,
+          hasNext: page * limit < count,
+          hasPrev: page > 1
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get all members Firebase error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Get member by ID (admin only)
 exports.getMemberById = async (req, res) => {
   try {

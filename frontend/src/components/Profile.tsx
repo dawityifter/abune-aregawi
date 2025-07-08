@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { formatDateForDisplay } from '../utils/dateUtils';
+import { UserRole } from '../utils/roles';
 
 interface ProfileData {
   displayName: string;
   email: string;
-  role: string;
+  role: UserRole;
   createdAt: string;
   isActive: boolean;
   phoneNumber?: string;
@@ -81,7 +82,7 @@ const Profile: React.FC = () => {
   const [formData, setFormData] = useState<ProfileData>({
     displayName: '',
     email: '',
-    role: '',
+    role: 'member',
     createdAt: '',
     isActive: true,
     phoneNumber: '',
@@ -112,7 +113,7 @@ const Profile: React.FC = () => {
           setFormData(userProfile as ProfileData || {
             displayName: '',
             email: '',
-            role: '',
+            role: 'member',
             createdAt: '',
             isActive: true,
             phoneNumber: '',
@@ -177,7 +178,7 @@ const Profile: React.FC = () => {
               setFormData(userProfile as ProfileData || {
                 displayName: '',
                 email: '',
-                role: '',
+                role: 'member',
                 createdAt: '',
                 isActive: true,
                 phoneNumber: '',
@@ -302,7 +303,7 @@ const Profile: React.FC = () => {
     setFormData(profile || {
       displayName: '',
       email: '',
-      role: '',
+      role: 'member',
       createdAt: '',
       isActive: true,
       phoneNumber: '',

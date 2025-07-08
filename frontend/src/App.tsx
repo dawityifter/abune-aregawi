@@ -6,6 +6,7 @@ import HomePage from './components/HomePage';
 import MemberRegistration from './components/auth/MemberRegistration';
 import Login from './components/auth/Login';
 import Dashboard from './components/Dashboard';
+import AdminDashboard from './components/admin/AdminDashboard';
 import Profile from './components/Profile';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Navigation from './components/Navigation';
@@ -13,6 +14,7 @@ import CreditsPage from './components/CreditsPage';
 import MemberStatus from './components/MemberStatus';
 import DonatePage from './components/DonatePage';
 import ChildrenManagement from './components/ChildrenManagement';
+import ChurchBylaw from './components/ChurchBylaw';
 import './index.css';
 
 function App() {
@@ -35,6 +37,14 @@ function App() {
                 } 
               />
               <Route 
+                path="/admin" 
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
                 path="/profile" 
                 element={
                   <ProtectedRoute>
@@ -45,7 +55,8 @@ function App() {
               <Route path="/credits" element={<CreditsPage />} />
               <Route path="/member-status" element={<MemberStatus />} />
               <Route path="/donate" element={<DonatePage />} />
-        <Route path="/children" element={<ProtectedRoute><ChildrenManagement /></ProtectedRoute>} />
+              <Route path="/church-bylaw" element={<ChurchBylaw />} />
+              <Route path="/children" element={<ProtectedRoute><ChildrenManagement /></ProtectedRoute>} />
               {/* Add more routes here as we build them */}
             </Routes>
           </div>

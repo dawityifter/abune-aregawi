@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getRolePermissions, UserRole } from '../utils/roles';
 
 interface UserProfile {
   displayName: string;
   email: string;
-  role: string;
+  role: UserRole;
   createdAt: string;
   isActive: boolean;
 }
@@ -16,6 +17,10 @@ const Dashboard: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Check if user has admin permissions
+  const userRole = (userProfile?.role || 'member') as UserRole;
+  const permissions = getRolePermissions(userRole);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -340,6 +345,38 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Admin Panel Card - Only show for admin users */}
+            {permissions.canAccessAdminPanel && (
+              <div className="bg-white overflow-hidden shadow rounded-lg border-2 border-red-200">
+                <div className="p-6">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                        <i className="fas fa-shield-alt text-red-800"></i>
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        {t('admin.panel')}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {t('manage.members.and.roles')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <button 
+                      onClick={() => window.location.href = '/admin'}
+                      className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+                    >
+                      <i className="fas fa-shield-alt mr-2"></i>
+                      {t('access.admin.panel')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>

@@ -10,7 +10,8 @@
     "db:init": "node src/database/init.js",
     "db:reset": "node src/database/reset.js",
     "db:test": "node src/database/test.js",
-    "db:sync": "node -e \"require('./src/models').sequelize.sync({force: false}).then(() => process.exit(0))\""
+    "db:sync": "node -e \"require('./src/models').sequelize.sync({force: false}).then(() => process.exit(0))\"",
+    "db:update-roles": "node src/database/updateRoles.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

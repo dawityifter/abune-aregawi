@@ -8,7 +8,7 @@ const {
   validateMemberId,
   validateMemberQuery
 } = require('../middleware/validation');
-const authMiddleware = require('../middleware/auth');
+const { authMiddleware, firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
 
 // Public routes
@@ -18,6 +18,9 @@ router.post('/login', validateLogin, memberController.login);
 // Firebase Auth profile routes (no JWT required)
 router.get('/profile/firebase/:uid', memberController.getProfileByFirebaseUid);
 router.put('/profile/firebase/:uid', memberController.updateProfileByFirebaseUid);
+
+// Firebase Auth admin routes (Firebase token verification)
+router.get('/all/firebase', firebaseAuthMiddleware, validateMemberQuery, memberController.getAllMembersFirebase);
 
 // Children management routes (no JWT required - using member ID)
 router.get('/:memberId/children', memberController.getMemberChildren);
@@ -34,32 +37,32 @@ router.put('/profile', validateProfileUpdate, memberController.updateProfile);
 
 // Admin routes (require admin role)
 router.get('/all', 
-  roleMiddleware(['accountant', 'auditor', 'clergy']), 
+  roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), 
   validateMemberQuery, 
   memberController.getAllMembers
 );
 
 router.get('/:id', 
-  roleMiddleware(['accountant', 'auditor', 'clergy']), 
+  roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), 
   validateMemberId, 
   memberController.getMemberById
 );
 
 router.put('/:id', 
-  roleMiddleware(['accountant', 'clergy']), 
+  roleMiddleware(['admin', 'church_leadership', 'secretary']), 
   validateMemberId, 
   memberController.updateMember
 );
 
 router.delete('/:id', 
-  roleMiddleware(['accountant']), 
+  roleMiddleware(['admin']), 
   validateMemberId, 
   memberController.deleteMember
 );
 
-// Financial routes (require accountant/auditor role)
+// Financial routes (require treasurer/admin role)
 router.get('/:id/contributions', 
-  roleMiddleware(['accountant', 'auditor']), 
+  roleMiddleware(['admin', 'treasurer']), 
   validateMemberId, 
   memberController.getMemberContributions
 );

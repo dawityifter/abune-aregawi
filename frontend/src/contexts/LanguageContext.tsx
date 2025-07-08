@@ -4,6 +4,7 @@ type Language = 'en' | 'ti';
 
 interface LanguageContextType {
   language: Language;
+  currentLanguage: Language; // Alias for language for better compatibility
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
 }
@@ -28,6 +29,7 @@ const translations = {
     
     // CTA Buttons
     'plan.visit': 'Plan a Visit',
+    'church.bylaw': 'Church Bylaw',
     'watch.live': 'Watch Live',
     'register.member': 'Register Member',
     'view.dues': 'View Dues / Login',
@@ -87,6 +89,87 @@ const translations = {
     'account.settings': 'Account settings',
     'manage.account': 'Manage Account',
     
+    // Admin Panel
+    'admin.panel': 'Admin Panel',
+    'admin.dashboard': 'Admin Dashboard',
+    'manage.members': 'Manage Members',
+    'manage.members.and.roles': 'Manage members and roles',
+    'access.admin.panel': 'Access Admin Panel',
+    'role.management': 'Role Management',
+    'manage.member.roles.and.permissions': 'Manage member roles and permissions',
+    'update.member.roles': 'Update Member Roles',
+    'change.role': 'Change Role',
+    'new.role': 'New Role',
+    'current.role': 'Current Role',
+    'role.descriptions': 'Role Descriptions',
+    'update.role': 'Update Role',
+    'updating.role.for': 'Updating role for',
+    'new.permissions': 'New Permissions',
+    'updating': 'Updating...',
+    'statistics': 'Statistics',
+    'overview.of.church.membership': 'Overview of church membership',
+    'total.members': 'Total Members',
+    'active.members': 'Active Members',
+    'total.children': 'Total Children',
+    'recent.registrations': 'Recent Registrations',
+    'role.breakdown': 'Role Breakdown',
+    'gender.breakdown': 'Gender Breakdown',
+    'marital.status.breakdown': 'Marital Status Breakdown',
+    'language.preference.breakdown': 'Language Preference Breakdown',
+    'membership.status': 'Membership Status',
+    'members.with.children': 'Members with Children',
+    'activity.metrics': 'Activity Metrics',
+    'new.registrations.30.days': 'New Registrations (30 days)',
+    'avg.children.per.family': 'Avg Children per Family',
+    'active.rate': 'Active Rate',
+    'quick.actions': 'Quick Actions',
+    'export.member.list': 'Export Member List',
+    'generate.report': 'Generate Report',
+    'send.communication': 'Send Communication',
+    'refresh.statistics': 'Refresh Statistics',
+    'no.data.available': 'No data available',
+    'edit.member': 'Edit Member',
+    'search': 'Search',
+    'search.members': 'Search members',
+    'all.roles': 'All Roles',
+    'all.statuses': 'All Statuses',
+    'active': 'Active',
+    'inactive': 'Inactive',
+    'actions': 'Actions',
+    'joined': 'Joined',
+    'children': 'Children',
+    'name': 'Name',
+    'current.permissions': 'Current Permissions',
+    'confirm.delete.member': 'Are you sure you want to delete this member?',
+    'no.permission.to.edit': 'You do not have permission to edit members',
+    'basic.info': 'Basic Information',
+    'contact.info': 'Contact Information',
+    'spiritual.info': 'Spiritual Information',
+    'family.info': 'Family Information',
+    'emergency.contact.name': 'Emergency Contact Name',
+    'emergency.contact.phone': 'Emergency Contact Phone',
+    'street.address': 'Street Address',
+    'postal.code': 'Postal Code',
+    'country': 'Country',
+    'spouse.name': 'Spouse Name',
+    'spouse.email': 'Spouse Email',
+    'interested.in.serving': 'Interested in Serving',
+    'tithe.participation': 'Tithe Participation',
+    'ministries': 'Ministries',
+    'ministries.placeholder': 'List ministries you are interested in...',
+    'preferred.giving.method': 'Preferred Giving Method',
+    'select.giving.method': 'Select giving method',
+    'cash': 'Cash',
+    'check': 'Check',
+    'online': 'Online',
+    'bank_transfer': 'Bank Transfer',
+    'select.language': 'Select language',
+    'english': 'English',
+    'tigrinya': 'Tigrinya',
+    'amharic': 'Amharic',
+    'no.children.registered': 'No children registered',
+    'save.changes': 'Save Changes',
+    
     // Profile
     'edit.profile': 'Edit Profile',
     'profile.information': 'Profile Information',
@@ -104,8 +187,6 @@ const translations = {
     'language.preference': 'Language Preference',
     'emergency.contact': 'Emergency Contact',
     'emergency.phone': 'Emergency Phone',
-    'edit': 'Edit',
-    'cancel': 'Cancel',
     'save': 'Save',
     'saving': 'Saving...',
     'not.provided': 'Not provided',
@@ -119,7 +200,6 @@ const translations = {
     'priest': 'Priest',
     'choir.member': 'Choir Member',
     'sunday.school.teacher': 'Sunday School Teacher',
-    'emergency.contact.name': 'Emergency contact name',
     'emergency.phone.number': 'Emergency phone number',
     'marital.status': 'Marital Status',
     'select.marital.status': 'Select marital status',
@@ -145,7 +225,6 @@ const translations = {
     'city': 'City',
     'state': 'State',
     'zip.code': 'Zip Code',
-    'interested.in.serving': 'Interested in Serving',
     'select.option': 'Select option',
     
     // Children and Dependents Section
@@ -153,7 +232,6 @@ const translations = {
     
     // Member Status
     'member.status': 'Member Status',
-    'search.members': 'Search Members',
     'search.placeholder': 'Search by name or phone...',
     'sort.by': 'Sort By',
     'order': 'Order',
@@ -212,13 +290,9 @@ const translations = {
     
     // Additional Form Fields
     'email.address': 'Email Address',
-    'street.address': 'Street Address',
     'apartment.suite.number': 'Apartment/Suite Number',
     'state.province': 'State/Province',
-    'spouse.name': 'Spouse Name',
     'spouse.contact.phone': 'Spouse Contact Phone',
-    'emergency.contact.phone': 'Emergency Contact Phone',
-    'tithe.participation': 'Tithe Participation',
     'login.email': 'Login Email',
     
     // Head of Household
@@ -229,7 +303,6 @@ const translations = {
     'head.of.household.email.not.found': 'No member found with this email address. Please register as head of household or provide a valid head of household email.',
     'has.dependents': 'I have children or dependents to register',
     'has.dependents.help': 'Check this box if you want to add children or dependents during registration. You can also add them later from your dashboard.',
-    'spouse.email': "Spouse's Email",
     
     // Processing
     'processing': 'Processing...',
@@ -250,6 +323,7 @@ const translations = {
     
     // CTA Buttons
     'plan.visit': 'ምብጻሕ ኣዘዝምድ',
+    'church.bylaw': 'ሕጊ ቤተ ክርስቲያን',
     'watch.live': 'ብቀጥታ ርኣይ',
     'register.member': 'ደምድም ኣኽትም',
     'view.dues': 'ክፍሊት ርኣይ / እተኻ',
@@ -354,6 +428,7 @@ const translations = {
     'street.line1': 'ደብቲ መንገዲ',
     'apartment.no': 'ቤት ቁጽሪ (ኣማራጺ)',
     'zip.code': 'ዚፕ ኮድ',
+    'select.option': 'ምረጽ ኣምረጽ',
     
     // Children/Dependents
     'children.dependents': 'ውልዲ እንተሃልዩ ተራኺል',
@@ -369,7 +444,6 @@ const translations = {
     
     // Member Status
     'member.status': 'ሓበሬታ ኣባላት',
-    'search.members': 'ኣባላት ድለ',
     'search.placeholder': 'ብስም ወይ ብስልኪ ድለ...',
     'sort.by': 'ብዝኾነ ምስደርደር',
     'order': 'ቅደም ምስደርደር',
@@ -428,7 +502,6 @@ const translations = {
     
     // Additional Form Fields
     'email.address': 'ኢመይል ኢመይል',
-    'street.address': 'ደብቲ መንገዲ',
     'apartment.suite.number': 'ቤት/ሱይት ቁጽሪ',
     'state.province': 'ግዛት/ግዝኣት',
     'spouse.name': 'ስም መርዓ',
@@ -446,10 +519,6 @@ const translations = {
     'head.of.household.email.not.found': 'ብዚዝክር ኢመይል ኣባል ኣይተረኽበን። መራሒ ቤተሰብ ክትኮን እተኻ እሞ ኣኽትም ወይ ትኽክለኛ ኢመይል መራሒ ቤተሰብ ሃብ።',
     'has.dependents': 'ውልዲ ወይ ተራኺል ክኣኽትም እየ ዘለኹ',
     'has.dependents.help': 'እዚ ሳጹን እንተተሓትት ውልዲ ወይ ተራኺል ክትውስኽ እትደሊ እንተኾንካ። ካብ ዳሽቦርድካ ድማ ክትውስኾም ትኽእል እኹም።',
-    'spouse.email': 'ኢመይል መርዓ',
-    
-    // Children and Dependents Section
-    'children.and.dependents': 'ውልዲ እንተሃልዩ ተራኺል',
     
     // Processing
     'processing': 'Processing...',
@@ -476,7 +545,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   }, [language]);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ language, currentLanguage: language, setLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );

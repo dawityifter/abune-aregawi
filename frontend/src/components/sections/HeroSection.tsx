@@ -113,9 +113,9 @@ const HeroSection: React.FC = () => {
 
         {/* CTA Buttons */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
-          <button className="btn btn-primary">
-            {t('plan.visit')}
-          </button>
+          <Link to="/church-bylaw" className="btn btn-primary">
+            {t('church.bylaw')}
+          </Link>
           <button 
             className="btn btn-secondary"
             onClick={() => window.open('https://www.facebook.com/abunearegawitx/', '_blank')}

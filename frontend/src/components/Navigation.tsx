@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { getRolePermissions, hasPermission } from '../utils/roles';
 
 const Navigation: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, getUserProfile } = useAuth();
   const location = useLocation();
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -15,6 +18,29 @@ const Navigation: React.FC = () => {
       console.error('Error logging out:', error);
     }
   };
+
+  // Fetch user profile to check permissions
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (currentUser) {
+        try {
+          setLoading(true);
+          const profile = await getUserProfile(currentUser.uid);
+          setUserProfile(profile);
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, [currentUser, getUserProfile]);
+
+  // Check if user has admin permissions
+  const userRole = userProfile?.role || 'member';
+  const permissions = getRolePermissions(userRole);
 
   // Don't show navigation on homepage since it has its own header
   if (location.pathname === '/') {
@@ -71,6 +97,15 @@ const Navigation: React.FC = () => {
                 >
                   {t('member.dashboard')}
                 </Link>
+                {permissions.canAccessAdminPanel && (
+                  <Link
+                    to="/admin"
+                    className="text-sm text-red-600 hover:text-red-800 font-medium"
+                  >
+                    <i className="fas fa-shield-alt mr-1"></i>
+                    {t('admin.panel')}
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className="text-sm text-red-600 hover:text-red-800"
