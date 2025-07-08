@@ -554,5 +554,5 @@ This project is created for the Debre Tsehay Abune Aregawi Tigray Orthodox Tewah
 
 *Built with love for the Tigray Orthodox Christian community* 
 
-**Last Updated**: December 2024
-**Version**: 1.0.0 
+**Last Updated**: July 2025
+**Version**: 1.1.0 

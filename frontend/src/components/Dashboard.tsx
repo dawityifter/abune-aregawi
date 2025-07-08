@@ -125,15 +125,7 @@ const Dashboard: React.FC = () => {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                {t('welcome')}, {userProfile?.displayName || currentUser?.displayName || 'User'}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="text-sm text-red-600 hover:text-red-800"
-              >
-                {t('sign.out')}
-              </button>
+              {/* Sign out functionality is available in the Navigation component */}
             </div>
           </div>
         </div>
