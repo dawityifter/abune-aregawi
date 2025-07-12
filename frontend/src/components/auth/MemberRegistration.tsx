@@ -6,13 +6,13 @@ import {
   PersonalInfoStep,
   ContactAddressStep,
   FamilyInfoStep,
-  ChildrenStep,
+  DependantsStep,
   SpiritualInfoStep,
   ContributionStep,
   AccountStep
 } from './RegistrationSteps';
 
-interface Child {
+interface Dependant {
   firstName: string;
   middleName?: string;
   lastName: string;
@@ -38,7 +38,7 @@ interface RegistrationForm {
   isHeadOfHousehold: boolean;
   spouseEmail: string;
   headOfHouseholdEmail: string;
-  hasDependents: boolean;
+  hasDependants: boolean;
   
   // Contact & Address
   phoneNumber: string;
@@ -56,8 +56,8 @@ interface RegistrationForm {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   
-  // Children Information
-  children: Child[];
+  // Dependants Information
+  dependants: Dependant[];
   
   // Spiritual Information
   dateJoinedParish: string;
@@ -113,7 +113,7 @@ const MemberRegistration: React.FC = () => {
     isHeadOfHousehold: true,
     spouseEmail: '',
     headOfHouseholdEmail: '',
-    hasDependents: false,
+    hasDependants: false,
     phoneNumber: '',
     email: '',
     streetLine1: '',
@@ -126,7 +126,7 @@ const MemberRegistration: React.FC = () => {
     spouseContactPhone: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
-    children: [],
+    dependants: [],
     dateJoinedParish: '',
     baptismName: '',
     interestedInServing: '',
@@ -182,7 +182,7 @@ const MemberRegistration: React.FC = () => {
       case 3: // Family Information - No required fields for this step
         break;
       
-      case 4: // Children Information - No required fields for this step
+      case 4: // Dependants Information - No required fields for this step
         break;
       
       case 5: // Spiritual Information - No required fields for this step
@@ -217,8 +217,8 @@ const MemberRegistration: React.FC = () => {
       let nextStep = currentStep + 1;
       
       // If moving from step 3 to step 4, check if we should skip step 4
-      if (currentStep === 3 && !(formData.isHeadOfHousehold && formData.hasDependents)) {
-        nextStep = 5; // Skip step 4 (Children) and go to step 5 (Spiritual)
+      if (currentStep === 3 && !(formData.isHeadOfHousehold && formData.hasDependants)) {
+        nextStep = 5; // Skip step 4 (Dependants) and go to step 5 (Spiritual)
       }
       
       setCurrentStep(nextStep);
@@ -257,8 +257,8 @@ const MemberRegistration: React.FC = () => {
           spouseName: formData.maritalStatus === 'Married' ? formData.spouseName : null,
           emergencyContactName: formData.maritalStatus === 'Married' ? formData.spouseName : formData.emergencyContactName,
           emergencyContactPhone: formData.maritalStatus === 'Married' ? formData.spouseContactPhone : formData.emergencyContactPhone,
-          // Children Information
-          children: formData.children,
+          // Dependants Information
+          dependants: formData.dependants,
           // Spiritual Information
           dateJoinedParish: formData.dateJoinedParish,
           baptismName: formData.baptismName,
@@ -310,15 +310,15 @@ const MemberRegistration: React.FC = () => {
   };
 
   const getDisplayStepNumber = (step: number): number => {
-    // If step 4 (Children) should be skipped, adjust the display
-    if (step >= 4 && !(formData.isHeadOfHousehold && formData.hasDependents)) {
+    // If step 4 (Dependants) should be skipped, adjust the display
+    if (step >= 4 && !(formData.isHeadOfHousehold && formData.hasDependants)) {
       return step + 1;
     }
     return step;
   };
 
   const getTotalSteps = (): number => {
-    return formData.isHeadOfHousehold && formData.hasDependents ? 7 : 6;
+    return formData.isHeadOfHousehold && formData.hasDependants ? 7 : 6;
   };
 
   const renderStep = () => {
@@ -330,10 +330,10 @@ const MemberRegistration: React.FC = () => {
       case 3:
         return <FamilyInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
       case 4:
-        if (formData.isHeadOfHousehold && formData.hasDependents) {
-          return <ChildrenStep children={formData.children} onChildrenChange={(children) => handleInputChange('children', children)} errors={errors} t={t} />;
+        if (formData.isHeadOfHousehold && formData.hasDependants) {
+          return <DependantsStep dependants={formData.dependants} onDependantsChange={(dependants: Dependant[]) => handleInputChange('dependants', dependants)} errors={errors} t={t} />;
         } else {
-          // If not head of household or no dependents, skip to spiritual info
+          // If not head of household or no dependants, skip to spiritual info
           return <SpiritualInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
         }
       case 5:
@@ -400,8 +400,8 @@ const MemberRegistration: React.FC = () => {
                   let prevStep = currentStep - 1;
                   
                   // If moving from step 5 to step 4, check if we should skip step 4
-                  if (currentStep === 5 && !(formData.isHeadOfHousehold && formData.hasDependents)) {
-                    prevStep = 3; // Skip step 4 (Children) and go to step 3 (Family)
+                  if (currentStep === 5 && !(formData.isHeadOfHousehold && formData.hasDependants)) {
+                    prevStep = 3; // Skip step 4 (Dependants) and go to step 3 (Family)
                   }
                   
                   setCurrentStep(prevStep);

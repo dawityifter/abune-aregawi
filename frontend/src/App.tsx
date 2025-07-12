@@ -13,7 +13,7 @@ import Navigation from './components/Navigation';
 import CreditsPage from './components/CreditsPage';
 import MemberStatus from './components/MemberStatus';
 import DonatePage from './components/DonatePage';
-import ChildrenManagement from './components/ChildrenManagement';
+import DependantsManagement from './components/DependantsManagement';
 import ChurchBylaw from './components/ChurchBylaw';
 import ParishPulseSignUp from './components/ParishPulseSignUp';
 import './index.css';
@@ -57,7 +57,7 @@ function App() {
               <Route path="/member-status" element={<MemberStatus />} />
               <Route path="/donate" element={<DonatePage />} />
               <Route path="/church-bylaw" element={<ChurchBylaw />} />
-              <Route path="/children" element={<ProtectedRoute><ChildrenManagement /></ProtectedRoute>} />
+              <Route path="/children" element={<ProtectedRoute><DependantsManagement /></ProtectedRoute>} />
               <Route path="/parish-pulse-sign-up" element={<ParishPulseSignUp />} />
               {/* Add more routes here as we build them */}
             </Routes>

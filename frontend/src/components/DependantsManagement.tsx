@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatPhoneNumber } from './auth/MemberRegistration';
 import { formatDateForDisplay } from '../utils/dateUtils';
 
-interface Child {
+interface Dependant {
   id?: string;
   firstName: string;
   middleName?: string;
@@ -16,13 +16,13 @@ interface Child {
   isBaptized: boolean;
 }
 
-const ChildrenManagement: React.FC = () => {
+const DependantsManagement: React.FC = () => {
   const { currentUser } = useAuth();
-  const [children, setChildren] = useState<Child[]>([]);
+  const [dependants, setDependants] = useState<Dependant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
-  const [editingChild, setEditingChild] = useState<Child | null>(null);
-  const [formData, setFormData] = useState<Child>({
+  const [editingDependant, setEditingDependant] = useState<Dependant | null>(null);
+  const [formData, setFormData] = useState<Dependant>({
     firstName: '',
     middleName: '',
     lastName: '',
@@ -34,7 +34,7 @@ const ChildrenManagement: React.FC = () => {
     isBaptized: false
   });
 
-  const fetchChildren = useCallback(async () => {
+  const fetchDependants = useCallback(async () => {
     try {
       // First get the member profile to get the member ID
       const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}`, {
@@ -47,20 +47,20 @@ const ChildrenManagement: React.FC = () => {
         const profileData = await profileResponse.json();
         const memberId = profileData.data.member.id;
         
-        // Now fetch children using the member ID
-        const childrenResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}/children`, {
+        // Now fetch dependants using the member ID
+        const dependantsResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}/dependants`, {
           headers: {
             'Content-Type': 'application/json'
           }
         });
         
-        if (childrenResponse.ok) {
-          const data = await childrenResponse.json();
-          setChildren(data.data.children || []);
+        if (dependantsResponse.ok) {
+          const data = await dependantsResponse.json();
+          setDependants(data.data.dependants || []);
         }
       }
     } catch (error) {
-      console.error('Error fetching children:', error);
+      console.error('Error fetching dependants:', error);
     } finally {
       setIsLoading(false);
     }
@@ -68,9 +68,9 @@ const ChildrenManagement: React.FC = () => {
 
   useEffect(() => {
     if (currentUser) {
-      fetchChildren();
+      fetchDependants();
     }
-  }, [currentUser, fetchChildren]);
+  }, [currentUser, fetchDependants]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,11 +90,11 @@ const ChildrenManagement: React.FC = () => {
       const profileData = await profileResponse.json();
       const memberId = profileData.data.member.id;
       
-      const url = editingChild 
-        ? `${process.env.REACT_APP_API_URL}/api/members/children/${editingChild.id}`
-        : `${process.env.REACT_APP_API_URL}/api/members/${memberId}/children`;
+      const url = editingDependant 
+        ? `${process.env.REACT_APP_API_URL}/api/members/dependants/${editingDependant.id}`
+        : `${process.env.REACT_APP_API_URL}/api/members/${memberId}/dependants`;
       
-      const method = editingChild ? 'PUT' : 'POST';
+      const method = editingDependant ? 'PUT' : 'POST';
       
       const response = await fetch(url, {
         method,
@@ -105,25 +105,25 @@ const ChildrenManagement: React.FC = () => {
       });
 
       if (response.ok) {
-        await fetchChildren();
+        await fetchDependants();
         resetForm();
         setIsAdding(false);
-        setEditingChild(null);
+        setEditingDependant(null);
       } else {
         const error = await response.json();
         alert(`Error: ${error.message}`);
       }
     } catch (error) {
-      console.error('Error saving child:', error);
-      alert('Error saving child information');
+      console.error('Error saving dependant:', error);
+      alert('Error saving dependant information');
     }
   };
 
-  const handleDelete = async (childId: string) => {
-    if (!window.confirm('Are you sure you want to delete this child?')) return;
+  const handleDelete = async (dependantId: string) => {
+    if (!window.confirm('Are you sure you want to delete this dependant?')) return;
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/children/${childId}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/dependants/${dependantId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
@@ -131,20 +131,20 @@ const ChildrenManagement: React.FC = () => {
       });
 
       if (response.ok) {
-        await fetchChildren();
+        await fetchDependants();
       } else {
         const error = await response.json();
         alert(`Error: ${error.message}`);
       }
     } catch (error) {
-      console.error('Error deleting child:', error);
-      alert('Error deleting child');
+      console.error('Error deleting dependant:', error);
+      alert('Error deleting dependant');
     }
   };
 
-  const handleEdit = (child: Child) => {
-    setEditingChild(child);
-    setFormData(child);
+  const handleEdit = (dependant: Dependant) => {
+    setEditingDependant(dependant);
+    setFormData(dependant);
     setIsAdding(true);
   };
 
@@ -164,24 +164,24 @@ const ChildrenManagement: React.FC = () => {
 
   const cancelEdit = () => {
     setIsAdding(false);
-    setEditingChild(null);
+    setEditingDependant(null);
     resetForm();
   };
 
   if (isLoading) {
-    return <div className="text-center py-8">Loading children...</div>;
+    return <div className="text-center py-8">Loading dependants...</div>;
   }
 
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Children & Dependents</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Dependants & Dependents</h2>
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
           >
-            Add Child
+            Add Dependant
           </button>
         )}
       </div>
@@ -190,7 +190,7 @@ const ChildrenManagement: React.FC = () => {
       {isAdding && (
         <div className="bg-white p-6 rounded-lg shadow-md mb-6">
           <h3 className="text-lg font-semibold mb-4">
-            {editingChild ? 'Edit Child' : 'Add New Child'}
+            {editingDependant ? 'Edit Dependant' : 'Add New Dependant'}
           </h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -325,19 +325,19 @@ const ChildrenManagement: React.FC = () => {
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
-                {editingChild ? 'Update Child' : 'Add Child'}
+                {editingDependant ? 'Update Dependant' : 'Add Dependant'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Children List */}
+      {/* Dependants List */}
       <div className="bg-white rounded-lg shadow-md">
-        {children.length === 0 ? (
+        {dependants.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            <p>No children added yet.</p>
-            <p className="text-sm mt-2">Click "Add Child" to get started.</p>
+            <p>No dependants added yet.</p>
+            <p className="text-sm mt-2">Click "Add Dependant" to get started.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -365,43 +365,43 @@ const ChildrenManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {children.map((child) => (
-                  <tr key={child.id} className="hover:bg-gray-50">
+                {dependants.map((dependant) => (
+                  <tr key={dependant.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {child.firstName} {child.middleName} {child.lastName}
+                        {dependant.firstName} {dependant.middleName} {dependant.lastName}
                       </div>
-                      {child.email && (
-                        <div className="text-sm text-gray-500">{child.email}</div>
+                      {dependant.email && (
+                        <div className="text-sm text-gray-500">{dependant.email}</div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDateForDisplay(child.dateOfBirth)}
+                      {formatDateForDisplay(dependant.dateOfBirth)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {child.gender}
+                      {dependant.gender}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {child.baptismName || '-'}
+                      {dependant.baptismName || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        child.isBaptized 
+                        dependant.isBaptized 
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {child.isBaptized ? 'Yes' : 'No'}
+                        {dependant.isBaptized ? 'Yes' : 'No'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => handleEdit(child)}
+                        onClick={() => handleEdit(dependant)}
                         className="text-blue-600 hover:text-blue-900 mr-3"
                       >
                         Edit
                       </button>
                       <button
-                        onClick={() => child.id && handleDelete(child.id)}
+                        onClick={() => dependant.id && handleDelete(dependant.id)}
                         className="text-red-600 hover:text-red-900"
                       >
                         Delete
@@ -418,4 +418,4 @@ const ChildrenManagement: React.FC = () => {
   );
 };
 
-export default ChildrenManagement; 
+export default DependantsManagement; 

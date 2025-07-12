@@ -26,10 +26,10 @@ interface ProfileData {
   city?: string;
   state?: string;
   postalCode?: string;
-  children?: BackendChildData[];
+  dependants?: BackendDependantData[];
 }
 
-interface BackendChildData {
+interface BackendDependantData {
   id: string;
   memberId: string;
   firstName: string;
@@ -165,7 +165,7 @@ const Profile: React.FC = () => {
                 city: result.data.member.city,
                 state: result.data.member.state,
                 postalCode: result.data.member.postalCode,
-                children: result.data.member.children || []
+                dependants: result.data.member.dependants || []
               };
               
               setProfile(mergedData);
@@ -265,7 +265,8 @@ const Profile: React.FC = () => {
         apartmentNo: formData.apartmentNo,
         city: formData.city,
         state: formData.state,
-        postalCode: formData.postalCode
+        postalCode: formData.postalCode,
+        dependants: formData.dependants || null
       };
 
       // Send update to backend API
@@ -754,50 +755,50 @@ const Profile: React.FC = () => {
               </div>
 
               {/* Children Information - Full Width */}
-              {profile.children && profile.children.length > 0 && (
+              {profile.dependants && profile.dependants.length > 0 && (
                 <div className="mt-8 space-y-4">
                   <h3 className="text-md font-medium text-gray-900 border-b pb-2">
                     {t('children.and.dependents')}
                   </h3>
                   <div className="flex flex-col gap-4">
-                    {profile.children.map((child: BackendChildData) => (
-                      <div key={child.id} className="bg-gray-50 p-4 rounded-lg w-full">
+                    {profile.dependants.map((dependant: BackendDependantData) => (
+                      <div key={dependant.id} className="bg-gray-50 p-4 rounded-lg w-full">
                         <h4 className="font-medium text-gray-900 mb-3">
-                          {child.firstName} {child.middleName} {child.lastName}
+                          {dependant.firstName} {dependant.middleName} {dependant.lastName}
                         </h4>
                         <div className="grid grid-cols-2 gap-6">
                           <div className="space-y-4">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">{t('date.of.birth')}</label>
-                              <p className="text-gray-900">{formatDateForDisplay(child.dateOfBirth)}</p>
+                              <p className="text-gray-900">{formatDateForDisplay(dependant.dateOfBirth)}</p>
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">{t('gender')}</label>
-                              <p className="text-gray-900">{child.gender}</p>
+                              <p className="text-gray-900">{dependant.gender}</p>
                             </div>
-                            {child.phone && (
+                            {dependant.phone && (
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')}</label>
-                                <p className="text-gray-900">{child.phone}</p>
+                                <p className="text-gray-900">{dependant.phone}</p>
                               </div>
                             )}
                           </div>
                           <div className="space-y-4">
-                            {child.email && (
+                            {dependant.email && (
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
-                                <p className="text-gray-900">{child.email}</p>
+                                <p className="text-gray-900">{dependant.email}</p>
                               </div>
                             )}
-                            {child.baptismName && (
+                            {dependant.baptismName && (
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptism.name')}</label>
-                                <p className="text-gray-900">{child.baptismName}</p>
+                                <p className="text-gray-900">{dependant.baptismName}</p>
                               </div>
                             )}
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptized')}</label>
-                              <p className="text-gray-900">{child.isBaptized ? t('yes') : t('no')}</p>
+                              <p className="text-gray-900">{dependant.isBaptized ? t('yes') : t('no')}</p>
                             </div>
                           </div>
                         </div>
