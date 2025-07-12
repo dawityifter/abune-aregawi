@@ -262,70 +262,70 @@ exports.validateMemberRegistration = [
     ])
     .withMessage('Invalid role'),
   
-  // Children validation - only allow if head of household
-  body('children')
+  // Dependants validation - only allow if head of household
+  body('dependants')
     .optional()
     .custom((value, { req }) => {
-      // Only allow children if member is head of household
+      // Only allow dependants if member is head of household
       if (value && Array.isArray(value) && value.length > 0) {
         if (!req.body.isHeadOfHousehold) {
-          throw new Error('Children can only be registered by the head of household');
+          throw new Error('Dependants can only be registered by the head of household');
         }
       }
       return true;
     })
     .isArray()
-    .withMessage('Children must be an array'),
+    .withMessage('Dependants must be an array'),
   
-  body('children.*.firstName')
-    .if(body('children').isArray({ min: 1 }))
+  body('dependants.*.firstName')
+    .if(body('dependants').isArray({ min: 1 }))
     .if(body('isHeadOfHousehold').equals(true))
     .trim()
     .isLength({ min: 1, max: 100 })
-    .withMessage('Child first name is required and must be between 1 and 100 characters'),
+    .withMessage('Dependant first name is required and must be between 1 and 100 characters'),
   
-  body('children.*.lastName')
-    .if(body('children').isArray({ min: 1 }))
+  body('dependants.*.lastName')
+    .if(body('dependants').isArray({ min: 1 }))
     .if(body('isHeadOfHousehold').equals(true))
     .trim()
     .isLength({ min: 1, max: 100 })
-    .withMessage('Child last name is required and must be between 1 and 100 characters'),
+    .withMessage('Dependant last name is required and must be between 1 and 100 characters'),
   
-  body('children.*.dateOfBirth')
-    .if(body('children').isArray({ min: 1 }))
+  body('dependants.*.dateOfBirth')
+    .if(body('dependants').isArray({ min: 1 }))
     .if(body('isHeadOfHousehold').equals(true))
     .isISO8601()
-    .withMessage('Child date of birth must be a valid date'),
+    .withMessage('Dependant date of birth must be a valid date'),
   
-  body('children.*.gender')
-    .if(body('children').isArray({ min: 1 }))
+  body('dependants.*.gender')
+    .if(body('dependants').isArray({ min: 1 }))
     .if(body('isHeadOfHousehold').equals(true))
     .isIn(['Male', 'Female'])
-    .withMessage('Child gender must be Male or Female'),
+    .withMessage('Dependant gender must be Male or Female'),
   
-  body('children.*.phone')
-    .if(body('children').isArray({ min: 1 }))
+  body('dependants.*.phone')
+    .if(body('dependants').isArray({ min: 1 }))
     .if(body('isHeadOfHousehold').equals(true))
     .optional()
     .trim()
     .isLength({ max: 25 })
-    .withMessage('Child phone must be less than 25 characters'),
+    .withMessage('Dependant phone must be less than 25 characters'),
   
-  body('children.*.email')
-    .if(body('children').isArray({ min: 1 }))
+  body('dependants.*.email')
+    .if(body('dependants').isArray({ min: 1 }))
     .if(body('isHeadOfHousehold').equals(true))
     .optional()
     .isEmail()
     .normalizeEmail()
-    .withMessage('Child email must be a valid email address'),
+    .withMessage('Dependant email must be a valid email address'),
   
-  body('children.*.baptismName')
-    .if(body('children').isArray({ min: 1 }))
+  body('dependants.*.baptismName')
+    .if(body('dependants').isArray({ min: 1 }))
     .if(body('isHeadOfHousehold').equals(true))
     .optional()
     .trim()
     .isLength({ max: 100 })
-    .withMessage('Child baptism name must be less than 100 characters')
+    .withMessage('Dependant baptism name must be less than 100 characters')
 ];
 
 // Login validation

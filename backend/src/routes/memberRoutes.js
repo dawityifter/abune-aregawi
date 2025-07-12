@@ -22,11 +22,11 @@ router.put('/profile/firebase/:uid', memberController.updateProfileByFirebaseUid
 // Firebase Auth admin routes (Firebase token verification)
 router.get('/all/firebase', firebaseAuthMiddleware, validateMemberQuery, memberController.getAllMembersFirebase);
 
-// Children management routes (no JWT required - using member ID)
-router.get('/:memberId/children', memberController.getMemberChildren);
-router.post('/:memberId/children', memberController.addChild);
-router.put('/children/:childId', memberController.updateChild);
-router.delete('/children/:childId', memberController.deleteChild);
+// Dependants management routes (no JWT required - using member ID)
+router.get('/:memberId/dependants', memberController.getMemberDependants);
+router.post('/:memberId/dependants', memberController.addDependant);
+router.put('/dependants/:dependantId', memberController.updateDependant);
+router.delete('/dependants/:dependantId', memberController.deleteDependant);
 
 // Protected routes (require authentication)
 router.use(authMiddleware);

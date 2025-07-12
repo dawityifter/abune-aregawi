@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { sequelize, Member, Child } = require('../models');
+const { sequelize, Member, Dependant } = require('../models');
 
 const initializeDatabase = async () => {
   try {
@@ -18,7 +18,7 @@ const initializeDatabase = async () => {
     console.log('🎉 Database initialization completed!');
     console.log('📊 Available tables:');
     console.log('   - members');
-    console.log('   - children');
+    console.log('   - dependants');
     
   } catch (error) {
     console.error('❌ Database initialization failed:', error);

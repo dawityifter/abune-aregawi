@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  const Child = sequelize.define('Child', {
+  const Dependant = sequelize.define('Dependant', {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
@@ -73,16 +73,16 @@ module.exports = (sequelize) => {
       defaultValue: DataTypes.NOW
     }
   }, {
-    tableName: 'children',
+    tableName: 'dependants',
     timestamps: true
   });
 
-  Child.associate = (models) => {
-    Child.belongsTo(models.Member, {
+  Dependant.associate = (models) => {
+    Dependant.belongsTo(models.Member, {
       foreignKey: 'memberId',
-      as: 'parent'
+      as: 'member'
     });
   };
 
-  return Child;
+  return Dependant;
 }; 

@@ -46,15 +46,15 @@ try {
 
 // Import models
 const Member = require('./Member')(sequelize);
-const Child = require('./Child')(sequelize);
+const Dependant = require('./Dependant')(sequelize);
 
 // Define associations
-Member.associate({ Child, Member });
-Child.associate({ Child, Member });
+Member.associate({ Dependant, Member });
+Dependant.associate({ Dependant, Member });
 
 // Export models and sequelize instance
 module.exports = {
   sequelize,
   Member,
-  Child
+  Dependant
 }; 

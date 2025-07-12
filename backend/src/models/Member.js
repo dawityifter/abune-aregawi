@@ -246,9 +246,9 @@ module.exports = (sequelize) => {
   // Class methods
   Member.associate = (models) => {
     // Define associations here
-    Member.hasMany(models.Child, {
+    Member.hasMany(models.Dependant, {
       foreignKey: 'memberId',
-      as: 'children'
+      as: 'dependants'
     });
     
     // Contribution association will be added when Contribution model is created

@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { Member, Child } = require('../models');
+const { Member, Dependant } = require('../models');
 
 // Register new member
 exports.register = async (req, res) => {
@@ -59,8 +59,8 @@ exports.register = async (req, res) => {
       password,
       role,
       
-      // Children
-      children
+      // Dependants
+      dependants
     } = req.body;
 
     // Check if email already exists
@@ -164,16 +164,16 @@ exports.register = async (req, res) => {
       await member.save();
     }
 
-    // Add children if provided and HoH
-    if (isHeadOfHousehold && children && Array.isArray(children) && children.length > 0) {
-      const childrenData = children.map(child => {
-        const { baptismDate, nameDay, ...cleanChild } = child;
+    // Add dependants if provided and HoH
+    if (isHeadOfHousehold && dependants && Array.isArray(dependants) && dependants.length > 0) {
+      const dependantsData = dependants.map(dependant => {
+        const { baptismDate, nameDay, ...cleanDependant } = dependant;
         return {
-          ...cleanChild,
+          ...cleanDependant,
           memberId: member.id
         };
       });
-      await Child.bulkCreate(childrenData);
+      await Dependant.bulkCreate(dependantsData);
     }
 
     // Generate JWT token
@@ -187,11 +187,11 @@ exports.register = async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Fetch member with children
-    const memberWithChildren = await Member.findByPk(member.id, {
+    // Fetch member with dependants
+    const memberWithDependants = await Member.findByPk(member.id, {
       include: [{
-        model: Child,
-        as: 'children'
+        model: Dependant,
+        as: 'dependants'
       }]
     });
 
@@ -199,7 +199,7 @@ exports.register = async (req, res) => {
       success: true,
       message: 'Member registered successfully',
       data: {
-        member: memberWithChildren,
+        member: memberWithDependants,
         token
       }
     });
@@ -223,8 +223,8 @@ exports.login = async (req, res) => {
     const member = await Member.findOne({
       where: { loginEmail: email },
       include: [{
-        model: Child,
-        as: 'children'
+        model: Dependant,
+        as: 'dependants'
       }]
     });
 
@@ -290,8 +290,8 @@ exports.getProfile = async (req, res) => {
   try {
     const member = await Member.findByPk(req.user.id, {
       include: [{
-        model: Child,
-        as: 'children'
+        model: Dependant,
+        as: 'dependants'
       }]
     });
 
@@ -333,30 +333,30 @@ exports.updateProfile = async (req, res) => {
 
     await member.update(updateData);
 
-    // Update children if provided
-    if (req.body.children && Array.isArray(req.body.children)) {
-      // Remove existing children
-      await Child.destroy({ where: { memberId: member.id } });
+    // Update dependants if provided
+    if (req.body.dependants && Array.isArray(req.body.dependants)) {
+      // Remove existing dependants
+      await Dependant.destroy({ where: { memberId: member.id } });
       
-      // Add new children
-      if (req.body.children.length > 0) {
-        const childrenData = req.body.children.map(child => {
+      // Add new dependants
+      if (req.body.dependants.length > 0) {
+        const dependantsData = req.body.dependants.map(dependant => {
           // Remove baptismDate and nameDay fields if they're empty or invalid
-          const { baptismDate, nameDay, ...cleanChild } = child;
+          const { baptismDate, nameDay, ...cleanDependant } = dependant;
           return {
-            ...cleanChild,
+            ...cleanDependant,
             memberId: member.id
           };
         });
-        await Child.bulkCreate(childrenData);
+        await Dependant.bulkCreate(dependantsData);
       }
     }
 
-    // Fetch updated member with children
+    // Fetch updated member with dependants
     const updatedMember = await Member.findByPk(member.id, {
       include: [{
-        model: Child,
-        as: 'children'
+        model: Dependant,
+        as: 'dependants'
       }]
     });
 
@@ -403,8 +403,8 @@ exports.getAllMembers = async (req, res) => {
     const { count, rows: members } = await Member.findAndCountAll({
       where: whereClause,
       include: [{
-        model: Child,
-        as: 'children'
+        model: Dependant,
+        as: 'dependants'
       }],
       limit: parseInt(limit),
       offset: parseInt(offset),
@@ -462,8 +462,8 @@ exports.getAllMembersFirebase = async (req, res) => {
     const { count, rows: members } = await Member.findAndCountAll({
       where: whereClause,
       include: [{
-        model: Child,
-        as: 'children'
+        model: Dependant,
+        as: 'dependants'
       }],
       limit: parseInt(limit),
       offset: parseInt(offset),
@@ -498,8 +498,8 @@ exports.getMemberById = async (req, res) => {
   try {
     const member = await Member.findByPk(req.params.id, {
       include: [{
-        model: Child,
-        as: 'children'
+        model: Dependant,
+        as: 'dependants'
       }]
     });
 
@@ -538,26 +538,26 @@ exports.updateMember = async (req, res) => {
 
     await member.update(req.body);
 
-    // Update children if provided
-    if (req.body.children && Array.isArray(req.body.children)) {
-      // Remove existing children
-      await Child.destroy({ where: { memberId: member.id } });
+    // Update dependants if provided
+    if (req.body.dependants && Array.isArray(req.body.dependants)) {
+      // Remove existing dependants
+      await Dependant.destroy({ where: { memberId: member.id } });
       
-      // Add new children
-      if (req.body.children.length > 0) {
-        const childrenData = req.body.children.map(child => ({
-          ...child,
+      // Add new dependants
+      if (req.body.dependants.length > 0) {
+        const dependantsData = req.body.dependants.map(dependant => ({
+          ...dependant,
           memberId: member.id
         }));
-        await Child.bulkCreate(childrenData);
+        await Dependant.bulkCreate(dependantsData);
       }
     }
 
-    // Fetch updated member with children
+    // Fetch updated member with dependants
     const updatedMember = await Member.findByPk(member.id, {
       include: [{
-        model: Child,
-        as: 'children'
+        model: Dependant,
+        as: 'dependants'
       }]
     });
 
@@ -655,8 +655,8 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         email: req.query.email || '' // We'll pass email as query param
       },
       include: [{
-        model: Child,
-        as: 'children'
+        model: Dependant,
+        as: 'dependants'
       }]
     });
 
@@ -709,8 +709,8 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
     // Fetch updated member
     const updatedMember = await Member.findByPk(member.id, {
       include: [{
-        model: Child,
-        as: 'children'
+        model: Dependant,
+        as: 'dependants'
       }]
     });
 
@@ -729,25 +729,25 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
   }
 };
 
-// Children Management Endpoints
+// Dependants Management Endpoints
 
-// Get all children for a member
-exports.getMemberChildren = async (req, res) => {
+// Get all dependants for a member
+exports.getMemberDependants = async (req, res) => {
   try {
     const { memberId } = req.params;
 
-    const children = await Child.findAll({
+    const dependants = await Dependant.findAll({
       where: { memberId },
       order: [['dateOfBirth', 'ASC']]
     });
 
     res.json({
       success: true,
-      data: { children }
+      data: { dependants }
     });
 
   } catch (error) {
-    console.error('Get member children error:', error);
+    console.error('Get member dependants error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -755,11 +755,11 @@ exports.getMemberChildren = async (req, res) => {
   }
 };
 
-// Add a child to a member
-exports.addChild = async (req, res) => {
+// Add a dependant to a member
+exports.addDependant = async (req, res) => {
   try {
     const { memberId } = req.params;
-    const childData = req.body;
+    const dependantData = req.body;
 
     // Verify member exists
     const member = await Member.findByPk(memberId);
@@ -771,22 +771,22 @@ exports.addChild = async (req, res) => {
     }
 
     // Remove baptismDate and nameDay fields if they're empty or invalid
-    const { baptismDate, nameDay, ...cleanChildData } = childData;
+    const { baptismDate, nameDay, ...cleanDependantData } = dependantData;
 
-    // Create child
-    const child = await Child.create({
-      ...cleanChildData,
+    // Create dependant
+    const dependant = await Dependant.create({
+      ...cleanDependantData,
       memberId
     });
 
     res.status(201).json({
       success: true,
-      message: 'Child added successfully',
-      data: { child }
+      message: 'Dependant added successfully',
+      data: { dependant }
     });
 
   } catch (error) {
-    console.error('Add child error:', error);
+    console.error('Add dependant error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -794,33 +794,33 @@ exports.addChild = async (req, res) => {
   }
 };
 
-// Update a child
-exports.updateChild = async (req, res) => {
+// Update a dependant
+exports.updateDependant = async (req, res) => {
   try {
-    const { childId } = req.params;
+    const { dependantId } = req.params;
     const updateData = req.body;
 
-    const child = await Child.findByPk(childId);
-    if (!child) {
+    const dependant = await Dependant.findByPk(dependantId);
+    if (!dependant) {
       return res.status(404).json({
         success: false,
-        message: 'Child not found'
+        message: 'Dependant not found'
       });
     }
 
     // Remove baptismDate and nameDay fields if they're empty or invalid
     const { baptismDate, nameDay, ...cleanUpdateData } = updateData;
 
-    await child.update(cleanUpdateData);
+    await dependant.update(cleanUpdateData);
 
     res.json({
       success: true,
-      message: 'Child updated successfully',
-      data: { child }
+      message: 'Dependant updated successfully',
+      data: { dependant }
     });
 
   } catch (error) {
-    console.error('Update child error:', error);
+    console.error('Update dependant error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -828,28 +828,28 @@ exports.updateChild = async (req, res) => {
   }
 };
 
-// Delete a child
-exports.deleteChild = async (req, res) => {
+// Delete a dependant
+exports.deleteDependant = async (req, res) => {
   try {
-    const { childId } = req.params;
+    const { dependantId } = req.params;
 
-    const child = await Child.findByPk(childId);
-    if (!child) {
+    const dependant = await Dependant.findByPk(dependantId);
+    if (!dependant) {
       return res.status(404).json({
         success: false,
-        message: 'Child not found'
+        message: 'Dependant not found'
       });
     }
 
-    await child.destroy();
+    await dependant.destroy();
 
     res.json({
       success: true,
-      message: 'Child deleted successfully'
+      message: 'Dependant deleted successfully'
     });
 
   } catch (error) {
-    console.error('Delete child error:', error);
+    console.error('Delete dependant error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
