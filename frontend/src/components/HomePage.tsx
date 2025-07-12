@@ -17,9 +17,10 @@ const HomePage: React.FC = () => {
   return (
     <div className={`min-h-screen ${language === 'ti' ? 'text-tigrigna' : ''}`}>
       <HeroSection />
-      <div className="flex justify-center my-6">
+      <div className="flex justify-center my-8">
         <Link to="/donate">
-          <button className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-8 rounded-lg text-lg shadow-lg transition duration-200">
+          <button className="btn btn-secondary text-lg shadow-lg">
+            <i className="fas fa-heart mr-2"></i>
             Donate
           </button>
         </Link>
@@ -27,7 +28,6 @@ const HomePage: React.FC = () => {
       <WhatsHappeningSection />
       <WatchListenSection />
       <ParticipationSection />
-      <DashboardPreviewSection />
       <StayConnectedSection />
       <NewcomerSection />
       <GrowSpirituallySection />

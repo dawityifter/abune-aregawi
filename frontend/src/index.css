@@ -12,7 +12,11 @@
   }
   
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-neutral-50 text-accent-700;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Georgia', 'Times New Roman', serif;
   }
 }
 
@@ -22,19 +26,19 @@
   }
   
   .btn-primary {
-    @apply bg-primary-800 text-white hover:bg-primary-900 focus:ring-primary-500 transform hover:-translate-y-0.5;
+    @apply bg-primary-700 text-white hover:bg-primary-800 focus:ring-primary-500 transform hover:-translate-y-0.5;
   }
   
   .btn-secondary {
-    @apply bg-secondary-800 text-white hover:bg-secondary-900 focus:ring-secondary-500 transform hover:-translate-y-0.5;
+    @apply bg-secondary-600 text-white hover:bg-secondary-700 focus:ring-secondary-500 transform hover:-translate-y-0.5;
   }
   
   .btn-accent {
-    @apply bg-accent-800 text-white hover:bg-accent-900 focus:ring-accent-500 transform hover:-translate-y-0.5;
+    @apply bg-accent-600 text-white hover:bg-accent-700 focus:ring-accent-500 transform hover:-translate-y-0.5;
   }
   
   .btn-outline {
-    @apply bg-transparent text-primary-800 border-primary-800 hover:bg-primary-800 hover:text-white focus:ring-primary-500;
+    @apply bg-transparent text-primary-700 border-primary-700 hover:bg-primary-700 hover:text-white focus:ring-primary-500;
   }
   
   .btn-small {
@@ -46,19 +50,43 @@
   }
   
   .lang-btn.active {
-    @apply bg-accent-800 border-accent-800 text-white;
+    @apply bg-primary-700 border-primary-700 text-white;
   }
   
   .card {
-    @apply bg-white rounded-xl shadow-lg p-6 transition-transform duration-300 hover:-translate-y-1;
+    @apply bg-white rounded-xl shadow-lg p-6 transition-transform duration-300 hover:-translate-y-1 border border-accent-200;
   }
   
   .section-title {
-    @apply text-3xl font-bold text-center mb-8 text-gray-900;
+    @apply text-h2 font-serif text-center mb-8 text-primary-700;
   }
   
   .hero-gradient {
-    background: linear-gradient(135deg, #8B4513 0%, #A0522D 50%, #DAA520 100%);
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #fbbf24 100%);
+  }
+
+  .nav-link {
+    @apply text-accent-600 hover:text-accent-900 transition-colors duration-200 font-nav;
+  }
+  
+  .nav-link-active {
+    @apply text-primary-700 font-medium;
+  }
+
+  .content-card {
+    @apply bg-white rounded-lg shadow-md p-6 border border-accent-200 hover:shadow-lg transition-shadow duration-300;
+  }
+
+  .info-block {
+    @apply bg-neutral-100 rounded-lg p-6 border-l-4 border-primary-700;
+  }
+
+  .service-time {
+    @apply text-h4 font-serif text-primary-700 mb-2;
+  }
+
+  .contact-info {
+    @apply text-body text-accent-700;
   }
 }
 
@@ -71,11 +99,19 @@
     @apply bg-white/10 backdrop-blur-md border border-white/20;
   }
   
-  .nav-link {
-    @apply text-gray-600 hover:text-gray-900 transition-colors duration-200;
+  .traditional-header {
+    @apply bg-primary-700 text-white;
   }
-  
-  .nav-link-active {
-    @apply text-primary-600 font-medium;
+
+  .traditional-footer {
+    @apply bg-accent-600 text-white;
+  }
+
+  .mission-statement {
+    @apply text-h3 font-serif text-primary-700 text-center leading-relaxed;
+  }
+
+  .clergy-info {
+    @apply text-h4 font-serif text-primary-600;
   }
 }

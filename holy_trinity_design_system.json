@@ -1,0 +1,247 @@
+{
+  "design_system_profile": {
+    "website_name": "Tigray Orthodox Church",
+    "url": "https://abune-aregawi.vercel.app/",
+    "category": "Tigray Orthodox Religious/Community Organization",
+    "analysis_date": "2025-07-12",
+    
+    "design_philosophy": {
+      "style": "Traditional Tigray Orthodox with Modern Web Standards",
+      "approach": "Community-focused, cultural preservation, warm and welcoming",
+      "target_audience": "Tigray Orthodox community, Ethiopian diaspora, local residents, visitors",
+      "primary_goals": [
+        "Provide service information",
+        "Build community connection",
+        "Preserve Tigray Orthodox traditions",
+        "Share Orthodox faith teachings",
+        "Promote cultural events and activities"
+      ]
+    },
+
+    "visual_identity": {
+      "color_palette": {
+        "primary": {
+          "description": "Traditional Tigray Orthodox red tones",
+          "colors": [
+            "#dc2626",
+            "#b91c1c",
+            "#991b1b",
+            "#7f1d1d"
+          ]
+        },
+        "secondary": {
+          "description": "Sacred gold and yellow accents",
+          "colors": [
+            "#fbbf24",
+            "#f59e0b",
+            "#d97706",
+            "#eab308",
+            "#facc15"
+          ]
+        },
+        "accent": {
+          "description": "Deep ceremonial colors",
+          "colors": [
+            "#92400e",
+            "#78350f",
+            "#451a03"
+          ]
+        },
+        "neutral": {
+          "description": "Clean whites and warm grays",
+          "colors": [
+            "#ffffff",
+            "#fef7cd",
+            "#fef3c7",
+            "#6b7280",
+            "#374151"
+          ]
+        }
+      },
+      "typography": {
+        "hierarchy": {
+          "primary_font": "Serif family (traditional, readable)",
+          "secondary_font": "Sans-serif (modern, clean)",
+          "headings": {
+            "h1": "36px, bold, serif",
+            "h2": "28px, semi-bold, serif",
+            "h3": "22px, semi-bold, serif",
+            "h4": "18px, medium, serif"
+          },
+          "body_text": "16px, regular, sans-serif",
+          "navigation": "14px, medium, sans-serif",
+          "captions": "12px, regular, sans-serif"
+        },
+        "characteristics": [
+          "Traditional and dignified",
+          "Highly readable",
+          "Appropriate for Tigray Orthodox content",
+          "Culturally respectful appearance",
+          "Supports Ge'ez script if needed"
+        ]
+      }
+    },
+
+    "layout_structure": {
+      "page_layout": "Traditional multi-column with sidebar",
+      "grid_system": "Flexible, content-focused layout",
+      "header": {
+        "structure": "Logo/title, navigation, contact info",
+        "height": "Fixed header with site branding",
+        "navigation_style": "Horizontal menu bar"
+      },
+      "content_areas": {
+        "main_content": "Primary content area, left-aligned",
+        "sidebar": "Secondary information, announcements",
+        "footer": "Contact information, hours, additional links"
+      },
+      "responsive_approach": "Mobile-friendly adaptation"
+    },
+
+    "content_sections": {
+      "hero_section": {
+        "type": "Mission statement with imagery",
+        "elements": [
+          "Church mission statement",
+          "Key service information",
+          "Visual icons (book, church, compass)"
+        ]
+      },
+      "key_information": {
+        "clergy": "Traditional Tigray Orthodox priest title and name",
+        "service_times": {
+          "morning_prayers": "Traditional service times",
+          "divine_liturgy": "Main service schedule"
+        },
+        "location": "1621 S Jupiter Rd, Garland, TX 75042",
+        "phone": "Contact number",
+        "office_hours": "Administrative hours"
+      },
+      "featured_content": [
+        "Community announcements",
+        "Tigray Orthodox faith teachings",
+        "Cultural celebrations and festivals",
+        "Community support initiatives"
+      ]
+    },
+
+    "ui_components": {
+      "navigation": {
+        "style": "Horizontal menu",
+        "behavior": "Dropdown menus for categories",
+        "visual_treatment": "Clean, professional styling"
+      },
+      "cards": {
+        "style": "Content cards with clear hierarchy",
+        "elements": [
+          "Title",
+          "Description/excerpt",
+          "Call-to-action (Read More)"
+        ]
+      },
+      "icons": {
+        "style": "Simple, culturally appropriate icons",
+        "usage": [
+          "Cross icon for faith",
+          "Church icon for clergy",
+          "Star of David or traditional symbol for location",
+          "Book icon for teachings",
+          "Cultural symbols relevant to Tigray Orthodox tradition"
+        ]
+      },
+      "buttons": {
+        "primary": "Solid background, contrasting text",
+        "secondary": "Outlined or text-based",
+        "call_to_action": "Prominent, action-oriented"
+      }
+    },
+
+    "imagery_approach": {
+      "style": "Traditional Tigray Orthodox religious imagery",
+      "types": [
+        "Ethiopian Orthodox church architecture",
+        "Tigray Orthodox religious symbols and icons",
+        "Community and cultural event photos",
+        "Traditional Ethiopian/Tigray cultural imagery",
+        "Religious artwork and manuscripts"
+      ],
+      "treatment": "Clean, respectful, culturally sensitive presentation"
+    },
+
+    "user_experience_patterns": {
+      "navigation_flow": "Hierarchical with clear categories",
+      "content_discovery": "Featured content on homepage",
+      "engagement_points": [
+        "Online pledge form",
+        "Event information",
+        "Contact information",
+        "Service schedules"
+      ],
+      "accessibility": "Traditional web accessibility standards"
+    },
+
+    "technical_characteristics": {
+      "framework": "WordPress-based (inferred from content structure)",
+      "responsive_design": "Mobile-adaptive layout",
+      "performance": "Standard loading, image optimization",
+      "seo_approach": "Content-focused with proper meta structure"
+    },
+
+    "replication_guidelines": {
+      "design_principles": [
+        "Maintain dignity and respect appropriate for Tigray Orthodox content",
+        "Use traditional color schemes (reds, golds, yellows)",
+        "Ensure excellent readability with serif typography for headings",
+        "Create clear information hierarchy",
+        "Include essential contact and service information prominently",
+        "Respect cultural traditions and religious practices",
+        "Support multilingual content if needed (Tigrinya, Amharic, English)"
+      ],
+      "layout_recommendations": [
+        "Header with clear branding and navigation",
+        "Hero section with mission statement",
+        "Three-column layout for key information (clergy, services, location)",
+        "Featured content cards for important updates",
+        "Footer with comprehensive contact details"
+      ],
+      "content_strategy": [
+        "Lead with mission and Tigray Orthodox values",
+        "Highlight service times and clergy",
+        "Feature community events and cultural celebrations",
+        "Provide clear calls-to-action for engagement",
+        "Include cultural and educational content",
+        "Support community diaspora connections",
+        "Preserve and share Tigray Orthodox traditions"
+      ],
+      "ui_component_library": [
+        "Navigation bar with dropdown menus",
+        "Content cards with titles and excerpts",
+        "Information blocks with icons",
+        "Contact information sections",
+        "Call-to-action buttons for forms and events"
+      ]
+    },
+
+    "brand_voice": {
+      "tone": "Welcoming, traditional, respectful, culturally proud",
+      "messaging": [
+        "Community-focused",
+        "Spiritually grounded in Tigray Orthodox tradition",
+        "Culturally proud of Ethiopian/Tigray heritage",
+        "Educationally oriented",
+        "Diaspora-supportive"
+      ],
+      "communication_style": "Formal yet approachable, informative, culturally sensitive"
+    },
+
+    "conversion_goals": [
+      "Encourage attendance at services",
+      "Promote stewardship and donations",
+      "Build community engagement",
+      "Share Tigray Orthodox faith knowledge",
+      "Drive cultural event participation",
+      "Support diaspora community connections",
+      "Preserve cultural and religious traditions"
+    ]
+  }
+}

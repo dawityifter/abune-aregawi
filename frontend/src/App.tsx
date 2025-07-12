@@ -15,6 +15,7 @@ import MemberStatus from './components/MemberStatus';
 import DonatePage from './components/DonatePage';
 import ChildrenManagement from './components/ChildrenManagement';
 import ChurchBylaw from './components/ChurchBylaw';
+import ParishPulseSignUp from './components/ParishPulseSignUp';
 import './index.css';
 
 function App() {
@@ -57,6 +58,7 @@ function App() {
               <Route path="/donate" element={<DonatePage />} />
               <Route path="/church-bylaw" element={<ChurchBylaw />} />
               <Route path="/children" element={<ProtectedRoute><ChildrenManagement /></ProtectedRoute>} />
+              <Route path="/parish-pulse-sign-up" element={<ParishPulseSignUp />} />
               {/* Add more routes here as we build them */}
             </Routes>
           </div>
