@@ -12,13 +12,13 @@ import {
   reauthenticateWithCredential,
   updatePassword
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { auth } from '../firebase';
 
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
   signUp: (email: string, password: string, displayName: string) => Promise<UserCredential>;
+  completeRegistration: (firebaseUid: string, memberData: any) => Promise<any>;
   signIn: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -56,23 +56,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const result = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(result.user, { displayName });
       
-      // Create user profile in Firestore
-      try {
-        await setDoc(doc(db, 'users', result.user.uid), {
-          email,
-          displayName,
-          createdAt: new Date().toISOString(),
-          role: 'member',
-          isActive: true
-        });
-        console.log('User profile created in Firestore');
-      } catch (firestoreError: any) {
-        console.warn('Could not create user profile in Firestore:', firestoreError.message);
-        // Continue even if Firestore fails - user is still created in Firebase Auth
-      }
+      // Return the Firebase user result - registration completion will be handled separately
+      console.log('Firebase Auth user created successfully. UID:', result.user.uid);
       
       return result;
     } catch (error: any) {
+      throw new Error(error.message);
+    }
+  };
+
+  // Complete registration in PostgreSQL after Firebase Auth
+  const completeRegistration = async (firebaseUid: string, memberData: any) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/complete-registration/${firebaseUid}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(memberData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to complete registration');
+      }
+
+      const data = await response.json();
+      console.log('Registration completed in PostgreSQL:', data);
+      return data;
+    } catch (error: any) {
+      console.error('Complete registration error:', error);
       throw new Error(error.message);
     }
   };
@@ -126,47 +139,87 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const getUserProfile = async (uid: string) => {
     try {
       console.log('Getting user profile for UID:', uid);
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      console.log('User document exists:', userDoc.exists());
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        console.log('User profile data:', data);
-        return data;
+      
+      // Get profile from backend API (PostgreSQL) - Single source of truth
+      if (currentUser?.email) {
+        try {
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?email=${encodeURIComponent(currentUser.email)}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Backend profile data:', data.data.member);
+            
+            // Return profile with PostgreSQL role (single source of truth)
+            return {
+              email: data.data.member.email,
+              displayName: `${data.data.member.firstName} ${data.data.member.lastName}`,
+              createdAt: data.data.member.createdAt,
+              role: data.data.member.role, // PostgreSQL role
+              isActive: data.data.member.isActive,
+              // Include other fields from backend
+              firstName: data.data.member.firstName,
+              lastName: data.data.member.lastName,
+              phoneNumber: data.data.member.phoneNumber,
+              memberId: data.data.member.memberId
+            };
+          } else {
+            console.warn('Backend API returned error:', response.status);
+          }
+        } catch (apiError) {
+          console.error('Error fetching from backend API:', apiError);
+        }
       }
-      console.log('User document does not exist, creating default profile');
-      // If user doesn't exist in Firestore, create a default profile
-      const defaultProfile = {
+      
+      // Fallback: Return basic profile from Firebase Auth only
+      console.log('Using Firebase Auth fallback profile');
+      return {
+        email: currentUser?.email || '',
+        displayName: currentUser?.displayName || 'User',
+        createdAt: new Date().toISOString(),
+        role: 'member', // Default role
+        isActive: true
+      };
+    } catch (error: any) {
+      console.error('Error in getUserProfile:', error);
+      
+      // Final fallback
+      return {
         email: currentUser?.email || '',
         displayName: currentUser?.displayName || 'User',
         createdAt: new Date().toISOString(),
         role: 'member',
         isActive: true
       };
-      await setDoc(doc(db, 'users', uid), defaultProfile);
-      return defaultProfile;
-    } catch (error: any) {
-      console.error('Error in getUserProfile:', error);
-      
-      // If Firestore is not available, return a default profile
-      if (error.message.includes('offline') || error.message.includes('permission') || error.code === 'unavailable') {
-        console.log('Firestore not available, using default profile');
-        return {
-          email: currentUser?.email || '',
-          displayName: currentUser?.displayName || 'User',
-          createdAt: new Date().toISOString(),
-          role: 'member',
-          isActive: true
-        };
-      }
-      
-      throw new Error(error.message);
     }
   };
 
   const updateUserProfileData = async (uid: string, data: any) => {
     try {
-      await updateDoc(doc(db, 'users', uid), data);
+      // Update backend API (PostgreSQL) - Single source of truth
+      if (currentUser?.email) {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?email=${encodeURIComponent(currentUser.email)}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Backend API error: ${response.status}`);
+        }
+        
+        console.log('Profile updated in PostgreSQL via backend API');
+      } else {
+        throw new Error('No user email available for profile update');
+      }
     } catch (error: any) {
+      console.error('Error updating user profile:', error);
       throw new Error(error.message);
     }
   };
@@ -175,6 +228,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     currentUser,
     loading,
     signUp,
+    completeRegistration,
     signIn,
     logout,
     resetPassword,

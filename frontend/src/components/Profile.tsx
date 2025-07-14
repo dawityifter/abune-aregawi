@@ -218,8 +218,16 @@ const Profile: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     let newValue = value;
-    if (name === 'phoneNumber') {
-      newValue = formatPhoneNumber(value);
+    if (name === 'phoneNumber' || name === 'emergencyPhone') {
+      let digits = value.replace(/[^\d]/g, '');
+      if (digits.length > 10) digits = digits.slice(0, 10);
+      if (digits.length > 6) {
+        newValue = `${digits.slice(0,3)}-${digits.slice(3,6)}-${digits.slice(6,10)}`;
+      } else if (digits.length > 3) {
+        newValue = `${digits.slice(0,3)}-${digits.slice(3,6)}`;
+      } else {
+        newValue = digits;
+      }
     }
     setFormData(prev => ({
       ...prev,
@@ -475,6 +483,7 @@ const Profile: React.FC = () => {
                         name="phoneNumber"
                         value={formData.phoneNumber || ''}
                         onChange={handleInputChange}
+                        maxLength={12}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
                     ) : (
@@ -686,6 +695,7 @@ const Profile: React.FC = () => {
                         name="emergencyPhone"
                         value={formData.emergencyPhone || ''}
                         onChange={handleInputChange}
+                        maxLength={12}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         placeholder={t('emergency.phone.number')}
                       />

@@ -1,5 +1,18 @@
 const jwt = require('jsonwebtoken');
+const admin = require('firebase-admin');
+const { Op } = require('sequelize');
 const { Member } = require('../models');
+const path = require('path');
+const serviceAccount = require(path.resolve(__dirname, '..', '..', 'firebase-service-account.json'));
+
+// Initialize Firebase Admin if not already done
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    // Optionally, set the projectId if not in the JSON:
+    // projectId: 'your-firebase-project-id'
+  });
+}
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -35,11 +48,11 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // Add member info to request
+    // Add member info to request - always use fresh role from database
     req.user = {
       id: member.id,
       email: member.loginEmail,
-      role: member.role,
+      role: member.role, // This is now the fresh role from database
       memberId: member.memberId
     };
 
@@ -72,30 +85,33 @@ const firebaseAuthMiddleware = async (req, res, next) => {
   try {
     // Get Firebase token from header
     const authHeader = req.headers.authorization;
-    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
         message: 'Access denied. No Firebase token provided.'
       });
     }
-
     const firebaseToken = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // For now, we'll use a simple approach: get the user's email from the request
-    // and verify they exist in our database with admin role
-    const userEmail = req.query.email || req.body.email;
-    
+    // Verify Firebase token and extract email
+    const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+    const userEmail = decodedToken.email;
+
     if (!userEmail) {
       return res.status(401).json({
         success: false,
-        message: 'User email required for Firebase authentication.'
+        message: 'User email not found in Firebase token.'
       });
     }
 
-    // Find member by email
+    // Find member by email (check both email and loginEmail fields)
     const member = await Member.findOne({
-      where: { email: userEmail }
+      where: {
+        [Op.or]: [
+          { email: userEmail },
+          { loginEmail: userEmail }
+        ]
+      }
     });
 
     if (!member) {
@@ -104,7 +120,6 @@ const firebaseAuthMiddleware = async (req, res, next) => {
         message: 'Member not found. Please complete your registration first.'
       });
     }
-
     if (!member.isActive) {
       return res.status(401).json({
         success: false,
@@ -112,7 +127,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       });
     }
 
-    // Check if user has admin role
+    // Check if user has admin role (using PostgreSQL role)
     const adminRoles = ['admin', 'church_leadership', 'treasurer', 'secretary'];
     if (!adminRoles.includes(member.role)) {
       return res.status(403).json({
@@ -121,10 +136,9 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       });
     }
 
-    // Add member info to request
     req.user = {
       id: member.id,
-      email: member.email,
+      email: member.loginEmail || member.email,
       role: member.role,
       memberId: member.memberId
     };
@@ -132,9 +146,9 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Firebase auth middleware error:', error);
-    res.status(500).json({
+    res.status(401).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Invalid or expired Firebase token.'
     });
   }
 };

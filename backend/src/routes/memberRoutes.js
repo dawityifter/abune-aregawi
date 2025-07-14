@@ -13,6 +13,18 @@ const roleMiddleware = require('../middleware/role');
 
 // Public routes
 router.post('/register', validateMemberRegistration, memberController.register);
+
+// Complete registration after Firebase Auth (prevents partial saves)
+router.post('/complete-registration/:firebaseUid', memberController.completeRegistration);
+
+// Check registration status
+router.get('/registration-status', memberController.checkRegistrationStatus);
+
+// Cleanup orphaned users (admin only)
+router.get('/cleanup-orphaned', 
+  roleMiddleware(['admin']), 
+  memberController.cleanupOrphanedUsers
+);
 router.post('/login', validateLogin, memberController.login);
 
 // Firebase Auth profile routes (no JWT required)
@@ -28,8 +40,8 @@ router.post('/:memberId/dependants', memberController.addDependant);
 router.put('/dependants/:dependantId', memberController.updateDependant);
 router.delete('/dependants/:dependantId', memberController.deleteDependant);
 
-// Protected routes (require authentication)
-router.use(authMiddleware);
+// Protected routes (require Firebase authentication)
+router.use(firebaseAuthMiddleware);
 
 // Member profile routes
 router.get('/profile', memberController.getProfile);
@@ -52,6 +64,13 @@ router.put('/:id',
   roleMiddleware(['admin', 'church_leadership', 'secretary']), 
   validateMemberId, 
   memberController.updateMember
+);
+
+// Update member role (admin only)
+router.patch('/:id/role', 
+  roleMiddleware(['admin']), 
+  validateMemberId, 
+  memberController.updateMemberRole
 );
 
 router.delete('/:id', 

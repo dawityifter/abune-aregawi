@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
-import { auth } from '../../firebase';
 
 interface RoleManagementProps {
   // Add any props if needed
@@ -9,6 +9,7 @@ interface RoleManagementProps {
 
 const RoleManagement: React.FC<RoleManagementProps> = () => {
   const { t } = useLanguage();
+  const { currentUser } = useAuth();
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,8 +25,6 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
     try {
       setLoading(true);
       
-      // Get current user from Firebase Auth
-      const currentUser = auth.currentUser;
       if (!currentUser || !currentUser.email) {
         throw new Error('User not authenticated');
       }
@@ -55,7 +54,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
 
     setUpdating(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${selectedMember.id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${selectedMember.id}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

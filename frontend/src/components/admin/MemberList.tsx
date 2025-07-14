@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
-import { auth } from '../../firebase';
 
 interface Member {
   id: string;
@@ -29,6 +29,7 @@ const MemberList: React.FC<MemberListProps> = ({
   canDeleteMembers 
 }) => {
   const { t } = useLanguage();
+  const { currentUser } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,8 +51,6 @@ const MemberList: React.FC<MemberListProps> = ({
         ...(statusFilter && { isActive: statusFilter })
       });
 
-      // Get current user from Firebase Auth
-      const currentUser = auth.currentUser;
       if (!currentUser || !currentUser.email) {
         throw new Error('User not authenticated');
       }
@@ -88,7 +87,7 @@ const MemberList: React.FC<MemberListProps> = ({
     }
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

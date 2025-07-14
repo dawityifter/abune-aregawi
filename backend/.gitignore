@@ -111,3 +111,5 @@ public/uploads/
 # Build outputs
 build/
 dist/ 
+# Ignore Firebase service account key everywhere
+**/firebase-service-account.json

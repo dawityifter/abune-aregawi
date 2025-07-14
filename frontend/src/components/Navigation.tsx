@@ -102,6 +102,15 @@ const Navigation: React.FC = () => {
                     {t('admin.panel')}
                   </Link>
                 )}
+                {(userRole === 'treasurer' || userRole === 'admin') && (
+                  <Link
+                    to="/treasurer"
+                    className="text-sm text-green-200 hover:text-green-100 font-medium transition-colors"
+                  >
+                    <i className="fas fa-dollar-sign mr-1"></i>
+                    Treasurer
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className="text-sm text-yellow-200 hover:text-yellow-100 transition-colors"

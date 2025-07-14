@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const { Member, Dependant } = require('../models');
 
-// Register new member
+// Register new member with Firebase UID
 exports.register = async (req, res) => {
   try {
     // Check for validation errors
@@ -63,7 +63,7 @@ exports.register = async (req, res) => {
       dependants
     } = req.body;
 
-    // Check if email already exists
+    // Check if email already exists in PostgreSQL
     const existingMember = await Member.findOne({
       where: { email: email }
     });
@@ -75,7 +75,7 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Check if login email already exists
+    // Check if login email already exists in PostgreSQL
     const existingLoginEmail = await Member.findOne({
       where: { loginEmail: loginEmail }
     });
@@ -85,6 +85,20 @@ exports.register = async (req, res) => {
         success: false,
         message: 'A member with this login email already exists'
       });
+    }
+
+    // Check if Firebase UID already exists in PostgreSQL
+    if (firebaseUid) {
+      const existingFirebaseUser = await Member.findOne({
+        where: { firebaseUid: firebaseUid }
+      });
+
+      if (existingFirebaseUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'A member with this Firebase UID already exists'
+        });
+      }
     }
 
     // --- FAMILY LOGIC ---
@@ -645,14 +659,22 @@ exports.getMemberContributions = async (req, res) => {
 exports.getProfileByFirebaseUid = async (req, res) => {
   try {
     const { uid } = req.params;
+    const userEmail = req.query.email;
 
-    // Find member by Firebase UID (we'll need to store this during registration)
-    // For now, let's find by email since that's what we have in common
+    if (!userEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'User email is required'
+      });
+    }
+
+    // Find member by email (check both email and loginEmail fields)
     const member = await Member.findOne({
-      where: { 
-        // We'll need to add a firebaseUid field to the Member model
-        // For now, let's try to find by email from Firebase Auth
-        email: req.query.email || '' // We'll pass email as query param
+      where: {
+        [Op.or]: [
+          { email: userEmail },
+          { loginEmail: userEmail }
+        ]
       },
       include: [{
         model: Dependant,
@@ -663,8 +685,14 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     if (!member) {
       return res.status(404).json({
         success: false,
-        message: 'Member not found'
+        message: 'Member not found. Please complete your registration first.',
+        code: 'REGISTRATION_REQUIRED'
       });
+    }
+
+    // Update Firebase UID if not set
+    if (!member.firebaseUid) {
+      await member.update({ firebaseUid: uid });
     }
 
     res.json({
@@ -722,6 +750,129 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
 
   } catch (error) {
     console.error('Update profile by Firebase UID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Complete registration after Firebase Auth (prevents partial saves)
+exports.completeRegistration = async (req, res) => {
+  try {
+    const { firebaseUid } = req.params;
+    const memberData = req.body;
+
+    // Validate required fields
+    if (!memberData.email || !memberData.firstName || !memberData.lastName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, firstName, and lastName are required'
+      });
+    }
+
+    // Check if member already exists in PostgreSQL
+    const existingMember = await Member.findOne({
+      where: {
+        [Op.or]: [
+          { email: memberData.email },
+          { loginEmail: memberData.loginEmail || memberData.email },
+          { firebaseUid: firebaseUid }
+        ]
+      }
+    });
+
+    if (existingMember) {
+      return res.status(400).json({
+        success: false,
+        message: 'Member already exists in database',
+        data: { member: existingMember }
+      });
+    }
+
+    // Create member in PostgreSQL with Firebase UID
+    const member = await Member.create({
+      ...memberData,
+      firebaseUid: firebaseUid,
+      role: memberData.role || 'member'
+    });
+
+    // Handle dependants if provided
+    if (memberData.dependants && Array.isArray(memberData.dependants) && memberData.dependants.length > 0) {
+      const dependantsData = memberData.dependants.map(dependant => ({
+        ...dependant,
+        memberId: member.id
+      }));
+      await Dependant.bulkCreate(dependantsData);
+    }
+
+    // Fetch complete member with dependants
+    const completeMember = await Member.findByPk(member.id, {
+      include: [{
+        model: Dependant,
+        as: 'dependants'
+      }]
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration completed successfully',
+      data: { member: completeMember }
+    });
+
+  } catch (error) {
+    console.error('Complete registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to complete registration',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Update member role (admin only)
+exports.updateMemberRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    // Validate role
+    const validRoles = ['admin', 'church_leadership', 'treasurer', 'secretary', 'member', 'guest'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role. Must be one of: ' + validRoles.join(', ')
+      });
+    }
+
+    // Find and update member
+    const member = await Member.findByPk(id);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member not found'
+      });
+    }
+
+    // Update role in PostgreSQL
+    await member.update({ role });
+
+    // Fetch updated member
+    const updatedMember = await Member.findByPk(id, {
+      include: [{
+        model: Dependant,
+        as: 'dependants'
+      }]
+    });
+
+    res.json({
+      success: true,
+      message: 'Member role updated successfully',
+      data: { member: updatedMember }
+    });
+
+  } catch (error) {
+    console.error('Update member role error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -850,6 +1001,114 @@ exports.deleteDependant = async (req, res) => {
 
   } catch (error) {
     console.error('Delete dependant error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+}; 
+
+// Cleanup orphaned Firebase users (admin only)
+exports.cleanupOrphanedUsers = async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email parameter is required'
+      });
+    }
+
+    // Check if user exists in PostgreSQL
+    const member = await Member.findOne({
+      where: {
+        [Op.or]: [
+          { email: email },
+          { loginEmail: email }
+        ]
+      }
+    });
+
+    if (member) {
+      return res.status(200).json({
+        success: true,
+        message: 'User exists in PostgreSQL',
+        data: { member }
+      });
+    }
+
+    // If user doesn't exist in PostgreSQL, we can't clean up Firebase Auth
+    // This would require Firebase Admin SDK which we're not using
+    return res.status(404).json({
+      success: false,
+      message: 'User not found in PostgreSQL. Cannot clean up Firebase Auth without Admin SDK.',
+      suggestion: 'User may need to complete registration or contact administrator.'
+    });
+
+  } catch (error) {
+    console.error('Cleanup orphaned users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Check registration status
+exports.checkRegistrationStatus = async (req, res) => {
+  try {
+    const { email, firebaseUid } = req.query;
+
+    if (!email && !firebaseUid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Either email or firebaseUid is required'
+      });
+    }
+
+    const whereClause = {};
+    if (email) {
+      whereClause[Op.or] = [
+        { email: email },
+        { loginEmail: email }
+      ];
+    }
+    if (firebaseUid) {
+      whereClause.firebaseUid = firebaseUid;
+    }
+
+    const member = await Member.findOne({
+      where: whereClause,
+      include: [{
+        model: Dependant,
+        as: 'dependants'
+      }]
+    });
+
+    if (member) {
+      return res.status(200).json({
+        success: true,
+        message: 'Registration complete',
+        data: { 
+          member,
+          status: 'complete',
+          hasFirebaseUid: !!member.firebaseUid
+        }
+      });
+    } else {
+      return res.status(404).json({
+        success: false,
+        message: 'Registration incomplete',
+        data: { 
+          status: 'incomplete',
+          suggestion: 'User needs to complete registration in PostgreSQL'
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('Check registration status error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

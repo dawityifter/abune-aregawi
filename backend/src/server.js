@@ -15,6 +15,7 @@ console.log('  FRONTEND_URL:', process.env.FRONTEND_URL);
 
 // Import routes
 const memberRoutes = require('./routes/memberRoutes');
+const memberPaymentRoutes = require('./routes/memberPaymentRoutes');
 
 // Import database
 const { sequelize } = require('./models');
@@ -75,6 +76,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/members', memberRoutes);
+app.use('/api/payments', memberPaymentRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

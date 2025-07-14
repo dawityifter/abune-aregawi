@@ -198,11 +198,22 @@ const ContactAddressStep: React.FC<{
         <input
           type="tel"
           value={formData.phoneNumber}
-          onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+          onChange={(e) => {
+            let value = e.target.value.replace(/[^\d]/g, '');
+            if (value.length > 10) value = value.slice(0, 10);
+            let formatted = value;
+            if (value.length > 6) {
+              formatted = `${value.slice(0,3)}-${value.slice(3,6)}-${value.slice(6,10)}`;
+            } else if (value.length > 3) {
+              formatted = `${value.slice(0,3)}-${value.slice(3,6)}`;
+            }
+            handleInputChange('phoneNumber', formatted);
+          }}
+          maxLength={12}
           className={`w-full px-3 py-2 border rounded-md ${
             errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
           }`}
-          placeholder="(555) 123-4567"
+          placeholder="123-456-7890"
         />
         {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>}
       </div>
@@ -449,9 +460,9 @@ const SpiritualInfoStep: React.FC<{
           onChange={(e) => handleInputChange('languagePreference', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
         >
-          <option value="English">{t('english')}</option>
-          <option value="Tigrigna">{t('tigrigna')}</option>
-          <option value="Amharic">{t('amharic')}</option>
+          <option value="English">English</option>
+          <option value="Tigrigna">Tigrigna</option>
+          <option value="Amharic">Amharic</option>
         </select>
       </div>
     </div>

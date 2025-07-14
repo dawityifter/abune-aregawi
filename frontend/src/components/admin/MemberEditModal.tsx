@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
 
 interface Member {
@@ -47,6 +48,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
   canEditMembers
 }) => {
   const { t } = useLanguage();
+  const { currentUser } = useAuth();
   const [formData, setFormData] = useState<Member>(member);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +77,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
     setError(null);
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${member.id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${member.id}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -300,7 +302,25 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   type="tel"
                   name="phoneNumber"
                   value={formData.phoneNumber || ''}
-                  onChange={handleInputChange}
+                  onChange={e => {
+                    let value = e.target.value.replace(/[^\d]/g, '');
+                    if (value.length > 10) value = value.slice(0, 10);
+                    let formatted = value;
+                    if (value.length > 6) {
+                      formatted = `${value.slice(0,3)}-${value.slice(3,6)}-${value.slice(6,10)}`;
+                    } else if (value.length > 3) {
+                      formatted = `${value.slice(0,3)}-${value.slice(3,6)}`;
+                    }
+                    // Create a synthetic event for handleInputChange
+                    handleInputChange({
+                      target: {
+                        name: 'phoneNumber',
+                        value: formatted,
+                        type: 'tel'
+                      }
+                    } as React.ChangeEvent<HTMLInputElement>);
+                  }}
+                  maxLength={12}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
@@ -326,7 +346,25 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   type="tel"
                   name="emergencyContactPhone"
                   value={formData.emergencyContactPhone || ''}
-                  onChange={handleInputChange}
+                  onChange={e => {
+                    let value = e.target.value.replace(/[^\d]/g, '');
+                    if (value.length > 10) value = value.slice(0, 10);
+                    let formatted = value;
+                    if (value.length > 6) {
+                      formatted = `${value.slice(0,3)}-${value.slice(3,6)}-${value.slice(6,10)}`;
+                    } else if (value.length > 3) {
+                      formatted = `${value.slice(0,3)}-${value.slice(3,6)}`;
+                    }
+                    // Create a synthetic event for handleInputChange
+                    handleInputChange({
+                      target: {
+                        name: 'emergencyContactPhone',
+                        value: formatted,
+                        type: 'tel'
+                      }
+                    } as React.ChangeEvent<HTMLInputElement>);
+                  }}
+                  maxLength={12}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
@@ -438,9 +476,9 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">{t('select.language')}</option>
-                  <option value="english">English</option>
-                  <option value="tigrinya">Tigrinya</option>
-                  <option value="amharic">Amharic</option>
+                  <option value="English">English</option>
+                  <option value="Tigrigna">Tigrigna</option>
+                  <option value="Amharic">Amharic</option>
                 </select>
               </div>
 

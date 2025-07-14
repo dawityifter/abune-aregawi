@@ -7,6 +7,7 @@ import MemberRegistration from './components/auth/MemberRegistration';
 import Login from './components/auth/Login';
 import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
+import TreasurerDashboard from './components/admin/TreasurerDashboard';
 import Profile from './components/Profile';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Navigation from './components/Navigation';
@@ -42,6 +43,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <AdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/treasurer" 
+                element={
+                  <ProtectedRoute>
+                    <TreasurerDashboard />
                   </ProtectedRoute>
                 } 
               />

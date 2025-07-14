@@ -26,6 +26,8 @@
   "author": "Abune Aregawi Church",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.10.0"
+    "axios": "^1.10.0",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^17.2.0"
   }
 }
