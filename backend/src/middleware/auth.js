@@ -5,14 +5,19 @@ const { Member } = require('../models');
 const path = require('path');
 const serviceAccount = require(path.resolve(__dirname, '..', '..', 'firebase-service-account.json'));
 
-// Initialize Firebase Admin if not already done
-if (!admin.apps.length) {
+if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+  const serviceAccount = JSON.parse(
+    Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8')
+  );
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    // Optionally, set the projectId if not in the JSON:
-    // projectId: 'your-firebase-project-id'
+    // ...other config
   });
+} else {
+  // fallback for local dev, e.g. require('./firebase-service-account.json')
+  console.log('No Firebase service account found. ');
 }
+
 
 const authMiddleware = async (req, res, next) => {
   try {
