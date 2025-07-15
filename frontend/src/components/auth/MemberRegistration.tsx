@@ -98,6 +98,9 @@ export function formatPhoneNumber(value: string) {
   return formatted.trim();
 }
 
+// Get today's date in YYYY-MM-DD format
+const today = new Date().toISOString().slice(0, 10);
+
 const MemberRegistration: React.FC = () => {
   const { t } = useLanguage();
   const { signUp } = useAuth();
@@ -109,7 +112,7 @@ const MemberRegistration: React.FC = () => {
     middleName: '',
     lastName: '',
     gender: 'Male',
-    dateOfBirth: '',
+    dateOfBirth: today,
     maritalStatus: 'Single',
     isHeadOfHousehold: true,
     spouseEmail: '',
@@ -128,7 +131,7 @@ const MemberRegistration: React.FC = () => {
     emergencyContactName: '',
     emergencyContactPhone: '',
     dependants: [],
-    dateJoinedParish: '',
+    dateJoinedParish: today,
     baptismName: '',
     interestedInServing: '',
     ministries: [],
@@ -192,9 +195,6 @@ const MemberRegistration: React.FC = () => {
           if (!formData.spouseName) newErrors.spouseName = t('spouse.name.required');
           if (!formData.spouseEmail) newErrors.spouseEmail = t('spouse.email.required');
           if (!formData.spouseContactPhone || formData.spouseContactPhone.replace(/\D/g, '').length !== 10) newErrors.spouseContactPhone = t('spouse.contact.phone.required');
-        } else {
-          if (!formData.emergencyContactName) newErrors.emergencyContactName = t('emergency.contact.name.required');
-          if (!formData.emergencyContactPhone || formData.emergencyContactPhone.replace(/\D/g, '').length !== 10) newErrors.emergencyContactPhone = t('emergency.contact.phone.required');
         }
         break;
       case 4: // Dependants
