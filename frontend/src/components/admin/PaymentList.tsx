@@ -62,7 +62,13 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
 
       if (response.ok) {
         const data = await response.json();
-        setPayments(data.data);
+        // Convert totalAmountDue and totalCollected to numbers
+        const normalizedPayments = data.data.map((p: any) => ({
+          ...p,
+          totalAmountDue: Number(p.totalAmountDue),
+          totalCollected: Number(p.totalCollected)
+        }));
+        setPayments(normalizedPayments);
         setTotalPages(data.pagination.totalPages);
       }
     } catch (error) {
@@ -83,6 +89,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
     if (totalAmountDue > 0 && totalCollected >= totalAmountDue) return 'text-green-600 bg-green-100';
     if (totalAmountDue > 0 && totalCollected > 0 && totalCollected < totalAmountDue) return 'text-yellow-600 bg-yellow-100';
     if (totalAmountDue > 0 && totalCollected === 0) return 'text-red-600 bg-red-100';
+    if (totalAmountDue === 0 && totalCollected === 0) return '';
     return '';
   };
 
@@ -90,6 +97,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
     if (totalAmountDue > 0 && totalCollected >= totalAmountDue) return 'Up to Date';
     if (totalAmountDue > 0 && totalCollected > 0 && totalCollected < totalAmountDue) return 'Partial';
     if (totalAmountDue > 0 && totalCollected === 0) return 'Behind';
+    if (totalAmountDue === 0 && totalCollected === 0) return '';
     return '';
   };
 
@@ -174,8 +182,17 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {payments.map((payment) => (
-                <tr key={payment.id} className="hover:bg-gray-50">
+              {payments.map((payment) => {
+                const statusText = getStatusText(payment.totalCollected, payment.totalAmountDue);
+                // Debug log for status computation
+                console.log('[DEBUG] Payment Row:', {
+                  memberName: payment.memberName,
+                  totalAmountDue: payment.totalAmountDue,
+                  totalCollected: payment.totalCollected,
+                  statusText
+                });
+                return (
+                  <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
@@ -207,16 +224,17 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatCurrency(payment.totalCollected)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatCurrency(payment.balanceDue)}
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm ${payment.totalCollected - payment.totalAmountDue < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                    {formatCurrency(payment.totalCollected - payment.totalAmountDue)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.totalCollected, payment.totalAmountDue)}`}>
-                      {getStatusText(payment.totalCollected, payment.totalAmountDue)}
+                      {statusText}
                     </span>
                   </td>
                 </tr>
-              ))}
+              );
+            })}
             </tbody>
           </table>
         </div>

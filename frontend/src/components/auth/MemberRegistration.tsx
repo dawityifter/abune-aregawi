@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAuth } from 'firebase/auth';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import {
   PersonalInfoStep,
   ContactAddressStep,
@@ -171,14 +171,15 @@ const MemberRegistration: React.FC = () => {
         if (!formData.firstName) newErrors.firstName = t('first.name.required');
         if (!formData.lastName) newErrors.lastName = t('last.name.required');
         if (!formData.dateOfBirth) newErrors.dateOfBirth = t('date.of.birth.required');
-        // Validate head of household email if not head of household
+        if (!formData.gender) (newErrors as any).genderError = t('gender.required');
+        if (!formData.maritalStatus) newErrors.maritalStatus = t('marital.status.required');
+        if (typeof formData.isHeadOfHousehold !== 'boolean') (newErrors as any).isHeadOfHouseholdError = t('head.of.household.required');
         if (!formData.isHeadOfHousehold && !formData.headOfHouseholdEmail) {
           newErrors.headOfHouseholdEmail = t('head.of.household.email.not.found');
         }
         break;
-      
       case 2: // Contact & Address
-        if (!formData.phoneNumber) newErrors.phoneNumber = t('phone.number.required');
+        if (!formData.phoneNumber || formData.phoneNumber.replace(/\D/g, '').length !== 10) newErrors.phoneNumber = t('phone.number.required');
         if (!formData.email) newErrors.email = t('email.required');
         if (!formData.streetLine1) newErrors.streetLine1 = t('street.line1.required');
         if (!formData.city) newErrors.city = t('city.required');
@@ -186,19 +187,35 @@ const MemberRegistration: React.FC = () => {
         if (!formData.postalCode) newErrors.postalCode = t('postal.code.required');
         if (!formData.country) newErrors.country = t('country.required');
         break;
-      
-      case 3: // Family Information - No required fields for this step
+      case 3: // Family Information
+        if (formData.maritalStatus === 'Married') {
+          if (!formData.spouseName) newErrors.spouseName = t('spouse.name.required');
+          if (!formData.spouseEmail) newErrors.spouseEmail = t('spouse.email.required');
+          if (!formData.spouseContactPhone || formData.spouseContactPhone.replace(/\D/g, '').length !== 10) newErrors.spouseContactPhone = t('spouse.contact.phone.required');
+        } else {
+          if (!formData.emergencyContactName) newErrors.emergencyContactName = t('emergency.contact.name.required');
+          if (!formData.emergencyContactPhone || formData.emergencyContactPhone.replace(/\D/g, '').length !== 10) newErrors.emergencyContactPhone = t('emergency.contact.phone.required');
+        }
         break;
-      
-      case 4: // Dependants Information - No required fields for this step
+      case 4: // Dependants
+        if (formData.isHeadOfHousehold && formData.hasDependants) {
+          if (!formData.dependants || formData.dependants.length === 0) {
+            (newErrors as any).dependants = t('at.least.one.dependant.required');
+          } else {
+            formData.dependants.forEach((dep, idx) => {
+              if (!dep.firstName || !dep.lastName || !dep.dateOfBirth) {
+                (newErrors as any).dependants = t('all.dependant.fields.required');
+              }
+            });
+          }
+        }
         break;
-      
-      case 5: // Spiritual Information - No required fields for this step
+      case 5: // Spiritual Information
+        // No required fields (optional)
         break;
-      
-      case 6: // Contribution - No required fields for this step
+      case 6: // Contribution
+        if (!formData.preferredGivingMethod) newErrors.preferredGivingMethod = t('preferred.giving.method.required');
         break;
-      
       case 7: // Account Information
         if (!formData.loginEmail) newErrors.loginEmail = t('login.email.required');
         if (!formData.password) newErrors.password = t('password.required');
@@ -304,8 +321,18 @@ const MemberRegistration: React.FC = () => {
           if (createdFirebaseUid) {
             try {
               const auth = getAuth();
-              const currentUser = auth.currentUser;
-              const idToken = currentUser ? await currentUser.getIdToken() : null;
+              // Wait for auth state to update if currentUser is not set
+              if (!auth.currentUser) {
+                await new Promise<void>((resolve) => {
+                  const unsubscribe = onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                      unsubscribe();
+                      resolve();
+                    }
+                  });
+                });
+              }
+              const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
               await fetch(`${process.env.REACT_APP_API_URL}/api/members/firebase/delete-user`, {
                 method: 'POST',
                 headers: {
@@ -315,7 +342,7 @@ const MemberRegistration: React.FC = () => {
                 body: JSON.stringify({ uid: createdFirebaseUid }),
               });
             } catch (deleteErr) {
-              // Failed to delete Firebase user after backend failure
+              // Optionally handle/log delete error
             }
           }
           // Show validation errors if any

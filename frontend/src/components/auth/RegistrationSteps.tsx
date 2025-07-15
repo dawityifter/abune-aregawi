@@ -199,21 +199,25 @@ const ContactAddressStep: React.FC<{
           type="tel"
           value={formData.phoneNumber}
           onChange={(e) => {
-            let value = e.target.value.replace(/[^\d]/g, '');
-            if (value.length > 10) value = value.slice(0, 10);
-            let formatted = value;
-            if (value.length > 6) {
-              formatted = `${value.slice(0,3)}-${value.slice(3,6)}-${value.slice(6,10)}`;
-            } else if (value.length > 3) {
-              formatted = `${value.slice(0,3)}-${value.slice(3,6)}`;
-            }
-            handleInputChange('phoneNumber', formatted);
+            // Only allow up to 10 digits
+            const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+            handleInputChange('phoneNumber', formatPhoneNumber(digits));
           }}
-          maxLength={12}
+          onBlur={(e) => {
+            // Show error if not 10 digits on blur
+            const digits = formData.phoneNumber.replace(/\D/g, '');
+            if (digits.length > 0 && digits.length < 10) {
+              handleInputChange('phoneNumber', formatPhoneNumber(formData.phoneNumber));
+              // Optionally, set error here if not already set
+              if (!errors.phoneNumber) {
+                errors.phoneNumber = t('phone.number.invalid');
+              }
+            }
+          }}
           className={`w-full px-3 py-2 border rounded-md ${
             errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
           }`}
-          placeholder="123-456-7890"
+          placeholder="(123) 456-7890"
         />
         {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>}
       </div>
@@ -491,30 +495,10 @@ const ContributionStep: React.FC<{
         >
           <option value="Cash">{t('cash')}</option>
           <option value="Online">{t('online')}</option>
-          <option value="Envelope">{t('envelope')}</option>
           <option value="Check">{t('check')}</option>
         </select>
       </div>
-      
-      <div className="flex items-center">
-        <input
-          type="checkbox"
-          id="titheParticipation"
-          checked={formData.titheParticipation}
-          onChange={(e) => handleInputChange('titheParticipation', e.target.checked)}
-          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-        />
-        <label htmlFor="titheParticipation" className="ml-2 text-sm text-gray-700">
-          {t('participate.in.tithe.pledge.program')}
-        </label>
-      </div>
-      
-      <div className="bg-blue-50 p-4 rounded-md">
-        <h4 className="font-medium text-blue-900 mb-2">{t('member.id.information')}</h4>
-        <p className="text-sm text-blue-700">
-          {t('member.id.help')}
-        </p>
-      </div>
+      {/* Removed titheParticipation checkbox and member ID info/help box */}
     </div>
   </div>
 );
@@ -588,12 +572,6 @@ const AccountStep: React.FC<{
       </ul>
     </div>
     
-    <div className="bg-green-50 p-4 rounded-md">
-      <h4 className="font-medium text-green-900 mb-2">{t('account.access')}</h4>
-      <p className="text-sm text-green-700">
-        {t('account.access.help')}
-      </p>
-    </div>
   </div>
 );
 

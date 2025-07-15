@@ -10,7 +10,8 @@ import {
   updateProfile,
   EmailAuthProvider,
   reauthenticateWithCredential,
-  updatePassword
+  updatePassword,
+  getAuth
 } from 'firebase/auth';
 import { auth } from '../firebase';
 
@@ -237,6 +238,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     getUserProfile,
     updateUserProfileData
   };
+
+  // Add this inside your AuthProvider or after user login is confirmed
+  if (process.env.NODE_ENV === 'development') {
+    const auth = getAuth();
+    if (auth.currentUser) {
+      auth.currentUser.getIdToken().then(token => {
+        console.log("[DEBUG] Firebase ID Token:", token);
+      });
+    } else {
+      // Optionally, listen for auth state changes
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          user.getIdToken().then(token => {
+            console.log("[DEBUG] Firebase ID Token (onAuthStateChanged):", token);
+          });
+        }
+      });
+    }
+  }
 
   return (
     <AuthContext.Provider value={value}>

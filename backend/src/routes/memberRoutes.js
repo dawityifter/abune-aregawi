@@ -10,6 +10,7 @@ const {
 } = require('../middleware/validation');
 const { authMiddleware, firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
+const admin = require('firebase-admin');
 
 // Public routes
 router.post('/register', validateMemberRegistration, memberController.register);
@@ -85,5 +86,18 @@ router.get('/:id/contributions',
   validateMemberId, 
   memberController.getMemberContributions
 );
+
+router.post('/firebase/delete-user', async (req, res) => {
+  const { uid } = req.body;
+  if (!uid) {
+    return res.status(400).json({ message: 'UID is required.' });
+  }
+  try {
+    await admin.auth().deleteUser(uid);
+    res.status(200).json({ message: 'User deleted from Firebase.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete user from Firebase.', error: err.message });
+  }
+});
 
 module.exports = router; 
