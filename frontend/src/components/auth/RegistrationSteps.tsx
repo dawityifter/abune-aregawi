@@ -396,7 +396,11 @@ const FamilyInfoStep: React.FC<{
             <input
               type="tel"
               value={formData.emergencyContactPhone}
-              onChange={(e) => handleInputChange('emergencyContactPhone', formatPhoneNumber(e.target.value))}
+              onChange={(e) => {
+                // Only allow up to 10 digits
+                const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                handleInputChange('emergencyContactPhone', formatPhoneNumber(digits));
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               placeholder="(555) 123-4567"
             />
