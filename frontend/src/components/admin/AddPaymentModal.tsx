@@ -53,7 +53,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
     setError('');
 
     try {
-      const response = await fetch(`/api/payments/${selectedMemberId}/payment?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/${selectedMemberId}/payment?email=${encodeURIComponent(currentUser?.email || '')}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

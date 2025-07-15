@@ -28,7 +28,7 @@ const TreasurerDashboard: React.FC = () => {
 
   const fetchPaymentStats = async () => {
     try {
-      const response = await fetch(`/api/payments/stats?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/stats?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
           'Authorization': `Bearer ${await currentUser?.getIdToken()}`
         }

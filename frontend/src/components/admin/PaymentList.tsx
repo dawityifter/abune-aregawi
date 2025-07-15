@@ -54,7 +54,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
         params.append('status', statusFilter);
       }
 
-      const response = await fetch(`/api/payments?${params}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments?${params}`, {
         headers: {
           'Authorization': `Bearer ${await currentUser?.getIdToken()}`
         }

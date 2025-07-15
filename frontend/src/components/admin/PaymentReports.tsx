@@ -53,7 +53,7 @@ const PaymentReports: React.FC = () => {
   const fetchReport = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/payments/reports/${reportType}?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/reports/${reportType}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
           'Authorization': `Bearer ${await currentUser?.getIdToken()}`
         }
