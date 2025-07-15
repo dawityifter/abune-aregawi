@@ -12,6 +12,22 @@ const { authMiddleware, firebaseAuthMiddleware } = require('../middleware/auth')
 const roleMiddleware = require('../middleware/role');
 const admin = require('firebase-admin');
 
+// Only verifies Firebase ID token, does not check DB
+const verifyFirebaseTokenOnly = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'No Firebase token provided.' });
+    }
+    const firebaseToken = authHeader.substring(7);
+    const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+    req.firebaseUid = decodedToken.uid;
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: 'Invalid or expired Firebase token.' });
+  }
+};
+
 // Public routes
 router.post('/register', validateMemberRegistration, memberController.register);
 
@@ -87,7 +103,7 @@ router.get('/:id/contributions',
   memberController.getMemberContributions
 );
 
-router.post('/firebase/delete-user', async (req, res) => {
+router.post('/firebase/delete-user', verifyFirebaseTokenOnly, async (req, res) => {
   const { uid } = req.body;
   if (!uid) {
     return res.status(400).json({ message: 'UID is required.' });
