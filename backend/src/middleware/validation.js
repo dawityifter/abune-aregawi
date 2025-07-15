@@ -161,7 +161,7 @@ exports.validateMemberRegistration = [
   
   // Spiritual Information
   body('dateJoinedParish')
-    .optional()
+    .optional({ checkFalsy: true })
     .isISO8601()
     .withMessage('Date joined parish must be a valid date'),
   
