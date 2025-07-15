@@ -65,9 +65,9 @@ const HeroSection: React.FC = () => {
 
         {/* Church Logo and Name */}
         <div className="flex items-center justify-center gap-4 mb-12">
-          <i className="fas fa-cross text-6xl text-secondary-400"></i>
+          <img src={require('../../logo.svg').default} alt="Orthodox Cross" className="h-16 w-16" />
           <h1 className="text-3xl md:text-4xl font-serif font-bold text-white">
-            {t('church.name')}
+            Tigray Orthodox Church
           </h1>
         </div>
 
