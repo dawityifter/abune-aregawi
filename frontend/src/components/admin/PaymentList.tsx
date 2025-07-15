@@ -80,15 +80,17 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
   };
 
   const getStatusColor = (totalCollected: number, totalAmountDue: number) => {
-    if (totalCollected >= totalAmountDue) return 'text-green-600 bg-green-100';
-    if (totalCollected > 0 && totalCollected < totalAmountDue) return 'text-yellow-600 bg-yellow-100';
-    return 'text-red-600 bg-red-100';
+    if (totalAmountDue > 0 && totalCollected >= totalAmountDue) return 'text-green-600 bg-green-100';
+    if (totalAmountDue > 0 && totalCollected > 0 && totalCollected < totalAmountDue) return 'text-yellow-600 bg-yellow-100';
+    if (totalAmountDue > 0 && totalCollected === 0) return 'text-red-600 bg-red-100';
+    return '';
   };
 
   const getStatusText = (totalCollected: number, totalAmountDue: number) => {
-    if (totalCollected >= totalAmountDue) return 'Up to Date';
-    if (totalCollected > 0 && totalCollected < totalAmountDue) return 'Partial';
-    return 'Behind';
+    if (totalAmountDue > 0 && totalCollected >= totalAmountDue) return 'Up to Date';
+    if (totalAmountDue > 0 && totalCollected > 0 && totalCollected < totalAmountDue) return 'Partial';
+    if (totalAmountDue > 0 && totalCollected === 0) return 'Behind';
+    return '';
   };
 
   if (loading) {
