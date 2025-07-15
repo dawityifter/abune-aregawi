@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -143,6 +143,13 @@ const MemberRegistration: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Auto-populate loginEmail with email when entering step 7
+  useEffect(() => {
+    if (currentStep === 7 && !formData.loginEmail && formData.email) {
+      setFormData(prev => ({ ...prev, loginEmail: prev.email }));
+    }
+  }, [currentStep, formData.loginEmail, formData.email]);
+
   const handleInputChange = (field: keyof RegistrationForm, value: any) => {
     // Auto-format phone number
     if (field === 'phoneNumber') {
@@ -224,12 +231,14 @@ const MemberRegistration: React.FC = () => {
       setCurrentStep(nextStep);
     } else {
       // Submit the form
+      let createdFirebaseUid = null;
       try {
         setLoading(true);
         
         // Create Firebase Auth account first
         const displayName = `${formData.firstName} ${formData.lastName}`;
         const userCredential = await signUp(formData.loginEmail, formData.password, displayName);
+        createdFirebaseUid = userCredential.user.uid;
         
         // Prepare registration data with Firebase UID
         const registrationData = {
@@ -285,13 +294,23 @@ const MemberRegistration: React.FC = () => {
         
         if (response.ok) {
           // Handle successful registration
-          console.log('Registration successful');
           navigate('/dashboard');
         } else {
           // Handle backend errors
           const errorData = await response.json();
-          console.error('Backend registration failed:', errorData);
           
+          // Rollback: delete Firebase user if backend registration fails
+          if (createdFirebaseUid) {
+            try {
+              await fetch(`${process.env.REACT_APP_API_URL}/api/members/firebase/delete-user`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: createdFirebaseUid }),
+              });
+            } catch (deleteErr) {
+              // Failed to delete Firebase user after backend failure
+            }
+          }
           // Show validation errors if any
           if (errorData.errors && Array.isArray(errorData.errors)) {
             const errorMessages = errorData.errors.map((err: any) => `${err.path}: ${err.msg}`).join(', ');
@@ -301,7 +320,18 @@ const MemberRegistration: React.FC = () => {
           }
         }
       } catch (error: any) {
-        console.error('Registration error:', error);
+        // If Firebase user was created but error happened after, try to delete
+        if (createdFirebaseUid) {
+          try {
+            await fetch(`${process.env.REACT_APP_API_URL}/api/members/firebase/delete-user`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ uid: createdFirebaseUid }),
+            });
+          } catch (deleteErr) {
+            // Failed to delete Firebase user after error
+          }
+        }
         setError(error.message);
       } finally {
         setLoading(false);
