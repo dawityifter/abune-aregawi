@@ -77,10 +77,11 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
     setError(null);
 
     try {
+      const idToken = currentUser ? await currentUser.getIdToken() : null;
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${member.id}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': idToken ? `Bearer ${idToken}` : '',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(formData)
@@ -513,35 +514,6 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                     {t('interested.in.serving')}
                   </span>
                 </label>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="titheParticipation"
-                    checked={formData.titheParticipation || false}
-                    onChange={(e) => setFormData(prev => ({ ...prev, titheParticipation: e.target.checked }))}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">
-                    {t('tithe.participation')}
-                  </span>
-                </label>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('ministries')}
-                </label>
-                <textarea
-                  name="ministries"
-                  value={formData.ministries || ''}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder={t('ministries.placeholder')}
-                />
               </div>
             </div>
           )}
