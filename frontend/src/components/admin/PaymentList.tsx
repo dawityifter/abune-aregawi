@@ -79,15 +79,15 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
     }).format(amount);
   };
 
-  const getStatusColor = (balanceDue: number) => {
-    if (balanceDue <= 0) return 'text-green-600 bg-green-100';
-    if (balanceDue > 0 && balanceDue < 100) return 'text-yellow-600 bg-yellow-100';
+  const getStatusColor = (totalCollected: number, totalAmountDue: number) => {
+    if (totalCollected >= totalAmountDue) return 'text-green-600 bg-green-100';
+    if (totalCollected > 0 && totalCollected < totalAmountDue) return 'text-yellow-600 bg-yellow-100';
     return 'text-red-600 bg-red-100';
   };
 
-  const getStatusText = (balanceDue: number) => {
-    if (balanceDue <= 0) return 'Up to Date';
-    if (balanceDue > 0 && balanceDue < 100) return 'Partial';
+  const getStatusText = (totalCollected: number, totalAmountDue: number) => {
+    if (totalCollected >= totalAmountDue) return 'Up to Date';
+    if (totalCollected > 0 && totalCollected < totalAmountDue) return 'Partial';
     return 'Behind';
   };
 
@@ -209,8 +209,8 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
                     {formatCurrency(payment.balanceDue)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.balanceDue)}`}>
-                      {getStatusText(payment.balanceDue)}
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.totalCollected, payment.totalAmountDue)}`}>
+                      {getStatusText(payment.totalCollected, payment.totalAmountDue)}
                     </span>
                   </td>
                 </tr>
