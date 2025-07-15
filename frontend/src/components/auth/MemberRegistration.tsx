@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { getAuth } from 'firebase/auth';
 import {
   PersonalInfoStep,
   ContactAddressStep,
@@ -302,9 +303,15 @@ const MemberRegistration: React.FC = () => {
           // Rollback: delete Firebase user if backend registration fails
           if (createdFirebaseUid) {
             try {
+              const auth = getAuth();
+              const currentUser = auth.currentUser;
+              const idToken = currentUser ? await currentUser.getIdToken() : null;
               await fetch(`${process.env.REACT_APP_API_URL}/api/members/firebase/delete-user`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+                },
                 body: JSON.stringify({ uid: createdFirebaseUid }),
               });
             } catch (deleteErr) {
@@ -323,9 +330,15 @@ const MemberRegistration: React.FC = () => {
         // If Firebase user was created but error happened after, try to delete
         if (createdFirebaseUid) {
           try {
+            const auth = getAuth();
+            const currentUser = auth.currentUser;
+            const idToken = currentUser ? await currentUser.getIdToken() : null;
             await fetch(`${process.env.REACT_APP_API_URL}/api/members/firebase/delete-user`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+              },
               body: JSON.stringify({ uid: createdFirebaseUid }),
             });
           } catch (deleteErr) {
