@@ -87,10 +87,11 @@ const MemberList: React.FC<MemberListProps> = ({
     }
 
     try {
+      const idToken = currentUser ? await currentUser.getIdToken() : null;
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': idToken ? `Bearer ${idToken}` : '',
           'Content-Type': 'application/json'
         }
       });
