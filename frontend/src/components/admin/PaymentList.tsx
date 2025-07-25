@@ -27,7 +27,7 @@ interface PaymentListProps {
 }
 
 const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, firebaseUser } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -56,7 +56,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
 
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments?${params}`, {
         headers: {
-          'Authorization': `Bearer ${await currentUser?.getIdToken()}`
+          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
       });
 

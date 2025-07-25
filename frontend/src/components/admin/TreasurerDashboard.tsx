@@ -16,7 +16,7 @@ interface PaymentStats {
 }
 
 const TreasurerDashboard: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, firebaseUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'reports'>('overview');
   const [stats, setStats] = useState<PaymentStats | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
@@ -30,7 +30,7 @@ const TreasurerDashboard: React.FC = () => {
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/stats?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
-          'Authorization': `Bearer ${await currentUser?.getIdToken()}`
+          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
       });
       

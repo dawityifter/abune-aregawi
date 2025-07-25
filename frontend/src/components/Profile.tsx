@@ -105,8 +105,12 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (currentUser) {
+      console.log('🔍 Profile component - currentUser:', currentUser);
+      
+      if (currentUser && currentUser.uid) {
         try {
+          console.log('🔍 Fetching profile for UID:', currentUser.uid);
+          
           // Fetch Firebase profile
           const userProfile = await getUserProfile(currentUser.uid);
           setProfile(userProfile);
@@ -136,7 +140,25 @@ const Profile: React.FC = () => {
 
           // Fetch backend member data
           try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?email=${currentUser.email}`, {
+            // Build query parameters based on available user data
+            const params = new URLSearchParams();
+            console.log('🔍 currentUser object:', currentUser);
+            console.log('🔍 currentUser.email:', currentUser.email);
+            console.log('🔍 currentUser.phoneNumber:', currentUser.phoneNumber);
+            
+            if (currentUser.email) {
+              params.append('email', currentUser.email);
+              console.log('✅ Added email parameter:', currentUser.email);
+            }
+            if (currentUser.phoneNumber) {
+              params.append('phone', currentUser.phoneNumber);
+              console.log('✅ Added phone parameter:', currentUser.phoneNumber);
+            }
+            
+            const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?${params.toString()}`;
+            console.log('🔍 Making backend API call to:', apiUrl);
+            
+            const response = await fetch(apiUrl, {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json',
@@ -200,15 +222,19 @@ const Profile: React.FC = () => {
               });
             }
           } catch (backendError) {
-            console.warn('Could not fetch backend data:', backendError);
-            // Continue with Firebase data only
+            console.error('Error fetching backend profile:', backendError);
+            setError('Failed to fetch complete profile data. Please try again.');
           }
-        } catch (error: any) {
+        } catch (error) {
           console.error('Error fetching profile:', error);
-          setError('Failed to load profile');
+          setError('Failed to fetch profile data. Please try again.');
         } finally {
           setLoading(false);
         }
+      } else {
+        console.warn('❌ No currentUser or currentUser.uid found:', currentUser);
+        setError('User not authenticated. Please sign in again.');
+        setLoading(false);
       }
     };
 
@@ -236,7 +262,10 @@ const Profile: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentUser.uid) {
+      setError('User not authenticated. Please sign in again.');
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -278,7 +307,16 @@ const Profile: React.FC = () => {
       };
 
       // Send update to backend API
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?email=${encodeURIComponent(currentUser.email || '')}`, {
+      // Build query parameters based on available user data
+      const params = new URLSearchParams();
+      if (currentUser.email) {
+        params.append('email', currentUser.email);
+      }
+      if (currentUser.phoneNumber) {
+        params.append('phone', currentUser.phoneNumber);
+      }
+      
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?${params.toString()}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

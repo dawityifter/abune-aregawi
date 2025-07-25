@@ -27,7 +27,7 @@ exports.register = async (req, res) => {
       
       // Contact & Address
       phoneNumber,
-      email,
+      email: providedEmail,
       streetLine1,
       apartmentNo,
       city,
@@ -55,7 +55,6 @@ exports.register = async (req, res) => {
       
       // Account
       firebaseUid,
-      loginEmail,
       password,
       role,
       
@@ -63,36 +62,40 @@ exports.register = async (req, res) => {
       dependants
     } = req.body;
 
-    // Check if email already exists in PostgreSQL
-    const existingMember = await Member.findOne({
-      where: { email: email }
-    });
+    // Handle phone sign-in users: generate placeholder email if none provided
+    // This avoids database constraint issues while preserving existing data
+    const email = providedEmail || `phone_${phoneNumber.replace(/[^0-9]/g, '')}@phone-signin.local`;
 
-    if (existingMember) {
+    // Check if email already exists in PostgreSQL (skip check for generated placeholder emails)
+    let existingMemberByEmail = null;
+    if (providedEmail) {
+      existingMemberByEmail = await Member.findOne({
+        where: { email: providedEmail }
+      });
+    }
+    if (existingMemberByEmail) {
       return res.status(400).json({
         success: false,
         message: 'A member with this email already exists'
       });
     }
 
-    // Check if login email already exists in PostgreSQL
-    const existingLoginEmail = await Member.findOne({
-      where: { loginEmail: loginEmail }
+    // Check if phone number already exists in PostgreSQL
+    const existingMemberByPhone = await Member.findOne({
+      where: { phoneNumber }
     });
-
-    if (existingLoginEmail) {
+    if (existingMemberByPhone) {
       return res.status(400).json({
         success: false,
-        message: 'A member with this login email already exists'
+        message: 'A member with this phone number already exists'
       });
     }
 
     // Check if Firebase UID already exists in PostgreSQL
     if (firebaseUid) {
       const existingFirebaseUser = await Member.findOne({
-        where: { firebaseUid: firebaseUid }
+        where: { firebaseUid }
       });
-
       if (existingFirebaseUser) {
         return res.status(400).json({
           success: false,
@@ -166,7 +169,6 @@ exports.register = async (req, res) => {
       preferredGivingMethod,
       titheParticipation,
       firebaseUid,
-      loginEmail,
       password: password || null, // Password is optional since Firebase handles auth
       role: role || 'member',
       familyId: familyId // may be null, will update if HoH
@@ -194,7 +196,7 @@ exports.register = async (req, res) => {
     const token = jwt.sign(
       { 
         id: member.id, 
-        email: member.loginEmail, 
+        email: member.email, 
         role: member.role 
       },
       process.env.JWT_SECRET,
@@ -235,7 +237,7 @@ exports.login = async (req, res) => {
 
     // Find member by login email
     const member = await Member.findOne({
-      where: { loginEmail: email },
+      where: { email },
       include: [{
         model: Dependant,
         as: 'dependants'
@@ -273,7 +275,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { 
         id: member.id, 
-        email: member.loginEmail, 
+        email: member.email, 
         role: member.role 
       },
       process.env.JWT_SECRET,
@@ -660,46 +662,82 @@ exports.getProfileByFirebaseUid = async (req, res) => {
   try {
     const { uid } = req.params;
     const userEmail = req.query.email;
+    const userPhone = req.query.phone;
+    console.log('🔍 getProfileByFirebaseUid called:', { uid, userEmail, userPhone });
+    console.log('🔍 Request headers:', req.headers);
+    
+    // Set cache control headers to prevent 304 responses
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
 
-    if (!userEmail) {
+    if (!userEmail && !userPhone) {
       return res.status(400).json({
         success: false,
-        message: 'User email is required'
+        message: 'User email or phone number is required'
       });
     }
 
-    // Find member by email (check both email and loginEmail fields)
-    const member = await Member.findOne({
-      where: {
-        [Op.or]: [
-          { email: userEmail },
-          { loginEmail: userEmail }
-        ]
-      },
-      include: [{
-        model: Dependant,
-        as: 'dependants'
-      }]
-    });
+    // Find member by email or phone number
+    let member = null;
+    if (userEmail) {
+      console.log('🔍 Searching by email:', userEmail);
+      member = await Member.findOne({
+        where: { email: userEmail },
+        include: [{ model: Dependant, as: 'dependants' }]
+      });
+    } else if (userPhone) {
+      console.log('🔍 Searching by phone:', userPhone);
+      // Handle different phone number formats
+      const cleanPhone = userPhone.replace(/[^\d+]/g, '');
+      console.log('🔍 Clean phone for search:', cleanPhone);
+      
+      member = await Member.findOne({
+        where: {
+          [Op.or]: [
+            { phoneNumber: userPhone },
+            { phoneNumber: cleanPhone },
+            { phoneNumber: userPhone.replace(/[^\d]/g, '') }, // digits only
+            { phoneNumber: `+1${userPhone.replace(/[^\d]/g, '')}` } // add +1 prefix
+          ]
+        },
+        include: [{ model: Dependant, as: 'dependants' }]
+      });
+    }
+
+    console.log('🔍 Member search result:', member ? 'FOUND' : 'NOT FOUND');
+    if (member) {
+      console.log('🔍 Found member:', { id: member.id, email: member.email, phoneNumber: member.phoneNumber });
+    }
 
     if (!member) {
-      return res.status(404).json({
+      console.log('❌ Member not found, returning 404');
+      const notFoundResponse = {
         success: false,
         message: 'Member not found. Please complete your registration first.',
         code: 'REGISTRATION_REQUIRED'
-      });
+      };
+      console.log('📤 Response status: 404, data:', notFoundResponse);
+      return res.status(404).json(notFoundResponse);
     }
 
     // Update Firebase UID if not set
+    console.log('🔍 Checking Firebase UID update:', { currentUid: member.firebaseUid, newUid: uid });
     if (!member.firebaseUid) {
+      console.log('🔍 Updating Firebase UID...');
       await member.update({ firebaseUid: uid });
+      console.log('✅ Firebase UID updated');
     }
 
-    res.json({
+    console.log('✅ Returning member profile');
+    const responseData = {
       success: true,
       data: { member }
-    });
-
+    };
+    console.log('📤 Response status: 200, data:', { memberId: member.id, email: member.email, phone: member.phoneNumber });
+    res.status(200).json(responseData);
   } catch (error) {
     console.error('Get profile by Firebase UID error:', error);
     res.status(500).json({
@@ -730,7 +768,7 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
     }
 
     // Remove sensitive fields that shouldn't be updated via this endpoint
-    const { password, role, isActive, memberId, loginEmail, ...updateData } = req.body;
+    const { password, role, isActive, memberId, ...updateData } = req.body;
 
     await member.update(updateData);
 
@@ -776,7 +814,6 @@ exports.completeRegistration = async (req, res) => {
       where: {
         [Op.or]: [
           { email: memberData.email },
-          { loginEmail: memberData.loginEmail || memberData.email },
           { firebaseUid: firebaseUid }
         ]
       }
@@ -1023,10 +1060,7 @@ exports.cleanupOrphanedUsers = async (req, res) => {
     // Check if user exists in PostgreSQL
     const member = await Member.findOne({
       where: {
-        [Op.or]: [
-          { email: email },
-          { loginEmail: email }
-        ]
+        email: email
       }
     });
 
@@ -1069,10 +1103,7 @@ exports.checkRegistrationStatus = async (req, res) => {
 
     const whereClause = {};
     if (email) {
-      whereClause[Op.or] = [
-        { email: email },
-        { loginEmail: email }
-      ];
+      whereClause.email = email;
     }
     if (firebaseUid) {
       whereClause.firebaseUid = firebaseUid;

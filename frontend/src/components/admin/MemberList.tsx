@@ -29,7 +29,7 @@ const MemberList: React.FC<MemberListProps> = ({
   canDeleteMembers 
 }) => {
   const { t } = useLanguage();
-  const { currentUser } = useAuth();
+  const { currentUser, firebaseUser } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +57,7 @@ const MemberList: React.FC<MemberListProps> = ({
 
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?${params}&email=${encodeURIComponent(currentUser.email)}`, {
         headers: {
-          'Authorization': `Bearer ${await currentUser.getIdToken()}`,
+          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -87,7 +87,7 @@ const MemberList: React.FC<MemberListProps> = ({
     }
 
     try {
-      const idToken = currentUser ? await currentUser.getIdToken() : null;
+      const idToken = firebaseUser ? await firebaseUser.getIdToken() : null;
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         method: 'DELETE',
         headers: {

@@ -1,266 +1,248 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { 
-  User, 
-  UserCredential,
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  sendPasswordResetEmail,
-  updateProfile,
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-  updatePassword,
-  getAuth
-} from 'firebase/auth';
-import { auth } from '../firebase';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { getAuth, signInWithEmailAndPassword, signInWithPhoneNumber, RecaptchaVerifier, User, signOut, onAuthStateChanged } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 
-interface AuthContextType {
-  currentUser: User | null;
-  loading: boolean;
-  signUp: (email: string, password: string, displayName: string) => Promise<UserCredential>;
-  completeRegistration: (firebaseUid: string, memberData: any) => Promise<any>;
-  signIn: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  updateUserProfile: (displayName: string) => Promise<void>;
-  updateUserPassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  getUserProfile: (uid: string) => Promise<any>;
-  updateUserProfileData: (uid: string, data: any) => Promise<void>;
-}
+const AuthContext = createContext<any>(null);
+export const useAuth = () => useContext(AuthContext);
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const auth = getAuth();
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
+  // Listen for Firebase auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('🔥 Firebase auth state changed:', firebaseUser);
+      
+      if (firebaseUser) {
+        // User is signed in with Firebase
+        const uid = firebaseUser.uid;
+        const email = firebaseUser.email;
+        const phone = firebaseUser.phoneNumber;
+        
+        try {
+          // Check if user exists in backend
+          const params = new URLSearchParams();
+          if (email) params.append("email", email);
+          if (phone) params.append("phone", phone);
+          
+          const apiUrl = `/api/members/profile/firebase/${uid}?${params.toString()}`;
+          console.log('🔍 Checking backend for user:', apiUrl);
+          
+          const res = await fetch(apiUrl);
+          
+          if (res.status === 200) {
+            const member = await res.json();
+            console.log('✅ Backend user found:', member);
+            // Ensure the user object has the uid property
+            const userWithUid = {
+              ...member,
+              uid: firebaseUser.uid // Add the Firebase UID to the user object
+            };
+            setUser(userWithUid);
+          } else {
+            console.log('❌ Backend user not found, setting Firebase user as fallback');
+            // Set Firebase user as fallback if backend user not found
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              phoneNumber: firebaseUser.phoneNumber,
+              role: 'member' // Default role
+            });
+          }
+        } catch (err) {
+          console.error('❌ Error checking backend:', err);
+          // Set Firebase user as fallback on error
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            phoneNumber: firebaseUser.phoneNumber,
+            role: 'member' // Default role
+          });
+        }
+      } else {
+        // User is signed out
+        console.log('🔥 User signed out');
+        setUser(null);
+      }
     });
 
-    return unsubscribe;
-  }, []);
+    return () => unsubscribe();
+  }, [auth]);
 
-  const signUp = async (email: string, password: string, displayName: string) => {
+  // Email sign-in
+  const loginWithEmail = async (email: string, password: string) => {
+    setLoading(true);
     try {
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(result.user, { displayName });
-      
-      // Return the Firebase user result - registration completion will be handled separately
-      console.log('Firebase Auth user created successfully. UID:', result.user.uid);
-      
-      return result;
-    } catch (error: any) {
-      throw new Error(error.message);
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      await handlePostSignIn(cred.user);
+    } catch (err) {
+      alert("Login failed: " + (err as any).message);
     }
+    setLoading(false);
   };
 
-  // Complete registration in PostgreSQL after Firebase Auth
-  const completeRegistration = async (firebaseUid: string, memberData: any) => {
+  // Phone sign-in
+  const loginWithPhone = async (phone: string, appVerifier: any, otp?: string, confirmationResult?: any) => {
+    setLoading(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/complete-registration/${firebaseUid}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(memberData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to complete registration');
+      if (!confirmationResult) {
+        // First step: send OTP
+        const result = await signInWithPhoneNumber(auth, phone, appVerifier);
+        setLoading(false);
+        return result; // return confirmationResult for OTP entry
+      } else {
+        // Second step: verify OTP
+        const cred = await confirmationResult.confirm(otp);
+        await handlePostSignIn(cred.user);
       }
-
-      const data = await response.json();
-      console.log('Registration completed in PostgreSQL:', data);
-      return data;
-    } catch (error: any) {
-      console.error('Complete registration error:', error);
-      throw new Error(error.message);
+    } catch (err) {
+      alert("Phone login failed: " + (err as any).message);
     }
+    setLoading(false);
   };
 
-  const signIn = async (email: string, password: string) => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error: any) {
-      throw new Error(error.message);
-    }
-  };
-
+  // Logout
   const logout = async () => {
     try {
       await signOut(auth);
-    } catch (error: any) {
-      throw new Error(error.message);
+      setUser(null);
+      navigate("/");
+    } catch (err) {
+      console.error("Logout failed:", err);
     }
   };
 
-  const resetPassword = async (email: string) => {
-    try {
-      await sendPasswordResetEmail(auth, email);
-    } catch (error: any) {
-      throw new Error(error.message);
-    }
-  };
-
-  const updateUserProfile = async (displayName: string) => {
-    if (!currentUser) throw new Error('No user logged in');
-    
-    try {
-      await updateProfile(currentUser, { displayName });
-    } catch (error: any) {
-      throw new Error(error.message);
-    }
-  };
-
-  const updateUserPassword = async (currentPassword: string, newPassword: string) => {
-    if (!currentUser || !currentUser.email) throw new Error('No user logged in');
-    
-    try {
-      const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
-      await reauthenticateWithCredential(currentUser, credential);
-      await updatePassword(currentUser, newPassword);
-    } catch (error: any) {
-      throw new Error(error.message);
-    }
-  };
-
+  // Get user profile from backend
   const getUserProfile = async (uid: string) => {
     try {
-      console.log('Getting user profile for UID:', uid);
+      const params = new URLSearchParams();
+      if (user?.email) params.append("email", user.email);
+      if (user?.phoneNumber) params.append("phone", user.phoneNumber);
       
-      // Get profile from backend API (PostgreSQL) - Single source of truth
-      if (currentUser?.email) {
-        try {
-          const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?email=${encodeURIComponent(currentUser.email)}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log('Backend profile data:', data.data.member);
-            
-            // Return profile with PostgreSQL role (single source of truth)
-            return {
-              email: data.data.member.email,
-              displayName: `${data.data.member.firstName} ${data.data.member.lastName}`,
-              createdAt: data.data.member.createdAt,
-              role: data.data.member.role, // PostgreSQL role
-              isActive: data.data.member.isActive,
-              // Include other fields from backend
-              firstName: data.data.member.firstName,
-              lastName: data.data.member.lastName,
-              phoneNumber: data.data.member.phoneNumber,
-              memberId: data.data.member.memberId
-            };
-          } else {
-            console.warn('Backend API returned error:', response.status);
-          }
-        } catch (apiError) {
-          console.error('Error fetching from backend API:', apiError);
-        }
+      const apiUrl = `/api/members/profile/firebase/${uid}?${params.toString()}`;
+      const res = await fetch(apiUrl);
+      
+      if (res.status === 200) {
+        const profile = await res.json();
+        return profile;
+      } else {
+        console.error('Failed to fetch user profile:', res.status);
+        return null;
       }
-      
-      // Fallback: Return basic profile from Firebase Auth only
-      console.log('Using Firebase Auth fallback profile');
-      return {
-        email: currentUser?.email || '',
-        displayName: currentUser?.displayName || 'User',
-        createdAt: new Date().toISOString(),
-        role: 'member', // Default role
-        isActive: true
-      };
-    } catch (error: any) {
-      console.error('Error in getUserProfile:', error);
-      
-      // Final fallback
-      return {
-        email: currentUser?.email || '',
-        displayName: currentUser?.displayName || 'User',
-        createdAt: new Date().toISOString(),
-        role: 'member',
-        isActive: true
-      };
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      return null;
     }
   };
 
+  // Update user profile
+  const updateUserProfile = async (updates: any) => {
+    try {
+      const authUser = auth.currentUser;
+      if (authUser) {
+        // @ts-ignore - Firebase User type doesn't include updateProfile but it exists
+        await authUser.updateProfile(updates);
+        setUser({ ...user, ...updates });
+      }
+    } catch (err) {
+      console.error('Error updating user profile:', err);
+      throw err;
+    }
+  };
+
+  // Update user profile data in backend
   const updateUserProfileData = async (uid: string, data: any) => {
     try {
-      // Update backend API (PostgreSQL) - Single source of truth
-      if (currentUser?.email) {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?email=${encodeURIComponent(currentUser.email)}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data)
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Backend API error: ${response.status}`);
-        }
-        
-        console.log('Profile updated in PostgreSQL via backend API');
+      const params = new URLSearchParams();
+      if (user?.email) params.append("email", user.email);
+      if (user?.phoneNumber) params.append("phone", user.phoneNumber);
+      
+      const apiUrl = `/api/members/profile/firebase/${uid}?${params.toString()}`;
+      const res = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (res.status === 200) {
+        const updatedProfile = await res.json();
+        setUser(updatedProfile);
+        return updatedProfile;
       } else {
-        throw new Error('No user email available for profile update');
+        throw new Error('Failed to update profile');
       }
-    } catch (error: any) {
-      console.error('Error updating user profile:', error);
-      throw new Error(error.message);
+    } catch (err) {
+      console.error('Error updating profile data:', err);
+      throw err;
     }
   };
 
-  const value: AuthContextType = {
-    currentUser,
-    loading,
-    signUp,
-    completeRegistration,
-    signIn,
+  // After Firebase sign-in, check backend
+  const handlePostSignIn = async (firebaseUser: User) => {
+    const uid = firebaseUser.uid;
+    const email = firebaseUser.email;
+    const phone = firebaseUser.phoneNumber;
+    console.log('🔍 handlePostSignIn called:', { uid, email, phone });
+    
+    try {
+      const params = new URLSearchParams();
+      if (email) params.append("email", email);
+      if (phone) params.append("phone", phone);
+      
+      const apiUrl = `/api/members/profile/firebase/${uid}?${params.toString()}`;
+      console.log('🔍 Making API call to:', apiUrl);
+      
+      const res = await fetch(apiUrl);
+      console.log('🔍 API response status:', res.status);
+      console.log('🔍 API response headers:', Object.fromEntries(res.headers.entries()));
+      
+      if (res.status === 200) {
+        const member = await res.json();
+        console.log('✅ Member data received:', member);
+        // Ensure the user object has the uid property
+        const userWithUid = {
+          ...member,
+          uid: firebaseUser.uid // Add the Firebase UID to the user object
+        };
+        setUser(userWithUid);
+        console.log('✅ User set with UID, navigating to dashboard');
+        navigate("/dashboard");
+      } else {
+        console.log('❌ Member not found, navigating to registration');
+        // Not found, go to registration
+        navigate("/register", { state: { email, phone } });
+      }
+    } catch (err) {
+      console.error('❌ Error in handlePostSignIn:', err);
+      alert("Error checking backend: " + (err as any).message);
+    }
+  };
+
+  // Provide both user and currentUser for backward compatibility
+  const contextValue = {
+    user,
+    currentUser: user, // For backward compatibility
+    loginWithEmail,
+    loginWithPhone,
     logout,
-    resetPassword,
-    updateUserProfile,
-    updateUserPassword,
     getUserProfile,
-    updateUserProfileData
+    updateUserProfile,
+    updateUserProfileData,
+    loading
   };
 
-  // Add this inside your AuthProvider or after user login is confirmed
-  if (process.env.NODE_ENV === 'development') {
-    const auth = getAuth();
-    if (auth.currentUser) {
-      auth.currentUser.getIdToken().then(token => {
-        console.log("[DEBUG] Firebase ID Token:", token);
-      });
-    } else {
-      // Optionally, listen for auth state changes
-      auth.onAuthStateChanged(user => {
-        if (user) {
-          user.getIdToken().then(token => {
-            console.log("[DEBUG] Firebase ID Token (onAuthStateChanged):", token);
-          });
-        }
-      });
-    }
-  }
+  console.log('🔄 AuthContext state:', { user, currentUser: user, loading });
 
   return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
+    <AuthContext.Provider value={contextValue}>
+      {children}
     </AuthContext.Provider>
   );
 }; 

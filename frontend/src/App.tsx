@@ -4,7 +4,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { AuthProvider } from './contexts/AuthContext';
 import HomePage from './components/HomePage';
 import MemberRegistration from './components/auth/MemberRegistration';
-import Login from './components/auth/Login';
+import SignIn from './components/auth/SignIn';
 import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
 import TreasurerDashboard from './components/admin/TreasurerDashboard';
@@ -22,13 +22,13 @@ import './index.css';
 function App() {
   return (
     <LanguageProvider>
-      <AuthProvider>
-        <Router>
+      <Router>
+        <AuthProvider>
           <div className="App">
             <Navigation />
             <Routes>
               <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<Login />} />
+              <Route path="/login" element={<SignIn />} />
               <Route path="/register" element={<MemberRegistration />} />
               <Route 
                 path="/dashboard" 
@@ -71,8 +71,8 @@ function App() {
               {/* Add more routes here as we build them */}
             </Routes>
           </div>
-        </Router>
-      </AuthProvider>
+        </AuthProvider>
+      </Router>
     </LanguageProvider>
   );
 }

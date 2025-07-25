@@ -48,6 +48,7 @@ module.exports = (sequelize) => {
     phoneNumber: {
       type: DataTypes.STRING(25),
       allowNull: false,
+      unique: true, // Enforce uniqueness
       validate: {
         notEmpty: true
       }
@@ -161,14 +162,6 @@ module.exports = (sequelize) => {
       allowNull: true,
       unique: true,
       comment: 'Firebase Authentication UID'
-    },
-    loginEmail: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-      unique: true,
-      validate: {
-        isEmail: true
-      }
     },
     password: {
       type: DataTypes.STRING(255),

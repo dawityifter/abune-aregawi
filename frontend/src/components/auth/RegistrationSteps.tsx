@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { formatPhoneNumber } from './MemberRegistration';
+import { formatPhoneNumber } from '../../utils/formatPhoneNumber';
 import { formatDateForDisplay } from '../../utils/dateUtils';
 
 // Step 1: Personal Information
@@ -224,7 +224,7 @@ const ContactAddressStep: React.FC<{
       
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('email.address')} <span className="text-red-500">*</span>
+          {t('email.address')} <span className="text-gray-400">({t('optional')})</span>
         </label>
         <input
           type="email"
@@ -427,7 +427,7 @@ const SpiritualInfoStep: React.FC<{
         </label>
         <input
           type="date"
-          value={formData.dateJoinedParish}
+          value={formData.dateJoinedParish || ''}
           onChange={(e) => handleInputChange('dateJoinedParish', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
         />
@@ -442,6 +442,17 @@ const SpiritualInfoStep: React.FC<{
           onChange={(e) => handleInputChange('baptismName', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
           placeholder="Enter Baptism Name"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t('baptism.date')}
+        </label>
+        <input
+          type="date"
+          value={formData.baptismDate || ''}
+          onChange={(e) => handleInputChange('baptismDate', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md"
         />
       </div>
       <div>
@@ -502,7 +513,20 @@ const ContributionStep: React.FC<{
           <option value="Check">{t('check')}</option>
         </select>
       </div>
-      {/* Removed titheParticipation checkbox and member ID info/help box */}
+      
+      <div>
+        <label className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={formData.titheParticipation || false}
+            onChange={(e) => handleInputChange('titheParticipation', e.target.checked)}
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span className="text-sm font-medium text-gray-700">
+            {t('participate.in.tithe') || 'I would like to participate in tithing'}
+          </span>
+        </label>
+      </div>
     </div>
   </div>
 );

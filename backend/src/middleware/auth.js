@@ -3,7 +3,6 @@ const admin = require('firebase-admin');
 const { Op } = require('sequelize');
 const { Member } = require('../models');
 const path = require('path');
-const serviceAccount = require(path.resolve(__dirname, '..', '..', 'firebase-service-account.json'));
 
 if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
   const serviceAccount = JSON.parse(
@@ -56,7 +55,7 @@ const authMiddleware = async (req, res, next) => {
     // Add member info to request - always use fresh role from database
     req.user = {
       id: member.id,
-      email: member.loginEmail,
+      email: member.email,
       role: member.role, // This is now the fresh role from database
       memberId: member.memberId
     };
@@ -111,12 +110,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
 
     // Find member by email (check both email and loginEmail fields)
     const member = await Member.findOne({
-      where: {
-        [Op.or]: [
-          { email: userEmail },
-          { loginEmail: userEmail }
-        ]
-      }
+      where: { email: userEmail }
     });
 
     if (!member) {
@@ -143,7 +137,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
 
     req.user = {
       id: member.id,
-      email: member.loginEmail || member.email,
+      email: member.email,
       role: member.role,
       memberId: member.memberId
     };

@@ -171,7 +171,7 @@ exports.validateMemberRegistration = [
     .withMessage('Baptized must be true or false'),
   
   body('baptismDate')
-    .optional()
+    .optional({ checkFalsy: true })
     .isISO8601()
     .withMessage('Baptism date must be a valid date'),
   
@@ -223,6 +223,8 @@ exports.validateMemberRegistration = [
     .withMessage('Ministries must be an array'),
   
   body('languagePreference')
+    .optional({ checkFalsy: true })
+    .default('English')
     .isIn(['English', 'Tigrigna', 'Amharic'])
     .withMessage('Language preference must be English, Tigrigna, or Amharic'),
   
@@ -232,6 +234,8 @@ exports.validateMemberRegistration = [
     .withMessage('Preferred giving method must be Cash, Online, Envelope, or Check'),
   
   body('titheParticipation')
+    .optional({ checkFalsy: true })
+    .default(false)
     .isBoolean()
     .withMessage('Tithe participation must be true or false'),
   
@@ -241,11 +245,6 @@ exports.validateMemberRegistration = [
     .trim()
     .isLength({ min: 1, max: 128 })
     .withMessage('Firebase UID must be less than 128 characters'),
-  
-  body('loginEmail')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Login email must be a valid email address'),
   
   body('password')
     .optional()

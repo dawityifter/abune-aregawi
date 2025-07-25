@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from '../../contexts/LanguageContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import {
   PersonalInfoStep,
   ContactAddressStep,
@@ -23,474 +21,379 @@ interface Dependant {
   email?: string;
   baptismName?: string;
   isBaptized: boolean;
-  baptismDate?: string;
-  nameDay?: string;
 }
-
-interface RegistrationForm {
-  // Personal Information
-  firstName: string;
-  middleName: string;
-  lastName: string;
-  gender: 'Male' | 'Female';
-  dateOfBirth: string;
-  maritalStatus: string;
-  // Head of Household
-  isHeadOfHousehold: boolean;
-  spouseEmail: string;
-  headOfHouseholdEmail: string;
-  hasDependants: boolean;
-  
-  // Contact & Address
-  phoneNumber: string;
-  email: string;
-  streetLine1: string;
-  apartmentNo: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-  
-  // Family Information
-  spouseName: string;
-  spouseContactPhone: string;
-  emergencyContactName?: string;
-  emergencyContactPhone?: string;
-  
-  // Dependants Information
-  dependants: Dependant[];
-  
-  // Spiritual Information
-  dateJoinedParish: string;
-  baptismName: string;
-  interestedInServing: string;
-  ministries: string[];
-  languagePreference: string;
-  
-  // Contribution
-  preferredGivingMethod: string;
-  titheParticipation: boolean;
-  
-  // Account
-  loginEmail: string;
-  password: string;
-  confirmPassword: string;
-}
-
-// Phone number formatter
-export function formatPhoneNumber(value: string) {
-  const cleaned = value.replace(/\D/g, '');
-  const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
-  if (!match) return value;
-  let formatted = '';
-  if (match[1]) {
-    formatted = `(${match[1]}`;
-    if (match[1].length === 3) {
-      formatted += ')';
-    }
-  }
-  if (match[2]) {
-    formatted += match[2].length > 0 ? ` ${match[2]}` : '';
-  }
-  if (match[3]) {
-    formatted += match[3].length > 0 ? `-${match[3]}` : '';
-  }
-  return formatted.trim();
-}
-
-// Get today's date in YYYY-MM-DD format
-const today = new Date().toISOString().slice(0, 10);
 
 const MemberRegistration: React.FC = () => {
-  const { t } = useLanguage();
-  const { signUp } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useLanguage();
+  const { email, phone } = location.state || {};
   
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<RegistrationForm>({
+  const [errors, setErrors] = useState<any>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dependants, setDependants] = useState<Dependant[]>([]);
+  
+  const [formData, setFormData] = useState({
+    // Personal Information
     firstName: '',
     middleName: '',
     lastName: '',
     gender: 'Male',
-    dateOfBirth: today,
+    dateOfBirth: '',
     maritalStatus: 'Single',
     isHeadOfHousehold: true,
-    spouseEmail: '',
     headOfHouseholdEmail: '',
-    hasDependants: false,
-    phoneNumber: '',
-    email: '',
+    hasDependents: false,
+    
+    // Contact & Address
+    email: email || '',
+    phoneNumber: phone || '',
     streetLine1: '',
     apartmentNo: '',
     city: '',
     state: '',
     postalCode: '',
     country: 'United States',
+    
+    // Family Information
     spouseName: '',
-    spouseContactPhone: '',
+    spousePhone: '',
+    spouseEmail: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
-    dependants: [],
-    dateJoinedParish: today,
+    emergencyContactRelationship: '',
+    
+    // Spiritual Information
     baptismName: '',
+    isBaptized: false,
+    baptismDate: '',
+    baptismPlace: '',
+    confirmationDate: '',
+    confirmationPlace: '',
+    dateJoinedParish: '',
     interestedInServing: '',
-    ministries: [],
     languagePreference: 'English',
+    
+    // Contribution & Giving
     preferredGivingMethod: 'Cash',
+    monthlyContribution: '',
+    specialContributions: [],
     titheParticipation: false,
-    loginEmail: '',
-    password: '',
-    confirmPassword: ''
+    
+    // Account Information
+    preferredLanguage: 'English',
+    communicationPreferences: [],
+    privacySettings: {
+      shareContactInfo: false,
+      receiveNewsletter: true,
+      receiveEventNotifications: true
+    }
   });
 
-  const [errors, setErrors] = useState<Partial<RegistrationForm>>({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  // Auto-populate loginEmail with email when entering step 7
-  useEffect(() => {
-    if (currentStep === 7 && !formData.loginEmail && formData.email) {
-      setFormData(prev => ({ ...prev, loginEmail: prev.email }));
-    }
-  }, [currentStep, formData.loginEmail, formData.email]);
-
-  const handleInputChange = (field: keyof RegistrationForm, value: any) => {
-    // Auto-format phone number
-    if (field === 'phoneNumber') {
-      value = formatPhoneNumber(value);
-    }
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
+  const handleInputChange = (field: string, value: any) => {
+    setFormData((prev: typeof formData) => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear error for this field
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
+      setErrors((prev: any) => ({
+        ...prev,
+        [field]: null
+      }));
     }
   };
 
   const validateStep = (step: number): boolean => {
-    const newErrors: Partial<RegistrationForm> = {};
-
+    const newErrors: any = {};
+    
     switch (step) {
       case 1: // Personal Information
-        if (!formData.firstName) newErrors.firstName = t('first.name.required');
-        if (!formData.lastName) newErrors.lastName = t('last.name.required');
+        if (!formData.firstName.trim()) newErrors.firstName = t('first.name.required');
+        if (!formData.lastName.trim()) newErrors.lastName = t('last.name.required');
         if (!formData.dateOfBirth) newErrors.dateOfBirth = t('date.of.birth.required');
-        if (!formData.gender) (newErrors as any).genderError = t('gender.required');
-        if (!formData.maritalStatus) newErrors.maritalStatus = t('marital.status.required');
-        if (typeof formData.isHeadOfHousehold !== 'boolean') (newErrors as any).isHeadOfHouseholdError = t('head.of.household.required');
-        if (!formData.isHeadOfHousehold && !formData.headOfHouseholdEmail) {
-          newErrors.headOfHouseholdEmail = t('head.of.household.email.not.found');
+        if (!formData.isHeadOfHousehold && !formData.headOfHouseholdEmail.trim()) {
+          newErrors.headOfHouseholdEmail = t('head.of.household.email.required');
         }
         break;
+        
       case 2: // Contact & Address
-        if (!formData.phoneNumber || formData.phoneNumber.replace(/\D/g, '').length !== 10) newErrors.phoneNumber = t('phone.number.required');
-        if (!formData.email) newErrors.email = t('email.required');
-        if (!formData.streetLine1) newErrors.streetLine1 = t('street.line1.required');
-        if (!formData.city) newErrors.city = t('city.required');
-        if (!formData.state) newErrors.state = t('state.required');
-        if (!formData.postalCode) newErrors.postalCode = t('postal.code.required');
-        if (!formData.country) newErrors.country = t('country.required');
+        // Email is optional for phone sign-in users, but required if no phone
+        if (!formData.email.trim() && !formData.phoneNumber.trim()) {
+          newErrors.email = t('email.or.phone.required');
+        }
+        if (!formData.phoneNumber.trim() && !formData.email.trim()) {
+          newErrors.phoneNumber = t('email.or.phone.required');
+        }
+        if (!formData.streetLine1.trim()) newErrors.streetLine1 = t('address.required');
+        if (!formData.city.trim()) newErrors.city = t('city.required');
+        if (!formData.state.trim()) newErrors.state = t('state.required');
+        if (!formData.postalCode.trim()) newErrors.postalCode = t('zip.code.required');
+        if (!formData.country.trim()) newErrors.country = t('country.required');
         break;
+        
       case 3: // Family Information
-        if (formData.maritalStatus === 'Married') {
-          if (!formData.spouseName) newErrors.spouseName = t('spouse.name.required');
-          if (!formData.spouseEmail) newErrors.spouseEmail = t('spouse.email.required');
-          if (!formData.spouseContactPhone || formData.spouseContactPhone.replace(/\D/g, '').length !== 10) newErrors.spouseContactPhone = t('spouse.contact.phone.required');
+        if (formData.maritalStatus === 'Married' && !formData.spouseName.trim()) {
+          newErrors.spouseName = t('spouse.name.required');
         }
+        if (!formData.emergencyContactName.trim()) newErrors.emergencyContactName = t('emergency.contact.required');
+        if (!formData.emergencyContactPhone.trim()) newErrors.emergencyContactPhone = t('emergency.phone.required');
         break;
-      case 4: // Dependants
-        if (formData.isHeadOfHousehold && formData.hasDependants) {
-          if (!formData.dependants || formData.dependants.length === 0) {
-            (newErrors as any).dependants = t('at.least.one.dependant.required');
-          } else {
-            formData.dependants.forEach((dep, idx) => {
-              if (!dep.firstName || !dep.lastName || !dep.dateOfBirth) {
-                (newErrors as any).dependants = t('all.dependant.fields.required');
-              }
-            });
-          }
-        }
-        break;
-      case 5: // Spiritual Information
-        // No required fields (optional)
-        break;
-      case 6: // Contribution
-        if (!formData.preferredGivingMethod) newErrors.preferredGivingMethod = t('preferred.giving.method.required');
-        break;
-      case 7: // Account Information
-        if (!formData.loginEmail) newErrors.loginEmail = t('login.email.required');
-        if (!formData.password) newErrors.password = t('password.required');
-        if (formData.password !== formData.confirmPassword) {
-          newErrors.confirmPassword = t('passwords.dont.match');
-        }
-        if (formData.password && formData.password.length < 8) {
-          newErrors.password = t('password.too.short');
-        }
-        break;
+        
+      // Steps 4-7 are optional or have minimal validation
     }
-
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      // Skip step 7 (Account Information) for phone sign-in users
+      const isPhoneSignIn = phone && !email;
+      const maxStep = isPhoneSignIn ? 6 : 7;
+      
+      if (currentStep === 6 && isPhoneSignIn) {
+        // Phone sign-in users go directly to submission after step 6
+        handleSubmit();
+      } else {
+        setCurrentStep(prev => Math.min(prev + 1, maxStep));
+      }
+    }
+  };
+
+  const prevStep = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleSubmit = async () => {
     if (!validateStep(currentStep)) return;
     
-    if (currentStep < 7) {
-      // Handle conditional step navigation
-      let nextStep = currentStep + 1;
+    setIsSubmitting(true);
+    try {
+      // Prepare registration data with proper validation
+      const registrationData = {
+        ...formData,
+        dependants: dependants,
+        // Ensure baptismDate is either a valid date or null/undefined
+        baptismDate: formData.baptismDate || undefined,
+        // For phone sign-in users, loginEmail should be optional
+        loginEmail: email || formData.email || undefined,
+        // Ensure titheParticipation is boolean
+        titheParticipation: Boolean(formData.titheParticipation),
+        // Ensure languagePreference has a valid default
+        languagePreference: formData.languagePreference || 'English'
+      };
       
-      // If moving from step 3 to step 4, check if we should skip step 4
-      if (currentStep === 3 && !(formData.isHeadOfHousehold && formData.hasDependants)) {
-        nextStep = 5; // Skip step 4 (Dependants) and go to step 5 (Spiritual)
-      }
+      // Remove undefined/null/empty string values to let backend use defaults
+      Object.keys(registrationData).forEach(key => {
+        const value = (registrationData as any)[key];
+        if (value === undefined || value === null || value === '') {
+          delete (registrationData as any)[key];
+        }
+      });
       
-      setCurrentStep(nextStep);
-    } else {
-      // Submit the form
-      let createdFirebaseUid = null;
-      try {
-        setLoading(true);
-        
-        // Create Firebase Auth account first
-        const displayName = `${formData.firstName} ${formData.lastName}`;
-        const userCredential = await signUp(formData.loginEmail, formData.password, displayName);
-        createdFirebaseUid = userCredential.user.uid;
-        
-        // Prepare registration data with Firebase UID
-        const registrationData = {
-          // Personal Information
-          firstName: formData.firstName,
-          middleName: formData.middleName,
-          lastName: formData.lastName,
-          gender: formData.gender,
-          dateOfBirth: formData.dateOfBirth,
-          maritalStatus: formData.maritalStatus,
-          // Head of Household
-          isHeadOfHousehold: formData.isHeadOfHousehold,
-          spouseEmail: formData.maritalStatus === 'Married' ? formData.spouseEmail : null,
-          headOfHouseholdEmail: formData.headOfHouseholdEmail,
-          // Contact & Address
-          phoneNumber: formData.phoneNumber,
-          email: formData.email,
-          streetLine1: formData.streetLine1,
-          apartmentNo: formData.apartmentNo,
-          city: formData.city,
-          state: formData.state,
-          postalCode: formData.postalCode,
-          country: formData.country,
-          // Family Information - Handle married vs single differently
-          spouseName: formData.maritalStatus === 'Married' ? formData.spouseName : null,
-          emergencyContactName: formData.maritalStatus === 'Married' ? formData.spouseName : formData.emergencyContactName,
-          emergencyContactPhone: formData.maritalStatus === 'Married' ? formData.spouseContactPhone : formData.emergencyContactPhone,
-          // Dependants Information
-          dependants: formData.dependants,
-          // Spiritual Information
-          dateJoinedParish: formData.dateJoinedParish,
-          baptismName: formData.baptismName,
-          interestedInServing: formData.interestedInServing,
-          ministries: formData.ministries,
-          languagePreference: formData.languagePreference,
-          // Contribution
-          preferredGivingMethod: formData.preferredGivingMethod,
-          titheParticipation: formData.titheParticipation,
-          // Account
-          firebaseUid: userCredential.user.uid,
-          loginEmail: formData.loginEmail,
-          role: 'member'
-        };
-        
-        // Also register with backend API for additional member data
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(registrationData),
-        });
-        
-        if (response.ok) {
-          // Handle successful registration
-          navigate('/dashboard');
-        } else {
-          // Handle backend errors
-          const errorData = await response.json();
-          
-          // Rollback: delete Firebase user if backend registration fails
-          if (createdFirebaseUid) {
-            try {
-              const auth = getAuth();
-              // Wait for auth state to update if currentUser is not set
-              if (!auth.currentUser) {
-                await new Promise<void>((resolve) => {
-                  const unsubscribe = onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                      unsubscribe();
-                      resolve();
-                    }
-                  });
-                });
-              }
-              const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-              await fetch(`${process.env.REACT_APP_API_URL}/api/members/firebase/delete-user`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
-                },
-                body: JSON.stringify({ uid: createdFirebaseUid }),
-              });
-            } catch (deleteErr) {
-              // Optionally handle/log delete error
-            }
-          }
-          // Show validation errors if any
-          if (errorData.errors && Array.isArray(errorData.errors)) {
-            const errorMessages = errorData.errors.map((err: any) => `${err.path}: ${err.msg}`).join(', ');
-            setError(`Registration failed: ${errorMessages}`);
-          } else {
-            setError(errorData.message || 'Registration failed');
-          }
-        }
-      } catch (error: any) {
-        // If Firebase user was created but error happened after, try to delete
-        if (createdFirebaseUid) {
-          try {
-            const auth = getAuth();
-            const currentUser = auth.currentUser;
-            const idToken = currentUser ? await currentUser.getIdToken() : null;
-            await fetch(`${process.env.REACT_APP_API_URL}/api/members/firebase/delete-user`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
-              },
-              body: JSON.stringify({ uid: createdFirebaseUid }),
-            });
-          } catch (deleteErr) {
-            // Failed to delete Firebase user after error
-          }
-        }
-        setError(error.message);
-      } finally {
-        setLoading(false);
+      const res = await fetch("/api/members/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(registrationData),
+      });
+      
+      if (res.status === 201) {
+        navigate("/dashboard");
+      } else {
+        const data = await res.json();
+        setErrors({ submit: data.message || "Registration failed" });
       }
+    } catch (err) {
+      setErrors({ submit: "Registration failed: " + (err as any).message });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const getDisplayStepNumber = (step: number): number => {
-    // If step 4 (Dependants) should be skipped, adjust the display
-    if (step >= 4 && !(formData.isHeadOfHousehold && formData.hasDependants)) {
-      return step + 1;
-    }
-    return step;
-  };
-
-  const getTotalSteps = (): number => {
-    return formData.isHeadOfHousehold && formData.hasDependants ? 7 : 6;
-  };
+  if (!email && !phone) {
+    navigate("/login");
+    return null;
+  }
 
   const renderStep = () => {
     switch (currentStep) {
       case 1:
-        return <PersonalInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
+        return (
+          <PersonalInfoStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
       case 2:
-        return <ContactAddressStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
+        return (
+          <ContactAddressStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
       case 3:
-        return <FamilyInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
+        return (
+          <FamilyInfoStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
       case 4:
-        if (formData.isHeadOfHousehold && formData.hasDependants) {
-          return <DependantsStep dependants={formData.dependants} onDependantsChange={(dependants: Dependant[]) => handleInputChange('dependants', dependants)} errors={errors} t={t} />;
-        } else {
-          // If not head of household or no dependants, skip to spiritual info
-          return <SpiritualInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
-        }
+        return (
+          <DependantsStep
+            dependants={dependants}
+            onDependantsChange={setDependants}
+            errors={errors}
+            t={t}
+          />
+        );
       case 5:
-        return <SpiritualInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
+        return (
+          <SpiritualInfoStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
       case 6:
-        return <ContributionStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
+        return (
+          <ContributionStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
       case 7:
-        return <AccountStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />;
+        return (
+          <AccountStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
       default:
-        return <div>Step {currentStep}</div>;
+        return null;
     }
   };
 
+  // Determine if this is a phone sign-in user
+  const isPhoneSignIn = phone && !email;
+  const totalSteps = isPhoneSignIn ? 6 : 7;
+  
+  const stepTitles = [
+    t('personal.information'),
+    t('contact.address'),
+    t('family.information'),
+    t('dependants'),
+    t('spiritual.information'),
+    t('contribution.giving'),
+    ...(isPhoneSignIn ? [] : [t('account.information')])
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
-          {t('title')}
-        </h2>
-        
-        {/* Progress indicator */}
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">{t('member.registration')}</h1>
+          <p className="mt-2 text-gray-600">{t('complete.registration.to.join')}</p>
+        </div>
+
+        {/* Progress Bar */}
         <div className="mb-8">
-          <div className="flex justify-between items-center">
-            {(() => {
-              const totalSteps = getTotalSteps();
-              const steps = [];
-              for (let i = 1; i <= totalSteps; i++) {
-                const displayStep = getDisplayStepNumber(i);
-                const isActive = displayStep <= currentStep;
-                steps.push(
-                  <div key={i} className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      isActive ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-                    }`}>
-                      {displayStep}
-                    </div>
-                    {i < totalSteps && (
-                      <div className={`w-16 h-1 mx-2 ${
-                        isActive ? 'bg-blue-600' : 'bg-gray-300'
-                      }`} />
-                    )}
-                  </div>
-                );
-              }
-              return steps;
-            })()}
+          <div className="flex items-center justify-between mb-2">
+            {stepTitles.map((title, index) => (
+              <div
+                key={index}
+                className={`flex items-center ${
+                  index < stepTitles.length - 1 ? 'flex-1' : ''
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    currentStep > index + 1
+                      ? 'bg-green-500 text-white'
+                      : currentStep === index + 1
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-300 text-gray-600'
+                  }`}
+                >
+                  {currentStep > index + 1 ? '✓' : index + 1}
+                </div>
+                {index < stepTitles.length - 1 && (
+                  <div
+                    className={`flex-1 h-1 mx-2 ${
+                      currentStep > index + 1 ? 'bg-green-500' : 'bg-gray-300'
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="text-center">
+            <span className="text-sm font-medium text-gray-900">
+              {t('step')} {currentStep} {t('of')} {totalSteps}: {stepTitles[currentStep - 1]}
+            </span>
           </div>
         </div>
-        
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-6">
-            {error}
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit} className="space-y-8">
+
+        {/* Step Content */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           {renderStep()}
+        </div>
+
+        {/* Navigation Buttons */}
+        <div className="flex justify-between">
+          <button
+            type="button"
+            onClick={prevStep}
+            disabled={currentStep === 1}
+            className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t('previous')}
+          </button>
           
-          <div className="flex justify-between pt-6">
-            {currentStep > 1 && (
+          <div className="flex space-x-4">
+            {currentStep < totalSteps ? (
               <button
                 type="button"
-                onClick={() => {
-                  let prevStep = currentStep - 1;
-                  
-                  // If moving from step 5 to step 4, check if we should skip step 4
-                  if (currentStep === 5 && !(formData.isHeadOfHousehold && formData.hasDependants)) {
-                    prevStep = 3; // Skip step 4 (Dependants) and go to step 3 (Family)
-                  }
-                  
-                  setCurrentStep(prevStep);
-                }}
-                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                onClick={nextStep}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
-                {t('previous')}
+                {t('next')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? t('submitting') : t('complete.registration')}
               </button>
             )}
-            
-            <button
-              type="submit"
-              disabled={loading}
-              className="ml-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Processing...' : (currentStep === 7 ? t('submit') : t('next'))}
-            </button>
           </div>
-        </form>
+        </div>
+
+        {/* Error Display */}
+        {errors.submit && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-red-600">{errors.submit}</p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ interface RoleManagementProps {
 
 const RoleManagement: React.FC<RoleManagementProps> = () => {
   const { t } = useLanguage();
-  const { currentUser } = useAuth();
+  const { currentUser, firebaseUser } = useAuth();
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
 
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?limit=100&email=${encodeURIComponent(currentUser.email)}`, {
         headers: {
-          'Authorization': `Bearer ${await currentUser.getIdToken()}`,
+          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`,
           'Content-Type': 'application/json'
         }
       });
@@ -54,7 +54,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
 
     setUpdating(true);
     try {
-      const idToken = currentUser ? await currentUser.getIdToken() : null;
+      const idToken = firebaseUser ? await firebaseUser.getIdToken() : null;
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${selectedMember.id}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         method: 'PUT',
         headers: {
