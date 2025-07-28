@@ -140,19 +140,67 @@ app.use((error, req, res, next) => {
 // Database connection and server startup
 const startServer = async () => {
   try {
-    console.log('🔌 Starting database connection...');
+    console.log('🚀 Starting server...');
     
-    // Test database connection
-    console.log('🔌 Connecting to database...');
-    console.log(`📊 Database: Connected via DATABASE_URL`);
+    // Debug environment variables
+    console.log('🔍 Server Environment Debug:');
+    console.log('  NODE_ENV:', process.env.NODE_ENV);
+    console.log('  PORT:', PORT);
+    console.log('  DATABASE_URL exists:', !!process.env.DATABASE_URL);
+    console.log('  FRONTEND_URL:', process.env.FRONTEND_URL);
+    console.log('  FIREBASE_SERVICE_ACCOUNT_BASE64 exists:', !!process.env.FIREBASE_SERVICE_ACCOUNT_BASE64);
+    
+    // Initialize database connection with better error handling
+    console.log('🔌 Starting database connection...');
+    let sequelize;
     
     try {
-      await sequelize.authenticate();
-      console.log('✅ Database connection established successfully.');
-    } catch (dbError) {
-      console.error('❌ Database connection failed:', dbError.message);
-      console.error('❌ Full database error:', dbError);
-      throw dbError;
+      const models = require('./models');
+      sequelize = models.sequelize;
+      console.log('✅ Models loaded successfully.');
+    } catch (modelError) {
+      console.error('❌ Failed to load models:', modelError.message);
+      console.error('❌ Model error stack:', modelError.stack);
+      throw modelError;
+    }
+    
+    // Test database connection with retries
+    console.log('🔌 Connecting to database...');
+    let retries = 3;
+    let dbConnected = false;
+    
+    while (retries > 0 && !dbConnected) {
+      try {
+        await sequelize.authenticate();
+        console.log('✅ Database connection established successfully.');
+        dbConnected = true;
+      } catch (dbError) {
+        retries--;
+        console.error(`❌ Database connection failed (${3 - retries}/3):`, dbError.message);
+        
+        if (retries === 0) {
+          console.error('❌ All database connection attempts failed.');
+          console.error('❌ Database error details:', {
+            name: dbError.name,
+            message: dbError.message,
+            code: dbError.code,
+            errno: dbError.errno
+          });
+          
+          // Don't crash the server, just log the error and continue
+          console.log('⚠️  Starting server without database connection for debugging...');
+          break;
+        }
+        
+        console.log(`🔄 Retrying database connection in 2 seconds... (${retries} attempts left)`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+    
+    // Check if we're in a test environment
+    if (process.env.NODE_ENV === 'test') {
+      console.log('🧪 Test environment detected, skipping database sync.');
+      return;
     }
     
     // Sync database (in development)
