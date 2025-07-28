@@ -19,7 +19,7 @@ The system aims to:
 
 ```mermaid
 graph TB
-    subgraph "Frontend (Vercel)"
+    subgraph "Frontend (Firebase Hosting)"
         A[React App] --> B[Firebase Auth]
         A --> C[API Calls]
     end
@@ -31,8 +31,8 @@ graph TB
     
     subgraph "External Services"
         B --> G[Firebase Auth Service]
-        F --> H[Neon PostgreSQL]
-        I[Vercel CDN] --> A
+        F --> H[Supabase PostgreSQL]
+        I[Firebase CDN] --> A
     end
     
     C --> D
@@ -40,68 +40,107 @@ graph TB
     style D fill:#68a063
     style F fill:#336791
     style G fill:#ffca28
-    style H fill:#336791
-    style I fill:#000000
+    style H fill:#3ecf8e
+    style I fill:#ffca28
 ```
 
 ## 🚀 Deployment Status
 
 | Service | Platform | Status | URL |
 |---------|----------|--------|-----|
-| **Frontend** | Vercel | ✅ Deployed | [Live Site](https://abune-aregawi.vercel.app/) |
-| **Backend API** | Render | ✅ Deployed | [API Endpoint](https://abune-aregawi.onrender.com) |
-| **Database** | Neon | ✅ Hosted | PostgreSQL Cloud |
-| **Authentication** | Firebase | ✅ Active | Firebase Auth |
+| **Frontend** | Firebase Hosting | ✅ Deployed | [Live Site](https://abune-aregawit-church.web.app/) |
+| **Backend API** | Render | 🔄 Deploying | [API Endpoint](https://abune-aregawi-backend.onrender.com) |
+| **Database** | Supabase | ✅ Connected | PostgreSQL Cloud (Free Tier) |
+| **Authentication** | Firebase | ✅ Active | Phone + Email Auth |
+
+### 📊 Current Status
+- ✅ **Frontend**: Successfully deployed to Firebase Hosting with asset fixes
+- 🔄 **Backend**: Deploying to Render with enhanced SSL configuration for Supabase
+- ✅ **Database**: Supabase PostgreSQL connected and tested locally
+- ✅ **Authentication**: Firebase Auth with feature flags for email/phone methods
+- 🔄 **Integration**: Pending backend deployment completion
+
+## 🆕 Recent Improvements
+
+### Deployment & Infrastructure
+- ✅ **Firebase Hosting**: Migrated from Vercel to Firebase Hosting with asset path fixes
+- ✅ **Supabase Integration**: Switched from Neon to Supabase for free PostgreSQL hosting
+- ✅ **Enhanced SSL Configuration**: Production-ready SSL config for external database connections
+- ✅ **Feature Flags System**: Environment-based toggles for authentication methods
+- ✅ **Error Boundaries**: Comprehensive error handling with user-friendly messages
+
+### Authentication & UX
+- ✅ **Phone Authentication**: reCAPTCHA Enterprise with test number bypass logic
+- ✅ **Bilingual UI**: English default with improved Tigrinya translations
+- ✅ **Church Theme**: Custom gradient theme with traditional church styling
+- ✅ **Admin Access**: Fixed role extraction and admin panel access issues
+- ✅ **Profile Management**: Separate name fields with proper backend synchronization
+
+### Code Quality & Testing
+- ✅ **TypeScript Fixes**: Resolved duplicate translation keys and type errors
+- ✅ **Debug Cleanup**: Removed all console.log statements for production readiness
+- ✅ **Test Infrastructure**: Enhanced backend testing with Jest integration
+- ✅ **Phone Number Formatting**: Comprehensive E.164 normalization throughout app
 
 ## 🛠️ Tech Stack
 
 ### Frontend
 - **Framework**: React 18 + TypeScript
-- **Styling**: TailwindCSS
+- **Styling**: TailwindCSS + Custom Church Theme
 - **State Management**: React Context API
-- **Authentication**: Firebase Auth
-- **Deployment**: Vercel (with automatic CI/CD)
+- **Authentication**: Firebase Auth (Phone + Email)
+- **Internationalization**: English/Tigrinya bilingual support
+- **Features**: Feature flags system, Error boundaries
+- **Deployment**: Firebase Hosting (with automatic CI/CD)
 
 ### Backend
 - **Runtime**: Node.js 18
 - **Framework**: Express.js
-- **ORM**: Sequelize
-- **Validation**: Express-validator
-- **Authentication**: JWT + Firebase Auth
-- **Deployment**: Render (with automatic CI/CD)
+- **ORM**: Sequelize with enhanced SSL configuration
+- **Validation**: Express-validator + custom middleware
+- **Authentication**: Dual JWT + Firebase Auth
+- **Security**: Helmet, CORS, Rate limiting
+- **Testing**: Jest with integration and unit tests
+- **Deployment**: Render (with automatic GitHub CI/CD)
 
 ### Database
-- **Provider**: Neon (PostgreSQL)
-- **Features**: Serverless, auto-scaling
-- **SSL**: Enabled
-- **Backups**: Automatic
+- **Provider**: Supabase (PostgreSQL 17.4)
+- **Connection**: Enhanced SSL with certificate bypass
+- **Features**: Connection pooling, retry logic
+- **Tier**: Free tier (500MB storage)
+- **SSL**: Production-ready configuration
 
 ### External Services
-- **Authentication**: Firebase Authentication
-- **Hosting**: Vercel (Frontend) + Render (Backend)
-- **Database**: Neon PostgreSQL
-- **Version Control**: GitHub
+- **Authentication**: Firebase Authentication (Phone/Email)
+- **Hosting**: Firebase Hosting (Frontend) + Render (Backend)
+- **Database**: Supabase PostgreSQL (Free tier)
+- **Version Control**: GitHub with automated deployments
+- **reCAPTCHA**: Google reCAPTCHA Enterprise for phone auth
 
 ## 🌐 Features
 
 ### ✅ Implemented
-- **Bilingual Support**: English and Tigrigna languages with context switching
-- **Member Registration**: Multi-step registration form with validation
-- **Children Management**: Add, edit, and manage dependents
-- **User Authentication**: Firebase Auth with JWT tokens
-- **Role-Based Access Control**: Six-tier role system (Guest, Member, Secretary, Treasurer, Church Leadership, Admin)
-- **Profile Management**: Update personal and family information
-- **Responsive Design**: Mobile-first approach with TailwindCSS
-- **Online Giving**: Donation form with payment integration (demo)
-- **Dashboard**: Member dashboard with profile overview
-- **Admin Panel**: Comprehensive admin interface with role management
-- **Database Integration**: PostgreSQL with Sequelize ORM
-- **API Security**: JWT authentication and input validation
+- **Bilingual Support**: English and Tigrigna languages with context switching (English default)
+- **Member Registration**: Multi-step registration form with comprehensive validation
+- **Children Management**: Add, edit, and manage dependents with phone number formatting
+- **User Authentication**: Dual Firebase Auth (Phone + Email) with feature flags
+- **Role-Based Access Control**: Six-tier role system with proper admin access
+- **Profile Management**: Separate name fields (first, middle, last) with backend sync
+- **Responsive Design**: Mobile-first approach with custom church theme
+- **Phone Authentication**: reCAPTCHA Enterprise with test number bypass
+- **Dashboard**: Member dashboard with corrected role extraction
+- **Admin Panel**: Full admin interface with member/role management
+- **Database Integration**: Supabase PostgreSQL with enhanced SSL configuration
+- **API Security**: Dual JWT + Firebase authentication with comprehensive validation
+- **Feature Flags**: Environment-based authentication method toggles
+- **Error Handling**: User-friendly error messages and retry mechanisms
+- **Deployment**: Production-ready Firebase Hosting + Render deployment
 
 ### 🚧 In Progress
-- Payment gateway integration (Stripe)
-- Email notifications
-- Event management system
+- **Backend Deployment**: Final Render deployment with Supabase connection
+- **API Integration**: Connecting deployed frontend to deployed backend
+- **Payment Gateway**: Stripe integration for online giving
+- **Email Notifications**: Member communication system
 
 ### 📋 Planned
 - Member directory
@@ -113,24 +152,40 @@ graph TB
 
 ## 🔧 Environment Setup
 
-### Frontend Environment Variables (Vercel)
+### Frontend Environment Variables (Firebase Hosting)
 ```env
+# Firebase Configuration
 REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
 REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 REACT_APP_FIREBASE_PROJECT_ID=your_project_id
 REACT_APP_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 REACT_APP_FIREBASE_APP_ID=your_app_id
-REACT_APP_API_URL=https://abune-aregawi.onrender.com
+
+# API Configuration
+REACT_APP_API_URL=https://abune-aregawi-backend.onrender.com
+
+# Feature Flags
+REACT_APP_ENABLE_EMAIL_AUTH=true
+REACT_APP_ENABLE_PHONE_AUTH=true
+REACT_APP_DEFAULT_AUTH_METHOD=phone
 ```
 
 ### Backend Environment Variables (Render)
 ```env
+# Environment
 NODE_ENV=production
-DATABASE_URL=postgresql://username:password@host:port/database?sslmode=require
-JWT_SECRET=your_jwt_secret_key
-FRONTEND_URL=https://abune-aregawi.vercel.app
 PORT=10000
+
+# Database (Supabase)
+DATABASE_URL=postgresql://postgres.project_ref:password@aws-0-us-west-1.pooler.supabase.com:6543/postgres
+
+# Authentication
+JWT_SECRET=your_secure_jwt_secret_key
+FIREBASE_SERVICE_ACCOUNT_BASE64=your_base64_encoded_service_account
+
+# CORS
+FRONTEND_URL=https://abune-aregawit-church.web.app
 ```
 
 ## 🚀 Deployment Architecture
