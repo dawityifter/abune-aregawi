@@ -30,20 +30,42 @@ try {
   };
 
   if (isPostgres) {
+    // Enhanced SSL configuration for Supabase connections
+    const sslConfig = process.env.NODE_ENV === 'production' ? {
+      require: true,
+      rejectUnauthorized: false,
+      ca: false,
+      checkServerIdentity: () => undefined
+    } : {
+      require: true,
+      rejectUnauthorized: false
+    };
+    
     config = {
       ...config,
       dialect: 'postgres',
       dialectOptions: {
-        ssl: {
-          require: true,
-          rejectUnauthorized: false
-        }
+        ssl: sslConfig,
+        connectTimeout: 60000,
+        socketTimeout: 60000
       },
       pool: {
         max: 5,
         min: 0,
-        acquire: 30000,
-        idle: 10000
+        acquire: 60000,
+        idle: 10000,
+        evict: 1000,
+        handleDisconnects: true
+      },
+      retry: {
+        match: [
+          /ConnectionError/,
+          /ConnectionRefusedError/,
+          /ConnectionTimedOutError/,
+          /TimeoutError/,
+          /SASL/
+        ],
+        max: 3
       }
     };
   } else if (isSQLite) {
