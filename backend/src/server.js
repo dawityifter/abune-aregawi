@@ -88,6 +88,21 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Compression middleware
 app.use(compression());
 
+// Root route for debugging
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Abune Aregawi Backend API',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      members: '/api/members',
+      payments: '/api/payments'
+    }
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
