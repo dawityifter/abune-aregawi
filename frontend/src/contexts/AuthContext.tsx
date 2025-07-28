@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
           
-          const apiUrl = `/api/members/profile/firebase/${uid}?${params.toString()}`;
+          const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
           console.log(`🔍 Call #${callCount} - Checking backend for user:`, apiUrl);
           
           const res = await fetch(apiUrl);
@@ -210,7 +210,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      const apiUrl = `/api/members/profile/firebase/${uid}?${params.toString()}`;
+      const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
       const res = await fetch(apiUrl);
       
       if (res.status === 200) {
@@ -303,7 +303,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      const apiUrl = `/api/members/profile/firebase/${uid}?${params.toString()}`;
+      const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
       console.log('🔍 Making API call to:', apiUrl);
       
       const res = await fetch(apiUrl);
