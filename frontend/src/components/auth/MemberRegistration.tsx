@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from '../../contexts/LanguageContext';
+import { normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
 import {
   PersonalInfoStep,
   ContactAddressStep,
@@ -67,7 +68,6 @@ const MemberRegistration: React.FC = () => {
     // Spiritual Information
     baptismName: '',
     isBaptized: false,
-    baptismDate: '',
     baptismPlace: '',
     confirmationDate: '',
     confirmationPlace: '',
@@ -97,6 +97,24 @@ const MemberRegistration: React.FC = () => {
       [field]: value
     }));
     
+    // Handle hasDependents change - adjust current step if needed
+    if (field === 'hasDependents') {
+      // If user unchecks hasDependents and is currently on or past the dependants step
+      if (!value && currentStep >= 4) {
+        // If currently on dependants step (4), move to next step (spiritual info)
+        if (currentStep === 4) {
+          setCurrentStep(4); // This will now show spiritual info due to getStepContent logic
+        }
+        // Clear any dependants data since they won't be submitted
+        setDependants([]);
+      }
+      // If user checks hasDependents and is currently past where dependants step should be
+      else if (value && currentStep >= 4) {
+        // Adjust current step to account for the newly included dependants step
+        // No automatic navigation needed - user can navigate manually
+      }
+    }
+    
     // Clear error for this field
     if (errors[field]) {
       setErrors((prev: any) => ({
@@ -120,26 +138,39 @@ const MemberRegistration: React.FC = () => {
         break;
         
       case 2: // Contact & Address
-        // Email is optional for phone sign-in users, but required if no phone
-        if (!formData.email.trim() && !formData.phoneNumber.trim()) {
-          newErrors.email = t('email.or.phone.required');
-        }
-        if (!formData.phoneNumber.trim() && !formData.email.trim()) {
-          newErrors.phoneNumber = t('email.or.phone.required');
-        }
-        if (!formData.streetLine1.trim()) newErrors.streetLine1 = t('address.required');
-        if (!formData.city.trim()) newErrors.city = t('city.required');
-        if (!formData.state.trim()) newErrors.state = t('state.required');
-        if (!formData.postalCode.trim()) newErrors.postalCode = t('zip.code.required');
-        if (!formData.country.trim()) newErrors.country = t('country.required');
-        break;
+      // Email is optional for phone sign-in users, but required if no phone
+      if (!formData.email.trim() && !formData.phoneNumber.trim()) {
+        newErrors.email = t('email.or.phone.required');
+      }
+      if (!formData.phoneNumber.trim() && !formData.email.trim()) {
+        newErrors.phoneNumber = t('email.or.phone.required');
+      }
+      // Validate phone number format if provided
+      if (formData.phoneNumber.trim() && !isValidPhoneNumber(formData.phoneNumber)) {
+        newErrors.phoneNumber = t('phone.number.invalid');
+      }
+      if (!formData.streetLine1.trim()) newErrors.streetLine1 = t('address.required');
+      if (!formData.city.trim()) newErrors.city = t('city.required');
+      if (!formData.state.trim()) newErrors.state = t('state.required');
+      if (!formData.postalCode.trim()) newErrors.postalCode = t('zip.code.required');
+      if (!formData.country.trim()) newErrors.country = t('country.required');
+      break;
         
       case 3: // Family Information
-        if (formData.maritalStatus === 'Married' && !formData.spouseName.trim()) {
-          newErrors.spouseName = t('spouse.name.required');
+        if (formData.maritalStatus === 'Married') {
+          // For married users, only spouse name is required
+          if (!formData.spouseName.trim()) {
+            newErrors.spouseName = t('spouse.name.required');
+          }
+        } else {
+          // For non-married users, emergency contact info is required
+          if (!formData.emergencyContactName.trim()) {
+            newErrors.emergencyContactName = t('emergency.contact.required');
+          }
+          if (!formData.emergencyContactPhone.trim()) {
+            newErrors.emergencyContactPhone = t('emergency.phone.required');
+          }
         }
-        if (!formData.emergencyContactName.trim()) newErrors.emergencyContactName = t('emergency.contact.required');
-        if (!formData.emergencyContactPhone.trim()) newErrors.emergencyContactPhone = t('emergency.phone.required');
         break;
         
       // Steps 4-7 are optional or have minimal validation
@@ -151,21 +182,35 @@ const MemberRegistration: React.FC = () => {
 
   const nextStep = () => {
     if (validateStep(currentStep)) {
-      // Skip step 7 (Account Information) for phone sign-in users
       const isPhoneSignIn = phone && !email;
-      const maxStep = isPhoneSignIn ? 6 : 7;
+      const baseTotalSteps = isPhoneSignIn ? 6 : 7;
+      const maxStep = formData.hasDependents ? baseTotalSteps : baseTotalSteps - 1;
       
-      if (currentStep === 6 && isPhoneSignIn) {
-        // Phone sign-in users go directly to submission after step 6
+      let nextStepNumber = currentStep + 1;
+      
+      // Skip dependants step (4) if user doesn't have dependents
+      if (!formData.hasDependents && nextStepNumber === 4) {
+        nextStepNumber = 5;
+      }
+      
+      if (nextStepNumber > maxStep) {
+        // We've reached the end, submit the form
         handleSubmit();
       } else {
-        setCurrentStep(prev => Math.min(prev + 1, maxStep));
+        setCurrentStep(nextStepNumber);
       }
     }
   };
 
   const prevStep = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    let prevStepNumber = currentStep - 1;
+    
+    // Skip dependants step (4) if user doesn't have dependents when going backwards
+    if (!formData.hasDependents && prevStepNumber === 4) {
+      prevStepNumber = 3;
+    }
+    
+    setCurrentStep(Math.max(prevStepNumber, 1));
   };
 
   const handleSubmit = async () => {
@@ -173,12 +218,26 @@ const MemberRegistration: React.FC = () => {
     
     setIsSubmitting(true);
     try {
-      // Prepare registration data with proper validation
+      // Normalize phone numbers before submission
+      const normalizedPhoneNumber = formData.phoneNumber ? normalizePhoneNumber(formData.phoneNumber) : '';
+      const normalizedSpousePhone = formData.spousePhone ? normalizePhoneNumber(formData.spousePhone) : '';
+      const normalizedEmergencyPhone = formData.emergencyContactPhone ? normalizePhoneNumber(formData.emergencyContactPhone) : '';
+      
+      // Normalize dependant phone numbers
+      const normalizedDependants = dependants.map(dependant => ({
+        ...dependant,
+        phone: dependant.phone ? normalizePhoneNumber(dependant.phone) : ''
+      }));
+      
+      // Prepare registration data with proper validation and normalized phone numbers
       const registrationData = {
         ...formData,
-        dependants: dependants,
-        // Ensure baptismDate is either a valid date or null/undefined
-        baptismDate: formData.baptismDate || undefined,
+        // Normalize all phone number fields to E.164 format
+        phoneNumber: normalizedPhoneNumber,
+        spousePhone: normalizedSpousePhone,
+        emergencyContactPhone: normalizedEmergencyPhone,
+        dependants: normalizedDependants,
+
         // For phone sign-in users, loginEmail should be optional
         loginEmail: email || formData.email || undefined,
         // Ensure titheParticipation is boolean
@@ -291,17 +350,36 @@ const MemberRegistration: React.FC = () => {
 
   // Determine if this is a phone sign-in user
   const isPhoneSignIn = phone && !email;
-  const totalSteps = isPhoneSignIn ? 6 : 7;
   
-  const stepTitles = [
-    t('personal.information'),
-    t('contact.address'),
-    t('family.information'),
-    t('dependants'),
-    t('spiritual.information'),
-    t('contribution.giving'),
-    ...(isPhoneSignIn ? [] : [t('account.information')])
-  ];
+  // Calculate total steps based on conditions
+  const baseTotalSteps = isPhoneSignIn ? 6 : 7;
+  const totalSteps = formData.hasDependents ? baseTotalSteps : baseTotalSteps - 1;
+  
+  // Generate step titles based on conditions
+  const getAllStepTitles = () => {
+    const titles = [
+      t('personal.information'),
+      t('contact.address'),
+      t('family.information'),
+    ];
+    
+    if (formData.hasDependents) {
+      titles.push(t('dependants'));
+    }
+    
+    titles.push(
+      t('spiritual.information'),
+      t('contribution.giving')
+    );
+    
+    if (!isPhoneSignIn) {
+      titles.push(t('account.information'));
+    }
+    
+    return titles;
+  };
+  
+  const stepTitles = getAllStepTitles();
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

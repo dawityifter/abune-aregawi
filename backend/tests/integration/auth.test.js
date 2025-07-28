@@ -76,7 +76,8 @@ describe('Authentication Endpoints', () => {
         .expect(400);
 
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body.message).toContain('email');
+      expect(response.body).toHaveProperty('errors');
+      expect(response.body.errors.some(error => error.msg.toLowerCase().includes('email'))).toBe(true);
     });
 
     it('should reject registration with weak password', async () => {
@@ -88,7 +89,8 @@ describe('Authentication Endpoints', () => {
         .expect(400);
 
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body.message).toContain('password');
+      expect(response.body).toHaveProperty('errors');
+      expect(response.body.errors.some(error => error.msg.toLowerCase().includes('password'))).toBe(true);
     });
 
     it('should reject registration with missing required fields', async () => {
@@ -114,12 +116,13 @@ describe('Authentication Endpoints', () => {
         .expect(200);
 
       expect(response.body).toHaveProperty('success', true);
-      expect(response.body).toHaveProperty('token');
-      expect(response.body).toHaveProperty('user');
-      expect(response.body.user).toHaveProperty('id');
-      expect(response.body.user.email).toBe('john.doe@example.com');
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('token');
+      expect(response.body.data).toHaveProperty('member');
+      expect(response.body.data.member).toHaveProperty('id');
+      expect(response.body.data.member.email).toBe('john.doe@example.com');
 
-      authToken = response.body.token;
+      authToken = response.body.data.token;
     });
 
     it('should reject login with invalid email', async () => {
@@ -155,13 +158,15 @@ describe('Authentication Endpoints', () => {
         .expect(400);
 
       expect(response.body).toHaveProperty('success', false);
+      expect(response.body).toHaveProperty('errors');
+      expect(response.body.errors.length).toBeGreaterThan(0);
     });
   });
 
-  describe('GET /api/members/profile', () => {
+  describe('GET /api/members/profile/jwt', () => {
     it('should get profile with valid token', async () => {
       const response = await request(app)
-        .get('/api/members/profile')
+        .get('/api/members/profile/jwt')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
@@ -173,7 +178,7 @@ describe('Authentication Endpoints', () => {
 
     it('should reject profile access without token', async () => {
       const response = await request(app)
-        .get('/api/members/profile')
+        .get('/api/members/profile/jwt')
         .expect(401);
 
       expect(response.body).toHaveProperty('success', false);
@@ -182,7 +187,7 @@ describe('Authentication Endpoints', () => {
 
     it('should reject profile access with invalid token', async () => {
       const response = await request(app)
-        .get('/api/members/profile')
+        .get('/api/members/profile/jwt')
         .set('Authorization', 'Bearer invalid-token')
         .expect(401);
 
@@ -190,7 +195,7 @@ describe('Authentication Endpoints', () => {
     });
   });
 
-  describe('PUT /api/members/profile', () => {
+  describe('PUT /api/members/profile/jwt', () => {
     it('should update profile with valid data', async () => {
       const updateData = {
         firstName: 'John Updated',
@@ -199,7 +204,7 @@ describe('Authentication Endpoints', () => {
       };
 
       const response = await request(app)
-        .put('/api/members/profile')
+        .put('/api/members/profile/jwt')
         .set('Authorization', `Bearer ${authToken}`)
         .send(updateData)
         .expect(200);
@@ -215,12 +220,14 @@ describe('Authentication Endpoints', () => {
       const invalidData = { email: 'invalid-email' };
 
       const response = await request(app)
-        .put('/api/members/profile')
+        .put('/api/members/profile/jwt')
         .set('Authorization', `Bearer ${authToken}`)
         .send(invalidData)
         .expect(400);
 
       expect(response.body).toHaveProperty('success', false);
+      expect(response.body).toHaveProperty('errors');
+      expect(response.body.errors.some(error => error.msg.toLowerCase().includes('email'))).toBe(true);
     });
   });
 }); 

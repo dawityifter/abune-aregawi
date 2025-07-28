@@ -1,8 +1,16 @@
 const dotenv = require('dotenv');
-const { Sequelize } = require('sequelize');
 
-// Load test environment variables
+// Load test environment variables FIRST
 dotenv.config({ path: '.env.test' });
+
+// Set test environment variables BEFORE requiring models
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = 'test-jwt-secret';
+process.env.FIREBASE_PROJECT_ID = 'test-project';
+process.env.DATABASE_URL = 'sqlite::memory:';
+
+// NOW require models after environment is set
+const { sequelize } = require('../src/models');
 
 // Mock Firebase Admin
 jest.mock('firebase-admin', () => ({
@@ -29,19 +37,30 @@ jest.mock('nodemailer', () => ({
 
 // Global test setup
 beforeAll(async () => {
-  // Set test environment
-  process.env.NODE_ENV = 'test';
-  process.env.JWT_SECRET = 'test-jwt-secret';
-  process.env.FIREBASE_PROJECT_ID = 'test-project';
-  
-  // Use test database
-  if (!process.env.DATABASE_URL) {
-    process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/abune_aregawi_test';
+  try {
+    // Initialize database connection
+    await sequelize.authenticate();
+    console.log('✅ Test database connection established');
+    
+    // Sync database models for testing
+    await sequelize.sync({ force: true });
+    console.log('✅ Test database synchronized');
+  } catch (error) {
+    console.error('❌ Test database setup failed:', error);
+    throw error;
   }
 });
 
 // Global test teardown
 afterAll(async () => {
+  try {
+    // Close database connection
+    await sequelize.close();
+    console.log('✅ Test database connection closed');
+  } catch (error) {
+    console.error('❌ Error closing test database:', error);
+  }
+  
   // Clean up any remaining connections
   jest.clearAllMocks();
 });

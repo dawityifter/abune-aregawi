@@ -126,12 +126,6 @@ const Navigation: React.FC = () => {
                 >
                   {t('sign.in')}
                 </Link>
-                <Link
-                  to="/register"
-                  className="bg-secondary-600 text-white px-4 py-2 rounded-md text-sm hover:bg-secondary-700 transition-colors"
-                >
-                  {t('register.member')}
-                </Link>
               </div>
             )}
           </div>

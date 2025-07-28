@@ -25,11 +25,12 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
     try {
       setLoading(true);
       
-      if (!currentUser || !currentUser.email) {
+      if (!currentUser || (!currentUser.email && !currentUser.phoneNumber)) {
         throw new Error('User not authenticated');
       }
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?limit=100&email=${encodeURIComponent(currentUser.email)}`, {
+      const userIdentifier = currentUser.email ? `email=${encodeURIComponent(currentUser.email)}` : `phone=${encodeURIComponent(currentUser.phoneNumber || '')}`;
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?limit=100&${userIdentifier}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`,
           'Content-Type': 'application/json'

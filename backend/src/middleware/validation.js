@@ -1,4 +1,19 @@
-const { body, param, query } = require('express-validator');
+const { body, param, query, validationResult } = require('express-validator');
+
+// Handle validation errors middleware
+exports.handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: errors.array()
+    });
+  }
+  
+  next();
+};
 
 // Member registration validation
 exports.validateMemberRegistration = [

@@ -20,14 +20,15 @@ const AdminStats: React.FC = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (!currentUser || !currentUser.email) {
+      if (!currentUser || (!currentUser.email && !currentUser.phoneNumber)) {
         setError('User not authenticated');
         setLoading(false);
         return;
       }
 
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?limit=1000&email=${encodeURIComponent(currentUser.email)}`, {
+        const userIdentifier = currentUser.email ? `email=${encodeURIComponent(currentUser.email)}` : `phone=${encodeURIComponent(currentUser.phoneNumber || '')}`;
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?limit=1000&${userIdentifier}`, {
           headers: {
             'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`,
           },

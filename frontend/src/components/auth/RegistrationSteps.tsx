@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { formatPhoneNumber } from '../../utils/formatPhoneNumber';
+import { formatPhoneNumber, normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
 import { formatDateForDisplay } from '../../utils/dateUtils';
 
 // Step 1: Personal Information
@@ -198,28 +198,14 @@ const ContactAddressStep: React.FC<{
         <input
           type="tel"
           value={formData.phoneNumber}
-          onChange={(e) => {
-            // Only allow up to 10 digits
-            const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-            handleInputChange('phoneNumber', formatPhoneNumber(digits));
-          }}
-          onBlur={(e) => {
-            // Show error if not 10 digits on blur
-            const digits = formData.phoneNumber.replace(/\D/g, '');
-            if (digits.length > 0 && digits.length < 10) {
-              handleInputChange('phoneNumber', formatPhoneNumber(formData.phoneNumber));
-              // Optionally, set error here if not already set
-              if (!errors.phoneNumber) {
-                errors.phoneNumber = t('phone.number.invalid');
-              }
-            }
-          }}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
-          }`}
+          readOnly
+          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 cursor-not-allowed"
           placeholder="(123) 456-7890"
         />
         {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>}
+        <p className="text-xs text-gray-500 mt-1">
+          {t('phone.number.from.authentication')}
+        </p>
       </div>
       
       <div>
@@ -342,56 +328,72 @@ const FamilyInfoStep: React.FC<{
         <>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('spouse.name')}
+              {t('spouse.name')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.spouseName}
               onChange={(e) => handleInputChange('spouseName', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className={`w-full px-3 py-2 border rounded-md ${
+                errors.spouseName ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
+            {errors.spouseName && <p className="text-red-500 text-sm mt-1">{errors.spouseName}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('spouse.email')}
+              {t('spouse.email')} <span className="text-gray-400">({t('optional')})</span>
             </label>
             <input
               type="email"
               value={formData.spouseEmail || ''}
               onChange={(e) => handleInputChange('spouseEmail', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className={`w-full px-3 py-2 border rounded-md ${
+                errors.spouseEmail ? 'border-red-500' : 'border-gray-300'
+              }`}
               placeholder="spouse@email.com"
             />
+            {errors.spouseEmail && <p className="text-red-500 text-sm mt-1">{errors.spouseEmail}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('spouse.contact.phone')}
+              {t('spouse.contact.phone')} <span className="text-gray-400">({t('optional')})</span>
             </label>
             <input
               type="tel"
-              value={formData.spouseContactPhone || ''}
-              onChange={(e) => handleInputChange('spouseContactPhone', formatPhoneNumber(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              value={formData.spousePhone || ''}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                handleInputChange('spousePhone', formatPhoneNumber(digits));
+              }}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.spousePhone ? 'border-red-500' : 'border-gray-300'
+              }`}
               placeholder="(555) 123-4567"
+              maxLength={14}
             />
+            {errors.spousePhone && <p className="text-red-500 text-sm mt-1">{errors.spousePhone}</p>}
           </div>
         </>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('emergency.contact.name')}
+              {t('emergency.contact.name')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.emergencyContactName}
               onChange={(e) => handleInputChange('emergencyContactName', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className={`w-full px-3 py-2 border rounded-md ${
+                errors.emergencyContactName ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
+            {errors.emergencyContactName && <p className="text-red-500 text-sm mt-1">{errors.emergencyContactName}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('emergency.contact.phone')}
+              {t('emergency.contact.phone')} <span className="text-red-500">*</span>
             </label>
             <input
               type="tel"
@@ -401,9 +403,12 @@ const FamilyInfoStep: React.FC<{
                 const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
                 handleInputChange('emergencyContactPhone', formatPhoneNumber(digits));
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className={`w-full px-3 py-2 border rounded-md ${
+                errors.emergencyContactPhone ? 'border-red-500' : 'border-gray-300'
+              }`}
               placeholder="(555) 123-4567"
             />
+            {errors.emergencyContactPhone && <p className="text-red-500 text-sm mt-1">{errors.emergencyContactPhone}</p>}
           </div>
         </div>
       )}
@@ -444,17 +449,7 @@ const SpiritualInfoStep: React.FC<{
           placeholder="Enter Baptism Name"
         />
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('baptism.date')}
-        </label>
-        <input
-          type="date"
-          value={formData.baptismDate || ''}
-          onChange={(e) => handleInputChange('baptismDate', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-        />
-      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           {t('interested.in.serving')}
@@ -738,8 +733,13 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
             <input
               type="tel"
               value={newDependant.phone || ''}
-              onChange={(e) => setNewDependant({...newDependant, phone: formatPhoneNumber(e.target.value)})}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                setNewDependant({...newDependant, phone: formatPhoneNumber(digits)});
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="(555) 123-4567"
+              maxLength={14}
             />
           </div>
 

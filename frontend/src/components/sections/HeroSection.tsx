@@ -123,7 +123,7 @@ const HeroSection: React.FC = () => {
         </div>
 
         {/* CTA Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl mx-auto">
           <Link to="/church-bylaw" className="btn btn-primary">
             <i className="fas fa-book mr-2"></i>
             {t('church.bylaw')}
@@ -139,15 +139,10 @@ const HeroSection: React.FC = () => {
             <i className="fas fa-chart-bar mr-2"></i>
             {t('member.status')}
           </Link>
-          {currentUser ? (
+          {currentUser && (
             <Link to="/dashboard" className="btn btn-outline">
               <i className="fas fa-user mr-2"></i>
               {t('member.dashboard')}
-            </Link>
-          ) : (
-            <Link to="/register" className="btn btn-outline">
-              <i className="fas fa-user-plus mr-2"></i>
-              {t('register.member')}
             </Link>
           )}
         </div>

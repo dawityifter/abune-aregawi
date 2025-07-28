@@ -2,18 +2,12 @@ import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider, useAuth } from '../AuthContext';
+import { User } from 'firebase/auth';
 
-// Mock Firebase Auth
+// First, create mock functions that don't depend on each other
 const mockOnAuthStateChanged = jest.fn();
 const mockGetIdToken = jest.fn();
-const mockSignOut = jest.fn();
-
-jest.mock('../../firebase', () => ({
-  auth: {
-    onAuthStateChanged: mockOnAuthStateChanged,
-    signOut: mockSignOut
-  }
-}));
+const mockUnsubscribe = jest.fn();
 
 // Mock Firebase User
 const mockFirebaseUser = {
@@ -23,6 +17,63 @@ const mockFirebaseUser = {
   displayName: 'Test User',
   getIdToken: mockGetIdToken
 };
+
+// Store the auth callback to simulate auth state changes
+let authCallback: ((user: any) => void) | null = null;
+
+// Mock the Firebase auth module
+jest.mock('firebase/auth', () => {
+  // Mock functions that will be used in the mock implementation
+  const mockSignOut = jest.fn().mockResolvedValue(undefined);
+  
+  // Create a mock auth object
+  const mockAuth = {
+    currentUser: null,
+    onAuthStateChanged: jest.fn((callback: (user: User | null) => void, errorCallback?: (error: Error) => void) => {
+      // Store the callback to simulate auth state changes
+      authCallback = callback;
+      
+      // Call the callback with null initially (no user)
+      if (callback) callback(null);
+      
+      // Return a mock unsubscribe function
+      return mockUnsubscribe;
+    }),
+    signOut: mockSignOut
+  };
+
+  return {
+    getAuth: jest.fn(() => mockAuth),
+    onAuthStateChanged: jest.fn((auth, callback, errorCallback) => {
+      // Store the callback to simulate auth state changes
+      authCallback = callback;
+      
+      // Return a mock unsubscribe function
+      return mockUnsubscribe;
+    }),
+    signOut: mockSignOut,
+    // Add other Firebase auth methods as needed
+  };
+});
+
+// Mock our firebase config file
+jest.mock('../../firebase', () => {
+  const mockSignOut = jest.fn().mockResolvedValue(undefined);
+  
+  return {
+    auth: {
+      currentUser: null,
+      onAuthStateChanged: jest.fn((callback: (user: any) => void, errorCallback?: (error: Error) => void) => {
+        // Store the callback to simulate auth state changes
+        authCallback = callback;
+        
+        // Return a mock unsubscribe function
+        return mockUnsubscribe;
+      }),
+      signOut: mockSignOut
+    }
+  };
+});
 
 // Mock fetch
 global.fetch = jest.fn();
@@ -86,8 +137,32 @@ describe('AuthContext', () => {
     it('should start with loading state', () => {
       renderAuthProvider();
       
-      expect(screen.getByTestId('loading')).toHaveTextContent('true');
-      expect(screen.getByTestId('user')).toHaveTextContent('null');
+      // The loading state should be true initially
+      expect(screen.getByTestId('loading').textContent).toBe('true');
+      
+      // After the auth state is resolved, loading should be false
+      act(() => {
+        if (authCallback) {
+          authCallback(null);
+        }
+      });
+      
+      expect(screen.getByTestId('loading').textContent).toBe('false');
+    });
+
+    it('should have no user initially', async () => {
+      renderAuthProvider();
+      
+      // Trigger the auth state change with null user
+      act(() => {
+        if (authCallback) {
+          authCallback(null);
+        }
+      });
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('user').textContent).toBe('null');
+      });
     });
 
     it('should initialize Firebase auth listener', () => {
@@ -99,67 +174,118 @@ describe('AuthContext', () => {
 
   describe('Authentication State Changes', () => {
     it('should update state when user signs in', async () => {
-      let authCallback: (user: any) => void;
-      mockOnAuthStateChanged.mockImplementation((callback) => {
-        authCallback = callback;
-        return jest.fn();
-      });
-
       renderAuthProvider();
 
       // Simulate user sign in
       await act(async () => {
-        authCallback!(mockFirebaseUser);
+        if (authCallback) {
+          authCallback(mockFirebaseUser);
+        }
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('false');
-        expect(screen.getByTestId('user')).not.toHaveTextContent('null');
+        expect(screen.getByTestId('loading').textContent).toBe('false');
+        expect(screen.getByTestId('user').textContent).not.toBe('null');
+        expect(JSON.parse(screen.getByTestId('user').textContent || '')).toMatchObject({
+          uid: 'test-uid',
+          email: 'test@example.com',
+          phoneNumber: '+1234567890',
+          displayName: 'Test User'
+        });
       });
     });
 
     it('should update state when user signs out', async () => {
-      let authCallback: (user: any) => void;
-      mockOnAuthStateChanged.mockImplementation((callback) => {
-        authCallback = callback;
-        return jest.fn();
-      });
-
       renderAuthProvider();
-
-      // Simulate user sign in
+      
+      // First sign in
       await act(async () => {
-        authCallback!(mockFirebaseUser);
+        if (authCallback) {
+          authCallback(mockFirebaseUser);
+        }
+      });
+      
+      // Then sign out
+      await act(async () => {
+        if (authCallback) {
+          authCallback(null);
+        }
       });
 
-      // Simulate user sign out
-      await act(async () => {
-        authCallback!(null);
-      });
-
+      // Verify user is signed out
       await waitFor(() => {
-        expect(screen.getByTestId('user')).toHaveTextContent('null');
+        expect(screen.getByTestId('user').textContent).toBe('null');
       });
     });
-
-    it('should fetch user profile from backend when Firebase user exists', async () => {
-      let authCallback: (user: any) => void;
-      mockOnAuthStateChanged.mockImplementation((callback) => {
-        authCallback = callback;
-        return jest.fn();
-      });
-
+    
+    it('should handle auth state change errors', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      
       renderAuthProvider();
-
+      
+      // Simulate an error in the auth state change
+      const error = new Error('Auth state change error');
       await act(async () => {
-        authCallback!(mockFirebaseUser);
+        if (authCallback) {
+          // @ts-ignore - Testing error case
+          authCallback(new Error('Auth state change error'));
+        }
       });
-
+      
+      // Verify error was logged
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error on auth state changed:', error);
+      
+      // Cleanup
+      consoleErrorSpy.mockRestore();
+    });
+  });
+  
+  describe('Profile Fetching', () => {
+    it('should fetch user profile from backend when Firebase user exists', async () => {
+      // Mock the fetch response
+      const mockProfileData = {
+        id: 1,
+        firstName: 'Test',
+        lastName: 'User',
+        email: 'test@example.com',
+        phoneNumber: '+1234567890'
+      };
+      
+      // @ts-ignore - Mocking fetch
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockProfileData),
+      });
+      
+      renderAuthProvider();
+      
+      // Simulate user sign in
+      await act(async () => {
+        if (authCallback) {
+          authCallback(mockFirebaseUser);
+        }
+      });
+      
+      // Verify the fetch was called with the correct parameters
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
           expect.stringContaining('/api/members/profile/firebase/test-uid'),
-          expect.any(Object)
+          expect.objectContaining({
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          })
         );
+      });
+      
+      // Verify the user state was updated with the profile data
+      await waitFor(() => {
+        const userData = JSON.parse(screen.getByTestId('user').textContent || '{}');
+        expect(userData).toMatchObject({
+          ...mockFirebaseUser,
+          ...mockProfileData
+        });
       });
     });
 
@@ -230,7 +356,9 @@ describe('AuthContext', () => {
 
   describe('Logout Function', () => {
     it('should call Firebase signOut when logout is triggered', async () => {
-      mockSignOut.mockResolvedValue(undefined);
+      // Get the mocked signOut function from the Firebase auth module
+      const { signOut } = require('firebase/auth');
+      (signOut as jest.Mock).mockResolvedValue(undefined);
 
       renderAuthProvider();
 
@@ -239,7 +367,7 @@ describe('AuthContext', () => {
         logoutButton.click();
       });
 
-      expect(mockSignOut).toHaveBeenCalled();
+      expect(signOut).toHaveBeenCalled();
     });
   });
 

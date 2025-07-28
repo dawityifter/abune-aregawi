@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 import Profile from '../Profile';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { LanguageProvider } from '../../contexts/LanguageContext';
@@ -43,11 +44,13 @@ global.fetch = jest.fn();
 
 const renderProfile = () =>
   render(
-    <LanguageProvider>
-      <AuthProvider>
-        <Profile />
-      </AuthProvider>
-    </LanguageProvider>
+    <BrowserRouter>
+      <LanguageProvider>
+        <AuthProvider>
+          <Profile />
+        </AuthProvider>
+      </LanguageProvider>
+    </BrowserRouter>
   );
 
 describe('Profile Component', () => {

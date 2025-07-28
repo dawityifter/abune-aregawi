@@ -63,24 +63,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   }
 
   // Check if user has admin permissions
-  const userRole = userProfile?.role || 'member';
+  const userRole = userProfile?.data?.member?.role || 'member';
   const permissions = getRolePermissions(userRole as UserRole);
+  
+  // Debug logging for admin dashboard
+  console.log('🔍 AdminDashboard Debug Info:');
+  console.log('  User Profile:', userProfile);
+  console.log('  User Role:', userRole);
+  console.log('  Permissions:', permissions);
+  console.log('  Can Access Admin Panel:', permissions.canAccessAdminPanel);
 
   if (!permissions.canAccessAdminPanel) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-600 text-lg mb-4">
-            {t('access.denied')}
+            Access Denied
           </div>
           <p className="text-gray-600 mb-4">
-            {t('admin.access.required')}
+            Administrator access is required to view this page.
           </p>
           <button 
             onClick={() => window.history.back()} 
             className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
           >
-            {t('go.back')}
+            Go Back
           </button>
         </div>
       </div>
@@ -101,7 +108,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                {t('welcome')}, {userProfile?.displayName || currentUser?.displayName || 'Admin'}
+                {t('welcome')}, {userProfile?.data?.member?.firstName || currentUser?.displayName || 'Admin'}
               </span>
               <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded-full">
                 {userRole}

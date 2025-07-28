@@ -94,6 +94,7 @@ app.get('/health', (req, res) => {
     success: true,
     message: 'Server is running',
     timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development'
   });
 });
@@ -193,4 +194,10 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-startServer(); 
+// Export the app for testing
+module.exports = app;
+
+// Only start the server if this file is run directly (not required by tests)
+if (require.main === module) {
+  startServer();
+} 

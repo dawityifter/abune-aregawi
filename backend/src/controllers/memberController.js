@@ -3,6 +3,24 @@ const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const { Member, Dependant } = require('../models');
 
+// Utility function to normalize phone numbers
+const normalizePhoneNumber = (phoneNumber) => {
+  if (!phoneNumber || typeof phoneNumber !== 'string') {
+    return phoneNumber;
+  }
+  
+  // Trim whitespace
+  const trimmed = phoneNumber.trim();
+  
+  // If it starts with +, keep the + and remove all non-digits after it
+  if (trimmed.startsWith('+')) {
+    return '+' + trimmed.slice(1).replace(/[^\d]/g, '');
+  }
+  
+  // Otherwise, remove all non-digits
+  return trimmed.replace(/[^\d]/g, '');
+};
+
 // Register new member with Firebase UID
 exports.register = async (req, res) => {
   try {
@@ -233,6 +251,16 @@ exports.register = async (req, res) => {
 // Login member
 exports.login = async (req, res) => {
   try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
     const { email, password } = req.body;
 
     // Find member by login email
@@ -335,6 +363,16 @@ exports.getProfile = async (req, res) => {
 // Update member profile
 exports.updateProfile = async (req, res) => {
   try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
     const member = await Member.findByPk(req.user.id);
     
     if (!member) {
@@ -694,17 +732,41 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       const cleanPhone = userPhone.replace(/[^\d+]/g, '');
       console.log('🔍 Clean phone for search:', cleanPhone);
       
+      // Create comprehensive phone format variations
+      const digitsOnly = userPhone.replace(/[^\d]/g, '');
+      const last10Digits = digitsOnly.slice(-10); // Get last 10 digits (remove country code)
+      
+      const phoneFormats = [
+        userPhone,                                    // +14699078229
+        cleanPhone,                                   // +14699078229
+        digitsOnly,                                   // 14699078229
+        last10Digits,                                 // 4699078229
+        `+1${last10Digits}`,                         // +14699078229
+        `(${last10Digits.slice(0,3)}) ${last10Digits.slice(3,6)}-${last10Digits.slice(6)}`, // (469) 907-8229
+        `${last10Digits.slice(0,3)}-${last10Digits.slice(3,6)}-${last10Digits.slice(6)}`,   // 469-907-8229
+        `${last10Digits.slice(0,3)}.${last10Digits.slice(3,6)}.${last10Digits.slice(6)}`,   // 469.907.8229
+        `${last10Digits.slice(0,3)} ${last10Digits.slice(3,6)} ${last10Digits.slice(6)}`    // 469 907 8229
+      ];
+      console.log('🔍 Searching for phone in these formats:', phoneFormats);
+      
       member = await Member.findOne({
         where: {
-          [Op.or]: [
-            { phoneNumber: userPhone },
-            { phoneNumber: cleanPhone },
-            { phoneNumber: userPhone.replace(/[^\d]/g, '') }, // digits only
-            { phoneNumber: `+1${userPhone.replace(/[^\d]/g, '')}` } // add +1 prefix
-          ]
+          [Op.or]: phoneFormats.map(format => ({ phoneNumber: format }))
         },
         include: [{ model: Dependant, as: 'dependants' }]
       });
+      
+      // If not found, let's see what phone numbers exist in the database
+      if (!member) {
+        const allPhones = await Member.findAll({
+          attributes: ['id', 'firstName', 'lastName', 'phoneNumber'],
+          where: {
+            phoneNumber: { [Op.not]: null }
+          },
+          limit: 5
+        });
+        console.log('🔍 Sample phone numbers in database:', allPhones.map(m => ({ id: m.id, name: `${m.firstName} ${m.lastName}`, phone: m.phoneNumber })));
+      }
     }
 
     console.log('🔍 Member search result:', member ? 'FOUND' : 'NOT FOUND');
@@ -752,12 +814,20 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
   try {
     const { uid } = req.params;
 
-    // Find member by email from Firebase Auth
-    const member = await Member.findOne({
-      where: { 
-        email: req.query.email || '' // We'll pass email as query param
-      }
-    });
+    // Find member by email or phone from Firebase Auth
+    const whereClause = {};
+    if (req.query.email) {
+      whereClause.email = req.query.email;
+    } else if (req.query.phone) {
+      whereClause.phoneNumber = req.query.phone;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Either email or phone parameter is required'
+      });
+    }
+
+    const member = await Member.findOne({ where: whereClause });
 
     if (!member) {
       return res.status(404).json({

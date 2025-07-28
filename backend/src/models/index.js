@@ -17,28 +17,48 @@ try {
     throw new Error('DATABASE_URL environment variable is not set');
   }
 
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
-    dialect: 'postgres',
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
-    },
+  // Determine database type from URL
+  const isPostgres = process.env.DATABASE_URL.startsWith('postgres');
+  const isSQLite = process.env.DATABASE_URL.startsWith('sqlite');
+  
+  let config = {
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
     define: {
       timestamps: true,
       underscored: true
-    },
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
     }
-  });
+  };
 
-  console.log('✅ Sequelize instance created successfully');
+  if (isPostgres) {
+    config = {
+      ...config,
+      dialect: 'postgres',
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false
+        }
+      },
+      pool: {
+        max: 5,
+        min: 0,
+        acquire: 30000,
+        idle: 10000
+      }
+    };
+  } else if (isSQLite) {
+    config = {
+      ...config,
+      dialect: 'sqlite',
+      storage: process.env.DATABASE_URL === 'sqlite::memory:' ? ':memory:' : process.env.DATABASE_URL.replace('sqlite:', ''),
+      logging: process.env.NODE_ENV === 'test' ? false : config.logging
+    };
+  } else {
+    throw new Error(`Unsupported database URL format: ${process.env.DATABASE_URL}`);
+  }
+
+  sequelize = new Sequelize(process.env.DATABASE_URL, config);
+  console.log(`✅ Sequelize instance created successfully (${config.dialect})`);
 } catch (error) {
   console.error('❌ Error creating Sequelize instance:', error.message);
   throw error;

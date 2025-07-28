@@ -310,6 +310,11 @@ const translations = {
     'head.of.household.email.not.found': 'No member found with this email address. Please register as head of household or provide a valid head of household email.',
     'has.dependents': 'I have children or dependents to register',
     'has.dependents.help': 'Check this box if you want to add children or dependents during registration. You can also add them later from your dashboard.',
+    'is.baptized': 'Baptized in this Church?',
+    
+    // Sign In Page
+    'welcome.back': 'Welcome Back',
+    'sign.in.to.access.community': 'Sign in to access your church community',
     
     // Processing
     'processing': 'Processing...',
@@ -376,6 +381,27 @@ const translations = {
     'send.reset.email': 'ኢመይል ምልኣኽ ልእኽ',
     'sending': 'እየ ልእኽ...',
     
+    // Sign In Page - New translations
+    'welcome.back': 'እንቋዕ ብሰላም መጻእኩም',
+    'sign.in.to.access.community': 'ናብ ማሕበረሰብ ቤተ ክርስቲያንኩም ንምእታው ተመዝገቡ',
+    'sign.in.with.email.password': 'ብኢመይልን መሕለፊ ቃልን ተመዝገቡ',
+    'sign.in.with.phone.number': 'ብቁጽሪ ስልኪ ተመዝገቡ',
+    'email.address': 'ኢመይል ኣድራሻ',
+    'enter.your.email': 'ኢመይልኩም ኣእትዉ',
+    'enter.your.password': 'መሕለፊ ቃልኩም ኣእትዉ',
+    'enter.10.digits': '10 ቁጽሪ ኣእትዉ',
+    'enter.10.digits.auto.format': '10 ቁጽሪ ኣእትዉ (ንኣብነት 5551234567) - ብኣውቶማቲክ ይቐርጽ',
+    'sending.otp': 'OTP እየ ልእኽ...',
+    'send.otp.test.mode': 'OTP ልእኽ (ናይ ፈተነ ኣገባብ)',
+    'send.otp': 'OTP ልእኽ',
+    'complete.recaptcha.first': 'ቅድሚ ሕጂ reCAPTCHA ዛዝም',
+    'enter.otp': 'OTP ኣእትዉ',
+    'verifying': 'እየ ፈትሽ...',
+    'verify.otp': 'OTP ፈትሽ',
+    'try.again': 'ዳግማይ ፈትን',
+    'no.auth.methods.available': 'ዝኾነ ናይ እተኻ ኣገባብ ኣይተረኽበን።',
+    'contact.administrator.assistance': 'ሓገዝ ንምርካብ ንኣመሓዳሪ ተወከሱ።',
+    
     // Dashboard
     'member.dashboard': 'ደገ ኣባላት',
     'welcome': 'እንቋዕ ብደሓን መጻእኩም',
@@ -395,13 +421,9 @@ const translations = {
     'profile.information': 'ሓበሬታ ፕሮፋይል',
     'basic.information': 'ቀንዲ ሓበሬታታት',
     'full.name': 'ምሉእ ስም',
-    'role': 'ሓላፍነት',
     'member.since': 'ካብ መዓስ ኣባል',
-    'phone.number': 'ቁጽሪ ስልኪ',
     'date.of.birth': 'ዕለተ ልደት',
-    'gender': 'ፆታ',
     'church.information': 'ሓበሬታ ቤተ ክርስቲያን',
-    'spiritual.father': 'ኣቡነ መንፈስ',
     'name.day': 'ዕለተ ስም',
     'liturgical.role': 'ሓላፍነት ስነ ቅልስ',
     'language.preference': 'ቋንቋ ተሻጋሪ',
@@ -409,8 +431,7 @@ const translations = {
     'emergency.phone': 'ስልኪ ሓጋዚ',
     'edit': 'ኣምልስ',
     'cancel': 'ሰርዝ',
-    'save': 'ኣቐምጥ',
-    'saving': 'እየ ኣቐምጥ...',
+    'saving': 'እየ ኣቀምጥ...',
     'not.provided': 'ዘይተሃበ',
     'select.gender': 'ፆታ ምረጽ',
     'male': 'ወዲ',
@@ -451,7 +472,7 @@ const translations = {
     'add.child': 'ውልዲ ኣኽትም',
     'added.children': 'ዝተኣከቡ ውልዲ',
     'born': 'ዝተወለደ',
-    'is.baptized': 'ዕርድ ዝተጠምተ ዲኦ?',
+    'is.baptized': 'ኣብዚ ቤተ ክርስቲያን ዝተጠመተ ዲኦ?',
     'remove': 'ሰርዝ',
     'no.children.added': 'ገና ውልዲ ኣይተኣከቡን።',
     'add.children.now': 'ሕጂ ውልዲ ኣኽትም ወይ ድሕሪ ካብ ዳሽቦርድካ ኣኽትም።',
@@ -463,7 +484,6 @@ const translations = {
     'order': 'ቅደም ምስደርደር',
     'ascending': 'ካብ ታሕቲ ናብ ላዕሊ',
     'descending': 'ካብ ላዕሊ ናብ ታሕቲ',
-    'phone': 'ስልኪ',
     'monthly.payment': 'ወርሓዊ ክፍሊት',
     'total.due': 'ጠቕላላ ክፍሊት',
     'collected': 'ዝተኣከበ',
@@ -515,7 +535,6 @@ const translations = {
     'password.too.short': 'መሕለፊ ቃል ካብ 8 ፊደላት ክልቲኦም የድለ',
     
     // Additional Form Fields
-    'email.address': 'ኢመይል ኢመይል',
     'apartment.suite.number': 'ቤት/ሱይት ቁጽሪ',
     'state.province': 'ግዛት/ግዝኣት',
     'spouse.name': 'ስም መርዓ',
@@ -542,7 +561,7 @@ const translations = {
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
     const saved = localStorage.getItem('preferredLanguage');
-    return (saved as Language) || 'ti'; // Default to Tigrigna
+    return (saved as Language) || 'en'; // Default to English
   });
 
   const setLanguage = (lang: Language) => {

@@ -1,17 +1,30 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getRolePermissions, UserRole } from '../utils/roles';
 
 interface UserProfile {
-  displayName: string;
-  email: string;
-  role: UserRole;
-  createdAt: string;
-  isActive: boolean;
+  success: boolean;
+  data: {
+    member: {
+      id: string;
+      firstName: string;
+      middleName?: string;
+      lastName: string;
+      email: string;
+      role: UserRole;
+      phoneNumber: string;
+      isActive: boolean;
+      createdAt: string;
+      updatedAt: string;
+      // Add other member fields as needed
+    };
+  };
 }
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { currentUser, logout, getUserProfile } = useAuth();
   const { t } = useLanguage();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -19,19 +32,19 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Check if user has admin permissions
-  const userRole = (userProfile?.role || 'member') as UserRole;
+  const userRole = (userProfile?.data?.member?.role || 'member') as UserRole;
   const permissions = getRolePermissions(userRole);
+  
+  // Debug logging for role and permissions
+
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (currentUser) {
         try {
-          console.log('Fetching profile for user:', currentUser.uid);
           const profile = await getUserProfile(currentUser.uid);
-          console.log('Profile fetched:', profile);
           setUserProfile(profile);
         } catch (error: any) {
-          console.error('Error fetching user profile:', error);
           // Check if it's a Firestore permission error or network error
           if (error.message.includes('permission') || error.message.includes('403')) {
             setError('Firestore permission denied. Please check your Firebase rules.');
@@ -60,8 +73,8 @@ const Dashboard: React.FC = () => {
   };
 
   const handleViewProfile = () => {
-    // Navigate to profile page
-    window.location.href = '/profile';
+    // Navigate to profile page using React Router
+    navigate('/profile');
   };
 
   const handleViewDues = () => {
@@ -80,12 +93,30 @@ const Dashboard: React.FC = () => {
   };
 
   const handleDonate = () => {
-    window.location.href = '/donate';
+    navigate('/donate');
   };
 
   const handleManageAccount = () => {
     alert('Manage Account functionality coming soon!');
     // TODO: Navigate to account settings page
+  };
+
+  const handleRefreshProfile = async () => {
+    if (currentUser) {
+      setLoading(true);
+      try {
+        console.log('🔄 Manually refreshing user profile...');
+        const profile = await getUserProfile(currentUser.uid);
+        console.log('🔄 Refreshed profile:', profile);
+        setUserProfile(profile);
+        setError(null);
+      } catch (error: any) {
+        console.error('Error refreshing profile:', error);
+        setError(`Failed to refresh profile: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   if (loading) {
@@ -125,7 +156,26 @@ const Dashboard: React.FC = () => {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              {/* Sign out functionality is available in the Navigation component */}
+              <span className="text-gray-700">
+                {t('welcome')}, {userProfile?.data?.member?.firstName || currentUser?.displayName || currentUser?.email || 'User'}!
+                <span className="text-xs text-gray-500 ml-2">
+                  (Role: {userRole})
+                </span>
+              </span>
+              <button
+                onClick={handleRefreshProfile}
+                className="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm"
+                disabled={loading}
+              >
+                <i className="fas fa-sync-alt mr-1"></i>
+                Refresh
+              </button>
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+              >
+                {t('logout')}
+              </button>
             </div>
           </div>
         </div>
@@ -149,7 +199,7 @@ const Dashboard: React.FC = () => {
                       {t('profile')}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {userProfile?.displayName || currentUser?.displayName || 'User'}
+                      {userProfile?.data?.member?.firstName || currentUser?.email || 'User'}
                     </p>
                   </div>
                 </div>
@@ -300,7 +350,7 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className="mt-4">
                   <button 
-                    onClick={() => window.location.href = '/children'}
+                    onClick={() => navigate('/children')}
                     className="w-full bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 transition-colors"
                   >
                     Manage Children
@@ -359,7 +409,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="mt-4">
                     <button 
-                      onClick={() => window.location.href = '/admin'}
+                      onClick={() => navigate('/admin')}
                       className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
                     >
                       <i className="fas fa-shield-alt mr-2"></i>

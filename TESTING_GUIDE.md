@@ -32,19 +32,41 @@ This guide will help you test the complete Firebase authentication setup for the
 3. **Submit registration**: Should create both Firebase Auth account and backend member record
 4. **Verify redirect**: Should redirect to dashboard after successful registration
 
-#### **B. User Login**
+#### **B. User Login (Email/Password)**
 1. **Navigate to login**: Click "Sign In" or go to `/login`
-2. **Enter credentials**: Use the email and password from registration
-3. **Submit login**: Should authenticate and redirect to dashboard
-4. **Verify authentication state**: User should remain logged in
+2. **Select email method**: Ensure "Email" tab is selected
+3. **Enter credentials**: Use the email and password from registration
+4. **Submit login**: Should authenticate and redirect to dashboard
+5. **Verify authentication state**: User should remain logged in
 
-#### **C. Password Reset**
+#### **C. User Login (Phone/OTP)**
+1. **Navigate to login**: Click "Sign In" or go to `/login`
+2. **Select phone method**: Click "Phone" tab
+3. **Enter phone number**: Use format `(XXX) XXX-XXXX` or `+1XXXXXXXXXX`
+4. **Test phone number formatting**: 
+   - Enter `1234567890` → Should format to `(123) 456-7890`
+   - Enter `+11234567890` → Should format to `(123) 456-7890`
+5. **Test reCAPTCHA behavior**:
+   - **Development mode**: Should auto-bypass reCAPTCHA
+   - **Test numbers** (`+1234567890`, `+15551234567`): Should bypass reCAPTCHA
+   - **Regular numbers**: Should show invisible reCAPTCHA (auto-solved)
+6. **Send OTP**: Click "Send OTP" button
+7. **Verify OTP form**: Should show OTP input field
+8. **Enter OTP**: Input the 6-digit code received
+9. **Submit OTP**: Click "Verify OTP"
+10. **Verify authentication**: Should redirect to dashboard
+11. **Test error handling**:
+    - **Invalid OTP**: Should show "Invalid verification code" message
+    - **Expired OTP**: Should show "Verification code has expired" message
+    - **Try Again button**: Should reset form and allow retry
+
+#### **D. Password Reset**
 1. **On login page**: Click "Forgot Password?"
 2. **Enter email**: Use registered email address
 3. **Submit**: Should send reset email (check console for Firebase messages)
 4. **Return to login**: Click "Back to Login"
 
-#### **D. User Logout**
+#### **E. User Logout**
 1. **From dashboard**: Click "Sign Out" in header
 2. **Verify logout**: Should redirect to homepage
 3. **Check authentication state**: User should be logged out
@@ -105,25 +127,87 @@ curl -X POST http://localhost:5000/api/members/login \
 1. **User profiles**: Should be created in Firestore
 2. **Data synchronization**: Backend and Firebase should be in sync
 
-### **6. Error Handling Test**
+### **6. Phone Authentication Comprehensive Test**
 
-#### **A. Invalid Credentials**
+#### **A. Phone Number Normalization**
+1. **Test various input formats**:
+   - `1234567890` → Should normalize to `+11234567890`
+   - `(123) 456-7890` → Should normalize to `+11234567890`
+   - `123-456-7890` → Should normalize to `+11234567890`
+   - `+1 123 456 7890` → Should normalize to `+11234567890`
+2. **Test invalid formats**:
+   - `123456789` (too short) → Should show validation error
+   - `12345678901` (too long) → Should show validation error
+   - `abcd567890` (letters) → Should show validation error
+
+#### **B. reCAPTCHA Integration**
+1. **Development mode testing**:
+   - **Localhost/127.0.0.1**: Should auto-bypass reCAPTCHA
+   - **Console logs**: Should show "Development mode - bypassing reCAPTCHA"
+2. **Test phone number bypass**:
+   - **+1234567890**: Should bypass reCAPTCHA completely
+   - **+15551234567**: Should bypass reCAPTCHA completely
+   - **UI message**: Should show "Test phone number detected"
+3. **Production reCAPTCHA**:
+   - **Regular numbers**: Should use invisible reCAPTCHA
+   - **Auto-solve**: Should automatically solve without user interaction
+   - **Error suppression**: Should not show "Timeout (h)" errors
+
+#### **C. OTP Verification Flow**
+1. **Successful OTP**:
+   - **Send OTP**: Should receive confirmation result
+   - **Enter valid OTP**: Should authenticate successfully
+   - **Redirect**: Should go to dashboard
+2. **Invalid OTP scenarios**:
+   - **Wrong code**: Should show "Invalid verification code"
+   - **Expired code**: Should show "Verification code has expired"
+   - **Empty code**: Should show "Please enter the OTP"
+3. **Try Again functionality**:
+   - **Click Try Again**: Should reset OTP form
+   - **Clear errors**: Should remove error messages
+   - **Reset state**: Should allow new OTP request
+
+#### **D. Error Recovery**
+1. **Session timeout**:
+   - **Wait for session expiry**: Should show appropriate message
+   - **Request new OTP**: Should work after timeout
+2. **Network interruption**:
+   - **Disconnect network**: Should handle gracefully
+   - **Reconnect**: Should allow retry
+3. **Firebase errors**:
+   - **Too many requests**: Should show rate limit message
+   - **Service unavailable**: Should show service error message
+
+### **7. Error Handling Test**
+
+#### **A. Email Authentication Errors**
 1. **Wrong password**: Try logging in with wrong password
 2. **Expected**: Error message displayed
 3. **Non-existent email**: Try logging in with non-existent email
 4. **Expected**: Error message displayed
 
-#### **B. Network Errors**
+#### **B. Phone Authentication Errors**
+1. **Invalid phone format**: Try with invalid phone number
+2. **Expected**: "Please enter a valid phone number" message
+3. **OTP verification errors**:
+   - **Invalid OTP**: Should show "Invalid verification code"
+   - **Expired session**: Should show "Verification session expired"
+   - **Too many attempts**: Should show "Too many failed attempts"
+4. **reCAPTCHA errors**: Should be suppressed in development mode
+
+#### **C. Network Errors**
 1. **Backend offline**: Stop backend server
 2. **Try registration**: Should show appropriate error
-3. **Try login**: Should show appropriate error
+3. **Try email login**: Should show appropriate error
+4. **Try phone login**: Should show appropriate error
 
-#### **C. Validation Errors**
+#### **D. Validation Errors**
 1. **Invalid email format**: Try registration with invalid email
 2. **Weak password**: Try registration with short password
 3. **Missing required fields**: Try submitting incomplete forms
+4. **Invalid phone format**: Try registration with invalid phone number
 
-### **7. Multilingual Test**
+### **8. Multilingual Test**
 
 #### **A. Language Switching**
 1. **Switch to Tigrigna**: Click Tigrigna button
@@ -135,7 +219,7 @@ curl -X POST http://localhost:5000/api/members/login \
 1. **Test in English**: Error messages should be in English
 2. **Test in Tigrigna**: Error messages should be in Tigrigna
 
-### **8. Responsive Design Test**
+### **9. Responsive Design Test**
 
 #### **A. Mobile View**
 1. **Open DevTools**: Set to mobile viewport
@@ -198,13 +282,18 @@ Tester: ___________
 
 ✅ Basic Navigation: _____
 ✅ User Registration: _____
-✅ User Login: _____
+✅ Email Login: _____
+✅ Phone Login: _____
+✅ Phone Number Formatting: _____
+✅ reCAPTCHA Integration: _____
+✅ OTP Verification: _____
 ✅ Password Reset: _____
 ✅ User Logout: _____
 ✅ Protected Routes: _____
 ✅ Dashboard Features: _____
 ✅ API Integration: _____
 ✅ Firebase Integration: _____
+✅ Phone Auth Comprehensive: _____
 ✅ Error Handling: _____
 ✅ Multilingual Support: _____
 ✅ Responsive Design: _____
