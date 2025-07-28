@@ -264,13 +264,9 @@ const translations = {
     'previous': 'Previous',
     'next': 'Next',
     
-    // Registration Form
+    // Registration Form (legacy keys - kept for compatibility)
     'title': 'Member Registration',
-    'personalInfo': 'Personal Information',
-    'contactAddress': 'Contact & Address',
-    'familyInfo': 'Family Information',
     'spiritualInfo': 'Spiritual Information',
-    'contributionInfo': 'Contribution Information',
     'accountInfo': 'Account Information',
     'submit': 'Submit Registration',
     'required': 'Required',
@@ -318,6 +314,59 @@ const translations = {
     
     // Processing
     'processing': 'Processing...',
+    
+    // Missing Translation Keys - Registration & Authentication
+    'member.registration': 'Member Registration',
+    'complete.registration.to.join': 'Complete your registration to join our church community',
+    'complete.registration': 'Complete Registration',
+    'submitting': 'Submitting...',
+    'participate.in.tithe': 'I would like to participate in tithing',
+    
+    // Registration Steps (updated format)
+    'personal.information': 'Personal Information',
+    'contact.information': 'Contact Information', 
+    'family.information': 'Family Information',
+    'ministry.interests': 'Ministry Interests',
+    'contribution.information': 'Contribution Information',
+    
+    // Navigation & Actions
+    'continue': 'Continue',
+    'back': 'Back',
+    'cancel': 'Cancel',
+    'loading': 'Loading...',
+    'error': 'Error',
+    'success': 'Success',
+    'warning': 'Warning',
+    'info': 'Info',
+    'edit': 'Edit',
+    
+    // Phone Authentication
+    'send.code': 'Send Code',
+    'enter.verification.code': 'Enter Verification Code',
+    'verify.code': 'Verify Code',
+    'email.password': 'Email/Password',
+    'try.again': 'Try Again',
+    
+    // Error Messages
+    'invalid.verification.code': 'Invalid verification code. Please try again.',
+    'code.expired': 'Verification code has expired. Please request a new one.',
+    'too.many.requests': 'Too many requests. Please wait a moment and try again.',
+    'timeout': 'Request timed out. Please try again.',
+    'network.error': 'Network error. Please check your connection.',
+    'something.went.wrong': 'Something went wrong. Please try again.',
+    'registration.successful': 'Registration completed successfully!',
+    
+    // Step Navigation
+    'step.1': 'Step 1',
+    'step.2': 'Step 2', 
+    'step.3': 'Step 3',
+    'step.4': 'Step 4',
+    'step.5': 'Step 5',
+    
+    // Additional Form Validation
+    'spouse.name.required': 'Spouse name is required',
+    'emergency.contact.name.required': 'Emergency contact name is required',
+    'emergency.contact.phone.required': 'Emergency contact phone is required',
   },
   ti: {
     // Hero Section
@@ -503,13 +552,9 @@ const translations = {
     'previous': 'ቀዳማይ',
     'next': 'ቀጻማይ',
     
-    // Registration Form
-    'title': 'ደምድም ምዝገባ',
-    'personalInfo': 'ውልቃዊ ሓፈሻዊ',
-    'contactAddress': 'ኣድራሻ እንተሃልዩ',
-    'familyInfo': 'ስድራቤት ሓፈሻዊ',
+    // Registration Form (legacy keys - kept for compatibility)
+    'title': 'ምዝገባ ኣባል',
     'spiritualInfo': 'መንፈሳዊ ሓፈሻዊ',
-    'contributionInfo': 'ወፈራ ሓፈሻዊ',
     'accountInfo': 'ኣካውንት ሓፈሻዊ',
     'submit': 'ምዝገባ ስደድ',
     'required': 'የድለ',
@@ -555,6 +600,57 @@ const translations = {
     
     // Processing
     'processing': 'Processing...',
+    
+    // Missing Translation Keys - Registration & Authentication
+    'member.registration': 'ምዝገባ ኣባል',
+    'complete.registration.to.join': 'ናብ ቤተ ክርስቲያንና ክትጽንበር ምዝገባኻ ዛዝም',
+    'complete.registration': 'ምዝገባ ዛዝም',
+    'submitting': 'ይስደድ ኣሎ...',
+    'participate.in.tithe': 'ኣብ ዓስራይ ክሳተፍ እየ ዘለኹ',
+    
+    // Registration Steps
+    'personal.information': 'ውልቃዊ ሓፈሻዊ',
+    'contact.information': 'ተራኺብ ሓፈሻዊ', 
+    'family.information': 'ቤተሰብ ሓፈሻዊ',
+    'ministry.interests': 'ኣገልግሎት ድሌታት',
+    'contribution.information': 'ወፈራ ሓፈሻዊ',
+    
+    // Navigation & Actions
+    'continue': 'ቀጽል',
+    'back': 'ተመለስ',
+    'loading': 'ይጽዓን ኣሎ...',
+    'error': 'ጌጋ',
+    'success': 'ዓወት',
+    'warning': 'ጠንቂ',
+    'info': 'ሓፈሻዊ',
+    
+    // Phone Authentication
+    'send.code': 'ኮድ ስደድ',
+    'enter.verification.code': 'ናይ ምርግጋጽ ኮድ ኣእትው',
+    'verify.code': 'ኮድ ኣረጋግጽ',
+    'phone.number': 'ቁጽሪ ስልኪ',
+    'email.password': 'ኢመይል/መሕለፊ ቃል',
+    
+    // Error Messages
+    'invalid.verification.code': 'ዘይትኽክል ናይ ምርግጋጽ ኮድ። ዳግማይ ፈትን።',
+    'code.expired': 'ናይ ምርግጋጽ ኮድ ጊዜኡ ሓሊፉ። ሓድሽ ሕተት።',
+    'too.many.requests': 'ብዙሕ ሕቶታት። ሓንቲ ደቒቕ ጸበ።',
+    'timeout': 'ጊዜ ሓሊፉ። ዳግማይ ፈትን።',
+    'network.error': 'ናይ መርበብ ጌጋ። ምትእስሳርካ ኣረጋግጽ።',
+    'something.went.wrong': 'ሓደ ነገር ጌጋ ኮይኑ። ዳግማይ ፈትን።',
+    'registration.successful': 'ምዝገባ ብዓወት ተዛዚሙ!',
+    
+    // Step Navigation
+    'step.1': 'ደረጃ 1',
+    'step.2': 'ደረጃ 2', 
+    'step.3': 'ደረጃ 3',
+    'step.4': 'ደረጃ 4',
+    'step.5': 'ደረጃ 5',
+    
+    // Additional Form Validation
+    'spouse.name.required': 'ስም መርዓ የድለ',
+    'emergency.contact.name.required': 'ስም ተራኺል ሓጋዚ የድለ',
+    'emergency.contact.phone.required': 'ስልኪ ተራኺል ሓጋዚ የድለ',
   }
 };
 
@@ -570,7 +666,25 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   };
 
   const t = (key: string): string => {
-    return translations[language][key as keyof typeof translations[typeof language]] || key;
+    // First try to get translation in current language
+    const currentTranslation = translations[language][key as keyof typeof translations[typeof language]];
+    if (currentTranslation) {
+      return currentTranslation;
+    }
+    
+    // If not found and current language is not English, fallback to English
+    if (language !== 'en') {
+      const englishTranslation = translations.en[key as keyof typeof translations.en];
+      if (englishTranslation) {
+        return englishTranslation;
+      }
+    }
+    
+    // If still not found, convert dotted key to readable text
+    return key
+      .split('.')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   useEffect(() => {

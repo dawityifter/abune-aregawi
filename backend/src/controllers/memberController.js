@@ -98,19 +98,9 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Check if phone number already exists in PostgreSQL
-    const existingMemberByPhone = await Member.findOne({
-      where: { phoneNumber }
-    });
-    if (existingMemberByPhone) {
-      return res.status(400).json({
-        success: false,
-        message: 'A member with this phone number already exists'
-      });
-    }
-
-    // Check if Firebase UID already exists in PostgreSQL
+    // Handle Firebase-authenticated users completing their profile
     if (firebaseUid) {
+      // Check if this Firebase UID already has a complete member profile
       const existingFirebaseUser = await Member.findOne({
         where: { firebaseUid }
       });
@@ -118,6 +108,33 @@ exports.register = async (req, res) => {
         return res.status(400).json({
           success: false,
           message: 'A member with this Firebase UID already exists'
+        });
+      }
+      
+      // For Firebase-authenticated users, allow phone number "duplicates" 
+      // since they're completing their profile after authentication
+      // We'll check if the phone number belongs to a different Firebase user
+      const existingMemberByPhone = await Member.findOne({
+        where: { 
+          phoneNumber,
+          firebaseUid: { [require('sequelize').Op.ne]: firebaseUid } // Different Firebase UID
+        }
+      });
+      if (existingMemberByPhone) {
+        return res.status(400).json({
+          success: false,
+          message: 'This phone number is already registered to a different user'
+        });
+      }
+    } else {
+      // For non-Firebase users (traditional registration), check phone number duplicates
+      const existingMemberByPhone = await Member.findOne({
+        where: { phoneNumber }
+      });
+      if (existingMemberByPhone) {
+        return res.status(400).json({
+          success: false,
+          message: 'A member with this phone number already exists'
         });
       }
     }
