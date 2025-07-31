@@ -1,34 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { useAuth } from '../../contexts/AuthContext';
 
 const HeroSection: React.FC = () => {
-  const { language, setLanguage, t } = useLanguage();
-  const { currentUser, logout, getUserProfile } = useAuth();
-  const [userProfile, setUserProfile] = useState<any>(null);
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
-
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (currentUser) {
-        try {
-          const profile = await getUserProfile(currentUser.uid);
-          setUserProfile(profile);
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-        }
-      }
-    };
-    fetchUserProfile();
-  }, [currentUser, getUserProfile]);
+  const { language, t } = useLanguage();
 
   return (
     <header
@@ -41,42 +16,6 @@ const HeroSection: React.FC = () => {
       }}
     >
       <div className="container mx-auto px-4 text-center">
-        {/* Language Switcher and Auth Links */}
-        <div className="absolute top-5 right-5 flex gap-2 z-10">
-          <button
-            className={`lang-btn ${language === 'en' ? 'active' : ''}`}
-            onClick={() => setLanguage('en')}
-          >
-            English
-          </button>
-          <button
-            className={`lang-btn ${language === 'ti' ? 'active' : ''}`}
-            onClick={() => setLanguage('ti')}
-          >
-            ትግርኛ
-          </button>
-          <div className="border-l border-white/30 mx-2"></div>
-          {currentUser ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm opacity-80">
-                {t('welcome')}, {userProfile?.data?.member?.firstName || currentUser.displayName || currentUser.email}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="text-sm text-white hover:text-secondary-300 transition-colors"
-              >
-                {t('sign.out')}
-              </button>
-            </div>
-          ) : (
-            <Link
-              to="/login"
-              className="text-sm text-white hover:text-secondary-300 transition-colors"
-            >
-              {t('sign.in')}
-            </Link>
-          )}
-        </div>
 
         {/* Church Logo and Name */}
         <div className="flex items-center justify-center gap-4 mb-12">
