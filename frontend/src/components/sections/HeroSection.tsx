@@ -93,12 +93,6 @@ const HeroSection: React.FC = () => {
             <i className="fas fa-chart-bar mr-2"></i>
             {t('member.status')}
           </Link>
-          {currentUser && (
-            <Link to="/dashboard" className="btn btn-outline">
-              <i className="fas fa-user mr-2"></i>
-              {t('member.dashboard')}
-            </Link>
-          )}
         </div>
       </div>
     </header>
