@@ -126,14 +126,33 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     // Verify Firebase token and extract user info
     const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
     const userEmail = decodedToken.email;
-    const userPhone = decodedToken.phone_number;
+    // Check for phone number in different possible fields
+    let userPhone = decodedToken.phone_number || decodedToken.phoneNumber || decodedToken.phone;
 
-    console.log('✅ Firebase token verified for:', { email: userEmail, phone: userPhone });
+    // If no phone number in token, try to get it from the user's profile
+    if (!userPhone) {
+      try {
+        const userRecord = await admin.auth().getUser(decodedToken.uid);
+        userPhone = userRecord.phoneNumber;
+        console.log('📞 Got phone number from user profile');
+      } catch (profileError) {
+        console.log('⚠️ Could not get user profile:', profileError.message);
+        // If we can't get the phone from profile, check if there's a phone in the request query params
+        const requestPhone = req.query.phone;
+        if (requestPhone) {
+          userPhone = requestPhone;
+          console.log('📞 Using phone number from request query');
+        }
+      }
+    }
+
+    console.log('✅ Firebase token verified for:', { email: userEmail ? 'present' : 'missing', phone: userPhone ? 'present' : 'missing' });
 
     if (!userEmail && !userPhone) {
+      console.log('❌ No email or phone found in token');
       return res.status(401).json({
         success: false,
-        message: 'User email or phone not found in Firebase token.'
+        message: 'User email not found in Firebase token.'
       });
     }
 
