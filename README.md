@@ -42,6 +42,7 @@ graph TB
     style G fill:#ffca28
     style H fill:#3ecf8e
     style I fill:#ffca28
+    style "External Services" fill:#000000
 ```
 
 ## 🚀 Deployment Status
