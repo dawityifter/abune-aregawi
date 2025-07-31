@@ -4,19 +4,34 @@ const { Op } = require('sequelize');
 const { Member } = require('../models');
 const path = require('path');
 
-if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
-  const serviceAccount = JSON.parse(
-    Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8')
-  );
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    // ...other config
-  });
-} else {
-  // fallback for local dev, e.g. require('./firebase-service-account.json')
-  console.log('No Firebase service account found. ');
+// Initialize Firebase Admin with better error handling
+let firebaseInitialized = false;
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+    console.log('🔧 Initializing Firebase Admin SDK...');
+    const serviceAccount = JSON.parse(
+      Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8')
+    );
+    
+    // Check if Firebase is already initialized
+    if (admin.apps.length === 0) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        projectId: serviceAccount.project_id
+      });
+      console.log('✅ Firebase Admin SDK initialized successfully');
+    } else {
+      console.log('ℹ️  Firebase Admin SDK already initialized');
+    }
+    firebaseInitialized = true;
+  } else {
+    console.log('⚠️  No Firebase service account found. Firebase Admin SDK not initialized.');
+  }
+} catch (error) {
+  console.error('❌ Firebase Admin SDK initialization failed:', error.message);
+  console.error('❌ Error details:', error);
+  firebaseInitialized = false;
 }
-
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -87,6 +102,15 @@ const authMiddleware = async (req, res, next) => {
 // Firebase authentication middleware
 const firebaseAuthMiddleware = async (req, res, next) => {
   try {
+    // Check if Firebase Admin is initialized
+    if (!firebaseInitialized) {
+      console.error('❌ Firebase Admin SDK not initialized');
+      return res.status(500).json({
+        success: false,
+        message: 'Firebase authentication not available. Please contact administrator.'
+      });
+    }
+
     // Get Firebase token from header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -97,28 +121,48 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     }
     const firebaseToken = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Verify Firebase token and extract email
+    console.log('🔍 Verifying Firebase token...');
+    
+    // Verify Firebase token and extract user info
     const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
     const userEmail = decodedToken.email;
+    const userPhone = decodedToken.phone_number;
 
-    if (!userEmail) {
+    console.log('✅ Firebase token verified for:', { email: userEmail, phone: userPhone });
+
+    if (!userEmail && !userPhone) {
       return res.status(401).json({
         success: false,
-        message: 'User email not found in Firebase token.'
+        message: 'User email or phone not found in Firebase token.'
       });
     }
 
-    // Find member by email (check both email and loginEmail fields)
-    const member = await Member.findOne({
-      where: { email: userEmail }
-    });
+    // Find member by email or phone
+    let member = null;
+    if (userEmail) {
+      member = await Member.findOne({
+        where: { email: userEmail }
+      });
+      console.log('🔍 Searching by email:', userEmail);
+    }
+    
+    if (!member && userPhone) {
+      // Normalize phone number for search
+      const normalizedPhone = userPhone.startsWith('+') ? userPhone : `+${userPhone}`;
+      member = await Member.findOne({
+        where: { phoneNumber: normalizedPhone }
+      });
+      console.log('🔍 Searching by phone:', normalizedPhone);
+    }
 
     if (!member) {
+      console.log('❌ Member not found for:', { email: userEmail, phone: userPhone });
       return res.status(401).json({
         success: false,
         message: 'Member not found. Please complete your registration first.'
       });
     }
+    
     if (!member.isActive) {
       return res.status(401).json({
         success: false,
@@ -129,11 +173,15 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     // Check if user has admin role (using PostgreSQL role)
     const adminRoles = ['admin', 'church_leadership', 'treasurer', 'secretary'];
     if (!adminRoles.includes(member.role)) {
+      console.log('❌ Access denied for user:', userEmail, 'Role:', member.role);
       return res.status(403).json({
         success: false,
         message: 'Access denied. Admin privileges required.'
       });
     }
+
+    const identifier = userEmail || userPhone;
+    console.log('✅ Firebase auth successful for user:', identifier, 'Role:', member.role);
 
     req.user = {
       id: member.id,
@@ -144,7 +192,14 @@ const firebaseAuthMiddleware = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('Firebase auth middleware error:', error);
+    console.error('❌ Firebase auth middleware error:', error);
+    console.error('❌ Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    
     res.status(401).json({
       success: false,
       message: 'Invalid or expired Firebase token.'
