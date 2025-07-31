@@ -114,6 +114,32 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Firebase test endpoint
+app.get('/firebase-test', (req, res) => {
+  const admin = require('firebase-admin');
+  try {
+    const firebaseStatus = {
+      appsInitialized: admin.apps.length,
+      serviceAccountExists: !!process.env.FIREBASE_SERVICE_ACCOUNT_BASE64,
+      serviceAccountLength: process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 ? process.env.FIREBASE_SERVICE_ACCOUNT_BASE64.length : 0
+    };
+    
+    res.json({
+      success: true,
+      message: 'Firebase Admin SDK Status',
+      firebase: firebaseStatus,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Firebase Admin SDK Error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // API routes
 app.use('/api/members', memberRoutes);
 app.use('/api/payments', memberPaymentRoutes);

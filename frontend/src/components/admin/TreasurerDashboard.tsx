@@ -22,24 +22,40 @@ const TreasurerDashboard: React.FC = () => {
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  console.log('🏦 TreasurerDashboard: Component loaded');
+  console.log('🏦 Current user:', currentUser);
+  console.log('🏦 Firebase user:', firebaseUser);
+
   useEffect(() => {
     fetchPaymentStats();
   }, []);
 
   const fetchPaymentStats = async () => {
     try {
+      console.log('🔍 Fetching payment stats...');
+      console.log('🔍 Current user:', currentUser);
+      console.log('🔍 Firebase user:', firebaseUser);
+      
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/stats?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
       });
       
+      console.log('🔍 Response status:', response.status);
+      console.log('🔍 Response ok:', response.ok);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('🔍 Payment stats data:', data);
         setStats(data.data);
+      } else {
+        console.error('❌ Payment stats API error:', response.status, response.statusText);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Error data:', errorData);
       }
     } catch (error) {
-      console.error('Error fetching payment stats:', error);
+      console.error('❌ Error fetching payment stats:', error);
     } finally {
       setLoading(false);
     }
