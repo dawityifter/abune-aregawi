@@ -92,8 +92,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               phoneNumber: phone // Preserve Firebase phone
             };
             setUser(userWithUid);
-            console.log(`✅ Call #${callCount} - Auth state: Existing user found, navigating to dashboard`);
-            navigate("/dashboard");
+            console.log(`✅ Call #${callCount} - Auth state: Existing user found`);
+            
+            // Only navigate to dashboard if we're not already on a protected route
+            const currentPath = window.location.pathname;
+            if (currentPath === '/' || currentPath === '/login' || currentPath === '/register') {
+              console.log(`✅ Call #${callCount} - Navigating to dashboard from public route`);
+              navigate("/dashboard");
+            } else {
+              console.log(`✅ Call #${callCount} - Staying on current protected route: ${currentPath}`);
+            }
           } else {
             console.log(`❌ Call #${callCount} - Auth state: Backend user not found (status: ${res.status})`);
             
@@ -116,8 +124,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                       phoneNumber: phone
                     };
                     setUser(userWithUid);
-                    console.log(`✅ Post-registration auth complete, navigating to dashboard`);
-                    navigate("/dashboard");
+                    console.log(`✅ Post-registration auth complete`);
+                    
+                    // Only navigate to dashboard if we're not already on a protected route
+                    const currentPath = window.location.pathname;
+                    if (currentPath === '/' || currentPath === '/login' || currentPath === '/register') {
+                      console.log(`✅ Navigating to dashboard from public route`);
+                      navigate("/dashboard");
+                    } else {
+                      console.log(`✅ Staying on current protected route: ${currentPath}`);
+                    }
                   } else {
                     console.log(`❌ Retry failed - user still not found in backend`);
                     // Stay on registration page or show error
