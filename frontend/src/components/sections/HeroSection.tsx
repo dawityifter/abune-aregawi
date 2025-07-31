@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 
 const HeroSection: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, getUserProfile } = useAuth();
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   const handleLogout = async () => {
     try {
@@ -14,6 +15,20 @@ const HeroSection: React.FC = () => {
       console.error('Error logging out:', error);
     }
   };
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (currentUser) {
+        try {
+          const profile = await getUserProfile(currentUser.uid);
+          setUserProfile(profile);
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      }
+    };
+    fetchUserProfile();
+  }, [currentUser, getUserProfile]);
 
   return (
     <header
@@ -44,7 +59,7 @@ const HeroSection: React.FC = () => {
           {currentUser ? (
             <div className="flex items-center gap-2">
               <span className="text-sm opacity-80">
-                {t('welcome')}, {currentUser.displayName || currentUser.email}
+                {t('welcome')}, {userProfile?.data?.member?.firstName || currentUser.displayName || currentUser.email}
               </span>
               <button
                 onClick={handleLogout}

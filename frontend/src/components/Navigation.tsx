@@ -39,9 +39,7 @@ const Navigation: React.FC = () => {
   const userRole = userProfile?.role || 'member';
   const permissions = getRolePermissions(userRole);
 
-  if (location.pathname === '/') {
-    return null;
-  }
+  // Show navigation on all pages including home page
 
   return (
     <nav className="traditional-header shadow-lg border-b border-primary-800">
@@ -85,7 +83,7 @@ const Navigation: React.FC = () => {
             {currentUser ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-white/90">
-                  {t('welcome')}, {currentUser.displayName || currentUser.email}
+                  {t('welcome')}, {userProfile?.data?.member?.firstName || currentUser.displayName || currentUser.email}
                 </span>
                 <Link
                   to="/dashboard"
