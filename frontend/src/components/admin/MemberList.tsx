@@ -55,13 +55,28 @@ const MemberList: React.FC<MemberListProps> = ({
         throw new Error('User not authenticated');
       }
 
+      // Debug logging for authentication
+      console.log('🔍 MemberList Debug Info:');
+      console.log('Current User:', currentUser);
+      console.log('Firebase User:', firebaseUser);
+      console.log('Firebase User UID:', firebaseUser?.uid);
+      
+      const idToken = firebaseUser ? await firebaseUser.getIdToken() : null;
+      console.log('Firebase ID Token:', idToken ? `${idToken.substring(0, 50)}...` : 'null');
+
       const userIdentifier = currentUser.email ? `email=${encodeURIComponent(currentUser.email)}` : `phone=${encodeURIComponent(currentUser.phoneNumber || '')}`;
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?${params}&${userIdentifier}`, {
+      const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/all/firebase?${params}&${userIdentifier}`;
+      console.log('API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         headers: {
-          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`,
+          'Authorization': idToken ? `Bearer ${idToken}` : '',
           'Content-Type': 'application/json'
         }
       });
+      
+      console.log('Response Status:', response.status);
+      console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         throw new Error('Failed to fetch members');

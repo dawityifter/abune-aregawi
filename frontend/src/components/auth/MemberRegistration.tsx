@@ -261,7 +261,11 @@ const MemberRegistration: React.FC = () => {
       });
       
       if (res.status === 201) {
-        navigate("/dashboard");
+        // Registration successful - show success message and let auth flow handle navigation
+        alert("Registration successful! You will be redirected to your dashboard.");
+        
+        // The Firebase auth state listener will automatically handle the navigation to dashboard
+        // after it successfully fetches the user profile from backend (with retry logic)
       } else {
         const data = await res.json();
         setErrors({ submit: data.message || "Registration failed" });

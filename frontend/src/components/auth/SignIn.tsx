@@ -56,18 +56,24 @@ const SignIn: React.FC = () => {
     if (method === "phone" && !window.recaptchaVerifier && !confirmationResult) {
       const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       
-      // For development mode with test numbers, use mock verifier
+      // For development mode, only bypass reCAPTCHA for test numbers
       if (isDevelopment && isTestPhoneNumber(phone)) {
+        console.log('Development mode - bypassing reCAPTCHA for test number');
         setRecaptchaSolved(true);
         window.recaptchaVerifier = {
           verify: () => Promise.resolve('bypass-token'),
           clear: () => {},
-          render: () => Promise.resolve()
+          render: () => Promise.resolve(),
+          _reset: () => {},
+          _render: () => Promise.resolve(),
+          _verify: () => Promise.resolve('bypass-token'),
+          reset: () => {},
+          getResponse: () => 'bypass-token'
         } as any;
         return;
       }
       
-      // For real phone numbers (or development with real numbers), create proper reCAPTCHA
+      // For production, create proper reCAPTCHA
       try {
         // Check if container exists in DOM
         const existingContainer = document.getElementById('recaptcha-container');
@@ -90,6 +96,7 @@ const SignIn: React.FC = () => {
         }
         
         // Create RecaptchaVerifier with the existing container
+        // Use regular reCAPTCHA v2 instead of Enterprise for development
         window.recaptchaVerifier = new RecaptchaVerifier(
           auth,
           existingContainer,
@@ -105,6 +112,7 @@ const SignIn: React.FC = () => {
         await window.recaptchaVerifier.render();
         
       } catch (err) {
+        console.error('reCAPTCHA initialization error:', err);
         setError('reCAPTCHA initialization failed. Please refresh and try again.');
         setRecaptchaSolved(false);
         
@@ -112,7 +120,12 @@ const SignIn: React.FC = () => {
         window.recaptchaVerifier = {
           verify: () => Promise.resolve('bypass-token'),
           clear: () => {},
-          render: () => Promise.resolve()
+          render: () => Promise.resolve(),
+          _reset: () => {},
+          _render: () => Promise.resolve(),
+          _verify: () => Promise.resolve('bypass-token'),
+          reset: () => {},
+          getResponse: () => 'bypass-token'
         } as any;
       }
     }
@@ -120,14 +133,14 @@ const SignIn: React.FC = () => {
 
   // Initialize reCAPTCHA only when we need to show it (after 10 digits entered)
   const initializeRecaptchaIfNeeded = async () => {
-    if (method === "phone" && isValidPhoneNumber(phone) && !isTestPhoneNumber(phone) && !window.recaptchaVerifier && !confirmationResult) {
+    if (method === "phone" && isValidPhoneNumber(phone) && !window.recaptchaVerifier && !confirmationResult) {
       await initializeRecaptcha();
     }
   };
 
   // Initialize reCAPTCHA when phone becomes valid (10 digits)
   useEffect(() => {
-    if (method === "phone" && isValidPhoneNumber(phone) && !isTestPhoneNumber(phone) && !recaptchaSolved) {
+    if (method === "phone" && isValidPhoneNumber(phone) && !recaptchaSolved) {
       initializeRecaptchaIfNeeded();
     }
   }, [method, phone, recaptchaSolved]);
@@ -161,6 +174,7 @@ const SignIn: React.FC = () => {
   // Check if phone number is a test number that bypasses reCAPTCHA
   const isTestPhoneNumber = (phoneNumber: string): boolean => {
     const cleanPhone = getCleanPhoneNumber(phoneNumber);
+    // Only these specific numbers should use mock authentication
     const testPhoneNumbers = ['+1234567890', '+15551234567'];
     return testPhoneNumbers.includes(cleanPhone);
   };
@@ -195,7 +209,6 @@ const SignIn: React.FC = () => {
 
     const cleanPhone = getCleanPhoneNumber(phone);
 
-
     // Validation
     if (!cleanPhone) {
       setError("Please enter a valid phone number.");
@@ -204,7 +217,78 @@ const SignIn: React.FC = () => {
 
     const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     
-    // For test phone numbers, skip reCAPTCHA validation
+    // Debug logging
+    console.log('🔍 Phone authentication debug:');
+    console.log('📞 Clean phone:', cleanPhone);
+    console.log('🧪 Is test number:', isTestPhoneNumber(cleanPhone));
+    console.log('🏗️ Is development:', isDevelopment);
+    
+    // For development mode, only use mock authentication for specific test numbers
+    if (isDevelopment && isTestPhoneNumber(cleanPhone)) {
+      console.log('Development mode - using mock authentication for test number');
+      
+      // Simulate a successful phone authentication for development
+      const mockConfirmationResult = {
+        confirm: async (otp: string) => {
+          // Simulate OTP verification
+          if (otp === '123456') {
+            return {
+              user: {
+                uid: 'dev-user-123',
+                phoneNumber: cleanPhone,
+                email: null,
+                displayName: 'Development User',
+                getIdToken: async () => 'dev-token-123'
+              }
+            };
+          } else {
+            throw new Error('Invalid OTP code');
+          }
+        }
+      };
+      
+      setConfirmationResult(mockConfirmationResult);
+      return;
+    }
+    
+    // For development mode, only bypass reCAPTCHA for test numbers
+    if (isDevelopment && isTestPhoneNumber(cleanPhone)) {
+      console.log('Development mode - bypassing reCAPTCHA for test number');
+      
+      // Create a mock verifier that works with Firebase
+      const mockVerifier = {
+        verify: () => Promise.resolve('bypass-token'),
+        clear: () => {},
+        render: () => Promise.resolve(),
+        _reset: () => {},
+        _render: () => Promise.resolve(),
+        _verify: () => Promise.resolve('bypass-token'),
+        reset: () => {},
+        getResponse: () => 'bypass-token',
+        type: 'recaptcha',
+        app: auth
+      };
+      
+      try {
+        const result = await loginWithPhone(cleanPhone, mockVerifier);
+        
+        if (result) {
+          // Validate the result before setting it
+          if (result && typeof result.confirm === 'function') {
+            setConfirmationResult(result);
+          } else {
+            setError('Invalid verification session. Please try again.');
+            return;
+          }
+        }
+      } catch (err: any) {
+        console.error('Phone auth error in development:', err);
+        setError("Development mode: Phone authentication failed. Please try again.");
+      }
+      return;
+    }
+    
+    // For production, use real reCAPTCHA
     if (!isTestPhoneNumber(cleanPhone) && !recaptchaSolved) {
       setError("Please complete the reCAPTCHA verification first.");
       return;
@@ -216,8 +300,6 @@ const SignIn: React.FC = () => {
     }
 
     try {
-
-      
       const result = await loginWithPhone(cleanPhone, window.recaptchaVerifier);
       
       if (result) {
@@ -233,11 +315,7 @@ const SignIn: React.FC = () => {
       
       // Handle specific error types
       if (err.message && err.message.includes('verifier._reset is not a function')) {
-        if (isDevelopment) {
-          setError("Development mode: reCAPTCHA error. Try refreshing the page or use a test phone number.");
-        } else {
-          setError("reCAPTCHA verification error. Please refresh the page and try again.");
-        }
+        setError("reCAPTCHA verification error. Please refresh the page and try again.");
       } else if (err.message && (err.message.includes('timeout') || err.message.includes('Timeout'))) {
         setError("Request timed out. Please try again.");
       } else if (err.code === 'auth/too-many-requests') {
@@ -277,9 +355,25 @@ const SignIn: React.FC = () => {
     
     try {
       const credential = await confirmationResult.confirm(otp);
-      // The AuthContext will handle the rest
+      console.log('✅ OTP verification successful, user authenticated');
+      
+      // For development mode, manually trigger authentication for test numbers
+      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (isDevelopment && isTestPhoneNumber(credential.user.phoneNumber || '') && credential && credential.user) {
+        console.log('Development mode: Manually triggering authentication for test number');
+        // Call the AuthContext to handle the authentication
+        await loginWithPhone(credential.user.phoneNumber || '', null, otp, confirmationResult);
+      }
+      
+      // Clear OTP form state
       setConfirmationResult(null);
       setOtp("");
+      
+      // Show success message and let auth flow handle navigation
+      console.log('🔄 Login successful, waiting for auth state to process...');
+      
+      // The Firebase auth state listener will handle navigation to dashboard
+      // after it successfully fetches the user profile from backend (with retry logic)
     } catch (err: any) {
       // Handle specific Firebase Auth error codes
       if (err.code === 'auth/invalid-verification-code') {
@@ -479,7 +573,11 @@ const SignIn: React.FC = () => {
               </label>
               <input
                 value={phone}
-                onChange={e => setPhone(formatPhoneNumber(e.target.value))}
+                onChange={e => {
+                  const rawValue = e.target.value;
+                  const formatted = formatPhoneNumber(rawValue);
+                  setPhone(formatted);
+                }}
                 placeholder="(555) 123-4567"
                 type="tel"
                 required
@@ -496,8 +594,8 @@ const SignIn: React.FC = () => {
               id="recaptcha-container" 
               style={{ 
                 margin: "12px 0", 
-                minHeight: isValidPhoneNumber(phone) && !isTestPhoneNumber(phone) && !recaptchaSolved ? "78px" : "0px", 
-                display: isValidPhoneNumber(phone) && !isTestPhoneNumber(phone) && !recaptchaSolved ? "flex" : "none", 
+                minHeight: isValidPhoneNumber(phone) && !recaptchaSolved ? "78px" : "0px", 
+                display: isValidPhoneNumber(phone) && !recaptchaSolved ? "flex" : "none", 
                 justifyContent: "center" 
               }}
             ></div>

@@ -8,6 +8,7 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<any>(null);
+  const [firebaseUser, setFirebaseUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const auth = getAuth();
@@ -18,6 +19,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       callCount++;
       console.log(`🔥 Firebase auth state changed (call #${callCount}):`, firebaseUser);
+      
+      // Set the Firebase user state
+      setFirebaseUser(firebaseUser);
       
       if (firebaseUser) {
         // User is signed in with Firebase
@@ -92,13 +96,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             navigate("/dashboard");
           } else {
             console.log(`❌ Call #${callCount} - Auth state: Backend user not found (status: ${res.status})`);
-            // Only navigate to registration if we're not already there
-            // This prevents interference with the registration completion flow
-            if (window.location.pathname !== '/register') {
+            
+            // Special handling for post-registration case
+            if (window.location.pathname === '/register') {
+              console.log(`🔄 Call #${callCount} - On registration page, user might be newly registered. Retrying in 3 seconds...`);
+              
+              // Retry the backend lookup after a delay for newly registered users
+              setTimeout(async () => {
+                try {
+                  console.log(`🔄 Retrying backend lookup for newly registered user...`);
+                  const retryRes = await fetch(apiUrl);
+                  if (retryRes.status === 200) {
+                    const retryMember = await retryRes.json();
+                    console.log(`✅ Retry successful - Backend user found:`, retryMember);
+                    const userWithUid = {
+                      ...retryMember,
+                      uid: firebaseUser.uid,
+                      email: email,
+                      phoneNumber: phone
+                    };
+                    setUser(userWithUid);
+                    console.log(`✅ Post-registration auth complete, navigating to dashboard`);
+                    navigate("/dashboard");
+                  } else {
+                    console.log(`❌ Retry failed - user still not found in backend`);
+                    // Stay on registration page or show error
+                  }
+                } catch (retryErr) {
+                  console.error(`❌ Retry error:`, retryErr);
+                }
+              }, 3000);
+            } else {
+              // Normal case - navigate to registration
               console.log(`❌ Call #${callCount} - Auth state: Navigating to registration`);
               navigate("/register", { state: { email, phone } });
-            } else {
-              console.log(`❌ Call #${callCount} - Auth state: Already on registration page, not redirecting`);
             }
           }
         } catch (err) {
@@ -191,6 +222,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await signOut(auth);
       setUser(null);
+      setFirebaseUser(null);
       navigate("/");
     } catch (err) {
       console.error("Logout failed:", err);
@@ -337,6 +369,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Provide currentUser as the primary interface
   const contextValue = {
     currentUser: user,
+    firebaseUser: firebaseUser, // Use the state instead of auth.currentUser
     loginWithEmail,
     loginWithPhone,
     logout,

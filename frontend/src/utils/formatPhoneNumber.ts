@@ -4,24 +4,26 @@
  * @returns Formatted phone number string
  */
 export function formatPhoneNumber(value: string): string {
-  const cleaned = value.replace(/\D/g, '');
-  const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
-  if (!match) return value;
+  // If empty, return empty string
+  if (!value) return '';
   
-  let formatted = '';
-  if (match[1]) {
-    formatted = `(${match[1]}`;
-    if (match[1].length === 3) {
-      formatted += ')';
-    }
+  // Remove all non-digit characters
+  const cleaned = value.replace(/\D/g, '');
+  
+  // If no digits, return the original value (for backspace/delete)
+  if (!cleaned) return value;
+  
+  // Limit to 10 digits for US numbers
+  const digits = cleaned.slice(0, 10);
+  
+  // Format as (XXX) XXX-XXXX
+  if (digits.length <= 3) {
+    return `(${digits}`;
+  } else if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  } else {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
   }
-  if (match[2]) {
-    formatted += match[2].length > 0 ? ` ${match[2]}` : '';
-  }
-  if (match[3]) {
-    formatted += match[3].length > 0 ? `-${match[3]}` : '';
-  }
-  return formatted.trim();
 }
 
 /**
@@ -34,14 +36,6 @@ export function normalizePhoneNumber(value: string): string {
   
   // Remove all non-digit characters
   const digits = value.replace(/\D/g, '');
-  
-  // Handle Firebase test phone numbers - these must be passed through as-is
-  if (digits === '1234567890') {
-    return '+1234567890';
-  }
-  if (digits === '5551234567' || digits === '15551234567') {
-    return '+15551234567';
-  }
   
   // Handle different input formats for regular numbers
   if (digits.length === 10) {

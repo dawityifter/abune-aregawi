@@ -22,4 +22,17 @@ if (missingKeys.length > 0) {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+// Disable reCAPTCHA Enterprise in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('Development mode: Disabling reCAPTCHA Enterprise');
+  // This will prevent Firebase from trying to load reCAPTCHA Enterprise scripts
+  (window as any).__FIREBASE_DISABLE_RECAPTCHA_ENTERPRISE__ = true;
+  
+  // Also try to disable Enterprise mode in Firebase Auth
+  if (typeof window !== 'undefined') {
+    (window as any).__FIREBASE_AUTH_EMULATOR_HOST__ = 'localhost:9099';
+  }
+}
+
 export default app; 
