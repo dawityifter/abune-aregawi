@@ -5,7 +5,7 @@ import PaymentStats from './PaymentStats';
 import PaymentReports from './PaymentReports';
 import AddPaymentModal from './AddPaymentModal';
 
-interface PaymentStats {
+interface PaymentStatsData {
   totalMembers: number;
   upToDateMembers: number;
   behindMembers: number;
@@ -18,7 +18,7 @@ interface PaymentStats {
 const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'reports'>('overview');
-  const [stats, setStats] = useState<PaymentStats | null>(null);
+  const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
