@@ -388,6 +388,38 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* Treasurer Card - Show for treasurer, admin, and church_leadership roles */}
+            {(permissions.canViewFinancialRecords || permissions.canEditFinancialRecords) && (
+              <div className="bg-white overflow-hidden shadow rounded-lg border-2 border-green-200">
+                <div className="p-6">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <i className="fas fa-coins text-green-800"></i>
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Treasurer
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Manage member payments and financial records
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <button 
+                      onClick={() => navigate('/treasurer')}
+                      className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      <i className="fas fa-coins mr-2"></i>
+                      View Payments
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Admin Panel Card - Only show for admin users */}
             {permissions.canAccessAdminPanel && (
               <div className="bg-white overflow-hidden shadow rounded-lg border-2 border-red-200">

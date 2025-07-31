@@ -102,12 +102,12 @@ const Navigation: React.FC = () => {
                     {t('admin.panel')}
                   </Link>
                 )}
-                {(userRole === 'treasurer' || userRole === 'admin') && (
+                {(permissions.canViewFinancialRecords || permissions.canEditFinancialRecords) && (
                   <Link
                     to="/treasurer"
                     className="text-sm text-green-200 hover:text-green-100 font-medium transition-colors"
                   >
-                    <i className="fas fa-dollar-sign mr-1"></i>
+                    <i className="fas fa-coins mr-1"></i>
                     Treasurer
                   </Link>
                 )}
