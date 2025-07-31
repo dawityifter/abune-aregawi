@@ -29,7 +29,7 @@ graph TB
         E --> F[PostgreSQL Database]
     end
     
-    subgraph "External Services"
+    subgraph ex["External Services"]
         B --> G[Firebase Auth Service]
         F --> H[Supabase PostgreSQL]
         I[Firebase CDN] --> A
@@ -42,7 +42,7 @@ graph TB
     style G fill:#ffca28
     style H fill:#3ecf8e
     style I fill:#ffca28
-    style "External Services" fill:#000000
+    style ex fill:#000;
 ```
 
 ## 🚀 Deployment Status
