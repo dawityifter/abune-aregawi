@@ -64,14 +64,6 @@ const Dashboard: React.FC = () => {
     fetchUserProfile();
   }, [currentUser, getUserProfile]);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
-
   const handleViewProfile = () => {
     // Navigate to profile page using React Router
     navigate('/profile');
@@ -145,42 +137,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <i className="fas fa-cross text-2xl text-primary-800 mr-3"></i>
-              <h1 className="text-xl font-semibold text-gray-900">
-                {t('member.dashboard')}
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700">
-                {t('welcome')}, {userProfile?.data?.member?.firstName || currentUser?.displayName || currentUser?.email || 'User'}!
-                <span className="text-xs text-gray-500 ml-2">
-                  (Role: {userRole})
-                </span>
-              </span>
-              <button
-                onClick={handleRefreshProfile}
-                className="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm"
-                disabled={loading}
-              >
-                <i className="fas fa-sync-alt mr-1"></i>
-                Refresh
-              </button>
-              <button
-                onClick={handleLogout}
-                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
-              >
-                {t('logout')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
