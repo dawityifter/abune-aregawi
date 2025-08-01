@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from '../../contexts/LanguageContext';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
+import { Transition } from '@headlessui/react';
 import {
   PersonalInfoStep,
   ContactAddressStep,
@@ -29,6 +30,17 @@ const MemberRegistration: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { email, phone } = location.state || {};
+  
+  // Track window width for responsive behavior
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  const isMobile = windowWidth < 768;
   
   const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState<any>({});
@@ -355,127 +367,232 @@ const MemberRegistration: React.FC = () => {
   // Determine if this is a phone sign-in user
   const isPhoneSignIn = phone && !email;
   
-  // Calculate total steps based on conditions
-  const baseTotalSteps = isPhoneSignIn ? 6 : 7;
-  const totalSteps = formData.hasDependents ? baseTotalSteps : baseTotalSteps - 1;
-  
-  // Generate step titles based on conditions
-  const getAllStepTitles = () => {
+  // Define step titles based on conditions
+  const getStepTitles = () => {
     const titles = [
-      t('personal.information'),
+      t('personal.info'),
       t('contact.address'),
-      t('family.information'),
+      t('family.info'),
     ];
     
+    // Add dependents step if needed
     if (formData.hasDependents) {
       titles.push(t('dependants'));
     }
     
+    // Add remaining steps
     titles.push(
-      t('spiritual.information'),
+      t('spiritual.info'),
       t('contribution.giving')
     );
     
+    // Add account info step for non-phone sign-ins
     if (!isPhoneSignIn) {
-      titles.push(t('account.information'));
+      titles.push(t('account.info'));
     }
     
     return titles;
   };
   
-  const stepTitles = getAllStepTitles();
+  // Get current step titles and calculate total steps
+  const stepTitles = getStepTitles();
+  const totalSteps = stepTitles.length;
+  
+  // Navigation functions
+  const handleNextStep = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">{t('member.registration')}</h1>
-          <p className="mt-2 text-gray-600">{t('complete.registration.to.join')}</p>
-        </div>
+  const handlePrevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(prev => prev - 1);
+    }
+  };
 
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            {stepTitles.map((title, index) => (
+  const renderProgressSteps = () => (
+    <div className="mb-8">
+      {/* Desktop Progress Steps */}
+      <div className="hidden md:block">
+        <div className="flex justify-between mb-2">
+          {stepTitles.map((title, index) => (
+            <div key={index} className="text-center">
               <div
-                key={index}
-                className={`flex items-center ${
-                  index < stepTitles.length - 1 ? 'flex-1' : ''
+                className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-sm font-medium ${
+                  currentStep > index + 1
+                    ? 'bg-green-100 text-green-600'
+                    : currentStep === index + 1
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-500'
                 }`}
               >
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    currentStep > index + 1
-                      ? 'bg-green-500 text-white'
-                      : currentStep === index + 1
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-300 text-gray-600'
-                  }`}
-                >
-                  {currentStep > index + 1 ? '✓' : index + 1}
-                </div>
-                {index < stepTitles.length - 1 && (
-                  <div
-                    className={`flex-1 h-1 mx-2 ${
-                      currentStep > index + 1 ? 'bg-green-500' : 'bg-gray-300'
-                    }`}
-                  />
+                {currentStep > index + 1 ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  index + 1
                 )}
               </div>
-            ))}
+              <div className="mt-2 text-xs text-center text-gray-600">{title}</div>
+            </div>
+          ))}
+        </div>
+        <div className="relative">
+          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 -translate-y-1/2"></div>
+          <div 
+            className="absolute top-1/2 left-0 h-0.5 bg-blue-600 -translate-y-1/2 transition-all duration-300 ease-in-out"
+            style={{
+              width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%`,
+              maxWidth: '100%'
+            }}
+          ></div>
+        </div>
+      </div>
+
+      {/* Mobile Progress Bar */}
+      <div className="md:hidden mb-4">
+        <div className="flex justify-between items-center mb-2">
+          <div className="text-sm font-medium text-gray-700">
+            {t('step')} {currentStep} {t('of')} {totalSteps}
           </div>
-          <div className="text-center">
-            <span className="text-sm font-medium text-gray-900">
-              {t('step')} {currentStep} {t('of')} {totalSteps}: {stepTitles[currentStep - 1]}
-            </span>
+          <div className="text-sm font-medium text-blue-600">
+            {stepTitles[currentStep - 1]}
           </div>
         </div>
+        <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div 
+            className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+            style={{ width: `${(currentStep / totalSteps) * 100}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <PersonalInfoStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
+      case 2:
+        return (
+          <ContactAddressStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
+      case 3:
+        return (
+          <FamilyInfoStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
+      case 4:
+        return (
+          <SpiritualInfoStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
+      case 5:
+        return (
+          <ContributionStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
+      case 6:
+        return (
+          <AccountStep
+            formData={formData}
+            handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Main render function
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+            {t('member.registration')}
+          </h2>
+          <p className="mt-1 sm:mt-2 text-sm text-gray-600">
+            {t('complete.registration.to.join')}
+          </p>
+        </div>
+
+        {/* Progress Steps */}
+        {renderProgressSteps()}
 
         {/* Step Content */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          {renderStep()}
-        </div>
-
-        {/* Navigation Buttons */}
-        <div className="flex justify-between">
-          <button
-            type="button"
-            onClick={prevStep}
-            disabled={currentStep === 1}
-            className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {t('previous')}
-          </button>
+        <div className="mt-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          {renderStepContent()}
           
-          <div className="flex space-x-4">
-            {currentStep < totalSteps ? (
+          {errors.submit && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-red-600">{errors.submit}</p>
+            </div>
+          )}
+
+          {/* Navigation Buttons */}
+          <div className="mt-8 flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0 sm:space-x-4">
+            {currentStep > 1 && (
               <button
                 type="button"
-                onClick={nextStep}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                onClick={handlePrevStep}
+                className="w-full sm:w-auto px-6 py-2.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                {t('next')}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? t('submitting') : t('complete.registration')}
+                {t('previous')}
               </button>
             )}
+            <button
+              type="button"
+              onClick={handleNextStep}
+              className={`w-full sm:w-auto px-6 py-2.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {currentStep === totalSteps ? t('submitting') : t('next')}
+                </span>
+              ) : currentStep === totalSteps ? (
+                t('submit')
+              ) : (
+                t('next')
+              )}
+            </button>
           </div>
         </div>
-
-        {/* Error Display */}
-        {errors.submit && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-600">{errors.submit}</p>
-          </div>
-        )}
       </div>
     </div>
   );

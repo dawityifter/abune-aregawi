@@ -17,12 +17,14 @@ const HeroSection: React.FC = () => {
     >
       <div className="container mx-auto px-4 text-center">
 
-        {/* Church Logo and Name */}
+        {/* Church Logo */}
         <div className="flex items-center justify-center gap-4 mb-12">
-          <img src={require('../../logo.svg').default} alt="Orthodox Cross" className="h-16 w-16" />
-          <h1 className="text-3xl md:text-4xl font-serif font-bold text-white">
-            Tigray Orthodox Church
-          </h1>
+          <img 
+            src="/cross.png" 
+            alt="Orthodox Cross" 
+            className="h-16 w-auto" 
+            style={{ filter: 'brightness(0) invert(1)' }}
+          />
         </div>
 
         {/* Mission Statement */}

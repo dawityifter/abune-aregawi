@@ -9,48 +9,55 @@ const PersonalInfoStep: React.FC<{
   errors: any;
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
-  <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t('personalInfo')}</h3>
+  <div className="space-y-4 sm:space-y-6">
+    <h3 className="text-lg sm:text-xl font-semibold text-gray-800">{t('personalInfo')}</h3>
     
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('first.name')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           value={formData.firstName}
           onChange={(e) => handleInputChange('firstName', e.target.value)}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.firstName ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.firstName ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+          placeholder={t('enter.first.name')}
         />
-        {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
+        {errors.firstName && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.firstName}
+          </p>
+        )}
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('middle.name')}
         </label>
         <input
           type="text"
           value={formData.middleName}
           onChange={(e) => handleInputChange('middleName', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          placeholder={t('enter.middle.name')}
         />
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('last.name')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           value={formData.lastName}
           onChange={(e) => handleInputChange('lastName', e.target.value)}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.lastName ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.lastName ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+          placeholder={t('enter.last.name')}
         />
         {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
       </div>
@@ -64,94 +71,125 @@ const PersonalInfoStep: React.FC<{
           onChange={(e) => handleInputChange('gender', e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
         >
+          <option value="">{t('select.gender')}</option>
           <option value="Male">{t('male')}</option>
           <option value="Female">{t('female')}</option>
         </select>
+        {errors.gender && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.gender}
+          </p>
+        )}
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('date.of.birth')} <span className="text-red-500">*</span>
         </label>
         <input
           type="date"
           value={formData.dateOfBirth}
           onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.dateOfBirth 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
         />
-        {errors.dateOfBirth && <p className="text-red-500 text-sm mt-1">{errors.dateOfBirth}</p>}
+        {errors.dateOfBirth && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.dateOfBirth}
+          </p>
+        )}
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('marital.status')} <span className="text-red-500">*</span>
         </label>
         <select
           value={formData.maritalStatus}
           onChange={(e) => handleInputChange('maritalStatus', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.maritalStatus 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
         >
+          <option value="">{t('select.marital.status')}</option>
           <option value="Single">{t('single')}</option>
           <option value="Married">{t('married')}</option>
           <option value="Divorced">{t('divorced')}</option>
           <option value="Widowed">{t('widowed')}</option>
         </select>
+        {errors.maritalStatus && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.maritalStatus}
+          </p>
+        )}
       </div>
 
       {/* Head of Household Question */}
-      <div className="md:col-span-2">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-2 sm:col-span-2">
+        <label className="block text-sm font-medium text-gray-700">
           {t('head.of.household')}
           <span className="text-red-500">*</span>
         </label>
-        <div className="mb-2 text-xs text-blue-700 bg-blue-50 rounded p-2">
+        <div className="text-xs text-blue-700 bg-blue-50 rounded-lg p-3 mb-2">
           {t('head.of.household.help')}
         </div>
-        <div className="flex items-center gap-6">
-          <label className="inline-flex items-center">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+          <label className="inline-flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors">
             <input
               type="radio"
               name="isHeadOfHousehold"
               checked={formData.isHeadOfHousehold === true}
               onChange={() => handleInputChange('isHeadOfHousehold', true)}
-              className="form-radio"
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
             />
-            <span className="ml-2">{t('yes')}</span>
+            <span className="ml-2 text-sm sm:text-base">{t('yes')}</span>
           </label>
-          <label className="inline-flex items-center">
+          <label className="inline-flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors">
             <input
               type="radio"
               name="isHeadOfHousehold"
               checked={formData.isHeadOfHousehold === false}
               onChange={() => handleInputChange('isHeadOfHousehold', false)}
-              className="form-radio"
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
             />
-            <span className="ml-2">{t('no')}</span>
+            <span className="ml-2 text-sm sm:text-base">{t('no')}</span>
           </label>
         </div>
+        {errors.isHeadOfHousehold && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.isHeadOfHousehold}
+          </p>
+        )}
         {/* If not head of household, show head of household email */}
         {!formData.isHeadOfHousehold && (
-          <div className="mt-2">
-            <div className="mb-2 text-xs text-blue-700 bg-blue-50 rounded p-2">
-              {t('head.of.household.email.help')}
-            </div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="mt-3 space-y-1">
+            <label className="block text-sm font-medium text-gray-700">
               {t('head.of.household.email')} <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
-              value={formData.headOfHouseholdEmail || ''}
+              value={formData.headOfHouseholdEmail}
               onChange={(e) => handleInputChange('headOfHouseholdEmail', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md ${
-                errors.headOfHouseholdEmail ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="headofhousehold@email.com"
+              className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+                errors.headOfHouseholdEmail 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              } focus:outline-none focus:ring-1`}
+              placeholder={t('enter.head.of.household.email')}
             />
             {errors.headOfHouseholdEmail && (
-              <p className="text-red-500 text-sm mt-1">{errors.headOfHouseholdEmail}</p>
+              <p className="text-red-500 text-xs sm:text-sm mt-1">
+                {errors.headOfHouseholdEmail}
+              </p>
             )}
+            <p className="text-xs text-gray-500 mt-1">
+              {t('head.of.household.email.help')}
+            </p>
           </div>
         )}
       </div>
@@ -187,128 +225,179 @@ const ContactAddressStep: React.FC<{
   errors: any;
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
-  <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t('contactAddress')}</h3>
+  <div className="space-y-4 sm:space-y-6">
+    <h3 className="text-lg sm:text-xl font-semibold text-gray-800">{t('contactAddress')}</h3>
     
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('phone.number')} <span className="text-red-500">*</span>
         </label>
         <input
           type="tel"
           value={formData.phoneNumber}
           readOnly
-          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 cursor-not-allowed"
-          placeholder="(123) 456-7890"
+          className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed text-base sm:text-sm"
+          placeholder={t('phone.number.placeholder')}
         />
-        {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>}
+        {errors.phoneNumber && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.phoneNumber}
+          </p>
+        )}
         <p className="text-xs text-gray-500 mt-1">
           {t('phone.number.from.authentication')}
         </p>
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('email.address')} <span className="text-gray-400">({t('optional')})</span>
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
+          {t('email.address')} <span className="text-gray-500 text-xs">({t('optional')})</span>
         </label>
         <input
           type="email"
           value={formData.email}
           onChange={(e) => handleInputChange('email', e.target.value)}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.email ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.email 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+          placeholder={t('email.placeholder')}
         />
-        {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+        {errors.email && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.email}
+          </p>
+        )}
       </div>
       
-      <div className="md:col-span-2">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('street.address')} <span className="text-red-500">*</span>
+      <div className="sm:col-span-2 space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
+          {t('address.line1')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
-          value={formData.streetLine1}
-          onChange={(e) => handleInputChange('streetLine1', e.target.value)}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.streetLine1 ? 'border-red-500' : 'border-gray-300'
-          }`}
+          value={formData.addressLine1}
+          onChange={(e) => handleInputChange('addressLine1', e.target.value)}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.addressLine1 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+          placeholder={t('address.line1.placeholder')}
         />
-        {errors.streetLine1 && <p className="text-red-500 text-sm mt-1">{errors.streetLine1}</p>}
+        {errors.addressLine1 && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.addressLine1}
+          </p>
+        )}
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {t('apartment.suite.number')}
+      <div className="sm:col-span-2 space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
+          {t('address.line2')} <span className="text-gray-500 text-xs">({t('optional')})</span>
         </label>
         <input
           type="text"
-          value={formData.apartmentNo}
-          onChange={(e) => handleInputChange('apartmentNo', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          placeholder="Apt 123"
+          value={formData.addressLine2}
+          onChange={(e) => handleInputChange('addressLine2', e.target.value)}
+          className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          placeholder={t('address.line2.placeholder')}
         />
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('city')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           value={formData.city}
           onChange={(e) => handleInputChange('city', e.target.value)}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.city ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.city 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+          placeholder={t('city.placeholder')}
         />
-        {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
+        {errors.city && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.city}
+          </p>
+        )}
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('state.province')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           value={formData.state}
           onChange={(e) => handleInputChange('state', e.target.value)}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.state ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.state 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+          placeholder={t('state.province.placeholder')}
         />
-        {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state}</p>}
+        {errors.state && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.state}
+          </p>
+        )}
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('postal.code')} <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
           value={formData.postalCode}
           onChange={(e) => handleInputChange('postalCode', e.target.value)}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.postalCode ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.postalCode 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+          placeholder={t('postal.code.placeholder')}
         />
-        {errors.postalCode && <p className="text-red-500 text-sm mt-1">{errors.postalCode}</p>}
+        {errors.postalCode && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.postalCode}
+          </p>
+        )}
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('country')} <span className="text-red-500">*</span>
         </label>
-        <input
-          type="text"
+        <select
           value={formData.country}
           onChange={(e) => handleInputChange('country', e.target.value)}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.country ? 'border-red-500' : 'border-gray-300'
-          }`}
-        />
-        {errors.country && <p className="text-red-500 text-sm mt-1">{errors.country}</p>}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.country 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+        >
+          <option value="">{t('select.country')}</option>
+          <option value="United States">United States</option>
+          <option value="Canada">Canada</option>
+          <option value="United Kingdom">United Kingdom</option>
+          <option value="Australia">Australia</option>
+          <option value="Other">{t('other')}</option>
+        </select>
+        {errors.country && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.country}
+          </p>
+        )}
       </div>
     </div>
   </div>
@@ -321,58 +410,80 @@ const FamilyInfoStep: React.FC<{
   errors: any;
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
-  <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t('familyInfo')}</h3>
-    <div className="space-y-4">
+  <div className="space-y-4 sm:space-y-6">
+    <h3 className="text-lg sm:text-xl font-semibold text-gray-800">{t('familyInfo')}</h3>
+    <div className="space-y-3 sm:space-y-4">
       {formData.maritalStatus === 'Married' ? (
         <>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">
               {t('spouse.name')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={formData.spouseName}
               onChange={(e) => handleInputChange('spouseName', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md ${
-                errors.spouseName ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+                errors.spouseName 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              } focus:outline-none focus:ring-1`}
+              placeholder={t('spouse.name.placeholder')}
             />
-            {errors.spouseName && <p className="text-red-500 text-sm mt-1">{errors.spouseName}</p>}
+            {errors.spouseName && (
+              <p className="text-red-500 text-xs sm:text-sm mt-1">
+                {errors.spouseName}
+              </p>
+            )}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('spouse.email')} <span className="text-gray-400">({t('optional')})</span>
+          
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">
+              {t('spouse.email')} <span className="text-gray-500 text-xs">({t('optional')})</span>
             </label>
             <input
               type="email"
               value={formData.spouseEmail || ''}
               onChange={(e) => handleInputChange('spouseEmail', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-md ${
-                errors.spouseEmail ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="spouse@email.com"
+              className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+                errors.spouseEmail 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              } focus:outline-none focus:ring-1`}
+              placeholder={t('spouse.email.placeholder')}
             />
-            {errors.spouseEmail && <p className="text-red-500 text-sm mt-1">{errors.spouseEmail}</p>}
+            {errors.spouseEmail && (
+              <p className="text-red-500 text-xs sm:text-sm mt-1">
+                {errors.spouseEmail}
+              </p>
+            )}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('spouse.contact.phone')} <span className="text-gray-400">({t('optional')})</span>
+          
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">
+              {t('spouse.contact.phone')} <span className="text-gray-500 text-xs">({t('optional')})</span>
             </label>
             <input
               type="tel"
-              value={formData.spousePhone || ''}
+              value={formatPhoneNumber(formData.spousePhone || '')}
               onChange={(e) => {
-                const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                handleInputChange('spousePhone', formatPhoneNumber(digits));
+                const normalized = normalizePhoneNumber(e.target.value);
+                if (normalized === '' || !isNaN(Number(normalized))) {
+                  handleInputChange('spousePhone', normalized);
+                }
               }}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.spousePhone ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="(555) 123-4567"
-              maxLength={14}
+              className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+                errors.spousePhone 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              } focus:outline-none focus:ring-1`}
+              placeholder={t('phone.placeholder')}
             />
-            {errors.spousePhone && <p className="text-red-500 text-sm mt-1">{errors.spousePhone}</p>}
+            {errors.spousePhone && (
+              <p className="text-red-500 text-xs sm:text-sm mt-1">
+                {errors.spousePhone}
+              </p>
+            )}
           </div>
         </>
       ) : (
@@ -412,6 +523,62 @@ const FamilyInfoStep: React.FC<{
           </div>
         </div>
       )}
+      
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
+          {t('number.of.children')} <span className="text-red-500">*</span>
+        </label>
+        <select
+          value={formData.numberOfChildren}
+          onChange={(e) => handleInputChange('numberOfChildren', parseInt(e.target.value) || 0)}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.numberOfChildren 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+        >
+          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+            <option key={num} value={num}>
+              {num}
+            </option>
+          ))}
+        </select>
+        {errors.numberOfChildren && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.numberOfChildren}
+          </p>
+        )}
+      </div>
+      
+      {formData.numberOfChildren > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-sm sm:text-base font-medium text-gray-700">
+            {t('children.ages')}
+          </h4>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+            {Array.from({ length: formData.numberOfChildren }, (_, i) => (
+              <div key={i} className="space-y-1">
+                <label className="block text-xs sm:text-sm text-gray-600">
+                  {t('child')} {i + 1}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="25"
+                  value={formData.childrenAges?.[i] || ''}
+                  onChange={(e) => {
+                    const newAges = [...(formData.childrenAges || [])];
+                    newAges[i] = parseInt(e.target.value) || 0;
+                    handleInputChange('childrenAges', newAges);
+                  }}
+                  className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder={t('age')}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   </div>
 );
@@ -423,41 +590,44 @@ const SpiritualInfoStep: React.FC<{
   errors: any;
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
-  <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t('spiritualInfo')}</h3>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+  <div className="space-y-4 sm:space-y-6">
+    <h3 className="text-lg sm:text-xl font-semibold text-gray-800">
+      {t('spiritualInfo')}
+    </h3>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('date.joined.parish')}
         </label>
         <input
           type="date"
           value={formData.dateJoinedParish || ''}
           onChange={(e) => handleInputChange('dateJoinedParish', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('baptism.name')}
         </label>
         <input
           type="text"
           value={formData.baptismName || ''}
           onChange={(e) => handleInputChange('baptismName', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          placeholder="Enter Baptism Name"
+          className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          placeholder={t('baptism.name.placeholder')}
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('interested.in.serving')}
         </label>
         <select
           value={formData.interestedInServing || ''}
           onChange={(e) => handleInputChange('interestedInServing', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         >
           <option value="">{t('select')}</option>
           <option value="Yes">{t('yes')}</option>
@@ -465,14 +635,15 @@ const SpiritualInfoStep: React.FC<{
           <option value="Maybe">{t('maybe')}</option>
         </select>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('language.preference')}
         </label>
         <select
           value={formData.languagePreference || 'English'}
           onChange={(e) => handleInputChange('languagePreference', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         >
           <option value="English">English</option>
           <option value="Tigrigna">Tigrigna</option>
@@ -490,37 +661,47 @@ const ContributionStep: React.FC<{
   errors: any;
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
-  <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t('contributionInfo')}</h3>
+  <div className="space-y-4 sm:space-y-6">
+    <h3 className="text-lg sm:text-xl font-semibold text-gray-800">
+      {t('contributionInfo')}
+    </h3>
     
     <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('preferred.giving.method')}
         </label>
         <select
           value={formData.preferredGivingMethod}
           onChange={(e) => handleInputChange('preferredGivingMethod', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         >
+          <option value="">{t('select.giving.method')}</option>
           <option value="Cash">{t('cash')}</option>
           <option value="Online">{t('online')}</option>
           <option value="Check">{t('check')}</option>
         </select>
       </div>
       
-      <div>
-        <label className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            checked={formData.titheParticipation || false}
-            onChange={(e) => handleInputChange('titheParticipation', e.target.checked)}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <span className="text-sm font-medium text-gray-700">
+      <div className="pt-1">
+        <label className="flex items-start space-x-3">
+          <div className="flex items-center h-5 mt-0.5">
+            <input
+              type="checkbox"
+              checked={formData.titheParticipation || false}
+              onChange={(e) => handleInputChange('titheParticipation', e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+          </div>
+          <span className="text-sm sm:text-base text-gray-700">
             {t('participate.in.tithe') || 'I would like to participate in tithing'}
           </span>
         </label>
+        {formData.titheParticipation && (
+          <p className="mt-2 text-xs sm:text-sm text-gray-500 pl-7">
+            {t('tithe.participation.note') || 'Thank you for your commitment to tithing. You can update your preferences at any time in your account settings.'}
+          </p>
+        )}
       </div>
     </div>
   </div>
@@ -533,68 +714,105 @@ const AccountStep: React.FC<{
   errors: any;
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
-  <div className="space-y-6">
-    <h3 className="text-xl font-semibold text-gray-800">{t('accountInfo')}</h3>
+  <div className="space-y-4 sm:space-y-6">
+    <h3 className="text-lg sm:text-xl font-semibold text-gray-800">
+      {t('accountInfo')}
+    </h3>
     
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      <div className="sm:col-span-2 space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('login.email')} <span className="text-red-500">*</span>
         </label>
         <input
           type="email"
           value={formData.loginEmail}
           onChange={(e) => handleInputChange('loginEmail', e.target.value)}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.loginEmail ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.loginEmail 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+          placeholder={t('email.placeholder') || 'your@email.com'}
+          autoComplete="username"
         />
-        {errors.loginEmail && <p className="text-red-500 text-sm mt-1">{errors.loginEmail}</p>}
+        {errors.loginEmail && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.loginEmail}
+          </p>
+        )}
       </div>
       
-      <div className="md:col-span-2"></div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('password')} <span className="text-red-500">*</span>
         </label>
         <input
           type="password"
           value={formData.password}
           onChange={(e) => handleInputChange('password', e.target.value)}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.password ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.password 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+          placeholder="••••••••"
+          autoComplete="new-password"
         />
-        {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+        {errors.password && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.password}
+          </p>
+        )}
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
           {t('confirm.password')} <span className="text-red-500">*</span>
         </label>
         <input
           type="password"
           value={formData.confirmPassword}
           onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-          }`}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.confirmPassword 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+          placeholder="••••••••"
+          autoComplete="new-password"
         />
-        {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+        {errors.confirmPassword && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.confirmPassword}
+          </p>
+        )}
       </div>
     </div>
     
-    <div className="bg-yellow-50 p-4 rounded-md">
-      <h4 className="font-medium text-yellow-900 mb-2">{t('password.requirements')}</h4>
-      <ul className="text-sm text-yellow-700 space-y-1">
-        <li>• {t('at.least.8.characters')}</li>
-        <li>• {t('contains.at.least.one.uppercase')}</li>
-        <li>• {t('contains.at.least.one.lowercase')}</li>
-        <li>• {t('contains.at.least.one.number')}</li>
+    <div className="bg-yellow-50 p-3 sm:p-4 rounded-lg border border-yellow-100">
+      <h4 className="text-sm sm:text-base font-medium text-yellow-900 mb-2">
+        {t('password.requirements')}
+      </h4>
+      <ul className="text-xs sm:text-sm text-yellow-700 space-y-1">
+        <li className="flex items-start">
+          <span className="mr-2">•</span>
+          <span>{t('at.least.8.characters')}</span>
+        </li>
+        <li className="flex items-start">
+          <span className="mr-2">•</span>
+          <span>{t('contains.at.least.one.uppercase')}</span>
+        </li>
+        <li className="flex items-start">
+          <span className="mr-2">•</span>
+          <span>{t('contains.at.least.one.lowercase')}</span>
+        </li>
+        <li className="flex items-start">
+          <span className="mr-2">•</span>
+          <span>{t('contains.at.least.one.number')}</span>
+        </li>
       </ul>
     </div>
-    
   </div>
 );
 

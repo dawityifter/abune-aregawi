@@ -4,6 +4,7 @@
   "private": true,
   "homepage": "https://abune-aregawi-church-app.web.app",
   "dependencies": {
+    "@headlessui/react": "^2.2.7",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/dom": "^10.4.0",
