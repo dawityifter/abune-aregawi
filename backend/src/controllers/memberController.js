@@ -3,6 +3,24 @@ const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const { Member, Dependant } = require('../models');
 
+// Utility function to normalize phone numbers
+const normalizePhoneNumber = (phoneNumber) => {
+  if (!phoneNumber || typeof phoneNumber !== 'string') {
+    return phoneNumber;
+  }
+  
+  // Trim whitespace
+  const trimmed = phoneNumber.trim();
+  
+  // If it starts with +, keep the + and remove all non-digits after it
+  if (trimmed.startsWith('+')) {
+    return '+' + trimmed.slice(1).replace(/[^\d]/g, '');
+  }
+  
+  // Otherwise, remove all non-digits
+  return trimmed.replace(/[^\d]/g, '');
+};
+
 // Register new member with Firebase UID
 exports.register = async (req, res) => {
   try {
@@ -27,7 +45,7 @@ exports.register = async (req, res) => {
       
       // Contact & Address
       phoneNumber,
-      email,
+      email: providedEmail,
       streetLine1,
       apartmentNo,
       city,
@@ -55,7 +73,6 @@ exports.register = async (req, res) => {
       
       // Account
       firebaseUid,
-      loginEmail,
       password,
       role,
       
@@ -63,40 +80,61 @@ exports.register = async (req, res) => {
       dependants
     } = req.body;
 
-    // Check if email already exists in PostgreSQL
-    const existingMember = await Member.findOne({
-      where: { email: email }
-    });
+    // Handle phone sign-in users: generate placeholder email if none provided
+    // This avoids database constraint issues while preserving existing data
+    const email = providedEmail || `phone_${phoneNumber.replace(/[^0-9]/g, '')}@phone-signin.local`;
 
-    if (existingMember) {
+    // Check if email already exists in PostgreSQL (skip check for generated placeholder emails)
+    let existingMemberByEmail = null;
+    if (providedEmail) {
+      existingMemberByEmail = await Member.findOne({
+        where: { email: providedEmail }
+      });
+    }
+    if (existingMemberByEmail) {
       return res.status(400).json({
         success: false,
         message: 'A member with this email already exists'
       });
     }
 
-    // Check if login email already exists in PostgreSQL
-    const existingLoginEmail = await Member.findOne({
-      where: { loginEmail: loginEmail }
-    });
-
-    if (existingLoginEmail) {
-      return res.status(400).json({
-        success: false,
-        message: 'A member with this login email already exists'
-      });
-    }
-
-    // Check if Firebase UID already exists in PostgreSQL
+    // Handle Firebase-authenticated users completing their profile
     if (firebaseUid) {
+      // Check if this Firebase UID already has a complete member profile
       const existingFirebaseUser = await Member.findOne({
-        where: { firebaseUid: firebaseUid }
+        where: { firebaseUid }
       });
-
       if (existingFirebaseUser) {
         return res.status(400).json({
           success: false,
           message: 'A member with this Firebase UID already exists'
+        });
+      }
+      
+      // For Firebase-authenticated users, allow phone number "duplicates" 
+      // since they're completing their profile after authentication
+      // We'll check if the phone number belongs to a different Firebase user
+      const existingMemberByPhone = await Member.findOne({
+        where: { 
+          phoneNumber,
+          firebaseUid: { [require('sequelize').Op.ne]: firebaseUid } // Different Firebase UID
+        }
+      });
+      if (existingMemberByPhone) {
+        return res.status(400).json({
+          success: false,
+          message: 'This phone number is already registered to a different user'
+        });
+      }
+    } else {
+      // For non-Firebase users (traditional registration), check phone number duplicates
+      const existingMemberByPhone = await Member.findOne({
+        where: { phoneNumber }
+      });
+      if (existingMemberByPhone) {
+        return res.status(400).json({
+          success: false,
+          message: 'A member with this phone number already exists'
         });
       }
     }
@@ -166,7 +204,6 @@ exports.register = async (req, res) => {
       preferredGivingMethod,
       titheParticipation,
       firebaseUid,
-      loginEmail,
       password: password || null, // Password is optional since Firebase handles auth
       role: role || 'member',
       familyId: familyId // may be null, will update if HoH
@@ -194,7 +231,7 @@ exports.register = async (req, res) => {
     const token = jwt.sign(
       { 
         id: member.id, 
-        email: member.loginEmail, 
+        email: member.email, 
         role: member.role 
       },
       process.env.JWT_SECRET,
@@ -231,11 +268,21 @@ exports.register = async (req, res) => {
 // Login member
 exports.login = async (req, res) => {
   try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
     const { email, password } = req.body;
 
     // Find member by login email
     const member = await Member.findOne({
-      where: { loginEmail: email },
+      where: { email },
       include: [{
         model: Dependant,
         as: 'dependants'
@@ -273,7 +320,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { 
         id: member.id, 
-        email: member.loginEmail, 
+        email: member.email, 
         role: member.role 
       },
       process.env.JWT_SECRET,
@@ -333,6 +380,16 @@ exports.getProfile = async (req, res) => {
 // Update member profile
 exports.updateProfile = async (req, res) => {
   try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
     const member = await Member.findByPk(req.user.id);
     
     if (!member) {
@@ -660,46 +717,106 @@ exports.getProfileByFirebaseUid = async (req, res) => {
   try {
     const { uid } = req.params;
     const userEmail = req.query.email;
+    const userPhone = req.query.phone;
+    console.log('🔍 getProfileByFirebaseUid called:', { uid, userEmail, userPhone });
+    console.log('🔍 Request headers:', req.headers);
+    
+    // Set cache control headers to prevent 304 responses
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
 
-    if (!userEmail) {
+    if (!userEmail && !userPhone) {
       return res.status(400).json({
         success: false,
-        message: 'User email is required'
+        message: 'User email or phone number is required'
       });
     }
 
-    // Find member by email (check both email and loginEmail fields)
-    const member = await Member.findOne({
-      where: {
-        [Op.or]: [
-          { email: userEmail },
-          { loginEmail: userEmail }
-        ]
-      },
-      include: [{
-        model: Dependant,
-        as: 'dependants'
-      }]
-    });
+    // Find member by email or phone number
+    let member = null;
+    if (userEmail) {
+      console.log('🔍 Searching by email:', userEmail);
+      member = await Member.findOne({
+        where: { email: userEmail },
+        include: [{ model: Dependant, as: 'dependants' }]
+      });
+    } else if (userPhone) {
+      console.log('🔍 Searching by phone:', userPhone);
+      // Handle different phone number formats
+      const cleanPhone = userPhone.replace(/[^\d+]/g, '');
+      console.log('🔍 Clean phone for search:', cleanPhone);
+      
+      // Create comprehensive phone format variations
+      const digitsOnly = userPhone.replace(/[^\d]/g, '');
+      const last10Digits = digitsOnly.slice(-10); // Get last 10 digits (remove country code)
+      
+      const phoneFormats = [
+        userPhone,                                    // +14699078229
+        cleanPhone,                                   // +14699078229
+        digitsOnly,                                   // 14699078229
+        last10Digits,                                 // 4699078229
+        `+1${last10Digits}`,                         // +14699078229
+        `(${last10Digits.slice(0,3)}) ${last10Digits.slice(3,6)}-${last10Digits.slice(6)}`, // (469) 907-8229
+        `${last10Digits.slice(0,3)}-${last10Digits.slice(3,6)}-${last10Digits.slice(6)}`,   // 469-907-8229
+        `${last10Digits.slice(0,3)}.${last10Digits.slice(3,6)}.${last10Digits.slice(6)}`,   // 469.907.8229
+        `${last10Digits.slice(0,3)} ${last10Digits.slice(3,6)} ${last10Digits.slice(6)}`    // 469 907 8229
+      ];
+      console.log('🔍 Searching for phone in these formats:', phoneFormats);
+      
+      member = await Member.findOne({
+        where: {
+          [Op.or]: phoneFormats.map(format => ({ phoneNumber: format }))
+        },
+        include: [{ model: Dependant, as: 'dependants' }]
+      });
+      
+      // If not found, let's see what phone numbers exist in the database
+      if (!member) {
+        const allPhones = await Member.findAll({
+          attributes: ['id', 'firstName', 'lastName', 'phoneNumber'],
+          where: {
+            phoneNumber: { [Op.not]: null }
+          },
+          limit: 5
+        });
+        console.log('🔍 Sample phone numbers in database:', allPhones.map(m => ({ id: m.id, name: `${m.firstName} ${m.lastName}`, phone: m.phoneNumber })));
+      }
+    }
+
+    console.log('🔍 Member search result:', member ? 'FOUND' : 'NOT FOUND');
+    if (member) {
+      console.log('🔍 Found member:', { id: member.id, email: member.email, phoneNumber: member.phoneNumber });
+    }
 
     if (!member) {
-      return res.status(404).json({
+      console.log('❌ Member not found, returning 404');
+      const notFoundResponse = {
         success: false,
         message: 'Member not found. Please complete your registration first.',
         code: 'REGISTRATION_REQUIRED'
-      });
+      };
+      console.log('📤 Response status: 404, data:', notFoundResponse);
+      return res.status(404).json(notFoundResponse);
     }
 
     // Update Firebase UID if not set
+    console.log('🔍 Checking Firebase UID update:', { currentUid: member.firebaseUid, newUid: uid });
     if (!member.firebaseUid) {
+      console.log('🔍 Updating Firebase UID...');
       await member.update({ firebaseUid: uid });
+      console.log('✅ Firebase UID updated');
     }
 
-    res.json({
+    console.log('✅ Returning member profile');
+    const responseData = {
       success: true,
       data: { member }
-    });
-
+    };
+    console.log('📤 Response status: 200, data:', { memberId: member.id, email: member.email, phone: member.phoneNumber });
+    res.status(200).json(responseData);
   } catch (error) {
     console.error('Get profile by Firebase UID error:', error);
     res.status(500).json({
@@ -714,12 +831,20 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
   try {
     const { uid } = req.params;
 
-    // Find member by email from Firebase Auth
-    const member = await Member.findOne({
-      where: { 
-        email: req.query.email || '' // We'll pass email as query param
-      }
-    });
+    // Find member by email or phone from Firebase Auth
+    const whereClause = {};
+    if (req.query.email) {
+      whereClause.email = req.query.email;
+    } else if (req.query.phone) {
+      whereClause.phoneNumber = req.query.phone;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Either email or phone parameter is required'
+      });
+    }
+
+    const member = await Member.findOne({ where: whereClause });
 
     if (!member) {
       return res.status(404).json({
@@ -730,7 +855,7 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
     }
 
     // Remove sensitive fields that shouldn't be updated via this endpoint
-    const { password, role, isActive, memberId, loginEmail, ...updateData } = req.body;
+    const { password, role, isActive, memberId, ...updateData } = req.body;
 
     await member.update(updateData);
 
@@ -776,7 +901,6 @@ exports.completeRegistration = async (req, res) => {
       where: {
         [Op.or]: [
           { email: memberData.email },
-          { loginEmail: memberData.loginEmail || memberData.email },
           { firebaseUid: firebaseUid }
         ]
       }
@@ -1023,10 +1147,7 @@ exports.cleanupOrphanedUsers = async (req, res) => {
     // Check if user exists in PostgreSQL
     const member = await Member.findOne({
       where: {
-        [Op.or]: [
-          { email: email },
-          { loginEmail: email }
-        ]
+        email: email
       }
     });
 
@@ -1069,10 +1190,7 @@ exports.checkRegistrationStatus = async (req, res) => {
 
     const whereClause = {};
     if (email) {
-      whereClause[Op.or] = [
-        { email: email },
-        { loginEmail: email }
-      ];
+      whereClause.email = email;
     }
     if (firebaseUid) {
       whereClause.firebaseUid = firebaseUid;

@@ -1,17 +1,30 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getRolePermissions, UserRole } from '../utils/roles';
 
 interface UserProfile {
-  displayName: string;
-  email: string;
-  role: UserRole;
-  createdAt: string;
-  isActive: boolean;
+  success: boolean;
+  data: {
+    member: {
+      id: string;
+      firstName: string;
+      middleName?: string;
+      lastName: string;
+      email: string;
+      role: UserRole;
+      phoneNumber: string;
+      isActive: boolean;
+      createdAt: string;
+      updatedAt: string;
+      // Add other member fields as needed
+    };
+  };
 }
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { currentUser, logout, getUserProfile } = useAuth();
   const { t } = useLanguage();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -19,19 +32,19 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Check if user has admin permissions
-  const userRole = (userProfile?.role || 'member') as UserRole;
+  const userRole = (userProfile?.data?.member?.role || 'member') as UserRole;
   const permissions = getRolePermissions(userRole);
+  
+  // Debug logging for role and permissions
+
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (currentUser) {
         try {
-          console.log('Fetching profile for user:', currentUser.uid);
           const profile = await getUserProfile(currentUser.uid);
-          console.log('Profile fetched:', profile);
           setUserProfile(profile);
         } catch (error: any) {
-          console.error('Error fetching user profile:', error);
           // Check if it's a Firestore permission error or network error
           if (error.message.includes('permission') || error.message.includes('403')) {
             setError('Firestore permission denied. Please check your Firebase rules.');
@@ -51,17 +64,9 @@ const Dashboard: React.FC = () => {
     fetchUserProfile();
   }, [currentUser, getUserProfile]);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
-
   const handleViewProfile = () => {
-    // Navigate to profile page
-    window.location.href = '/profile';
+    // Navigate to profile page using React Router
+    navigate('/profile');
   };
 
   const handleViewDues = () => {
@@ -80,12 +85,30 @@ const Dashboard: React.FC = () => {
   };
 
   const handleDonate = () => {
-    window.location.href = '/donate';
+    navigate('/donate');
   };
 
   const handleManageAccount = () => {
     alert('Manage Account functionality coming soon!');
     // TODO: Navigate to account settings page
+  };
+
+  const handleRefreshProfile = async () => {
+    if (currentUser) {
+      setLoading(true);
+      try {
+        console.log('🔄 Manually refreshing user profile...');
+        const profile = await getUserProfile(currentUser.uid);
+        console.log('🔄 Refreshed profile:', profile);
+        setUserProfile(profile);
+        setError(null);
+      } catch (error: any) {
+        console.error('Error refreshing profile:', error);
+        setError(`Failed to refresh profile: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   if (loading) {
@@ -114,23 +137,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <i className="fas fa-cross text-2xl text-primary-800 mr-3"></i>
-              <h1 className="text-xl font-semibold text-gray-900">
-                {t('member.dashboard')}
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              {/* Sign out functionality is available in the Navigation component */}
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
@@ -149,7 +155,7 @@ const Dashboard: React.FC = () => {
                       {t('profile')}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {userProfile?.displayName || currentUser?.displayName || 'User'}
+                      {userProfile?.data?.member?.firstName || currentUser?.email || 'User'}
                     </p>
                   </div>
                 </div>
@@ -300,7 +306,7 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className="mt-4">
                   <button 
-                    onClick={() => window.location.href = '/children'}
+                    onClick={() => navigate('/children')}
                     className="w-full bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 transition-colors"
                   >
                     Manage Children
@@ -338,6 +344,38 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* Treasurer Card - Show for treasurer, admin, and church_leadership roles */}
+            {(permissions.canViewFinancialRecords || permissions.canEditFinancialRecords) && (
+              <div className="bg-white overflow-hidden shadow rounded-lg border-2 border-green-200">
+                <div className="p-6">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <i className="fas fa-coins text-green-800"></i>
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Treasurer
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Manage member payments and financial records
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <button 
+                      onClick={() => navigate('/treasurer')}
+                      className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      <i className="fas fa-coins mr-2"></i>
+                      View Payments
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Admin Panel Card - Only show for admin users */}
             {permissions.canAccessAdminPanel && (
               <div className="bg-white overflow-hidden shadow rounded-lg border-2 border-red-200">
@@ -359,7 +397,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="mt-4">
                     <button 
-                      onClick={() => window.location.href = '/admin'}
+                      onClick={() => navigate('/admin')}
                       className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
                     >
                       <i className="fas fa-shield-alt mr-2"></i>

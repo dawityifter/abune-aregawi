@@ -41,7 +41,7 @@ interface ReportData {
 }
 
 const PaymentReports: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, firebaseUser } = useAuth();
   const [reportType, setReportType] = useState<'summary' | 'behind_payments' | 'monthly_breakdown'>('summary');
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -55,7 +55,7 @@ const PaymentReports: React.FC = () => {
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/reports/${reportType}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
-          'Authorization': `Bearer ${await currentUser?.getIdToken()}`
+          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
       });
 

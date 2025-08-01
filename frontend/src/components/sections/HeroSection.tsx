@@ -1,19 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { useAuth } from '../../contexts/AuthContext';
 
 const HeroSection: React.FC = () => {
-  const { language, setLanguage, t } = useLanguage();
-  const { currentUser, logout } = useAuth();
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
+  const { language, t } = useLanguage();
 
   return (
     <header
@@ -26,49 +16,15 @@ const HeroSection: React.FC = () => {
       }}
     >
       <div className="container mx-auto px-4 text-center">
-        {/* Language Switcher and Auth Links */}
-        <div className="absolute top-5 right-5 flex gap-2 z-10">
-          <button
-            className={`lang-btn ${language === 'en' ? 'active' : ''}`}
-            onClick={() => setLanguage('en')}
-          >
-            English
-          </button>
-          <button
-            className={`lang-btn ${language === 'ti' ? 'active' : ''}`}
-            onClick={() => setLanguage('ti')}
-          >
-            ትግርኛ
-          </button>
-          <div className="border-l border-white/30 mx-2"></div>
-          {currentUser ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm opacity-80">
-                {t('welcome')}, {currentUser.displayName || currentUser.email}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="text-sm text-white hover:text-secondary-300 transition-colors"
-              >
-                {t('sign.out')}
-              </button>
-            </div>
-          ) : (
-            <Link
-              to="/login"
-              className="text-sm text-white hover:text-secondary-300 transition-colors"
-            >
-              {t('sign.in')}
-            </Link>
-          )}
-        </div>
 
-        {/* Church Logo and Name */}
+        {/* Church Logo */}
         <div className="flex items-center justify-center gap-4 mb-12">
-          <img src={require('../../logo.svg').default} alt="Orthodox Cross" className="h-16 w-16" />
-          <h1 className="text-3xl md:text-4xl font-serif font-bold text-white">
-            Tigray Orthodox Church
-          </h1>
+          <img 
+            src="/cross.png" 
+            alt="Orthodox Cross" 
+            className="h-16 w-auto" 
+            style={{ filter: 'brightness(0) invert(1)' }}
+          />
         </div>
 
         {/* Mission Statement */}
@@ -123,7 +79,7 @@ const HeroSection: React.FC = () => {
         </div>
 
         {/* CTA Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl mx-auto">
           <Link to="/church-bylaw" className="btn btn-primary">
             <i className="fas fa-book mr-2"></i>
             {t('church.bylaw')}
@@ -139,17 +95,6 @@ const HeroSection: React.FC = () => {
             <i className="fas fa-chart-bar mr-2"></i>
             {t('member.status')}
           </Link>
-          {currentUser ? (
-            <Link to="/dashboard" className="btn btn-outline">
-              <i className="fas fa-user mr-2"></i>
-              {t('member.dashboard')}
-            </Link>
-          ) : (
-            <Link to="/register" className="btn btn-outline">
-              <i className="fas fa-user-plus mr-2"></i>
-              {t('register.member')}
-            </Link>
-          )}
         </div>
       </div>
     </header>

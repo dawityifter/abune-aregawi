@@ -48,7 +48,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
   canEditMembers
 }) => {
   const { t } = useLanguage();
-  const { currentUser } = useAuth();
+  const { currentUser, firebaseUser } = useAuth();
   const [formData, setFormData] = useState<Member>(member);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +77,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
     setError(null);
 
     try {
-      const idToken = currentUser ? await currentUser.getIdToken() : null;
+      const idToken = firebaseUser ? await firebaseUser.getIdToken() : null;
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${member.id}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         method: 'PUT',
         headers: {

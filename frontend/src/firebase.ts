@@ -1,9 +1,7 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 
-// Your Firebase configuration
-// You'll need to replace these with your actual Firebase project config
+// Firebase configuration using environment variables
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
   authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
@@ -11,25 +9,30 @@ const firebaseConfig = {
   storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.REACT_APP_FIREBASE_APP_ID,
-  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
-// Debug: Log Firebase config (remove in production)
-console.log('Firebase config loaded:', {
-  apiKey: firebaseConfig.apiKey ? '***' : 'MISSING',
-  authDomain: firebaseConfig.authDomain,
-  projectId: firebaseConfig.projectId,
-  storageBucket: firebaseConfig.storageBucket,
-  messagingSenderId: firebaseConfig.messagingSenderId,
-  appId: firebaseConfig.appId ? '***' : 'MISSING',
-  measurementId: firebaseConfig.measurementId
-});
+// Validate that all required config values are present
+const requiredConfigKeys = ['apiKey', 'authDomain', 'projectId', 'appId'];
+const missingKeys = requiredConfigKeys.filter(key => !firebaseConfig[key as keyof typeof firebaseConfig]);
 
-// Initialize Firebase
+if (missingKeys.length > 0) {
+  console.error('Missing Firebase configuration keys:', missingKeys);
+  console.error('Please check your .env file and ensure all REACT_APP_FIREBASE_* variables are set');
+}
+
 const app = initializeApp(firebaseConfig);
-
-// Initialize Firebase services
 export const auth = getAuth(app);
-export const storage = getStorage(app);
+
+// Disable reCAPTCHA Enterprise in development
+if (process.env.NODE_ENV === 'development') {
+  console.log('Development mode: Disabling reCAPTCHA Enterprise');
+  // This will prevent Firebase from trying to load reCAPTCHA Enterprise scripts
+  (window as any).__FIREBASE_DISABLE_RECAPTCHA_ENTERPRISE__ = true;
+  
+  // Also try to disable Enterprise mode in Firebase Auth
+  if (typeof window !== 'undefined') {
+    (window as any).__FIREBASE_AUTH_EMULATOR_HOST__ = 'localhost:9099';
+  }
+}
 
 export default app; 

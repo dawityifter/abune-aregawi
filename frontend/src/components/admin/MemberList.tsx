@@ -29,7 +29,7 @@ const MemberList: React.FC<MemberListProps> = ({
   canDeleteMembers 
 }) => {
   const { t } = useLanguage();
-  const { currentUser } = useAuth();
+  const { currentUser, firebaseUser } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,16 +51,32 @@ const MemberList: React.FC<MemberListProps> = ({
         ...(statusFilter && { isActive: statusFilter })
       });
 
-      if (!currentUser || !currentUser.email) {
+      if (!currentUser || (!currentUser.email && !currentUser.phoneNumber)) {
         throw new Error('User not authenticated');
       }
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?${params}&email=${encodeURIComponent(currentUser.email)}`, {
+      // Debug logging for authentication
+      console.log('🔍 MemberList Debug Info:');
+      console.log('Current User:', currentUser);
+      console.log('Firebase User:', firebaseUser);
+      console.log('Firebase User UID:', firebaseUser?.uid);
+      
+      const idToken = firebaseUser ? await firebaseUser.getIdToken() : null;
+      console.log('Firebase ID Token:', idToken ? `${idToken.substring(0, 50)}...` : 'null');
+
+      const userIdentifier = currentUser.email ? `email=${encodeURIComponent(currentUser.email)}` : `phone=${encodeURIComponent(currentUser.phoneNumber || '')}`;
+      const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/all/firebase?${params}&${userIdentifier}`;
+      console.log('API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         headers: {
-          'Authorization': `Bearer ${await currentUser.getIdToken()}`,
+          'Authorization': idToken ? `Bearer ${idToken}` : '',
           'Content-Type': 'application/json'
         }
       });
+      
+      console.log('Response Status:', response.status);
+      console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         throw new Error('Failed to fetch members');
@@ -87,8 +103,9 @@ const MemberList: React.FC<MemberListProps> = ({
     }
 
     try {
-      const idToken = currentUser ? await currentUser.getIdToken() : null;
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      const idToken = firebaseUser ? await firebaseUser.getIdToken() : null;
+      const userIdentifier = currentUser?.email ? `email=${encodeURIComponent(currentUser.email)}` : `phone=${encodeURIComponent(currentUser?.phoneNumber || '')}`;
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}?${userIdentifier}`, {
         method: 'DELETE',
         headers: {
           'Authorization': idToken ? `Bearer ${idToken}` : '',
