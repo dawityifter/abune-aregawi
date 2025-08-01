@@ -7,6 +7,11 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:unit": "jest --testPathPattern=unit",
+    "test:ci": "jest --coverage --ci --watchAll=false",
     "db:init": "node src/database/init.js",
     "db:reset": "node src/database/reset.js",
     "db:test": "node src/database/test.js",
@@ -36,6 +41,7 @@
   "devDependencies": {
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",
+    "sqlite3": "^5.1.6",
     "supertest": "^6.3.3"
   },
   "keywords": [

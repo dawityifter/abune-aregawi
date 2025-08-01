@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { formatPhoneNumber } from './auth/MemberRegistration';
+import { formatPhoneNumber } from '../utils/formatPhoneNumber';
 import { formatDateForDisplay } from '../utils/dateUtils';
 
 interface Dependant {
@@ -37,7 +37,16 @@ const DependantsManagement: React.FC = () => {
   const fetchDependants = useCallback(async () => {
     try {
       // First get the member profile to get the member ID
-      const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      // Build query parameters based on available user data
+      const params = new URLSearchParams();
+      if (currentUser?.email) {
+        params.append('email', currentUser.email);
+      }
+      if (currentUser?.phoneNumber) {
+        params.append('phone', currentUser.phoneNumber);
+      }
+      
+      const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?${params.toString()}`, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -77,7 +86,16 @@ const DependantsManagement: React.FC = () => {
     
     try {
       // Get member ID first
-      const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      // Build query parameters based on available user data
+      const params = new URLSearchParams();
+      if (currentUser?.email) {
+        params.append('email', currentUser.email);
+      }
+      if (currentUser?.phoneNumber) {
+        params.append('phone', currentUser.phoneNumber);
+      }
+      
+      const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?${params.toString()}`, {
         headers: {
           'Content-Type': 'application/json'
         }

@@ -6,6 +6,9 @@ import { UserRole } from '../utils/roles';
 
 interface ProfileData {
   displayName: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
   email: string;
   role: UserRole;
   createdAt: string;
@@ -81,6 +84,9 @@ const Profile: React.FC = () => {
   // Form state
   const [formData, setFormData] = useState<ProfileData>({
     displayName: '',
+    firstName: '',
+    middleName: '',
+    lastName: '',
     email: '',
     role: 'member',
     createdAt: '',
@@ -105,13 +111,20 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (currentUser) {
+      console.log('🔍 Profile component - currentUser:', currentUser);
+      
+      if (currentUser && currentUser.uid) {
         try {
+          console.log('🔍 Fetching profile for UID:', currentUser.uid);
+          
           // Fetch Firebase profile
-          const userProfile = await getUserProfile(currentUser.uid);
+          const userProfile = await getUserProfile(currentUser.uid, currentUser.email, currentUser.phoneNumber);
           setProfile(userProfile);
           setFormData(userProfile as ProfileData || {
             displayName: '',
+            firstName: '',
+            middleName: '',
+            lastName: '',
             email: '',
             role: 'member',
             createdAt: '',
@@ -136,7 +149,25 @@ const Profile: React.FC = () => {
 
           // Fetch backend member data
           try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?email=${currentUser.email}`, {
+            // Build query parameters based on available user data
+            const params = new URLSearchParams();
+            console.log('🔍 currentUser object:', currentUser);
+            console.log('🔍 currentUser.email:', currentUser.email);
+            console.log('🔍 currentUser.phoneNumber:', currentUser.phoneNumber);
+            
+            if (currentUser.email) {
+              params.append('email', currentUser.email);
+              console.log('✅ Added email parameter:', currentUser.email);
+            }
+            if (currentUser.phoneNumber) {
+              params.append('phone', currentUser.phoneNumber);
+              console.log('✅ Added phone parameter:', currentUser.phoneNumber);
+            }
+            
+            const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?${params.toString()}`;
+            console.log('🔍 Making backend API call to:', apiUrl);
+            
+            const response = await fetch(apiUrl, {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json',
@@ -149,6 +180,12 @@ const Profile: React.FC = () => {
               // Merge backend data with Firebase data
               const mergedData = {
                 ...userProfile,
+                firstName: result.data.member.firstName,
+                middleName: result.data.member.middleName,
+                lastName: result.data.member.lastName,
+                email: result.data.member.email,
+                role: result.data.member.role,
+                createdAt: result.data.member.createdAt,
                 phoneNumber: result.data.member.phoneNumber,
                 dateOfBirth: result.data.member.dateOfBirth,
                 gender: result.data.member.gender,
@@ -177,6 +214,9 @@ const Profile: React.FC = () => {
               setProfile(userProfile);
               setFormData(userProfile as ProfileData || {
                 displayName: '',
+                firstName: '',
+                middleName: '',
+                lastName: '',
                 email: '',
                 role: 'member',
                 createdAt: '',
@@ -200,15 +240,19 @@ const Profile: React.FC = () => {
               });
             }
           } catch (backendError) {
-            console.warn('Could not fetch backend data:', backendError);
-            // Continue with Firebase data only
+            console.error('Error fetching backend profile:', backendError);
+            setError('Failed to fetch complete profile data. Please try again.');
           }
-        } catch (error: any) {
+        } catch (error) {
           console.error('Error fetching profile:', error);
-          setError('Failed to load profile');
+          setError('Failed to fetch profile data. Please try again.');
         } finally {
           setLoading(false);
         }
+      } else {
+        console.warn('❌ No currentUser or currentUser.uid found:', currentUser);
+        setError('User not authenticated. Please sign in again.');
+        setLoading(false);
       }
     };
 
@@ -236,21 +280,27 @@ const Profile: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentUser.uid) {
+      setError('User not authenticated. Please sign in again.');
+      return;
+    }
 
     setSaving(true);
     setError(null);
     setSuccess(null);
 
     try {
-      // Update display name in Firebase Auth
-      if (formData.displayName && formData.displayName !== currentUser.displayName) {
-        await updateUserProfile(formData.displayName);
+      // Create display name from separate name fields
+      const displayName = `${formData.firstName || ''} ${formData.middleName || ''} ${formData.lastName || ''}`.replace(/\s+/g, ' ').trim();
+      
+      // Update display name in Firebase Auth if it changed
+      if (displayName && displayName !== currentUser.displayName) {
+        await updateUserProfile({ displayName });
       }
 
       // Update profile data in Firestore (only basic info)
       await updateUserProfileData(currentUser.uid, {
-        displayName: formData.displayName,
+        displayName: displayName,
         email: formData.email,
         role: formData.role,
         updatedAt: new Date().toISOString()
@@ -258,6 +308,10 @@ const Profile: React.FC = () => {
 
       // Update detailed profile data in backend API
       const backendUpdateData = {
+        firstName: formData.firstName,
+        middleName: formData.middleName,
+        lastName: formData.lastName,
+        email: formData.email,
         phoneNumber: formData.phoneNumber,
         dateOfBirth: formData.dateOfBirth,
         gender: formData.gender,
@@ -278,7 +332,16 @@ const Profile: React.FC = () => {
       };
 
       // Send update to backend API
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?email=${encodeURIComponent(currentUser.email || '')}`, {
+      // Build query parameters based on available user data
+      const params = new URLSearchParams();
+      if (currentUser.email) {
+        params.append('email', currentUser.email);
+      }
+      if (currentUser.phoneNumber) {
+        params.append('phone', currentUser.phoneNumber);
+      }
+      
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?${params.toString()}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -311,6 +374,9 @@ const Profile: React.FC = () => {
   const handleCancel = () => {
     setFormData(profile || {
       displayName: '',
+      firstName: '',
+      middleName: '',
+      lastName: '',
       email: '',
       role: 'member',
       createdAt: '',
@@ -433,20 +499,59 @@ const Profile: React.FC = () => {
                     {t('basic.information')}
                   </h3>
 
+                  {/* First Name */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('full.name')}
+                      {t('first.name')}
                     </label>
                     {editing ? (
                       <input
                         type="text"
-                        name="displayName"
-                        value={formData.displayName || ''}
+                        name="firstName"
+                        value={formData.firstName || ''}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        required
+                      />
+                    ) : (
+                      <p className="text-gray-900">{profile.firstName || 'Not provided'}</p>
+                    )}
+                  </div>
+
+                  {/* Middle Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('middle.name')}
+                    </label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        name="middleName"
+                        value={formData.middleName || ''}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
                     ) : (
-                      <p className="text-gray-900">{profile.displayName}</p>
+                      <p className="text-gray-900">{profile.middleName || 'Not provided'}</p>
+                    )}
+                  </div>
+
+                  {/* Last Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('last.name')}
+                    </label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        name="lastName"
+                        value={formData.lastName || ''}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        required
+                      />
+                    ) : (
+                      <p className="text-gray-900">{profile.lastName || 'Not provided'}</p>
                     )}
                   </div>
 
@@ -454,14 +559,25 @@ const Profile: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('email')}
                     </label>
-                    <p className="text-gray-900">{profile.email}</p>
+                    {editing ? (
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email || ''}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        required
+                      />
+                    ) : (
+                      <p className="text-gray-900">{profile.email || 'Not provided'}</p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('role')}
                     </label>
-                    <p className="text-gray-900">{profile.role}</p>
+                    <p className="text-gray-900">{profile.role || 'Member'}</p>
                   </div>
 
                   <div>
@@ -469,7 +585,7 @@ const Profile: React.FC = () => {
                       {t('member.since')}
                     </label>
                     <p className="text-gray-900">
-                      {formatDateForDisplay(profile.createdAt)}
+                      {profile.createdAt ? formatDateForDisplay(profile.createdAt) : 'Not available'}
                     </p>
                   </div>
 

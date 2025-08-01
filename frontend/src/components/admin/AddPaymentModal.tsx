@@ -16,7 +16,7 @@ interface AddPaymentModalProps {
 }
 
 const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdded }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, firebaseUser } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [month, setMonth] = useState('');
@@ -34,7 +34,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
     try {
       const response = await fetch(`/api/members?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
-          'Authorization': `Bearer ${await currentUser?.getIdToken()}`
+          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
       });
 
@@ -57,7 +57,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await currentUser?.getIdToken()}`
+          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         },
         body: JSON.stringify({
           memberId: selectedMemberId,

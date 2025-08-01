@@ -57,6 +57,10 @@ router.post('/:memberId/dependants', memberController.addDependant);
 router.put('/dependants/:dependantId', memberController.updateDependant);
 router.delete('/dependants/:dependantId', memberController.deleteDependant);
 
+// JWT-protected profile routes (for testing and JWT-based auth)
+router.get('/profile/jwt', authMiddleware, memberController.getProfile);
+router.put('/profile/jwt', authMiddleware, validateProfileUpdate, memberController.updateProfile);
+
 // Protected routes (require Firebase authentication)
 router.use(firebaseAuthMiddleware);
 
