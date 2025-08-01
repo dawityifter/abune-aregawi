@@ -67,11 +67,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (params.toString() === '') {
             console.log('⚠️ No email or phone available for backend lookup');
             console.log('⚠️ Firebase user might be incomplete or using a different auth method');
-            // For now, navigate to registration as we can't look up the user
-            if (window.location.pathname !== '/register') {
-              console.log('⚠️ Navigating to registration due to missing contact info');
-              navigate("/register", { state: { email: null, phone: null } });
+            // Only navigate to register if we're not already there
+            const currentPath = window.location.pathname;
+            if (currentPath === '/register') {
+              console.log('⚠️ Already on registration page, not redirecting');
+              return;
             }
+            // If we're on the home page, stay there
+            if (currentPath === '/') {
+              console.log('⚠️ On home page, not redirecting to register');
+              return;
+            }
+            // For any other page, redirect to home instead of register
+            console.log('⚠️ Redirecting to home instead of register');
+            navigate("/");
             return;
           }
           
@@ -94,59 +103,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(userWithUid);
             console.log(`✅ Call #${callCount} - Auth state: Existing user found`);
             
-            // Only navigate to dashboard if we're not already on a protected route
+            // Only navigate to dashboard if we're on a public route and not in the middle of registration
             const currentPath = window.location.pathname;
-            if (currentPath === '/' || currentPath === '/login' || currentPath === '/register') {
-              console.log(`✅ Call #${callCount} - Navigating to dashboard from public route`);
-              navigate("/dashboard");
+            const isPublicRoute = ['/', '/login', '/register'].includes(currentPath);
+            const isRegistrationComplete = member?.registrationStatus === 'complete';
+            
+            if (isPublicRoute) {
+              if (isRegistrationComplete) {
+                console.log(`✅ Call #${callCount} - Registration complete, navigating to dashboard`);
+                navigate("/dashboard");
+              } else {
+                console.log(`ℹ️ Call #${callCount} - On public route but registration not complete, staying`);
+              }
             } else {
               console.log(`✅ Call #${callCount} - Staying on current protected route: ${currentPath}`);
             }
           } else {
             console.log(`❌ Call #${callCount} - Auth state: Backend user not found (status: ${res.status})`);
+            const currentPath = window.location.pathname;
             
             // Special handling for post-registration case
-            if (window.location.pathname === '/register') {
-              console.log(`🔄 Call #${callCount} - On registration page, user might be newly registered. Retrying in 3 seconds...`);
-              
-              // Retry the backend lookup after a delay for newly registered users
-              setTimeout(async () => {
-                try {
-                  console.log(`🔄 Retrying backend lookup for newly registered user...`);
-                  const retryRes = await fetch(apiUrl);
-                  if (retryRes.status === 200) {
-                    const retryMember = await retryRes.json();
-                    console.log(`✅ Retry successful - Backend user found:`, retryMember);
-                    const userWithUid = {
-                      ...retryMember,
-                      uid: firebaseUser.uid,
-                      email: email,
-                      phoneNumber: phone
-                    };
-                    setUser(userWithUid);
-                    console.log(`✅ Post-registration auth complete`);
-                    
-                    // Only navigate to dashboard if we're not already on a protected route
-                    const currentPath = window.location.pathname;
-                    if (currentPath === '/' || currentPath === '/login' || currentPath === '/register') {
-                      console.log(`✅ Navigating to dashboard from public route`);
-                      navigate("/dashboard");
-                    } else {
-                      console.log(`✅ Staying on current protected route: ${currentPath}`);
-                    }
-                  } else {
-                    console.log(`❌ Retry failed - user still not found in backend`);
-                    // Stay on registration page or show error
-                  }
-                } catch (retryErr) {
-                  console.error(`❌ Retry error:`, retryErr);
-                }
-              }, 3000);
-            } else {
-              // Normal case - navigate to registration
-              console.log(`❌ Call #${callCount} - Auth state: Navigating to registration`);
-              navigate("/register", { state: { email, phone } });
+            if (currentPath === '/register') {
+              console.log(`🔄 Call #${callCount} - On registration page, user might be newly registered.`);
+              // Don't automatically redirect, let the registration flow handle it
+              return;
+            } 
+            
+            // If we're on the home page, stay there
+            if (currentPath === '/') {
+              console.log(`ℹ️ Call #${callCount} - On home page, not redirecting to register`);
+              return;
             }
+            
+            // For any other page, redirect to home instead of register
+            console.log(`❌ Call #${callCount} - Redirecting to home instead of register`);
+            navigate("/");
           }
         } catch (err) {
           console.error(`❌ Call #${callCount} - Error checking backend:`, err);
