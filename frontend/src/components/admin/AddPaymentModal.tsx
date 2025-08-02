@@ -16,7 +16,7 @@ interface AddPaymentModalProps {
 }
 
 const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdded }) => {
-  const { currentUser, firebaseUser } = useAuth();
+  const { user, firebaseUser } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [month, setMonth] = useState('');
@@ -27,10 +27,12 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
   const [error, setError] = useState('');
 
   const fetchMembers = useCallback(async () => {
+    if (!firebaseUser) return;
+    
     try {
-      const response = await fetch(`/api/members?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      const response = await fetch(`/api/members?email=${encodeURIComponent(user?.data?.member?.email || '')}`, {
         headers: {
-          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
+          'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
         }
       });
 
@@ -41,7 +43,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
     } catch (error) {
       console.error('Error fetching members:', error);
     }
-  }, [currentUser?.email, firebaseUser]);
+  }, [user?.data?.member?.email, firebaseUser]);
 
   useEffect(() => {
     fetchMembers();
@@ -53,7 +55,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
     setError('');
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/${selectedMemberId}/payment?email=${encodeURIComponent(currentUser?.email || '')}`, {
+const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/${selectedMemberId}/payment?email=${encodeURIComponent(user?.data?.member?.email || '')}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
