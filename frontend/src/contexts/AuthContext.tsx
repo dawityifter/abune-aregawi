@@ -258,14 +258,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Listen for Firebase auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('🔥 Firebase auth state changed:', firebaseUser ? 'User signed in' : 'User signed out');
       setFirebaseUser(firebaseUser);
       
       if (firebaseUser) {
-        // Check user profile in the background without blocking UI
+        // Immediately set a temporary user for instant navigation
+        const tempUser = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          phoneNumber: firebaseUser.phoneNumber,
+          _temp: true
+        };
+        setUser(tempUser);
+        
+        // Check user profile in the background
         checkUserProfile(firebaseUser).then(profile => {
           if (profile) {
+            console.log('✅ User profile loaded, updating state');
             setUser(profile);
+          } else {
+            console.log('❌ User profile not found, keeping temp user');
           }
+        }).catch(error => {
+          console.error('Error checking user profile:', error);
+          // Keep the temp user even if profile check fails
         });
       } else {
         setUser(null);
