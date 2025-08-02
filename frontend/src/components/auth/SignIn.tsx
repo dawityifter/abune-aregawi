@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { RecaptchaVerifier } from "firebase/auth";
 import { auth } from "../../firebase";
@@ -16,6 +17,7 @@ declare global {
 const SignIn: React.FC = () => {
   const { loginWithEmail, loginWithPhone, loading } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   
   // Get enabled authentication methods and set default
   const enabledMethods = getEnabledAuthMethods();
@@ -55,26 +57,6 @@ const SignIn: React.FC = () => {
   // Initialize reCAPTCHA when component mounts and method is phone
   const initializeRecaptcha = async () => {
     if (method === "phone" && !window.recaptchaVerifier && !confirmationResult) {
-      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      
-      // For development mode, only bypass reCAPTCHA for test numbers
-      if (isDevelopment && isTestPhoneNumber(phone)) {
-        console.log('Development mode - bypassing reCAPTCHA for test number');
-        setRecaptchaSolved(true);
-        window.recaptchaVerifier = {
-          verify: () => Promise.resolve('bypass-token'),
-          clear: () => {},
-          render: () => Promise.resolve(),
-          _reset: () => {},
-          _render: () => Promise.resolve(),
-          _verify: () => Promise.resolve('bypass-token'),
-          reset: () => {},
-          getResponse: () => 'bypass-token'
-        } as any;
-        return;
-      }
-      
-      // For production, create proper reCAPTCHA
       try {
         // Check if container exists in DOM
         const existingContainer = document.getElementById('recaptcha-container');
@@ -97,7 +79,6 @@ const SignIn: React.FC = () => {
         }
         
         // Create RecaptchaVerifier with the existing container
-        // Use regular reCAPTCHA v2 instead of Enterprise for development
         window.recaptchaVerifier = new RecaptchaVerifier(
           auth,
           existingContainer,
@@ -116,18 +97,6 @@ const SignIn: React.FC = () => {
         console.error('reCAPTCHA initialization error:', err);
         setError('reCAPTCHA initialization failed. Please refresh and try again.');
         setRecaptchaSolved(false);
-        
-        // Create a mock recaptcha verifier
-        window.recaptchaVerifier = {
-          verify: () => Promise.resolve('bypass-token'),
-          clear: () => {},
-          render: () => Promise.resolve(),
-          _reset: () => {},
-          _render: () => Promise.resolve(),
-          _verify: () => Promise.resolve('bypass-token'),
-          reset: () => {},
-          getResponse: () => 'bypass-token'
-        } as any;
       }
     }
   };
@@ -172,13 +141,7 @@ const SignIn: React.FC = () => {
     return normalizePhoneNumber(displayValue);
   };
 
-  // Check if phone number is a test number that bypasses reCAPTCHA
-  const isTestPhoneNumber = (phoneNumber: string): boolean => {
-    const cleanPhone = getCleanPhoneNumber(phoneNumber);
-    // Only these specific numbers should use mock authentication
-    const testPhoneNumbers = ['+1234567890', '+15551234567'];
-    return testPhoneNumbers.includes(cleanPhone);
-  };
+
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,81 +179,11 @@ const SignIn: React.FC = () => {
       return;
     }
 
-    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    
     // Debug logging
     console.log('🔍 Phone authentication debug:');
     console.log('📞 Clean phone:', cleanPhone);
-    console.log('🧪 Is test number:', isTestPhoneNumber(cleanPhone));
-    console.log('🏗️ Is development:', isDevelopment);
     
-    // For development mode, only use mock authentication for specific test numbers
-    if (isDevelopment && isTestPhoneNumber(cleanPhone)) {
-      console.log('Development mode - using mock authentication for test number');
-      
-      // Simulate a successful phone authentication for development
-      const mockConfirmationResult = {
-        confirm: async (otp: string) => {
-          // Simulate OTP verification
-          if (otp === '123456') {
-            return {
-              user: {
-                uid: 'dev-user-123',
-                phoneNumber: cleanPhone,
-                email: null,
-                displayName: 'Development User',
-                getIdToken: async () => 'dev-token-123'
-              }
-            };
-          } else {
-            throw new Error('Invalid OTP code');
-          }
-        }
-      };
-      
-      setConfirmationResult(mockConfirmationResult);
-      return;
-    }
-    
-    // For development mode, only bypass reCAPTCHA for test numbers
-    if (isDevelopment && isTestPhoneNumber(cleanPhone)) {
-      console.log('Development mode - bypassing reCAPTCHA for test number');
-      
-      // Create a mock verifier that works with Firebase
-      const mockVerifier = {
-        verify: () => Promise.resolve('bypass-token'),
-        clear: () => {},
-        render: () => Promise.resolve(),
-        _reset: () => {},
-        _render: () => Promise.resolve(),
-        _verify: () => Promise.resolve('bypass-token'),
-        reset: () => {},
-        getResponse: () => 'bypass-token',
-        type: 'recaptcha',
-        app: auth
-      };
-      
-      try {
-        const result = await loginWithPhone(cleanPhone, mockVerifier);
-        
-        if (result) {
-          // Validate the result before setting it
-          if (result && typeof result.confirm === 'function') {
-            setConfirmationResult(result);
-          } else {
-            setError('Invalid verification session. Please try again.');
-            return;
-          }
-        }
-      } catch (err: any) {
-        console.error('Phone auth error in development:', err);
-        setError("Development mode: Phone authentication failed. Please try again.");
-      }
-      return;
-    }
-    
-    // For production, use real reCAPTCHA
-    if (!isTestPhoneNumber(cleanPhone) && !recaptchaSolved) {
+    if (!recaptchaSolved) {
       setError("Please complete the reCAPTCHA verification first.");
       return;
     }
@@ -362,17 +255,48 @@ const SignIn: React.FC = () => {
       const credential = await confirmationResult.confirm(otp);
       console.log('✅ OTP verification successful, user authenticated');
       
-      // For development mode, manually trigger authentication for test numbers
-      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      
-      if (isDevelopment && isTestPhoneNumber(credential.user.phoneNumber || '') && credential?.user) {
-        console.log('Development mode: Manually triggering authentication for test number');
-        // Call the AuthContext to handle the authentication
-        await loginWithPhone(credential.user.phoneNumber || '', null, otp, confirmationResult);
-      } else if (credential?.user) {
-        // For production or non-test numbers, ensure we have a valid user
+      if (credential?.user) {
         console.log('🔄 Processing authentication...');
-        // The AuthContext's onAuthStateChanged will handle the rest
+        
+        // Immediately check if user exists in backend
+        const uid = credential.user.uid;
+        const phone = credential.user.phoneNumber;
+        
+        if (phone) {
+          try {
+            console.log('🔍 Checking backend for existing user...');
+            const params = new URLSearchParams();
+            const normalizedPhone = normalizePhoneNumber(phone);
+            if (normalizedPhone) {
+              params.append("phone", normalizedPhone);
+            }
+            
+            const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
+            console.log('🔍 Backend check URL:', apiUrl);
+            
+            const response = await fetch(apiUrl);
+            console.log('🔍 Backend response status:', response.status);
+            
+            if (response.status === 200) {
+              // User exists in backend - redirect to dashboard
+              console.log('✅ Existing user found, redirecting to dashboard');
+              navigate('/dashboard');
+            } else if (response.status === 404) {
+              // User not found in backend - redirect to register
+              console.log('🆕 New user detected, redirecting to register');
+              navigate('/register');
+            } else {
+              // Other error - let AuthContext handle it
+              console.log('⚠️ Backend error, letting AuthContext handle navigation');
+            }
+          } catch (backendError) {
+            console.error('Error checking backend:', backendError);
+            // On backend error, let AuthContext handle navigation
+            console.log('⚠️ Backend check failed, letting AuthContext handle navigation');
+          }
+        } else {
+          console.log('⚠️ No phone number available, letting AuthContext handle navigation');
+        }
       }
       
       // Clear OTP form state immediately
@@ -398,7 +322,7 @@ const SignIn: React.FC = () => {
         }
       }
       
-      console.log('🔄 Login successful, reCAPTCHA cleaned up, auth state will handle navigation...');
+      console.log('🔄 Login successful, reCAPTCHA cleaned up, immediate navigation handled...');
     } catch (err: any) {
       setOtpVerifying(false);
       
@@ -656,7 +580,7 @@ const SignIn: React.FC = () => {
             ></div>
             
             {/* Show reCAPTCHA instruction only when needed */}
-            {isValidPhoneNumber(phone) && !isTestPhoneNumber(phone) && !recaptchaSolved && (
+            {isValidPhoneNumber(phone) && !recaptchaSolved && (
               <div style={{ fontSize: 12, color: "#dc2626", textAlign: "center", marginBottom: 8 }}>
                 Please solve the reCAPTCHA above to continue
               </div>
@@ -683,7 +607,7 @@ const SignIn: React.FC = () => {
                     }
                     // Re-initialize reCAPTCHA after clearing error
                     setTimeout(() => {
-                      if (isValidPhoneNumber(phone) && !isTestPhoneNumber(phone)) {
+                      if (isValidPhoneNumber(phone)) {
                         initializeRecaptchaIfNeeded();
                       }
                     }, 100);
@@ -705,9 +629,9 @@ const SignIn: React.FC = () => {
             
             <button 
               type="submit" 
-              disabled={loading || (!isValidPhoneNumber(phone)) || (!isTestPhoneNumber(phone) && !recaptchaSolved)} 
+              disabled={loading || !isValidPhoneNumber(phone) || !recaptchaSolved} 
               className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-all duration-300 ${
-                (loading || !isValidPhoneNumber(phone) || (!isTestPhoneNumber(phone) && !recaptchaSolved))
+                loading || !isValidPhoneNumber(phone) || !recaptchaSolved
                   ? "bg-accent-400 cursor-not-allowed" 
                   : "bg-primary-700 hover:bg-primary-800 transform hover:-translate-y-0.5 shadow-lg"
               }`}
@@ -721,11 +645,6 @@ const SignIn: React.FC = () => {
                 <>
                   <i className="fas fa-keyboard mr-2"></i>
                   Enter 10 Digits
-                </>
-              ) : isTestPhoneNumber(phone) ? (
-                <>
-                  <i className="fas fa-flask mr-2"></i>
-                  Send OTP (Test Mode)
                 </>
               ) : recaptchaSolved ? (
                 <>
