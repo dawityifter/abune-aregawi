@@ -16,6 +16,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Listen for Firebase auth state changes
   useEffect(() => {
     let callCount = 0;
+    let isMounted = true;
+    
+    console.log('🔍 Setting up auth state listener');
+    
+    // Set up auth state listener
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       callCount++;
       console.log(`🔥 Firebase auth state changed (call #${callCount}):`, firebaseUser);
@@ -169,7 +174,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    return () => unsubscribe();
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, [auth]);
 
   // Email sign-in
@@ -342,60 +353,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const phone = firebaseUser.phoneNumber;
     console.log('🔍 handlePostSignIn called:', { uid, email, phone });
     
-    try {
-      const params = new URLSearchParams();
-      if (email) params.append("email", email);
-      if (phone) {
-        // Normalize phone number before sending to backend
-        const normalizedPhone = normalizePhoneNumber(phone);
-        if (normalizedPhone) {
-          params.append("phone", normalizedPhone);
-          console.log('📞 Normalized phone number:', phone, '->', normalizedPhone);
+    // Immediately set a basic user object to trigger auth state
+    const tempUser = {
+      uid,
+      email,
+      phoneNumber: phone,
+      role: 'member',
+      _temp: true, // Mark as temporary until we fetch full profile
+      // Add empty data structure to prevent undefined errors in components
+      data: {
+        member: {
+          id: uid,
+          firstName: 'Loading...',
+          lastName: '',
+          role: 'member',
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          registrationStatus: 'pending'
         }
       }
-      
-      const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
-      console.log('🔍 Making API call to:', apiUrl);
-      
-      const res = await fetch(apiUrl);
-      console.log('🔍 API response status:', res.status);
-      console.log('🔍 API response headers:', Object.fromEntries(res.headers.entries()));
-      
-      if (res.status === 200) {
-        const member = await res.json();
-        console.log('✅ Member data received:', member);
-        // Ensure the user object has the uid property and preserves Firebase auth data
-        const userWithUid = {
-          ...member,
-          uid: firebaseUser.uid, // Add the Firebase UID to the user object
-          email: email, // Preserve Firebase email
-          phoneNumber: phone // Preserve Firebase phone
-        };
-        setUser(userWithUid);
+    };
+    
+    // Update user state immediately for instant redirect
+    setUser(tempUser);
+    
+    // Navigate to dashboard immediately for better UX
+    console.log('🚀 Fast-tracking to dashboard...');
+    navigate("/dashboard");
+    
+    // Fetch user profile in the background
+    const fetchUserProfile = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (email) params.append("email", email);
+        if (phone) {
+          const normalizedPhone = normalizePhoneNumber(phone);
+          if (normalizedPhone) params.append("phone", normalizedPhone);
+        }
         
-        // Debug the member data to see what registrationStatus is
-        console.log('🔍 handlePostSignIn - Member data:', member);
-        console.log('🔍 handlePostSignIn - Registration status:', member?.registrationStatus);
+        const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
+        console.log('🔍 Fetching user profile in background:', apiUrl);
         
-        // If user exists in backend and is authenticated, they should be able to access dashboard
-        // regardless of registration status (they can complete profile later)
-        if (member && firebaseUser) {
-          console.log('✅ User authenticated and found in backend, navigating to dashboard');
-          // Navigate immediately without delay
-          navigate("/dashboard");
+        const res = await fetch(apiUrl);
+        
+        if (res.status === 200) {
+          const memberData = await res.json();
+          console.log('✅ User profile updated:', memberData);
+          
+          // Update user with full profile data
+          setUser({
+            ...memberData,
+            uid,
+            email,
+            phoneNumber: phone,
+            _temp: false
+          });
+          
+          // If user is not fully registered, redirect to registration
+          if (memberData?.data?.member?.registrationStatus !== 'complete') {
+            console.log('ℹ️ User not fully registered, redirecting to registration');
+            navigate("/register");
+          }
         } else {
-          console.log('⚠️ User is not fully registered, navigating to registration');
-          navigate("/register", { state: { email, phone } });
+          console.log('ℹ️ User not found in backend, redirecting to registration');
+          navigate("/register");
         }
-      } else {
-        console.log('❌ Member not found, navigating to registration');
-        // Not found, go to registration
-        navigate("/register", { state: { email, phone } });
+      } catch (err) {
+        console.error('❌ Background profile fetch error:', err);
+        // Keep the temporary user even if profile fetch fails
       }
-    } catch (err) {
-      console.error('❌ Error in handlePostSignIn:', err);
-      alert("Error checking backend: " + (err as any).message);
-    }
+    };
+    
+    // Start fetching profile in the background
+    fetchUserProfile();
   };
 
   // Provide currentUser as the primary interface

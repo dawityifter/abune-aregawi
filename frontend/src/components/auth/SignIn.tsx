@@ -358,79 +358,109 @@ const SignIn: React.FC = () => {
     setError("");
     
     try {
+      console.log('🔍 Starting OTP verification...');
       const credential = await confirmationResult.confirm(otp);
       console.log('✅ OTP verification successful, user authenticated');
       
       // For development mode, manually trigger authentication for test numbers
       const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      if (isDevelopment && isTestPhoneNumber(credential.user.phoneNumber || '') && credential && credential.user) {
+      
+      if (isDevelopment && isTestPhoneNumber(credential.user.phoneNumber || '') && credential?.user) {
         console.log('Development mode: Manually triggering authentication for test number');
         // Call the AuthContext to handle the authentication
         await loginWithPhone(credential.user.phoneNumber || '', null, otp, confirmationResult);
+      } else if (credential?.user) {
+        // For production or non-test numbers, ensure we have a valid user
+        console.log('🔄 Processing authentication...');
+        // The AuthContext's onAuthStateChanged will handle the rest
       }
       
       // Clear OTP form state
       setConfirmationResult(null);
       setOtp("");
       
-      // Show success message and let auth flow handle navigation
+      // Show loading state - we'll let the ProtectedRoute handle the navigation
       console.log('🔄 Login successful, waiting for auth state to process...');
       
-      // Show success message to user and prevent further interaction
-      setError(""); // Clear any previous errors
-      
-      // Add a loading state to prevent user interaction during navigation
-      // The Firebase auth state listener will handle navigation to dashboard
-      // after it successfully fetches the user profile from backend
-      setOtpVerifying(false);
+      // Clear any previous errors
+      setError("");
     } catch (err: any) {
       setOtpVerifying(false);
-      // Handle specific Firebase Auth error codes
+      
+      // Log the full error for debugging
+      console.error('OTP verification error:', {
+        code: err.code,
+        message: err.message,
+        name: err.name,
+        stack: err.stack
+      });
+      
+      // Handle specific Firebase Auth error codes with user-friendly messages
       if (err.code === 'auth/invalid-verification-code') {
-        setError("Invalid verification code. Please check the code and try again.");
+        setError("The verification code is incorrect. Please check and try again.");
       } else if (err.code === 'auth/code-expired') {
-        setError("Verification code has expired. Please request a new OTP.");
+        setError("The verification code has expired. Please request a new OTP.");
+        resetVerification();
       } else if (err.code === 'auth/session-expired') {
-        setError("Verification session has expired. Please request a new OTP.");
+        setError("Your verification session has expired. Please request a new OTP.");
+        resetVerification();
       } else if (err.code === 'auth/too-many-requests') {
-        setError("Too many failed attempts. Please wait a moment and try again.");
-      } else if (err.message && (err.message.includes('timeout') || err.message.includes('Timeout') || err.message.includes('h)'))) {
-        setError("Verification timed out. Please request a new OTP and try again.");
+        setError("Too many failed attempts. Please wait a few minutes and try again.");
+      } else if (err.message && (err.message.includes('timeout') || err.message.includes('Timeout'))) {
+        setError("The request timed out. Please check your connection and try again.");
+      } else if (err.message && err.message.includes('network-request-failed')) {
+        setError("Network error. Please check your internet connection and try again.");
       } else {
-        setError(`Verification failed: ${err.message || 'Please check your code and try again.'}`);
+        setError(`Verification failed: ${err.message || 'An unknown error occurred. Please try again.'}`);
       }
     }
   };
 
   // Reset verification state to allow retry
   const resetVerification = () => {
+    console.log('🔄 Resetting verification state...');
+    
+    // Reset all states
     setConfirmationResult(null);
     setOtp("");
     setError("");
     setRecaptchaSolved(false);
+    setOtpVerifying(false);
     
     // Clear existing reCAPTCHA verifier
     if (window.recaptchaVerifier) {
+      console.log('🧹 Cleaning up reCAPTCHA verifier...');
       try {
         if (typeof window.recaptchaVerifier.clear === 'function') {
           window.recaptchaVerifier.clear();
         }
+        if (typeof window.recaptchaVerifier._reset === 'function') {
+          window.recaptchaVerifier._reset();
+        }
       } catch (err) {
-        // Ignore cleanup errors
+        console.error('Error cleaning up reCAPTCHA:', err);
+      } finally {
+        window.recaptchaVerifier = undefined;
       }
-      window.recaptchaVerifier = undefined;
     }
     
     // Clear reCAPTCHA container
     const container = document.getElementById('recaptcha-container');
     if (container) {
+      console.log('🧹 Cleaning up reCAPTCHA container...');
       container.innerHTML = '';
+      
+      // Create a new container to ensure clean state
+      const newContainer = document.createElement('div');
+      newContainer.id = 'recaptcha-container';
+      container.parentNode?.replaceChild(newContainer, container);
     }
     
     // Re-initialize reCAPTCHA after a short delay
+    console.log('🔄 Re-initializing reCAPTCHA...');
     setTimeout(() => {
       initializeRecaptcha();
-    }, 500);
+    }, 1000);
   };
 
   return (
