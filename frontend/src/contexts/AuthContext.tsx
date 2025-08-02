@@ -149,20 +149,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Get the ID token
         const idToken = await user.getIdToken();
         
-        // Immediately set the user in state to prevent login page flash
+        // Set Firebase user - onAuthStateChanged will handle the rest
         setFirebaseUser(user);
-        
-        // Check if user exists in our system
-        const profile = await checkUserProfile(user);
-        
-        if (profile) {
-          // User exists, navigate to dashboard
-          setUser(profile);
-          navigate('/dashboard');
-        } else {
-          // New user, navigate to registration
-          navigate('/register');
-        }
         
         return { user, idToken };
       } else {
@@ -191,7 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  }, [auth, checkUserProfile, navigate]);
+  }, [auth]);
 
   // Logout
   const logout = async () => {
@@ -222,6 +210,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Get user profile from backend
   const getUserProfile = async (uid: string, email?: string, phoneNumber?: string) => {
+    // Null-check guard to avoid calling with undefined uid
+    if (!uid) {
+      console.error('❌ getUserProfile called with undefined uid');
+      return null;
+    }
+    
     try {
       const params = new URLSearchParams();
       if (email) params.append("email", email);
@@ -283,87 +277,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
   };
 
-  // After Firebase sign-in, check backend
+  // After Firebase sign-in, set Firebase user (onAuthStateChanged will handle the rest)
   const handlePostSignIn = async (firebaseUser: User) => {
-    const uid = firebaseUser.uid;
-    const email = firebaseUser.email;
-    const phone = getPhoneNumber(firebaseUser);
-    console.log('handlePostSignIn called:', { uid, email, phone });
-    
-    // Immediately set a basic user object to trigger auth state
-    const tempUser = {
-      uid,
-      email,
-      phoneNumber: phone,
-      role: 'member',
-      _temp: true, // Mark as temporary until we fetch full profile
-      // Add empty data structure to prevent undefined errors in components
-      data: {
-        member: {
-          id: uid,
-          firstName: 'Loading...',
-          lastName: '',
-          role: 'member',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          registrationStatus: 'pending'
-        }
-      }
-    };
-    
-    // Update user state immediately for instant redirect
-    setUser(tempUser);
-    
-    // Navigate to dashboard immediately for better UX
-    console.log('Fast-tracking to dashboard...');
-    navigate("/dashboard");
-    
-    // Fetch user profile in the background
-    const fetchUserProfile = async () => {
-      try {
-        const params = new URLSearchParams();
-        if (email) params.append("email", email);
-        if (phone) {
-          const normalizedPhone = normalizePhoneNumber(phone);
-          if (normalizedPhone) params.append("phone", normalizedPhone);
-        }
-        
-        const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
-        console.log('Fetching user profile in background:', apiUrl);
-        
-        const res = await fetch(apiUrl);
-        
-        if (res.status === 200) {
-          const memberData = await res.json();
-          console.log('User profile updated:', memberData);
-          
-          // Update user with full profile data
-          setUser({
-            ...memberData,
-            uid,
-            email,
-            phoneNumber: phone,
-            _temp: false
-          });
-          
-          // If user is not fully registered, redirect to registration
-          if (memberData?.data?.member?.registrationStatus !== 'complete') {
-            console.log('User not fully registered, redirecting to registration');
-            navigate("/register");
-          }
-        } else {
-          console.log('User not found in backend, redirecting to registration');
-          navigate("/register");
-        }
-      } catch (err) {
-        console.error('Background profile fetch error:', err);
-        // Keep the temporary user even if profile fetch fails
-      }
-    };
-    
-    // Start fetching profile in the background
-    fetchUserProfile();
+    console.log('handlePostSignIn called - setting Firebase user');
+    setFirebaseUser(firebaseUser);
   };
 
   // Listen for Firebase auth state changes
@@ -393,30 +310,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(tempUser);
         
-        // Check user profile in the background with retry mechanism
-        const checkProfileWithRetry = async (retryCount = 0) => {
+        // Check user profile and handle navigation
+        const checkProfileAndNavigate = async () => {
           try {
             const profile = await checkUserProfile(firebaseUser);
             if (profile) {
               console.log('✅ User profile loaded, updating state');
-              setUser(profile);
+              // Ensure UID is preserved when setting the profile
+              setUser({
+                ...profile,
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                phoneNumber: phoneNumber,
+                _temp: false
+              });
+              
+              // Navigate to dashboard for existing users
+              console.log('🔄 Navigating to dashboard for existing user');
+              navigate('/dashboard');
             } else {
-              console.log('❌ User profile not found, keeping temp user');
+              console.log('❌ User profile not found, navigating to register');
+              // Navigate to register for new users
+              navigate('/register');
             }
           } catch (error) {
             console.error('Error checking user profile:', error);
-            // Keep the temp user even if profile check fails
+            // On error, navigate to register as fallback
+            navigate('/register');
           }
         };
         
         // Try immediately, then retry after a short delay if phone number is missing
-        checkProfileWithRetry();
+        checkProfileAndNavigate();
         
         // If phone number is missing, retry after a delay to allow Firebase to load data
         if (!phoneNumber) {
           console.log('⏳ Phone number missing, retrying after delay...');
           setTimeout(() => {
-            checkProfileWithRetry(1);
+            checkProfileAndNavigate();
           }, 1000);
         }
       } else {

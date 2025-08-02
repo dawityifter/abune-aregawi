@@ -48,7 +48,19 @@ const Navigation: React.FC = () => {
       if (currentUser) {
         try {
           setLoading(true);
-          const profile = await getUserProfile(currentUser.uid);
+          console.log('🔍 Navigation - currentUser:', currentUser);
+          
+          // Handle different user object structures
+          const uid = currentUser.uid || currentUser.id;
+          const email = currentUser.email;
+          const phone = currentUser.phoneNumber;
+          
+          if (!uid) {
+            console.error('❌ No UID found in currentUser:', currentUser);
+            return;
+          }
+          
+          const profile = await getUserProfile(uid, email, phone);
           setUserProfile(profile);
         } catch (error) {
           console.error('Error fetching user profile:', error);
