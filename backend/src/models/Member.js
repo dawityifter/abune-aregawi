@@ -55,11 +55,10 @@ module.exports = (sequelize) => {
     },
     email: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true,
       unique: true,
       validate: {
-        isEmail: true,
-        notEmpty: true
+        isEmail: true
       }
     },
     streetLine1: {
@@ -125,6 +124,17 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: true,
       comment: 'Baptism name'
+    },
+    repentanceFather: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'Name of the repentance father'
+    },
+    householdSize: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+      comment: 'Number of people in the household'
     },
     interestedInServing: {
       type: DataTypes.STRING(10),
