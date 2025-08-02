@@ -103,20 +103,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(userWithUid);
             console.log(`✅ Call #${callCount} - Auth state: Existing user found`);
             
-            // Only navigate to dashboard if we're on a public route and not in the middle of registration
+            // Check if user is fully registered and navigate accordingly
             const currentPath = window.location.pathname;
             const isPublicRoute = ['/', '/login', '/register'].includes(currentPath);
             const isRegistrationComplete = member?.registrationStatus === 'complete';
             
-            if (isPublicRoute) {
-              if (isRegistrationComplete) {
-                console.log(`✅ Call #${callCount} - Registration complete, navigating to dashboard`);
+            if (isRegistrationComplete) {
+              // User is fully registered - navigate to dashboard regardless of current route
+              console.log(`✅ Call #${callCount} - Registration complete, navigating to dashboard`);
+              // Add a small delay to ensure state is properly set
+              setTimeout(() => {
                 navigate("/dashboard");
-              } else {
-                console.log(`ℹ️ Call #${callCount} - On public route but registration not complete, staying`);
-              }
+              }, 100);
+            } else if (isPublicRoute) {
+              // User is not fully registered but on a public route - stay put
+              console.log(`ℹ️ Call #${callCount} - On public route but registration not complete, staying`);
             } else {
-              console.log(`✅ Call #${callCount} - Staying on current protected route: ${currentPath}`);
+              // User is not fully registered and on a protected route - redirect to register
+              console.log(`⚠️ Call #${callCount} - Not fully registered on protected route, redirecting to register`);
+              navigate("/register");
             }
           } else {
             console.log(`❌ Call #${callCount} - Auth state: Backend user not found (status: ${res.status})`);
@@ -203,6 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const cred = await confirmationResult.confirm(otp);
           console.log('✅ OTP verification successful');
           await handlePostSignIn(cred.user);
+          setLoading(false); // Clear loading state after successful verification
         } catch (confirmError) {
           console.error('💥 OTP confirmation error:', confirmError);
           console.error('💥 Confirm error type:', typeof confirmError);
@@ -360,8 +366,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           phoneNumber: phone // Preserve Firebase phone
         };
         setUser(userWithUid);
-        console.log('✅ User set with UID, navigating to dashboard');
-        navigate("/dashboard");
+        
+        // Check if user is fully registered
+        const isRegistrationComplete = member?.registrationStatus === 'complete';
+        if (isRegistrationComplete) {
+          console.log('✅ User is fully registered, navigating to dashboard');
+          // Add a small delay to ensure state is properly set
+          setTimeout(() => {
+            navigate("/dashboard");
+          }, 100);
+        } else {
+          console.log('⚠️ User is not fully registered, navigating to registration');
+          navigate("/register", { state: { email, phone } });
+        }
       } else {
         console.log('❌ Member not found, navigating to registration');
         // Not found, go to registration

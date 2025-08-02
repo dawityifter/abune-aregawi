@@ -372,6 +372,10 @@ const SignIn: React.FC = () => {
       // Show success message and let auth flow handle navigation
       console.log('🔄 Login successful, waiting for auth state to process...');
       
+      // Show success message to user
+      setError(""); // Clear any previous errors
+      // You could add a success state here if needed
+      
       // The Firebase auth state listener will handle navigation to dashboard
       // after it successfully fetches the user profile from backend (with retry logic)
     } catch (err: any) {
