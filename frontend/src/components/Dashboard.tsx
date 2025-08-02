@@ -26,51 +26,45 @@ interface UserProfile {
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, getUserProfile } = useAuth();
+  const { user, firebaseUser, loading: authLoading } = useAuth();
   const { t } = useLanguage();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Get user's display name for the welcome message
+  const userName = user?.data?.member?.firstName || firebaseUser?.displayName || 'User';
+
   // Check if user has admin permissions
-  const userRole = (userProfile?.data?.member?.role || 'member') as UserRole;
+  const userRole = (user?.data?.member?.role || 'member') as UserRole;
   const permissions = getRolePermissions(userRole);
-  const isTempUser = userProfile?._temp || false;
+  const isTempUser = user?._temp || false;
   
   // Debug logging for role and permissions
-  console.log('Dashboard - User state:', {
-    isTempUser,
-    userRole,
-    permissions,
-    hasUserProfile: !!userProfile
-  });
-  
-  // Fetch user profile on component mount and when currentUser changes
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (currentUser) {
-        try {
-          const profile = await getUserProfile(currentUser.uid);
-          setUserProfile(profile);
-        } catch (error: any) {
-          // Check if it's a Firestore permission error or network error
-          if (error.message.includes('permission') || error.message.includes('403')) {
-            setError('Firestore permission denied. Please check your Firebase rules.');
-          } else if (error.message.includes('network') || error.message.includes('fetch')) {
-            setError('Network error. Please check your internet connection.');
-          } else {
-            setError(`Failed to load user profile: ${error.message}`);
-          }
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        setLoading(false);
-      }
-    };
-
-    fetchUserProfile();
-  }, [currentUser, getUserProfile]);
+    console.log('Dashboard - User state:', {
+      isTempUser,
+      userRole,
+      permissions,
+      hasUserProfile: !!user,
+      userData: user
+    });
+  }, [user, isTempUser, userRole, permissions]);
+  
+  // Update user profile when auth state changes
+  useEffect(() => {
+    if (user) {
+      setUserProfile(user);
+      setLoading(false);
+    } else if (!authLoading && !firebaseUser) {
+      // If not loading and no user, redirect to login
+      navigate('/login');
+    } else if (authLoading) {
+      setLoading(true);
+    } else {
+      setLoading(false);
+    }
+  }, [user, firebaseUser, authLoading, navigate]);
   
   // Show loading state while checking if we need to fetch profile
   if (loading) {
@@ -184,7 +178,7 @@ const Dashboard: React.FC = () => {
                       {t('profile')}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {userProfile?.data?.member?.firstName || currentUser?.email || 'User'}
+                      {userProfile?.data?.member?.firstName || firebaseUser?.email || 'User'}
                     </p>
                   </div>
                 </div>
