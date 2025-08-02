@@ -436,16 +436,7 @@ const Profile: React.FC = () => {
               </h1>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
-              {!editing && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="bg-primary-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-md hover:bg-primary-700 text-sm sm:text-base flex items-center"
-                >
-                  <i className="fas fa-edit mr-1 sm:mr-2"></i>
-                  <span className="hidden sm:inline">{t('edit')}</span>
-                  <span className="sm:hidden">Edit</span>
-                </button>
-              )}
+              {/* Edit button moved to profile header */}
             </div>
           </div>
         </div>
@@ -467,10 +458,19 @@ const Profile: React.FC = () => {
           )}
 
           <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h2 className="text-lg font-medium text-gray-900">
                 {editing ? t('edit.profile') : t('profile.information')}
               </h2>
+              {!editing && (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="bg-primary-600 text-white px-3 py-1.5 rounded-md hover:bg-primary-700 text-sm flex items-center"
+                >
+                  <i className="fas fa-edit mr-1.5"></i>
+                  <span>{t('edit')}</span>
+                </button>
+              )}
             </div>
 
             <div className="px-6 py-4">

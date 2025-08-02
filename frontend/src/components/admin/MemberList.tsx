@@ -131,10 +131,13 @@ const MemberList: React.FC<MemberListProps> = ({
   };
 
   const filteredMembers = members.filter(member => {
+    const searchLower = searchTerm.toLowerCase();
+    
     const matchesSearch = !searchTerm || 
-      member.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchTerm.toLowerCase());
+      (member.firstName?.toLowerCase() || '').includes(searchLower) ||
+      (member.lastName?.toLowerCase() || '').includes(searchLower) ||
+      (member.email?.toLowerCase() || '').includes(searchLower) ||
+      (member.phoneNumber?.toLowerCase() || '').includes(searchLower);
     
     const matchesRole = !roleFilter || member.role === roleFilter;
     const matchesStatus = !statusFilter || member.isActive.toString() === statusFilter;
