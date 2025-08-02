@@ -435,14 +435,15 @@ const Profile: React.FC = () => {
                 {t('profile')}
               </h1>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               {!editing && (
                 <button
                   onClick={() => setEditing(true)}
-                  className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
+                  className="bg-primary-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-md hover:bg-primary-700 text-sm sm:text-base flex items-center"
                 >
-                  <i className="fas fa-edit mr-2"></i>
-                  {t('edit')}
+                  <i className="fas fa-edit mr-1 sm:mr-2"></i>
+                  <span className="hidden sm:inline">{t('edit')}</span>
+                  <span className="sm:hidden">Edit</span>
                 </button>
               )}
             </div>
@@ -917,18 +918,19 @@ const Profile: React.FC = () => {
 
               {/* Action Buttons */}
               {editing && (
-                <div className="mt-8 flex justify-end space-x-4">
+                <div className="mt-8 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4">
                   <button
                     onClick={handleCancel}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                    className="w-full sm:w-auto px-6 py-3 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-base font-medium"
                     disabled={saving}
                   >
+                    <i className="fas fa-times mr-2"></i>
                     {t('cancel')}
                   </button>
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                    className="w-full sm:w-auto px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 text-base font-medium"
                   >
                     {saving ? (
                       <>
@@ -948,6 +950,19 @@ const Profile: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Floating Action Button for Mobile */}
+      {!editing && (
+        <div className="fixed bottom-6 right-6 sm:hidden">
+          <button
+            onClick={() => setEditing(true)}
+            className="bg-primary-600 text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors"
+            aria-label="Edit Profile"
+          >
+            <i className="fas fa-edit text-xl"></i>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
