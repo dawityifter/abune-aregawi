@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getRolePermissions } from '../utils/roles';
-import { isFeatureEnabled } from '../config/featureFlags';
+import { isFeatureEnabled, featureFlags } from '../config/featureFlags';
 // import { Transition } from '@headlessui/react'; // Removed due to React 19 compatibility
 
 // type Language = 'en' | 'ti';
@@ -187,7 +187,8 @@ const Navigation: React.FC = () => {
                 >
                   {t('sign.in')}
                 </Link>
-                {isFeatureEnabled('enableEmailPasswordAuth') && (
+                {/* Sign Up button only shows when email auth is enabled */}
+                {featureFlags.enableEmailPasswordAuth && (
                   <Link
                     to="/register"
                     className="px-4 py-1.5 bg-secondary-600 text-white text-sm font-medium rounded-md hover:bg-secondary-700 transition-colors"
@@ -277,7 +278,8 @@ const Navigation: React.FC = () => {
                 >
                   {t('sign.in')}
                 </Link>
-                {isFeatureEnabled('enableEmailPasswordAuth') && (
+                {/* Mobile Sign Up button only shows when email auth is enabled */}
+                {featureFlags.enableEmailPasswordAuth && (
                   <Link
                     to="/register"
                     className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg text-base font-medium text-primary-600 bg-white hover:bg-gray-50"

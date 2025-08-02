@@ -57,6 +57,14 @@ export const featureFlags: FeatureFlags = {
   enablePhoneAuth: getFeatureFlagFromEnv('REACT_APP_ENABLE_PHONE_AUTH', true),
 };
 
+// Debug logging to see what values are being read
+console.log('🔧 Feature Flags Debug:', {
+  REACT_APP_ENABLE_EMAIL_AUTH: process.env.REACT_APP_ENABLE_EMAIL_AUTH,
+  REACT_APP_ENABLE_PHONE_AUTH: process.env.REACT_APP_ENABLE_PHONE_AUTH,
+  enableEmailPasswordAuth: featureFlags.enableEmailPasswordAuth,
+  enablePhoneAuth: featureFlags.enablePhoneAuth,
+});
+
 /**
  * Helper function to check if a specific feature is enabled
  */
