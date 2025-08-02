@@ -25,7 +25,7 @@ interface UserProfile {
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, logout, getUserProfile } = useAuth();
+  const { currentUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,23 +93,7 @@ const Dashboard: React.FC = () => {
     // TODO: Navigate to account settings page
   };
 
-  const handleRefreshProfile = async () => {
-    if (currentUser) {
-      setLoading(true);
-      try {
-        console.log('🔄 Manually refreshing user profile...');
-        const profile = await getUserProfile(currentUser.uid);
-        console.log('🔄 Refreshed profile:', profile);
-        setUserProfile(profile);
-        setError(null);
-      } catch (error: any) {
-        console.error('Error refreshing profile:', error);
-        setError(`Failed to refresh profile: ${error.message}`);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
+  // Removed unused handleRefreshProfile function
 
   if (loading) {
     return (

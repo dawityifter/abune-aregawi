@@ -44,31 +44,31 @@ const Footer: React.FC = () => {
             Parish Pulse
           </Link>
           {/* Email List */}
-          <a href="#" className="text-secondary-400 hover:text-secondary-200 font-semibold flex items-center gap-2">
+          <button className="text-secondary-400 hover:text-secondary-200 font-semibold flex items-center gap-2 bg-transparent border-none cursor-pointer">
             <i className="fas fa-envelope"></i>
             Email List
-          </a>
+          </button>
           {/* Follow Us */}
           <span className="flex items-center gap-2">
             <span className="text-secondary-400 font-semibold">Follow Us:</span>
             <a href="https://www.facebook.com/abunearegawitx/" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-200">
               <i className="fab fa-facebook-f"></i>
             </a>
-            <a href="#" className="hover:text-secondary-200">
+            <button className="hover:text-secondary-200 bg-transparent border-none cursor-pointer">
               <i className="fab fa-twitter"></i>
-            </a>
-            <a href="#" className="hover:text-secondary-200">
+            </button>
+            <button className="hover:text-secondary-200 bg-transparent border-none cursor-pointer">
               <i className="fab fa-instagram"></i>
-            </a>
-            <a href="#" className="hover:text-secondary-200">
+            </button>
+            <button className="hover:text-secondary-200 bg-transparent border-none cursor-pointer">
               <i className="fab fa-youtube"></i>
-            </a>
+            </button>
           </span>
           {/* Stream Us */}
-          <a href="#" className="text-secondary-400 hover:text-secondary-200 font-semibold flex items-center gap-2">
+          <button className="text-secondary-400 hover:text-secondary-200 font-semibold flex items-center gap-2 bg-transparent border-none cursor-pointer">
             <i className="fas fa-broadcast-tower"></i>
             Stream Us
-          </a>
+          </button>
         </div>
       </div>
     </footer>

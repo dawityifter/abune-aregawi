@@ -7,7 +7,7 @@ import ParticipationSection from './sections/ParticipationSection';
 import StayConnectedSection from './sections/StayConnectedSection';
 import NewcomerSection from './sections/NewcomerSection';
 import GrowSpirituallySection from './sections/GrowSpirituallySection';
-import DashboardPreviewSection from './sections/DashboardPreviewSection';
+// import DashboardPreviewSection from './sections/DashboardPreviewSection';
 import Footer from './sections/Footer';
 import { Link } from 'react-router-dom';
 

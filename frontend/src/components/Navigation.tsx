@@ -2,17 +2,16 @@ import React, { useState, useEffect, useRef, Fragment } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import { getRolePermissions, hasPermission } from '../utils/roles';
+import { getRolePermissions } from '../utils/roles';
 import { isFeatureEnabled } from '../config/featureFlags';
 import { Transition } from '@headlessui/react';
 
-type Language = 'en' | 'ti';
+// type Language = 'en' | 'ti';
 
 const Navigation: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const { currentUser, logout, getUserProfile } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
