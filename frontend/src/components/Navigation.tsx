@@ -196,6 +196,17 @@ const Navigation: React.FC = () => {
                     {t('sign.up')}
                   </Link>
                 )}
+                {/* Force Logout button for stuck users */}
+                {location.pathname === '/register' && (
+                  <button
+                    onClick={handleLogout}
+                    className="px-3 py-1.5 text-sm font-medium text-red-300 hover:text-red-100 hover:bg-red-600/20 rounded-md transition-colors"
+                    title="Force logout if stuck"
+                  >
+                    <i className="fas fa-sign-out-alt mr-1"></i>
+                    Force Logout
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -287,6 +298,19 @@ const Navigation: React.FC = () => {
                   >
                     {t('sign.up')}
                   </Link>
+                )}
+                {/* Force Logout button for stuck users (mobile) */}
+                {location.pathname === '/register' && (
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-center px-4 py-3 border border-red-300 rounded-lg text-base font-medium text-red-600 bg-red-50 hover:bg-red-100"
+                  >
+                    <i className="fas fa-sign-out-alt mr-2"></i>
+                    Force Logout
+                  </button>
                 )}
               </div>
             )}
