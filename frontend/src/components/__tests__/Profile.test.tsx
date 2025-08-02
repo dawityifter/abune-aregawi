@@ -1,57 +1,182 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import Profile from '../Profile';
-import { AuthProvider } from '../../contexts/AuthContext';
+import { AuthProvider, useAuth } from '../../contexts/AuthContext';
 import { LanguageProvider } from '../../contexts/LanguageContext';
+import Profile from '../Profile';
+import '@testing-library/jest-dom';
 
-// Mock useAuth
-const mockGetUserProfile = jest.fn();
-const mockUpdateUserProfileData = jest.fn();
-const mockUpdateUserProfile = jest.fn();
+// Mock the useLanguage hook
+const mockUseLanguage = jest.fn().mockImplementation(() => ({
+  t: (key: string) => key, // Return the key as the translation
+  language: 'en',
+  changeLanguage: jest.fn()
+}));
 
+// Mock the LanguageContext module
+jest.mock('../../contexts/LanguageContext', () => ({
+  ...jest.requireActual('../../contexts/LanguageContext'),
+  useLanguage: () => mockUseLanguage()
+}));
+
+// Define mock data first
 const mockCurrentUser = {
   uid: 'test-uid',
   email: 'test@example.com',
   phoneNumber: '+15555555555',
   firstName: 'Test',
   lastName: 'User',
+  displayName: 'Test User',
+  reload: jest.fn().mockResolvedValue(undefined),
+  getIdToken: jest.fn().mockResolvedValue('test-token'),
+  emailVerified: true,
+  metadata: {},
+  providerData: [],
+  delete: jest.fn(),
+  getIdTokenResult: jest.fn(),
+  refreshToken: 'test-refresh-token',
+  tenantId: null,
+  toJSON: jest.fn()
 };
 
-jest.mock('../../contexts/AuthContext', () => {
-  const actual = jest.requireActual('../../contexts/AuthContext');
-  return {
-    ...actual,
-    useAuth: () => ({
-      currentUser: mockCurrentUser,
-      getUserProfile: mockGetUserProfile,
-      updateUserProfileData: mockUpdateUserProfileData,
-      updateUserProfile: mockUpdateUserProfile,
+const mockUserProfile = {
+  id: 'test-uid',
+  firstName: 'Test',
+  lastName: 'User',
+  email: 'test@example.com',
+  phoneNumber: '+15555555555',
+  role: 'member',
+  isActive: true,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
+};
+
+// Initialize mock functions
+const mockGetUserProfile = jest.fn().mockResolvedValue(mockUserProfile);
+const mockUpdateUserProfileData = jest.fn().mockResolvedValue({});
+const mockUpdateUserProfile = jest.fn().mockResolvedValue({});
+const mockLoginWithPhone = jest.fn();
+const mockLogout = jest.fn();
+const mockClearError = jest.fn();
+
+// Mock the useAuth hook
+const mockUseAuth = jest.fn().mockImplementation(() => ({
+  currentUser: mockCurrentUser,
+  user: mockUserProfile,
+  loading: false,
+  error: null,
+  loginWithPhone: mockLoginWithPhone,
+  logout: mockLogout,
+  clearError: mockClearError,
+  getUserProfile: mockGetUserProfile,
+  updateUserProfile: mockUpdateUserProfile,
+  updateUserProfileData: mockUpdateUserProfileData
+}));
+
+// Mock the AuthContext module
+jest.mock('../../contexts/AuthContext', () => ({
+  ...jest.requireActual('../../contexts/AuthContext'),
+  useAuth: () => mockUseAuth()
+}));
+
+// Mock Firebase auth
+jest.mock('firebase/auth', () => ({
+  getAuth: jest.fn(() => ({
+    currentUser: mockCurrentUser,
+    onAuthStateChanged: jest.fn((callback) => {
+      callback(mockCurrentUser);
+      return jest.fn(); // Return mock unsubscribe function
     }),
-  };
+    signOut: jest.fn().mockResolvedValue(undefined),
+    updateProfile: jest.fn().mockResolvedValue(undefined),
+    updateEmail: jest.fn().mockResolvedValue(undefined),
+    updatePassword: jest.fn().mockResolvedValue(undefined),
+    sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+    confirmPasswordReset: jest.fn().mockResolvedValue(undefined),
+    verifyPasswordResetCode: jest.fn().mockResolvedValue(undefined),
+    applyActionCode: jest.fn().mockResolvedValue(undefined),
+    checkActionCode: jest.fn().mockResolvedValue(undefined),
+    onIdTokenChanged: jest.fn((callback) => {
+      callback(mockCurrentUser);
+      return jest.fn(); // Return mock unsubscribe function
+    })
+  })),
+  signInWithEmailAndPassword: jest.fn().mockResolvedValue({ user: mockCurrentUser }),
+  createUserWithEmailAndPassword: jest.fn().mockResolvedValue({ user: mockCurrentUser }),
+  signInWithPhoneNumber: jest.fn().mockResolvedValue({
+    confirm: jest.fn().mockResolvedValue({ user: mockCurrentUser })
+  }),
+  signOut: jest.fn().mockResolvedValue(undefined),
+  onAuthStateChanged: jest.fn((auth, callback) => {
+    callback(mockCurrentUser);
+    return jest.fn(); // Return mock unsubscribe function
+  }),
+  updateProfile: jest.fn().mockResolvedValue(undefined),
+  updateEmail: jest.fn().mockResolvedValue(undefined),
+  updatePassword: jest.fn().mockResolvedValue(undefined),
+  sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+  confirmPasswordReset: jest.fn().mockResolvedValue(undefined),
+  verifyPasswordResetCode: jest.fn().mockResolvedValue(undefined),
+  applyActionCode: jest.fn().mockResolvedValue(undefined),
+  checkActionCode: jest.fn().mockResolvedValue(undefined),
+  GoogleAuthProvider: jest.fn(() => ({
+    setCustomParameters: jest.fn(),
+    addScope: jest.fn()
+  })),
+  signInWithPopup: jest.fn().mockResolvedValue({ user: mockCurrentUser }),
+  signInWithRedirect: jest.fn().mockResolvedValue(undefined),
+  getRedirectResult: jest.fn().mockResolvedValue({ user: mockCurrentUser }),
+  onIdTokenChanged: jest.fn((auth, callback) => {
+    callback(mockCurrentUser);
+    return jest.fn(); // Return mock unsubscribe function
+  })
+}));
+
+// Mock the fetch API
+global.fetch = jest.fn().mockImplementation((url, options) => {
+  // Mock successful responses for different endpoints
+  if (url.includes('/api/members/profile')) {
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(mockUserProfile)
+    });
+  }
+  
+  // Mock successful update
+  if (url.includes('/api/members/update') && options?.method === 'PUT') {
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ success: true })
+    });
+  }
+  
+  // Default response for any other requests
+  return Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({})
+  });
 });
 
-jest.mock('../../contexts/LanguageContext', () => {
-  const actual = jest.requireActual('../../contexts/LanguageContext');
-  return {
-    ...actual,
-    useLanguage: () => ({ t: (key: string) => key }),
-    LanguageProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  };
-});
+// Create a test wrapper component that includes all necessary providers
+const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <BrowserRouter>
+    <LanguageProvider>
+      <AuthProvider>
+        {children}
+      </AuthProvider>
+    </LanguageProvider>
+  </BrowserRouter>
+);
 
-global.fetch = jest.fn();
-
-const renderProfile = () =>
-  render(
-    <BrowserRouter>
-      <LanguageProvider>
-        <AuthProvider>
-          <Profile />
-        </AuthProvider>
-      </LanguageProvider>
-    </BrowserRouter>
+const renderProfile = () => {
+  return render(
+    <TestWrapper>
+      <Profile />
+    </TestWrapper>
   );
+};
 
 describe('Profile Component', () => {
   beforeEach(() => {
@@ -131,10 +256,17 @@ describe('Profile Component', () => {
   });
 
   it('shows loading spinner while loading', () => {
-    // To simulate loading, render with loading state
-    // This is a simple check for the spinner element
+    // Mock loading state
+    jest.spyOn(require('../../contexts/AuthContext'), 'useAuth').mockImplementation(() => ({
+      currentUser: mockCurrentUser,
+      loading: true,
+      error: null,
+      user: null,
+      getUserProfile: mockGetUserProfile,
+    }));
+    
     renderProfile();
-    expect(screen.getByRole('status', { hidden: true })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
   it('shows registration prompt if profile not found', async () => {

@@ -33,7 +33,7 @@ function App() {
               <Route 
                 path="/dashboard" 
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowTempUser={true}>
                     <Dashboard />
                   </ProtectedRoute>
                 } 

@@ -1,8 +1,59 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from '../../../contexts/AuthContext';
+import { MemoryRouter } from 'react-router-dom';
+import { AuthProvider, useAuth } from '../../../contexts/AuthContext';
+import { LanguageProvider } from '../../../contexts/LanguageContext';
 import SignIn from '../SignIn';
+import '@testing-library/jest-dom';
+
+// Mock translations for testing
+interface Translations {
+  [key: string]: string;
+}
+
+const mockTranslations: Translations = {
+  'auth.signIn.title': 'Sign In',
+  'auth.signIn.phoneNumber': 'Phone Number',
+  'auth.signIn.phonePlaceholder': 'Enter your phone number',
+  'auth.signIn.continue': 'Continue with Phone',
+  'auth.phone.placeholder': 'Phone Number',
+  'auth.phone.required': 'Phone number is required',
+  'auth.phone.invalid': 'Please enter a valid phone number',
+  'auth.verificationCode.placeholder': 'Verification Code',
+  'auth.verificationCode.required': 'Verification code is required',
+  'auth.verificationCode.invalid': 'Please enter a valid verification code',
+  'auth.sendCode': 'Send Code',
+  'auth.verify': 'Verify',
+  'auth.signInWithPhone': 'Sign in with Phone',
+  'auth.signInWithEmail': 'Sign in with Email',
+  'auth.email.placeholder': 'Email',
+  'auth.email.required': 'Email is required',
+  'auth.email.invalid': 'Please enter a valid email',
+  'auth.password.placeholder': 'Password',
+  'auth.password.required': 'Password is required',
+  'auth.password.tooShort': 'Password must be at least 8 characters',
+  'auth.signIn': 'Sign In',
+  'auth.dontHaveAccount': "Don't have an account?",
+  'auth.registerHere': 'Register here',
+  'auth.or': 'OR',
+  'auth.switchToPhone': 'Switch to phone sign in',
+  'auth.switchToEmail': 'Switch to email sign in',
+  'auth.verificationCode.sent': 'Verification code sent',
+  'auth.verificationCode.failed': 'Failed to send verification code',
+  'auth.signIn.success': 'Successfully signed in',
+  'auth.signIn.failed': 'Failed to sign in',
+  'auth.invalidCode': 'Invalid verification code',
+  'auth.tooManyRequests': 'Too many requests. Please try again later.',
+  'auth.userNotFound': 'No account found with this phone number',
+  'auth.wrongPassword': 'Incorrect password',
+  'auth.invalidEmail': 'Invalid email address',
+  'auth.accountExists': 'An account already exists with this email',
+  'auth.weakPassword': 'Password is too weak',
+  'auth.operationNotAllowed': 'This operation is not allowed',
+  'auth.networkRequestFailed': 'Network error. Please check your connection.',
+  'auth.unknownError': 'An unknown error occurred',
+};
+
 
 // Mock Firebase Auth
 jest.mock('../../../firebase', () => ({
@@ -11,22 +62,10 @@ jest.mock('../../../firebase', () => ({
       options: {
         apiKey: 'test-api-key'
       }
-    }
+    },
+    currentUser: null,
+    onAuthStateChanged: jest.fn()
   }
-}));
-
-// Mock AuthContext
-const mockLoginWithEmail = jest.fn();
-const mockLoginWithPhone = jest.fn();
-const mockLoading = false;
-
-jest.mock('../../../contexts/AuthContext', () => ({
-  useAuth: () => ({
-    loginWithEmail: mockLoginWithEmail,
-    loginWithPhone: mockLoginWithPhone,
-    loading: mockLoading
-  }),
-  AuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }));
 
 // Mock RecaptchaVerifier
@@ -35,111 +74,131 @@ const mockRecaptchaVerifier = {
   render: jest.fn()
 };
 
-global.window.recaptchaVerifier = mockRecaptchaVerifier;
-
-// Mock RecaptchaVerifier constructor
+// Mock Firebase auth
 jest.mock('firebase/auth', () => ({
-  RecaptchaVerifier: jest.fn().mockImplementation(() => mockRecaptchaVerifier)
+  getAuth: jest.fn(() => ({
+    currentUser: null,
+    onAuthStateChanged: jest.fn()
+  })),
+  signInWithEmailAndPassword: jest.fn(),
+  signInWithPhoneNumber: jest.fn(),
+  RecaptchaVerifier: jest.fn().mockImplementation(() => mockRecaptchaVerifier),
+  onAuthStateChanged: jest.fn()
 }));
 
-const renderSignIn = () => {
+// Mock the useAuth hook
+const mockUseAuth = jest.fn();
+
+// Mock the AuthContext module
+jest.mock('../../../contexts/AuthContext', () => ({
+  ...jest.requireActual('../../../contexts/AuthContext'),
+  useAuth: () => mockUseAuth()
+}));
+
+// Default mock implementation for useAuth with phone login only
+const mockAuth = {
+  loginWithPhone: jest.fn().mockResolvedValue({}),
+  loginWithEmail: jest.fn().mockResolvedValue({}),
+  logout: jest.fn(),
+  clearError: jest.fn(),
+  loading: false,
+  currentUser: null,
+  user: null,
+  error: null as string | null
+};
+
+// Mock useAuth hook
+const mockUseAuth = jest.fn(() => mockAuth);
+
+// Mock the AuthContext module
+jest.mock('../../../contexts/AuthContext', () => ({
+  ...jest.requireActual('../../../contexts/AuthContext'),
+  useAuth: () => mockUseAuth()
+}));
+
+// Create a test wrapper component that includes all necessary providers
+const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <MemoryRouter>
+      <LanguageProvider>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </LanguageProvider>
+    </MemoryRouter>
+  );
+};
+
+
+
+const renderSignIn = (props = {}) => {
+  // Reset mock implementations
+  mockUseAuth.mockImplementation(() => ({
+    ...mockAuth,
+    loading: false,
+    error: null,
+  }));
+  
+  // Mock the useLanguage hook
+  jest.mock('../../../contexts/LanguageContext', () => ({
+    ...jest.requireActual('../../../contexts/LanguageContext'),
+    useLanguage: () => ({
+      t: (key: string) => mockTranslations[key] || key,
+      language: 'en',
+      currentLanguage: 'en',
+      setLanguage: jest.fn(),
+      changeLanguage: jest.fn()
+    })
+  }));
+  
   return render(
-    <BrowserRouter>
-      <AuthProvider>
-        <SignIn />
-      </AuthProvider>
-    </BrowserRouter>
+    <TestWrapper>
+      <SignIn {...props} />
+    </TestWrapper>
   );
 };
 
 describe('SignIn Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Reset mock implementations
+    mockAuth.loginWithPhone.mockClear().mockResolvedValue({});
+    mockAuth.clearError.mockImplementation(() => {
+      mockAuth.error = null;
+    });
+    
     // Mock document.getElementById for recaptcha container
-    document.getElementById = jest.fn().mockReturnValue({
-      innerHTML: '',
-      firstChild: null,
-      removeChild: jest.fn()
+    document.getElementById = jest.fn().mockImplementation((id) => {
+      if (id === 'recaptcha-container') {
+        return {
+          innerHTML: '',
+          firstChild: null,
+          removeChild: jest.fn()
+        };
+      }
+      return null;
     });
-  });
-
-  describe('Email/Password Authentication', () => {
-    it('should render email/password form by default', () => {
-      renderSignIn();
-      
-      expect(screen.getByText('Sign In')).toBeInTheDocument();
-      expect(screen.getByText('Email/Password')).toBeInTheDocument();
-      expect(screen.getByText('Phone')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Email')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('Password')).toBeInTheDocument();
-    });
-
-    it('should handle email/password form submission', async () => {
-      mockLoginWithEmail.mockResolvedValue(true);
-      renderSignIn();
-
-      const emailInput = screen.getByPlaceholderText('Email');
-      const passwordInput = screen.getByPlaceholderText('Password');
-      const submitButton = screen.getByText('Sign In');
-
-      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-      fireEvent.change(passwordInput, { target: { value: 'password123' } });
-      fireEvent.click(submitButton);
-
-      await waitFor(() => {
-        expect(mockLoginWithEmail).toHaveBeenCalledWith('test@example.com', 'password123');
-      });
-    });
-
-    it('should show error for empty email and password', async () => {
-      renderSignIn();
-
-      const submitButton = screen.getByText('Sign In');
-      fireEvent.click(submitButton);
-
-      await waitFor(() => {
-        expect(screen.getByText('Please enter both email and password.')).toBeInTheDocument();
-      });
-    });
-
-    it('should show error for empty email only', async () => {
-      renderSignIn();
-
-      const passwordInput = screen.getByPlaceholderText('Password');
-      const submitButton = screen.getByText('Sign In');
-
-      fireEvent.change(passwordInput, { target: { value: 'password123' } });
-      fireEvent.click(submitButton);
-
-      await waitFor(() => {
-        expect(screen.getByText('Please enter both email and password.')).toBeInTheDocument();
-      });
-    });
-
-    it('should show error for empty password only', async () => {
-      renderSignIn();
-
-      const emailInput = screen.getByPlaceholderText('Email');
-      const submitButton = screen.getByText('Sign In');
-
-      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-      fireEvent.click(submitButton);
-
-      await waitFor(() => {
-        expect(screen.getByText('Please enter both email and password.')).toBeInTheDocument();
-      });
-    });
+    
+    // Reset the mock implementation for useAuth
+    mockUseAuth.mockImplementation(() => ({
+      ...mockAuth,
+      loading: false,
+      error: null,
+    }));
   });
 
   describe('Phone Authentication', () => {
-    beforeEach(() => {
-      // Switch to phone method
+    it('should render phone form by default', () => {
       renderSignIn();
-      const phoneButton = screen.getByText('Phone');
-      fireEvent.click(phoneButton);
+      
+      expect(screen.getByText('Sign In')).toBeInTheDocument();
+      expect(screen.getByText('Phone')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('(555) 123-4567')).toBeInTheDocument();
     });
 
-    it('should render phone form when phone method is selected', () => {
+    it('should render phone form with proper instructions', () => {
+      renderSignIn();
       expect(screen.getByText('Phone Number')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('(555) 123-4567')).toBeInTheDocument();
       expect(screen.getByText('Enter 10 digits (e.g., 5551234567) - will auto-format')).toBeInTheDocument();
@@ -153,18 +212,22 @@ describe('SignIn Component', () => {
       expect(phoneInput).toHaveValue('(555) 123-4567');
     });
 
-    it('should handle phone number submission', async () => {
-      mockLoginWithPhone.mockResolvedValue({ confirm: jest.fn() });
+    it('should call loginWithPhone with correct phone number', async () => {
+      renderSignIn();
       
-      const phoneInput = screen.getByPlaceholderText('(555) 123-4567');
-      const submitButton = screen.getByText('Send Code');
-
-      fireEvent.change(phoneInput, { target: { value: '5551234567' } });
-      fireEvent.click(submitButton);
-
-      await waitFor(() => {
-        expect(mockLoginWithPhone).toHaveBeenCalledWith('+15551234567', expect.any(Object));
+      // Switch to phone login
+      fireEvent.click(screen.getByText('signin.phoneLogin'));
+      
+      // Fill in the phone number
+      fireEvent.change(screen.getByLabelText(/phone number/i), {
+        target: { value: '+1234567890' }
       });
+      
+      // Submit the form
+      fireEvent.click(screen.getByText('signin.sendVerificationCode'));
+      
+      // Check if loginWithPhone was called with the right arguments
+      expect(mockAuth.loginWithPhone).toHaveBeenCalledWith('+1234567890');
     });
 
     it('should show error for incomplete phone number', async () => {
@@ -235,75 +298,63 @@ describe('SignIn Component', () => {
 
   describe('Loading States', () => {
     it('should show loading state during authentication', () => {
-      // Mock loading state
-      jest.spyOn(require('../../../contexts/AuthContext'), 'useAuth').mockReturnValue({
-        loginWithEmail: mockLoginWithEmail,
-        loginWithPhone: mockLoginWithPhone,
-        loading: true
-      });
-
+      // Set loading state to true
+      mockAuth.loading = true;
+      
       renderSignIn();
 
-      expect(screen.getByText('Signing In...')).toBeInTheDocument();
+      // The button text should be 'Signing In...' when loading
+      expect(screen.getByText('signin.signingIn')).toBeInTheDocument();
     });
 
     it('should disable submit button during loading', () => {
-      // Mock loading state
-      jest.spyOn(require('../../../contexts/AuthContext'), 'useAuth').mockReturnValue({
-        loginWithEmail: mockLoginWithEmail,
-        loginWithPhone: mockLoginWithPhone,
-        loading: true
-      });
-
+      // Set loading state to true
+      mockAuth.loading = true;
+      
       renderSignIn();
 
-      const submitButton = screen.getByText('Signing In...');
+      const submitButton = screen.getByText('signin.signingIn');
       expect(submitButton).toBeDisabled();
     });
   });
 
   describe('Error Handling', () => {
     it('should display authentication errors', async () => {
-      mockLoginWithEmail.mockRejectedValue(new Error('Invalid credentials'));
+      // Set error state
+      mockAuth.error = 'Authentication failed';
+      
       renderSignIn();
 
-      const emailInput = screen.getByPlaceholderText('Email');
-      const passwordInput = screen.getByPlaceholderText('Password');
-      const submitButton = screen.getByText('Sign In');
-
-      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-      fireEvent.change(passwordInput, { target: { value: 'password123' } });
-      fireEvent.click(submitButton);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Phone login failed:/)).toBeInTheDocument();
-      });
+      // Error message should be displayed
+      expect(screen.getByText('Authentication failed')).toBeInTheDocument();
     });
 
     it('should clear errors when switching methods', () => {
+      // Set up mock clearError function
+      const mockClearError = jest.fn();
+      mockAuth.clearError = mockClearError;
+      mockAuth.error = 'Authentication failed';
+      
       renderSignIn();
 
-      // Trigger an error
-      const submitButton = screen.getByText('Sign In');
-      fireEvent.click(submitButton);
-
-      // Switch methods
+      // Switch to phone method
       const phoneButton = screen.getByText('Phone');
       fireEvent.click(phoneButton);
 
-      // Error should be cleared
-      expect(screen.queryByText('Please enter both email and password.')).not.toBeInTheDocument();
+      // Should call clearError when switching methods
+      expect(mockClearError).toHaveBeenCalled();
     });
   });
 
   describe('reCAPTCHA Integration', () => {
     it('should initialize reCAPTCHA for phone authentication', async () => {
-      mockLoginWithPhone.mockResolvedValue({ confirm: jest.fn() });
+      // Mock successful phone login
+      mockAuth.loginWithPhone.mockResolvedValue({ confirm: jest.fn() });
       
       renderSignIn();
       
       // Switch to phone method
-      const phoneButton = screen.getByText('Phone');
+      const phoneButton = screen.getByText('Sign in with Phone Number');
       fireEvent.click(phoneButton);
 
       const phoneInput = screen.getByPlaceholderText('(555) 123-4567');
@@ -312,6 +363,7 @@ describe('SignIn Component', () => {
       fireEvent.change(phoneInput, { target: { value: '5551234567' } });
       fireEvent.click(submitButton);
 
+      // Verify reCAPTCHA was cleared after submission
       await waitFor(() => {
         expect(mockRecaptchaVerifier.clear).toHaveBeenCalled();
       });

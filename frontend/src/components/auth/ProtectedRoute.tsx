@@ -5,16 +5,28 @@ import { useAuth } from '../../contexts/AuthContext';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: string;
+  allowTempUser?: boolean;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
+  children, 
+  requiredRole,
+  allowTempUser = false // Default to false for most routes
+}) => {
   const { currentUser, loading } = useAuth();
   const location = useLocation();
 
-  console.log('🛡️ ProtectedRoute check:', { user: !!currentUser, loading, userUid: currentUser?.uid });
+  console.log('🛡️ ProtectedRoute check:', { 
+    user: !!currentUser, 
+    loading, 
+    userUid: currentUser?.uid,
+    isTempUser: currentUser?._temp,
+    currentPath: location.pathname
+  });
 
-  if (loading) {
-    console.log('🔄 ProtectedRoute: Still loading, showing spinner');
+  // Show loading state only if we're not allowing temp users or if we have no user at all
+  if (loading && (!currentUser || !allowTempUser)) {
+    console.log('🔄 ProtectedRoute: Still loading auth state');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-800"></div>
@@ -22,22 +34,38 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
     );
   }
 
+  // Handle unauthenticated users
   if (!currentUser) {
     console.log('❌ ProtectedRoute: No user found, redirecting to login');
-    // Redirect to login page with the return url
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  console.log('✅ ProtectedRoute: User authenticated, allowing access');
-  console.log('👤 User details:', { uid: currentUser.uid, email: currentUser.email, phone: currentUser.phoneNumber, role: currentUser.role });
-
-  // If a specific role is required, check if user has that role
-  if (requiredRole) {
-    // This would need to be implemented based on your user role system
-    // For now, we'll just check if the user exists
-    // You can extend this to check user roles from Firestore
+  // Handle temporary users (only allow access to specific routes)
+  if (currentUser._temp && !allowTempUser) {
+    console.log('⏳ ProtectedRoute: Temporary user detected, only allowing access to dashboard');
+    return <Navigate to="/dashboard" replace />;
   }
 
+  // Log user details for debugging
+  console.log('✅ ProtectedRoute: User authenticated', {
+    uid: currentUser.uid,
+    email: currentUser.email,
+    phone: currentUser.phoneNumber,
+    role: currentUser.role,
+    isTemp: currentUser._temp
+  });
+
+  // Check for required role if specified
+  if (requiredRole) {
+    const userRole = currentUser.role || 'member';
+    if (userRole !== requiredRole) {
+      console.log(`🚫 ProtectedRoute: User role ${userRole} does not have required role ${requiredRole}`);
+      // Redirect to dashboard or another safe route
+      return <Navigate to="/dashboard" replace />;
+    }
+  }
+  
+  // If all checks pass, render the children
   return <>{children}</>;
 };
 
