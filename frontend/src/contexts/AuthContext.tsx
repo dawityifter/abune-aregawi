@@ -5,12 +5,16 @@ import { normalizePhoneNumber } from "../utils/formatPhoneNumber";
 
 interface AuthContextType {
   user: any;
+  currentUser: any; // Alias for user for backward compatibility
   firebaseUser: User | null;
   loading: boolean;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   loginWithPhone: (phone: string, appVerifier: any, otp?: string, confirmationResult?: any) => Promise<any>;
   logout: () => Promise<void>;
   updateUserProfile: (updates: any) => Promise<void>;
+  getUserProfile: (uid: string, email?: string, phoneNumber?: string) => Promise<any>;
+  updateUserProfileData: (uid: string, updates: any) => Promise<void>;
+  clearError: () => void;
   error: string | null;
 }
 
@@ -172,6 +176,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Get user profile from backend
+  const getUserProfile = async (uid: string, email?: string, phoneNumber?: string) => {
+    try {
+      const params = new URLSearchParams();
+      if (email) params.append("email", email);
+      if (phoneNumber) {
+        const normalizedPhone = normalizePhoneNumber(phoneNumber);
+        if (normalizedPhone) params.append("phone", normalizedPhone);
+      }
+      
+      const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
+      const res = await fetch(apiUrl);
+      
+      if (res.status === 200) {
+        return await res.json();
+      } else {
+        console.error('Failed to fetch user profile:', res.status);
+        return null;
+      }
+    } catch (error: any) {
+      console.error('Error fetching user profile:', error);
+      return null;
+    }
+  };
+
+  // Update user profile data in backend
+  const updateUserProfileData = async (uid: string, updates: any) => {
+    try {
+      const params = new URLSearchParams();
+      if (user?.email) params.append("email", user.email);
+      if (user?.phoneNumber) {
+        const normalizedPhone = normalizePhoneNumber(user.phoneNumber);
+        if (normalizedPhone) params.append("phone", normalizedPhone);
+      }
+      
+      const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
+      const res = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates)
+      });
+      
+      if (res.status === 200) {
+        const updatedProfile = await res.json();
+        setUser({ ...user, ...updatedProfile });
+        return updatedProfile;
+      } else {
+        console.error('Failed to update user profile:', res.status);
+        throw new Error('Failed to update profile');
+      }
+    } catch (error: any) {
+      console.error('Error updating user profile data:', error);
+      throw error;
+    }
+  };
+
+  // Clear error
+  const clearError = () => {
+    setError(null);
+  };
+
   // After Firebase sign-in, check backend
   const handlePostSignIn = async (firebaseUser: User) => {
     const uid = firebaseUser.uid;
@@ -296,12 +363,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Provide auth context
   const value = {
     user,
+    currentUser: user, // Alias for backward compatibility
     firebaseUser,
     loading,
     loginWithEmail,
     loginWithPhone,
     logout,
     updateUserProfile,
+    getUserProfile,
+    updateUserProfileData,
+    clearError,
     error
   };
 
