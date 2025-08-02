@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from '../../contexts/LanguageContext';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
-import { Transition } from '@headlessui/react';
+// import { Transition } from '@headlessui/react'; // Removed due to React 19 compatibility
 import {
   PersonalInfoStep,
   ContactAddressStep,
