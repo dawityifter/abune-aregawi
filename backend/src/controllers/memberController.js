@@ -735,6 +735,30 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       });
     }
 
+    // First, let's check if there's a member with this Firebase UID
+    console.log('🔍 Checking for member with Firebase UID:', uid);
+    const memberByUid = await Member.findOne({
+      where: { firebaseUid: uid },
+      include: [{ model: Dependant, as: 'dependants' }]
+    });
+    
+    if (memberByUid) {
+      console.log('✅ Found member by Firebase UID:', { 
+        id: memberByUid.id, 
+        email: memberByUid.email, 
+        phoneNumber: memberByUid.phoneNumber,
+        firebaseUid: memberByUid.firebaseUid 
+      });
+      
+      console.log('✅ Returning member profile by Firebase UID');
+      const responseData = {
+        success: true,
+        data: { member: memberByUid }
+      };
+      console.log('📤 Response status: 200, data:', { memberId: memberByUid.id, email: memberByUid.email, phone: memberByUid.phoneNumber });
+      return res.status(200).json(responseData);
+    }
+
     // Find member by email or phone number
     let member = null;
     if (userEmail) {
@@ -775,20 +799,40 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       
       // If not found, let's see what phone numbers exist in the database
       if (!member) {
+        console.log('🔍 No member found with phone number, checking database contents...');
         const allPhones = await Member.findAll({
-          attributes: ['id', 'firstName', 'lastName', 'phoneNumber'],
+          attributes: ['id', 'firstName', 'lastName', 'phoneNumber', 'firebaseUid'],
           where: {
             phoneNumber: { [Op.not]: null }
           },
-          limit: 5
+          limit: 10
         });
-        console.log('🔍 Sample phone numbers in database:', allPhones.map(m => ({ id: m.id, name: `${m.firstName} ${m.lastName}`, phone: m.phoneNumber })));
+        console.log('🔍 Sample phone numbers in database:', allPhones.map(m => ({ 
+          id: m.id, 
+          name: `${m.firstName} ${m.lastName}`, 
+          phone: m.phoneNumber,
+          firebaseUid: m.firebaseUid 
+        })));
+        
+        // Also check for any members with similar phone numbers
+        const similarPhones = await Member.findAll({
+          attributes: ['id', 'firstName', 'lastName', 'phoneNumber', 'firebaseUid'],
+          where: {
+            phoneNumber: { [Op.like]: `%${last10Digits}%` }
+          }
+        });
+        console.log('🔍 Members with similar phone numbers:', similarPhones.map(m => ({ 
+          id: m.id, 
+          name: `${m.firstName} ${m.lastName}`, 
+          phone: m.phoneNumber,
+          firebaseUid: m.firebaseUid 
+        })));
       }
     }
 
     console.log('🔍 Member search result:', member ? 'FOUND' : 'NOT FOUND');
     if (member) {
-      console.log('🔍 Found member:', { id: member.id, email: member.email, phoneNumber: member.phoneNumber });
+      console.log('🔍 Found member:', { id: member.id, email: member.email, phoneNumber: member.phoneNumber, firebaseUid: member.firebaseUid });
     }
 
     if (!member) {
