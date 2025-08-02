@@ -22,7 +22,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     const fetchUserProfile = async () => {
       if (currentUser) {
         try {
-          const profile = await getUserProfile(currentUser.uid);
+          console.log('🔍 AdminDashboard - currentUser:', currentUser);
+          
+          // Handle different user object structures
+          const uid = currentUser.uid || currentUser.id;
+          const email = currentUser.email;
+          const phone = currentUser.phoneNumber;
+          
+          if (!uid) {
+            console.error('❌ No UID found in currentUser:', currentUser);
+            return;
+          }
+          
+          const profile = await getUserProfile(uid, email, phone);
           setUserProfile(profile);
         } catch (error) {
           console.error('Error fetching user profile:', error);
