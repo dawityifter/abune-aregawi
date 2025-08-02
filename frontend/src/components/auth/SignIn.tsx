@@ -375,15 +375,30 @@ const SignIn: React.FC = () => {
         // The AuthContext's onAuthStateChanged will handle the rest
       }
       
-      // Clear OTP form state
+      // Clear OTP form state immediately
       setConfirmationResult(null);
       setOtp("");
-      
-      // Show loading state - we'll let the ProtectedRoute handle the navigation
-      console.log('🔄 Login successful, waiting for auth state to process...');
+      setOtpVerifying(false);
       
       // Clear any previous errors
       setError("");
+      
+      // Immediately clean up reCAPTCHA to prevent timeout errors
+      if (window.recaptchaVerifier) {
+        try {
+          if (typeof window.recaptchaVerifier.clear === 'function') {
+            window.recaptchaVerifier.clear();
+          }
+          if (typeof window.recaptchaVerifier._reset === 'function') {
+            window.recaptchaVerifier._reset();
+          }
+          window.recaptchaVerifier = undefined;
+        } catch (cleanupError) {
+          console.log('reCAPTCHA cleanup error (non-critical):', cleanupError);
+        }
+      }
+      
+      console.log('🔄 Login successful, reCAPTCHA cleaned up, auth state will handle navigation...');
     } catch (err: any) {
       setOtpVerifying(false);
       
