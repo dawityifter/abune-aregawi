@@ -36,6 +36,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const auth = getAuth();
 
+  // Utility function to reliably extract phone number from Firebase user
+  const getPhoneNumber = (firebaseUser: User): string | null => {
+    // First try the main phoneNumber property
+    if (firebaseUser.phoneNumber) {
+      console.log('📞 Found phone number in main property:', firebaseUser.phoneNumber);
+      return firebaseUser.phoneNumber;
+    }
+    
+    // Fallback: try to get phone from provider data
+    if (firebaseUser.providerData) {
+      const phoneProvider = firebaseUser.providerData.find(provider => 
+        provider.providerId === 'phone' && provider.phoneNumber
+      );
+      if (phoneProvider) {
+        console.log('📞 Found phone number in provider data:', phoneProvider.phoneNumber);
+        return phoneProvider.phoneNumber;
+      }
+    }
+    
+    console.log('⚠️ No phone number found in Firebase user data');
+    return null;
+  };
+
   // Check user profile in backend
   const checkUserProfile = useCallback(async (firebaseUser: User | null) => {
     if (!firebaseUser) {
@@ -45,34 +68,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const uid = firebaseUser.uid;
     const email = firebaseUser.email;
-    const phone = firebaseUser.phoneNumber;
+    const phone = getPhoneNumber(firebaseUser);
+    
+    console.log('🔍 checkUserProfile - Firebase user data:', {
+      uid,
+      email,
+      phone,
+      phoneType: typeof phone,
+      phoneExists: !!phone
+    });
     
     try {
       // Check if user exists in backend
       const params = new URLSearchParams();
-      if (email) params.append("email", email);
+      if (email) {
+        params.append("email", email);
+        console.log('✅ Added email parameter:', email);
+      }
+      
       if (phone) {
         const normalizedPhone = normalizePhoneNumber(phone);
-        if (normalizedPhone) params.append("phone", normalizedPhone);
+        if (normalizedPhone) {
+          params.append("phone", normalizedPhone);
+          console.log('✅ Added phone parameter:', normalizedPhone);
+        } else {
+          console.log('⚠️ Phone normalization failed for:', phone);
+        }
+      } else {
+        console.log('⚠️ No phone number available from Firebase user');
       }
       
       if (params.toString() === '') {
-        console.log('No email or phone available for backend lookup');
+        console.log('❌ No email or phone available for backend lookup');
         return null;
       }
       
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
+      console.log('🔍 Backend API call:', apiUrl);
       const res = await fetch(apiUrl);
       
       if (res.status === 200) {
         const profile = await res.json();
+        console.log('✅ User profile found in backend');
         return profile;
       } else {
-        console.error('Failed to fetch user profile:', res.status);
+        console.error('❌ Failed to fetch user profile:', res.status);
         return null;
       }
     } catch (error: any) {
-      console.error('Error checking backend:', error);
+      console.error('❌ Error checking backend:', error);
       return null;
     }
   }, [normalizePhoneNumber]);
@@ -243,7 +287,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handlePostSignIn = async (firebaseUser: User) => {
     const uid = firebaseUser.uid;
     const email = firebaseUser.email;
-    const phone = firebaseUser.phoneNumber;
+    const phone = getPhoneNumber(firebaseUser);
     console.log('handlePostSignIn called:', { uid, email, phone });
     
     // Immediately set a basic user object to trigger auth state
@@ -329,27 +373,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFirebaseUser(firebaseUser);
       
       if (firebaseUser) {
+        const phoneNumber = getPhoneNumber(firebaseUser);
+        
+        console.log('🔍 onAuthStateChanged - Firebase user data:', {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          phoneNumber: phoneNumber,
+          phoneType: typeof phoneNumber,
+          phoneExists: !!phoneNumber,
+          providerData: firebaseUser.providerData?.map(p => p.providerId)
+        });
+        
         // Immediately set a temporary user for instant navigation
         const tempUser = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          phoneNumber: firebaseUser.phoneNumber,
+          phoneNumber: phoneNumber,
           _temp: true
         };
         setUser(tempUser);
         
-        // Check user profile in the background
-        checkUserProfile(firebaseUser).then(profile => {
-          if (profile) {
-            console.log('✅ User profile loaded, updating state');
-            setUser(profile);
-          } else {
-            console.log('❌ User profile not found, keeping temp user');
+        // Check user profile in the background with retry mechanism
+        const checkProfileWithRetry = async (retryCount = 0) => {
+          try {
+            const profile = await checkUserProfile(firebaseUser);
+            if (profile) {
+              console.log('✅ User profile loaded, updating state');
+              setUser(profile);
+            } else {
+              console.log('❌ User profile not found, keeping temp user');
+            }
+          } catch (error) {
+            console.error('Error checking user profile:', error);
+            // Keep the temp user even if profile check fails
           }
-        }).catch(error => {
-          console.error('Error checking user profile:', error);
-          // Keep the temp user even if profile check fails
-        });
+        };
+        
+        // Try immediately, then retry after a short delay if phone number is missing
+        checkProfileWithRetry();
+        
+        // If phone number is missing, retry after a delay to allow Firebase to load data
+        if (!phoneNumber) {
+          console.log('⏳ Phone number missing, retrying after delay...');
+          setTimeout(() => {
+            checkProfileWithRetry(1);
+          }, 1000);
+        }
       } else {
         setUser(null);
       }
