@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
@@ -39,6 +39,16 @@ const MemberList: React.FC<MemberListProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalMembers, setTotalMembers] = useState(0);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  // Debounced search effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const fetchMembers = async (page = 1) => {
     try {
@@ -46,7 +56,7 @@ const MemberList: React.FC<MemberListProps> = ({
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '10',
-        ...(searchTerm && { search: searchTerm }),
+        ...(debouncedSearchTerm && { search: debouncedSearchTerm }),
         ...(roleFilter && { role: roleFilter }),
         ...(statusFilter && { isActive: statusFilter })
       });
@@ -95,7 +105,7 @@ const MemberList: React.FC<MemberListProps> = ({
 
   useEffect(() => {
     fetchMembers(currentPage);
-  }, [currentPage, searchTerm, roleFilter, statusFilter]);
+  }, [currentPage, debouncedSearchTerm, roleFilter, statusFilter]);
 
   const handleDeleteMember = async (memberId: string) => {
     if (!window.confirm(t('confirm.delete.member'))) {
@@ -126,24 +136,26 @@ const MemberList: React.FC<MemberListProps> = ({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentPage(1);
-    fetchMembers(1);
+    // Search is now handled by debounced effect
   };
 
-  const filteredMembers = members.filter(member => {
-    const searchLower = searchTerm.toLowerCase();
-    
-    const matchesSearch = !searchTerm || 
-      (member.firstName?.toLowerCase() || '').includes(searchLower) ||
-      (member.lastName?.toLowerCase() || '').includes(searchLower) ||
-      (member.email?.toLowerCase() || '').includes(searchLower) ||
-      (member.phoneNumber?.toLowerCase() || '').includes(searchLower);
-    
-    const matchesRole = !roleFilter || member.role === roleFilter;
-    const matchesStatus = !statusFilter || member.isActive.toString() === statusFilter;
-    
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  // Memoized filtered members to prevent unnecessary re-computations
+  const filteredMembers = React.useMemo(() => {
+    return members.filter(member => {
+      const searchLower = searchTerm.toLowerCase();
+      
+      const matchesSearch = !searchTerm || 
+        (member.firstName?.toLowerCase() || '').includes(searchLower) ||
+        (member.lastName?.toLowerCase() || '').includes(searchLower) ||
+        (member.email?.toLowerCase() || '').includes(searchLower) ||
+        (member.phoneNumber?.toLowerCase() || '').includes(searchLower);
+      
+      const matchesRole = !roleFilter || member.role === roleFilter;
+      const matchesStatus = !statusFilter || member.isActive.toString() === statusFilter;
+      
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [members, searchTerm, roleFilter, statusFilter]);
 
   if (loading) {
     return (
@@ -183,7 +195,7 @@ const MemberList: React.FC<MemberListProps> = ({
 
       {/* Filters */}
       <div className="bg-white p-6 rounded-lg shadow">
-        <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('search')}
@@ -230,16 +242,7 @@ const MemberList: React.FC<MemberListProps> = ({
               <option value="false">{t('inactive')}</option>
             </select>
           </div>
-          
-          <div className="flex items-end">
-            <button
-              type="submit"
-              className="w-full bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
-            >
-              {t('search')}
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
 
       {/* Members Table */}
