@@ -116,9 +116,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // regardless of registration status (they can complete profile later)
             if (member && firebaseUser) {
               console.log(`✅ Call #${callCount} - User authenticated and found in backend, navigating to dashboard`);
-              setTimeout(() => {
-                navigate("/dashboard");
-              }, 100);
+              // Navigate immediately without delay
+              navigate("/dashboard");
             } else if (isRegistrationComplete) {
               // User is fully registered - navigate to dashboard regardless of current route
               console.log(`✅ Call #${callCount} - Registration complete, navigating to dashboard`);
@@ -385,9 +384,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // regardless of registration status (they can complete profile later)
         if (member && firebaseUser) {
           console.log('✅ User authenticated and found in backend, navigating to dashboard');
-          setTimeout(() => {
-            navigate("/dashboard");
-          }, 100);
+          // Navigate immediately without delay
+          navigate("/dashboard");
         } else {
           console.log('⚠️ User is not fully registered, navigating to registration');
           navigate("/register", { state: { email, phone } });
