@@ -50,8 +50,17 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
         params.append('search', searchTerm);
       }
 
+      // Map frontend filter values to backend expected values
       if (statusFilter !== 'all') {
-        params.append('status', statusFilter);
+        let backendStatus = statusFilter;
+        if (statusFilter === 'up_to_date') {
+          backendStatus = 'paid';
+        } else if (statusFilter === 'behind') {
+          backendStatus = 'unpaid';
+        } else if (statusFilter === 'partial') {
+          backendStatus = 'partial';
+        }
+        params.append('status', backendStatus);
       }
 
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments?${params}`, {
@@ -94,11 +103,15 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
   };
 
   const getStatusText = (totalCollected: number, totalAmountDue: number) => {
-    if (totalAmountDue > 0 && totalCollected >= totalAmountDue) return 'Up to Date';
-    if (totalAmountDue > 0 && totalCollected > 0 && totalCollected < totalAmountDue) return 'Partial';
-    if (totalAmountDue > 0 && totalCollected === 0) return 'Behind';
-    if (totalAmountDue === 0 && totalCollected === 0) return '';
-    return '';
+    // Handle cases where values might be null/undefined/NaN
+    const collected = Number(totalCollected) || 0;
+    const due = Number(totalAmountDue) || 0;
+    
+    if (due <= 0) return 'No Dues';
+    if (collected >= due) return 'Up to Date';
+    if (collected > 0 && collected < due) return 'Partial';
+    if (collected === 0) return 'Behind';
+    return 'No Dues';
   };
 
   if (loading) {

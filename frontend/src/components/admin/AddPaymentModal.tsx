@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface Member {
@@ -26,11 +26,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchMembers();
-  }, []);
-
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       const response = await fetch(`/api/members?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
@@ -45,7 +41,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
     } catch (error) {
       console.error('Error fetching members:', error);
     }
-  };
+  }, [currentUser?.email, firebaseUser]);
+
+  useEffect(() => {
+    fetchMembers();
+  }, [fetchMembers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,8 +101,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
   const paymentMethods = [
     { value: 'Cash', label: 'Cash' },
     { value: 'Check', label: 'Check' },
-    { value: 'Online', label: 'Online' },
-    { value: 'Envelope', label: 'Envelope' }
+    { value: 'Online', label: 'Online' }
   ];
 
   return (
