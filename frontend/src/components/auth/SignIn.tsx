@@ -50,6 +50,7 @@ const SignIn: React.FC = () => {
   }, [confirmationResult]);
   const [error, setError] = useState("");
   const [recaptchaSolved, setRecaptchaSolved] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
 
   // Initialize reCAPTCHA when component mounts and method is phone
   const initializeRecaptcha = async () => {
@@ -353,6 +354,9 @@ const SignIn: React.FC = () => {
       return;
     }
     
+    setOtpVerifying(true);
+    setError("");
+    
     try {
       const credential = await confirmationResult.confirm(otp);
       console.log('✅ OTP verification successful, user authenticated');
@@ -372,13 +376,15 @@ const SignIn: React.FC = () => {
       // Show success message and let auth flow handle navigation
       console.log('🔄 Login successful, waiting for auth state to process...');
       
-      // Show success message to user
+      // Show success message to user and prevent further interaction
       setError(""); // Clear any previous errors
-      // You could add a success state here if needed
       
+      // Add a loading state to prevent user interaction during navigation
       // The Firebase auth state listener will handle navigation to dashboard
-      // after it successfully fetches the user profile from backend (with retry logic)
+      // after it successfully fetches the user profile from backend
+      setOtpVerifying(false);
     } catch (err: any) {
+      setOtpVerifying(false);
       // Handle specific Firebase Auth error codes
       if (err.code === 'auth/invalid-verification-code') {
         setError("Invalid verification code. Please check the code and try again.");
@@ -701,8 +707,15 @@ const SignIn: React.FC = () => {
               style={{ padding: 10, borderRadius: 4, border: "1px solid #d1d5db", marginBottom: 20 }}
             />
             <div style={{ display: "flex", gap: "12px" }}>
-              <button type="submit" disabled={loading} style={{ flex: 1, background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, padding: "10px 0", fontWeight: 600, fontSize: 16, cursor: loading ? "not-allowed" : "pointer" }}>
-                {loading ? "Verifying..." : "Verify OTP"}
+              <button type="submit" disabled={loading || otpVerifying} style={{ flex: 1, background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, padding: "10px 0", fontWeight: 600, fontSize: 16, cursor: (loading || otpVerifying) ? "not-allowed" : "pointer" }}>
+                {(loading || otpVerifying) ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                    Verifying...
+                  </>
+                ) : (
+                  "Verify OTP"
+                )}
               </button>
               <button 
                 type="button" 
@@ -712,8 +725,8 @@ const SignIn: React.FC = () => {
                   setError("");
                   setRecaptchaSolved(false);
                 }}
-                disabled={loading}
-                style={{ background: "#6b7280", color: "#fff", border: "none", borderRadius: 4, padding: "10px 16px", fontWeight: 600, fontSize: 16, cursor: loading ? "not-allowed" : "pointer" }}
+                disabled={loading || otpVerifying}
+                style={{ background: "#6b7280", color: "#fff", border: "none", borderRadius: 4, padding: "10px 16px", fontWeight: 600, fontSize: 16, cursor: (loading || otpVerifying) ? "not-allowed" : "pointer" }}
               >
                 Try Again
               </button>
