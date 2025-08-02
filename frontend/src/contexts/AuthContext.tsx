@@ -108,10 +108,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const isPublicRoute = ['/', '/login', '/register'].includes(currentPath);
             const isRegistrationComplete = member?.registrationStatus === 'complete';
             
-            if (isRegistrationComplete) {
+            // Debug the member data to see what registrationStatus is
+            console.log(`🔍 Call #${callCount} - Member data:`, member);
+            console.log(`🔍 Call #${callCount} - Registration status:`, member?.registrationStatus);
+            
+            // If user exists in backend and is authenticated, they should be able to access dashboard
+            // regardless of registration status (they can complete profile later)
+            if (member && firebaseUser) {
+              console.log(`✅ Call #${callCount} - User authenticated and found in backend, navigating to dashboard`);
+              setTimeout(() => {
+                navigate("/dashboard");
+              }, 100);
+            } else if (isRegistrationComplete) {
               // User is fully registered - navigate to dashboard regardless of current route
               console.log(`✅ Call #${callCount} - Registration complete, navigating to dashboard`);
-              // Add a small delay to ensure state is properly set
               setTimeout(() => {
                 navigate("/dashboard");
               }, 100);
@@ -367,11 +377,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(userWithUid);
         
-        // Check if user is fully registered
-        const isRegistrationComplete = member?.registrationStatus === 'complete';
-        if (isRegistrationComplete) {
-          console.log('✅ User is fully registered, navigating to dashboard');
-          // Add a small delay to ensure state is properly set
+        // Debug the member data to see what registrationStatus is
+        console.log('🔍 handlePostSignIn - Member data:', member);
+        console.log('🔍 handlePostSignIn - Registration status:', member?.registrationStatus);
+        
+        // If user exists in backend and is authenticated, they should be able to access dashboard
+        // regardless of registration status (they can complete profile later)
+        if (member && firebaseUser) {
+          console.log('✅ User authenticated and found in backend, navigating to dashboard');
           setTimeout(() => {
             navigate("/dashboard");
           }, 100);
