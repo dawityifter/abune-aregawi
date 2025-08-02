@@ -34,10 +34,12 @@ const Navigation: React.FC = () => {
   }, [location]);
 
   const handleLogout = async () => {
+    console.log('🔄 Logout button clicked');
     try {
       await logout();
+      console.log('✅ Logout successful');
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('❌ Error logging out:', error);
     }
   };
 
@@ -117,12 +119,7 @@ const Navigation: React.FC = () => {
                   </Link>
                 )}
                 
-                <Link 
-                  to="/profile" 
-                  className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
-                >
-                  {t('navigation.profile')}
-                </Link>
+                {/* Profile link removed as requested */}
               </>
             )}
           </div>
@@ -165,32 +162,21 @@ const Navigation: React.FC = () => {
                     {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
                   </span>
                 </div>
-                <div className="relative group">
-                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white cursor-pointer">
-                    {userProfile?.data?.member?.firstName ? (
-                      <span className="font-medium">
-                        {userProfile.data.member.firstName.charAt(0).toUpperCase()}
-                      </span>
-                    ) : (
-                      <i className="fas fa-user"></i>
-                    )}
-                  </div>
-                  <div className="hidden group-hover:block absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                    <Link
-                      to="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      <i className="fas fa-user-circle mr-2"></i>
-                      {t('profile')}
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      <i className="fas fa-sign-out-alt mr-2"></i>
-                      {t('sign.out')}
-                    </button>
-                  </div>
+                <div className="flex items-center space-x-3">
+                  <Link
+                    to="/profile"
+                    className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
+                  >
+                    <i className="fas fa-user-circle mr-2"></i>
+                    {t('profile')}
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="px-3 py-2 text-sm font-medium text-red-300 hover:text-red-100 hover:bg-red-600/20 rounded-md transition-colors"
+                  >
+                    <i className="fas fa-sign-out-alt mr-2"></i>
+                    {t('sign.out')}
+                  </button>
                 </div>
               </div>
             ) : (
@@ -265,14 +251,7 @@ const Navigation: React.FC = () => {
                   </Link>
                 )}
                 
-                <Link
-                  to="/profile"
-                  className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <i className="fas fa-user-circle mr-3 w-5 text-center"></i>
-                  {t('navigation.profile')}
-                </Link>
+                {/* Profile link removed from mobile menu as requested */}
                 
                 <div className="border-t border-gray-200 my-2"></div>
                 
