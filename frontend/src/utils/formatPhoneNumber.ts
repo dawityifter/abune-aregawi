@@ -34,6 +34,11 @@ export function formatPhoneNumber(value: string): string {
 export function normalizePhoneNumber(value: string): string {
   if (!value) return '';
   
+  // If already in E.164 format (starts with +), return as-is
+  if (value.startsWith('+')) {
+    return value;
+  }
+  
   // Remove all non-digit characters
   const digits = value.replace(/\D/g, '');
   

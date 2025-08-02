@@ -54,7 +54,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           if (phone) {
             // Normalize phone number before sending to backend
+            console.log('📞 Raw phone from Firebase:', phone);
             const normalizedPhone = normalizePhoneNumber(phone);
+            console.log('📞 Normalized phone result:', normalizedPhone);
             if (normalizedPhone) {
               params.append("phone", normalizedPhone);
               console.log('📞 Auth state change - normalized phone:', phone, '->', normalizedPhone);
