@@ -2,9 +2,8 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://abune-aregawi-church-app.web.app",
+  "homepage": "https://abune-aregawi-church-dallas.web.app",
   "dependencies": {
-    "@headlessui/react": "^2.2.7",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/dom": "^10.4.0",
@@ -28,6 +27,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "build:ci": "CI=false react-scripts build",
     "test": "react-scripts test",
     "test:watch": "react-scripts test --watch",
     "test:coverage": "react-scripts test --coverage --watchAll=false",
