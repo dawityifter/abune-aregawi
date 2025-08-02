@@ -143,15 +143,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               return;
             } 
             
-            // If we're on the home page, stay there
-            if (currentPath === '/') {
-              console.log(`ℹ️ Call #${callCount} - On home page, not redirecting to register`);
-              return;
-            }
-            
-            // For any other page, redirect to home instead of register
-            console.log(`❌ Call #${callCount} - Redirecting to home instead of register`);
-            navigate("/");
+            // For new users (not found in backend), redirect to registration
+            // This handles the case where Firebase auth succeeds but user doesn't exist in our backend
+            console.log(`🆕 Call #${callCount} - New user detected, redirecting to registration`);
+            navigate("/register", { state: { phone } });
           }
         } catch (err) {
           console.error(`❌ Call #${callCount} - Error checking backend:`, err);
