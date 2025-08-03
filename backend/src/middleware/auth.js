@@ -201,6 +201,12 @@ const firebaseAuthMiddleware = async (req, res, next) => {
 
     const identifier = userEmail || userPhone;
     console.log('✅ Firebase auth successful for user:', identifier, 'Role:', member.role);
+    console.log('🔍 Setting req.user with:', {
+      id: member.id,
+      email: member.email,
+      role: member.role,
+      memberId: member.memberId
+    });
 
     req.user = {
       id: member.id,
@@ -209,6 +215,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       memberId: member.memberId
     };
 
+    console.log('✅ req.user set successfully:', req.user);
     next();
   } catch (error) {
     console.error('❌ Firebase auth middleware error:', error);
