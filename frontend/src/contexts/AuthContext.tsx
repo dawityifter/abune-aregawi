@@ -63,19 +63,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Check user profile in backend
-  const checkUserProfile = useCallback(async (firebaseUser: User | null) => {
-    if (!firebaseUser) {
-      setUser(null);
-      return null;
-    }
-
+  const checkUserProfile = useCallback(async (firebaseUser: User) => {
     const uid = firebaseUser.uid;
     const email = firebaseUser.email;
     const phone = getPhoneNumber(firebaseUser);
     
-    console.log('🔍 checkUserProfile - Firebase user data:', {
-      uid,
-      email,
+    console.log('🔍 Checking user profile:', { 
+      uid, 
+      email, 
       phone,
       phoneType: typeof phone,
       phoneExists: !!phone
@@ -88,20 +83,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
-      // Check if user exists in backend
       const params = new URLSearchParams();
+      
       if (email) {
         params.append("email", email);
-        console.log('✅ Added email parameter:', email);
       }
       
       if (phone) {
         const normalizedPhone = normalizePhoneNumber(phone);
         if (normalizedPhone) {
           params.append("phone", normalizedPhone);
-          console.log('✅ Added phone parameter:', normalizedPhone);
         } else {
-          console.log('⚠️ Phone normalization failed for:', phone);
+          console.log('⚠️ Could not normalize phone number:', phone);
         }
       } else {
         console.log('⚠️ No phone number available from Firebase user');
@@ -302,89 +295,84 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Listen for Firebase auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    console.log('🔌 Setting up auth state listener');
+    
+    const handleAuthStateChange = async (firebaseUser: User | null) => {
       console.log('🔥 Firebase auth state changed:', firebaseUser ? 'User signed in' : 'User signed out');
       setFirebaseUser(firebaseUser);
       
-      if (firebaseUser) {
-        const phoneNumber = getPhoneNumber(firebaseUser);
-        
-        console.log('🔍 onAuthStateChanged - Firebase user data:', {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          phoneNumber: phoneNumber,
-          phoneType: typeof phoneNumber,
-          phoneExists: !!phoneNumber,
-          providerData: firebaseUser.providerData?.map(p => p.providerId)
-        });
-        
-        // Check user profile and handle navigation
-        const checkProfileAndNavigate = async () => {
-          try {
-            const profile = await checkUserProfile(firebaseUser);
-            if (profile) {
-              console.log('✅ User profile loaded, updating state');
-              // Ensure UID is preserved when setting the profile
-              setUser({
-                ...profile,
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                phoneNumber: phoneNumber,
-                _temp: false
-              });
-              
-              // Navigate to dashboard for existing users
-              console.log('🔄 Navigating to dashboard for existing user');
-              navigate('/dashboard');
-            } else {
-              console.log('❌ User profile not found, setting as new user');
-              // Set user as new (temporary) and navigate to register
-              setUser({
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                phoneNumber: phoneNumber,
-                _temp: true,
-                role: 'member' // Default role for new users
-              });
-              
-              // Navigate to register for new users
-              console.log('🔄 Navigating to register for new user');
-              navigate('/register');
-            }
-          } catch (error) {
-            console.error('Error checking user profile:', error);
-            // On error, set as new user and navigate to register as fallback
-            setUser({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              phoneNumber: phoneNumber,
-              _temp: true,
-              role: 'member'
-            });
+      if (!firebaseUser) {
+        setUser(null);
+        clearNewUserCache();
+        return;
+      }
+
+      const phoneNumber = getPhoneNumber(firebaseUser);
+      
+      console.log('🔍 onAuthStateChanged - Firebase user data:', {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        phoneNumber,
+        phoneType: typeof phoneNumber,
+        phoneExists: !!phoneNumber,
+        providerData: firebaseUser.providerData?.map(p => p.providerId)
+      });
+
+      try {
+        const profile = await checkUserProfile(firebaseUser);
+        if (profile) {
+          console.log('✅ User profile loaded, updating state');
+          setUser({
+            ...profile,
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            phoneNumber,
+            _temp: false
+          });
+          
+          // Only navigate if we're not already on the dashboard
+          if (window.location.pathname !== '/dashboard') {
+            console.log('🔄 Navigating to dashboard for existing user');
+            navigate('/dashboard');
+          }
+        } else {
+          console.log('❌ User profile not found, setting as new user');
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            phoneNumber,
+            _temp: true,
+            role: 'member'
+          });
+          
+          // Only navigate if we're not already on the register page
+          if (window.location.pathname !== '/register') {
+            console.log('🔄 Navigating to register for new user');
             navigate('/register');
           }
-        };
-        
-        // Try immediately, then retry after a short delay if phone number is missing
-        checkProfileAndNavigate();
-        
-        // If phone number is missing, retry after a delay to allow Firebase to load data
-        if (!phoneNumber) {
-          console.log('⏳ Phone number missing, retrying after delay...');
-          setTimeout(() => {
-            checkProfileAndNavigate();
-          }, 1000);
         }
-      } else {
-        setUser(null);
-        clearNewUserCache(); // Clear cache when user logs out
+      } catch (error) {
+        console.error('Error in auth state change handler:', error);
+        // On error, set as new user but don't navigate to avoid loops
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          phoneNumber,
+          _temp: true,
+          role: 'member'
+        });
       }
-    });
+    };
 
+    // Set up the auth state listener
+    const unsubscribe = onAuthStateChanged(auth, handleAuthStateChange);
+    
+    // Cleanup function
     return () => {
+      console.log('🧹 Cleaning up auth state listener');
       unsubscribe();
     };
-  }, [auth, checkUserProfile, navigate, clearNewUserCache]);
+  }, [auth, navigate]); // Removed checkUserProfile and clearNewUserCache from dependencies
 
   // Provide auth context
   const value = {
