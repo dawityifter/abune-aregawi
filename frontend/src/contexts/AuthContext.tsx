@@ -372,7 +372,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🧹 Cleaning up auth state listener');
       unsubscribe();
     };
-  }, [auth, navigate]); // Removed checkUserProfile and clearNewUserCache from dependencies
+  }, []); // Empty dependency array ensures listener is only registered once
 
   // Provide auth context
   const value = {

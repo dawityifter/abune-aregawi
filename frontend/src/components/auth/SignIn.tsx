@@ -115,10 +115,15 @@ const SignIn: React.FC = () => {
 
   // Reset reCAPTCHA state when switching methods
   useEffect(() => {
-    if (method !== "phone") {
-      setRecaptchaSolved(false);
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
+    // Clean up existing reCAPTCHA when switching methods
+    if (window.recaptchaVerifier) {
+      try {
+        if (window.recaptchaVerifier && typeof window.recaptchaVerifier.clear === 'function') {
+          window.recaptchaVerifier.clear();
+        }
+      } catch (err) {
+        console.log('reCAPTCHA cleanup error on method change (non-critical):', err);
+      } finally {
         window.recaptchaVerifier = undefined;
       }
     }
@@ -128,8 +133,15 @@ const SignIn: React.FC = () => {
   useEffect(() => {
     return () => {
       if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
-        window.recaptchaVerifier = undefined;
+        try {
+          if (window.recaptchaVerifier && typeof window.recaptchaVerifier.clear === 'function') {
+            window.recaptchaVerifier.clear();
+          }
+        } catch (err) {
+          console.log('reCAPTCHA cleanup error on unmount (non-critical):', err);
+        } finally {
+          window.recaptchaVerifier = undefined;
+        }
       }
     };
   }, []);
@@ -264,15 +276,17 @@ const SignIn: React.FC = () => {
       // Immediately clean up reCAPTCHA to prevent timeout errors
       if (window.recaptchaVerifier) {
         try {
-          if (typeof window.recaptchaVerifier.clear === 'function') {
+          // Check if the verifier is still valid before trying to clear it
+          if (window.recaptchaVerifier && typeof window.recaptchaVerifier.clear === 'function') {
             window.recaptchaVerifier.clear();
           }
-          if (typeof window.recaptchaVerifier._reset === 'function') {
+          if (window.recaptchaVerifier && typeof window.recaptchaVerifier._reset === 'function') {
             window.recaptchaVerifier._reset();
           }
-          window.recaptchaVerifier = undefined;
         } catch (cleanupError) {
           console.log('reCAPTCHA cleanup error (non-critical):', cleanupError);
+        } finally {
+          window.recaptchaVerifier = undefined;
         }
       }
       
@@ -324,10 +338,11 @@ const SignIn: React.FC = () => {
     if (window.recaptchaVerifier) {
       console.log('🧹 Cleaning up reCAPTCHA verifier...');
       try {
-        if (typeof window.recaptchaVerifier.clear === 'function') {
+        // Check if the verifier is still valid before trying to clear it
+        if (window.recaptchaVerifier && typeof window.recaptchaVerifier.clear === 'function') {
           window.recaptchaVerifier.clear();
         }
-        if (typeof window.recaptchaVerifier._reset === 'function') {
+        if (window.recaptchaVerifier && typeof window.recaptchaVerifier._reset === 'function') {
           window.recaptchaVerifier._reset();
         }
       } catch (err) {
