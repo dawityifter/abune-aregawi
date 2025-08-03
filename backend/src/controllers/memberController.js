@@ -533,7 +533,12 @@ exports.getAllMembersFirebase = async (req, res) => {
       where: whereClause,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['created_at', 'DESC']]
+      order: [['created_at', 'DESC']],
+      include: [{
+        model: require('../models').Dependent,
+        as: 'dependents',
+        attributes: ['id'] // Only get the count, not full data
+      }]
     });
 
     // Transform snake_case to camelCase for frontend compatibility
@@ -565,7 +570,8 @@ exports.getAllMembersFirebase = async (req, res) => {
       familyId: member.family_id,
       apartmentNo: member.apartment_no,
       emergencyContactName: member.emergency_contact_name,
-      emergencyContactPhone: member.emergency_contact_phone
+      emergencyContactPhone: member.emergency_contact_phone,
+      dependants: member.dependents || [] // Include dependents array
     }));
 
     res.json({
