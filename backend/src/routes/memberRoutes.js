@@ -64,11 +64,11 @@ router.get('/test-auth', firebaseAuthMiddleware, (req, res) => {
 // Firebase Auth admin routes (Firebase token verification)
 router.get('/all/firebase', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), validateMemberQuery, memberController.getAllMembersFirebase);
 
-// Dependants management routes (no JWT required - using member ID)
-router.get('/:memberId/dependants', memberController.getMemberDependants);
-router.post('/:memberId/dependants', memberController.addDependant);
-router.put('/dependants/:dependantId', memberController.updateDependant);
-router.delete('/dependants/:dependantId', memberController.deleteDependant);
+// Dependents management routes (no JWT required - using member ID)
+router.get('/:memberId/dependents', memberController.getMemberDependents);
+router.post('/:memberId/dependents', memberController.addDependent);
+router.put('/dependents/:dependentId', memberController.updateDependent);
+router.delete('/dependents/:dependentId', memberController.deleteDependent);
 
 // JWT-protected profile routes (for testing and JWT-based auth)
 router.get('/profile/jwt', authMiddleware, memberController.getProfile);

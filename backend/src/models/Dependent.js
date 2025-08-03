@@ -1,109 +1,88 @@
-'use strict';
-
-const { Model, DataTypes } = require('sequelize');
+const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  class Dependent extends Model {
-    static associate(models) {
-      // Define associations here
-      Dependent.belongsTo(models.Member, {
-        foreignKey: 'member_id',
-        as: 'member'
-      });
-    }
-  }
-
-  Dependent.init({
+  const Dependent = sequelize.define('Dependent', {
     id: {
-      type: DataTypes.BIGINT,
-      primaryKey: true,
-      autoIncrement: true,
-      allowNull: false
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true
     },
-    member_id: {
-      type: DataTypes.BIGINT,
+    memberId: {
+      type: DataTypes.UUID,
       allowNull: false,
       references: {
         model: 'members',
         key: 'id'
-      },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE'
-    },
-    first_name: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
-      validate: {
-        notEmpty: true
       }
     },
-    middle_name: {
+    firstName: {
+      type: DataTypes.STRING(100),
+      allowNull: false
+    },
+    middleName: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    last_name: {
+    lastName: {
       type: DataTypes.STRING(100),
-      allowNull: false,
+      allowNull: false
+    },
+    dateOfBirth: {
+      type: DataTypes.DATEONLY,
+      allowNull: false
+    },
+    gender: {
+      type: DataTypes.ENUM('Male', 'Female'),
+      allowNull: false
+    },
+    phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true
+    },
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
       validate: {
-        notEmpty: true
+        isEmail: true
       }
     },
-    date_of_birth: {
+    baptismName: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    isBaptized: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    baptismDate: {
       type: DataTypes.DATEONLY,
       allowNull: true
     },
-    gender: {
-      type: DataTypes.ENUM('male', 'female', 'other'),
-      allowNull: true
-    },
-    relationship: {
+    nameDay: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    medical_conditions: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    allergies: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    medications: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    dietary_restrictions: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    notes: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    created_at: {
+    createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW
     },
-    updated_at: {
+    updatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW
     }
   }, {
-    sequelize,
-    modelName: 'Dependent',
     tableName: 'dependents',
-    underscored: true,
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
-    indexes: [
-      {
-        fields: ['member_id']
-      }
-    ]
+    timestamps: true
   });
+
+  Dependent.associate = (models) => {
+    Dependent.belongsTo(models.Member, {
+      foreignKey: 'memberId',
+      as: 'member'
+    });
+  };
 
   return Dependent;
 }; 

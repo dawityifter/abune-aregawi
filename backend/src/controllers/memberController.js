@@ -76,7 +76,7 @@ exports.register = async (req, res) => {
       password,
       role,
       
-      // Dependants
+      // Dependents
       dependants
     } = req.body;
 
@@ -215,16 +215,16 @@ exports.register = async (req, res) => {
       await member.save();
     }
 
-    // Add dependants if provided and HoH
+    // Add dependents if provided and HoH
     if (isHeadOfHousehold && dependants && Array.isArray(dependants) && dependants.length > 0) {
-      const dependantsData = dependants.map(dependant => {
-        const { baptismDate, nameDay, ...cleanDependant } = dependant;
+      const dependantsData = dependants.map(dependent => {
+        const { baptismDate, nameDay, ...cleanDependent } = dependent;
         return {
-          ...cleanDependant,
+          ...cleanDependent,
           memberId: member.id
         };
       });
-      await Dependant.bulkCreate(dependantsData);
+      await Dependent.bulkCreate(dependantsData);
     }
 
     // Generate JWT token
@@ -238,11 +238,11 @@ exports.register = async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Fetch member with dependants
+    // Fetch member with dependents
     const memberWithDependants = await Member.findByPk(member.id, {
       include: [{
-        model: Dependant,
-        as: 'dependants'
+        model: Dependent,
+        as: 'dependents'
       }]
     });
 
@@ -404,30 +404,30 @@ exports.updateProfile = async (req, res) => {
 
     await member.update(updateData);
 
-    // Update dependants if provided
+    // Update dependents if provided
     if (req.body.dependants && Array.isArray(req.body.dependants)) {
-      // Remove existing dependants
-      await Dependant.destroy({ where: { memberId: member.id } });
+      // Remove existing dependents
+      await Dependent.destroy({ where: { memberId: member.id } });
       
-      // Add new dependants
+      // Add new dependents
       if (req.body.dependants.length > 0) {
-        const dependantsData = req.body.dependants.map(dependant => {
+        const dependantsData = req.body.dependants.map(dependent => {
           // Remove baptismDate and nameDay fields if they're empty or invalid
-          const { baptismDate, nameDay, ...cleanDependant } = dependant;
+          const { baptismDate, nameDay, ...cleanDependent } = dependent;
           return {
-            ...cleanDependant,
+            ...cleanDependent,
             memberId: member.id
           };
         });
-        await Dependant.bulkCreate(dependantsData);
+        await Dependent.bulkCreate(dependantsData);
       }
     }
 
-    // Fetch updated member with dependants
+    // Fetch updated member with dependents
     const updatedMember = await Member.findByPk(member.id, {
       include: [{
-        model: Dependant,
-        as: 'dependants'
+        model: Dependent,
+        as: 'dependents'
       }]
     });
 
@@ -474,8 +474,8 @@ exports.getAllMembers = async (req, res) => {
     const { count, rows: members } = await Member.findAndCountAll({
       where: whereClause,
       include: [{
-        model: Dependant,
-        as: 'dependants'
+        model: Dependent,
+        as: 'dependents'
       }],
       limit: parseInt(limit),
       offset: parseInt(offset),
@@ -637,26 +637,26 @@ exports.updateMember = async (req, res) => {
 
     await member.update(req.body);
 
-    // Update dependants if provided
+    // Update dependents if provided
     if (req.body.dependants && Array.isArray(req.body.dependants)) {
-      // Remove existing dependants
-      await Dependant.destroy({ where: { memberId: member.id } });
+      // Remove existing dependents
+      await Dependent.destroy({ where: { memberId: member.id } });
       
-      // Add new dependants
+      // Add new dependents
       if (req.body.dependants.length > 0) {
-        const dependantsData = req.body.dependants.map(dependant => ({
-          ...dependant,
+        const dependantsData = req.body.dependants.map(dependent => ({
+          ...dependent,
           memberId: member.id
         }));
-        await Dependant.bulkCreate(dependantsData);
+        await Dependent.bulkCreate(dependantsData);
       }
     }
 
-    // Fetch updated member with dependants
+    // Fetch updated member with dependents
     const updatedMember = await Member.findByPk(member.id, {
       include: [{
-        model: Dependant,
-        as: 'dependants'
+        model: Dependent,
+        as: 'dependents'
       }]
     });
 
@@ -1076,7 +1076,7 @@ exports.updateMemberRole = async (req, res) => {
 // Dependants Management Endpoints
 
 // Get all dependants for a member
-exports.getMemberDependants = async (req, res) => {
+exports.getMemberDependents = async (req, res) => {
   try {
     const { memberId } = req.params;
 
@@ -1100,7 +1100,7 @@ exports.getMemberDependants = async (req, res) => {
 };
 
 // Add a dependant to a member
-exports.addDependant = async (req, res) => {
+exports.addDependent = async (req, res) => {
   try {
     const { memberId } = req.params;
     const dependantData = req.body;
@@ -1138,33 +1138,33 @@ exports.addDependant = async (req, res) => {
   }
 };
 
-// Update a dependant
-exports.updateDependant = async (req, res) => {
-  try {
-    const { dependantId } = req.params;
+  // Update a dependent
+  exports.updateDependent = async (req, res) => {
+    try {
+      const { dependentId } = req.params;
     const updateData = req.body;
 
-    const dependant = await Dependant.findByPk(dependantId);
-    if (!dependant) {
+    const dependent = await Dependent.findByPk(dependentId);
+    if (!dependent) {
       return res.status(404).json({
         success: false,
-        message: 'Dependant not found'
+        message: 'Dependent not found'
       });
     }
 
     // Remove baptismDate and nameDay fields if they're empty or invalid
     const { baptismDate, nameDay, ...cleanUpdateData } = updateData;
 
-    await dependant.update(cleanUpdateData);
+    await dependent.update(cleanUpdateData);
 
     res.json({
       success: true,
-      message: 'Dependant updated successfully',
-      data: { dependant }
+      message: 'Dependent updated successfully',
+      data: { dependent }
     });
 
   } catch (error) {
-    console.error('Update dependant error:', error);
+    console.error('Update dependent error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -1172,28 +1172,28 @@ exports.updateDependant = async (req, res) => {
   }
 };
 
-// Delete a dependant
-exports.deleteDependant = async (req, res) => {
-  try {
-    const { dependantId } = req.params;
+  // Delete a dependent
+  exports.deleteDependent = async (req, res) => {
+    try {
+      const { dependentId } = req.params;
 
-    const dependant = await Dependant.findByPk(dependantId);
-    if (!dependant) {
+    const dependent = await Dependent.findByPk(dependentId);
+    if (!dependent) {
       return res.status(404).json({
         success: false,
-        message: 'Dependant not found'
+        message: 'Dependent not found'
       });
     }
 
-    await dependant.destroy();
+    await dependent.destroy();
 
     res.json({
       success: true,
-      message: 'Dependant deleted successfully'
+      message: 'Dependent deleted successfully'
     });
 
   } catch (error) {
-    console.error('Delete dependant error:', error);
+    console.error('Delete dependent error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
