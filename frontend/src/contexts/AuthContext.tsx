@@ -36,6 +36,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const auth = getAuth();
 
+  // Cache for 404 results to prevent retry storms
+  const [newUserCache, setNewUserCache] = useState<Set<string>>(new Set());
+
   // Utility function to reliably extract phone number from Firebase user
   const getPhoneNumber = (firebaseUser: User): string | null => {
     // First try the main phoneNumber property
@@ -77,6 +80,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       phoneType: typeof phone,
       phoneExists: !!phone
     });
+
+    // Check if this user is already known to be new
+    if (newUserCache.has(uid)) {
+      console.log('🔄 User already known to be new, skipping backend check');
+      return null;
+    }
     
     try {
       // Check if user exists in backend
@@ -98,28 +107,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('⚠️ No phone number available from Firebase user');
       }
       
-      if (params.toString() === '') {
-        console.log('❌ No email or phone available for backend lookup');
-        return null;
-      }
-      
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
-      console.log('🔍 Backend API call:', apiUrl);
-      const res = await fetch(apiUrl);
+      console.log('🔍 Backend check URL:', apiUrl);
       
-      if (res.status === 200) {
-        const profile = await res.json();
-        console.log('✅ User profile found in backend');
-        return profile;
+      const response = await fetch(apiUrl);
+      console.log('🔍 Backend response status:', response.status);
+      
+      if (response.status === 200) {
+        const memberData = await response.json();
+        console.log('✅ Backend user found:', memberData);
+        return memberData;
+      } else if (response.status === 404) {
+        console.log('❌ Backend user not found (status: 404)');
+        // Cache this user as new to prevent future API calls
+        setNewUserCache(prev => new Set([...Array.from(prev), uid]));
+        return null;
       } else {
-        console.error('❌ Failed to fetch user profile:', res.status);
+        console.log('⚠️ Backend error status:', response.status);
         return null;
       }
-    } catch (error: any) {
-      console.error('❌ Error checking backend:', error);
+    } catch (error) {
+      console.error('Error checking user profile:', error);
       return null;
     }
-  }, [normalizePhoneNumber]);
+  }, [newUserCache]);
+
+  // Clear new user cache when user logs out
+  const clearNewUserCache = useCallback(() => {
+    setNewUserCache(new Set());
+  }, []);
 
   // Email sign-in
   const loginWithEmail = async (email: string, password: string) => {
@@ -188,6 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setFirebaseUser(null);
       navigate("/");
+      clearNewUserCache(); // Clear cache on logout
     } catch (err) {
       console.error("Logout failed:", err);
     }
@@ -301,15 +318,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           providerData: firebaseUser.providerData?.map(p => p.providerId)
         });
         
-        // Immediately set a temporary user for instant navigation
-        const tempUser = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          phoneNumber: phoneNumber,
-          _temp: true
-        };
-        setUser(tempUser);
-        
         // Check user profile and handle navigation
         const checkProfileAndNavigate = async () => {
           try {
@@ -329,13 +337,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.log('🔄 Navigating to dashboard for existing user');
               navigate('/dashboard');
             } else {
-              console.log('❌ User profile not found, navigating to register');
+              console.log('❌ User profile not found, setting as new user');
+              // Set user as new (temporary) and navigate to register
+              setUser({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                phoneNumber: phoneNumber,
+                _temp: true,
+                role: 'member' // Default role for new users
+              });
+              
               // Navigate to register for new users
+              console.log('🔄 Navigating to register for new user');
               navigate('/register');
             }
           } catch (error) {
             console.error('Error checking user profile:', error);
-            // On error, navigate to register as fallback
+            // On error, set as new user and navigate to register as fallback
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              phoneNumber: phoneNumber,
+              _temp: true,
+              role: 'member'
+            });
             navigate('/register');
           }
         };
@@ -352,13 +377,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else {
         setUser(null);
+        clearNewUserCache(); // Clear cache when user logs out
       }
     });
 
     return () => {
       unsubscribe();
     };
-  }, [auth, checkUserProfile]);
+  }, [auth, checkUserProfile, navigate, clearNewUserCache]);
 
   // Provide auth context
   const value = {

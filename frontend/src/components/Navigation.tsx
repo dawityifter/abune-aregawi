@@ -46,6 +46,12 @@ const Navigation: React.FC = () => {
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (currentUser) {
+        // Skip API calls for temporary users (new users who haven't completed registration)
+        if (currentUser._temp) {
+          console.log('🔄 Skipping profile fetch for temporary user');
+          return;
+        }
+        
         try {
           setLoading(true);
           console.log('🔍 Navigation - currentUser:', currentUser);
