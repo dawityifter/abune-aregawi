@@ -350,7 +350,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Only navigate if we're not already on the register page
           if (window.location.pathname !== '/register') {
             console.log('🔄 Navigating to register for new user');
-            navigate('/register');
+            navigate('/register', { 
+              state: { 
+                phone: phoneNumber,
+                email: firebaseUser.email 
+              } 
+            });
           }
         }
       } catch (error) {
@@ -363,6 +368,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           _temp: true,
           role: 'member'
         });
+        
+        // Navigate to register with user data if not already there
+        if (window.location.pathname !== '/register') {
+          console.log('🔄 Navigating to register for new user (error case)');
+          navigate('/register', { 
+            state: { 
+              phone: phoneNumber,
+              email: firebaseUser.email 
+            } 
+          });
+        }
       }
     };
 
