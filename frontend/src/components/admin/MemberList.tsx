@@ -30,34 +30,42 @@ const MemberList: React.FC<MemberListProps> = ({
 }) => {
   const { t } = useLanguage();
   const { currentUser, firebaseUser } = useAuth();
-  const [members, setMembers] = useState<Member[]>([]);
+  const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalMembers, setTotalMembers] = useState(0);
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [itemsPerPage] = useState(10);
 
-  // Debounced search effect
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 500); // Increased to 500ms for better performance
+  // Client-side filtering and pagination
+  const filteredMembers = useMemo(() => {
+    return allMembers.filter(member => {
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = !searchTerm || 
+        (member.firstName?.toLowerCase() || '').includes(searchLower) ||
+        (member.lastName?.toLowerCase() || '').includes(searchLower) ||
+        (member.email?.toLowerCase() || '').includes(searchLower) ||
+        (member.phoneNumber?.toLowerCase() || '').includes(searchLower);
+      
+      const matchesRole = !roleFilter || member.role === roleFilter;
+      const matchesStatus = !statusFilter || member.isActive.toString() === statusFilter;
+      
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [allMembers, searchTerm, roleFilter, statusFilter]);
 
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+  // Pagination
+  const totalMembers = filteredMembers.length;
+  const totalPages = Math.ceil(totalMembers / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedMembers = filteredMembers.slice(startIndex, endIndex);
 
-  const fetchMembers = async (page = 1, isSearch = false) => {
+  const fetchAllMembers = async () => {
     try {
-      if (isSearch) {
-        setSearchLoading(true);
-      } else {
-        setLoading(true);
-      }
+      setLoading(true);
       
       if (!firebaseUser) {
         throw new Error('Firebase user not authenticated');
@@ -72,16 +80,8 @@ const MemberList: React.FC<MemberListProps> = ({
       console.log('Firebase User UID:', firebaseUser.uid);
       console.log('ID Token (first 20 chars):', idToken ? `${idToken.substring(0, 20)}...` : 'null');
 
-      // Build query parameters
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '10',
-        ...(debouncedSearchTerm && { search: debouncedSearchTerm }),
-        ...(roleFilter && { role: roleFilter }),
-        ...(statusFilter && { isActive: statusFilter })
-      });
-
-      const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/all/firebase?${params}`;
+      // Fetch all members at once (no pagination on backend)
+      const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/all/firebase?limit=1000`;
       console.log('API URL:', apiUrl);
       
       const response = await fetch(apiUrl, {
@@ -89,7 +89,7 @@ const MemberList: React.FC<MemberListProps> = ({
           'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json'
         },
-        credentials: 'include' // Include cookies if using sessions
+        credentials: 'include'
       });
       
       console.log('Response Status:', response.status);
@@ -100,32 +100,22 @@ const MemberList: React.FC<MemberListProps> = ({
       }
 
       const data = await response.json();
-      setMembers(data.data.members);
-      setTotalPages(data.data.pagination.totalPages);
-      setTotalMembers(data.data.pagination.totalMembers);
+      setAllMembers(data.data.members);
     } catch (error: any) {
       setError(error.message);
     } finally {
-      if (isSearch) {
-        setSearchLoading(false);
-      } else {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMembers(currentPage);
-  }, [currentPage]);
+    fetchAllMembers();
+  }, []);
 
-  // Separate effect for search and filters to avoid unnecessary API calls
+  // Reset to first page when filters change
   useEffect(() => {
-    if (currentPage === 1) {
-      fetchMembers(1, true);
-    } else {
-      setCurrentPage(1);
-    }
-  }, [debouncedSearchTerm, roleFilter, statusFilter]);
+    setCurrentPage(1);
+  }, [searchTerm, roleFilter, statusFilter]);
 
   const handleDeleteMember = async (memberId: string) => {
     if (!window.confirm(t('confirm.delete.member'))) {
@@ -159,9 +149,9 @@ const MemberList: React.FC<MemberListProps> = ({
     // Search is now handled by debounced effect
   };
 
-  // Memoized filtered members to prevent unnecessary re-computations
-  const filteredMembers = React.useMemo(() => {
-    return members.filter(member => {
+  // Client-side filtering and pagination
+  const filteredMembers = useMemo(() => {
+    return allMembers.filter(member => {
       const searchLower = searchTerm.toLowerCase();
       
       const matchesSearch = !searchTerm || 
@@ -175,7 +165,7 @@ const MemberList: React.FC<MemberListProps> = ({
       
       return matchesSearch && matchesRole && matchesStatus;
     });
-  }, [members, searchTerm, roleFilter, statusFilter]);
+  }, [allMembers, searchTerm, roleFilter, statusFilter]);
 
   if (loading) {
     return (
@@ -190,7 +180,7 @@ const MemberList: React.FC<MemberListProps> = ({
       <div className="text-center py-12">
         <div className="text-red-600 text-lg mb-4">{error}</div>
         <button 
-          onClick={() => fetchMembers(currentPage)} 
+          onClick={() => fetchAllMembers()} 
           className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
         >
           {t('retry')}
@@ -220,21 +210,13 @@ const MemberList: React.FC<MemberListProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('search')}
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={t('search.members')}
-                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                disabled={searchLoading}
-              />
-              {searchLoading && (
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
-                </div>
-              )}
-            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={t('search.members')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
           </div>
           
           <div>
@@ -303,17 +285,7 @@ const MemberList: React.FC<MemberListProps> = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {searchLoading && (
-                <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center">
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mr-2"></div>
-                      <span className="text-gray-500">Searching...</span>
-                    </div>
-                  </td>
-                </tr>
-              )}
-              {!searchLoading && filteredMembers.map((member) => (
+              {paginatedMembers.map((member) => (
                 <tr key={member.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
