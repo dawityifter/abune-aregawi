@@ -169,7 +169,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       // Normalize phone number for search
       const normalizedPhone = userPhone.startsWith('+') ? userPhone : `+${userPhone}`;
       member = await Member.findOne({
-        where: { phoneNumber: normalizedPhone }
+        where: { phone_number: normalizedPhone }
       });
       console.log('🔍 Searching by phone:', normalizedPhone);
     }

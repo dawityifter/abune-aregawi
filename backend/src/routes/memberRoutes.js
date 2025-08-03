@@ -49,7 +49,7 @@ router.get('/profile/firebase/:uid', memberController.getProfileByFirebaseUid);
 router.put('/profile/firebase/:uid', memberController.updateProfileByFirebaseUid);
 
 // Firebase Auth admin routes (Firebase token verification)
-router.get('/all/firebase', firebaseAuthMiddleware, validateMemberQuery, memberController.getAllMembersFirebase);
+router.get('/all/firebase', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), validateMemberQuery, memberController.getAllMembersFirebase);
 
 // Dependants management routes (no JWT required - using member ID)
 router.get('/:memberId/dependants', memberController.getMemberDependants);

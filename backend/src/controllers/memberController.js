@@ -515,10 +515,9 @@ exports.getAllMembersFirebase = async (req, res) => {
     
     if (search) {
       whereClause[Op.or] = [
-        { firstName: { [Op.iLike]: `%${search}%` } },
-        { lastName: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } },
-        { memberId: { [Op.iLike]: `%${search}%` } }
+        { first_name: { [Op.iLike]: `%${search}%` } },
+        { last_name: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } }
       ];
     }
 
@@ -527,18 +526,14 @@ exports.getAllMembersFirebase = async (req, res) => {
     }
 
     if (isActive !== undefined) {
-      whereClause.isActive = isActive === 'true';
+      whereClause.is_active = isActive === 'true';
     }
 
     const { count, rows: members } = await Member.findAndCountAll({
       where: whereClause,
-      include: [{
-        model: Dependant,
-        as: 'dependants'
-      }],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
 
     res.json({
@@ -567,12 +562,7 @@ exports.getAllMembersFirebase = async (req, res) => {
 // Get member by ID (admin only)
 exports.getMemberById = async (req, res) => {
   try {
-    const member = await Member.findByPk(req.params.id, {
-      include: [{
-        model: Dependant,
-        as: 'dependants'
-      }]
-    });
+    const member = await Member.findByPk(req.params.id);
 
     if (!member) {
       return res.status(404).json({
