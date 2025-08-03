@@ -60,7 +60,7 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    if (!member.isActive) {
+    if (!member.is_active) {
       return res.status(401).json({
         success: false,
         message: 'Account is deactivated. Please contact the church administrator.'
@@ -101,7 +101,12 @@ const authMiddleware = async (req, res, next) => {
 
 // Firebase authentication middleware
 const firebaseAuthMiddleware = async (req, res, next) => {
+  console.log('\n🔵 ====== START firebaseAuthMiddleware ======');
+  console.log(`🔵 Request URL: ${req.method} ${req.originalUrl}`);
+  
   try {
+    console.log('🔵 Request Headers:', JSON.stringify(req.headers, null, 2));
+    
     // Check if Firebase Admin is initialized
     if (!firebaseInitialized) {
       console.error('❌ Firebase Admin SDK not initialized');
@@ -113,18 +118,40 @@ const firebaseAuthMiddleware = async (req, res, next) => {
 
     // Get Firebase token from header
     const authHeader = req.headers.authorization;
+    console.log('🔵 Authorization header:', authHeader ? 'Present' : 'Missing');
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('❌ No Bearer token found in Authorization header');
       return res.status(401).json({
         success: false,
         message: 'Access denied. No Firebase token provided.'
       });
     }
     const firebaseToken = authHeader.substring(7); // Remove 'Bearer ' prefix
+    console.log('🔵 Firebase token (first 20 chars):', firebaseToken.substring(0, 20) + '...');
 
-    console.log('🔍 Verifying Firebase token...');
+    console.log('🔵 Verifying Firebase token...');
     
     // Verify Firebase token and extract user info
-    const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+    let decodedToken;
+    try {
+      decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+      console.log('✅ Firebase token verified successfully');
+      console.log('🔵 Decoded token data:', JSON.stringify({
+        uid: decodedToken.uid,
+        email: decodedToken.email,
+        phone_number: decodedToken.phone_number,
+        phoneNumber: decodedToken.phoneNumber,
+        phone: decodedToken.phone
+      }, null, 2));
+    } catch (verifyError) {
+      console.error('❌ Firebase token verification failed:', verifyError.message);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired authentication token.'
+      });
+    }
+    
     const userEmail = decodedToken.email;
     // Check for phone number in different possible fields
     let userPhone = decodedToken.phone_number || decodedToken.phoneNumber || decodedToken.phone;
@@ -146,7 +173,10 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       }
     }
 
-    console.log('✅ Firebase token verified for:', { email: userEmail ? 'present' : 'missing', phone: userPhone ? 'present' : 'missing' });
+    console.log('🔵 Firebase token verification summary:');
+    console.log('   - Email:', userEmail || 'Not provided');
+    console.log('   - Phone:', userPhone || 'Not provided');
+    console.log('   - UID:', decodedToken.uid);
 
     if (!userEmail && !userPhone) {
       console.log('❌ No email or phone found in token');
@@ -159,19 +189,37 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     // Find member by email or phone
     let member = null;
     if (userEmail) {
-      member = await Member.findOne({
-        where: { email: userEmail }
-      });
-      console.log('🔍 Searching by email:', userEmail);
+      console.log(`🔍 Searching for member by email: ${userEmail}`);
+      try {
+        member = await Member.findOne({
+          where: { email: userEmail }
+        });
+        console.log('🔍 Member search by email result:', member ? 'Found' : 'Not found');
+      } catch (dbError) {
+        console.error('❌ Database error when searching by email:', dbError.message);
+        return res.status(500).json({
+          success: false,
+          message: 'Database error during authentication.'
+        });
+      }
     }
     
     if (!member && userPhone) {
       // Normalize phone number for search
       const normalizedPhone = userPhone.startsWith('+') ? userPhone : `+${userPhone}`;
-      member = await Member.findOne({
-        where: { phone_number: normalizedPhone }
-      });
-      console.log('🔍 Searching by phone:', normalizedPhone);
+      console.log(`🔍 Searching for member by phone: ${normalizedPhone}`);
+      try {
+        member = await Member.findOne({
+          where: { phone_number: normalizedPhone }
+        });
+        console.log('🔍 Member search by phone result:', member ? 'Found' : 'Not found');
+      } catch (dbError) {
+        console.error('❌ Database error when searching by phone:', dbError.message);
+        return res.status(500).json({
+          success: false,
+          message: 'Database error during authentication.'
+        });
+      }
     }
 
     if (!member) {
@@ -182,17 +230,35 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       });
     }
     
-    if (!member.isActive) {
+    if (!member.is_active) {
       return res.status(401).json({
         success: false,
         message: 'Account is deactivated. Please contact the church administrator.'
       });
     }
 
+    // Debug log the member data for troubleshooting
+    console.log('🔵 Member data from database:', JSON.stringify({
+      id: member.id,
+      email: member.email,
+      phone_number: member.phone_number,
+      role: member.role,
+      isActive: member.is_active,
+      firstName: member.first_name,
+      lastName: member.last_name
+    }, null, 2));
+
     // Check if user has admin role (using PostgreSQL role)
     const adminRoles = ['admin', 'church_leadership', 'treasurer', 'secretary'];
-    if (!adminRoles.includes(member.role)) {
-      console.log('❌ Access denied for user:', userEmail, 'Role:', member.role);
+    const userRole = member.role || (member.data && member.data.role); // Handle both flattened and nested role
+    
+    console.log('🔵 User role check:');
+    console.log('   - User role:', userRole);
+    console.log('   - Allowed roles:', adminRoles);
+    
+    if (!adminRoles.includes(userRole)) {
+      const errorMsg = `❌ Access denied. User role '${userRole}' is not in allowed roles: ${adminRoles.join(', ')}`;
+      console.error(errorMsg);
       return res.status(403).json({
         success: false,
         message: 'Access denied. Admin privileges required.'

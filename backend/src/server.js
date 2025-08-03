@@ -22,7 +22,7 @@ const transactionRoutes = require('./routes/transactionRoutes');
 const { sequelize } = require('./models');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Trust the first proxy (Render, Heroku, etc.)
 app.set('trust proxy', 1);
@@ -30,46 +30,40 @@ app.set('trust proxy', 1);
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
-const allowedOrigins = process.env.FRONTEND_URL 
-  ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
-  : ['http://localhost:3000'];
-
+// CORS configuration - Simplified for development
 console.log('🔧 CORS Configuration:');
-console.log('  Allowed Origins:', allowedOrigins);
 console.log('  NODE_ENV:', process.env.NODE_ENV);
+console.log('  FRONTEND_URL:', process.env.FRONTEND_URL || 'Not set');
 
-app.use(cors({
+// Enable CORS for all routes with simplified configuration for development
+const corsOptions = {
   origin: function (origin, callback) {
-    console.log('🌐 CORS Request from origin:', origin);
-    
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      console.log('✅ CORS: Allowing request with no origin');
+    // In development, allow all origins
+    if (process.env.NODE_ENV === 'development') {
       return callback(null, true);
     }
     
-    // In development, be more permissive
-    if (process.env.NODE_ENV === 'development') {
-      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-        console.log('✅ CORS: Allowing localhost request in development');
-        return callback(null, true);
-      }
+    // In production, only allow specific origins
+    const allowedOrigins = process.env.FRONTEND_URL 
+      ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+      : [];
+      
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
     }
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      console.log('✅ CORS: Origin allowed');
-      callback(null, true);
-    } else {
-      console.log('❌ CORS blocked origin:', origin);
-      console.log('   Allowed origins:', allowedOrigins);
-      callback(new Error('Not allowed by CORS'));
-    }
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Total-Count'],
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({
