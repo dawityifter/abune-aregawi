@@ -198,7 +198,7 @@ const translations = {
     'reader': 'Reader',
     'deacon': 'Deacon',
     'priest': 'Priest',
-    'priest.name': 'Kesis Tadesse',
+    'priest.name': 'መልኣከ ፀሃይ Mel’Ake Tsehay keshi Tadesse',
     'priest.title': 'Our Church Father',
     'morning.prayers': 'Morning Prayers',
     'morning.prayers.time': '6:00 AM',
