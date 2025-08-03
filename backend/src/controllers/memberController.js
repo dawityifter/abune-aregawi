@@ -536,10 +536,42 @@ exports.getAllMembersFirebase = async (req, res) => {
       order: [['created_at', 'DESC']]
     });
 
+    // Transform snake_case to camelCase for frontend compatibility
+    const transformedMembers = members.map(member => ({
+      id: member.id,
+      firstName: member.first_name,
+      middleName: member.middle_name,
+      lastName: member.last_name,
+      email: member.email,
+      phoneNumber: member.phone_number,
+      role: member.role,
+      isActive: member.is_active,
+      dateJoinedParish: member.date_joined_parish,
+      createdAt: member.created_at,
+      updatedAt: member.updated_at,
+      baptismName: member.baptism_name,
+      dateOfBirth: member.date_of_birth,
+      gender: member.gender,
+      streetLine1: member.street_line1,
+      city: member.city,
+      state: member.state,
+      postalCode: member.postal_code,
+      country: member.country,
+      spouseName: member.spouse_name,
+      householdSize: member.household_size,
+      repentanceFather: member.repentance_father,
+      registrationStatus: member.registration_status,
+      firebaseUid: member.firebase_uid,
+      familyId: member.family_id,
+      apartmentNo: member.apartment_no,
+      emergencyContactName: member.emergency_contact_name,
+      emergencyContactPhone: member.emergency_contact_phone
+    }));
+
     res.json({
       success: true,
       data: {
-        members,
+        members: transformedMembers,
         pagination: {
           currentPage: parseInt(page),
           totalPages: Math.ceil(count / limit),
