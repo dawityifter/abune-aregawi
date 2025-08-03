@@ -149,23 +149,7 @@ const MemberList: React.FC<MemberListProps> = ({
     // Search is now handled by debounced effect
   };
 
-  // Client-side filtering and pagination
-  const filteredMembers = useMemo(() => {
-    return allMembers.filter(member => {
-      const searchLower = searchTerm.toLowerCase();
-      
-      const matchesSearch = !searchTerm || 
-        (member.firstName?.toLowerCase() || '').includes(searchLower) ||
-        (member.lastName?.toLowerCase() || '').includes(searchLower) ||
-        (member.email?.toLowerCase() || '').includes(searchLower) ||
-        (member.phoneNumber?.toLowerCase() || '').includes(searchLower);
-      
-      const matchesRole = !roleFilter || member.role === roleFilter;
-      const matchesStatus = !statusFilter || member.isActive.toString() === statusFilter;
-      
-      return matchesSearch && matchesRole && matchesStatus;
-    });
-  }, [allMembers, searchTerm, roleFilter, statusFilter]);
+
 
   if (loading) {
     return (
