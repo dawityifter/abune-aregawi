@@ -107,9 +107,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🔍 Backend response status:', response.status);
       
       if (response.status === 200) {
-        const memberData = await response.json();
-        console.log('✅ Backend user found:', memberData);
-        return memberData;
+        const responseData = await response.json();
+        console.log('✅ Backend user found:', responseData);
+        // Extract the member data from the response structure
+        return responseData.data?.member || responseData;
       } else if (response.status === 404) {
         console.log('❌ Backend user not found (status: 404)');
         // Cache this user as new to prevent future API calls
@@ -327,6 +328,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             phoneNumber,
+            role: profile.role, // Explicitly set the role
             _temp: false
           });
           
