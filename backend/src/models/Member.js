@@ -104,8 +104,12 @@ module.exports = (sequelize) => {
       defaultValue: 1,
       comment: 'Number of people in the household'
     },
-    address: {
-      type: DataTypes.TEXT,
+    street_line1: {
+      type: DataTypes.STRING(200),
+      allowNull: true
+    },
+    apartment_no: {
+      type: DataTypes.STRING(50),
       allowNull: true
     },
     city: {
@@ -116,7 +120,7 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(50),
       allowNull: true
     },
-    zip_code: {
+    postal_code: {
       type: DataTypes.STRING(20),
       allowNull: true
     },
@@ -133,74 +137,13 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(20),
       allowNull: true
     },
-    emergency_contact_relationship: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-    medical_conditions: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    allergies: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    medications: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    dietary_restrictions: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    occupation: {
-      type: DataTypes.STRING(200),
-      allowNull: true
-    },
-    employer: {
-      type: DataTypes.STRING(200),
-      allowNull: true
-    },
-    education_level: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
-    skills: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    interests: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    languages_spoken: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
     date_joined_parish: {
-      type: DataTypes.DATEONLY,
-      allowNull: true
-    },
-    baptism_date: {
-      type: DataTypes.DATEONLY,
-      allowNull: true
-    },
-    confirmation_date: {
-      type: DataTypes.DATEONLY,
-      allowNull: true
-    },
-    marriage_date: {
       type: DataTypes.DATEONLY,
       allowNull: true
     },
     spouse_name: {
       type: DataTypes.STRING(200),
       allowNull: true
-    },
-    children_count: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      defaultValue: 0
     },
     family_id: {
       type: DataTypes.BIGINT,
@@ -213,7 +156,7 @@ module.exports = (sequelize) => {
       onDelete: 'SET NULL'
     },
     role: {
-      type: DataTypes.ENUM('member', 'admin', 'treasurer', 'secretary', 'priest', 'deacon'),
+      type: DataTypes.ENUM('member', 'admin', 'treasurer', 'secretary', 'church_leadership', 'guest', 'deacon', 'priest'),
       allowNull: false,
       defaultValue: 'member'
     },
@@ -226,49 +169,13 @@ module.exports = (sequelize) => {
       type: DataTypes.ENUM('pending', 'complete', 'incomplete'),
       allowNull: false,
       defaultValue: 'pending'
-    },
-    notes: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW
     }
   }, {
     sequelize,
     modelName: 'Member',
     tableName: 'members',
-    underscored: true,
     timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
-    indexes: [
-      {
-        fields: ['email']
-      },
-      {
-        fields: ['phone_number']
-      },
-      {
-        fields: ['firebase_uid']
-      },
-      {
-        fields: ['role']
-      },
-      {
-        fields: ['is_active']
-      },
-      {
-        fields: ['family_id']
-      }
-    ]
+    underscored: true
   });
 
   return Member;
