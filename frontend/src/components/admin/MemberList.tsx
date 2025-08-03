@@ -14,7 +14,7 @@ interface Member {
   phoneNumber?: string;
   dateJoinedParish?: string;
   createdAt: string;
-  children?: any[];
+  dependants?: any[];
 }
 
 interface MemberListProps {
@@ -291,7 +291,7 @@ const MemberList: React.FC<MemberListProps> = ({
                           {member.firstName} {member.middleName} {member.lastName}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {member.children?.length || 0} {t('children')}
+                          {member.dependants?.length || 0} {t('dependants')}
                         </div>
                       </div>
                     </div>

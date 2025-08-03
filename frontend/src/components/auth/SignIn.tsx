@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { RecaptchaVerifier } from "firebase/auth";
 import { auth } from "../../firebase";
@@ -17,7 +16,6 @@ declare global {
 const SignIn: React.FC = () => {
   const { loginWithEmail, loginWithPhone, loading } = useAuth();
   const { t } = useLanguage();
-  const navigate = useNavigate();
   
   // Get enabled authentication methods and set default
   const enabledMethods = getEnabledAuthMethods();
@@ -255,50 +253,6 @@ const SignIn: React.FC = () => {
       const credential = await confirmationResult.confirm(otp);
       console.log('✅ OTP verification successful, user authenticated');
       
-      if (credential?.user) {
-        console.log('🔄 Processing authentication...');
-        
-        // Immediately check if user exists in backend
-        const uid = credential.user.uid;
-        const phone = credential.user.phoneNumber;
-        
-        if (phone) {
-          try {
-            console.log('🔍 Checking backend for existing user...');
-            const params = new URLSearchParams();
-            const normalizedPhone = normalizePhoneNumber(phone);
-            if (normalizedPhone) {
-              params.append("phone", normalizedPhone);
-            }
-            
-            const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
-            console.log('🔍 Backend check URL:', apiUrl);
-            
-            const response = await fetch(apiUrl);
-            console.log('🔍 Backend response status:', response.status);
-            
-            if (response.status === 200) {
-              // User exists in backend - redirect to dashboard
-              console.log('✅ Existing user found, redirecting to dashboard');
-              navigate('/dashboard');
-            } else if (response.status === 404) {
-              // User not found in backend - redirect to register
-              console.log('🆕 New user detected, redirecting to register');
-              navigate('/register');
-            } else {
-              // Other error - let AuthContext handle it
-              console.log('⚠️ Backend error, letting AuthContext handle navigation');
-            }
-          } catch (backendError) {
-            console.error('Error checking backend:', backendError);
-            // On backend error, let AuthContext handle navigation
-            console.log('⚠️ Backend check failed, letting AuthContext handle navigation');
-          }
-        } else {
-          console.log('⚠️ No phone number available, letting AuthContext handle navigation');
-        }
-      }
-      
       // Clear OTP form state immediately
       setConfirmationResult(null);
       setOtp("");
@@ -322,7 +276,7 @@ const SignIn: React.FC = () => {
         }
       }
       
-      console.log('🔄 Login successful, reCAPTCHA cleaned up, immediate navigation handled...');
+      console.log('🔄 Login successful, reCAPTCHA cleaned up, AuthContext will handle navigation...');
     } catch (err: any) {
       setOtpVerifying(false);
       
