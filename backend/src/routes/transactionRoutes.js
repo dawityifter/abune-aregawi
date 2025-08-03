@@ -8,28 +8,28 @@ const {
   deleteTransaction,
   getTransactionStats
 } = require('../controllers/transactionController');
-const { authenticateToken } = require('../middleware/auth');
-const { checkRole } = require('../middleware/role');
+const { firebaseAuthMiddleware } = require('../middleware/auth');
+const roleMiddleware = require('../middleware/role');
 
 // Apply authentication middleware to all routes
-router.use(authenticateToken);
+router.use(firebaseAuthMiddleware);
 
 // Get all transactions (requires admin or treasurer role)
-router.get('/', checkRole(['admin', 'treasurer']), getAllTransactions);
+router.get('/', roleMiddleware(['admin', 'treasurer']), getAllTransactions);
 
 // Get transaction statistics (requires admin or treasurer role)
-router.get('/stats', checkRole(['admin', 'treasurer']), getTransactionStats);
+router.get('/stats', roleMiddleware(['admin', 'treasurer']), getTransactionStats);
 
 // Get a single transaction by ID (requires admin or treasurer role)
-router.get('/:id', checkRole(['admin', 'treasurer']), getTransactionById);
+router.get('/:id', roleMiddleware(['admin', 'treasurer']), getTransactionById);
 
 // Create a new transaction (requires admin or treasurer role)
-router.post('/', checkRole(['admin', 'treasurer']), createTransaction);
+router.post('/', roleMiddleware(['admin', 'treasurer']), createTransaction);
 
 // Update a transaction (requires admin or treasurer role)
-router.put('/:id', checkRole(['admin', 'treasurer']), updateTransaction);
+router.put('/:id', roleMiddleware(['admin', 'treasurer']), updateTransaction);
 
 // Delete a transaction (requires admin role only)
-router.delete('/:id', checkRole(['admin']), deleteTransaction);
+router.delete('/:id', roleMiddleware(['admin']), deleteTransaction);
 
 module.exports = router; 
