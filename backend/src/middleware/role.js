@@ -1,5 +1,6 @@
 const roleMiddleware = (allowedRoles) => {
   return (req, res, next) => {
+    console.log('🔍 Role middleware check for route:', req.originalUrl);
     console.log('🔍 Role middleware check:', {
       hasUser: !!req.user,
       userRole: req.user?.role,

@@ -48,6 +48,19 @@ router.post('/login', validateLogin, memberController.login);
 router.get('/profile/firebase/:uid', memberController.getProfileByFirebaseUid);
 router.put('/profile/firebase/:uid', memberController.updateProfileByFirebaseUid);
 
+// Test endpoint to debug authentication
+router.get('/test-auth', firebaseAuthMiddleware, (req, res) => {
+  console.log('🔍 Test auth endpoint hit');
+  console.log('🔍 req.user:', req.user);
+  console.log('🔍 req.firebaseUid:', req.firebaseUid);
+  res.json({ 
+    success: true, 
+    message: 'Authentication working',
+    user: req.user,
+    firebaseUid: req.firebaseUid
+  });
+});
+
 // Firebase Auth admin routes (Firebase token verification)
 router.get('/all/firebase', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), validateMemberQuery, memberController.getAllMembersFirebase);
 
