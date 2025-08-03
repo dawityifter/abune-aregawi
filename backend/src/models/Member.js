@@ -1,54 +1,65 @@
-const { DataTypes } = require('sequelize');
-const bcrypt = require('bcryptjs');
+'use strict';
+
+const { Model, DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  const Member = sequelize.define('Member', {
-    // Primary Key
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true
-    },
+  class Member extends Model {
+    static associate(models) {
+      // Define associations here
+      Member.hasMany(models.Dependent, {
+        foreignKey: 'member_id',
+        as: 'dependents'
+      });
+      
+      Member.hasMany(models.Transaction, {
+        foreignKey: 'member_id',
+        as: 'transactions'
+      });
+      
+      Member.hasMany(models.Transaction, {
+        foreignKey: 'collected_by',
+        as: 'collected_transactions'
+      });
+      
+      // Self-referencing association for family relationships
+      Member.belongsTo(Member, {
+        foreignKey: 'family_id',
+        as: 'family_head'
+      });
+      
+      Member.hasMany(Member, {
+        foreignKey: 'family_id',
+        as: 'family_members'
+      });
+    }
+  }
 
-    // 👤 Personal Information
-    firstName: {
+  Member.init({
+    id: {
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true,
+      allowNull: false
+    },
+    firebase_uid: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      unique: true
+    },
+    first_name: {
       type: DataTypes.STRING(100),
       allowNull: false,
       validate: {
-        notEmpty: true,
-        len: [1, 100]
+        notEmpty: true
       }
     },
-    middleName: {
+    middle_name: {
       type: DataTypes.STRING(100),
       allowNull: true
     },
-    lastName: {
+    last_name: {
       type: DataTypes.STRING(100),
       allowNull: false,
-      validate: {
-        notEmpty: true,
-        len: [1, 100]
-      }
-    },
-    gender: {
-      type: DataTypes.ENUM('Male', 'Female'),
-      allowNull: false
-    },
-    dateOfBirth: {
-      type: DataTypes.DATEONLY,
-      allowNull: false
-    },
-    maritalStatus: {
-      type: DataTypes.ENUM('Single', 'Married', 'Divorced', 'Widowed'),
-      allowNull: false
-    },
-
-    // 🏡 Contact & Address
-    phoneNumber: {
-      type: DataTypes.STRING(25),
-      allowNull: false,
-      unique: true, // Enforce uniqueness
       validate: {
         notEmpty: true
       }
@@ -61,205 +72,204 @@ module.exports = (sequelize) => {
         isEmail: true
       }
     },
-    streetLine1: {
-      type: DataTypes.STRING(255),
-      allowNull: false
-    },
-    apartmentNo: {
-      type: DataTypes.STRING(50),
-      allowNull: true
-    },
-    city: {
-      type: DataTypes.STRING(100),
-      allowNull: false
-    },
-    state: {
-      type: DataTypes.STRING(100),
-      allowNull: false
-    },
-    postalCode: {
+    phone_number: {
       type: DataTypes.STRING(20),
-      allowNull: false
-    },
-    country: {
-      type: DataTypes.STRING(100),
       allowNull: false,
-      defaultValue: 'United States'
+      unique: true,
+      validate: {
+        notEmpty: true
+      }
     },
-
-    // 🧑‍🤝‍🧑 Family / Household Information
-    isHeadOfHousehold: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false
-    },
-    familyId: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      comment: 'Links family members together. Head of household has familyId = their own id'
-    },
-    spouseEmail: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-      comment: 'Email of spouse for family linking'
-    },
-    spouseName: {
-      type: DataTypes.STRING(200),
-      allowNull: true
-    },
-    emergencyContactName: {
-      type: DataTypes.STRING(200),
-      allowNull: true
-    },
-    emergencyContactPhone: {
-      type: DataTypes.STRING(25),
-      allowNull: true
-    },
-
-    // 🙏 Spiritual Information (Orthodox-specific)
-    dateJoinedParish: {
+    date_of_birth: {
       type: DataTypes.DATEONLY,
       allowNull: true
     },
-    baptismName: {
+    gender: {
+      type: DataTypes.ENUM('male', 'female', 'other'),
+      allowNull: true
+    },
+    baptism_name: {
       type: DataTypes.STRING(100),
       allowNull: true,
       comment: 'Baptism name'
     },
-    repentanceFather: {
+    repentance_father: {
       type: DataTypes.STRING(100),
       allowNull: true,
       comment: 'Name of the repentance father'
     },
-    householdSize: {
+    household_size: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 1,
       comment: 'Number of people in the household'
     },
-    interestedInServing: {
-      type: DataTypes.STRING(10),
+    address: {
+      type: DataTypes.TEXT,
       allowNull: true
     },
-    ministries: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      comment: 'JSON array of ministry participations'
+    city: {
+      type: DataTypes.STRING(100),
+      allowNull: true
     },
-    languagePreference: {
-      type: DataTypes.ENUM('English', 'Tigrigna', 'Amharic'),
-      defaultValue: 'English'
-    },
-
-    // 💰 Contribution & Giving
-    memberId: {
+    state: {
       type: DataTypes.STRING(50),
-      unique: true,
+      allowNull: true
+    },
+    zip_code: {
+      type: DataTypes.STRING(20),
+      allowNull: true
+    },
+    country: {
+      type: DataTypes.STRING(100),
       allowNull: true,
-      comment: 'Member/Envelope ID'
+      defaultValue: 'USA'
     },
-    preferredGivingMethod: {
-      type: DataTypes.ENUM('Cash', 'Online', 'Envelope', 'Check'),
-      defaultValue: 'Cash'
+    emergency_contact_name: {
+      type: DataTypes.STRING(200),
+      allowNull: true
     },
-    titheParticipation: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false
+    emergency_contact_phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true
     },
-
-    // 🌐 Account / System Access
-    firebaseUid: {
-      type: DataTypes.STRING(128),
+    emergency_contact_relationship: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    medical_conditions: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    allergies: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    medications: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    dietary_restrictions: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    occupation: {
+      type: DataTypes.STRING(200),
+      allowNull: true
+    },
+    employer: {
+      type: DataTypes.STRING(200),
+      allowNull: true
+    },
+    education_level: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    skills: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    interests: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    languages_spoken: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    date_joined_parish: {
+      type: DataTypes.DATEONLY,
+      allowNull: true
+    },
+    baptism_date: {
+      type: DataTypes.DATEONLY,
+      allowNull: true
+    },
+    confirmation_date: {
+      type: DataTypes.DATEONLY,
+      allowNull: true
+    },
+    marriage_date: {
+      type: DataTypes.DATEONLY,
+      allowNull: true
+    },
+    spouse_name: {
+      type: DataTypes.STRING(200),
+      allowNull: true
+    },
+    children_count: {
+      type: DataTypes.INTEGER,
       allowNull: true,
-      unique: true,
-      comment: 'Firebase Authentication UID'
+      defaultValue: 0
     },
-    password: {
-      type: DataTypes.STRING(255),
-      allowNull: true, // Optional since Firebase handles authentication
-      validate: {
-        len: [8, 255]
-      }
+    family_id: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: 'members',
+        key: 'id'
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL'
     },
     role: {
-      type: DataTypes.ENUM(
-        'admin',
-        'church_leadership',
-        'treasurer',
-        'secretary',
-        'member',
-        'guest'
-      ),
+      type: DataTypes.ENUM('member', 'admin', 'treasurer', 'secretary', 'priest', 'deacon'),
+      allowNull: false,
       defaultValue: 'member'
     },
-    isActive: {
+    is_active: {
       type: DataTypes.BOOLEAN,
+      allowNull: false,
       defaultValue: true
     },
-    lastLogin: {
-      type: DataTypes.DATE,
+    registration_status: {
+      type: DataTypes.ENUM('pending', 'complete', 'incomplete'),
+      allowNull: false,
+      defaultValue: 'pending'
+    },
+    notes: {
+      type: DataTypes.TEXT,
       allowNull: true
     },
-
-    // Metadata
-    createdAt: {
+    created_at: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW
     },
-    updatedAt: {
+    updated_at: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW
     }
   }, {
+    sequelize,
+    modelName: 'Member',
     tableName: 'members',
+    underscored: true,
     timestamps: true,
-    hooks: {
-      beforeCreate: async (member) => {
-        if (member.password) {
-          member.password = await bcrypt.hash(member.password, 12);
-        }
-        // Generate member ID if not provided
-        if (!member.memberId) {
-          member.memberId = `MEM${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-        }
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    indexes: [
+      {
+        fields: ['email']
       },
-      beforeUpdate: async (member) => {
-        if (member.changed('password') && member.password) {
-          member.password = await bcrypt.hash(member.password, 12);
-        }
+      {
+        fields: ['phone_number']
+      },
+      {
+        fields: ['firebase_uid']
+      },
+      {
+        fields: ['role']
+      },
+      {
+        fields: ['is_active']
+      },
+      {
+        fields: ['family_id']
       }
-    }
+    ]
   });
-
-  // Instance methods
-  Member.prototype.comparePassword = async function(candidatePassword) {
-    if (!this.password) {
-      return false; // No password stored, so no match possible
-    }
-    return await bcrypt.compare(candidatePassword, this.password);
-  };
-
-  Member.prototype.toJSON = function() {
-    const values = Object.assign({}, this.get());
-    delete values.password;
-    return values;
-  };
-
-  // Class methods
-  Member.associate = (models) => {
-    // Define associations here
-    Member.hasMany(models.Dependant, {
-      foreignKey: 'memberId',
-      as: 'dependants'
-    });
-    
-    // Contribution association will be added when Contribution model is created
-    // Member.hasMany(models.Contribution, {
-    //   foreignKey: 'memberId',
-    //   as: 'contributions'
-    // });
-  };
 
   return Member;
 }; 

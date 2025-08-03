@@ -254,7 +254,7 @@ local/
 dev/ 
 
 # Ignore Firebase service account key everywhere
-**/abune-aregawit-church-firebase-service-account.json
+**/*-firebase-service-account.json
 
 # Ignore all member full list CSVs containing PII data
 Member-full-list*.csv
