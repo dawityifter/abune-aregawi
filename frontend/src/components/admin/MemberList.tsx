@@ -53,6 +53,21 @@ const MemberList: React.FC<MemberListProps> = ({
   const fetchMembers = async (page = 1) => {
     try {
       setLoading(true);
+      
+      if (!firebaseUser) {
+        throw new Error('Firebase user not authenticated');
+      }
+
+      // Get a fresh ID token
+      const idToken = await firebaseUser.getIdToken(true);
+      
+      // Debug logging for authentication
+      console.log('🔍 MemberList Debug Info:');
+      console.log('Current User:', currentUser);
+      console.log('Firebase User UID:', firebaseUser.uid);
+      console.log('ID Token (first 20 chars):', idToken ? `${idToken.substring(0, 20)}...` : 'null');
+
+      // Build query parameters
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '10',
@@ -61,28 +76,15 @@ const MemberList: React.FC<MemberListProps> = ({
         ...(statusFilter && { isActive: statusFilter })
       });
 
-      if (!currentUser || (!currentUser.email && !currentUser.phoneNumber)) {
-        throw new Error('User not authenticated');
-      }
-
-      // Debug logging for authentication
-      console.log('🔍 MemberList Debug Info:');
-      console.log('Current User:', currentUser);
-      console.log('Firebase User:', firebaseUser);
-      console.log('Firebase User UID:', firebaseUser?.uid);
-      
-      const idToken = firebaseUser ? await firebaseUser.getIdToken() : null;
-      console.log('Firebase ID Token:', idToken ? `${idToken.substring(0, 50)}...` : 'null');
-
-      const userIdentifier = currentUser.email ? `email=${encodeURIComponent(currentUser.email)}` : `phone=${encodeURIComponent(currentUser.phoneNumber || '')}`;
-      const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/all/firebase?${params}&${userIdentifier}`;
+      const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/all/firebase?${params}`;
       console.log('API URL:', apiUrl);
       
       const response = await fetch(apiUrl, {
         headers: {
-          'Authorization': idToken ? `Bearer ${idToken}` : '',
+          'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include' // Include cookies if using sessions
       });
       
       console.log('Response Status:', response.status);
