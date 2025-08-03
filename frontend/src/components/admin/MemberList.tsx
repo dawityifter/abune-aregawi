@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
@@ -138,7 +138,7 @@ const MemberList: React.FC<MemberListProps> = ({
       }
 
       // Refresh the member list
-      fetchMembers(currentPage);
+      fetchAllMembers();
     } catch (error: any) {
       setError(error.message);
     }
