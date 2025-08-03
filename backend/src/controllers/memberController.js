@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { Member, Dependant } = require('../models');
+const { Member, Dependent } = require('../models');
 
 // Utility function to normalize phone numbers
 const normalizePhoneNumber = (phoneNumber) => {
@@ -738,16 +738,15 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     // First, let's check if there's a member with this Firebase UID
     console.log('🔍 Checking for member with Firebase UID:', uid);
     const memberByUid = await Member.findOne({
-      where: { firebaseUid: uid },
-      include: [{ model: Dependant, as: 'dependants' }]
+      where: { firebase_uid: uid }
     });
     
     if (memberByUid) {
       console.log('✅ Found member by Firebase UID:', { 
         id: memberByUid.id, 
         email: memberByUid.email, 
-        phoneNumber: memberByUid.phoneNumber,
-        firebaseUid: memberByUid.firebaseUid 
+        phoneNumber: memberByUid.phone_number,
+        firebaseUid: memberByUid.firebase_uid 
       });
       
       console.log('✅ Returning member profile by Firebase UID');
@@ -755,7 +754,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         success: true,
         data: { member: memberByUid }
       };
-      console.log('📤 Response status: 200, data:', { memberId: memberByUid.id, email: memberByUid.email, phone: memberByUid.phoneNumber });
+      console.log('📤 Response status: 200, data:', { memberId: memberByUid.id, email: memberByUid.email, phone: memberByUid.phone_number });
       return res.status(200).json(responseData);
     }
 
@@ -764,8 +763,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     if (userEmail) {
       console.log('🔍 Searching by email:', userEmail);
       member = await Member.findOne({
-        where: { email: userEmail },
-        include: [{ model: Dependant, as: 'dependants' }]
+        where: { email: userEmail }
       });
     } else if (userPhone) {
       console.log('🔍 Searching by phone:', userPhone);
@@ -792,47 +790,46 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       
       member = await Member.findOne({
         where: {
-          [Op.or]: phoneFormats.map(format => ({ phoneNumber: format }))
-        },
-        include: [{ model: Dependant, as: 'dependants' }]
+          [Op.or]: phoneFormats.map(format => ({ phone_number: format }))
+        }
       });
       
       // If not found, let's see what phone numbers exist in the database
       if (!member) {
         console.log('🔍 No member found with phone number, checking database contents...');
         const allPhones = await Member.findAll({
-          attributes: ['id', 'firstName', 'lastName', 'phoneNumber', 'firebaseUid'],
+          attributes: ['id', 'first_name', 'last_name', 'phone_number', 'firebase_uid'],
           where: {
-            phoneNumber: { [Op.not]: null }
+            phone_number: { [Op.not]: null }
           },
           limit: 10
         });
         console.log('🔍 Sample phone numbers in database:', allPhones.map(m => ({ 
           id: m.id, 
-          name: `${m.firstName} ${m.lastName}`, 
-          phone: m.phoneNumber,
-          firebaseUid: m.firebaseUid 
+          name: `${m.first_name} ${m.last_name}`, 
+          phone: m.phone_number,
+          firebaseUid: m.firebase_uid 
         })));
         
         // Also check for any members with similar phone numbers
         const similarPhones = await Member.findAll({
-          attributes: ['id', 'firstName', 'lastName', 'phoneNumber', 'firebaseUid'],
+          attributes: ['id', 'first_name', 'last_name', 'phone_number', 'firebase_uid'],
           where: {
-            phoneNumber: { [Op.like]: `%${last10Digits}%` }
+            phone_number: { [Op.like]: `%${last10Digits}%` }
           }
         });
         console.log('🔍 Members with similar phone numbers:', similarPhones.map(m => ({ 
           id: m.id, 
-          name: `${m.firstName} ${m.lastName}`, 
-          phone: m.phoneNumber,
-          firebaseUid: m.firebaseUid 
+          name: `${m.first_name} ${m.last_name}`, 
+          phone: m.phone_number,
+          firebaseUid: m.firebase_uid 
         })));
       }
     }
 
     console.log('🔍 Member search result:', member ? 'FOUND' : 'NOT FOUND');
     if (member) {
-      console.log('🔍 Found member:', { id: member.id, email: member.email, phoneNumber: member.phoneNumber, firebaseUid: member.firebaseUid });
+      console.log('🔍 Found member:', { id: member.id, email: member.email, phoneNumber: member.phone_number, firebaseUid: member.firebase_uid });
     }
 
     if (!member) {
@@ -847,10 +844,10 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     }
 
     // Update Firebase UID if not set
-    console.log('🔍 Checking Firebase UID update:', { currentUid: member.firebaseUid, newUid: uid });
-    if (!member.firebaseUid) {
+    console.log('🔍 Checking Firebase UID update:', { currentUid: member.firebase_uid, newUid: uid });
+    if (!member.firebase_uid) {
       console.log('🔍 Updating Firebase UID...');
-      await member.update({ firebaseUid: uid });
+      await member.update({ firebase_uid: uid });
       console.log('✅ Firebase UID updated');
     }
 
@@ -859,7 +856,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       success: true,
       data: { member }
     };
-    console.log('📤 Response status: 200, data:', { memberId: member.id, email: member.email, phone: member.phoneNumber });
+    console.log('📤 Response status: 200, data:', { memberId: member.id, email: member.email, phone: member.phone_number });
     res.status(200).json(responseData);
   } catch (error) {
     console.error('Get profile by Firebase UID error:', error);
