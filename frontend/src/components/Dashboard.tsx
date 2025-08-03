@@ -33,10 +33,10 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Get user's display name for the welcome message
-  const userName = user?.data?.member?.firstName || firebaseUser?.displayName || 'User';
+  const userName = user?.first_name || user?.data?.member?.firstName || firebaseUser?.displayName || 'User';
 
   // Check if user has admin permissions
-  const userRole = (user?.data?.member?.role || 'member') as UserRole;
+  const userRole = (user?.role || user?.data?.member?.role || 'member') as UserRole;
   const permissions = getRolePermissions(userRole);
   const isTempUser = user?._temp || false;
   
@@ -125,7 +125,7 @@ const Dashboard: React.FC = () => {
 
   // Removed unused handleRefreshProfile function
 
-  if (!userProfile?.data?.member) {
+  if (!userProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
