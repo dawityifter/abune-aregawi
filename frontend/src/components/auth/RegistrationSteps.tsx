@@ -822,10 +822,16 @@ interface Dependent {
   lastName: string;
   dateOfBirth: string;
   gender: 'Male' | 'Female';
+  relationship?: string;
   phone?: string;
   email?: string;
   baptismName?: string;
   isBaptized: boolean;
+  medicalConditions?: string;
+  allergies?: string;
+  medications?: string;
+  dietaryRestrictions?: string;
+  notes?: string;
 }
 
 interface DependentsStepProps {
@@ -842,10 +848,16 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
     lastName: '',
     dateOfBirth: '',
     gender: 'Male',
+    relationship: '',
     phone: '',
     email: '',
     baptismName: '',
-    isBaptized: false
+    isBaptized: false,
+    medicalConditions: '',
+    allergies: '',
+    medications: '',
+    dietaryRestrictions: '',
+    notes: ''
   });
 
   const addDependent = () => {
@@ -946,6 +958,18 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('relationship')}
+            </label>
+            <input
+              type="text"
+              value={newDependent.relationship || ''}
+              onChange={(e) => setNewDependent({...newDependent, relationship: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('phone')}
             </label>
             <input
@@ -1026,6 +1050,7 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
                     <p className="text-sm text-gray-600">
                       {t('born')}: {formatDateForDisplay(dependent.dateOfBirth)} | 
                       {t('gender')}: {dependent.gender} | 
+                      {t('relationship')}: {dependent.relationship || t('not.specified')} | 
                       {t('baptized')}: {dependent.isBaptized ? t('yes') : t('no')}
                     </p>
                     {dependent.baptismName && (

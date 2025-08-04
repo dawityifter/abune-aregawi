@@ -40,12 +40,18 @@ interface BackendDependentData {
   lastName: string;
   dateOfBirth: string;
   gender: string;
+  relationship?: string;
   phone?: string;
   email?: string;
   baptismName?: string;
   isBaptized: boolean;
   baptismDate?: string;
   nameDay?: string;
+  medicalConditions?: string;
+  allergies?: string;
+  medications?: string;
+  dietaryRestrictions?: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -880,11 +886,17 @@ const Profile: React.FC = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('date.of.birth')}</label>
                                 <p className="text-gray-900">{formatDateForDisplay(dependent.dateOfBirth)}</p>
                               </div>
+                                                          <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('gender')}</label>
+                              <p className="text-gray-900">{dependent.gender}</p>
+                            </div>
+                            {dependent.relationship && (
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('gender')}</label>
-                                <p className="text-gray-900">{dependent.gender}</p>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('relationship')}</label>
+                                <p className="text-gray-900">{dependent.relationship}</p>
                               </div>
-                              {dependent.phone && (
+                            )}
+                            {dependent.phone && (
                                 <div>
                                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')}</label>
                                   <p className="text-gray-900">{dependent.phone}</p>

@@ -20,10 +20,16 @@ interface Dependent {
   lastName: string;
   dateOfBirth: string;
   gender: 'Male' | 'Female';
+  relationship?: string;
   phone?: string;
   email?: string;
   baptismName?: string;
   isBaptized: boolean;
+  medicalConditions?: string;
+  allergies?: string;
+  medications?: string;
+  dietaryRestrictions?: string;
+  notes?: string;
 }
 
 const MemberRegistration: React.FC = () => {

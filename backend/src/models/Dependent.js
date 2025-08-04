@@ -3,12 +3,12 @@ const { DataTypes } = require('sequelize');
 module.exports = (sequelize) => {
   const Dependent = sequelize.define('Dependent', {
     id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true
+      type: DataTypes.BIGINT,
+      primaryKey: true,
+      autoIncrement: true
     },
     memberId: {
-      type: DataTypes.UUID,
+      type: DataTypes.BIGINT,
       allowNull: false,
       references: {
         model: 'members',
@@ -29,11 +29,15 @@ module.exports = (sequelize) => {
     },
     dateOfBirth: {
       type: DataTypes.DATEONLY,
-      allowNull: false
+      allowNull: true
     },
     gender: {
-      type: DataTypes.ENUM('Male', 'Female'),
-      allowNull: false
+      type: DataTypes.STRING(10),
+      allowNull: true
+    },
+    relationship: {
+      type: DataTypes.STRING(50),
+      allowNull: true
     },
     phone: {
       type: DataTypes.STRING(20),
@@ -62,6 +66,26 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: true
     },
+    medicalConditions: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    allergies: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    medications: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    dietaryRestrictions: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    notes: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -74,7 +98,8 @@ module.exports = (sequelize) => {
     }
   }, {
     tableName: 'dependents',
-    timestamps: true
+    timestamps: true,
+    underscored: true
   });
 
   Dependent.associate = (models) => {
