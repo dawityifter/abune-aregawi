@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatPhoneNumber, normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
 import { formatDateForDisplay } from '../../utils/dateUtils';
+import { Dependent, getRelationshipOptions } from '../../utils/relationshipTypes';
 
 // Step 1: Personal Information
 const PersonalInfoStep: React.FC<{
@@ -816,25 +817,7 @@ const AccountStep: React.FC<{
   </div>
 );
 
-interface Dependent {
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  dateOfBirth: string;
-  gender: 'Male' | 'Female';
-  relationship?: string;
-  phone?: string;
-  email?: string;
-  baptismName?: string;
-  isBaptized: boolean;
-  baptismDate?: string;
-  nameDay?: string;
-  medicalConditions?: string;
-  allergies?: string;
-  medications?: string;
-  dietaryRestrictions?: string;
-  notes?: string;
-}
+
 
 interface DependentsStepProps {
   dependents: Dependent[];
@@ -964,12 +947,18 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('relationship')}
             </label>
-            <input
-              type="text"
+            <select
               value={newDependent.relationship || ''}
               onChange={(e) => setNewDependent({...newDependent, relationship: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            >
+              <option value="">Select Relationship</option>
+              {getRelationshipOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

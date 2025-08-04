@@ -2,27 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { formatPhoneNumber } from '../utils/formatPhoneNumber';
 import { formatDateForDisplay } from '../utils/dateUtils';
+import { Dependent, getRelationshipOptions } from '../utils/relationshipTypes';
 
-interface Dependent {
-  id?: string;
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  dateOfBirth: string;
-  gender: 'Male' | 'Female';
-  relationship?: string;
-  phone?: string;
-  email?: string;
-  baptismName?: string;
-  isBaptized: boolean;
-  baptismDate?: string;
-  nameDay?: string;
-  medicalConditions?: string;
-  allergies?: string;
-  medications?: string;
-  dietaryRestrictions?: string;
-  notes?: string;
-}
+
 
 const DependentsManagement: React.FC = () => {
   const { currentUser } = useAuth();
@@ -308,12 +290,18 @@ const DependentsManagement: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Relationship
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.relationship || ''}
                   onChange={(e) => setFormData({...formData, relationship: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                >
+                  <option value="">Select Relationship</option>
+                  {getRelationshipOptions().map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

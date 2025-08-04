@@ -1,5 +1,15 @@
 const { DataTypes } = require('sequelize');
 
+// Define allowed relationship values
+const RELATIONSHIP_VALUES = {
+  SON: 'Son',
+  DAUGHTER: 'Daughter', 
+  SPOUSE: 'Spouse',
+  PARENT: 'Parent',
+  SIBLING: 'Sibling',
+  OTHER: 'Other'
+};
+
 module.exports = (sequelize) => {
   const Dependent = sequelize.define('Dependent', {
     id: {
@@ -36,8 +46,14 @@ module.exports = (sequelize) => {
       allowNull: true
     },
     relationship: {
-      type: DataTypes.STRING(50),
-      allowNull: true
+      type: DataTypes.ENUM(Object.values(RELATIONSHIP_VALUES)),
+      allowNull: true,
+      validate: {
+        isIn: {
+          args: [Object.values(RELATIONSHIP_VALUES)],
+          msg: 'Relationship must be one of: Son, Daughter, Spouse, Parent, Sibling, Other'
+        }
+      }
     },
     phone: {
       type: DataTypes.STRING(20),
@@ -108,6 +124,9 @@ module.exports = (sequelize) => {
       as: 'member'
     });
   };
+
+  // Export the relationship values for use in other parts of the application
+  Dependent.RELATIONSHIP_VALUES = RELATIONSHIP_VALUES;
 
   return Dependent;
 }; 

@@ -6,7 +6,9 @@ const {
   validateLogin, 
   validateProfileUpdate,
   validateMemberId,
-  validateMemberQuery
+  validateMemberQuery,
+  validateDependentId,
+  validateDependentData
 } = require('../middleware/validation');
 const { authMiddleware, firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
@@ -65,10 +67,10 @@ router.get('/test-auth', firebaseAuthMiddleware, (req, res) => {
 router.get('/all/firebase', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), validateMemberQuery, memberController.getAllMembersFirebase);
 
 // Dependents management routes (no JWT required - using member ID)
-router.get('/:memberId/dependents', memberController.getMemberDependents);
-router.post('/:memberId/dependents', memberController.addDependent);
-router.put('/dependents/:dependentId', memberController.updateDependent);
-router.delete('/dependents/:dependentId', memberController.deleteDependent);
+router.get('/:memberId/dependents', validateMemberId, memberController.getMemberDependents);
+router.post('/:memberId/dependents', validateMemberId, validateDependentData, memberController.addDependent);
+router.put('/dependents/:dependentId', validateDependentId, validateDependentData, memberController.updateDependent);
+router.delete('/dependents/:dependentId', validateDependentId, memberController.deleteDependent);
 
 // JWT-protected profile routes (for testing and JWT-based auth)
 router.get('/profile/jwt', authMiddleware, memberController.getProfile);
