@@ -45,7 +45,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
       if (response.ok) {
         const data = await response.json();
         console.log('🔍 Fetched members:', data.data);
-        setMembers(data.data || []);
+        setMembers(data.data?.members || []);
       }
     } catch (error) {
       console.error('Error fetching members:', error);
