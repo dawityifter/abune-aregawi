@@ -278,10 +278,6 @@ const MemberRegistration: React.FC = () => {
 
   const nextStep = () => {
     if (validateStep(currentStep)) {
-      const isPhoneSignIn = phone && !email;
-      const baseTotalSteps = isPhoneSignIn ? 6 : 7;
-      const maxStep = formData.hasDependents ? baseTotalSteps : baseTotalSteps - 1;
-      
       let nextStepNumber = currentStep + 1;
       
       // Skip dependants step (4) if user doesn't have dependents
@@ -289,7 +285,7 @@ const MemberRegistration: React.FC = () => {
         nextStepNumber = 5;
       }
       
-      if (nextStepNumber > maxStep) {
+      if (nextStepNumber > totalSteps) {
         // We've reached the end, submit the form
         handleSubmit();
       } else {
@@ -655,7 +651,7 @@ const MemberRegistration: React.FC = () => {
             )}
             <button
               type="button"
-              onClick={handleNextStep}
+              onClick={nextStep}
               className={`w-full sm:w-auto px-6 py-2.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
                 isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
               }`}
