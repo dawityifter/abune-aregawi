@@ -3,10 +3,10 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface Member {
   id: string;
-  first_name: string;
-  last_name: string;
-  member_id: string;
-  phone_number: string;
+  firstName: string;
+  lastName: string;
+  memberId?: string; // Optional since backend might not return this
+  phoneNumber: string;
   email: string;
 }
 
@@ -16,7 +16,9 @@ interface AddPaymentModalProps {
   paymentView: 'old' | 'new';
 }
 
-const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdded, paymentView }) => {
+  const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdded, paymentView }) => {
+    console.log('🔍 Current user data:', user);
+    console.log('🔍 User member data:', user?.data?.member);
   const { user, firebaseUser } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState('');
@@ -45,6 +47,8 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
       if (response.ok) {
         const data = await response.json();
         console.log('🔍 Fetched members:', data.data);
+        console.log('🔍 Members array:', data.data?.members);
+        console.log('🔍 First member sample:', data.data?.members?.[0]);
         setMembers(data.data?.members || []);
       }
     } catch (error) {
@@ -194,7 +198,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
                 <option value="">Select a member</option>
                 {members.map((member) => (
                   <option key={member.id} value={member.id}>
-                    {member.first_name} {member.last_name} ({member.member_id})
+                    {member.firstName} {member.lastName} ({member.id})
                   </option>
                 ))}
               </select>
@@ -314,9 +318,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
                   </label>
                   <input
                     type="text"
-                    value={user?.data?.member?.first_name && user?.data?.member?.last_name 
-                      ? `${user.data.member.first_name} ${user.data.member.last_name} (${user.data.member.id})`
-                      : 'Loading...'
+                    value={user?.data?.member?.firstName && user?.data?.member?.lastName 
+                      ? `${user.data.member.firstName} ${user.data.member.lastName} (${user.data.member.id})`
+                      : user?.data?.member?.firstName 
+                        ? `${user.data.member.firstName} (${user.data.member.id})`
+                        : 'Loading...'
                     }
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed"
