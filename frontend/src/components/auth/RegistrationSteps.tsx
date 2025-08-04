@@ -816,7 +816,7 @@ const AccountStep: React.FC<{
   </div>
 );
 
-interface Dependant {
+interface Dependent {
   firstName: string;
   middleName?: string;
   lastName: string;
@@ -828,15 +828,15 @@ interface Dependant {
   isBaptized: boolean;
 }
 
-interface DependantsStepProps {
-  dependants: Dependant[];
-  onDependantsChange: (dependants: Dependant[]) => void;
+interface DependentsStepProps {
+  dependents: Dependent[];
+  onDependentsChange: (dependents: Dependent[]) => void;
   errors?: any;
   t: any;
 }
 
-const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependantsChange, errors, t }) => {
-  const [newDependant, setNewDependant] = useState<Dependant>({
+const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependentsChange, errors, t }) => {
+  const [newDependent, setNewDependent] = useState<Dependent>({
     firstName: '',
     middleName: '',
     lastName: '',
@@ -848,10 +848,10 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
     isBaptized: false
   });
 
-  const addDependant = () => {
-    if (newDependant.firstName && newDependant.lastName && newDependant.dateOfBirth) {
-      onDependantsChange([...dependants, newDependant]);
-      setNewDependant({
+  const addDependent = () => {
+    if (newDependent.firstName && newDependent.lastName && newDependent.dateOfBirth) {
+      onDependentsChange([...dependents, newDependent]);
+      setNewDependent({
         firstName: '',
         middleName: '',
         lastName: '',
@@ -865,22 +865,22 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
     }
   };
 
-  const removeDependant = (index: number) => {
-    onDependantsChange(dependants.filter((_, i) => i !== index));
+  const removeDependent = (index: number) => {
+    onDependentsChange(dependents.filter((_, i) => i !== index));
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">{t('dependants')}</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">{t('dependents')}</h3>
         <p className="text-sm text-gray-600 mb-6">
-          {t('dependants.help')}
+          {t('dependents.help')}
         </p>
       </div>
 
       {/* Add New Dependant Form */}
       <div className="bg-gray-50 p-4 rounded-lg">
-        <h4 className="text-md font-medium text-gray-900 mb-4">{t('add.new.dependant')}</h4>
+        <h4 className="text-md font-medium text-gray-900 mb-4">{t('add.new.dependent')}</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -888,8 +888,8 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
             </label>
             <input
               type="text"
-              value={newDependant.firstName}
-              onChange={(e) => setNewDependant({...newDependant, firstName: e.target.value})}
+              value={newDependent.firstName}
+              onChange={(e) => setNewDependent({...newDependent, firstName: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -900,8 +900,8 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
             </label>
             <input
               type="text"
-              value={newDependant.middleName || ''}
-              onChange={(e) => setNewDependant({...newDependant, middleName: e.target.value})}
+              value={newDependent.middleName || ''}
+              onChange={(e) => setNewDependent({...newDependent, middleName: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -912,8 +912,8 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
             </label>
             <input
               type="text"
-              value={newDependant.lastName}
-              onChange={(e) => setNewDependant({...newDependant, lastName: e.target.value})}
+              value={newDependent.lastName}
+              onChange={(e) => setNewDependent({...newDependent, lastName: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -924,8 +924,8 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
             </label>
             <input
               type="date"
-              value={newDependant.dateOfBirth}
-              onChange={(e) => setNewDependant({...newDependant, dateOfBirth: e.target.value})}
+              value={newDependent.dateOfBirth}
+              onChange={(e) => setNewDependent({...newDependent, dateOfBirth: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -935,8 +935,8 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
               {t('gender')} *
             </label>
             <select
-              value={newDependant.gender}
-              onChange={(e) => setNewDependant({...newDependant, gender: e.target.value as 'Male' | 'Female'})}
+              value={newDependent.gender}
+              onChange={(e) => setNewDependent({...newDependent, gender: e.target.value as 'Male' | 'Female'})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="Male">{t('male')}</option>
@@ -950,10 +950,10 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
             </label>
             <input
               type="tel"
-              value={newDependant.phone || ''}
+              value={newDependent.phone || ''}
               onChange={(e) => {
                 const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                setNewDependant({...newDependant, phone: formatPhoneNumber(digits)});
+                setNewDependent({...newDependent, phone: formatPhoneNumber(digits)});
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="(555) 123-4567"
@@ -967,8 +967,8 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
             </label>
             <input
               type="email"
-              value={newDependant.email || ''}
-              onChange={(e) => setNewDependant({...newDependant, email: e.target.value})}
+              value={newDependent.email || ''}
+              onChange={(e) => setNewDependent({...newDependent, email: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -979,8 +979,8 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
             </label>
             <input
               type="text"
-              value={newDependant.baptismName || ''}
-              onChange={(e) => setNewDependant({...newDependant, baptismName: e.target.value})}
+              value={newDependent.baptismName || ''}
+              onChange={(e) => setNewDependent({...newDependent, baptismName: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -989,8 +989,8 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
             <input
               type="checkbox"
               id="isBaptized"
-              checked={newDependant.isBaptized}
-              onChange={(e) => setNewDependant({...newDependant, isBaptized: e.target.checked})}
+                              checked={newDependent.isBaptized}
+                onChange={(e) => setNewDependent({...newDependent, isBaptized: e.target.checked})}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <label htmlFor="isBaptized" className="ml-2 block text-sm text-gray-900">
@@ -1002,41 +1002,41 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
         <div className="mt-4">
           <button
             type="button"
-            onClick={addDependant}
-            disabled={!newDependant.firstName || !newDependant.lastName || !newDependant.dateOfBirth}
+                          onClick={addDependent}
+                          disabled={!newDependent.firstName || !newDependent.lastName || !newDependent.dateOfBirth}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {t('add.dependant')}
+            {t('add.dependent')}
           </button>
         </div>
       </div>
 
-      {/* Existing Dependants List */}
-      {dependants.length > 0 && (
+      {/* Existing Dependents List */}
+      {dependents.length > 0 && (
         <div>
-          <h4 className="text-md font-medium text-gray-900 mb-4">{t('added.dependants')}</h4>
+          <h4 className="text-md font-medium text-gray-900 mb-4">{t('added.dependents')}</h4>
           <div className="space-y-3">
-            {dependants.map((dependant, index) => (
+            {dependents.map((dependent, index) => (
               <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h5 className="font-medium text-gray-900">
-                      {dependant.firstName} {dependant.middleName} {dependant.lastName}
+                      {dependent.firstName} {dependent.middleName} {dependent.lastName}
                     </h5>
                     <p className="text-sm text-gray-600">
-                      {t('born')}: {formatDateForDisplay(dependant.dateOfBirth)} | 
-                      {t('gender')}: {dependant.gender} | 
-                      {t('baptized')}: {dependant.isBaptized ? t('yes') : t('no')}
+                      {t('born')}: {formatDateForDisplay(dependent.dateOfBirth)} | 
+                      {t('gender')}: {dependent.gender} | 
+                      {t('baptized')}: {dependent.isBaptized ? t('yes') : t('no')}
                     </p>
-                    {dependant.baptismName && (
+                    {dependent.baptismName && (
                       <p className="text-sm text-gray-600">
-                        {t('baptism.name')}: {dependant.baptismName}
+                        {t('baptism.name')}: {dependent.baptismName}
                       </p>
                     )}
                   </div>
                   <button
                     type="button"
-                    onClick={() => removeDependant(index)}
+                    onClick={() => removeDependent(index)}
                     className="text-red-600 hover:text-red-800 ml-2"
                   >
                     {t('remove')}
@@ -1048,12 +1048,12 @@ const DependantsStep: React.FC<DependantsStepProps> = ({ dependants, onDependant
         </div>
       )}
 
-      {dependants.length === 0 && (
+            {dependents.length === 0 && (
         <div className="text-center py-8 text-gray-500">
-          <p>{t('no.dependants.added')}</p>
-          <p className="text-sm mt-2">{t('add.dependants.now')}</p>
+          <p>{t('no.dependents.added')}</p>
+          <p className="text-sm mt-2">{t('add.dependents.now')}</p>
         </div>
-             )}
+      )}
      </div>
    );
  };
@@ -1062,7 +1062,7 @@ export {
   PersonalInfoStep,
   ContactAddressStep,
   FamilyInfoStep,
-  DependantsStep,
+  DependentsStep,
   SpiritualInfoStep,
   ContributionStep,
   AccountStep

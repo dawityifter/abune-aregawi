@@ -8,13 +8,13 @@ import {
   PersonalInfoStep,
   ContactAddressStep,
   FamilyInfoStep,
-  DependantsStep,
+  DependentsStep,
   SpiritualInfoStep,
   ContributionStep,
   AccountStep
 } from './RegistrationSteps';
 
-interface Dependant {
+interface Dependent {
   firstName: string;
   middleName?: string;
   lastName: string;
@@ -44,7 +44,7 @@ const MemberRegistration: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [dependants, setDependants] = useState<Dependant[]>([]);
+  const [dependents, setDependents] = useState<Dependent[]>([]);
   
   const [formData, setFormData] = useState({
     // Personal Information
@@ -196,20 +196,20 @@ const MemberRegistration: React.FC = () => {
     
     // Handle hasDependents change - adjust current step if needed
     if (field === 'hasDependents') {
-      // If user unchecks hasDependents and is currently on or past the dependants step
-      if (!value && currentStep >= 4) {
-        // If currently on dependants step (4), move to next step (spiritual info)
-        if (currentStep === 4) {
-          setCurrentStep(4); // This will now show spiritual info due to getStepContent logic
-        }
-        // Clear any dependants data since they won't be submitted
-        setDependants([]);
+          // If user unchecks hasDependents and is currently on or past the dependents step
+    if (!value && currentStep >= 4) {
+      // If currently on dependents step (4), move to next step (spiritual info)
+      if (currentStep === 4) {
+        setCurrentStep(4); // This will now show spiritual info due to getStepContent logic
       }
-      // If user checks hasDependents and is currently past where dependants step should be
-      else if (value && currentStep >= 4) {
-        // Adjust current step to account for the newly included dependants step
-        // No automatic navigation needed - user can navigate manually
-      }
+      // Clear any dependents data since they won't be submitted
+      setDependents([]);
+    }
+    // If user checks hasDependents and is currently past where dependents step should be
+    else if (value && currentStep >= 4) {
+      // Adjust current step to account for the newly included dependents step
+      // No automatic navigation needed - user can navigate manually
+    }
     }
     
     // Clear error for this field
@@ -281,7 +281,7 @@ const MemberRegistration: React.FC = () => {
     if (validateStep(currentStep)) {
       let nextStepNumber = currentStep + 1;
       
-      // Skip dependants step (4) if user doesn't have dependents
+      // Skip dependents step (4) if user doesn't have dependents
       if (!formData.hasDependents && nextStepNumber === 4) {
         nextStepNumber = 5;
       }
@@ -298,7 +298,7 @@ const MemberRegistration: React.FC = () => {
   const prevStep = () => {
     let prevStepNumber = currentStep - 1;
     
-    // Skip dependants step (4) if user doesn't have dependents when going backwards
+    // Skip dependents step (4) if user doesn't have dependents when going backwards
     if (!formData.hasDependents && prevStepNumber === 4) {
       prevStepNumber = 3;
     }
@@ -316,10 +316,10 @@ const MemberRegistration: React.FC = () => {
       const normalizedSpousePhone = formData.spousePhone ? normalizePhoneNumber(formData.spousePhone) : '';
       const normalizedEmergencyPhone = formData.emergencyContactPhone ? normalizePhoneNumber(formData.emergencyContactPhone) : '';
       
-      // Normalize dependant phone numbers
-      const normalizedDependants = dependants.map(dependant => ({
-        ...dependant,
-        phone: dependant.phone ? normalizePhoneNumber(dependant.phone) : ''
+      // Normalize dependent phone numbers
+      const normalizedDependents = dependents.map(dependent => ({
+        ...dependent,
+        phone: dependent.phone ? normalizePhoneNumber(dependent.phone) : ''
       }));
       
       // Prepare registration data with proper validation and normalized phone numbers
@@ -329,7 +329,7 @@ const MemberRegistration: React.FC = () => {
         phoneNumber: normalizedPhoneNumber,
         spousePhone: normalizedSpousePhone,
         emergencyContactPhone: normalizedEmergencyPhone,
-        dependants: normalizedDependants,
+        dependents: normalizedDependents,
 
         // For phone sign-in users, loginEmail should be optional
         loginEmail: email || formData.email || undefined,
@@ -406,9 +406,9 @@ const MemberRegistration: React.FC = () => {
         );
       case 4:
         return (
-          <DependantsStep
-            dependants={dependants}
-            onDependantsChange={setDependants}
+                  <DependentsStep
+          dependents={dependents}
+          onDependentsChange={setDependents}
             errors={errors}
             t={t}
           />

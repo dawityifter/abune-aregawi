@@ -42,8 +42,8 @@ export interface RegistrationData {
   password?: string;
   role?: string;
   
-  // Dependants
-  dependants?: any[];
+  // Dependents
+  dependents?: any[];
 }
 
 export interface RegistrationResult {

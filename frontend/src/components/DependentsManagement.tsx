@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatPhoneNumber } from '../utils/formatPhoneNumber';
 import { formatDateForDisplay } from '../utils/dateUtils';
 
-interface Dependant {
+interface Dependent {
   id?: string;
   firstName: string;
   middleName?: string;
@@ -16,13 +16,13 @@ interface Dependant {
   isBaptized: boolean;
 }
 
-const DependantsManagement: React.FC = () => {
+const DependentsManagement: React.FC = () => {
   const { currentUser } = useAuth();
-  const [dependants, setDependants] = useState<Dependant[]>([]);
+  const [dependents, setDependents] = useState<Dependent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
-  const [editingDependant, setEditingDependant] = useState<Dependant | null>(null);
-  const [formData, setFormData] = useState<Dependant>({
+  const [editingDependent, setEditingDependent] = useState<Dependent | null>(null);
+  const [formData, setFormData] = useState<Dependent>({
     firstName: '',
     middleName: '',
     lastName: '',
@@ -34,7 +34,7 @@ const DependantsManagement: React.FC = () => {
     isBaptized: false
   });
 
-  const fetchDependants = useCallback(async () => {
+  const fetchDependents = useCallback(async () => {
     try {
       // First get the member profile to get the member ID
       // Build query parameters based on available user data
@@ -56,20 +56,20 @@ const DependantsManagement: React.FC = () => {
         const profileData = await profileResponse.json();
         const memberId = profileData.data.member.id;
         
-        // Now fetch dependants using the member ID
-        const dependantsResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}/dependants`, {
+        // Now fetch dependents using the member ID
+        const dependentsResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}/dependents`, {
           headers: {
             'Content-Type': 'application/json'
           }
         });
         
-        if (dependantsResponse.ok) {
-          const data = await dependantsResponse.json();
-          setDependants(data.data.dependants || []);
+        if (dependentsResponse.ok) {
+          const data = await dependentsResponse.json();
+          setDependents(data.data.dependents || []);
         }
       }
     } catch (error) {
-      console.error('Error fetching dependants:', error);
+      console.error('Error fetching dependents:', error);
     } finally {
       setIsLoading(false);
     }
@@ -77,9 +77,9 @@ const DependantsManagement: React.FC = () => {
 
   useEffect(() => {
     if (currentUser) {
-      fetchDependants();
+      fetchDependents();
     }
-  }, [currentUser, fetchDependants]);
+  }, [currentUser, fetchDependents]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,11 +108,11 @@ const DependantsManagement: React.FC = () => {
       const profileData = await profileResponse.json();
       const memberId = profileData.data.member.id;
       
-      const url = editingDependant 
-        ? `${process.env.REACT_APP_API_URL}/api/members/dependants/${editingDependant.id}`
-        : `${process.env.REACT_APP_API_URL}/api/members/${memberId}/dependants`;
+      const url = editingDependent 
+        ? `${process.env.REACT_APP_API_URL}/api/members/dependents/${editingDependent.id}`
+        : `${process.env.REACT_APP_API_URL}/api/members/${memberId}/dependents`;
       
-      const method = editingDependant ? 'PUT' : 'POST';
+      const method = editingDependent ? 'PUT' : 'POST';
       
       const response = await fetch(url, {
         method,
@@ -123,25 +123,25 @@ const DependantsManagement: React.FC = () => {
       });
 
       if (response.ok) {
-        await fetchDependants();
+        await fetchDependents();
         resetForm();
         setIsAdding(false);
-        setEditingDependant(null);
+        setEditingDependent(null);
       } else {
         const error = await response.json();
         alert(`Error: ${error.message}`);
       }
     } catch (error) {
-      console.error('Error saving dependant:', error);
-      alert('Error saving dependant information');
+      console.error('Error saving dependent:', error);
+      alert('Error saving dependent information');
     }
   };
 
-  const handleDelete = async (dependantId: string) => {
-    if (!window.confirm('Are you sure you want to delete this dependant?')) return;
+  const handleDelete = async (dependentId: string) => {
+    if (!window.confirm('Are you sure you want to delete this dependent?')) return;
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/dependants/${dependantId}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/dependents/${dependentId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
@@ -149,20 +149,20 @@ const DependantsManagement: React.FC = () => {
       });
 
       if (response.ok) {
-        await fetchDependants();
+        await fetchDependents();
       } else {
         const error = await response.json();
         alert(`Error: ${error.message}`);
       }
     } catch (error) {
-      console.error('Error deleting dependant:', error);
-      alert('Error deleting dependant');
+      console.error('Error deleting dependent:', error);
+      alert('Error deleting dependent');
     }
   };
 
-  const handleEdit = (dependant: Dependant) => {
-    setEditingDependant(dependant);
-    setFormData(dependant);
+  const handleEdit = (dependent: Dependent) => {
+    setEditingDependent(dependent);
+    setFormData(dependent);
     setIsAdding(true);
   };
 
@@ -182,25 +182,25 @@ const DependantsManagement: React.FC = () => {
 
   const cancelEdit = () => {
     setIsAdding(false);
-    setEditingDependant(null);
+    setEditingDependent(null);
     resetForm();
   };
 
   if (isLoading) {
-    return <div className="text-center py-8">Loading dependants...</div>;
+    return <div className="text-center py-8">Loading dependents...</div>;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
       <div className="max-w-4xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Dependants & Dependents</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Spouse & Dependents</h2>
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
           >
-            Add Dependant
+            Add Dependent
           </button>
         )}
       </div>
@@ -209,7 +209,7 @@ const DependantsManagement: React.FC = () => {
       {isAdding && (
         <div className="bg-white p-6 rounded-lg shadow-md mb-6">
           <h3 className="text-lg font-semibold mb-4">
-            {editingDependant ? 'Edit Dependant' : 'Add New Dependant'}
+            {editingDependent ? 'Edit Dependent' : 'Add New Dependent'}
           </h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -344,19 +344,19 @@ const DependantsManagement: React.FC = () => {
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
-                {editingDependant ? 'Update Dependant' : 'Add Dependant'}
+                {editingDependent ? 'Update Dependent' : 'Add Dependent'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Dependants List */}
+      {/* Dependents List */}
       <div className="bg-white rounded-lg shadow-md">
-        {dependants.length === 0 ? (
+        {dependents.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            <p>No dependants added yet.</p>
-            <p className="text-sm mt-2">Click "Add Dependant" to get started.</p>
+            <p>No dependents added yet.</p>
+            <p className="text-sm mt-2">Click "Add Dependent" to get started.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -384,43 +384,43 @@ const DependantsManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {dependants.map((dependant) => (
-                  <tr key={dependant.id} className="hover:bg-gray-50">
+                {dependents.map((dependent) => (
+                  <tr key={dependent.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {dependant.firstName} {dependant.middleName} {dependant.lastName}
+                        {dependent.firstName} {dependent.middleName} {dependent.lastName}
                       </div>
-                      {dependant.email && (
-                        <div className="text-sm text-gray-500">{dependant.email}</div>
+                      {dependent.email && (
+                        <div className="text-sm text-gray-500">{dependent.email}</div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDateForDisplay(dependant.dateOfBirth)}
+                      {formatDateForDisplay(dependent.dateOfBirth)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {dependant.gender}
+                      {dependent.gender}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {dependant.baptismName || '-'}
+                      {dependent.baptismName || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        dependant.isBaptized 
+                        dependent.isBaptized 
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {dependant.isBaptized ? 'Yes' : 'No'}
+                        {dependent.isBaptized ? 'Yes' : 'No'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => handleEdit(dependant)}
+                        onClick={() => handleEdit(dependent)}
                         className="text-blue-600 hover:text-blue-900 mr-3"
                       >
                         Edit
                       </button>
                       <button
-                        onClick={() => dependant.id && handleDelete(dependant.id)}
+                        onClick={() => dependent.id && handleDelete(dependent.id)}
                         className="text-red-600 hover:text-red-900"
                       >
                         Delete
@@ -438,4 +438,4 @@ const DependantsManagement: React.FC = () => {
   );
 };
 
-export default DependantsManagement; 
+export default DependentsManagement; 
