@@ -40,7 +40,11 @@ interface ReportData {
   };
 }
 
-const PaymentReports: React.FC = () => {
+interface PaymentReportsProps {
+  paymentView: 'old' | 'new';
+}
+
+const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
   const { currentUser, firebaseUser } = useAuth();
   const [reportType, setReportType] = useState<'summary' | 'behind_payments' | 'monthly_breakdown'>('summary');
   const [reportData, setReportData] = useState<ReportData | null>(null);
@@ -48,12 +52,14 @@ const PaymentReports: React.FC = () => {
 
   useEffect(() => {
     fetchReport();
-  }, [reportType]);
+  }, [reportType, paymentView]);
 
   const fetchReport = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/reports/${reportType}?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      // Use different endpoints based on the selected view
+      const baseEndpoint = paymentView === 'new' ? '/api/transactions' : '/api/payments';
+      const response = await fetch(`${process.env.REACT_APP_API_URL}${baseEndpoint}/reports/${reportType}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
