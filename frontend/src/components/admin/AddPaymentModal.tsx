@@ -16,10 +16,10 @@ interface AddPaymentModalProps {
   paymentView: 'old' | 'new';
 }
 
-  const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdded, paymentView }) => {
+    const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdded, paymentView }) => {
+    const { user, firebaseUser } = useAuth();
     console.log('🔍 Current user data:', user);
     console.log('🔍 User member data:', user?.data?.member);
-  const { user, firebaseUser } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [month, setMonth] = useState('');
