@@ -67,6 +67,8 @@ const Navigation: React.FC = () => {
           }
           
           const profile = await getUserProfile(uid, email, phone);
+          console.log('🔍 Navigation - userProfile:', profile);
+          console.log('🔍 Navigation - userRole from profile:', profile?.data?.member?.role || profile?.role);
           setUserProfile(profile);
         } catch (error) {
           console.error('Error fetching user profile:', error);
@@ -78,7 +80,7 @@ const Navigation: React.FC = () => {
     fetchUserProfile();
   }, [currentUser, getUserProfile]);
 
-  const userRole = userProfile?.role || 'member';
+  const userRole = userProfile?.data?.member?.role || userProfile?.role || 'member';
   const permissions = getRolePermissions(userRole);
 
   // Show navigation on all pages including home page
@@ -174,7 +176,7 @@ const Navigation: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <div className="hidden lg:flex flex-col items-end">
                   <span className="text-sm font-medium text-white">
-                    {userProfile?.data?.member?.firstName || currentUser.displayName?.split(' ')[0] || currentUser.email?.split('@')[0]}
+                    {userProfile?.data?.member?.firstName || userProfile?.firstName || currentUser.displayName?.split(' ')[0] || currentUser.email?.split('@')[0]}
                   </span>
                   <span className="text-xs text-white/70">
                     {userRole.charAt(0).toUpperCase() + userRole.slice(1)}

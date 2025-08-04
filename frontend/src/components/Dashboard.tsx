@@ -36,7 +36,7 @@ const Dashboard: React.FC = () => {
   const userName = user?.first_name || user?.data?.member?.firstName || firebaseUser?.displayName || 'User';
 
   // Check if user has admin permissions
-  const userRole = (user?.role || user?.data?.member?.role || 'member') as UserRole;
+  const userRole = (user?.data?.member?.role || user?.role || 'member') as UserRole;
   const permissions = getRolePermissions(userRole);
   const isTempUser = user?._temp || false;
   
