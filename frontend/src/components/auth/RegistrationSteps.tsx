@@ -823,6 +823,12 @@ interface Dependent {
   dateOfBirth: string;
   gender: 'Male' | 'Female';
   relationship?: string;
+  phone?: string;
+  email?: string;
+  baptismName?: string;
+  isBaptized: boolean;
+  baptismDate?: string;
+  nameDay?: string;
   medicalConditions?: string;
   allergies?: string;
   medications?: string;
@@ -845,6 +851,12 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
     dateOfBirth: '',
     gender: 'Male',
     relationship: '',
+    phone: '',
+    email: '',
+    baptismName: '',
+    isBaptized: false,
+    baptismDate: '',
+    nameDay: '',
     medicalConditions: '',
     allergies: '',
     medications: '',
@@ -960,6 +972,84 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('phone')}
+            </label>
+            <input
+              type="tel"
+              value={newDependent.phone || ''}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                setNewDependent({...newDependent, phone: formatPhoneNumber(digits)});
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="(555) 123-4567"
+              maxLength={14}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('email')}
+            </label>
+            <input
+              type="email"
+              value={newDependent.email || ''}
+              onChange={(e) => setNewDependent({...newDependent, email: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('baptism.name')}
+            </label>
+            <input
+              type="text"
+              value={newDependent.baptismName || ''}
+              onChange={(e) => setNewDependent({...newDependent, baptismName: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('baptism.date')}
+            </label>
+            <input
+              type="date"
+              value={newDependent.baptismDate || ''}
+              onChange={(e) => setNewDependent({...newDependent, baptismDate: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('name.day')}
+            </label>
+            <input
+              type="text"
+              value={newDependent.nameDay || ''}
+              onChange={(e) => setNewDependent({...newDependent, nameDay: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isBaptized"
+              checked={newDependent.isBaptized}
+              onChange={(e) => setNewDependent({...newDependent, isBaptized: e.target.checked})}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="isBaptized" className="ml-2 block text-sm text-gray-900">
+              {t('is.baptized')}
+            </label>
+          </div>
+
           
         </div>
 
@@ -990,8 +1080,14 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
                     <p className="text-sm text-gray-600">
                       {t('born')}: {formatDateForDisplay(dependent.dateOfBirth)} | 
                       {t('gender')}: {dependent.gender} | 
-                      {t('relationship')}: {dependent.relationship || t('not.specified')}
+                      {t('relationship')}: {dependent.relationship || t('not.specified')} | 
+                      {t('baptized')}: {dependent.isBaptized ? t('yes') : t('no')}
                     </p>
+                    {dependent.baptismName && (
+                      <p className="text-sm text-gray-600">
+                        {t('baptism.name')}: {dependent.baptismName}
+                      </p>
+                    )}
                     
                   </div>
                   <button

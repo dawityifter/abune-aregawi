@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { formatPhoneNumber } from '../utils/formatPhoneNumber';
 import { formatDateForDisplay } from '../utils/dateUtils';
 
 interface Dependent {
@@ -10,6 +11,12 @@ interface Dependent {
   dateOfBirth: string;
   gender: 'Male' | 'Female';
   relationship?: string;
+  phone?: string;
+  email?: string;
+  baptismName?: string;
+  isBaptized: boolean;
+  baptismDate?: string;
+  nameDay?: string;
   medicalConditions?: string;
   allergies?: string;
   medications?: string;
@@ -30,6 +37,12 @@ const DependentsManagement: React.FC = () => {
     dateOfBirth: '',
     gender: 'Male',
     relationship: '',
+    phone: '',
+    email: '',
+    baptismName: '',
+    isBaptized: false,
+    baptismDate: '',
+    nameDay: '',
     medicalConditions: '',
     allergies: '',
     medications: '',
@@ -177,6 +190,12 @@ const DependentsManagement: React.FC = () => {
       dateOfBirth: '',
       gender: 'Male',
       relationship: '',
+      phone: '',
+      email: '',
+      baptismName: '',
+      isBaptized: false,
+      baptismDate: '',
+      nameDay: '',
       medicalConditions: '',
       allergies: '',
       medications: '',
@@ -299,14 +318,75 @@ const DependentsManagement: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Relationship
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phone || ''}
+                  onChange={(e) => setFormData({...formData, phone: formatPhoneNumber(e.target.value)})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.email || ''}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Baptism Name
                 </label>
                 <input
                   type="text"
-                  value={formData.relationship || ''}
-                  onChange={(e) => setFormData({...formData, relationship: e.target.value})}
+                  value={formData.baptismName || ''}
+                  onChange={(e) => setFormData({...formData, baptismName: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Baptism Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.baptismDate || ''}
+                  onChange={(e) => setFormData({...formData, baptismDate: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name Day
+                </label>
+                <input
+                  type="text"
+                  value={formData.nameDay || ''}
+                  onChange={(e) => setFormData({...formData, nameDay: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="isBaptized"
+                  checked={formData.isBaptized}
+                  onChange={(e) => setFormData({...formData, isBaptized: e.target.checked})}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="isBaptized" className="ml-2 block text-sm text-gray-900">
+                  Is Baptized
+                </label>
               </div>
             </div>
 
@@ -354,6 +434,12 @@ const DependentsManagement: React.FC = () => {
                     Relationship
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Baptism Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Baptized
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -377,6 +463,18 @@ const DependentsManagement: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {dependent.relationship || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {dependent.baptismName || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        dependent.isBaptized 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {dependent.isBaptized ? 'Yes' : 'No'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
