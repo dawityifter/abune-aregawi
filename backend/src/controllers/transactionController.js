@@ -405,26 +405,15 @@ const getMemberPaymentSummaries = async (req, res) => {
     // Add search filter
     if (search) {
       whereClause[Op.or] = [
-        { '$member.first_name$': { [Op.iLike]: `%${search}%` } },
-        { '$member.last_name$': { [Op.iLike]: `%${search}%` } },
-        { '$member.email$': { [Op.iLike]: `%${search}%` } }
+        { first_name: { [Op.iLike]: `%${search}%` } },
+        { last_name: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } }
       ];
     }
 
-    // Get all members with their transaction summaries
+    // Get all members first
     const { count, rows: members } = await Member.findAndCountAll({
       where: whereClause,
-      include: [
-        {
-          model: Transaction,
-          as: 'transactions',
-          attributes: [
-            [sequelize.fn('SUM', sequelize.col('amount')), 'totalCollected'],
-            [sequelize.fn('COUNT', sequelize.col('id')), 'transactionCount']
-          ],
-          required: false
-        }
-      ],
       attributes: [
         'id',
         'first_name',
@@ -434,16 +423,40 @@ const getMemberPaymentSummaries = async (req, res) => {
         'spouse_name',
         'monthly_payment'
       ],
-      group: ['Member.id'],
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['first_name', 'ASC']]
     });
 
+    // Get transaction summaries for each member
+    const memberIds = members.map(member => member.id);
+    const transactionSummaries = await Transaction.findAll({
+      where: {
+        member_id: memberIds
+      },
+      attributes: [
+        'member_id',
+        [sequelize.fn('SUM', sequelize.col('amount')), 'totalCollected'],
+        [sequelize.fn('COUNT', sequelize.col('id')), 'transactionCount']
+      ],
+      group: ['member_id'],
+      raw: true
+    });
+
+    // Create a map for quick lookup
+    const summaryMap = {};
+    transactionSummaries.forEach(summary => {
+      summaryMap[summary.member_id] = {
+        totalCollected: parseFloat(summary.totalCollected || 0),
+        transactionCount: parseInt(summary.transactionCount || 0)
+      };
+    });
+
     // Transform the data to match the expected format
     const transformedMembers = members.map(member => {
-      const totalCollected = parseFloat(member.transactions?.[0]?.dataValues?.totalCollected || 0);
-      const transactionCount = parseInt(member.transactions?.[0]?.dataValues?.transactionCount || 0);
+      const summary = summaryMap[member.id] || { totalCollected: 0, transactionCount: 0 };
+      const totalCollected = summary.totalCollected;
+      const transactionCount = summary.transactionCount;
       
       // For the new system, we'll use a simplified approach
       // You might want to implement proper due calculation based on your business logic
