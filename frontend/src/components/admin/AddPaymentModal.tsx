@@ -3,10 +3,10 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface Member {
   id: string;
-  firstName: string;
-  lastName: string;
-  memberId: string;
-  phoneNumber: string;
+  first_name: string;
+  last_name: string;
+  member_id: string;
+  phone_number: string;
   email: string;
 }
 
@@ -37,7 +37,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
     if (!firebaseUser) return;
     
     try {
-      const response = await fetch(`/api/members?email=${encodeURIComponent(user?.data?.member?.email || '')}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?email=${encodeURIComponent(user?.data?.member?.email || '')}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
         }
@@ -45,6 +45,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🔍 Fetched members:', data.data);
         setMembers(data.data || []);
       }
     } catch (error) {
@@ -55,6 +56,13 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
   useEffect(() => {
     fetchMembers();
   }, [fetchMembers]);
+
+  // Set default collected by to logged-in member when members are loaded
+  useEffect(() => {
+    if (members.length > 0 && user?.data?.member?.id) {
+      setCollectedBy(user.data.member.id);
+    }
+  }, [members, user?.data?.member?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +82,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
           },
           body: JSON.stringify({
             member_id: parseInt(selectedMemberId),
-            collected_by: parseInt(collectedBy || selectedMemberId), // Default to same member if not specified
+            collected_by: parseInt(collectedBy || user?.data?.member?.id || selectedMemberId), // Default to logged-in member
             payment_date: paymentDate,
             amount: parseFloat(amount),
             payment_type: paymentType,
@@ -192,7 +200,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
                 <option value="">Select a member</option>
                 {members.map((member) => (
                   <option key={member.id} value={member.id}>
-                    {member.firstName} {member.lastName} ({member.memberId})
+                    {member.first_name} {member.last_name} ({member.member_id})
                   </option>
                 ))}
               </select>
@@ -315,10 +323,10 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
                     onChange={(e) => setCollectedBy(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Same as member (default)</option>
+                    <option value="">Select collector</option>
                     {members.map((member) => (
                       <option key={member.id} value={member.id}>
-                        {member.firstName} {member.lastName} ({member.memberId})
+                        {member.first_name} {member.last_name} ({member.member_id})
                       </option>
                     ))}
                   </select>
