@@ -215,6 +215,8 @@ const MemberRegistration: React.FC = () => {
   const validateStep = (step: number): boolean => {
     const newErrors: any = {};
     
+    console.log('🔍 validateStep called for step:', step);
+    
     switch (step) {
       case 1: // Personal Information
         if (!formData.firstName.trim()) newErrors.firstName = t('first.name.required');
@@ -226,23 +228,51 @@ const MemberRegistration: React.FC = () => {
         break;
         
       case 2: // Contact & Address
-      // Email is optional for phone sign-in users, but required if no phone
-      if (!formData.email.trim() && !formData.phoneNumber.trim()) {
-        newErrors.email = t('email.or.phone.required');
-      }
-      if (!formData.phoneNumber.trim() && !formData.email.trim()) {
-        newErrors.phoneNumber = t('email.or.phone.required');
-      }
-      // Validate phone number format if provided
-      if (formData.phoneNumber.trim() && !isValidPhoneNumber(formData.phoneNumber)) {
-        newErrors.phoneNumber = t('phone.number.invalid');
-      }
-      if (!formData.streetLine1.trim()) newErrors.streetLine1 = t('address.required');
-      if (!formData.city.trim()) newErrors.city = t('city.required');
-      if (!formData.state.trim()) newErrors.state = t('state.required');
-      if (!formData.postalCode.trim()) newErrors.postalCode = t('zip.code.required');
-      if (!formData.country.trim()) newErrors.country = t('country.required');
-      break;
+        console.log('🔍 Validating step 2 - Contact & Address');
+        console.log('🔍 Email:', formData.email, 'Phone:', formData.phoneNumber);
+        console.log('🔍 Address fields:', {
+          streetLine1: formData.streetLine1,
+          city: formData.city,
+          state: formData.state,
+          postalCode: formData.postalCode,
+          country: formData.country
+        });
+        
+        // Email is optional for phone sign-in users, but required if no phone
+        if (!formData.email.trim() && !formData.phoneNumber.trim()) {
+          newErrors.email = t('email.or.phone.required');
+          console.log('🔍 Email/phone validation failed');
+        }
+        if (!formData.phoneNumber.trim() && !formData.email.trim()) {
+          newErrors.phoneNumber = t('email.or.phone.required');
+          console.log('🔍 Phone/email validation failed');
+        }
+        // Validate phone number format if provided
+        if (formData.phoneNumber.trim() && !isValidPhoneNumber(formData.phoneNumber)) {
+          newErrors.phoneNumber = t('phone.number.invalid');
+          console.log('🔍 Phone number format validation failed');
+        }
+        if (!formData.streetLine1.trim()) {
+          newErrors.streetLine1 = t('address.required');
+          console.log('🔍 Street address validation failed');
+        }
+        if (!formData.city.trim()) {
+          newErrors.city = t('city.required');
+          console.log('🔍 City validation failed');
+        }
+        if (!formData.state.trim()) {
+          newErrors.state = t('state.required');
+          console.log('🔍 State validation failed');
+        }
+        if (!formData.postalCode.trim()) {
+          newErrors.postalCode = t('zip.code.required');
+          console.log('🔍 Postal code validation failed');
+        }
+        if (!formData.country.trim()) {
+          newErrors.country = t('country.required');
+          console.log('🔍 Country validation failed');
+        }
+        break;
         
       case 3: // Family Information
         if (formData.maritalStatus === 'Married') {
@@ -269,6 +299,17 @@ const MemberRegistration: React.FC = () => {
   };
 
   const nextStep = () => {
+    console.log('🔍 nextStep called for step:', currentStep);
+    console.log('🔍 formData for step 2:', {
+      email: formData.email,
+      phoneNumber: formData.phoneNumber,
+      streetLine1: formData.streetLine1,
+      city: formData.city,
+      state: formData.state,
+      postalCode: formData.postalCode,
+      country: formData.country
+    });
+    
     if (validateStep(currentStep)) {
       let nextStepNumber = currentStep + 1;
       
@@ -283,6 +324,9 @@ const MemberRegistration: React.FC = () => {
       } else {
         setCurrentStep(nextStepNumber);
       }
+    } else {
+      console.log('🔍 Validation failed for step:', currentStep);
+      console.log('🔍 Current errors:', errors);
     }
   };
 
