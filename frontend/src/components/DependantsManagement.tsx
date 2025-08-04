@@ -10,16 +10,10 @@ interface Dependent {
   lastName: string;
   dateOfBirth: string;
   gender: 'Male' | 'Female';
-  relationship?: string;
   phone?: string;
   email?: string;
   baptismName?: string;
   isBaptized: boolean;
-  medicalConditions?: string;
-  allergies?: string;
-  medications?: string;
-  dietaryRestrictions?: string;
-  notes?: string;
 }
 
 const DependentsManagement: React.FC = () => {
@@ -34,16 +28,10 @@ const DependentsManagement: React.FC = () => {
     lastName: '',
     dateOfBirth: '',
     gender: 'Male',
-    relationship: '',
     phone: '',
     email: '',
     baptismName: '',
-    isBaptized: false,
-    medicalConditions: '',
-    allergies: '',
-    medications: '',
-    dietaryRestrictions: '',
-    notes: ''
+    isBaptized: false
   });
 
   const fetchDependents = useCallback(async () => {
@@ -185,16 +173,10 @@ const DependentsManagement: React.FC = () => {
       lastName: '',
       dateOfBirth: '',
       gender: 'Male',
-      relationship: '',
       phone: '',
       email: '',
       baptismName: '',
-      isBaptized: false,
-      medicalConditions: '',
-      allergies: '',
-      medications: '',
-      dietaryRestrictions: '',
-      notes: ''
+      isBaptized: false
     });
   };
 
@@ -300,18 +282,6 @@ const DependentsManagement: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Relationship
-                </label>
-                <input
-                  type="text"
-                  value={formData.relationship || ''}
-                  onChange={(e) => setFormData({...formData, relationship: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Phone
                 </label>
                 <input
@@ -346,17 +316,7 @@ const DependentsManagement: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Relationship
-                </label>
-                <input
-                  type="text"
-                  value={formData.relationship || ''}
-                  onChange={(e) => setFormData({...formData, relationship: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+
 
               <div className="flex items-center">
                 <input
@@ -413,9 +373,6 @@ const DependentsManagement: React.FC = () => {
                     Gender
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Relationship
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Baptism Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -442,9 +399,6 @@ const DependentsManagement: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {dependent.gender}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {dependent.relationship || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {dependent.baptismName || '-'}

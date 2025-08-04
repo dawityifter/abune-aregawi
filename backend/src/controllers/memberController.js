@@ -1075,23 +1075,23 @@ exports.updateMemberRole = async (req, res) => {
 
 // Dependants Management Endpoints
 
-// Get all dependants for a member
+// Get all dependents for a member
 exports.getMemberDependents = async (req, res) => {
   try {
     const { memberId } = req.params;
 
-    const dependants = await Dependant.findAll({
+    const dependents = await Dependent.findAll({
       where: { memberId },
       order: [['dateOfBirth', 'ASC']]
     });
 
     res.json({
       success: true,
-      data: { dependants }
+      data: { dependents }
     });
 
   } catch (error) {
-    console.error('Get member dependants error:', error);
+    console.error('Get member dependents error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -1117,20 +1117,20 @@ exports.addDependent = async (req, res) => {
     // Remove baptismDate and nameDay fields if they're empty or invalid
     const { baptismDate, nameDay, ...cleanDependantData } = dependantData;
 
-    // Create dependant
-    const dependant = await Dependant.create({
+    // Create dependent
+    const dependent = await Dependent.create({
       ...cleanDependantData,
       memberId
     });
 
     res.status(201).json({
       success: true,
-      message: 'Dependant added successfully',
-      data: { dependant }
+      message: 'Dependent added successfully',
+      data: { dependent }
     });
 
   } catch (error) {
-    console.error('Add dependant error:', error);
+    console.error('Add dependent error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

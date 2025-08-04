@@ -66,7 +66,7 @@ function App() {
               <Route path="/member-status" element={<MemberStatus />} />
               <Route path="/donate" element={<DonatePage />} />
               <Route path="/church-bylaw" element={<ChurchBylaw />} />
-              <Route path="/children" element={<ProtectedRoute><DependentsManagement /></ProtectedRoute>} />
+              <Route path="/dependents" element={<ProtectedRoute><DependentsManagement /></ProtectedRoute>} />
               <Route path="/parish-pulse-sign-up" element={<ParishPulseSignUp />} />
               {/* Add more routes here as we build them */}
             </Routes>

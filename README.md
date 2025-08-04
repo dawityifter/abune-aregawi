@@ -532,10 +532,10 @@ npm run db:test
 - `GET /api/members/:id` - Get member details
 
 ### Children
-- `GET /api/children` - Get user's children
-- `POST /api/children` - Add child
-- `PUT /api/children/:id` - Update child
-- `DELETE /api/children/:id` - Remove child
+- `GET /api/members/:memberId/dependents` - Get member's dependents
+- `POST /api/members/:memberId/dependents` - Add dependent
+- `PUT /api/members/dependents/:id` - Update dependent
+- `DELETE /api/members/dependents/:id` - Remove dependent
 
 ## 🔄 CI/CD Pipeline
 
