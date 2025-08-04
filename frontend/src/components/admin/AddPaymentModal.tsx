@@ -29,7 +29,6 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
   const [paymentDate, setPaymentDate] = useState('');
   const [paymentType, setPaymentType] = useState('');
   const [receiptNumber, setReceiptNumber] = useState('');
-  const [collectedBy, setCollectedBy] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -57,12 +56,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
     fetchMembers();
   }, [fetchMembers]);
 
-  // Set default collected by to logged-in member when members are loaded
-  useEffect(() => {
-    if (members.length > 0 && user?.data?.member?.id) {
-      setCollectedBy(user.data.member.id);
-    }
-  }, [members, user?.data?.member?.id]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +76,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
           },
           body: JSON.stringify({
             member_id: parseInt(selectedMemberId),
-            collected_by: parseInt(collectedBy || user?.data?.member?.id || selectedMemberId), // Default to logged-in member
+            collected_by: parseInt(user?.data?.member?.id || '1'), // Always use logged-in member
             payment_date: paymentDate,
             amount: parseFloat(amount),
             payment_type: paymentType,
@@ -318,18 +312,15 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Collected By
                   </label>
-                  <select
-                    value={collectedBy}
-                    onChange={(e) => setCollectedBy(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select collector</option>
-                    {members.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.first_name} {member.last_name} ({member.member_id})
-                      </option>
-                    ))}
-                  </select>
+                  <input
+                    type="text"
+                    value={user?.data?.member?.first_name && user?.data?.member?.last_name 
+                      ? `${user.data.member.first_name} ${user.data.member.last_name} (${user.data.member.id})`
+                      : 'Loading...'
+                    }
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed"
+                  />
                 </div>
               </>
             )}
