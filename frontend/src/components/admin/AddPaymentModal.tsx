@@ -13,9 +13,10 @@ interface Member {
 interface AddPaymentModalProps {
   onClose: () => void;
   onPaymentAdded: () => void;
+  paymentView: 'old' | 'new';
 }
 
-const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdded }) => {
+const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdded, paymentView }) => {
   const { user, firebaseUser } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState('');
@@ -23,6 +24,12 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [notes, setNotes] = useState('');
+  
+  // New transaction fields
+  const [paymentDate, setPaymentDate] = useState('');
+  const [paymentType, setPaymentType] = useState('');
+  const [receiptNumber, setReceiptNumber] = useState('');
+  const [collectedBy, setCollectedBy] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -55,20 +62,44 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
     setError('');
 
     try {
-const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/${selectedMemberId}/payment?email=${encodeURIComponent(user?.data?.member?.email || '')}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
-        },
-        body: JSON.stringify({
-          memberId: selectedMemberId,
-          month,
-          amount: parseFloat(amount),
-          paymentMethod,
-          notes
-        })
-      });
+      let response;
+      
+      if (paymentView === 'new') {
+        // New transaction system
+        response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?email=${encodeURIComponent(user?.data?.member?.email || '')}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
+          },
+          body: JSON.stringify({
+            member_id: parseInt(selectedMemberId),
+            collected_by: parseInt(collectedBy || selectedMemberId), // Default to same member if not specified
+            payment_date: paymentDate,
+            amount: parseFloat(amount),
+            payment_type: paymentType,
+            payment_method: paymentMethod,
+            receipt_number: receiptNumber,
+            note: notes
+          })
+        });
+      } else {
+        // Old payment system
+        response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/${selectedMemberId}/payment?email=${encodeURIComponent(user?.data?.member?.email || '')}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
+          },
+          body: JSON.stringify({
+            memberId: selectedMemberId,
+            month,
+            amount: parseFloat(amount),
+            paymentMethod,
+            notes
+          })
+        });
+      }
 
       if (response.ok) {
         onPaymentAdded();
@@ -104,6 +135,25 @@ const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/${se
     { value: 'Cash', label: 'Cash' },
     { value: 'Check', label: 'Check' },
     { value: 'Online', label: 'Online' }
+  ];
+
+  // New transaction payment types and methods
+  const transactionPaymentTypes = [
+    { value: 'membership_due', label: 'Membership Due' },
+    { value: 'tithe', label: 'Tithe' },
+    { value: 'donation', label: 'Donation' },
+    { value: 'event', label: 'Event' },
+    { value: 'other', label: 'Other' }
+  ];
+
+  const transactionPaymentMethods = [
+    { value: 'cash', label: 'Cash' },
+    { value: 'check', label: 'Check' },
+    { value: 'zelle', label: 'Zelle' },
+    { value: 'credit_card', label: 'Credit Card' },
+    { value: 'debit_card', label: 'Debit Card' },
+    { value: 'ach', label: 'ACH' },
+    { value: 'other', label: 'Other' }
   ];
 
   return (
@@ -148,24 +198,133 @@ const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/${se
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Month
-              </label>
-              <select
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select month</option>
-                {months.map((monthOption) => (
-                  <option key={monthOption.value} value={monthOption.value}>
-                    {monthOption.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {paymentView === 'old' ? (
+              // Old payment system fields
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Month
+                  </label>
+                  <select
+                    value={month}
+                    onChange={(e) => setMonth(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select month</option>
+                    {months.map((monthOption) => (
+                      <option key={monthOption.value} value={monthOption.value}>
+                        {monthOption.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Method
+                  </label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select payment method</option>
+                    {paymentMethods.map((method) => (
+                      <option key={method.value} value={method.value}>
+                        {method.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            ) : (
+              // New transaction system fields
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Date
+                  </label>
+                  <input
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Type
+                  </label>
+                  <select
+                    value={paymentType}
+                    onChange={(e) => setPaymentType(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select payment type</option>
+                    {transactionPaymentTypes.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Method
+                  </label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select payment method</option>
+                    {transactionPaymentMethods.map((method) => (
+                      <option key={method.value} value={method.value}>
+                        {method.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Receipt Number
+                  </label>
+                  <input
+                    type="text"
+                    value={receiptNumber}
+                    onChange={(e) => setReceiptNumber(e.target.value)}
+                    placeholder="Enter receipt number (optional)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Collected By
+                  </label>
+                  <select
+                    value={collectedBy}
+                    onChange={(e) => setCollectedBy(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Same as member (default)</option>
+                    {members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.firstName} {member.lastName} ({member.memberId})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -181,25 +340,6 @@ const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/${se
                 placeholder="Enter amount"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Payment Method
-              </label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select payment method</option>
-                {paymentMethods.map((method) => (
-                  <option key={method.value} value={method.value}>
-                    {method.label}
-                  </option>
-                ))}
-              </select>
             </div>
 
             <div>

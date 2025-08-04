@@ -78,8 +78,14 @@ const TreasurerDashboard: React.FC = () => {
       console.log('🔍 Firebase user:', firebaseUser);
       console.log('🔍 Payment view:', paymentView);
       
+      // Clear existing stats when switching views
+      setStats(null);
+      setLoading(true);
+      
       // Use different endpoints based on the selected view
       const endpoint = paymentView === 'new' ? '/api/transactions/stats' : '/api/payments/stats';
+      
+      console.log('🔍 Using endpoint:', endpoint);
       
       const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
@@ -152,7 +158,10 @@ const TreasurerDashboard: React.FC = () => {
                     name="paymentView"
                     value="new"
                     checked={paymentView === 'new'}
-                    onChange={(e) => setPaymentView(e.target.value as PaymentView)}
+                    onChange={(e) => {
+                      setPaymentView(e.target.value as PaymentView);
+                      console.log('🔄 Switching to new view');
+                    }}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                   />
                   <span className="ml-2 text-sm text-gray-700">New</span>
@@ -163,7 +172,10 @@ const TreasurerDashboard: React.FC = () => {
                     name="paymentView"
                     value="old"
                     checked={paymentView === 'old'}
-                    onChange={(e) => setPaymentView(e.target.value as PaymentView)}
+                    onChange={(e) => {
+                      setPaymentView(e.target.value as PaymentView);
+                      console.log('🔄 Switching to old view');
+                    }}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                   />
                   <span className="ml-2 text-sm text-gray-700">Old</span>
@@ -267,6 +279,7 @@ const TreasurerDashboard: React.FC = () => {
               setShowAddPaymentModal(false);
               fetchPaymentStats();
             }}
+            paymentView={paymentView}
           />
         )}
       </div>
