@@ -208,7 +208,7 @@ describe('Profile Component', () => {
             city: 'Testville',
             state: 'CA',
             postalCode: '12345',
-            dependants: [],
+            dependents: [],
           },
         },
       }),

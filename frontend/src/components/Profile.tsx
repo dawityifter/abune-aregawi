@@ -29,10 +29,10 @@ interface ProfileData {
   city?: string;
   state?: string;
   postalCode?: string;
-  dependants?: BackendDependantData[];
+  dependents?: BackendDependentData[];
 }
 
-interface BackendDependantData {
+interface BackendDependentData {
   id: string;
   memberId: string;
   firstName: string;
@@ -183,7 +183,7 @@ const Profile: React.FC = () => {
                 city: result.data.member.city,
                 state: result.data.member.state,
                 postalCode: result.data.member.postalCode,
-                dependants: result.data.member.dependants || []
+                dependents: result.data.member.dependents || []
               };
               
               setProfile(mergedData);
@@ -309,7 +309,7 @@ const Profile: React.FC = () => {
         city: formData.city,
         state: formData.state,
         postalCode: formData.postalCode,
-        dependants: formData.dependants || null
+        dependents: formData.dependents || null
       };
 
       // Send update to backend API
@@ -863,54 +863,54 @@ const Profile: React.FC = () => {
               </div>
 
               {/* Children Information - Full Width */}
-              {profile.dependants && profile.dependants.length > 0 && (
+              {profile.dependents && profile.dependents.length > 0 && (
                 <div className="mt-8 space-y-4">
                   <h3 className="text-md font-medium text-gray-900 border-b pb-2">
                     {t('children.and.dependents')}
                   </h3>
                   <div className="flex flex-col gap-4">
-                    {profile.dependants.map((dependant: BackendDependantData) => (
-                      <div key={dependant.id} className="bg-gray-50 p-4 rounded-lg w-full">
-                        <h4 className="font-medium text-gray-900 mb-3">
-                          {dependant.firstName} {dependant.middleName} {dependant.lastName}
-                        </h4>
-                        <div className="grid grid-cols-2 gap-6">
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('date.of.birth')}</label>
-                              <p className="text-gray-900">{formatDateForDisplay(dependant.dateOfBirth)}</p>
+                    {profile.dependents.map((dependent: BackendDependentData) => (
+                                              <div key={dependent.id} className="bg-gray-50 p-4 rounded-lg w-full">
+                          <h4 className="font-medium text-gray-900 mb-3">
+                            {dependent.firstName} {dependent.middleName} {dependent.lastName}
+                          </h4>
+                          <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('date.of.birth')}</label>
+                                <p className="text-gray-900">{formatDateForDisplay(dependent.dateOfBirth)}</p>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('gender')}</label>
+                                <p className="text-gray-900">{dependent.gender}</p>
+                              </div>
+                              {dependent.phone && (
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')}</label>
+                                  <p className="text-gray-900">{dependent.phone}</p>
+                                </div>
+                              )}
                             </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('gender')}</label>
-                              <p className="text-gray-900">{dependant.gender}</p>
-                            </div>
-                            {dependant.phone && (
+                            <div className="space-y-4">
+                              {dependent.email && (
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
+                                  <p className="text-gray-900">{dependent.email}</p>
+                                </div>
+                              )}
+                              {dependent.baptismName && (
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptism.name')}</label>
+                                  <p className="text-gray-900">{dependent.baptismName}</p>
+                                </div>
+                              )}
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')}</label>
-                                <p className="text-gray-900">{dependant.phone}</p>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptized')}</label>
+                                <p className="text-gray-900">{dependent.isBaptized ? t('yes') : t('no')}</p>
                               </div>
-                            )}
-                          </div>
-                          <div className="space-y-4">
-                            {dependant.email && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
-                                <p className="text-gray-900">{dependant.email}</p>
-                              </div>
-                            )}
-                            {dependant.baptismName && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptism.name')}</label>
-                                <p className="text-gray-900">{dependant.baptismName}</p>
-                              </div>
-                            )}
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptized')}</label>
-                              <p className="text-gray-900">{dependant.isBaptized ? t('yes') : t('no')}</p>
                             </div>
                           </div>
                         </div>
-                      </div>
                     ))}
                   </div>
                 </div>
