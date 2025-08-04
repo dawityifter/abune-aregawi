@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { formatDateForDisplay } from '../utils/dateUtils';
+import { Dependent } from '../utils/relationshipTypes';
 import { UserRole } from '../utils/roles';
 
 interface ProfileData {

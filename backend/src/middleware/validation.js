@@ -1,459 +1,83 @@
-const { body, param, query, validationResult } = require('express-validator');
+const { body, param, query } = require('express-validator');
 
-// Handle validation errors middleware
-exports.handleValidationErrors = (req, res, next) => {
-  const errors = validationResult(req);
-  
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation failed',
-      errors: errors.array()
-    });
-  }
-  
-  next();
-};
+// Define allowed relationship values
+const RELATIONSHIP_VALUES = ['Son', 'Daughter', 'Spouse', 'Parent', 'Sibling', 'Other'];
 
-// Member registration validation
-exports.validateMemberRegistration = [
-  // Personal Information
-  body('firstName')
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('First name is required and must be between 1 and 100 characters'),
-  
-  body('middleName')
-    .optional()
-    .trim()
-    .isLength({ max: 100 })
-    .withMessage('Middle name must be less than 100 characters'),
-  
-  body('lastName')
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('Last name is required and must be between 1 and 100 characters'),
-  
-  body('gender')
-    .isIn(['Male', 'Female'])
-    .withMessage('Gender must be Male or Female'),
-  
-  body('dateOfBirth')
-    .isISO8601()
-    .withMessage('Date of birth must be a valid date'),
-  
-  body('maritalStatus')
-    .isIn(['Single', 'Married', 'Divorced', 'Widowed'])
-    .withMessage('Marital status must be Single, Married, Divorced, or Widowed'),
-  
-  // Contact & Address
-  body('phoneNumber')
-    .trim()
-    .isLength({ min: 1, max: 25 })
-    .withMessage('Phone number is required and must be less than 25 characters'),
-  
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Email must be a valid email address'),
-  
-  body('streetLine1')
-    .trim()
-    .isLength({ min: 1, max: 255 })
-    .withMessage('Street address is required and must be less than 255 characters'),
-  
-  body('city')
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('City is required and must be less than 100 characters'),
-  
-  body('state')
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('State is required and must be less than 100 characters'),
-  
-  body('postalCode')
-    .trim()
-    .isLength({ min: 1, max: 20 })
-    .withMessage('Postal code is required and must be less than 20 characters'),
-  
-  body('country')
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('Country is required and must be less than 100 characters'),
-  
-  // Family Information
-  body('isHeadOfHousehold')
-    .optional()
-    .isBoolean()
-    .withMessage('Head of household must be true or false'),
-  
-  body('spouseName')
-    .optional()
-    .custom((value, { req }) => {
-      // Only validate spouse name if marital status is Married
-      if (req.body.maritalStatus === 'Married') {
-        if (!value || value.trim() === '') {
-          throw new Error('Spouse name is required for married members');
-        }
-        if (value.trim().length > 200) {
-          throw new Error('Spouse name must be less than 200 characters');
-        }
-      }
-      return true;
-    })
-    .trim(),
-  
-  body('spouseEmail')
-    .optional()
-    .custom((value, { req }) => {
-      // Only validate spouse email if marital status is Married
-      if (req.body.maritalStatus === 'Married') {
-        if (!value || value.trim() === '') {
-          throw new Error('Spouse email is required for married members');
-        }
-        // Use a simple email regex for validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) {
-          throw new Error('Spouse email must be a valid email address');
-        }
-      }
-      return true;
-    })
-    .normalizeEmail(),
-  
-  body('headOfHouseholdEmail')
-    .optional()
-    .custom(async (value, { req }) => {
-      // Only validate head of household email if user is not head of household
-      if (!req.body.isHeadOfHousehold) {
-        if (!value || value.trim() === '') {
-          throw new Error('Head of household email is required when you are not the head of household');
-        }
-        
-        // Use a simple email regex for validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) {
-          throw new Error('Head of household email must be a valid email address');
-        }
-        
-        // Check if the email exists in the database and belongs to a head of household
-        try {
-          const { Member } = require('../models');
-          const existingMember = await Member.findOne({
-            where: { 
-              email: value,
-              isHeadOfHousehold: true,
-              isActive: true
-            }
-          });
-          
-          if (!existingMember) {
-            throw new Error('No active head of household found with this email address. Please register as head of household or provide a valid head of household email.');
-          }
-        } catch (error) {
-          if (error.message.includes('No active head of household found')) {
-            throw error;
-          }
-          throw new Error('Error validating head of household email');
-        }
-      }
-      return true;
-    })
-    .normalizeEmail(),
-  
-  body('emergencyContactName')
-    .optional()
-    .trim()
-    .isLength({ max: 200 })
-    .withMessage('Emergency contact name must be less than 200 characters'),
-  
-  body('emergencyContactPhone')
-    .optional()
-    .trim()
-    .isLength({ max: 25 })
-    .withMessage('Emergency contact phone must be less than 25 characters'),
-  
-  // Spiritual Information
-  body('dateJoinedParish')
-    .optional({ checkFalsy: true })
-    .isISO8601()
-    .withMessage('Date joined parish must be a valid date'),
-  
-  body('isBaptized')
-    .optional()
-    .isBoolean()
-    .withMessage('Baptized must be true or false'),
-  
-  body('baptismDate')
-    .optional({ checkFalsy: true })
-    .isISO8601()
-    .withMessage('Baptism date must be a valid date'),
-  
-  body('isChrismated')
-    .optional()
-    .isBoolean()
-    .withMessage('Chrismated must be true or false'),
-  
-  body('chrismationDate')
-    .optional()
-    .isISO8601()
-    .withMessage('Chrismation date must be a valid date'),
-  
-  body('isCommunicantMember')
-    .optional()
-    .isBoolean()
-    .withMessage('Communicant member must be true or false'),
-  
-  body('spiritualFather')
-    .optional()
-    .trim()
-    .isLength({ max: 200 })
-    .withMessage('Spiritual father must be less than 200 characters'),
-  
-  body('nameDay')
-    .optional()
-    .trim()
-    .isLength({ max: 100 })
-    .withMessage('Name day must be less than 100 characters'),
-  
-  body('liturgicalRole')
-    .optional()
-    .isIn([
-      'None',
-      'Deacon',
-      'Subdeacon',
-      'Reader',
-      'Choir',
-      'Altar Server',
-      'Sisterhood',
-      'Brotherhood',
-      'Other'
-    ])
-    .withMessage('Invalid liturgical role'),
-  
-  body('ministries')
-    .optional()
-    .isArray()
-    .withMessage('Ministries must be an array'),
-  
-  body('languagePreference')
-    .optional({ checkFalsy: true })
-    .default('English')
-    .isIn(['English', 'Tigrigna', 'Amharic'])
-    .withMessage('Language preference must be English, Tigrigna, or Amharic'),
-  
-  // Contribution
-  body('preferredGivingMethod')
-    .isIn(['Cash', 'Online', 'Envelope', 'Check'])
-    .withMessage('Preferred giving method must be Cash, Online, Envelope, or Check'),
-  
-  body('titheParticipation')
-    .optional({ checkFalsy: true })
-    .default(false)
-    .isBoolean()
-    .withMessage('Tithe participation must be true or false'),
-  
-  // Account
-  body('firebaseUid')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 128 })
-    .withMessage('Firebase UID must be less than 128 characters'),
-  
-  body('password')
-    .optional()
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long'),
-  
-  body('role')
-    .optional()
-    .isIn([
-      'member',
-      'accountant',
-      'auditor',
-      'clergy'
-    ])
-    .withMessage('Invalid role'),
-  
-  // Dependants validation - only allow if head of household
-  body('dependants')
-    .optional()
-    .custom((value, { req }) => {
-      // Only allow dependants if member is head of household
-      if (value && Array.isArray(value) && value.length > 0) {
-        if (!req.body.isHeadOfHousehold) {
-          throw new Error('Dependants can only be registered by the head of household');
-        }
-      }
-      return true;
-    })
-    .isArray()
-    .withMessage('Dependants must be an array'),
-  
-  body('dependants.*.firstName')
-    .if(body('dependants').isArray({ min: 1 }))
-    .if(body('isHeadOfHousehold').equals(true))
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('Dependant first name is required and must be between 1 and 100 characters'),
-  
-  body('dependants.*.lastName')
-    .if(body('dependants').isArray({ min: 1 }))
-    .if(body('isHeadOfHousehold').equals(true))
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('Dependant last name is required and must be between 1 and 100 characters'),
-  
-  body('dependants.*.dateOfBirth')
-    .if(body('dependants').isArray({ min: 1 }))
-    .if(body('isHeadOfHousehold').equals(true))
-    .isISO8601()
-    .withMessage('Dependant date of birth must be a valid date'),
-  
-  body('dependants.*.gender')
-    .if(body('dependants').isArray({ min: 1 }))
-    .if(body('isHeadOfHousehold').equals(true))
-    .isIn(['Male', 'Female'])
-    .withMessage('Dependant gender must be Male or Female'),
-  
-  body('dependants.*.phone')
-    .if(body('dependants').isArray({ min: 1 }))
-    .if(body('isHeadOfHousehold').equals(true))
-    .optional()
-    .trim()
-    .isLength({ max: 25 })
-    .withMessage('Dependant phone must be less than 25 characters'),
-  
-  body('dependants.*.email')
-    .if(body('dependants').isArray({ min: 1 }))
-    .if(body('isHeadOfHousehold').equals(true))
-    .optional()
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Dependant email must be a valid email address'),
-  
-  body('dependants.*.baptismName')
-    .if(body('dependants').isArray({ min: 1 }))
-    .if(body('isHeadOfHousehold').equals(true))
-    .optional()
-    .trim()
-    .isLength({ max: 100 })
-    .withMessage('Dependant baptism name must be less than 100 characters')
+// Validation for member queries
+const validateMemberQuery = [
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+  query('search').optional().isString().withMessage('Search must be a string'),
+  query('role').optional().isIn(['member', 'admin', 'church_leadership', 'treasurer', 'secretary']).withMessage('Invalid role filter'),
+  query('phone').optional().isString().withMessage('Phone must be a string')
 ];
 
-// Login validation
-exports.validateLogin = [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Email must be a valid email address'),
-  
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required')
+// Validation for member ID parameter
+const validateMemberId = [
+  param('id').isInt({ min: 1 }).withMessage('Member ID must be a positive integer')
 ];
 
-// Profile update validation
-exports.validateProfileUpdate = [
-  body('firstName')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('First name must be between 1 and 100 characters'),
-  
-  body('lastName')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('Last name must be between 1 and 100 characters'),
-  
-  body('phoneNumber')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 25 })
-    .withMessage('Phone number must be less than 25 characters'),
-  
-  body('email')
-    .optional()
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Email must be a valid email address'),
-  
-  body('streetAddress')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 255 })
-    .withMessage('Street address must be less than 255 characters'),
-  
-  body('city')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('City must be less than 100 characters'),
-  
-  body('state')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('State must be less than 100 characters'),
-  
-  body('postalCode')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 20 })
-    .withMessage('Postal code must be less than 20 characters'),
-
-  body('emergencyContactName')
-    .optional()
-    .trim()
-    .isLength({ max: 200 })
-    .withMessage('Emergency contact name must be less than 200 characters'),
-
-  body('emergencyContactPhone')
-    .optional()
-    .trim()
-    .isLength({ max: 25 })
-    .withMessage('Emergency contact phone must be less than 25 characters')
+// Validation for dependent ID parameter
+const validateDependentId = [
+  param('dependentId').isInt({ min: 1 }).withMessage('Dependent ID must be a positive integer')
 ];
 
-// Member ID validation
-exports.validateMemberId = [
-  param('id')
-    .isUUID()
-    .withMessage('Invalid member ID format')
+// Validation for dependent data
+const validateDependentData = [
+  body('firstName').notEmpty().trim().withMessage('First name is required'),
+  body('lastName').notEmpty().trim().withMessage('Last name is required'),
+  body('dateOfBirth').optional().isISO8601().withMessage('Date of birth must be a valid date'),
+  body('gender').optional().isIn(['Male', 'Female']).withMessage('Gender must be Male or Female'),
+  body('relationship').optional().isIn(RELATIONSHIP_VALUES).withMessage(`Relationship must be one of: ${RELATIONSHIP_VALUES.join(', ')}`),
+  body('phone').optional().isString().withMessage('Phone must be a string'),
+  body('email').optional().isEmail().withMessage('Email must be a valid email address'),
+  body('baptismName').optional().isString().withMessage('Baptism name must be a string'),
+  body('isBaptized').optional().isBoolean().withMessage('Is baptized must be a boolean'),
+  body('baptismDate').optional().isISO8601().withMessage('Baptism date must be a valid date'),
+  body('nameDay').optional().isString().withMessage('Name day must be a string'),
+  body('medicalConditions').optional().isString().withMessage('Medical conditions must be a string'),
+  body('allergies').optional().isString().withMessage('Allergies must be a string'),
+  body('medications').optional().isString().withMessage('Medications must be a string'),
+  body('dietaryRestrictions').optional().isString().withMessage('Dietary restrictions must be a string'),
+  body('notes').optional().isString().withMessage('Notes must be a string')
 ];
 
-// Query validation for member listing
-exports.validateMemberQuery = [
-  query('page')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('Page must be a positive integer'),
-  
-  query('limit')
-    .optional()
-    .isInt({ min: 1, max: 100 })
-    .withMessage('Limit must be between 1 and 100'),
-  
-  query('search')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('Search term must be between 1 and 100 characters'),
-  
-  query('role')
-    .optional()
-    .isIn([
-      'member',
-      'accountant',
-      'auditor',
-      'clergy'
-    ])
-    .withMessage('Invalid role filter'),
-  
-  query('isActive')
-    .optional()
-    .isIn(['true', 'false'])
-    .withMessage('isActive must be true or false')
-]; 
+// Validation for profile updates
+const validateProfileUpdate = [
+  body('firstName').optional().notEmpty().trim().withMessage('First name cannot be empty'),
+  body('lastName').optional().notEmpty().trim().withMessage('Last name cannot be empty'),
+  body('email').optional().isEmail().withMessage('Email must be a valid email address'),
+  body('phoneNumber').optional().isString().withMessage('Phone number must be a string'),
+  body('dateOfBirth').optional().isISO8601().withMessage('Date of birth must be a valid date'),
+  body('gender').optional().isIn(['male', 'female']).withMessage('Gender must be male or female'),
+  body('baptismName').optional().isString().withMessage('Baptism name must be a string'),
+  body('repentanceFather').optional().isString().withMessage('Repentance father must be a string'),
+  body('householdSize').optional().isInt({ min: 1 }).withMessage('Household size must be a positive integer'),
+  body('streetLine1').optional().isString().withMessage('Street line 1 must be a string'),
+  body('apartmentNo').optional().isString().withMessage('Apartment number must be a string'),
+  body('city').optional().isString().withMessage('City must be a string'),
+  body('state').optional().isString().withMessage('State must be a string'),
+  body('postalCode').optional().isString().withMessage('Postal code must be a string'),
+  body('country').optional().isString().withMessage('Country must be a string'),
+  body('emergencyContactName').optional().isString().withMessage('Emergency contact name must be a string'),
+  body('emergencyContactPhone').optional().isString().withMessage('Emergency contact phone must be a string'),
+  body('dateJoinedParish').optional().isISO8601().withMessage('Date joined parish must be a valid date'),
+  body('spouseName').optional().isString().withMessage('Spouse name must be a string'),
+  body('familyId').optional().isString().withMessage('Family ID must be a string')
+];
+
+// Validation for login
+const validateLogin = [
+  body('phoneNumber').notEmpty().withMessage('Phone number is required'),
+  body('otp').notEmpty().withMessage('OTP is required')
+];
+
+module.exports = {
+  validateMemberQuery,
+  validateMemberId,
+  validateDependentId,
+  validateDependentData,
+  validateProfileUpdate,
+  validateLogin,
+  RELATIONSHIP_VALUES
+}; 

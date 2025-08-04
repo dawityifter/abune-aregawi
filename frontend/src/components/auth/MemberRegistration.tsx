@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from '../../contexts/LanguageContext';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
 import { useAuth } from '../../contexts/AuthContext';
+import { Dependent } from '../../utils/relationshipTypes';
 // import { Transition } from '@headlessui/react'; // Removed due to React 19 compatibility
 import {
   PersonalInfoStep,
@@ -14,25 +15,7 @@ import {
   AccountStep
 } from './RegistrationSteps';
 
-interface Dependent {
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  dateOfBirth: string;
-  gender: 'Male' | 'Female';
-  relationship?: string;
-  phone?: string;
-  email?: string;
-  baptismName?: string;
-  isBaptized: boolean;
-  baptismDate?: string;
-  nameDay?: string;
-  medicalConditions?: string;
-  allergies?: string;
-  medications?: string;
-  dietaryRestrictions?: string;
-  notes?: string;
-}
+
 
 const MemberRegistration: React.FC = () => {
   const location = useLocation();
