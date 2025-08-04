@@ -40,6 +40,68 @@ const MemberRegistration: React.FC = () => {
   // Track window width for responsive behavior
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   
+  // Registration form state
+  const [currentStep, setCurrentStep] = useState(1);
+  const [errors, setErrors] = useState<any>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dependants, setDependants] = useState<Dependant[]>([]);
+  
+  const [formData, setFormData] = useState({
+    // Personal Information
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    gender: 'Male',
+    dateOfBirth: '',
+    maritalStatus: 'Single',
+    isHeadOfHousehold: true,
+    headOfHouseholdEmail: '',
+    hasDependents: false,
+    
+    // Contact & Address
+    email: email || '',
+    phoneNumber: phone || '',
+    streetLine1: '',
+    apartmentNo: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'United States',
+    
+    // Family Information
+    spouseName: '',
+    spousePhone: '',
+    spouseEmail: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelationship: '',
+    
+    // Spiritual Information
+    baptismName: '',
+    isBaptized: false,
+    baptismPlace: '',
+    confirmationDate: '',
+    confirmationPlace: '',
+    dateJoinedParish: '',
+    interestedInServing: '',
+    languagePreference: 'English',
+    
+    // Contribution & Giving
+    preferredGivingMethod: 'Cash',
+    monthlyContribution: '',
+    specialContributions: [],
+    titheParticipation: false,
+    
+    // Account Information
+    preferredLanguage: 'English',
+    communicationPreferences: [],
+    privacySettings: {
+      shareContactInfo: false,
+      receiveNewsletter: true,
+      receiveEventNotifications: true
+    }
+  });
+  
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
@@ -125,67 +187,6 @@ const MemberRegistration: React.FC = () => {
       </div>
     );
   }
-  
-  const [currentStep, setCurrentStep] = useState(1);
-  const [errors, setErrors] = useState<any>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [dependants, setDependants] = useState<Dependant[]>([]);
-  
-  const [formData, setFormData] = useState({
-    // Personal Information
-    firstName: '',
-    middleName: '',
-    lastName: '',
-    gender: 'Male',
-    dateOfBirth: '',
-    maritalStatus: 'Single',
-    isHeadOfHousehold: true,
-    headOfHouseholdEmail: '',
-    hasDependents: false,
-    
-    // Contact & Address
-    email: email || '',
-    phoneNumber: phone || '',
-    streetLine1: '',
-    apartmentNo: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: 'United States',
-    
-    // Family Information
-    spouseName: '',
-    spousePhone: '',
-    spouseEmail: '',
-    emergencyContactName: '',
-    emergencyContactPhone: '',
-    emergencyContactRelationship: '',
-    
-    // Spiritual Information
-    baptismName: '',
-    isBaptized: false,
-    baptismPlace: '',
-    confirmationDate: '',
-    confirmationPlace: '',
-    dateJoinedParish: '',
-    interestedInServing: '',
-    languagePreference: 'English',
-    
-    // Contribution & Giving
-    preferredGivingMethod: 'Cash',
-    monthlyContribution: '',
-    specialContributions: [],
-    titheParticipation: false,
-    
-    // Account Information
-    preferredLanguage: 'English',
-    communicationPreferences: [],
-    privacySettings: {
-      shareContactInfo: false,
-      receiveNewsletter: true,
-      receiveEventNotifications: true
-    }
-  });
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev: typeof formData) => ({
