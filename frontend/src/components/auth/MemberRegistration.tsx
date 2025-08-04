@@ -361,6 +361,8 @@ const MemberRegistration: React.FC = () => {
       // Prepare registration data with proper validation and normalized phone numbers
       const registrationData = {
         ...formData,
+        // Add Firebase UID which is required by backend
+        firebaseUid: currentUser?.uid,
         // Normalize all phone number fields to E.164 format
         phoneNumber: normalizedPhoneNumber,
         spousePhone: normalizedSpousePhone,
@@ -372,7 +374,11 @@ const MemberRegistration: React.FC = () => {
         // Ensure titheParticipation is boolean
         titheParticipation: Boolean(formData.titheParticipation),
         // Ensure languagePreference has a valid default
-        languagePreference: formData.languagePreference || 'English'
+        languagePreference: formData.languagePreference || 'English',
+        // Convert gender to lowercase to match backend validation
+        gender: formData.gender?.toLowerCase(),
+        // Convert marital status to lowercase to match backend validation
+        maritalStatus: formData.maritalStatus?.toLowerCase()
       };
       
       // Remove undefined/null/empty string values to let backend use defaults
@@ -402,6 +408,7 @@ const MemberRegistration: React.FC = () => {
         console.log('🔍 Backend registration error:', data);
         console.log('🔍 Backend error status:', res.status);
         console.log('🔍 Backend error response:', data);
+        console.log('🔍 Backend validation errors:', data.errors);
         setErrors({ submit: data.message || "Registration failed" });
       }
     } catch (err) {
