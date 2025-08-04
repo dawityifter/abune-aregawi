@@ -17,6 +17,7 @@ console.log('  FRONTEND_URL:', process.env.FRONTEND_URL);
 const memberRoutes = require('./routes/memberRoutes');
 const memberPaymentRoutes = require('./routes/memberPaymentRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
+const churchTransactionRoutes = require('./routes/churchTransactionRoutes');
 
 // Import database
 const { sequelize } = require('./models');
@@ -140,6 +141,7 @@ app.get('/firebase-test', (req, res) => {
 app.use('/api/members', memberRoutes);
 app.use('/api/payments', memberPaymentRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/church-transactions', churchTransactionRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

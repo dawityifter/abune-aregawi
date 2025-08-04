@@ -6,6 +6,8 @@ import PaymentStats from './PaymentStats';
 import PaymentReports from './PaymentReports';
 import AddPaymentModal from './AddPaymentModal';
 
+type PaymentView = 'old' | 'new';
+
 interface PaymentStatsData {
   totalMembers: number;
   upToDateMembers: number;
@@ -19,6 +21,7 @@ interface PaymentStatsData {
 const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'reports'>('overview');
+  const [paymentView, setPaymentView] = useState<PaymentView>('new'); // Default to new view
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -66,15 +69,19 @@ const TreasurerDashboard: React.FC = () => {
     if (hasFinancialAccess) {
       fetchPaymentStats();
     }
-  }, [hasFinancialAccess]);
+  }, [hasFinancialAccess, paymentView]);
 
   const fetchPaymentStats = async () => {
     try {
       console.log('🔍 Fetching payment stats...');
       console.log('🔍 Current user:', currentUser);
       console.log('🔍 Firebase user:', firebaseUser);
+      console.log('🔍 Payment view:', paymentView);
       
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/stats?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      // Use different endpoints based on the selected view
+      const endpoint = paymentView === 'new' ? '/api/transactions/stats' : '/api/payments/stats';
+      
+      const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
@@ -133,6 +140,42 @@ const TreasurerDashboard: React.FC = () => {
           <p className="mt-2 text-gray-600">Manage member payments and generate reports</p>
         </div>
 
+        {/* Payment View Toggle */}
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <span className="text-sm font-medium text-gray-700">View:</span>
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="paymentView"
+                    value="new"
+                    checked={paymentView === 'new'}
+                    onChange={(e) => setPaymentView(e.target.value as PaymentView)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">New</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="paymentView"
+                    value="old"
+                    checked={paymentView === 'old'}
+                    onChange={(e) => setPaymentView(e.target.value as PaymentView)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Old</span>
+                </label>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500">
+              {paymentView === 'new' ? 'Using transactions table' : 'Using member_payments_2024 table'}
+            </div>
+          </div>
+        </div>
+
         {/* Tab Navigation */}
         <div className="border-b border-gray-200 mb-8">
           <nav className="-mb-px flex space-x-8">
@@ -175,12 +218,14 @@ const TreasurerDashboard: React.FC = () => {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-900">Payment Overview</h2>
-                <button
-                  onClick={() => setShowAddPaymentModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
-                >
-                  Add Payment
-                </button>
+                {paymentView === 'new' && (
+                  <button
+                    onClick={() => setShowAddPaymentModal(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                  >
+                    Add Payment
+                  </button>
+                )}
               </div>
               {stats && <PaymentStats stats={stats} />}
             </div>
@@ -190,21 +235,26 @@ const TreasurerDashboard: React.FC = () => {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-900">Member Payments</h2>
-                <button
-                  onClick={() => setShowAddPaymentModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
-                >
-                  Add Payment
-                </button>
+                {paymentView === 'new' && (
+                  <button
+                    onClick={() => setShowAddPaymentModal(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                  >
+                    Add Payment
+                  </button>
+                )}
               </div>
-              <PaymentList onPaymentAdded={fetchPaymentStats} />
+              <PaymentList 
+                onPaymentAdded={fetchPaymentStats} 
+                paymentView={paymentView}
+              />
             </div>
           )}
 
           {activeTab === 'reports' && (
             <div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-6">Payment Reports</h2>
-              <PaymentReports />
+              <PaymentReports paymentView={paymentView} />
             </div>
           )}
         </div>

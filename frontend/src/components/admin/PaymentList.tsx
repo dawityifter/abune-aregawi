@@ -24,9 +24,10 @@ interface Payment {
 
 interface PaymentListProps {
   onPaymentAdded: () => void;
+  paymentView: 'old' | 'new';
 }
 
-const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
+const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded, paymentView }) => {
   const { currentUser, firebaseUser } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +38,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
 
   useEffect(() => {
     fetchPayments();
-  }, [searchTerm, statusFilter, currentPage]);
+  }, [searchTerm, statusFilter, currentPage, paymentView]);
 
   const fetchPayments = async () => {
     try {
@@ -63,7 +64,10 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded }) => {
         params.append('status', backendStatus);
       }
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/payments?${params}`, {
+      // Use different endpoints based on the selected view
+      const endpoint = paymentView === 'new' ? '/api/transactions' : '/api/payments';
+      
+      const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}?${params}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
