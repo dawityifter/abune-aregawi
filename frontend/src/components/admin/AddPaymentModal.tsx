@@ -38,7 +38,7 @@ interface AddPaymentModalProps {
     if (!firebaseUser) return;
     
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?email=${encodeURIComponent(user?.data?.member?.email || '')}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?email=${encodeURIComponent(user?.email || '')}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
         }
@@ -54,7 +54,7 @@ interface AddPaymentModalProps {
     } catch (error) {
       console.error('Error fetching members:', error);
     }
-  }, [user?.data?.member?.email, firebaseUser]);
+  }, [user?.email, firebaseUser]);
 
   useEffect(() => {
     fetchMembers();
@@ -72,7 +72,7 @@ interface AddPaymentModalProps {
       
       if (paymentView === 'new') {
         // New transaction system
-        response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?email=${encodeURIComponent(user?.data?.member?.email || '')}`, {
+        response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?email=${encodeURIComponent(user?.email || '')}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ interface AddPaymentModalProps {
           },
           body: JSON.stringify({
             member_id: parseInt(selectedMemberId),
-            collected_by: parseInt(user?.data?.member?.id || '1'), // Always use logged-in member
+            collected_by: parseInt(user?.id || '1'), // Always use logged-in member
             payment_date: paymentDate,
             amount: parseFloat(amount),
             payment_type: paymentType,
@@ -318,10 +318,10 @@ interface AddPaymentModalProps {
                   </label>
                   <input
                     type="text"
-                    value={user?.data?.member?.firstName && user?.data?.member?.lastName 
-                      ? `${user.data.member.firstName} ${user.data.member.lastName} (${user.data.member.id})`
-                      : user?.data?.member?.firstName 
-                        ? `${user.data.member.firstName} (${user.data.member.id})`
+                    value={user?.firstName && user?.lastName 
+                      ? `${user.firstName} ${user.lastName} (${user.id})`
+                      : user?.firstName 
+                        ? `${user.firstName} (${user.id})`
                         : 'Loading...'
                     }
                     readOnly
