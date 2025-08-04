@@ -571,7 +571,7 @@ exports.getAllMembersFirebase = async (req, res) => {
       apartmentNo: member.apartment_no,
       emergencyContactName: member.emergency_contact_name,
       emergencyContactPhone: member.emergency_contact_phone,
-      dependants: member.dependents || [] // Include dependents array
+      dependants: member.dependents ? member.dependents.length : 0 // Include dependent count
     }));
 
     res.json({
@@ -766,7 +766,11 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     // First, let's check if there's a member with this Firebase UID
     console.log('🔍 Checking for member with Firebase UID:', uid);
     const memberByUid = await Member.findOne({
-      where: { firebase_uid: uid }
+      where: { firebase_uid: uid },
+      include: [{
+        model: require('../models').Dependent,
+        as: 'dependents'
+      }]
     });
     
     if (memberByUid) {
@@ -778,9 +782,44 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       });
       
       console.log('✅ Returning member profile by Firebase UID');
+      
+      // Transform snake_case to camelCase for frontend compatibility
+      const transformedMember = {
+        id: memberByUid.id,
+        firstName: memberByUid.first_name,
+        middleName: memberByUid.middle_name,
+        lastName: memberByUid.last_name,
+        email: memberByUid.email,
+        phoneNumber: memberByUid.phone_number,
+        role: memberByUid.role,
+        isActive: memberByUid.is_active,
+        dateJoinedParish: memberByUid.date_joined_parish,
+        createdAt: memberByUid.created_at,
+        updatedAt: memberByUid.updated_at,
+        baptismName: memberByUid.baptism_name,
+        dateOfBirth: memberByUid.date_of_birth,
+        gender: memberByUid.gender,
+        maritalStatus: memberByUid.marital_status,
+        streetLine1: memberByUid.street_line1,
+        city: memberByUid.city,
+        state: memberByUid.state,
+        postalCode: memberByUid.postal_code,
+        country: memberByUid.country,
+        spouseName: memberByUid.spouse_name,
+        householdSize: memberByUid.household_size,
+        repentanceFather: memberByUid.repentance_father,
+        registrationStatus: memberByUid.registration_status,
+        firebaseUid: memberByUid.firebase_uid,
+        familyId: memberByUid.family_id,
+        apartmentNo: memberByUid.apartment_no,
+        emergencyContactName: memberByUid.emergency_contact_name,
+        emergencyContactPhone: memberByUid.emergency_contact_phone,
+        dependents: memberByUid.dependents || []
+      };
+      
       const responseData = {
         success: true,
-        data: { member: memberByUid }
+        data: { member: transformedMember }
       };
       console.log('📤 Response status: 200, data:', { memberId: memberByUid.id, email: memberByUid.email, phone: memberByUid.phone_number });
       return res.status(200).json(responseData);
@@ -791,7 +830,11 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     if (userEmail) {
       console.log('🔍 Searching by email:', userEmail);
       member = await Member.findOne({
-        where: { email: userEmail }
+        where: { email: userEmail },
+        include: [{
+          model: require('../models').Dependent,
+          as: 'dependents'
+        }]
       });
     } else if (userPhone) {
       console.log('🔍 Searching by phone:', userPhone);
@@ -819,7 +862,11 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       member = await Member.findOne({
         where: {
           [Op.or]: phoneFormats.map(format => ({ phone_number: format }))
-        }
+        },
+        include: [{
+          model: require('../models').Dependent,
+          as: 'dependents'
+        }]
       });
       
       // If not found, let's see what phone numbers exist in the database
@@ -880,9 +927,44 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     }
 
     console.log('✅ Returning member profile');
+    
+    // Transform snake_case to camelCase for frontend compatibility
+    const transformedMember = {
+      id: member.id,
+      firstName: member.first_name,
+      middleName: member.middle_name,
+      lastName: member.last_name,
+      email: member.email,
+      phoneNumber: member.phone_number,
+      role: member.role,
+      isActive: member.is_active,
+      dateJoinedParish: member.date_joined_parish,
+      createdAt: member.created_at,
+      updatedAt: member.updated_at,
+      baptismName: member.baptism_name,
+      dateOfBirth: member.date_of_birth,
+      gender: member.gender,
+      maritalStatus: member.marital_status,
+      streetLine1: member.street_line1,
+      city: member.city,
+      state: member.state,
+      postalCode: member.postal_code,
+      country: member.country,
+      spouseName: member.spouse_name,
+      householdSize: member.household_size,
+      repentanceFather: member.repentance_father,
+      registrationStatus: member.registration_status,
+      firebaseUid: member.firebase_uid,
+      familyId: member.family_id,
+      apartmentNo: member.apartment_no,
+      emergencyContactName: member.emergency_contact_name,
+      emergencyContactPhone: member.emergency_contact_phone,
+      dependents: member.dependents || []
+    };
+    
     const responseData = {
       success: true,
-      data: { member }
+      data: { member: transformedMember }
     };
     console.log('📤 Response status: 200, data:', { memberId: member.id, email: member.email, phone: member.phone_number });
     res.status(200).json(responseData);
