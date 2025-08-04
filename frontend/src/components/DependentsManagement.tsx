@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { formatPhoneNumber } from '../utils/formatPhoneNumber';
 import { formatDateForDisplay } from '../utils/dateUtils';
-import { Dependent, getRelationshipOptions } from '../utils/relationshipTypes';
+import { Dependent, getRelationshipOptions, Relationship } from '../utils/relationshipTypes';
 
 
 
@@ -18,7 +18,7 @@ const DependentsManagement: React.FC = () => {
     lastName: '',
     dateOfBirth: '',
     gender: 'Male',
-    relationship: '',
+    relationship: undefined,
     phone: '',
     email: '',
     baptismName: '',
@@ -171,7 +171,7 @@ const DependentsManagement: React.FC = () => {
       lastName: '',
       dateOfBirth: '',
       gender: 'Male',
-      relationship: '',
+      relationship: undefined,
       phone: '',
       email: '',
       baptismName: '',
@@ -292,7 +292,7 @@ const DependentsManagement: React.FC = () => {
                 </label>
                 <select
                   value={formData.relationship || ''}
-                  onChange={(e) => setFormData({...formData, relationship: e.target.value})}
+                  onChange={(e) => setFormData({...formData, relationship: e.target.value as Relationship || undefined})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Relationship</option>

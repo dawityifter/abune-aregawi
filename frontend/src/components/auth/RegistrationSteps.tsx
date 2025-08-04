@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { formatPhoneNumber, normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
 import { formatDateForDisplay } from '../../utils/dateUtils';
-import { Dependent, getRelationshipOptions } from '../../utils/relationshipTypes';
+import { Dependent, getRelationshipOptions, Relationship } from '../../utils/relationshipTypes';
 
 // Step 1: Personal Information
 const PersonalInfoStep: React.FC<{
@@ -833,7 +833,7 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
     lastName: '',
     dateOfBirth: '',
     gender: 'Male',
-    relationship: '',
+    relationship: undefined,
     phone: '',
     email: '',
     baptismName: '',
@@ -949,7 +949,7 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
             </label>
             <select
               value={newDependent.relationship || ''}
-              onChange={(e) => setNewDependent({...newDependent, relationship: e.target.value})}
+              onChange={(e) => setNewDependent({...newDependent, relationship: e.target.value as Relationship || undefined})}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Relationship</option>
