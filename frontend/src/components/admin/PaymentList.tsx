@@ -65,7 +65,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded, paymentView }
       }
 
       // Use different endpoints based on the selected view
-      const endpoint = paymentView === 'new' ? '/api/transactions' : '/api/payments';
+      const endpoint = paymentView === 'new' ? '/api/transactions/member-summaries' : '/api/payments';
       
       const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}?${params}`, {
         headers: {

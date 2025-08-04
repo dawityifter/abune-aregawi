@@ -389,11 +389,132 @@ const getTransactionStats = async (req, res) => {
   }
 };
 
+// Get member payment summaries for the new system (aggregated by member)
+const getMemberPaymentSummaries = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      status
+    } = req.query;
+
+    const offset = (page - 1) * limit;
+    const whereClause = {};
+
+    // Add search filter
+    if (search) {
+      whereClause[Op.or] = [
+        { '$member.first_name$': { [Op.iLike]: `%${search}%` } },
+        { '$member.last_name$': { [Op.iLike]: `%${search}%` } },
+        { '$member.email$': { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    // Get all members with their transaction summaries
+    const { count, rows: members } = await Member.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: Transaction,
+          as: 'transactions',
+          attributes: [
+            [sequelize.fn('SUM', sequelize.col('amount')), 'totalCollected'],
+            [sequelize.fn('COUNT', sequelize.col('id')), 'transactionCount']
+          ],
+          required: false
+        }
+      ],
+      attributes: [
+        'id',
+        'first_name',
+        'last_name',
+        'email',
+        'phone_number',
+        'spouse_name',
+        'monthly_payment'
+      ],
+      group: ['Member.id'],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [['first_name', 'ASC']]
+    });
+
+    // Transform the data to match the expected format
+    const transformedMembers = members.map(member => {
+      const totalCollected = parseFloat(member.transactions?.[0]?.dataValues?.totalCollected || 0);
+      const transactionCount = parseInt(member.transactions?.[0]?.dataValues?.transactionCount || 0);
+      
+      // For the new system, we'll use a simplified approach
+      // You might want to implement proper due calculation based on your business logic
+      const monthlyPayment = parseFloat(member.monthly_payment || 0);
+      const totalAmountDue = monthlyPayment * 12; // Annual dues
+      const balanceDue = totalAmountDue - totalCollected;
+
+      return {
+        id: member.id,
+        memberName: `${member.first_name} ${member.last_name}`,
+        spouseName: member.spouse_name || '',
+        phone1: member.phone_number || '',
+        phone2: '', // Not available in new system
+        totalAmountDue,
+        totalCollected,
+        balanceDue,
+        monthlyPayment,
+        paymentMethod: 'Mixed', // Since new system supports multiple methods
+        member: {
+          id: member.id,
+          firstName: member.first_name,
+          lastName: member.last_name,
+          memberId: member.id.toString(),
+          phoneNumber: member.phone_number,
+          email: member.email
+        }
+      };
+    });
+
+    // Apply status filter if specified
+    let filteredMembers = transformedMembers;
+    if (status && status !== 'all') {
+      filteredMembers = transformedMembers.filter(member => {
+        const collected = member.totalCollected;
+        const due = member.totalAmountDue;
+        
+        if (status === 'up_to_date') return collected >= due;
+        if (status === 'behind') return collected < due && collected > 0;
+        if (status === 'partial') return collected > 0 && collected < due;
+        return true;
+      });
+    }
+
+    res.json({
+      success: true,
+      data: filteredMembers,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / limit),
+        totalMembers: count,
+        hasNext: page * limit < count,
+        hasPrev: page > 1
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching member payment summaries:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch member payment summaries',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllTransactions,
   getTransactionById,
   createTransaction,
   updateTransaction,
   deleteTransaction,
-  getTransactionStats
+  getTransactionStats,
+  getMemberPaymentSummaries
 }; 
