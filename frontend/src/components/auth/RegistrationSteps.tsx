@@ -279,32 +279,32 @@ const ContactAddressStep: React.FC<{
         </label>
         <input
           type="text"
-          value={formData.addressLine1}
-          onChange={(e) => handleInputChange('addressLine1', e.target.value)}
+          value={formData.streetLine1}
+          onChange={(e) => handleInputChange('streetLine1', e.target.value)}
           className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
-            errors.addressLine1 
+            errors.streetLine1 
               ? 'border-red-500 focus:ring-red-500' 
               : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
           } focus:outline-none focus:ring-1`}
           placeholder={t('address.line1.placeholder')}
         />
-        {errors.addressLine1 && (
+        {errors.streetLine1 && (
           <p className="text-red-500 text-xs sm:text-sm mt-1">
-            {errors.addressLine1}
+            {errors.streetLine1}
           </p>
         )}
       </div>
       
       <div className="sm:col-span-2 space-y-1">
         <label className="block text-sm font-medium text-gray-700">
-          {t('address.line2')} <span className="text-gray-500 text-xs">({t('optional')})</span>
+          {t('apartment.number')} <span className="text-gray-500 text-xs">({t('optional')})</span>
         </label>
         <input
           type="text"
-          value={formData.addressLine2}
-          onChange={(e) => handleInputChange('addressLine2', e.target.value)}
+          value={formData.apartmentNo}
+          onChange={(e) => handleInputChange('apartmentNo', e.target.value)}
           className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-          placeholder={t('address.line2.placeholder')}
+          placeholder={t('apartment.number.placeholder')}
         />
       </div>
       

@@ -295,6 +295,7 @@ const MemberRegistration: React.FC = () => {
     }
     
     setErrors(newErrors);
+    console.log('🔍 Validation errors set:', newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
