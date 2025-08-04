@@ -383,6 +383,8 @@ const MemberRegistration: React.FC = () => {
         }
       });
       
+      console.log('🔍 Sending registration data to backend:', registrationData);
+      
       const res = await fetch(`${process.env.REACT_APP_API_URL}/api/members/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -397,6 +399,9 @@ const MemberRegistration: React.FC = () => {
         // after it successfully fetches the user profile from backend (with retry logic)
       } else {
         const data = await res.json();
+        console.log('🔍 Backend registration error:', data);
+        console.log('🔍 Backend error status:', res.status);
+        console.log('🔍 Backend error response:', data);
         setErrors({ submit: data.message || "Registration failed" });
       }
     } catch (err) {
