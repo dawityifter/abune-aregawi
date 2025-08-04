@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from '../../contexts/LanguageContext';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
+import { useAuth } from '../../contexts/AuthContext';
 // import { Transition } from '@headlessui/react'; // Removed due to React 19 compatibility
 import {
   PersonalInfoStep,
@@ -29,7 +30,12 @@ const MemberRegistration: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { currentUser, getUserProfile } = useAuth();
   const { email, phone } = location.state || {};
+  
+  // State to track if we're still checking user status
+  const [checkingUser, setCheckingUser] = useState(true);
+  const [userStatus, setUserStatus] = useState<'new' | 'existing' | 'error'>('new');
   
   // Track window width for responsive behavior
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -41,6 +47,84 @@ const MemberRegistration: React.FC = () => {
   }, []);
   
   const isMobile = windowWidth < 768;
+  
+  // Check if user exists when component mounts
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      try {
+        setCheckingUser(true);
+        
+        // If we have a current user, check if they have a profile
+        if (currentUser) {
+          try {
+            // Try to get the user profile
+            const profile = await getUserProfile(
+              currentUser.uid,
+              currentUser.email || '',
+              currentUser.phoneNumber || ''
+            );
+            
+            if (profile) {
+              // User has a profile, they are an existing user
+              console.log('User profile found, redirecting to dashboard');
+              setUserStatus('existing');
+              navigate('/dashboard');
+            } else {
+              // No profile found, this is a new user
+              console.log('No user profile found, showing registration form');
+              setUserStatus('new');
+            }
+          } catch (error: any) {
+            // If we get a 404, it means the user is new
+            if (error.response?.status === 404) {
+              console.log('User not found in backend, showing registration form');
+              setUserStatus('new');
+            } else {
+              console.error('Error checking user profile:', error);
+              setUserStatus('error');
+            }
+          }
+        } else {
+          // No current user, redirect to login
+          console.log('No current user, redirecting to login');
+          navigate('/login');
+        }
+      } catch (error) {
+        console.error('Error checking user status:', error);
+        setUserStatus('error');
+      } finally {
+        setCheckingUser(false);
+      }
+    };
+    
+    checkUserStatus();
+  }, [currentUser, navigate, getUserProfile]);
+  
+  // Show loading state while checking user status
+  if (checkingUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+  
+  // If there was an error checking user status, show an error message
+  if (userStatus === 'error') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <p>An error occurred while checking your account status. Please try again later.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-2 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState<any>({});
