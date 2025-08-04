@@ -1,4 +1,4 @@
-const { Transaction, Member } = require('../models');
+const { Transaction, Member, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // Get all transactions with optional filtering
@@ -329,7 +329,7 @@ const deleteTransaction = async (req, res) => {
   }
 };
 
-// Get transaction statistics
+// Get transaction statistics for dashboard (compatible with payment stats format)
 const getTransactionStats = async (req, res) => {
   try {
     const { start_date, end_date, payment_type } = req.query;
@@ -343,22 +343,41 @@ const getTransactionStats = async (req, res) => {
 
     if (payment_type) whereClause.payment_type = payment_type;
 
-    const stats = await Transaction.findAll({
+    // Get basic transaction stats
+    const totalTransactions = await Transaction.count({ where: whereClause });
+    const totalAmount = await Transaction.sum('amount', { where: whereClause });
+    
+    // Get unique members who have made transactions
+    const uniqueMembers = await Transaction.findAll({
       where: whereClause,
-      attributes: [
-        'payment_type',
-        'payment_method',
-        [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-        [sequelize.fn('SUM', sequelize.col('amount')), 'total_amount'],
-        [sequelize.fn('AVG', sequelize.col('amount')), 'average_amount']
-      ],
-      group: ['payment_type', 'payment_method'],
-      order: [['payment_type', 'ASC'], ['payment_method', 'ASC']]
+      attributes: [[sequelize.fn('DISTINCT', sequelize.col('member_id')), 'member_id']],
+      raw: true
     });
+    
+    const totalMembers = uniqueMembers.length;
+    
+    // For now, we'll use placeholder values for compatibility
+    // In a real implementation, you'd calculate these based on your business logic
+    const upToDateMembers = totalMembers; // Placeholder
+    const behindMembers = 0; // Placeholder
+    const totalCollected = totalAmount || 0;
+    const totalAmountDue = totalAmount || 0; // Placeholder
+    const outstandingAmount = 0; // Placeholder
+    const collectionRate = totalMembers > 0 ? '100' : '0'; // Placeholder
+
+    const stats = {
+      totalMembers,
+      upToDateMembers,
+      behindMembers,
+      totalAmountDue,
+      totalCollected,
+      collectionRate,
+      outstandingAmount
+    };
 
     res.json({
       success: true,
-      data: { stats }
+      data: stats
     });
   } catch (error) {
     console.error('Error fetching transaction stats:', error);
