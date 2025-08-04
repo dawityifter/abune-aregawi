@@ -41,12 +41,6 @@ interface BackendDependentData {
   dateOfBirth: string;
   gender: string;
   relationship?: string;
-  phone?: string;
-  email?: string;
-  baptismName?: string;
-  isBaptized: boolean;
-  baptismDate?: string;
-  nameDay?: string;
   medicalConditions?: string;
   allergies?: string;
   medications?: string;
@@ -896,30 +890,26 @@ const Profile: React.FC = () => {
                                 <p className="text-gray-900">{dependent.relationship}</p>
                               </div>
                             )}
-                            {dependent.phone && (
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')}</label>
-                                  <p className="text-gray-900">{dependent.phone}</p>
-                                </div>
-                              )}
-                            </div>
-                            <div className="space-y-4">
-                              {dependent.email && (
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
-                                  <p className="text-gray-900">{dependent.email}</p>
-                                </div>
-                              )}
-                              {dependent.baptismName && (
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptism.name')}</label>
-                                  <p className="text-gray-900">{dependent.baptismName}</p>
-                                </div>
-                              )}
+                                                      </div>
+                          <div className="space-y-4">
+                            {dependent.medicalConditions && (
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptized')}</label>
-                                <p className="text-gray-900">{dependent.isBaptized ? t('yes') : t('no')}</p>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('medical.conditions')}</label>
+                                <p className="text-gray-900">{dependent.medicalConditions}</p>
                               </div>
+                            )}
+                            {dependent.allergies && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('allergies')}</label>
+                                <p className="text-gray-900">{dependent.allergies}</p>
+                              </div>
+                            )}
+                            {dependent.notes && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('notes')}</label>
+                                <p className="text-gray-900">{dependent.notes}</p>
+                              </div>
+                            )}
                             </div>
                           </div>
                         </div>
