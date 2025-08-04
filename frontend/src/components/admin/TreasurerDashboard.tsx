@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRolePermissions } from '../../utils/roles';
 import PaymentList from './PaymentList';
+import TransactionList from './TransactionList';
 import PaymentStats from './PaymentStats';
 import PaymentReports from './PaymentReports';
 import AddPaymentModal from './AddPaymentModal';
@@ -256,10 +257,16 @@ const TreasurerDashboard: React.FC = () => {
                   </button>
                 )}
               </div>
-              <PaymentList 
-                onPaymentAdded={fetchPaymentStats} 
-                paymentView={paymentView}
-              />
+              {paymentView === 'new' ? (
+                <TransactionList 
+                  onTransactionAdded={fetchPaymentStats} 
+                />
+              ) : (
+                <PaymentList 
+                  onPaymentAdded={fetchPaymentStats} 
+                  paymentView={paymentView}
+                />
+              )}
             </div>
           )}
 
