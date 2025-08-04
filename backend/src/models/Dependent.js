@@ -39,6 +39,33 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(50),
       allowNull: true
     },
+    phone: {
+      type: DataTypes.STRING(20),
+      allowNull: true
+    },
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      validate: {
+        isEmail: true
+      }
+    },
+    baptismName: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
+    isBaptized: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    baptismDate: {
+      type: DataTypes.DATEONLY,
+      allowNull: true
+    },
+    nameDay: {
+      type: DataTypes.STRING(100),
+      allowNull: true
+    },
     medicalConditions: {
       type: DataTypes.TEXT,
       allowNull: true

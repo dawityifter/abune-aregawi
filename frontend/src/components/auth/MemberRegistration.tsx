@@ -21,6 +21,12 @@ interface Dependent {
   dateOfBirth: string;
   gender: 'Male' | 'Female';
   relationship?: string;
+  phone?: string;
+  email?: string;
+  baptismName?: string;
+  isBaptized: boolean;
+  baptismDate?: string;
+  nameDay?: string;
   medicalConditions?: string;
   allergies?: string;
   medications?: string;
