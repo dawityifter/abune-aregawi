@@ -72,7 +72,7 @@ exports.register = async (req, res) => {
       titheParticipation,
       
       // Account
-      firebaseUid,
+      firebase_uid: firebaseUid,
       password,
       role,
       
@@ -102,7 +102,7 @@ exports.register = async (req, res) => {
     if (firebaseUid) {
       // Check if this Firebase UID already has a complete member profile
       const existingFirebaseUser = await Member.findOne({
-        where: { firebaseUid }
+        where: { firebase_uid: firebaseUid }
       });
       if (existingFirebaseUser) {
         return res.status(400).json({
@@ -117,7 +117,7 @@ exports.register = async (req, res) => {
       const existingMemberByPhone = await Member.findOne({
         where: { 
           phoneNumber,
-          firebaseUid: { [require('sequelize').Op.ne]: firebaseUid } // Different Firebase UID
+          firebase_uid: { [require('sequelize').Op.ne]: firebaseUid } // Different Firebase UID
         }
       });
       if (existingMemberByPhone) {
@@ -1052,7 +1052,7 @@ exports.completeRegistration = async (req, res) => {
       where: {
         [Op.or]: [
           { email: memberData.email },
-          { firebaseUid: firebaseUid }
+          { firebase_uid: firebaseUid }
         ]
       }
     });
@@ -1068,7 +1068,7 @@ exports.completeRegistration = async (req, res) => {
     // Create member in PostgreSQL with Firebase UID
     const member = await Member.create({
       ...memberData,
-      firebaseUid: firebaseUid,
+      firebase_uid: firebaseUid,
       role: memberData.role || 'member'
     });
 
@@ -1344,7 +1344,7 @@ exports.checkRegistrationStatus = async (req, res) => {
       whereClause.email = email;
     }
     if (firebaseUid) {
-      whereClause.firebaseUid = firebaseUid;
+      whereClause.firebase_uid = firebaseUid;
     }
 
     const member = await Member.findOne({
@@ -1362,7 +1362,7 @@ exports.checkRegistrationStatus = async (req, res) => {
         data: { 
           member,
           status: 'complete',
-          hasFirebaseUid: !!member.firebaseUid
+          hasFirebaseUid: !!member.firebase_uid
         }
       });
     } else {
