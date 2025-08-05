@@ -6,6 +6,7 @@ const DonatePage: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'ach'>('card');
   const [amount, setAmount] = useState('');
   const [frequency, setFrequency] = useState('monthly');
+  const [qrCodeFormat, setQrCodeFormat] = useState<'email' | 'vcard'>('email');
   const [donorInfo, setDonorInfo] = useState({
     firstName: '',
     lastName: '',
@@ -352,17 +353,48 @@ const DonatePage: React.FC = () => {
                 {/* QR Code Section */}
                 <div className="text-center">
                   <p className="text-sm text-blue-700 mb-3">Scan with your bank app or Zelle</p>
+                  
+                  {/* QR Code Format Toggle */}
+                  <div className="mb-3">
+                    <label className="text-xs text-gray-600 mr-3">
+                      <input
+                        type="radio"
+                        value="email"
+                        checked={qrCodeFormat === 'email'}
+                        onChange={(e) => setQrCodeFormat(e.target.value as 'email' | 'vcard')}
+                        className="mr-1"
+                      />
+                      Email Format
+                    </label>
+                    <label className="text-xs text-gray-600">
+                      <input
+                        type="radio"
+                        value="vcard"
+                        checked={qrCodeFormat === 'vcard'}
+                        onChange={(e) => setQrCodeFormat(e.target.value as 'email' | 'vcard')}
+                        className="mr-1"
+                      />
+                      Contact Format
+                    </label>
+                  </div>
+                  
                   <div className="bg-white p-4 rounded-lg shadow-sm inline-block">
                     <QRCode 
-                      value="abunearegawitx@gmail.com"
+                      value={qrCodeFormat === 'email' 
+                        ? "abunearegawitx@gmail.com"
+                        : "BEGIN:VCARD\nVERSION:3.0\nEMAIL:abunearegawitx@gmail.com\nFN:Abune Aregawi Church\nORG:Abune Aregawi Orthodox Tewahedo Church\nEND:VCARD"
+                      }
                       size={200}
-                      level="M"
-                      fgColor="#1e40af"
+                      level="H"
+                      fgColor="#000000"
                       bgColor="#ffffff"
                     />
                   </div>
                   <p className="text-xs text-gray-600 mt-2">
                     Open your bank app and scan this QR code to send money via Zelle
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    If scanning doesn't work, manually enter: abunearegawitx@gmail.com
                   </p>
                 </div>
               </div>
