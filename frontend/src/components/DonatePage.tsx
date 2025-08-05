@@ -6,7 +6,7 @@ const DonatePage: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'ach'>('card');
   const [amount, setAmount] = useState('');
   const [frequency, setFrequency] = useState('monthly');
-  const [qrCodeFormat, setQrCodeFormat] = useState<'email' | 'vcard'>('email');
+  const [qrCodeFormat, setQrCodeFormat] = useState<'email' | 'vcard' | 'url'>('email');
   const [donorInfo, setDonorInfo] = useState({
     firstName: '',
     lastName: '',
@@ -361,20 +361,30 @@ const DonatePage: React.FC = () => {
                         type="radio"
                         value="email"
                         checked={qrCodeFormat === 'email'}
-                        onChange={(e) => setQrCodeFormat(e.target.value as 'email' | 'vcard')}
+                        onChange={(e) => setQrCodeFormat(e.target.value as 'email' | 'vcard' | 'url')}
                         className="mr-1"
                       />
-                      Email Format
+                      Simple Email
                     </label>
-                    <label className="text-xs text-gray-600">
+                    <label className="text-xs text-gray-600 mr-3">
                       <input
                         type="radio"
                         value="vcard"
                         checked={qrCodeFormat === 'vcard'}
-                        onChange={(e) => setQrCodeFormat(e.target.value as 'email' | 'vcard')}
+                        onChange={(e) => setQrCodeFormat(e.target.value as 'email' | 'vcard' | 'url')}
                         className="mr-1"
                       />
-                      Contact Format
+                      Contact Card
+                    </label>
+                    <label className="text-xs text-gray-600">
+                      <input
+                        type="radio"
+                        value="url"
+                        checked={qrCodeFormat === 'url'}
+                        onChange={(e) => setQrCodeFormat(e.target.value as 'email' | 'vcard' | 'url')}
+                        className="mr-1"
+                      />
+                      Website Link
                     </label>
                   </div>
                   
@@ -382,7 +392,9 @@ const DonatePage: React.FC = () => {
                     <QRCode 
                       value={qrCodeFormat === 'email' 
                         ? "abunearegawitx@gmail.com"
-                        : "BEGIN:VCARD\nVERSION:3.0\nEMAIL:abunearegawitx@gmail.com\nFN:Abune Aregawi Church\nORG:Abune Aregawi Orthodox Tewahedo Church\nEND:VCARD"
+                        : qrCodeFormat === 'vcard'
+                          ? "BEGIN:VCARD\nVERSION:3.0\nEMAIL:abunearegawitx@gmail.com\nFN:Abune Aregawi Church\nORG:Abune Aregawi Orthodox Tewahedo Church\nEND:VCARD"
+                          : "https://abunearegawi.org/donate"
                       }
                       size={200}
                       level="H"
@@ -396,6 +408,12 @@ const DonatePage: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-1">
                     If scanning doesn't work, manually enter: abunearegawitx@gmail.com
                   </p>
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-xs text-yellow-800 font-medium mb-1">💡 Tip:</p>
+                    <p className="text-xs text-yellow-700">
+                      Different banking apps work differently. If one format doesn't work, try another or manually enter the email address in your Zelle app.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
