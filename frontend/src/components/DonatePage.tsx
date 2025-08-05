@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import QRCode from 'react-qr-code';
 
 const DonatePage: React.FC = () => {
   const [donationType, setDonationType] = useState<'one-time' | 'recurring'>('one-time');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'ach'>('card');
   const [amount, setAmount] = useState('');
   const [frequency, setFrequency] = useState('monthly');
-  const [qrCodeFormat, setQrCodeFormat] = useState<'email' | 'vcard' | 'url'>('email');
   const [donorInfo, setDonorInfo] = useState({
     firstName: '',
     lastName: '',
@@ -344,74 +342,38 @@ const DonatePage: React.FC = () => {
             {/* Zelle */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-xl font-semibold text-gray-800 mb-4">Donate via Zelle</h3>
-              <div className="bg-blue-50 border border-blue-200 rounded p-4 flex flex-col items-center space-y-4">
-                <div className="text-center">
-                  <span className="text-lg font-bold text-blue-700 block mb-2">Zelle Email:</span>
-                  <span className="text-lg text-blue-900 select-all font-mono">abunearegawitx@gmail.com</span>
-                </div>
-                
-                {/* QR Code Section */}
-                <div className="text-center">
-                  <p className="text-sm text-blue-700 mb-3">Scan with your bank app or Zelle</p>
-                  
-                  {/* QR Code Format Toggle */}
-                  <div className="mb-3">
-                    <label className="text-xs text-gray-600 mr-3">
-                      <input
-                        type="radio"
-                        value="email"
-                        checked={qrCodeFormat === 'email'}
-                        onChange={(e) => setQrCodeFormat(e.target.value as 'email' | 'vcard' | 'url')}
-                        className="mr-1"
-                      />
-                      Simple Email
-                    </label>
-                    <label className="text-xs text-gray-600 mr-3">
-                      <input
-                        type="radio"
-                        value="vcard"
-                        checked={qrCodeFormat === 'vcard'}
-                        onChange={(e) => setQrCodeFormat(e.target.value as 'email' | 'vcard' | 'url')}
-                        className="mr-1"
-                      />
-                      Contact Card
-                    </label>
-                    <label className="text-xs text-gray-600">
-                      <input
-                        type="radio"
-                        value="url"
-                        checked={qrCodeFormat === 'url'}
-                        onChange={(e) => setQrCodeFormat(e.target.value as 'email' | 'vcard' | 'url')}
-                        className="mr-1"
-                      />
-                      Website Link
-                    </label>
+              <div className="bg-blue-50 border border-blue-200 rounded p-4">
+                <div className="text-center space-y-4">
+                  <div>
+                    <span className="text-lg font-bold text-blue-700 block mb-2">Zelle Email Address:</span>
+                    <div className="bg-white border border-blue-300 rounded-lg p-3 inline-block">
+                      <span className="text-lg text-blue-900 font-mono select-all">abunearegawitx@gmail.com</span>
+                    </div>
                   </div>
                   
-                  <div className="bg-white p-4 rounded-lg shadow-sm inline-block">
-                    <QRCode 
-                      value={qrCodeFormat === 'email' 
-                        ? "abunearegawitx@gmail.com"
-                        : qrCodeFormat === 'vcard'
-                          ? "BEGIN:VCARD\nVERSION:3.0\nEMAIL:abunearegawitx@gmail.com\nFN:Abune Aregawi Church\nORG:Abune Aregawi Orthodox Tewahedo Church\nEND:VCARD"
-                          : "https://abunearegawi.org/donate"
-                      }
-                      size={200}
-                      level="H"
-                      fgColor="#000000"
-                      bgColor="#ffffff"
-                    />
+                  <div className="text-left space-y-3">
+                    <h4 className="font-semibold text-gray-800">How to donate via Zelle:</h4>
+                    <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
+                      <li>Open your banking app or Zelle app</li>
+                      <li>Select "Send Money" or "Send with Zelle"</li>
+                                             <li>Enter the email address: <span className="font-mono text-blue-600">abunearegawitx@gmail.com</span></li>
+                      <li>Enter your donation amount</li>
+                      <li>Add a note: "Donation to Abune Aregawi Church"</li>
+                      <li>Review and send your payment</li>
+                    </ol>
                   </div>
-                  <p className="text-xs text-gray-600 mt-2">
-                    Open your bank app and scan this QR code to send money via Zelle
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    If scanning doesn't work, manually enter: abunearegawitx@gmail.com
-                  </p>
+                  
+                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-xs text-green-800 font-medium mb-1">✅ Quick Copy:</p>
+                    <p className="text-xs text-green-700">
+                      Click the email address above to copy it, then paste it directly into your Zelle app.
+                    </p>
+                  </div>
+                  
                   <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-xs text-yellow-800 font-medium mb-1">💡 Tip:</p>
+                    <p className="text-xs text-yellow-800 font-medium mb-1">💡 Note:</p>
                     <p className="text-xs text-yellow-700">
-                      Different banking apps work differently. If one format doesn't work, try another or manually enter the email address in your Zelle app.
+                      Zelle doesn't support QR codes for payments. Please manually enter the email address in your banking app.
                     </p>
                   </div>
                 </div>
