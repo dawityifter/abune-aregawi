@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import QRCode from 'react-qr-code';
 
 const DonatePage: React.FC = () => {
   const [donationType, setDonationType] = useState<'one-time' | 'recurring'>('one-time');
@@ -342,9 +343,28 @@ const DonatePage: React.FC = () => {
             {/* Zelle */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-xl font-semibold text-gray-800 mb-4">Donate via Zelle</h3>
-              <div className="bg-blue-50 border border-blue-200 rounded p-4 flex flex-col items-center">
-                <span className="text-lg font-bold text-blue-700">Zelle Email:</span>
-                <span className="text-lg text-blue-900 select-all">abunearegawitx@gmail.com</span>
+              <div className="bg-blue-50 border border-blue-200 rounded p-4 flex flex-col items-center space-y-4">
+                <div className="text-center">
+                  <span className="text-lg font-bold text-blue-700 block mb-2">Zelle Email:</span>
+                  <span className="text-lg text-blue-900 select-all font-mono">abunearegawitx@gmail.com</span>
+                </div>
+                
+                {/* QR Code Section */}
+                <div className="text-center">
+                  <p className="text-sm text-blue-700 mb-3">Scan with your bank app or Zelle</p>
+                  <div className="bg-white p-4 rounded-lg shadow-sm inline-block">
+                    <QRCode 
+                      value="abunearegawitx@gmail.com"
+                      size={200}
+                      level="M"
+                      fgColor="#1e40af"
+                      bgColor="#ffffff"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">
+                    Open your bank app and scan this QR code to send money via Zelle
+                  </p>
+                </div>
               </div>
             </div>
 
