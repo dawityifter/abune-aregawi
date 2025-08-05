@@ -525,31 +525,33 @@ const FamilyInfoStep: React.FC<{
         </div>
       )}
       
-      <div className="space-y-1">
-        <label className="block text-sm font-medium text-gray-700">
-          {t('number.of.children')} <span className="text-red-500">*</span>
-        </label>
-        <select
-          value={formData.numberOfChildren}
-          onChange={(e) => handleInputChange('numberOfChildren', parseInt(e.target.value) || 0)}
-          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
-            errors.numberOfChildren 
-              ? 'border-red-500 focus:ring-red-500' 
-              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-          } focus:outline-none focus:ring-1`}
-        >
-          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-            <option key={num} value={num}>
-              {num}
-            </option>
-          ))}
-        </select>
-        {errors.numberOfChildren && (
-          <p className="text-red-500 text-xs sm:text-sm mt-1">
-            {errors.numberOfChildren}
-          </p>
-        )}
-      </div>
+      {formData.hasDependents && (
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">
+            {t('number.of.children')} <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={formData.numberOfChildren}
+            onChange={(e) => handleInputChange('numberOfChildren', parseInt(e.target.value) || 0)}
+            className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+              errors.numberOfChildren 
+                ? 'border-red-500 focus:ring-red-500' 
+                : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+            } focus:outline-none focus:ring-1`}
+          >
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+              <option key={num} value={num}>
+                {num}
+              </option>
+            ))}
+          </select>
+          {errors.numberOfChildren && (
+            <p className="text-red-500 text-xs sm:text-sm mt-1">
+              {errors.numberOfChildren}
+            </p>
+          )}
+        </div>
+      )}
       
       {formData.numberOfChildren > 0 && (
         <div className="space-y-2">
