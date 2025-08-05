@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import StripePayment from './StripePayment';
+import { useAuth } from '../contexts/AuthContext';
 
 const DonatePage: React.FC = () => {
+  const { user } = useAuth();
   const [donationType, setDonationType] = useState<'one-time' | 'recurring'>('one-time');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'ach'>('card');
   const [amount, setAmount] = useState('');
@@ -18,6 +20,34 @@ const DonatePage: React.FC = () => {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  // Prefill donor information with logged-in user data
+  useEffect(() => {
+    if (user && !user._temp) {
+      setDonorInfo({
+        firstName: user.first_name || user.firstName || '',
+        lastName: user.last_name || user.lastName || '',
+        email: user.email || '',
+        phone: user.phone_number || user.phoneNumber || '',
+        address: user.street_line1 || user.streetLine1 || '',
+        zipCode: user.postal_code || user.postalCode || ''
+      });
+    }
+  }, [user]);
+
+  // Reset donor information to user's profile data
+  const resetToProfileData = () => {
+    if (user && !user._temp) {
+      setDonorInfo({
+        firstName: user.first_name || user.firstName || '',
+        lastName: user.last_name || user.lastName || '',
+        email: user.email || '',
+        phone: user.phone_number || user.phoneNumber || '',
+        address: user.street_line1 || user.streetLine1 || '',
+        zipCode: user.postal_code || user.postalCode || ''
+      });
+    }
+  };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,6 +228,24 @@ const DonatePage: React.FC = () => {
                 {/* Donor Information */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium text-gray-800">Donor Information</h3>
+                  
+                  {user && !user._temp && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-blue-700">
+                          <strong>Note:</strong> Your information has been prefilled from your profile. You can update any fields if needed.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={resetToProfileData}
+                          className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors"
+                        >
+                          Reset to Profile
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
