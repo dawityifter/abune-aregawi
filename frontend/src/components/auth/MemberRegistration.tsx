@@ -373,12 +373,14 @@ const MemberRegistration: React.FC = () => {
         loginEmail: email || formData.email || undefined,
         // Ensure titheParticipation is boolean
         titheParticipation: Boolean(formData.titheParticipation),
-        // Ensure languagePreference has a valid default
-        languagePreference: formData.languagePreference || 'English',
+        // Convert language preference to backend format
+        languagePreference: formData.languagePreference === 'English' ? 'en' : 'ti',
         // Convert gender to lowercase to match backend validation
         gender: formData.gender?.toLowerCase(),
         // Convert marital status to lowercase to match backend validation
-        maritalStatus: formData.maritalStatus?.toLowerCase()
+        maritalStatus: formData.maritalStatus?.toLowerCase(),
+        // Convert preferred giving method to lowercase to match backend validation
+        preferredGivingMethod: formData.preferredGivingMethod?.toLowerCase()
       };
       
       // Remove undefined/null/empty string values to let backend use defaults
