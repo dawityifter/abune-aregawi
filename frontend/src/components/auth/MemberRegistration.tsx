@@ -400,11 +400,29 @@ const MemberRegistration: React.FC = () => {
       });
       
       if (res.status === 201) {
-        // Registration successful - show success message and let auth flow handle navigation
+        // Registration successful - show success message and navigate to dashboard
         alert("Registration successful! You will be redirected to your dashboard.");
         
-        // The Firebase auth state listener will automatically handle the navigation to dashboard
-        // after it successfully fetches the user profile from backend (with retry logic)
+        // Force a profile check to update the auth state
+        try {
+          // Trigger a profile check to update the user state
+          const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}&phone=${encodeURIComponent(phone || '')}`);
+          
+          if (profileResponse.ok) {
+            const profileData = await profileResponse.json();
+            console.log('✅ Profile fetched after registration:', profileData);
+            
+            // Navigate to dashboard after successful registration
+            navigate('/dashboard');
+          } else {
+            console.log('⚠️ Profile fetch failed after registration, navigating anyway');
+            navigate('/dashboard');
+          }
+        } catch (error) {
+          console.error('Error fetching profile after registration:', error);
+          // Navigate to dashboard even if profile fetch fails
+          navigate('/dashboard');
+        }
       } else {
         const data = await res.json();
         console.log('🔍 Backend registration error:', data);
