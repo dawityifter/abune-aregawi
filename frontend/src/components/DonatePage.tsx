@@ -322,10 +322,10 @@ const DonatePage: React.FC = () => {
                     <span className="text-lg font-bold text-blue-700 block mb-2">Zelle Email Address:</span>
                     <div 
                       className="bg-white border border-blue-300 rounded-lg p-3 inline-block cursor-pointer hover:bg-blue-50 transition-colors"
-                      onClick={() => {
+                      onClick={(e) => {
                         navigator.clipboard.writeText('abunearegawitx@gmail.com');
                         // Visual feedback
-                        const element = event?.target as HTMLElement;
+                        const element = e.currentTarget as HTMLElement;
                         if (element) {
                           element.style.backgroundColor = '#dbeafe';
                           setTimeout(() => {
