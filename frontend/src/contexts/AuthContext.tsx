@@ -15,6 +15,7 @@ interface AuthContextType {
   getUserProfile: (uid: string, email?: string, phoneNumber?: string) => Promise<any>;
   updateUserProfileData: (uid: string, updates: any) => Promise<void>;
   clearError: () => void;
+  clearNewUserCache: () => void; // Add this function
   error: string | null;
 }
 
@@ -405,6 +406,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getUserProfile,
     updateUserProfileData,
     clearError,
+    clearNewUserCache,
     error
   };
 

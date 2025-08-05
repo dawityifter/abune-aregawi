@@ -21,7 +21,7 @@ const MemberRegistration: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { currentUser, getUserProfile } = useAuth();
+  const { currentUser, getUserProfile, clearNewUserCache } = useAuth();
   const { email, phone } = location.state || {};
   
   // State to track if we're still checking user status
@@ -403,6 +403,9 @@ const MemberRegistration: React.FC = () => {
         // Registration successful - show success message and navigate to dashboard
         alert("Registration successful! You will be redirected to your dashboard.");
         
+        // Clear the new user cache to force a fresh profile check
+        clearNewUserCache();
+        
         // Force a profile check to update the auth state
         try {
           // Trigger a profile check to update the user state
@@ -412,8 +415,9 @@ const MemberRegistration: React.FC = () => {
             const profileData = await profileResponse.json();
             console.log('✅ Profile fetched after registration:', profileData);
             
-            // Navigate to dashboard after successful registration
-            navigate('/dashboard');
+            // Force a re-check of the auth state by triggering the auth state listener
+            // This will update the user state from temporary to permanent
+            window.location.reload();
           } else {
             console.log('⚠️ Profile fetch failed after registration, navigating anyway');
             navigate('/dashboard');
