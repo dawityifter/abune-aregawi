@@ -346,7 +346,21 @@ const DonatePage: React.FC = () => {
                 <div className="text-center space-y-4">
                   <div>
                     <span className="text-lg font-bold text-blue-700 block mb-2">Zelle Email Address:</span>
-                    <div className="bg-white border border-blue-300 rounded-lg p-3 inline-block">
+                    <div 
+                      className="bg-white border border-blue-300 rounded-lg p-3 inline-block cursor-pointer hover:bg-blue-50 transition-colors"
+                      onClick={() => {
+                        navigator.clipboard.writeText('abunearegawitx@gmail.com');
+                        // Visual feedback
+                        const element = event?.target as HTMLElement;
+                        if (element) {
+                          element.style.backgroundColor = '#dbeafe';
+                          setTimeout(() => {
+                            element.style.backgroundColor = '';
+                          }, 200);
+                        }
+                      }}
+                      title="Click to copy email address"
+                    >
                       <span className="text-lg text-blue-900 font-mono select-all">abunearegawitx@gmail.com</span>
                     </div>
                   </div>
@@ -366,7 +380,7 @@ const DonatePage: React.FC = () => {
                   <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-xs text-green-800 font-medium mb-1">✅ Quick Copy:</p>
                     <p className="text-xs text-green-700">
-                      Click the email address above to copy it, then paste it directly into your Zelle app.
+                      Click the email address above to copy it to your clipboard, then paste it directly into your Zelle app.
                     </p>
                   </div>
                 </div>
