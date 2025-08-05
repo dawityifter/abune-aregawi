@@ -129,7 +129,7 @@ exports.register = async (req, res) => {
     } else {
       // For non-Firebase users (traditional registration), check phone number duplicates
       const existingMemberByPhone = await Member.findOne({
-        where: { phoneNumber }
+        where: { phone_number: phoneNumber }
       });
       if (existingMemberByPhone) {
         return res.status(400).json({
@@ -159,8 +159,7 @@ exports.register = async (req, res) => {
       const headOfHousehold = await Member.findOne({ 
         where: { 
           email: headOfHouseholdEmail,
-          isHeadOfHousehold: true,
-          isActive: true
+          is_active: true
         } 
       });
       
@@ -172,46 +171,46 @@ exports.register = async (req, res) => {
       }
       
       // Use the head of household's family ID
-      familyId = headOfHousehold.familyId || headOfHousehold.id;
+      familyId = headOfHousehold.family_id || headOfHousehold.id;
     }
 
     // Create member
     const member = await Member.create({
-      firstName,
-      middleName,
-      lastName,
+      first_name: firstName,
+      middle_name: middleName,
+      last_name: lastName,
       gender,
-      dateOfBirth,
-      maritalStatus,
-      phoneNumber,
+      date_of_birth: dateOfBirth,
+      marital_status: maritalStatus,
+      phone_number: phoneNumber,
       email,
-      streetLine1,
-      apartmentNo,
+      street_line1: streetLine1,
+      apartment_no: apartmentNo,
       city,
       state,
-      postalCode,
+      postal_code: postalCode,
       country,
-      isHeadOfHousehold: isHeadOfHousehold || false,
-      spouseName,
-      spouseEmail: finalSpouseEmail,
-      emergencyContactName,
-      emergencyContactPhone,
-      dateJoinedParish,
-      baptismName,
-      interestedInServing,
+      // Note: is_head_of_household field is not defined in the model, removing this field
+      spouse_name: spouseName,
+      spouse_email: finalSpouseEmail,
+      emergency_contact_name: emergencyContactName,
+      emergency_contact_phone: emergencyContactPhone,
+      date_joined_parish: dateJoinedParish,
+      baptism_name: baptismName,
+      interested_in_serving: interestedInServing,
       ministries: ministries && Array.isArray(ministries) ? JSON.stringify(ministries) : null,
-      languagePreference,
-      preferredGivingMethod,
-      titheParticipation,
-      firebaseUid,
+      language_preference: languagePreference,
+      preferred_giving_method: preferredGivingMethod,
+      tithe_participation: titheParticipation,
+      firebase_uid: firebaseUid,
       password: password || null, // Password is optional since Firebase handles auth
       role: role || 'member',
-      familyId: familyId // may be null, will update if HoH
+      family_id: familyId // may be null, will update if HoH
     });
 
-    // If head of household, set familyId to own id
+    // If head of household, set family_id to own id
     if (isHeadOfHousehold) {
-      member.familyId = member.id;
+      member.family_id = member.id;
       await member.save();
     }
 
