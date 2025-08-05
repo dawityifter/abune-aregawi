@@ -356,9 +356,9 @@ const DonatePage: React.FC = () => {
                     <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
                       <li>Open your banking app or Zelle app</li>
                       <li>Select "Send Money" or "Send with Zelle"</li>
-                                             <li>Enter the email address: <span className="font-mono text-blue-600">abunearegawitx@gmail.com</span></li>
+                      <li>Enter the email address: <span className="font-mono text-blue-600">abunearegawitx@gmail.com</span></li>
                       <li>Enter your donation amount</li>
-                      <li>Add a note: "Donation to Abune Aregawi Church"</li>
+                      <li>Add a note: "Donation to Abune Aregawi Church - [Your Phone Number]"</li>
                       <li>Review and send your payment</li>
                     </ol>
                   </div>
@@ -367,13 +367,6 @@ const DonatePage: React.FC = () => {
                     <p className="text-xs text-green-800 font-medium mb-1">✅ Quick Copy:</p>
                     <p className="text-xs text-green-700">
                       Click the email address above to copy it, then paste it directly into your Zelle app.
-                    </p>
-                  </div>
-                  
-                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-xs text-yellow-800 font-medium mb-1">💡 Note:</p>
-                    <p className="text-xs text-yellow-700">
-                      Zelle doesn't support QR codes for payments. Please manually enter the email address in your banking app.
                     </p>
                   </div>
                 </div>
