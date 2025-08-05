@@ -18,6 +18,7 @@ const memberRoutes = require('./routes/memberRoutes');
 const memberPaymentRoutes = require('./routes/memberPaymentRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const churchTransactionRoutes = require('./routes/churchTransactionRoutes');
+const donationRoutes = require('./routes/donationRoutes');
 
 // Import database
 const { sequelize } = require('./models');
@@ -142,6 +143,7 @@ app.use('/api/members', memberRoutes);
 app.use('/api/payments', memberPaymentRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/church-transactions', churchTransactionRoutes);
+app.use('/api/donations', donationRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
