@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import StripePayment from './StripePayment';
+import ACHPayment from './ACHPayment';
 import { useAuth } from '../contexts/AuthContext';
 
 const DonatePage: React.FC = () => {
@@ -338,12 +339,23 @@ const DonatePage: React.FC = () => {
                 </button>
               </form>
             ) : (
-              <StripePayment
-                donationData={donationData}
-                onSuccess={handlePaymentSuccess}
-                onError={handlePaymentError}
-                onCancel={handlePaymentCancel}
-              />
+              <>
+                {paymentMethod === 'card' ? (
+                  <StripePayment
+                    donationData={donationData}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    onCancel={handlePaymentCancel}
+                  />
+                ) : (
+                  <ACHPayment
+                    donationData={donationData}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    onCancel={handlePaymentCancel}
+                  />
+                )}
+              </>
             )}
 
             {paymentError && (

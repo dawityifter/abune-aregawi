@@ -166,30 +166,35 @@ const PersonalInfoStep: React.FC<{
             {errors.isHeadOfHousehold}
           </p>
         )}
-        {/* If not head of household, show head of household email */}
+        {/* If not head of household, show head of household phone number */}
         {!formData.isHeadOfHousehold && (
           <div className="mt-3 space-y-1">
             <label className="block text-sm font-medium text-gray-700">
-              {t('head.of.household.email')} <span className="text-red-500">*</span>
+              {t('head.of.household.phone')} <span className="text-red-500">*</span>
             </label>
             <input
-              type="email"
-              value={formData.headOfHouseholdEmail}
-              onChange={(e) => handleInputChange('headOfHouseholdEmail', e.target.value)}
+              type="tel"
+              value={formData.headOfHouseholdPhone}
+              onChange={(e) => {
+                const normalized = normalizePhoneNumber(e.target.value);
+                if (normalized === '' || !isNaN(Number(normalized))) {
+                  handleInputChange('headOfHouseholdPhone', normalized);
+                }
+              }}
               className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
-                errors.headOfHouseholdEmail 
+                errors.headOfHouseholdPhone 
                   ? 'border-red-500 focus:ring-red-500' 
                   : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
               } focus:outline-none focus:ring-1`}
-              placeholder={t('enter.head.of.household.email')}
+              placeholder={t('enter.head.of.household.phone')}
             />
-            {errors.headOfHouseholdEmail && (
+            {errors.headOfHouseholdPhone && (
               <p className="text-red-500 text-xs sm:text-sm mt-1">
-                {errors.headOfHouseholdEmail}
+                {errors.headOfHouseholdPhone}
               </p>
             )}
             <p className="text-xs text-gray-500 mt-1">
-              {t('head.of.household.email.help')}
+              {t('head.of.household.phone.help')}
             </p>
           </div>
         )}
@@ -684,27 +689,6 @@ const ContributionStep: React.FC<{
           <option value="Online">{t('online')}</option>
           <option value="Check">{t('check')}</option>
         </select>
-      </div>
-      
-      <div className="pt-1">
-        <label className="flex items-start space-x-3">
-          <div className="flex items-center h-5 mt-0.5">
-            <input
-              type="checkbox"
-              checked={formData.titheParticipation || false}
-              onChange={(e) => handleInputChange('titheParticipation', e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-          </div>
-          <span className="text-sm sm:text-base text-gray-700">
-            {t('participate.in.tithe') || 'I would like to participate in tithing'}
-          </span>
-        </label>
-        {formData.titheParticipation && (
-          <p className="mt-2 text-xs sm:text-sm text-gray-500 pl-7">
-            {t('tithe.participation.note') || 'Thank you for your commitment to tithing. You can update your preferences at any time in your account settings.'}
-          </p>
-        )}
       </div>
     </div>
   </div>
