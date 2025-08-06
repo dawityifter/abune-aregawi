@@ -146,19 +146,22 @@ exports.register = async (req, res) => {
     if (isHeadOfHousehold) {
       // Will set familyId to member.id after creation
     } else {
-      // For non-head-of-household members, they must provide headOfHouseholdEmail
-      const headOfHouseholdEmail = req.body.headOfHouseholdEmail;
-      if (!headOfHouseholdEmail) {
+      // For non-head-of-household members, they must provide headOfHouseholdPhone
+      const headOfHouseholdPhone = req.body.headOfHouseholdPhone;
+      if (!headOfHouseholdPhone) {
         return res.status(400).json({
           success: false,
-          message: 'Head of household email is required when you are not the head of household'
+          message: 'Head of household phone number is required when you are not the head of household'
         });
       }
       
-      // Look up head of household by email
+      // Normalize the phone number
+      const normalizedPhone = normalizePhoneNumber(headOfHouseholdPhone);
+      
+      // Look up head of household by phone number
       const headOfHousehold = await Member.findOne({ 
         where: { 
-          email: headOfHouseholdEmail,
+          phone_number: normalizedPhone,
           is_active: true
         } 
       });
@@ -166,7 +169,17 @@ exports.register = async (req, res) => {
       if (!headOfHousehold) {
         return res.status(400).json({
           success: false,
-          message: 'No active head of household found with this email address. Please register as head of household or provide a valid head of household email.'
+          message: 'No active head of household found with this phone number. Please register as head of household or provide a valid head of household phone number.'
+        });
+      }
+      
+      // Check if this member is a head of household (has family_id = their own id or is null)
+      const isHeadOfHousehold = !headOfHousehold.family_id || headOfHousehold.family_id === headOfHousehold.id;
+      
+      if (!isHeadOfHousehold) {
+        return res.status(400).json({
+          success: false,
+          message: 'This phone number belongs to a member who is not a head of household. Please provide a valid head of household phone number.'
         });
       }
       
@@ -1378,6 +1391,67 @@ exports.checkRegistrationStatus = async (req, res) => {
   } catch (error) {
     console.error('Check registration status error:', error);
     res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+}; 
+
+// Validate head of household phone number
+exports.validateHeadOfHouseholdPhone = async (req, res) => {
+  try {
+    const { phoneNumber } = req.params;
+    
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required'
+      });
+    }
+
+    // Normalize the phone number
+    const normalizedPhone = normalizePhoneNumber(phoneNumber);
+    
+    // Find member by phone number
+    const member = await Member.findOne({
+      where: { 
+        phone_number: normalizedPhone,
+        is_active: true
+      },
+      attributes: ['id', 'first_name', 'last_name', 'phone_number', 'family_id']
+    });
+
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'No member found with this phone number'
+      });
+    }
+
+    // Check if this member is a head of household (has family_id = their own id or is null)
+    const isHeadOfHousehold = !member.family_id || member.family_id === member.id;
+    
+    if (!isHeadOfHousehold) {
+      return res.status(400).json({
+        success: false,
+        message: 'This phone number belongs to a member who is not a head of household'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Valid head of household phone number',
+      data: {
+        memberId: member.id,
+        firstName: member.first_name,
+        lastName: member.last_name,
+        phoneNumber: member.phone_number
+      }
+    });
+
+  } catch (error) {
+    console.error('Error validating head of household phone:', error);
+    return res.status(500).json({
       success: false,
       message: 'Internal server error'
     });

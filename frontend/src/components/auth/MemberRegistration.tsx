@@ -46,7 +46,7 @@ const MemberRegistration: React.FC = () => {
     dateOfBirth: '',
     maritalStatus: 'Single',
     isHeadOfHousehold: true,
-    headOfHouseholdEmail: '',
+    headOfHouseholdPhone: '',
     hasDependents: false,
     
     // Contact & Address
@@ -81,7 +81,6 @@ const MemberRegistration: React.FC = () => {
     preferredGivingMethod: 'Cash',
     monthlyContribution: '',
     specialContributions: [],
-    titheParticipation: false,
     
     // Account Information
     preferredLanguage: 'English',
@@ -212,7 +211,34 @@ const MemberRegistration: React.FC = () => {
     }
   };
 
-  const validateStep = (step: number): boolean => {
+  // Validate head of household phone number
+  const validateHeadOfHouseholdPhone = async (phoneNumber: string) => {
+    if (!phoneNumber.trim()) return false;
+    
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/validate-head-of-household/${encodeURIComponent(phoneNumber)}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        return true;
+      } else {
+        setErrors((prev: any) => ({
+          ...prev,
+          headOfHouseholdPhone: data.message || t('head.of.household.phone.not.found')
+        }));
+        return false;
+      }
+    } catch (error) {
+      console.error('Error validating head of household phone:', error);
+      setErrors((prev: any) => ({
+        ...prev,
+        headOfHouseholdPhone: t('head.of.household.phone.validation.error')
+      }));
+      return false;
+    }
+  };
+
+  const validateStep = async (step: number): Promise<boolean> => {
     const newErrors: any = {};
     
     console.log('🔍 validateStep called for step:', step);
@@ -222,8 +248,14 @@ const MemberRegistration: React.FC = () => {
         if (!formData.firstName.trim()) newErrors.firstName = t('first.name.required');
         if (!formData.lastName.trim()) newErrors.lastName = t('last.name.required');
         if (!formData.dateOfBirth) newErrors.dateOfBirth = t('date.of.birth.required');
-        if (!formData.isHeadOfHousehold && !formData.headOfHouseholdEmail.trim()) {
-          newErrors.headOfHouseholdEmail = t('head.of.household.email.required');
+        if (!formData.isHeadOfHousehold && !formData.headOfHouseholdPhone.trim()) {
+          newErrors.headOfHouseholdPhone = t('head.of.household.phone.required');
+        } else if (!formData.isHeadOfHousehold && formData.headOfHouseholdPhone.trim()) {
+          // Validate head of household phone number
+          const isValid = await validateHeadOfHouseholdPhone(formData.headOfHouseholdPhone);
+          if (!isValid) {
+            return false; // Error already set in validateHeadOfHouseholdPhone
+          }
         }
         break;
         
@@ -299,7 +331,7 @@ const MemberRegistration: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const nextStep = () => {
+  const nextStep = async () => {
     console.log('🔍 nextStep called for step:', currentStep);
     console.log('🔍 formData for step 2:', {
       email: formData.email,
@@ -311,12 +343,13 @@ const MemberRegistration: React.FC = () => {
       country: formData.country
     });
     
-    if (validateStep(currentStep)) {
+    const isValid = await validateStep(currentStep);
+    if (isValid) {
       let nextStepNumber = currentStep + 1;
       
-      // Skip dependents step (4) if user doesn't have dependents
-      if (!formData.hasDependents && nextStepNumber === 4) {
-        nextStepNumber = 5;
+      // Skip dependents step (7) if user doesn't have dependents
+      if (!formData.hasDependents && nextStepNumber === 7) {
+        nextStepNumber = 8; // Skip to the end
       }
       
       if (nextStepNumber > totalSteps) {
@@ -334,16 +367,17 @@ const MemberRegistration: React.FC = () => {
   const prevStep = () => {
     let prevStepNumber = currentStep - 1;
     
-    // Skip dependents step (4) if user doesn't have dependents when going backwards
-    if (!formData.hasDependents && prevStepNumber === 4) {
-      prevStepNumber = 3;
+    // Skip dependents step (7) if user doesn't have dependents when going backwards
+    if (!formData.hasDependents && prevStepNumber === 7) {
+      prevStepNumber = 6;
     }
     
     setCurrentStep(Math.max(prevStepNumber, 1));
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(currentStep)) return;
+    const isValid = await validateStep(currentStep);
+    if (!isValid) return;
     
     setIsSubmitting(true);
     try {
@@ -358,6 +392,9 @@ const MemberRegistration: React.FC = () => {
         phone: dependent.phone ? normalizePhoneNumber(dependent.phone) : ''
       }));
       
+      // Normalize head of household phone number
+      const normalizedHeadOfHouseholdPhone = formData.headOfHouseholdPhone ? normalizePhoneNumber(formData.headOfHouseholdPhone) : '';
+      
       // Prepare registration data with proper validation and normalized phone numbers
       const registrationData = {
         ...formData,
@@ -367,12 +404,11 @@ const MemberRegistration: React.FC = () => {
         phoneNumber: normalizedPhoneNumber,
         spousePhone: normalizedSpousePhone,
         emergencyContactPhone: normalizedEmergencyPhone,
+        headOfHouseholdPhone: normalizedHeadOfHouseholdPhone,
         dependents: normalizedDependents,
 
         // For phone sign-in users, loginEmail should be optional
         loginEmail: email || formData.email || undefined,
-        // Ensure titheParticipation is boolean
-        titheParticipation: Boolean(formData.titheParticipation),
         // Convert language preference to backend format
         languagePreference: formData.languagePreference === 'English' ? 'en' : 'ti',
         // Convert gender to lowercase to match backend validation
@@ -448,7 +484,11 @@ const MemberRegistration: React.FC = () => {
   }
 
   const renderStep = () => {
-    switch (currentStep) {
+    // Calculate the actual step based on whether dependents should be shown
+    const actualStep = formData.hasDependents ? currentStep : 
+      (currentStep >= 4 ? currentStep + 1 : currentStep);
+    
+    switch (actualStep) {
       case 1:
         return (
           <PersonalInfoStep
@@ -478,15 +518,6 @@ const MemberRegistration: React.FC = () => {
         );
       case 4:
         return (
-                  <DependentsStep
-          dependents={dependents}
-          onDependentsChange={setDependents}
-            errors={errors}
-            t={t}
-          />
-        );
-      case 5:
-        return (
           <SpiritualInfoStep
             formData={formData}
             handleInputChange={handleInputChange}
@@ -494,7 +525,7 @@ const MemberRegistration: React.FC = () => {
             t={t}
           />
         );
-      case 6:
+      case 5:
         return (
           <ContributionStep
             formData={formData}
@@ -503,11 +534,20 @@ const MemberRegistration: React.FC = () => {
             t={t}
           />
         );
-      case 7:
+      case 6:
         return (
           <AccountStep
             formData={formData}
             handleInputChange={handleInputChange}
+            errors={errors}
+            t={t}
+          />
+        );
+      case 7:
+        return (
+          <DependentsStep
+            dependents={dependents}
+            onDependentsChange={setDependents}
             errors={errors}
             t={t}
           />
@@ -526,22 +566,18 @@ const MemberRegistration: React.FC = () => {
       t('personal.info'),
       t('contact.address'),
       t('family.info'),
-    ];
-    
-    // Add dependents step if needed
-    if (formData.hasDependents) {
-      titles.push(t('dependants'));
-    }
-    
-    // Add remaining steps
-    titles.push(
       t('spiritual.info'),
       t('contribution.giving')
-    );
+    ];
     
     // Add account info step for non-phone sign-ins
     if (!isPhoneSignIn) {
       titles.push(t('account.info'));
+    }
+    
+    // Add dependents step if needed (always at the end)
+    if (formData.hasDependents) {
+      titles.push(t('dependants'));
     }
     
     return titles;
