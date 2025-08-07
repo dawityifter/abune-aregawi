@@ -416,7 +416,9 @@ const MemberRegistration: React.FC = () => {
         // Convert marital status to lowercase to match backend validation
         maritalStatus: formData.maritalStatus?.toLowerCase(),
         // Convert preferred giving method to lowercase to match backend validation
-        preferredGivingMethod: formData.preferredGivingMethod?.toLowerCase()
+        preferredGivingMethod: formData.preferredGivingMethod?.toLowerCase(),
+        // Convert string 'Yes'/'No' to boolean for backend
+        interestedInServing: formData.interestedInServing === 'Yes'
       };
       
       // Remove undefined/null/empty string values to let backend use defaults
@@ -429,11 +431,30 @@ const MemberRegistration: React.FC = () => {
       
       console.log('🔍 Sending registration data to backend:', registrationData);
       
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/members/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(registrationData),
-      });
+      let res;
+      try {
+        res = await fetch(`${process.env.REACT_APP_API_URL}/api/members/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(registrationData),
+        });
+      } catch (fetchError) {
+        console.error('🔴 Fetch error during registration:', fetchError);
+        setErrors({ submit: 'Failed to connect to the server. Please check your internet connection and try again.' });
+        return;
+      }
+      
+      // Parse the response data
+      let responseData;
+      try {
+        responseData = await res.json();
+        console.log('🔍 Registration response status:', res.status);
+        console.log('🔍 Registration response data:', responseData);
+      } catch (parseError) {
+        console.error('🔴 Error parsing response:', parseError);
+        setErrors({ submit: 'Error processing server response. Please try again.' });
+        return;
+      }
       
       if (res.status === 201) {
         // Registration successful - show success message and navigate to dashboard
@@ -442,7 +463,8 @@ const MemberRegistration: React.FC = () => {
         // Clear the new user cache to force a fresh profile check
         clearNewUserCache();
         
-        // Force a profile check to update the auth state
+        // Force a re-check of the auth state by triggering the auth state listener
+        // This will update the user state from temporary to permanent
         try {
           // Trigger a profile check to update the user state
           const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}&phone=${encodeURIComponent(phone || '')}`);
@@ -451,8 +473,8 @@ const MemberRegistration: React.FC = () => {
             const profileData = await profileResponse.json();
             console.log('✅ Profile fetched after registration:', profileData);
             
-            // Force a re-check of the auth state by triggering the auth state listener
-            // This will update the user state from temporary to permanent
+            // Force a re-check of the auth state to ensure the user is properly authenticated
+            // This is important for new users to get their profile data
             window.location.reload();
           } else {
             console.log('⚠️ Profile fetch failed after registration, navigating anyway');
@@ -464,12 +486,28 @@ const MemberRegistration: React.FC = () => {
           navigate('/dashboard');
         }
       } else {
-        const data = await res.json();
-        console.log('🔍 Backend registration error:', data);
+        console.log('🔍 Backend registration error:', responseData);
         console.log('🔍 Backend error status:', res.status);
-        console.log('🔍 Backend error response:', data);
-        console.log('🔍 Backend validation errors:', data.errors);
-        setErrors({ submit: data.message || "Registration failed" });
+        console.log('🔍 Backend validation errors:', responseData.errors);
+        
+        // Format and display validation errors to the user
+        if (responseData.errors && Array.isArray(responseData.errors)) {
+          // Combine all validation error messages
+          const errorMessages = responseData.errors.map((err: any) => {
+            if (typeof err === 'string') return err;
+            if (err.msg) return err.msg;
+            if (err.message) return err.message;
+            return JSON.stringify(err);
+          }).join('\n');
+          
+          setErrors({ 
+            submit: `Please fix the following errors:\n${errorMessages}` 
+          });
+        } else if (responseData.message) {
+          setErrors({ submit: responseData.message });
+        } else {
+          setErrors({ submit: 'Registration failed. Please check your information and try again.' });
+        }
       }
     } catch (err) {
       setErrors({ submit: "Registration failed: " + (err as any).message });
