@@ -169,6 +169,13 @@ module.exports = (sequelize) => {
       type: DataTypes.ENUM('pending', 'complete', 'incomplete'),
       allowNull: false,
       defaultValue: 'pending'
+    },
+    interested_in_serving: {
+      type: DataTypes.ENUM('yes', 'no', 'maybe'),
+      allowNull: true,
+      defaultValue: 'maybe',
+      comment: 'Whether the member is interested in serving in ministries',
+      field: 'interested_in_serving'
     }
   }, {
     sequelize,

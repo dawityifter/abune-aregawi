@@ -92,7 +92,7 @@ const validateMemberRegistration = [
   body('householdSize').optional().isInt({ min: 1 }).withMessage('Household size must be a positive integer'),
   body('isHeadOfHousehold').optional().isBoolean().withMessage('Is head of household must be a boolean'),
   body('spouseEmail').optional().isEmail().withMessage('Spouse email must be a valid email address'),
-  body('interestedInServing').optional().isBoolean().withMessage('Interested in serving must be a boolean'),
+  body('interestedInServing').optional().isIn(['yes', 'no', 'maybe']).withMessage('Interested in serving must be one of: yes, no, maybe'),
   body('ministries').optional().isArray().withMessage('Ministries must be an array'),
   body('languagePreference').optional().isIn(['en', 'ti']).withMessage('Language preference must be en or ti'),
   body('preferredGivingMethod').optional().isIn(['cash', 'check', 'online', 'other']).withMessage('Invalid preferred giving method'),

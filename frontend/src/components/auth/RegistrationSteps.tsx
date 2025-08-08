@@ -638,9 +638,9 @@ const SpiritualInfoStep: React.FC<{
           className="w-full px-3 py-2 sm:py-2.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         >
           <option value="">{t('select')}</option>
-          <option value="Yes">{t('yes')}</option>
-          <option value="No">{t('no')}</option>
-          <option value="Maybe">{t('maybe')}</option>
+          <option value="yes">{t('yes')}</option>
+          <option value="no">{t('no')}</option>
+          <option value="maybe">{t('maybe')}</option>
         </select>
       </div>
       
