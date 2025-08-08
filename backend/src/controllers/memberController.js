@@ -999,7 +999,7 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
     if (req.query.email) {
       whereClause.email = req.query.email;
     } else if (req.query.phone) {
-      whereClause.phoneNumber = req.query.phone;
+      whereClause.phone_number = req.query.phone; // Fixed: use snake_case field name
     } else {
       return res.status(400).json({
         success: false,
@@ -1019,6 +1019,13 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
 
     // Remove sensitive fields that shouldn't be updated via this endpoint
     const { password, role, isActive, memberId, ...updateData } = req.body;
+
+    // Remove undefined values to avoid overwriting with null
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
 
     await member.update(updateData);
 
