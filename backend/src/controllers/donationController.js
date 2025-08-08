@@ -1,10 +1,32 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+// Initialize Stripe with proper error handling
+let stripe;
+try {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.warn('⚠️  STRIPE_SECRET_KEY not found in environment variables. Stripe functionality will be disabled.');
+    stripe = null;
+  } else {
+    stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    console.log('✅ Stripe initialized successfully');
+  }
+} catch (error) {
+  console.error('❌ Error initializing Stripe:', error.message);
+  stripe = null;
+}
+
 const { Donation } = require('../models');
 const { validationResult } = require('express-validator');
 
 // Create payment intent for donation
 const createPaymentIntent = async (req, res) => {
   try {
+    // Check if Stripe is available
+    if (!stripe) {
+      return res.status(503).json({
+        success: false,
+        message: 'Payment processing is currently unavailable. Please try again later.'
+      });
+    }
+
     // Validate request
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -98,6 +120,14 @@ const createPaymentIntent = async (req, res) => {
 // Confirm payment and update donation status
 const confirmPayment = async (req, res) => {
   try {
+    // Check if Stripe is available
+    if (!stripe) {
+      return res.status(503).json({
+        success: false,
+        message: 'Payment processing is currently unavailable. Please try again later.'
+      });
+    }
+
     const { payment_intent_id } = req.body;
 
     if (!payment_intent_id) {
