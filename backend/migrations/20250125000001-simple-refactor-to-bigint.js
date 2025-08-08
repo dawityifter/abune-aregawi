@@ -3,8 +3,17 @@
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     console.log('🔄 Starting simple table refactor from UUID to BIGINT...');
-
-    // Step 1: Create new tables with BIGINT structure
+    
+    // Check if members_new table already exists
+    const [results] = await queryInterface.sequelize.query(
+      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'members_new'"
+    );
+    
+    if (results.length > 0) {
+      console.log('ℹ️  members_new table already exists, skipping creation');
+      return; // Skip the rest of the migration
+    }
+    
     console.log('📋 Creating new members table with BIGINT...');
     await queryInterface.createTable('members_new', {
       id: {
