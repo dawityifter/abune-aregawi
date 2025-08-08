@@ -994,6 +994,12 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
   try {
     const { uid } = req.params;
 
+    console.log('🔍 Profile update request:', {
+      uid,
+      query: req.query,
+      body: req.body
+    });
+
     // Find member by email or phone from Firebase Auth
     const whereClause = {};
     if (req.query.email) {
@@ -1007,9 +1013,12 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
       });
     }
 
+    console.log('🔍 Looking for member with whereClause:', whereClause);
+
     const member = await Member.findOne({ where: whereClause });
 
     if (!member) {
+      console.log('❌ Member not found with whereClause:', whereClause);
       return res.status(404).json({
         success: false,
         message: 'Member not found. Please complete your registration first.',
@@ -1017,17 +1026,50 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
       });
     }
 
+    console.log('✅ Found member:', member.id);
+
     // Remove sensitive fields that shouldn't be updated via this endpoint
     const { password, role, isActive, memberId, ...updateData } = req.body;
 
+    console.log('🔍 Update data received:', updateData);
+
+    // Map camelCase field names from frontend to snake_case field names for database
+    const mappedUpdateData = {
+      first_name: updateData.firstName,
+      middle_name: updateData.middleName,
+      last_name: updateData.lastName,
+      email: updateData.email,
+      phone_number: updateData.phoneNumber,
+      date_of_birth: updateData.dateOfBirth,
+      gender: updateData.gender,
+      marital_status: updateData.maritalStatus,
+      emergency_contact_name: updateData.emergencyContactName,
+      emergency_contact_phone: updateData.emergencyContactPhone,
+      ministries: updateData.ministries,
+      language_preference: updateData.languagePreference,
+      date_joined_parish: updateData.dateJoinedParish,
+      baptism_name: updateData.baptismName,
+      interested_in_serving: updateData.interestedInServing,
+      street_line1: updateData.streetLine1,
+      apartment_no: updateData.apartmentNo,
+      city: updateData.city,
+      state: updateData.state,
+      postal_code: updateData.postalCode,
+      country: updateData.country
+    };
+
     // Remove undefined values to avoid overwriting with null
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key] === undefined) {
-        delete updateData[key];
+    Object.keys(mappedUpdateData).forEach(key => {
+      if (mappedUpdateData[key] === undefined) {
+        delete mappedUpdateData[key];
       }
     });
 
-    await member.update(updateData);
+    console.log('🔍 Mapped update data:', mappedUpdateData);
+
+    await member.update(mappedUpdateData);
+
+    console.log('✅ Member updated successfully');
 
     // Fetch updated member
     const updatedMember = await Member.findByPk(member.id, {

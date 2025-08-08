@@ -51,7 +51,7 @@ router.post('/login', validateLogin, memberController.login);
 
 // Firebase Auth profile routes (no JWT required)
 router.get('/profile/firebase/:uid', memberController.getProfileByFirebaseUid);
-router.put('/profile/firebase/:uid', memberController.updateProfileByFirebaseUid);
+router.put('/profile/firebase/:uid', validateProfileUpdate, memberController.updateProfileByFirebaseUid);
 
 // Test endpoint to debug authentication
 router.get('/test-auth', firebaseAuthMiddleware, (req, res) => {
