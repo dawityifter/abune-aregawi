@@ -43,7 +43,7 @@ const getAllMemberPayments = async (req, res) => {
       //     model: Member,
       //     as: 'member',
       //     where: memberWhereClause,
-      //     attributes: ['id', 'firstName', 'lastName', 'memberId', 'phoneNumber', 'email']
+      //     attributes: ['id', 'first_name', 'last_name', 'member_id', 'phone_number', 'email']
       //   }
       // ],
       limit: parseInt(limit),
@@ -78,7 +78,7 @@ const getMemberPaymentDetails = async (req, res) => {
         {
           model: Member,
           as: 'member',
-          attributes: ['id', 'firstName', 'lastName', 'memberId', 'phoneNumber', 'email', 'spouseName']
+          attributes: ['id', 'first_name', 'last_name', 'member_id', 'phone_number', 'email', 'spouse_name']
         }
       ]
     });
