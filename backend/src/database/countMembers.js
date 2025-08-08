@@ -14,7 +14,7 @@ const countMembers = async () => {
     await sequelize.authenticate();
     console.log('✅ Database connection established successfully.');
     
-    // Count members
+    // Count all members
     const memberCount = await Member.count();
     console.log(`📊 Members table: ${memberCount} records`);
     
@@ -31,11 +31,11 @@ const countMembers = async () => {
       console.log('\n📋 Sample members (first 5):');
       const sampleMembers = await Member.findAll({
         limit: 5,
-        attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber', 'createdAt']
+        attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number', 'created_at']
       });
       
       sampleMembers.forEach((member, index) => {
-        console.log(`  ${index + 1}. ${member.firstName} ${member.lastName} (${member.email}) - ${member.phoneNumber}`);
+        console.log(`  ${index + 1}. ${member.first_name} ${member.last_name} (${member.email}) - ${member.phone_number}`);
       });
     }
     
@@ -43,13 +43,13 @@ const countMembers = async () => {
       console.log('\n📋 Sample dependants (first 5):');
       const sampleDependants = await Dependant.findAll({
         limit: 5,
-        include: [{ model: Member, attributes: ['firstName', 'lastName'] }],
-        attributes: ['id', 'firstName', 'lastName', 'relationship']
+        include: [{ model: Member, attributes: ['first_name', 'last_name'] }],
+        attributes: ['id', 'first_name', 'last_name', 'relationship']
       });
       
       sampleDependants.forEach((dependant, index) => {
-        const memberName = dependant.Member ? `${dependant.Member.firstName} ${dependant.Member.lastName}` : 'Unknown';
-        console.log(`  ${index + 1}. ${dependant.firstName} ${dependant.lastName} (${dependant.relationship}) - Member: ${memberName}`);
+        const memberName = dependant.Member ? `${dependant.Member.first_name} ${dependant.Member.last_name}` : 'Unknown';
+        console.log(`  ${index + 1}. ${dependant.first_name} ${dependant.last_name} (${dependant.relationship}) - Member: ${memberName}`);
       });
     }
     
@@ -57,13 +57,13 @@ const countMembers = async () => {
       console.log('\n📋 Sample payments (first 5):');
       const samplePayments = await MemberPayment.findAll({
         limit: 5,
-        include: [{ model: Member, attributes: ['firstName', 'lastName'] }],
-        attributes: ['id', 'amount', 'paymentDate', 'paymentMethod', 'description']
+        include: [{ model: Member, attributes: ['first_name', 'last_name'] }],
+        attributes: ['id', 'amount', 'payment_date', 'payment_method', 'description']
       });
       
       samplePayments.forEach((payment, index) => {
-        const memberName = payment.Member ? `${payment.Member.firstName} ${payment.Member.lastName}` : 'Unknown';
-        console.log(`  ${index + 1}. $${payment.amount} - ${payment.paymentMethod} - ${memberName} (${payment.paymentDate})`);
+        const memberName = payment.Member ? `${payment.Member.first_name} ${payment.Member.last_name}` : 'Unknown';
+        console.log(`  ${index + 1}. $${payment.amount} - ${payment.payment_method} - ${memberName} (${payment.payment_date})`);
       });
     }
     

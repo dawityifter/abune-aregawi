@@ -1,82 +1,84 @@
 const { ChurchTransaction, Member } = require('../models');
 const { Op } = require('sequelize');
 
-// Get all transactions with optional filtering
-const getAllTransactions = async (req, res) => {
+// Get all church transactions with pagination and filtering
+const getAllChurchTransactions = async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 10,
-      member_id,
-      payment_type,
-      payment_method,
-      start_date,
-      end_date,
-      min_amount,
-      max_amount
-    } = req.query;
-
+    const { page = 1, limit = 20, search, type, status, startDate, endDate } = req.query;
     const offset = (page - 1) * limit;
-    const whereClause = {};
 
-    // Add filters
-    if (member_id) whereClause.member_id = member_id;
-    if (payment_type) whereClause.payment_type = payment_type;
-    if (payment_method) whereClause.payment_method = payment_method;
-    if (start_date || end_date) {
-      whereClause.payment_date = {};
-      if (start_date) whereClause.payment_date[Op.gte] = start_date;
-      if (end_date) whereClause.payment_date[Op.lte] = end_date;
-    }
-    if (min_amount || max_amount) {
-      whereClause.amount = {};
-      if (min_amount) whereClause.amount[Op.gte] = parseFloat(min_amount);
-      if (max_amount) whereClause.amount[Op.lte] = parseFloat(max_amount);
+    let whereClause = {};
+
+    // Search functionality
+    if (search) {
+      whereClause = {
+        ...whereClause,
+        [Op.or]: [
+          { description: { [Op.iLike]: `%${search}%` } },
+          { type: { [Op.iLike]: `%${search}%` } },
+          { status: { [Op.iLike]: `%${search}%` } }
+        ]
+      };
     }
 
-    const { count, rows: transactions } = await ChurchTransaction.findAndCountAll({
+    // Type filtering
+    if (type) {
+      whereClause.type = type;
+    }
+
+    // Status filtering
+    if (status) {
+      whereClause.status = status;
+    }
+
+    // Date range filtering
+    if (startDate || endDate) {
+      whereClause.created_at = {};
+      if (startDate) {
+        whereClause.created_at[Op.gte] = new Date(startDate);
+      }
+      if (endDate) {
+        whereClause.created_at[Op.lte] = new Date(endDate);
+      }
+    }
+
+    const transactions = await ChurchTransaction.findAndCountAll({
       where: whereClause,
       include: [
         {
           model: Member,
           as: 'member',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber']
+          attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
         },
         {
           model: Member,
-          as: 'collector',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber']
+          as: 'collected_by_member',
+          attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
         }
       ],
-      order: [['payment_date', 'DESC'], ['created_at', 'DESC']],
       limit: parseInt(limit),
-      offset: parseInt(offset)
+      offset: parseInt(offset),
+      order: [['created_at', 'DESC']]
     });
 
     res.json({
       success: true,
-      data: {
-        transactions,
-        pagination: {
-          current_page: parseInt(page),
-          total_pages: Math.ceil(count / limit),
-          total_items: count,
-          items_per_page: parseInt(limit)
-        }
+      data: transactions.rows,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(transactions.count / limit),
+        totalItems: transactions.count,
+        itemsPerPage: parseInt(limit)
       }
     });
   } catch (error) {
-    console.error('Error fetching transactions:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch transactions',
-      error: error.message
-    });
+    console.error('Error fetching church transactions:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch church transactions' });
   }
 };
 
-// Get a single transaction by ID
-const getTransactionById = async (req, res) => {
+// Get church transaction by ID
+const getChurchTransactionById = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -85,34 +87,24 @@ const getTransactionById = async (req, res) => {
         {
           model: Member,
           as: 'member',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber']
+          attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
         },
         {
           model: Member,
-          as: 'collector',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber']
+          as: 'collected_by_member',
+          attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
         }
       ]
     });
 
     if (!transaction) {
-      return res.status(404).json({
-        success: false,
-        message: 'Transaction not found'
-      });
+      return res.status(404).json({ success: false, message: 'Church transaction not found' });
     }
 
-    res.json({
-      success: true,
-      data: { transaction }
-    });
+    res.json({ success: true, data: transaction });
   } catch (error) {
-    console.error('Error fetching transaction:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch transaction',
-      error: error.message
-    });
+    console.error('Error fetching church transaction:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch church transaction' });
   }
 };
 
@@ -371,8 +363,8 @@ const getTransactionStats = async (req, res) => {
 };
 
 module.exports = {
-  getAllTransactions,
-  getTransactionById,
+  getAllChurchTransactions,
+  getChurchTransactionById,
   createTransaction,
   updateTransaction,
   deleteTransaction,
