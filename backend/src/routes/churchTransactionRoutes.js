@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getAllTransactions,
-  getTransactionById,
+  getAllChurchTransactions,
+  getChurchTransactionById,
   createTransaction,
   updateTransaction,
   deleteTransaction,
@@ -15,13 +15,13 @@ const roleMiddleware = require('../middleware/role');
 router.use(firebaseAuthMiddleware);
 
 // Get all transactions (requires admin or treasurer role)
-router.get('/', roleMiddleware(['admin', 'treasurer']), getAllTransactions);
+router.get('/', roleMiddleware(['admin', 'treasurer']), getAllChurchTransactions);
 
 // Get transaction statistics (requires admin or treasurer role)
 router.get('/stats', roleMiddleware(['admin', 'treasurer']), getTransactionStats);
 
 // Get a single transaction by ID (requires admin or treasurer role)
-router.get('/:id', roleMiddleware(['admin', 'treasurer']), getTransactionById);
+router.get('/:id', roleMiddleware(['admin', 'treasurer']), getChurchTransactionById);
 
 // Create a new transaction (requires admin or treasurer role)
 router.post('/', roleMiddleware(['admin', 'treasurer']), createTransaction);
