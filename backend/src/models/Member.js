@@ -44,25 +44,29 @@ module.exports = (sequelize) => {
     firebase_uid: {
       type: DataTypes.STRING(255),
       allowNull: true,
-      unique: true
+      unique: true,
+      field: 'firebase_uid'
     },
     first_name: {
       type: DataTypes.STRING(100),
       allowNull: false,
       validate: {
         notEmpty: true
-      }
+      },
+      field: 'first_name'
     },
     middle_name: {
       type: DataTypes.STRING(100),
-      allowNull: true
+      allowNull: true,
+      field: 'middle_name'
     },
     last_name: {
       type: DataTypes.STRING(100),
       allowNull: false,
       validate: {
         notEmpty: true
-      }
+      },
+      field: 'last_name'
     },
     email: {
       type: DataTypes.STRING(255),
@@ -78,11 +82,13 @@ module.exports = (sequelize) => {
       unique: true,
       validate: {
         notEmpty: true
-      }
+      },
+      field: 'phone_number'
     },
     date_of_birth: {
       type: DataTypes.DATEONLY,
-      allowNull: true
+      allowNull: true,
+      field: 'date_of_birth'
     },
     gender: {
       type: DataTypes.ENUM('male', 'female', 'other'),
@@ -91,26 +97,31 @@ module.exports = (sequelize) => {
     baptism_name: {
       type: DataTypes.STRING(100),
       allowNull: true,
-      comment: 'Baptism name'
+      comment: 'Baptism name',
+      field: 'baptism_name'
     },
     repentance_father: {
       type: DataTypes.STRING(100),
       allowNull: true,
-      comment: 'Name of the repentance father'
+      comment: 'Name of the repentance father',
+      field: 'repentance_father'
     },
     household_size: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 1,
-      comment: 'Number of people in the household'
+      comment: 'Number of people in the household',
+      field: 'household_size'
     },
     street_line1: {
       type: DataTypes.STRING(200),
-      allowNull: true
+      allowNull: true,
+      field: 'street_line1'
     },
     apartment_no: {
       type: DataTypes.STRING(50),
-      allowNull: true
+      allowNull: true,
+      field: 'apartment_no'
     },
     city: {
       type: DataTypes.STRING(100),
@@ -122,7 +133,8 @@ module.exports = (sequelize) => {
     },
     postal_code: {
       type: DataTypes.STRING(20),
-      allowNull: true
+      allowNull: true,
+      field: 'postal_code'
     },
     country: {
       type: DataTypes.STRING(100),
@@ -131,19 +143,23 @@ module.exports = (sequelize) => {
     },
     emergency_contact_name: {
       type: DataTypes.STRING(200),
-      allowNull: true
+      allowNull: true,
+      field: 'emergency_contact_name'
     },
     emergency_contact_phone: {
       type: DataTypes.STRING(20),
-      allowNull: true
+      allowNull: true,
+      field: 'emergency_contact_phone'
     },
     date_joined_parish: {
       type: DataTypes.DATEONLY,
-      allowNull: true
+      allowNull: true,
+      field: 'date_joined_parish'
     },
     spouse_name: {
       type: DataTypes.STRING(200),
-      allowNull: true
+      allowNull: true,
+      field: 'spouse_name'
     },
     family_id: {
       type: DataTypes.BIGINT,
@@ -153,7 +169,8 @@ module.exports = (sequelize) => {
         key: 'id'
       },
       onUpdate: 'CASCADE',
-      onDelete: 'SET NULL'
+      onDelete: 'SET NULL',
+      field: 'family_id'
     },
     role: {
       type: DataTypes.ENUM('member', 'admin', 'treasurer', 'secretary', 'church_leadership', 'guest', 'deacon', 'priest'),
@@ -163,12 +180,14 @@ module.exports = (sequelize) => {
     is_active: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true
+      defaultValue: true,
+      field: 'is_active'
     },
     registration_status: {
       type: DataTypes.ENUM('pending', 'complete', 'incomplete'),
       allowNull: false,
-      defaultValue: 'pending'
+      defaultValue: 'pending',
+      field: 'registration_status'
     },
     interested_in_serving: {
       type: DataTypes.ENUM('yes', 'no', 'maybe'),
