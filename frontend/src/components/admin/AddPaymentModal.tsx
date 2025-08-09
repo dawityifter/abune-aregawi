@@ -65,6 +65,17 @@ interface AddPaymentModalProps {
     fetchMembers();
   }, [fetchMembers]);
 
+  // Close modal on Escape for better UX and to avoid feeling "frozen"
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
 
   // Default payment date to today's local date (YYYY-MM-DD)
   useEffect(() => {
@@ -135,6 +146,7 @@ interface AddPaymentModalProps {
       }
 
       if (response.ok) {
+        try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch {}
         onPaymentAdded();
         onClose();
       } else {
@@ -189,9 +201,20 @@ interface AddPaymentModalProps {
     { value: 'other', label: 'Other' }
   ];
 
+  // Detect if Stripe publishable key exists at build time
+  const hasStripeKey = !!process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
+
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+    <div
+      className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mt-3">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-900">Add Payment</h3>
@@ -333,6 +356,11 @@ interface AddPaymentModalProps {
                     {(!selectedMemberId || !amount || !paymentType) && (
                       <div className="mb-3 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2">
                         Please select a member, enter an amount, and choose a payment type to proceed.
+                      </div>
+                    )}
+                    {paymentMethod === 'credit_card' && !hasStripeKey && (
+                      <div className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">
+                        Card payments are currently unavailable: missing Stripe publishable key. Please set REACT_APP_STRIPE_PUBLISHABLE_KEY and rebuild.
                       </div>
                     )}
                     {paymentMethod === 'credit_card' ? (

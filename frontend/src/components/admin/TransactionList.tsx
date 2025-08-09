@@ -31,9 +31,10 @@ interface Transaction {
 
 interface TransactionListProps {
   onTransactionAdded: () => void;
+  refreshToken?: number;
 }
 
-const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded }) => {
+const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, refreshToken }) => {
   const { firebaseUser } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +48,22 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded })
   useEffect(() => {
     fetchTransactions();
   }, [searchTerm, paymentTypeFilter, paymentMethodFilter, dateRangeFilter, currentPage]);
+
+  // Refetch when a refresh token changes
+  useEffect(() => {
+    if (refreshToken !== undefined) {
+      fetchTransactions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshToken]);
+
+  // Listen for global payments:refresh event (emitted by Stripe flows)
+  useEffect(() => {
+    const listener = () => fetchTransactions();
+    window.addEventListener('payments:refresh' as any, listener);
+    return () => window.removeEventListener('payments:refresh' as any, listener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchTransactions = async () => {
     try {
