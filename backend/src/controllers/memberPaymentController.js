@@ -1,4 +1,4 @@
-const { MemberPayment, Member } = require('../models');
+const { MemberPayment, Member, Transaction } = require('../models');
 const { Op, literal } = require('sequelize');
 
 // Get all member payments with pagination and filtering
@@ -108,32 +108,30 @@ const addMemberPayment = async (req, res) => {
     }
 
     // Find existing payment record
-    let payment = await MemberPayment.findOne({ where: { memberId } });
-
+    const payment = await MemberPayment.findOne({ where: { memberId } });
     if (!payment) {
       return res.status(404).json({ success: false, message: 'Member payment record not found' });
     }
 
-    // Update the specific month's payment
-    const monthField = month.toLowerCase();
-    if (!payment[monthField] && payment[monthField] !== 0) {
+    // Validate and update the specific month's payment
+    const monthField = String(month).toLowerCase();
+    const validMonths = [
+      'january','february','march','april','may','june','july','august','september','october','november','december'
+    ];
+    if (!validMonths.includes(monthField)) {
       return res.status(400).json({ success: false, message: `Invalid month: ${month}` });
     }
 
-    // Update payment
     payment[monthField] = parseFloat(amount);
     payment.paymentMethod = paymentMethod;
     payment.notes = notes || payment.notes;
-    
-    // Recalculate totals
-    const monthlyPayments = [
-      payment.january, payment.february, payment.march, payment.april,
-      payment.may, payment.june, payment.july, payment.august,
-      payment.september, payment.october, payment.november, payment.december
-    ].filter(p => p && p > 0);
 
-    payment.totalCollected = monthlyPayments.reduce((sum, p) => sum + p, 0);
-    payment.balanceDue = payment.totalAmountDue - payment.totalCollected;
+    // Recalculate totals
+    const monthlyValues = validMonths.map(m => Number(payment[m] || 0));
+    payment.totalCollected = monthlyValues.reduce((sum, v) => sum + v, 0);
+    if (typeof payment.totalAmountDue === 'number') {
+      payment.balanceDue = payment.totalAmountDue - payment.totalCollected;
+    }
 
     await payment.save();
 
@@ -148,85 +146,149 @@ const addMemberPayment = async (req, res) => {
   }
 };
 
-// Generate payment reports
+// Generate payment reports (kept minimal and resilient)
 const generatePaymentReport = async (req, res) => {
   try {
     const { reportType = 'summary' } = req.query;
 
-    let reportData = {};
-
-    switch (reportType) {
-      case 'summary':
-        // Summary statistics
-        const totalMembers = await MemberPayment.count();
-        const upToDateMembers = await MemberPayment.count({
-          where: { totalAmountDue: { [Op.lte]: 0 } }
-        });
-        const behindMembers = await MemberPayment.count({
-          where: { totalAmountDue: { [Op.gt]: 0 } }
-        });
-        const totalAmountDue = await MemberPayment.sum('totalAmountDue');
-        const totalCollected = await MemberPayment.sum('totalCollected');
-
-        reportData = {
-          totalMembers,
-          upToDateMembers,
-          behindMembers,
-          totalAmountDue: totalAmountDue || 0,
-          totalCollected: totalCollected || 0,
-          collectionRate: totalMembers > 0 ? ((upToDateMembers / totalMembers) * 100).toFixed(2) : 0
-        };
-        break;
-
-      case 'behind_payments':
-        // Members behind on payments
-        const behindPayments = await MemberPayment.findAll({
-          where: { totalAmountDue: { [Op.gt]: 0 } },
-          include: [
-            {
-              model: Member,
-              as: 'member',
-              attributes: ['firstName', 'lastName', 'memberId', 'phoneNumber', 'email']
-            }
-          ],
-          order: [['totalAmountDue', 'DESC']]
-        });
-        reportData = { behindPayments };
-        break;
-
-      case 'monthly_breakdown':
-        // Monthly payment breakdown
-        const monthlyStats = await MemberPayment.findAll({
-          attributes: [
-            'january', 'february', 'march', 'april', 'may', 'june',
-            'july', 'august', 'september', 'october', 'november', 'december'
-          ]
-        });
-
-        const monthlyTotals = {
-          january: 0, february: 0, march: 0, april: 0, may: 0, june: 0,
-          july: 0, august: 0, september: 0, october: 0, november: 0, december: 0
-        };
-
-        monthlyStats.forEach(record => {
-          Object.keys(monthlyTotals).forEach(month => {
-            if (record[month] && record[month] > 0) {
-              monthlyTotals[month] += record[month];
-            }
-          });
-        });
-
-        reportData = { monthlyTotals };
-        break;
-
-      default:
-        return res.status(400).json({ success: false, message: 'Invalid report type' });
+    if (reportType !== 'summary') {
+      return res.status(400).json({ success: false, message: 'Only summary report is supported currently' });
     }
 
-    res.json({ success: true, data: reportData });
+    // Try from MemberPayment; if table empty or not used, fallback to Transactions totals
+    const [countPayments, totalAmountDue, totalCollected] = await Promise.all([
+      MemberPayment.count().catch(() => 0),
+      MemberPayment.sum('totalAmountDue').catch(() => 0),
+      MemberPayment.sum('totalCollected').catch(() => 0)
+    ]);
+
+    let data;
+    if (countPayments && (totalAmountDue !== null || totalCollected !== null)) {
+      const upToDateMembers = await MemberPayment.count({ where: { totalAmountDue: { [Op.lte]: 0 } } }).catch(() => 0);
+      const behindMembers = await MemberPayment.count({ where: { totalAmountDue: { [Op.gt]: 0 } } }).catch(() => 0);
+      data = {
+        totalMembers: countPayments,
+        upToDateMembers,
+        behindMembers,
+        totalAmountDue: totalAmountDue || 0,
+        totalCollected: totalCollected || 0,
+        collectionRate: countPayments > 0 ? ((upToDateMembers / countPayments) * 100).toFixed(2) : '0',
+        outstandingAmount: (totalAmountDue || 0) - (totalCollected || 0)
+      };
+    } else {
+      // Fallback to transactions aggregation for current year
+      const now = new Date();
+      const start = new Date(now.getFullYear(), 0, 1);
+      const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+      const totalAmount = await Transaction.sum('amount', { where: { payment_date: { [Op.gte]: start, [Op.lte]: end } } }).catch(() => 0);
+      const uniqueMembers = await Transaction.findAll({
+        where: { payment_date: { [Op.gte]: start, [Op.lte]: end } },
+        attributes: [[literal('DISTINCT "member_id"'), 'member_id']],
+        raw: true
+      }).catch(() => []);
+      data = {
+        totalMembers: uniqueMembers.length,
+        upToDateMembers: uniqueMembers.length,
+        behindMembers: 0,
+        totalAmountDue: totalAmount || 0,
+        totalCollected: totalAmount || 0,
+        collectionRate: uniqueMembers.length > 0 ? '100' : '0',
+        outstandingAmount: 0
+      };
+    }
+
+    res.json({ success: true, data });
   } catch (error) {
     console.error('Error generating payment report:', error);
     res.status(500).json({ success: false, message: 'Failed to generate report' });
+  }
+};
+
+// Get dues for the currently authenticated member (derived from Transactions only)
+const getMyDues = async (req, res) => {
+  try {
+    const firebaseUid = req.firebaseUid;
+    if (!firebaseUid) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const member = await Member.findOne({ where: { firebase_uid: firebaseUid } });
+    if (!member) {
+      return res.status(404).json({ success: false, message: 'Member not found' });
+    }
+
+    const months = [
+      'january','february','march','april','may','june','july','august','september','october','november','december'
+    ];
+    const now = new Date();
+    const currentMonthIndex = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    // Build from transactions only
+    let monthlyPayment = 0;
+    let monthStatuses = [];
+    let totalCollected = 0;
+    let totalAmountDue = 0;
+    let balanceDue = 0;
+    let futureDues = 0;
+
+    const memberTransactions = await Transaction.findAll({
+      where: {
+        member_id: member.id,
+        payment_date: { [Op.gte]: new Date(currentYear, 0, 1), [Op.lte]: new Date(currentYear, 11, 31, 23, 59, 59, 999) }
+      },
+      order: [['payment_date', 'ASC']]
+    });
+    const totalsByMonth = new Array(12).fill(0);
+    for (const t of memberTransactions) {
+      const d = new Date(t.payment_date);
+      if (d.getFullYear() === currentYear) totalsByMonth[d.getMonth()] += Number(t.amount || 0);
+    }
+    monthStatuses = months.map((m, idx) => {
+      const paid = totalsByMonth[idx] || 0;
+      const isFutureMonth = idx > currentMonthIndex;
+      return { month: m, paid, due: 0, status: paid > 0 ? 'paid' : (idx <= currentMonthIndex ? 'due' : 'upcoming'), isFutureMonth };
+    });
+    totalCollected = totalsByMonth.reduce((a, b) => a + b, 0);
+
+    // If member has yearly_pledge, estimate dues
+    const yearlyPledge = Number(member.yearly_pledge || 0);
+    if (yearlyPledge > 0) {
+      monthlyPayment = Math.round((yearlyPledge / 12) * 100) / 100;
+      totalAmountDue = yearlyPledge;
+      balanceDue = Math.max(yearlyPledge - totalCollected, 0);
+      monthStatuses = monthStatuses.map((ms, idx) => ({
+        ...ms,
+        due: Math.max(monthlyPayment - ms.paid, 0),
+        status: ms.paid >= monthlyPayment ? 'paid' : (idx <= currentMonthIndex ? 'due' : 'upcoming')
+      }));
+      futureDues = monthStatuses.filter(ms => ms.isFutureMonth).reduce((s, m) => s + m.due, 0);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        member: {
+          id: member.id,
+          firstName: member.first_name,
+          lastName: member.last_name,
+          email: member.email,
+          phoneNumber: member.phone_number
+        },
+        payment: {
+          year: currentYear,
+          monthlyPayment,
+          totalAmountDue,
+          totalCollected,
+          balanceDue,
+          monthStatuses,
+          futureDues
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching my dues:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch dues' });
   }
 };
 
