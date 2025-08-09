@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { Member, Dependent } = require('../models');
+const { Member, Dependant } = require('../models');
 
 // Utility function to normalize phone numbers
 const normalizePhoneNumber = (phoneNumber) => {
@@ -236,7 +236,7 @@ exports.register = async (req, res) => {
           memberId: member.id
         };
       });
-      await Dependent.bulkCreate(dependantsData);
+      await Dependant.bulkCreate(dependantsData);
     }
 
     // Generate JWT token
@@ -253,7 +253,7 @@ exports.register = async (req, res) => {
     // Fetch member with dependents
     const memberWithDependants = await Member.findByPk(member.id, {
       include: [{
-        model: Dependent,
+        model: Dependant,
         as: 'dependents'
       }]
     });
@@ -419,7 +419,7 @@ exports.updateProfile = async (req, res) => {
     // Update dependents if provided
     if (req.body.dependants && Array.isArray(req.body.dependants)) {
       // Remove existing dependents
-      await Dependent.destroy({ where: { memberId: member.id } });
+      await Dependant.destroy({ where: { memberId: member.id } });
       
       // Add new dependents
       if (req.body.dependants.length > 0) {
@@ -431,14 +431,14 @@ exports.updateProfile = async (req, res) => {
             memberId: member.id
           };
         });
-        await Dependent.bulkCreate(dependantsData);
+        await Dependant.bulkCreate(dependantsData);
       }
     }
 
     // Fetch updated member with dependents
     const updatedMember = await Member.findByPk(member.id, {
       include: [{
-        model: Dependent,
+        model: Dependant,
         as: 'dependents'
       }]
     });
@@ -486,7 +486,7 @@ exports.getAllMembers = async (req, res) => {
     const { count, rows: members } = await Member.findAndCountAll({
       where: whereClause,
       include: [{
-        model: Dependent,
+        model: Dependant,
         as: 'dependents'
       }],
       limit: parseInt(limit),
@@ -547,7 +547,7 @@ exports.getAllMembersFirebase = async (req, res) => {
       offset: parseInt(offset),
       order: [['created_at', 'DESC']],
       include: [{
-        model: require('../models').Dependent,
+        model: require('../models').Dependant,
         as: 'dependents',
         attributes: ['id'] // Only get the count, not full data
       }]
@@ -652,7 +652,7 @@ exports.updateMember = async (req, res) => {
     // Update dependents if provided
     if (req.body.dependants && Array.isArray(req.body.dependants)) {
       // Remove existing dependents
-      await Dependent.destroy({ where: { memberId: member.id } });
+      await Dependant.destroy({ where: { memberId: member.id } });
       
       // Add new dependents
       if (req.body.dependants.length > 0) {
@@ -660,14 +660,14 @@ exports.updateMember = async (req, res) => {
           ...dependent,
           memberId: member.id
         }));
-        await Dependent.bulkCreate(dependantsData);
+        await Dependant.bulkCreate(dependantsData);
       }
     }
 
     // Fetch updated member with dependents
     const updatedMember = await Member.findByPk(member.id, {
       include: [{
-        model: Dependent,
+        model: Dependant,
         as: 'dependents'
       }]
     });
@@ -780,7 +780,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     const memberByUid = await Member.findOne({
       where: { firebase_uid: uid },
       include: [{
-        model: require('../models').Dependent,
+        model: require('../models').Dependant,
         as: 'dependents'
       }]
     });
@@ -844,7 +844,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       member = await Member.findOne({
         where: { email: userEmail },
         include: [{
-          model: require('../models').Dependent,
+          model: require('../models').Dependant,
           as: 'dependents'
         }]
       });
@@ -876,7 +876,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
           [Op.or]: phoneFormats.map(format => ({ phone_number: format }))
         },
         include: [{
-          model: require('../models').Dependent,
+          model: require('../models').Dependant,
           as: 'dependents'
         }]
       });
@@ -1223,7 +1223,7 @@ exports.getMemberDependents = async (req, res) => {
   try {
     const { memberId } = req.params;
 
-    const dependents = await Dependent.findAll({
+    const dependents = await Dependant.findAll({
       where: { memberId },
       order: [['dateOfBirth', 'ASC']]
     });
@@ -1261,7 +1261,7 @@ exports.addDependent = async (req, res) => {
     const { baptismDate, nameDay, ...cleanDependantData } = dependantData;
 
     // Create dependent
-    const dependent = await Dependent.create({
+    const dependent = await Dependant.create({
       ...cleanDependantData,
       memberId
     });
@@ -1287,7 +1287,7 @@ exports.addDependent = async (req, res) => {
       const { dependentId } = req.params;
     const updateData = req.body;
 
-    const dependent = await Dependent.findByPk(dependentId);
+    const dependent = await Dependant.findByPk(dependentId);
     if (!dependent) {
       return res.status(404).json({
         success: false,
@@ -1320,7 +1320,7 @@ exports.addDependent = async (req, res) => {
     try {
       const { dependentId } = req.params;
 
-    const dependent = await Dependent.findByPk(dependentId);
+    const dependent = await Dependant.findByPk(dependentId);
     if (!dependent) {
       return res.status(404).json({
         success: false,
