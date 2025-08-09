@@ -274,7 +274,7 @@ const DonatePage: React.FC = () => {
                       onError={handlePaymentError}
                       onCancel={handlePaymentCancel}
                       inline={true}
-                      onPaymentReady={setProcessACHPayment}
+                      onPaymentReady={(fn) => setProcessACHPayment(() => fn)}
                     />
                   </div>
                 )}
