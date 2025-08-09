@@ -20,6 +20,10 @@ interface StripePaymentProps {
   onCancel: () => void;
   inline?: boolean;
   onPaymentReady?: (processPayment: () => Promise<void>) => void;
+  // Optional payment purpose coming from Add Payment Screen dropdown
+  purpose?: 'membership_due' | 'tithe' | 'donation' | 'event' | 'other';
+  // Optional callback to refresh dues/payment history after success
+  onRefreshHistory?: () => void;
 }
 
 const PaymentForm: React.FC<StripePaymentProps> = ({ 
@@ -28,7 +32,9 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
   onError, 
   onCancel,
   inline = false,
-  onPaymentReady
+  onPaymentReady,
+  purpose,
+  onRefreshHistory
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -50,8 +56,17 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     setError(null);
 
     try {
-      // Create payment intent on the backend
-      const { client_secret, payment_intent_id } = await createPaymentIntent(donationData);
+      // Create payment intent on the backend (attach purpose in metadata)
+      const payload = {
+        ...donationData,
+        metadata: {
+          ...(donationData as any).metadata,
+          purpose: purpose || 'donation',
+          payment_method: donationData.payment_method
+        }
+      } as typeof donationData & { metadata?: any };
+
+      const { client_secret, payment_intent_id } = await createPaymentIntent(payload as any);
 
       // Confirm the payment with Stripe
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
@@ -76,6 +91,13 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
         // Confirm payment on backend
         const result = await confirmPayment(payment_intent_id);
         onSuccess(result.donation);
+        // Trigger refresh of dues/payment history after a short delay to allow webhook to persist
+        setTimeout(() => {
+          try {
+            window.dispatchEvent(new CustomEvent('payments:refresh'));
+          } catch {}
+          if (onRefreshHistory) onRefreshHistory();
+        }, 1200);
       } else {
         setError('Payment was not successful. Please try again.');
         onError('Payment was not successful. Please try again.');
@@ -87,7 +109,7 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  }, [stripe, elements, donationData, onSuccess, onError]);
+  }, [stripe, elements, donationData, onSuccess, onError, purpose, onRefreshHistory]);
 
   // Expose the payment processing function to parent component
   useEffect(() => {

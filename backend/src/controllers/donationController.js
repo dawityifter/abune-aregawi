@@ -13,7 +13,7 @@ try {
   stripe = null;
 }
 
-const { Donation } = require('../models');
+const { Donation, Member, Transaction } = require('../models');
 const { validationResult } = require('express-validator');
 
 // Create payment intent for donation
@@ -63,6 +63,21 @@ const createPaymentIntent = async (req, res) => {
     // Convert amount to cents for Stripe
     const amountInCents = Math.round(parseFloat(amount) * 100);
 
+    // Attempt to find a member by email or phone for metadata linking
+    let linkedMember = null;
+    try {
+      if (donor_email) {
+        linkedMember = await Member.findOne({ where: { email: donor_email } });
+      }
+      if (!linkedMember && donor_phone) {
+        // Ensure phone starts with + for E.164
+        const normalizedPhone = donor_phone.startsWith('+') ? donor_phone : `+${donor_phone}`;
+        linkedMember = await Member.findOne({ where: { phone_number: normalizedPhone } });
+      }
+    } catch (memberErr) {
+      console.warn('⚠️ Member lookup failed while creating payment intent:', memberErr.message);
+    }
+
     // Create payment intent with Stripe
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
@@ -78,6 +93,11 @@ const createPaymentIntent = async (req, res) => {
         donor_phone: donor_phone || '',
         donor_address: donor_address || '',
         donor_zip_code: donor_zip_code || '',
+        // Link to member when possible
+        memberId: linkedMember ? String(linkedMember.id) : (metadata.memberId || ''),
+        firebaseUid: metadata.firebaseUid || '',
+        purpose: metadata.purpose || 'donation',
+        year: metadata.year || String(new Date().getFullYear()),
         ...metadata
       }
     });
@@ -314,15 +334,82 @@ const handleWebhook = async (req, res) => {
 
 // Helper function to handle successful payments
 const handlePaymentSucceeded = async (paymentIntent) => {
-  const donation = await Donation.findOne({
-    where: { stripe_payment_intent_id: paymentIntent.id }
-  });
-
-  if (donation) {
-    await donation.update({
-      status: 'succeeded',
-      stripe_customer_id: paymentIntent.customer || null
+  // Update donation record if present
+  try {
+    const donation = await Donation.findOne({
+      where: { stripe_payment_intent_id: paymentIntent.id }
     });
+    if (donation) {
+      await donation.update({
+        status: 'succeeded',
+        stripe_customer_id: paymentIntent.customer || null
+      });
+    }
+  } catch (e) {
+    console.warn('⚠️ Failed updating donation on success:', e.message);
+  }
+
+  // Upsert Transaction tied to member for dues/history
+  try {
+    const md = paymentIntent.metadata || {};
+
+    // Resolve member id
+    let memberId = md.memberId ? md.memberId : null;
+    if (!memberId && md.firebaseUid) {
+      const member = await Member.findOne({ where: { firebase_uid: md.firebaseUid } });
+      memberId = member ? member.id : null;
+    }
+
+    // As a fallback, try donor_email/phone in metadata
+    if (!memberId && md.donor_email) {
+      const byEmail = await Member.findOne({ where: { email: md.donor_email } });
+      memberId = byEmail ? byEmail.id : memberId;
+    }
+    if (!memberId && md.donor_phone) {
+      const normalizedPhone = md.donor_phone.startsWith('+') ? md.donor_phone : `+${md.donor_phone}`;
+      const byPhone = await Member.findOne({ where: { phone_number: normalizedPhone } });
+      memberId = byPhone ? byPhone.id : memberId;
+    }
+
+    if (!memberId) {
+      console.warn('⚠️ Stripe webhook: could not resolve member for paymentIntent', paymentIntent.id);
+      return;
+    }
+
+    // Map purpose to allowed enum
+    const allowedTypes = ['membership_due', 'tithe', 'donation', 'event', 'other'];
+    const purpose = (md.purpose || 'donation').toLowerCase();
+    const payment_type = allowedTypes.includes(purpose) ? purpose : 'donation';
+
+    // Map method
+    const methodRaw = (md.payment_method || md.method || 'card').toLowerCase();
+    const payment_method = methodRaw === 'ach' ? 'ach' : 'credit_card';
+
+    // Amount and date
+    const amount = (paymentIntent.amount_received || paymentIntent.amount) / 100.0;
+    const occurredAt = new Date((paymentIntent.created || Math.floor(Date.now() / 1000)) * 1000);
+
+    // Idempotent upsert by external_id (payment_intent.id)
+    const existing = await Transaction.findOne({ where: { external_id: paymentIntent.id } });
+    if (existing) {
+      // Ensure it matches succeeded status use-case; optionally update
+      await existing.update({ amount, payment_date: occurredAt });
+      return;
+    }
+
+    await Transaction.create({
+      member_id: memberId,
+      collected_by: memberId, // automated collection – attribute to member
+      payment_date: occurredAt,
+      amount,
+      payment_type,
+      payment_method,
+      receipt_number: paymentIntent.charges?.data?.[0]?.receipt_number || null,
+      note: `Stripe payment ${paymentIntent.id}`,
+      external_id: paymentIntent.id
+    });
+  } catch (err) {
+    console.error('❌ Failed to upsert Transaction on payment success:', err.message);
   }
 };
 

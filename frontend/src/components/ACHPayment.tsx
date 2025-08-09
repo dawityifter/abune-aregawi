@@ -19,6 +19,9 @@ interface ACHPaymentProps {
   onCancel: () => void;
   inline?: boolean;
   onPaymentReady?: (processPayment: () => Promise<void>) => void;
+  // Optional payment purpose and refresh callback
+  purpose?: 'membership_due' | 'tithe' | 'donation' | 'event' | 'other';
+  onRefreshHistory?: () => void;
 }
 
 const ACHPayment: React.FC<ACHPaymentProps> = ({ 
@@ -27,7 +30,9 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
   onError, 
   onCancel,
   inline = false,
-  onPaymentReady
+  onPaymentReady,
+  purpose,
+  onRefreshHistory
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,13 +74,18 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
       // Create payment intent on the backend with ACH payment method
       const paymentData = {
         ...donationData,
+        metadata: {
+          ...(donationData as any).metadata,
+          purpose: purpose || 'donation',
+          payment_method: donationData.payment_method
+        },
         bank_account: {
           account_number: bankInfo.accountNumber,
           routing_number: bankInfo.routingNumber,
           account_type: bankInfo.accountType,
           account_holder_name: bankInfo.accountHolderName
         }
-      };
+      } as typeof donationData & { metadata?: any };
 
       const { client_secret, payment_intent_id } = await createPaymentIntent(paymentData);
 
@@ -88,6 +98,11 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
           status: 'pending',
           message: 'ACH payment submitted successfully. It will take 3-5 business days to process.'
         });
+        // Trigger refresh after a short delay so the webhook can record the transaction when it clears
+        setTimeout(() => {
+          try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch {}
+          if (onRefreshHistory) onRefreshHistory();
+        }, 1200);
       }, 2000);
 
     } catch (error) {
@@ -97,7 +112,7 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  }, [bankInfo, donationData, onSuccess, onError]);
+  }, [bankInfo, donationData, onSuccess, onError, purpose, onRefreshHistory]);
 
   // Expose the payment processing function to parent component
   useEffect(() => {

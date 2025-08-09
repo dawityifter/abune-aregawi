@@ -84,6 +84,11 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'Additional notes about the payment'
     },
+    external_id: {
+      type: DataTypes.STRING(191),
+      allowNull: true,
+      comment: 'External payment reference (e.g., Stripe payment_intent id)'
+    },
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -117,6 +122,10 @@ module.exports = (sequelize) => {
       },
       {
         fields: ['payment_method']
+      },
+      {
+        unique: true,
+        fields: ['external_id']
       }
     ],
     hooks: {

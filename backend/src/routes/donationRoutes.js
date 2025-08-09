@@ -58,7 +58,6 @@ router.get('/:id', donationController.getDonation);
 // Get all donations (admin only)
 router.get('/', donationController.getAllDonations);
 
-// Webhook endpoint (no validation needed as Stripe handles it)
-router.post('/webhook', express.raw({ type: 'application/json' }), donationController.handleWebhook);
+// Webhook is mounted in server.js before body parsers to preserve raw body for signature verification
 
 module.exports = router; 
