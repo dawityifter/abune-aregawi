@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { RecaptchaVerifier } from "firebase/auth";
 import { auth } from "../../firebase";
@@ -14,8 +15,9 @@ declare global {
 }
 
 const SignIn: React.FC = () => {
-  const { loginWithEmail, loginWithPhone, loading } = useAuth();
+  const { loginWithEmail, loginWithPhone, loading, currentUser, authReady } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   
   // Get enabled authentication methods and set default
   const enabledMethods = getEnabledAuthMethods();
@@ -145,6 +147,23 @@ const SignIn: React.FC = () => {
       }
     };
   }, []);
+
+  // Fallback redirect: if user is authenticated, leave /login
+  useEffect(() => {
+    if (!authReady) return;
+    if (!currentUser) return;
+    // New user (no backend profile) should go to registration
+    if (currentUser._temp) {
+      if (window.location.pathname !== '/register') {
+        navigate('/register', { replace: true, state: { phone: currentUser.phoneNumber, email: currentUser.email } });
+      }
+    } else {
+      // Existing user -> dashboard
+      if (window.location.pathname !== '/dashboard') {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [authReady, currentUser, navigate]);
 
   // Get clean phone number for Firebase (E.164 format)
   const getCleanPhoneNumber = (displayValue: string): string => {

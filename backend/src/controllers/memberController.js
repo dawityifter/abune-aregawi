@@ -40,7 +40,6 @@ exports.register = async (req, res) => {
       middleName,
       lastName,
       gender,
-      dateOfBirth,
       maritalStatus,
       
       // Contact & Address
@@ -70,6 +69,7 @@ exports.register = async (req, res) => {
       // Contribution
       preferredGivingMethod,
       titheParticipation,
+      yearlyPledge,
       
       // Account
       firebase_uid: firebaseUid,
@@ -198,7 +198,6 @@ exports.register = async (req, res) => {
       middle_name: middleName,
       last_name: lastName,
       gender,
-      date_of_birth: dateOfBirth,
       marital_status: maritalStatus,
       phone_number: phoneNumber,
       email,
@@ -220,6 +219,7 @@ exports.register = async (req, res) => {
       language_preference: languagePreference,
       preferred_giving_method: preferredGivingMethod,
       tithe_participation: titheParticipation,
+      yearly_pledge: yearlyPledge != null ? Number(yearlyPledge) : null,
       firebase_uid: firebaseUid,
       password: password || null, // Password is optional since Firebase handles auth
       role: role || 'member',
