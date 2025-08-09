@@ -22,6 +22,8 @@ const DonatePage: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [processCardPayment, setProcessCardPayment] = useState<(() => Promise<void>) | null>(null);
+  const [processACHPayment, setProcessACHPayment] = useState<(() => Promise<void>) | null>(null);
 
   // Prefill donor information with logged-in user data
   useEffect(() => {
@@ -65,10 +67,30 @@ const DonatePage: React.FC = () => {
       return;
     }
 
-    // For inline payment forms, the payment processing is handled by the individual components
-    // We just need to validate the form and let the payment components handle the rest
+    // Set processing state
+    setIsProcessing(true);
     setPaymentError(null);
     setPaymentSuccess(false);
+
+    try {
+      // Handle payment based on selected payment method
+      if (paymentMethod === 'card') {
+        if (processCardPayment) {
+          await processCardPayment();
+        } else {
+          throw new Error('Card payment processing is not ready. Please try again.');
+        }
+      } else if (paymentMethod === 'ach') {
+        if (processACHPayment) {
+          await processACHPayment();
+        } else {
+          throw new Error('ACH payment processing is not ready. Please try again.');
+        }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      handlePaymentError(errorMessage);
+    }
   };
 
   const handlePaymentSuccess = (donation: any) => {
@@ -237,6 +259,7 @@ const DonatePage: React.FC = () => {
                           onError={handlePaymentError}
                           onCancel={handlePaymentCancel}
                           inline={true}
+                          onPaymentReady={setProcessCardPayment}
                         />
                       </Elements>
                     </div>
@@ -252,6 +275,7 @@ const DonatePage: React.FC = () => {
                       onError={handlePaymentError}
                       onCancel={handlePaymentCancel}
                       inline={true}
+                      onPaymentReady={setProcessACHPayment}
                     />
                   </div>
                 )}
