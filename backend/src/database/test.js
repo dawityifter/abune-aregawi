@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { sequelize, Member, Dependant } = require('../models');
+const { sequelize, Member, Dependent } = require('../models');
 
 const testDatabase = async () => {
   try {

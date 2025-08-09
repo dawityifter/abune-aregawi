@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { sequelize, Member, Dependant } = require('../models');
+const { sequelize, Member, Dependent } = require('../models');
 const readline = require('readline');
 
 const rl = readline.createInterface({
@@ -38,7 +38,7 @@ const resetDatabase = async () => {
     console.log('🎉 Database reset completed!');
     console.log('📊 Available tables:');
     console.log('   - members');
-    console.log('   - dependants');
+    console.log('   - dependents');
     
   } catch (error) {
     console.error('❌ Database reset failed:', error);

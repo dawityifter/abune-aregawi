@@ -76,9 +76,14 @@ exports.register = async (req, res) => {
       password,
       role,
       
-      // Dependents
+      // Dependents (legacy field name 'dependants' from client)
       dependants
     } = req.body;
+
+    // Normalize incoming dependents array: prefer 'dependents', fallback to legacy 'dependants'
+    const dependents = Array.isArray(req.body.dependents)
+      ? req.body.dependents
+      : dependants;
 
     // Handle phone sign-in users: generate placeholder email if none provided
     // This avoids database constraint issues while preserving existing data
@@ -228,15 +233,19 @@ exports.register = async (req, res) => {
     }
 
     // Add dependents if provided and HoH
-    if (isHeadOfHousehold && dependants && Array.isArray(dependants) && dependants.length > 0) {
-      const dependantsData = dependants.map(dependent => {
-        const { baptismDate, nameDay, ...cleanDependent } = dependent;
+    if (isHeadOfHousehold && dependents && Array.isArray(dependents) && dependents.length > 0) {
+      const dependentsData = dependents.map(dependent => {
+        const {
+          baptismDate,
+          nameDay,
+          ...cleaned
+        } = dependent;
         return {
-          ...cleanDependent,
+          ...cleaned,
           memberId: member.id
         };
       });
-      await Dependent.bulkCreate(dependantsData);
+      await Dependent.bulkCreate(dependentsData);
     }
 
     // Generate JWT token
@@ -251,7 +260,7 @@ exports.register = async (req, res) => {
     );
 
     // Fetch member with dependents
-    const memberWithDependants = await Member.findByPk(member.id, {
+    const memberWithDependents = await Member.findByPk(member.id, {
       include: [{
         model: Dependent,
         as: 'dependents'
@@ -262,7 +271,7 @@ exports.register = async (req, res) => {
       success: true,
       message: 'Member registered successfully',
       data: {
-        member: memberWithDependants,
+        member: memberWithDependents,
         token
       }
     });
@@ -416,14 +425,14 @@ exports.updateProfile = async (req, res) => {
 
     await member.update(updateData);
 
-    // Update dependents if provided
+    // Update dependents if provided (legacy field name 'dependants')
     if (req.body.dependants && Array.isArray(req.body.dependants)) {
       // Remove existing dependents
       await Dependent.destroy({ where: { memberId: member.id } });
       
       // Add new dependents
       if (req.body.dependants.length > 0) {
-        const dependantsData = req.body.dependants.map(dependent => {
+        const dependentsData = req.body.dependants.map(dependent => {
           // Remove baptismDate and nameDay fields if they're empty or invalid
           const { baptismDate, nameDay, ...cleanDependent } = dependent;
           return {
@@ -431,7 +440,7 @@ exports.updateProfile = async (req, res) => {
             memberId: member.id
           };
         });
-        await Dependent.bulkCreate(dependantsData);
+        await Dependent.bulkCreate(dependentsData);
       }
     }
 
@@ -656,11 +665,11 @@ exports.updateMember = async (req, res) => {
       
       // Add new dependents
       if (req.body.dependants.length > 0) {
-        const dependantsData = req.body.dependants.map(dependent => ({
+        const dependentsData = req.body.dependants.map(dependent => ({
           ...dependent,
           memberId: member.id
         }));
-        await Dependent.bulkCreate(dependantsData);
+        await Dependent.bulkCreate(dependentsData);
       }
     }
 
@@ -1133,16 +1142,19 @@ exports.completeRegistration = async (req, res) => {
       role: memberData.role || 'member'
     });
 
-    // Handle dependants if provided
-    if (memberData.dependants && Array.isArray(memberData.dependants) && memberData.dependants.length > 0) {
-      const dependantsData = memberData.dependants.map(dependant => ({
-        ...dependant,
+    // Handle dependents if provided (prefer 'dependents', fallback to legacy 'dependants')
+    const incomingDependents = Array.isArray(memberData.dependents)
+      ? memberData.dependents
+      : memberData.dependants;
+    if (incomingDependents && Array.isArray(incomingDependents) && incomingDependents.length > 0) {
+      const dependentsData = incomingDependents.map(dependent => ({
+        ...dependent,
         memberId: member.id
       }));
-      await Dependent.bulkCreate(dependantsData);
+      await Dependent.bulkCreate(dependentsData);
     }
 
-    // Fetch complete member with dependants
+    // Fetch complete member with dependents
     const completeMember = await Member.findByPk(member.id, {
       include: [{
         model: Dependent,
@@ -1216,7 +1228,7 @@ exports.updateMemberRole = async (req, res) => {
   }
 };
 
-// Dependants Management Endpoints
+// Dependents Management Endpoints
 
 // Get all dependents for a member
 exports.getMemberDependents = async (req, res) => {
@@ -1258,11 +1270,11 @@ exports.addDependent = async (req, res) => {
     }
 
     // Remove baptismDate and nameDay fields if they're empty or invalid
-    const { baptismDate, nameDay, ...cleanDependantData } = dependantData;
+    const { baptismDate, nameDay, ...cleanDependentData } = dependantData;
 
     // Create dependent
     const dependent = await Dependent.create({
-      ...cleanDependantData,
+      ...cleanDependentData,
       memberId
     });
 
