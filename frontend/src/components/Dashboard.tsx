@@ -100,8 +100,7 @@ const Dashboard: React.FC = () => {
   };
 
   const handleViewDues = () => {
-    alert('View Dues functionality coming soon!');
-    // TODO: Navigate to dues page
+    navigate('/dues');
   };
 
   const handleViewEvents = () => {

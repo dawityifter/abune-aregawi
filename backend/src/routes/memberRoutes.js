@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const memberController = require('../controllers/memberController');
+const memberPaymentController = require('../controllers/memberPaymentController');
 const { 
   validateMemberRegistration, 
   validateLogin, 
@@ -52,6 +53,9 @@ router.post('/login', validateLogin, memberController.login);
 // Firebase Auth profile routes (no JWT required)
 router.get('/profile/firebase/:uid', memberController.getProfileByFirebaseUid);
 router.put('/profile/firebase/:uid', validateProfileUpdate, memberController.updateProfileByFirebaseUid);
+
+// Member dues (current user's own dues) using Firebase token only
+router.get('/dues/my', verifyFirebaseTokenOnly, memberPaymentController.getMyDues);
 
 // Test endpoint to debug authentication
 router.get('/test-auth', firebaseAuthMiddleware, (req, res) => {
