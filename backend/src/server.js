@@ -101,6 +101,20 @@ app.get('/', (req, res) => {
   });
 });
 
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+  const health = {
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    database: 'connected', // You can add actual DB connection check here
+    stripe: process.env.STRIPE_SECRET_KEY ? 'configured' : 'not_configured',
+    firebase: process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 ? 'configured' : 'not_configured'
+  };
+  
+  res.json(health);
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   const health = {
@@ -293,4 +307,4 @@ module.exports = app;
 // Only start the server if this file is run directly (not required by tests)
 if (require.main === module) {
   startServer();
-} 
+}
