@@ -239,41 +239,68 @@ const getMyDues = async (req, res) => {
       },
       order: [['payment_date', 'ASC']]
     });
-    const totalsByMonth = new Array(12).fill(0);
-    for (const t of memberTransactions) {
+    // Separate membership due vs all other payments
+    const duesTransactions = memberTransactions.filter(t => String(t.payment_type) === 'membership_due');
+    const totalsByCalendarMonth = new Array(12).fill(0);
+    for (const t of duesTransactions) {
       const d = new Date(t.payment_date);
-      if (d.getFullYear() === currentYear) totalsByMonth[d.getMonth()] += Number(t.amount || 0);
+      if (d.getFullYear() === currentYear) totalsByCalendarMonth[d.getMonth()] += Number(t.amount || 0);
     }
-    monthStatuses = months.map((m, idx) => {
-      const paid = totalsByMonth[idx] || 0;
-      const isFutureMonth = idx > currentMonthIndex;
-      return { month: m, paid, due: 0, status: paid > 0 ? 'paid' : (idx <= currentMonthIndex ? 'due' : 'upcoming'), isFutureMonth };
-    });
-    totalCollected = totalsByMonth.reduce((a, b) => a + b, 0);
 
-    // If member has yearly_pledge, estimate dues
+    // If member has yearly_pledge, allocate dues across months sequentially starting January
     const yearlyPledge = Number(member.yearly_pledge || 0);
     if (yearlyPledge > 0) {
       monthlyPayment = Math.round((yearlyPledge / 12) * 100) / 100;
+      const totalDuesCollected = duesTransactions.reduce((s, t) => s + Number(t.amount || 0), 0);
       totalAmountDue = yearlyPledge;
-      balanceDue = Math.max(yearlyPledge - totalCollected, 0);
-      monthStatuses = monthStatuses.map((ms, idx) => ({
-        ...ms,
-        due: Math.max(monthlyPayment - ms.paid, 0),
-        status: ms.paid >= monthlyPayment ? 'paid' : (idx <= currentMonthIndex ? 'due' : 'upcoming')
-      }));
+      balanceDue = Math.max(yearlyPledge - totalDuesCollected, 0);
+
+      let remaining = totalDuesCollected;
+      monthStatuses = months.map((m, idx) => {
+        const isFutureMonth = idx > currentMonthIndex;
+        const paidForMonth = Math.min(monthlyPayment, Math.max(remaining, 0));
+        remaining = Math.max(remaining - monthlyPayment, 0);
+        const dueForMonth = Math.max(monthlyPayment - paidForMonth, 0);
+        const status = paidForMonth >= monthlyPayment ? 'paid' : (idx <= currentMonthIndex ? 'due' : 'upcoming');
+        return { month: m, paid: Number(paidForMonth.toFixed(2)), due: Number(dueForMonth.toFixed(2)), status, isFutureMonth };
+      });
+      totalCollected = totalDuesCollected;
       futureDues = monthStatuses.filter(ms => ms.isFutureMonth).reduce((s, m) => s + m.due, 0);
+    } else {
+      // No pledge set: show what was paid per calendar month for membership dues; dues remain 0
+      monthStatuses = months.map((m, idx) => {
+        const paid = totalsByCalendarMonth[idx] || 0;
+        const isFutureMonth = idx > currentMonthIndex;
+        return { month: m, paid, due: 0, status: paid > 0 ? 'paid' : (idx <= currentMonthIndex ? 'due' : 'upcoming'), isFutureMonth };
+      });
+      totalCollected = totalsByCalendarMonth.reduce((a, b) => a + b, 0);
+      totalAmountDue = 0;
+      balanceDue = 0;
+      futureDues = 0;
     }
+
+    // Build transaction history for display (all payment types for the year)
+    const transactions = memberTransactions
+      .map(t => ({
+        id: t.id,
+        payment_date: t.payment_date,
+        amount: Number(t.amount || 0),
+        payment_type: t.payment_type,
+        payment_method: t.payment_method,
+        receipt_number: t.receipt_number,
+        note: t.note,
+      }))
+      .sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date));
 
     return res.json({
       success: true,
       data: {
         member: {
           id: member.id,
-          firstName: member.first_name,
-          lastName: member.last_name,
-          email: member.email,
-          phoneNumber: member.phone_number
+          firstName: member.first_name || member.firstName || '',
+          lastName: member.last_name || member.lastName || '',
+          email: member.email || '',
+          phoneNumber: member.phone_number || member.phoneNumber || ''
         },
         payment: {
           year: currentYear,
@@ -283,7 +310,8 @@ const getMyDues = async (req, res) => {
           balanceDue,
           monthStatuses,
           futureDues
-        }
+        },
+        transactions
       }
     });
   } catch (error) {
