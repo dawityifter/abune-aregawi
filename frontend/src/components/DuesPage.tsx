@@ -9,6 +9,16 @@ interface MonthStatus {
   isFutureMonth: boolean;
 }
 
+interface MemberTransaction {
+  id: number | string;
+  payment_date: string;
+  amount: number;
+  payment_type: string;
+  payment_method: string;
+  receipt_number?: string | null;
+  note?: string | null;
+}
+
 interface DuesResponse {
   success: boolean;
   data: {
@@ -28,6 +38,7 @@ interface DuesResponse {
       monthStatuses: MonthStatus[];
       futureDues: number;
     };
+    transactions: MemberTransaction[];
   };
 }
 
@@ -100,7 +111,8 @@ const DuesPage: React.FC = () => {
 
   if (!dues) return null;
 
-  const { member, payment } = dues;
+  const { member, payment, transactions } = dues;
+  const yearlyPledge = (payment.monthlyPayment || 0) * 12;
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
@@ -108,11 +120,11 @@ const DuesPage: React.FC = () => {
         <div className="px-4 sm:px-0">
           <div className="bg-white shadow rounded-lg p-6">
             <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900">Member Dues</h2>
+              <h2 className="text-2xl font-semibold text-gray-900">Member Dues and Payment History</h2>
               <p className="text-gray-600 mt-1">{member.firstName} {member.lastName} • Year {payment.year || new Date().getFullYear()}</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="p-4 rounded bg-green-50 border border-green-100">
                 <div className="text-sm text-gray-600">Total Collected</div>
                 <div className="text-xl font-semibold text-green-700">{currency(payment.totalCollected || 0)}</div>
@@ -124,6 +136,10 @@ const DuesPage: React.FC = () => {
               <div className="p-4 rounded bg-blue-50 border border-blue-100">
                 <div className="text-sm text-gray-600">Future Dues</div>
                 <div className="text-xl font-semibold text-blue-700">{currency(payment.futureDues || 0)}</div>
+              </div>
+              <div className="p-4 rounded bg-purple-50 border border-purple-100">
+                <div className="text-sm text-gray-600">Yearly Pledge</div>
+                <div className="text-xl font-semibold text-purple-700">{currency(yearlyPledge || 0)}</div>
               </div>
             </div>
 
@@ -152,6 +168,41 @@ const DuesPage: React.FC = () => {
 
             <div className="mt-6 text-sm text-gray-600">
               Monthly commitment: {currency(payment.monthlyPayment || 0)}
+            </div>
+
+            <div className="mt-10">
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Payment History</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt #</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {transactions.length === 0 && (
+                      <tr>
+                        <td className="px-4 py-3 text-sm text-gray-500" colSpan={6}>No payments found for this year.</td>
+                      </tr>
+                    )}
+                    {transactions.map(t => (
+                      <tr key={String(t.id)}>
+                        <td className="px-4 py-2 whitespace-nowrap">{new Date(t.payment_date).toLocaleDateString()}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">{currency(t.amount)}</td>
+                        <td className="px-4 py-2 whitespace-nowrap capitalize">{t.payment_type.replace(/_/g, ' ')}</td>
+                        <td className="px-4 py-2 whitespace-nowrap capitalize">{t.payment_method.replace(/_/g, ' ')}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">{t.receipt_number || '-'}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">{t.note || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
