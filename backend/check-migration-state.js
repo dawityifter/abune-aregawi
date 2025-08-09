@@ -48,12 +48,12 @@ async function checkMigrationState() {
       newTables.rows.forEach(row => console.log(`   - ${row.table_name}`));
     }
 
-    // Check for original tables
+    // Check for original tables (support both 'dependents' and legacy 'dependants')
     const originalTables = await client.query(`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public' 
-      AND table_name IN ('members', 'dependants', 'transactions', 'church_transactions')
+      AND table_name IN ('members', 'dependents', 'dependants', 'transactions', 'church_transactions')
       ORDER BY table_name;
     `);
 
