@@ -71,6 +71,21 @@ app.use(cors(corsOptions));
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
+  // Send standard RateLimit-* headers and disable legacy X-RateLimit-* headers
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Exclude Firebase profile lookup route from rate limiting to prevent auth loops
+  // Use originalUrl because this limiter is mounted at '/api/'
+  skip: (req) => {
+    try {
+      const url = req.originalUrl || '';
+      const method = req.method || 'GET';
+      // Example: /api/members/profile/firebase/:uid?email=...&phone=...
+      return method === 'GET' && url.startsWith('/api/members/profile/firebase');
+    } catch (_) {
+      return false;
+    }
+  },
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.'
