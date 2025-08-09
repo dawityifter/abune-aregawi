@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import StripePayment from './StripePayment';
 import ACHPayment from './ACHPayment';
 import { useAuth } from '../contexts/AuthContext';
+import { Elements } from '@stripe/react-stripe-js';
+import { stripePromise } from '../config/stripe';
 
 const DonatePage: React.FC = () => {
   const { user } = useAuth();
@@ -18,7 +20,6 @@ const DonatePage: React.FC = () => {
     zipCode: ''
   });
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
@@ -64,15 +65,14 @@ const DonatePage: React.FC = () => {
       return;
     }
 
-    // Show payment form
-    setShowPaymentForm(true);
+    // For inline payment forms, the payment processing is handled by the individual components
+    // We just need to validate the form and let the payment components handle the rest
     setPaymentError(null);
     setPaymentSuccess(false);
   };
 
   const handlePaymentSuccess = (donation: any) => {
     setPaymentSuccess(true);
-    setShowPaymentForm(false);
     setIsProcessing(false);
     
     // Reset form
@@ -95,7 +95,7 @@ const DonatePage: React.FC = () => {
   };
 
   const handlePaymentCancel = () => {
-    setShowPaymentForm(false);
+    setIsProcessing(false);
     setPaymentError(null);
   };
 
@@ -127,8 +127,7 @@ const DonatePage: React.FC = () => {
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-2xl font-semibold text-gray-800 mb-6">Online Donation</h2>
             
-            {!showPaymentForm ? (
-              <form onSubmit={handleFormSubmit} className="space-y-6">
+            <form onSubmit={handleFormSubmit} className="space-y-6">
                 {/* Donation Type */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -225,6 +224,37 @@ const DonatePage: React.FC = () => {
                     </label>
                   </div>
                 </div>
+
+                {/* Payment Form Fields - Show inline based on payment method */}
+                {paymentMethod === 'card' && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Card Information</h3>
+                    <div className="border border-gray-300 rounded-md p-3 bg-white">
+                      <Elements stripe={stripePromise}>
+                        <StripePayment
+                          donationData={donationData}
+                          onSuccess={handlePaymentSuccess}
+                          onError={handlePaymentError}
+                          onCancel={handlePaymentCancel}
+                          inline={true}
+                        />
+                      </Elements>
+                    </div>
+                  </div>
+                )}
+
+                {paymentMethod === 'ach' && (
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Account Information</h3>
+                    <ACHPayment
+                      donationData={donationData}
+                      onSuccess={handlePaymentSuccess}
+                      onError={handlePaymentError}
+                      onCancel={handlePaymentCancel}
+                      inline={true}
+                    />
+                  </div>
+                )}
 
                 {/* Donor Information */}
                 <div className="space-y-4">
@@ -338,25 +368,6 @@ const DonatePage: React.FC = () => {
                   {isProcessing ? 'Processing...' : `Continue to Payment - $${amount || '0.00'}`}
                 </button>
               </form>
-            ) : (
-              <>
-                {paymentMethod === 'card' ? (
-                  <StripePayment
-                    donationData={donationData}
-                    onSuccess={handlePaymentSuccess}
-                    onError={handlePaymentError}
-                    onCancel={handlePaymentCancel}
-                  />
-                ) : (
-                  <ACHPayment
-                    donationData={donationData}
-                    onSuccess={handlePaymentSuccess}
-                    onError={handlePaymentError}
-                    onCancel={handlePaymentCancel}
-                  />
-                )}
-              </>
-            )}
 
             {paymentError && (
               <div className="mt-4 bg-red-50 border border-red-200 rounded-md p-3">
