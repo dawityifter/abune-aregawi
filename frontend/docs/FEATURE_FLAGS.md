@@ -167,3 +167,4 @@ printenv | grep REACT_APP_ENABLE
 # Verify .env file
 cat .env | grep ENABLE_.*_AUTH
 ```
+#TODO: Completly remove email auth from the system
