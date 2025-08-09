@@ -151,6 +151,12 @@ module.exports = (sequelize) => {
       allowNull: true,
       field: 'emergency_contact_phone'
     },
+    yearly_pledge: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      comment: 'Yearly membership pledge amount in USD',
+      field: 'yearly_pledge'
+    },
     date_joined_parish: {
       type: DataTypes.DATEONLY,
       allowNull: true,

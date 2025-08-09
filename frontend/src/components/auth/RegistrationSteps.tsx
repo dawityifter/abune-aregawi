@@ -83,26 +83,7 @@ const PersonalInfoStep: React.FC<{
         )}
       </div>
       
-      <div className="space-y-1">
-        <label className="block text-sm font-medium text-gray-700">
-          {t('date.of.birth')} <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="date"
-          value={formData.dateOfBirth}
-          onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
-            errors.dateOfBirth 
-              ? 'border-red-500 focus:ring-red-500' 
-              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-          } focus:outline-none focus:ring-1`}
-        />
-        {errors.dateOfBirth && (
-          <p className="text-red-500 text-xs sm:text-sm mt-1">
-            {errors.dateOfBirth}
-          </p>
-        )}
-      </div>
+      {/* Date of birth removed for members; collected only for dependents */}
       
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">
@@ -689,6 +670,31 @@ const ContributionStep: React.FC<{
           <option value="Online">{t('online')}</option>
           <option value="Check">{t('check')}</option>
         </select>
+      </div>
+
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
+          Yearly Membership Pledge (USD)
+        </label>
+        <input
+          type="number"
+          min={0}
+          step={0.01}
+          value={formData.yearlyPledge || ''}
+          onChange={(e) => handleInputChange('yearlyPledge', e.target.value)}
+          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+            errors.yearlyPledge 
+              ? 'border-red-500 focus:ring-red-500' 
+              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+          } focus:outline-none focus:ring-1`}
+          placeholder="e.g. 1200"
+        />
+        {errors.yearlyPledge && (
+          <p className="text-red-500 text-xs sm:text-sm mt-1">
+            {errors.yearlyPledge}
+          </p>
+        )}
+        <p className="text-xs text-gray-500">This helps us set your monthly dues and track payments.</p>
       </div>
     </div>
   </div>

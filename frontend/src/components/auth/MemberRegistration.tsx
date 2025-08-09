@@ -43,7 +43,6 @@ const MemberRegistration: React.FC = () => {
     middleName: '',
     lastName: '',
     gender: 'Male',
-    dateOfBirth: '',
     maritalStatus: 'Single',
     isHeadOfHousehold: true,
     headOfHouseholdPhone: '',
@@ -81,6 +80,7 @@ const MemberRegistration: React.FC = () => {
     preferredGivingMethod: 'Cash',
     monthlyContribution: '',
     specialContributions: [],
+    yearlyPledge: '',
     
     // Account Information
     preferredLanguage: 'English',
@@ -247,7 +247,6 @@ const MemberRegistration: React.FC = () => {
       case 1: // Personal Information
         if (!formData.firstName.trim()) newErrors.firstName = t('first.name.required');
         if (!formData.lastName.trim()) newErrors.lastName = t('last.name.required');
-        if (!formData.dateOfBirth) newErrors.dateOfBirth = t('date.of.birth.required');
         if (!formData.isHeadOfHousehold && !formData.headOfHouseholdPhone.trim()) {
           newErrors.headOfHouseholdPhone = t('head.of.household.phone.required');
         } else if (!formData.isHeadOfHousehold && formData.headOfHouseholdPhone.trim()) {
@@ -396,7 +395,7 @@ const MemberRegistration: React.FC = () => {
       const normalizedHeadOfHouseholdPhone = formData.headOfHouseholdPhone ? normalizePhoneNumber(formData.headOfHouseholdPhone) : '';
       
       // Prepare registration data with proper validation and normalized phone numbers
-      const registrationData = {
+      const registrationData: any = {
         ...formData,
         // Add Firebase UID which is required by backend
         firebaseUid: currentUser?.uid,
@@ -420,6 +419,11 @@ const MemberRegistration: React.FC = () => {
         // Convert string 'Yes'/'No' to boolean for backend
         interestedInServing: formData.interestedInServing === 'Yes'
       };
+
+      // Ensure yearlyPledge is sent as a number when provided
+      if (formData.yearlyPledge !== '' && formData.yearlyPledge !== null && formData.yearlyPledge !== undefined) {
+        registrationData.yearlyPledge = Number(formData.yearlyPledge);
+      }
       
       // Remove undefined/null/empty string values to let backend use defaults
       Object.keys(registrationData).forEach(key => {

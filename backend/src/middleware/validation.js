@@ -26,7 +26,7 @@ const validateDependentId = [
 const validateDependentData = [
   body('firstName').notEmpty().trim().withMessage('First name is required'),
   body('lastName').notEmpty().trim().withMessage('Last name is required'),
-  body('dateOfBirth').optional().isISO8601().withMessage('Date of birth must be a valid date'),
+  body('dateOfBirth').notEmpty().isISO8601().withMessage('Date of birth must be a valid date'),
   body('gender').optional().isIn(['Male', 'Female']).withMessage('Gender must be Male or Female'),
   body('relationship').optional().isIn(RELATIONSHIP_VALUES).withMessage(`Relationship must be one of: ${RELATIONSHIP_VALUES.join(', ')}`),
   body('phone').optional().isString().withMessage('Phone must be a string'),
@@ -48,7 +48,7 @@ const validateProfileUpdate = [
   body('lastName').optional().notEmpty().trim().withMessage('Last name cannot be empty'),
   body('email').optional().isEmail().withMessage('Email must be a valid email address'),
   body('phoneNumber').optional().isString().withMessage('Phone number must be a string'),
-  body('dateOfBirth').optional().isISO8601().withMessage('Date of birth must be a valid date'),
+  // dateOfBirth removed from member registration (only collected for dependents)
   body('gender').optional().isIn(['male', 'female']).withMessage('Gender must be male or female'),
   body('baptismName').optional().isString().withMessage('Baptism name must be a string'),
   body('repentanceFather').optional().isString().withMessage('Repentance father must be a string'),
@@ -97,6 +97,7 @@ const validateMemberRegistration = [
   body('languagePreference').optional().isIn(['en', 'ti']).withMessage('Language preference must be en or ti'),
   body('preferredGivingMethod').optional().isIn(['cash', 'check', 'online', 'other']).withMessage('Invalid preferred giving method'),
   body('titheParticipation').optional().isBoolean().withMessage('Tithe participation must be a boolean'),
+  body('yearlyPledge').optional().isFloat({ min: 0 }).withMessage('Yearly pledge must be a non-negative number'),
   // Prefer 'dependents', support legacy 'dependants'
   body('dependents').optional().isArray().withMessage('Dependents must be an array'),
   body('dependants').optional().isArray().withMessage('Dependents must be an array')
