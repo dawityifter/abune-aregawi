@@ -269,5 +269,6 @@ module.exports = {
   getMemberPaymentDetails,
   addMemberPayment,
   generatePaymentReport,
-  getPaymentStats
-}; 
+  getPaymentStats,
+  getMyDues
+};
