@@ -72,6 +72,14 @@ const TreasurerDashboard: React.FC = () => {
     }
   }, [hasFinancialAccess, paymentView]);
 
+  // Keep stats in sync when payments complete (Stripe or non-Stripe)
+  useEffect(() => {
+    const listener = () => fetchPaymentStats();
+    window.addEventListener('payments:refresh' as any, listener);
+    return () => window.removeEventListener('payments:refresh' as any, listener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const fetchPaymentStats = async () => {
     try {
       console.log('🔍 Fetching payment stats...');

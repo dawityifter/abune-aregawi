@@ -187,6 +187,16 @@ const confirmPayment = async (req, res) => {
       stripe_customer_id: paymentIntent.customer || null
     });
 
+    // Also upsert a Transaction immediately on success so the Treasurer dashboard reflects it
+    // without relying solely on the webhook (which can be delayed or misconfigured in dev)
+    try {
+      if (status === 'succeeded') {
+        await handlePaymentSucceeded(paymentIntent);
+      }
+    } catch (txnErr) {
+      console.warn('⚠️  Failed to upsert Transaction during confirmPayment:', txnErr.message);
+    }
+
     res.status(200).json({
       success: true,
       status,
