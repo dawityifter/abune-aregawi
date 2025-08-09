@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { stripePromise, createPaymentIntent, confirmPayment } from '../config/stripe';
+import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { createPaymentIntent, confirmPayment } from '../config/stripe';
 
 interface StripePaymentProps {
   donationData: {
@@ -275,11 +275,8 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
 };
 
 const StripePayment: React.FC<StripePaymentProps> = (props) => {
-  return (
-    <Elements stripe={stripePromise}>
-      <PaymentForm {...props} />
-    </Elements>
-  );
+  // Parent is responsible for wrapping with <Elements stripe={stripePromise}>
+  return <PaymentForm {...props} />;
 };
 
 export default StripePayment; 
