@@ -327,8 +327,14 @@ interface AddPaymentModalProps {
                 </div>
 
                 {/* Stripe payment forms when card/ACH selected */}
-                {(paymentMethod === 'credit_card' || paymentMethod === 'ach') && selectedMemberId && amount && paymentType && (
+                {(paymentMethod === 'credit_card' || paymentMethod === 'ach') && (
                   <div className="mt-2">
+                    {/* Guidance for missing fields */}
+                    {(!selectedMemberId || !amount || !paymentType) && (
+                      <div className="mb-3 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2">
+                        Please select a member, enter an amount, and choose a payment type to proceed.
+                      </div>
+                    )}
                     {paymentMethod === 'credit_card' ? (
                       <Elements stripe={stripePromise}>
                         <StripePayment
@@ -341,7 +347,7 @@ interface AddPaymentModalProps {
                             donor_email: (members.find(m => String(m.id) === String(selectedMemberId))?.email) || '',
                             donor_phone: (members.find(m => String(m.id) === String(selectedMemberId))?.phoneNumber) || ''
                           }}
-                          purpose={paymentType as any}
+                          purpose={(paymentType as any) || 'donation'}
                           inline
                           onPaymentReady={(fn) => setProcessStripePayment(() => fn)}
                           onSuccess={() => {
@@ -364,7 +370,7 @@ interface AddPaymentModalProps {
                           donor_email: (members.find(m => String(m.id) === String(selectedMemberId))?.email) || '',
                           donor_phone: (members.find(m => String(m.id) === String(selectedMemberId))?.phoneNumber) || ''
                         }}
-                        purpose={paymentType as any}
+                        purpose={(paymentType as any) || 'donation'}
                         inline
                         onPaymentReady={(fn) => setProcessStripePayment(() => fn)}
                         onSuccess={() => {
