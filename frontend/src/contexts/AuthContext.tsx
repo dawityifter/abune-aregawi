@@ -331,7 +331,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser({
             ...profile,
             uid: firebaseUser.uid,
-            email: firebaseUser.email,
+            // Prefer backend profile email if present; fallback to Firebase email
+            email: (profile as any).email || firebaseUser.email || '',
             phoneNumber,
             role: profile.role, // Explicitly set the role
             _temp: false
