@@ -4,10 +4,20 @@ module.exports = {
   up: async (queryInterface, Sequelize) => {
     console.log('🔄 Adding interested_in_serving ENUM column to members table...');
     
-    // First create the enum type
-    await queryInterface.sequelize.query(
-      "CREATE TYPE \"enum_members_interested_in_serving\" AS ENUM ('yes', 'no', 'maybe')"
-    );
+    // Check if the ENUM type already exists
+    const enumExists = await queryInterface.sequelize.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM pg_type 
+        WHERE typname = 'enum_members_interested_in_serving'
+      );
+    `, { type: Sequelize.QueryTypes.SELECT });
+    
+    if (!enumExists[0].exists) {
+      // First create the enum type
+      await queryInterface.sequelize.query(
+        "CREATE TYPE \"enum_members_interested_in_serving\" AS ENUM ('yes', 'no', 'maybe')"
+      );
+    }
     
     // Then add the column with default value
     await queryInterface.addColumn('members', 'interested_in_serving', {
