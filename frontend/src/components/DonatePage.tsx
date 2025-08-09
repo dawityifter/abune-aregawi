@@ -135,7 +135,8 @@ const DonatePage: React.FC = () => {
   }), [amount, donationType, frequency, paymentMethod, donorInfo]);
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16 py-12 px-4 sm:px-6 lg:px-8">
+    <Elements stripe={stripePromise}>
+      <div className="min-h-screen bg-gray-50 pt-16 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Support Our Church</h1>
@@ -252,16 +253,14 @@ const DonatePage: React.FC = () => {
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Card Information</h3>
                     <div className="border border-gray-300 rounded-md p-3 bg-white">
-                      <Elements stripe={stripePromise}>
-                        <StripePayment
-                          donationData={donationData}
-                          onSuccess={handlePaymentSuccess}
-                          onError={handlePaymentError}
-                          onCancel={handlePaymentCancel}
-                          inline={true}
-                          onPaymentReady={setProcessCardPayment}
-                        />
-                      </Elements>
+                      <StripePayment
+                        donationData={donationData}
+                        onSuccess={handlePaymentSuccess}
+                        onError={handlePaymentError}
+                        onCancel={handlePaymentCancel}
+                        inline={true}
+                        onPaymentReady={setProcessCardPayment}
+                      />
                     </div>
                   </div>
                 )}
@@ -481,7 +480,8 @@ const DonatePage: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </Elements>
   );
 };
 
