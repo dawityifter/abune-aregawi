@@ -13,7 +13,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRole,
   allowTempUser = false // Default to false for most routes
 }) => {
-  const { currentUser, loading } = useAuth();
+  const { currentUser, firebaseUser, loading, authReady } = useAuth();
   const location = useLocation();
 
   console.log('🛡️ ProtectedRoute check:', { 
@@ -24,7 +24,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     currentPath: location.pathname
   });
 
-  // Show loading state only if we're not allowing temp users or if we have no user at all
+  // Block routing until the initial Firebase auth state is resolved
+  if (!authReady) {
+    console.log('🔄 ProtectedRoute: Waiting for initial auth state');
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-800"></div>
+      </div>
+    );
+  }
+
+  // Show loading state during active operations
   if (loading && (!currentUser || !allowTempUser)) {
     console.log('🔄 ProtectedRoute: Still loading auth state');
     return (
@@ -35,7 +45,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Handle unauthenticated users
-  if (!currentUser) {
+  if (!firebaseUser && !currentUser) {
     console.log('❌ ProtectedRoute: No user found, redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

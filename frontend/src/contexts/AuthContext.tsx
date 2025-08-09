@@ -8,6 +8,7 @@ interface AuthContextType {
   currentUser: any; // Alias for user for backward compatibility
   firebaseUser: User | null;
   loading: boolean;
+  authReady: boolean;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   loginWithPhone: (phone: string, appVerifier: any, otp?: string, confirmationResult?: any) => Promise<any>;
   logout: () => Promise<void>;
@@ -33,6 +34,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<any>(null);
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  // Indicates the first Firebase auth state has been resolved
+  const [authReady, setAuthReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const auth = getAuth();
@@ -310,6 +313,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!firebaseUser) {
         setUser(null);
         clearNewUserCache();
+        // Mark auth initialized even if signed out
+        setAuthReady(true);
         return;
       }
 
@@ -379,6 +384,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }));
         // Optionally, we could show a toast elsewhere. Avoid navigation here to prevent loops.
       }
+      // Initial auth state has been processed
+      setAuthReady(true);
     };
 
     // Set up the auth state listener
@@ -397,6 +404,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentUser: user, // Alias for backward compatibility
     firebaseUser,
     loading,
+    authReady,
     loginWithEmail,
     loginWithPhone,
     logout,
