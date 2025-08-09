@@ -68,16 +68,16 @@ async function completeMigration() {
 
     console.log(`✅ Migrated ${members.rows.length} members`);
 
-    // Step 2: Migrate dependants data
-    console.log('📊 Migrating dependants data...');
-    const dependants = await pool.query(`
+    // Step 2: Migrate dependents data
+    console.log('📊 Migrating dependents data...');
+    const dependents = await pool.query(`
       SELECT d.*, m.id as new_member_id 
-      FROM dependants d 
+      FROM dependents d 
       JOIN members m ON d.member_id = m.id 
       ORDER BY d.created_at
     `);
 
-    for (const dependant of dependants.rows) {
+    for (const dependent of dependents.rows) {
       await pool.query(`
         INSERT INTO dependents_new (
           member_id, first_name, middle_name, last_name, date_of_birth, gender,
@@ -85,24 +85,24 @@ async function completeMigration() {
           notes, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       `, [
-        dependant.new_member_id,
-        dependant.first_name,
-        dependant.middle_name,
-        dependant.last_name,
-        dependant.date_of_birth,
-        dependant.gender,
-        dependant.relationship,
-        dependant.medical_conditions,
-        dependant.allergies,
-        dependant.medications,
-        dependant.dietary_restrictions,
-        dependant.notes,
-        dependant.created_at,
-        dependant.updated_at
+        dependent.new_member_id,
+        dependent.first_name,
+        dependent.middle_name,
+        dependent.last_name,
+        dependent.date_of_birth,
+        dependent.gender,
+        dependent.relationship,
+        dependent.medical_conditions,
+        dependent.allergies,
+        dependent.medications,
+        dependent.dietary_restrictions,
+        dependent.notes,
+        dependent.created_at,
+        dependent.updated_at
       ]);
     }
 
-    console.log(`✅ Migrated ${dependants.rows.length} dependants`);
+    console.log(`✅ Migrated ${dependents.rows.length} dependents`);
 
     // Step 3: Migrate church_transactions data
     console.log('📊 Migrating church_transactions data...');
@@ -156,7 +156,7 @@ async function completeMigration() {
     // Step 5: Drop old tables and rename new tables
     console.log('🗑️ Dropping old tables...');
     await pool.query('DROP TABLE IF EXISTS church_transactions CASCADE');
-    await pool.query('DROP TABLE IF EXISTS dependants CASCADE');
+    await pool.query('DROP TABLE IF EXISTS dependents CASCADE');
     await pool.query('DROP TABLE IF EXISTS members CASCADE');
 
     console.log('🔄 Renaming new tables...');
