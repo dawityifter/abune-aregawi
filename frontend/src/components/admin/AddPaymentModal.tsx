@@ -61,6 +61,18 @@ interface AddPaymentModalProps {
   }, [fetchMembers]);
 
 
+  // Default payment date to today's local date (YYYY-MM-DD)
+  useEffect(() => {
+    if (!paymentDate) {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      setPaymentDate(`${yyyy}-${mm}-${dd}`);
+    }
+  }, [paymentDate]);
+
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,8 +168,8 @@ interface AddPaymentModalProps {
     { value: 'cash', label: 'Cash' },
     { value: 'check', label: 'Check' },
     { value: 'zelle', label: 'Zelle' },
-    { value: 'credit_card', label: 'Credit Card' },
-    { value: 'debit_card', label: 'Debit Card' },
+    // Combine Debit and Credit into one UI option; backend expects 'credit_card' or 'debit_card'. Use 'credit_card'.
+    { value: 'credit_card', label: 'Debit/Credit Card' },
     { value: 'ach', label: 'ACH' },
     { value: 'other', label: 'Other' }
   ];
