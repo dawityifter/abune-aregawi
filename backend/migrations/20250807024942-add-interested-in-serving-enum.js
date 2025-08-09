@@ -4,6 +4,9 @@ module.exports = {
   up: async (queryInterface, Sequelize) => {
     console.log('🔄 Adding interested_in_serving ENUM column to members table...');
     
+    // Check if the column already exists
+    const tableDescription = await queryInterface.describeTable('members');
+    
     // Check if the ENUM type already exists
     const enumExists = await queryInterface.sequelize.query(`
       SELECT EXISTS (
@@ -19,21 +22,23 @@ module.exports = {
       );
     }
     
-    // Then add the column with default value
-    await queryInterface.addColumn('members', 'interested_in_serving', {
-      type: 'VARCHAR(10)', // Sequelize will use the enum type we created
-      allowNull: true,
-      defaultValue: 'maybe',
-      comment: 'Whether the member is interested in serving in ministries',
-      // For PostgreSQL, we need to set the column to use our enum type
-      // This is done in a separate query after adding the column
-    });
-    
-    // Set the column to use our enum type
-    await queryInterface.sequelize.query(
-      'ALTER TABLE members ALTER COLUMN interested_in_serving TYPE "enum_members_interested_in_serving" ' +
-      'USING (interested_in_serving::"enum_members_interested_in_serving")'
-    );
+    if (!tableDescription.interested_in_serving) {
+      // Then add the column with default value
+      await queryInterface.addColumn('members', 'interested_in_serving', {
+        type: 'VARCHAR(10)', // Sequelize will use the enum type we created
+        allowNull: true,
+        defaultValue: 'maybe',
+        comment: 'Whether the member is interested in serving in ministries',
+        // For PostgreSQL, we need to set the column to use our enum type
+        // This is done in a separate query after adding the column
+      });
+      
+      // Set the column to use our enum type
+      await queryInterface.sequelize.query(
+        'ALTER TABLE members ALTER COLUMN interested_in_serving TYPE "enum_members_interested_in_serving" ' +
+        'USING (interested_in_serving::"enum_members_interested_in_serving")'
+      );
+    }
     
     console.log('✅ Added interested_in_serving ENUM column to members table');
   },
