@@ -18,13 +18,15 @@ interface StripePaymentProps {
   onSuccess: (donation: any) => void;
   onError: (error: string) => void;
   onCancel: () => void;
+  inline?: boolean;
 }
 
 const PaymentForm: React.FC<StripePaymentProps> = ({ 
   donationData, 
   onSuccess, 
   onError, 
-  onCancel 
+  onCancel,
+  inline = false
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -96,6 +98,24 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
       },
     },
   };
+
+  if (inline) {
+    return (
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Card Information
+        </label>
+        <div className="border border-gray-300 rounded-md p-3 bg-white">
+          <CardElement options={cardElementOptions} />
+        </div>
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-3">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
