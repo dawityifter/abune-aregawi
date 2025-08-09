@@ -416,8 +416,10 @@ const MemberRegistration: React.FC = () => {
         maritalStatus: formData.maritalStatus?.toLowerCase(),
         // Convert preferred giving method to lowercase to match backend validation
         preferredGivingMethod: formData.preferredGivingMethod?.toLowerCase(),
-        // Convert string 'Yes'/'No' to boolean for backend
-        interestedInServing: formData.interestedInServing === 'Yes'
+        // Ensure interestedInServing matches backend enum ('yes','no','maybe')
+        interestedInServing: typeof formData.interestedInServing === 'string' 
+          ? formData.interestedInServing.toLowerCase() 
+          : undefined
       };
 
       // Ensure yearlyPledge is sent as a number when provided
