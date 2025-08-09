@@ -19,6 +19,7 @@ const memberPaymentRoutes = require('./routes/memberPaymentRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const churchTransactionRoutes = require('./routes/churchTransactionRoutes');
 const donationRoutes = require('./routes/donationRoutes');
+const donationController = require('./controllers/donationController');
 
 // Import database
 const { sequelize } = require('./models');
@@ -92,6 +93,9 @@ const limiter = rateLimit({
   }
 });
 app.use('/api/', limiter);
+
+// Mount Stripe webhook BEFORE body parsers to preserve raw body for signature verification
+app.post('/api/donations/webhook', express.raw({ type: 'application/json' }), donationController.handleWebhook);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
