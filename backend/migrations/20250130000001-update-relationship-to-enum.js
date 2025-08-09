@@ -2,10 +2,20 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    // First, create the ENUM type
-    await queryInterface.sequelize.query(`
-      CREATE TYPE "enum_dependents_relationship" AS ENUM ('Son', 'Daughter', 'Spouse', 'Parent', 'Sibling', 'Other');
-    `);
+    // Check if the ENUM type already exists
+    const enumExists = await queryInterface.sequelize.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM pg_type 
+        WHERE typname = 'enum_dependents_relationship'
+      );
+    `, { type: Sequelize.QueryTypes.SELECT });
+    
+    if (!enumExists[0].exists) {
+      // First, create the ENUM type
+      await queryInterface.sequelize.query(`
+        CREATE TYPE "enum_dependents_relationship" AS ENUM ('Son', 'Daughter', 'Spouse', 'Parent', 'Sibling', 'Other');
+      `);
+    }
 
     // Update existing relationship values to match the ENUM
     await queryInterface.sequelize.query(`
