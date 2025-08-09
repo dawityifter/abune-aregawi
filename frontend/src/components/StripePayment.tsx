@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { stripePromise, createPaymentIntent, confirmPayment } from '../config/stripe';
 
@@ -38,7 +38,7 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
   const cardElementFullRef = useRef<HTMLDivElement>(null);
 
   // Expose payment processing function to parent component
-  const processPayment = async () => {
+  const processPayment = useCallback(async () => {
     if (!stripe || !elements) {
       const errorMsg = 'Stripe has not loaded yet. Please try again.';
       setError(errorMsg);
@@ -87,14 +87,14 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [stripe, elements, donationData, onSuccess, onError]);
 
   // Expose the payment processing function to parent component
   useEffect(() => {
     if (onPaymentReady) {
       onPaymentReady(processPayment);
     }
-  }, [stripe, elements, donationData]);
+  }, [onPaymentReady, processPayment]);
 
   // Handle accessibility issues with Stripe CardElement
   useEffect(() => {

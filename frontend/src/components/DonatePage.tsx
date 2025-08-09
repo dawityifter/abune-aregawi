@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import StripePayment from './StripePayment';
 import ACHPayment from './ACHPayment';
 import { useAuth } from '../contexts/AuthContext';
@@ -121,7 +121,7 @@ const DonatePage: React.FC = () => {
     setPaymentError(null);
   };
 
-  const donationData = {
+  const donationData = useMemo(() => ({
     amount: parseFloat(amount),
     donation_type: donationType,
     frequency: donationType === 'recurring' ? frequency : undefined,
@@ -132,7 +132,7 @@ const DonatePage: React.FC = () => {
     donor_phone: donorInfo.phone || undefined,
     donor_address: donorInfo.address || undefined,
     donor_zip_code: donorInfo.zipCode || undefined,
-  };
+  }), [amount, donationType, frequency, paymentMethod, donorInfo]);
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16 py-12 px-4 sm:px-6 lg:px-8">

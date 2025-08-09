@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPaymentIntent } from '../config/stripe';
 
 interface ACHPaymentProps {
@@ -39,7 +39,7 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
   });
 
   // Expose payment processing function to parent component
-  const processPayment = async () => {
+  const processPayment = useCallback(async () => {
     // Validate bank information
     if (!bankInfo.accountNumber || !bankInfo.routingNumber || !bankInfo.accountHolderName) {
       const errorMsg = 'Please fill in all required bank account information.';
@@ -97,14 +97,14 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [bankInfo, donationData, onSuccess, onError]);
 
   // Expose the payment processing function to parent component
   useEffect(() => {
     if (onPaymentReady) {
       onPaymentReady(processPayment);
     }
-  }, [bankInfo, donationData]);
+  }, [processPayment, onPaymentReady]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
