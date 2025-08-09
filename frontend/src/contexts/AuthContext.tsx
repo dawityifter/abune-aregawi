@@ -118,12 +118,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setNewUserCache(prev => new Set([...Array.from(prev), uid]));
         return null;
       } else {
-        console.log('⚠️ Backend error status:', response.status);
-        return null;
+        // For 5xx or other unexpected statuses, surface the error to caller
+        const err: any = new Error(`Backend error: ${response.status}`);
+        err.status = response.status;
+        console.log('⚠️ Backend error status (will throw):', response.status);
+        throw err;
       }
     } catch (error) {
       console.error('Error checking user profile:', error);
-      return null;
+      // Re-throw so caller can decide navigation behavior
+      throw error;
     }
   }, [newUserCache]);
 
@@ -359,27 +363,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error in auth state change handler:', error);
-        // On error, set as new user but don't navigate to avoid loops
-        setUser({
+        // If the backend explicitly said 404 (handled above), we'd have navigated.
+        // For other errors (e.g., 5xx), do NOT navigate to register. Keep user signed in
+        // and allow the app to retry or the user to refresh.
+        setUser((prev: any) => ({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           phoneNumber,
-          _temp: true,
+          // Preserve prior _temp if set; otherwise mark unknown status without forcing register
+          _temp: prev?._temp ?? true,
           role: 'member'
-        });
-        
-        // Navigate to register with user data if not already there
-        if (window.location.pathname !== '/register') {
-          console.log('🔄 Navigating to register for new user (error case)');
-          navigate('/register', { 
-            state: { 
-              phone: phoneNumber,
-              email: firebaseUser.email 
-            } 
-          });
-        }
+        }));
+        // Optionally, we could show a toast elsewhere. Avoid navigation here to prevent loops.
       }
     };
 

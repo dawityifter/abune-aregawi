@@ -1,7 +1,10 @@
 import { loadStripe } from '@stripe/stripe-js';
 
-// Load Stripe with your publishable key
-export const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY!);
+// Load Stripe with your publishable key (guard missing key to avoid runtime errors)
+const pk = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
+export const stripePromise = pk
+  ? loadStripe(pk)
+  : (console.warn('[Stripe] Missing REACT_APP_STRIPE_PUBLISHABLE_KEY; Stripe disabled'), Promise.resolve(null));
 
 // API functions for Stripe integration
 export const createPaymentIntent = async (donationData: {
