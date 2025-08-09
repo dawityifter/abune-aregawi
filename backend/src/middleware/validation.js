@@ -97,7 +97,9 @@ const validateMemberRegistration = [
   body('languagePreference').optional().isIn(['en', 'ti']).withMessage('Language preference must be en or ti'),
   body('preferredGivingMethod').optional().isIn(['cash', 'check', 'online', 'other']).withMessage('Invalid preferred giving method'),
   body('titheParticipation').optional().isBoolean().withMessage('Tithe participation must be a boolean'),
-  body('dependants').optional().isArray().withMessage('Dependants must be an array')
+  // Prefer 'dependents', support legacy 'dependants'
+  body('dependents').optional().isArray().withMessage('Dependents must be an array'),
+  body('dependants').optional().isArray().withMessage('Dependents must be an array')
 ];
 
 // Validation for login

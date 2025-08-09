@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { sequelize, Member, Dependant, MemberPayment } = require('../models');
+const { sequelize, Member, Dependent, MemberPayment } = require('../models');
 
 const countMembers = async () => {
   try {
@@ -18,9 +18,9 @@ const countMembers = async () => {
     const memberCount = await Member.count();
     console.log(`📊 Members table: ${memberCount} records`);
     
-    // Count dependants
-    const dependantCount = await Dependant.count();
-    console.log(`📊 Dependants table: ${dependantCount} records`);
+    // Count dependents
+    const dependentCount = await Dependent.count();
+    console.log(`📊 Dependents table: ${dependentCount} records`);
     
     // Count payments
     const paymentCount = await MemberPayment.count();
@@ -39,17 +39,17 @@ const countMembers = async () => {
       });
     }
     
-    if (dependantCount > 0) {
-      console.log('\n📋 Sample dependants (first 5):');
-      const sampleDependants = await Dependant.findAll({
+    if (dependentCount > 0) {
+      console.log('\n📋 Sample dependents (first 5):');
+      const sampleDependants = await Dependent.findAll({
         limit: 5,
         include: [{ model: Member, attributes: ['first_name', 'last_name'] }],
         attributes: ['id', 'first_name', 'last_name', 'relationship']
       });
       
-      sampleDependants.forEach((dependant, index) => {
-        const memberName = dependant.Member ? `${dependant.Member.first_name} ${dependant.Member.last_name}` : 'Unknown';
-        console.log(`  ${index + 1}. ${dependant.first_name} ${dependant.last_name} (${dependant.relationship}) - Member: ${memberName}`);
+      sampleDependants.forEach((dependent, index) => {
+        const memberName = dependent.Member ? `${dependent.Member.first_name} ${dependent.Member.last_name}` : 'Unknown';
+        console.log(`  ${index + 1}. ${dependent.first_name} ${dependent.last_name} (${dependent.relationship}) - Member: ${memberName}`);
       });
     }
     

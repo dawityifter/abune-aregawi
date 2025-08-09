@@ -21,11 +21,17 @@ async function checkNewTables() {
     
     // Check if the migration has already been completed
     const originalMembersCount = await client.query('SELECT COUNT(*) FROM members');
-    const originalDependantsCount = await client.query('SELECT COUNT(*) FROM dependants');
+    // Prefer new table name 'dependents', fall back to legacy 'dependants' if needed
+    let originalDependentsCount;
+    try {
+      originalDependentsCount = await client.query('SELECT COUNT(*) FROM dependents');
+    } catch (e) {
+      originalDependentsCount = await client.query('SELECT COUNT(*) FROM dependants');
+    }
     
     console.log('\n📊 Original tables row counts:');
     console.log(`   - members: ${originalMembersCount.rows[0].count}`);
-    console.log(`   - dependants: ${originalDependantsCount.rows[0].count}`);
+    console.log(`   - dependents: ${originalDependentsCount.rows[0].count}`);
     
     // Check if the new tables have data
     if (membersNewCount.rows[0].count > 0) {
@@ -38,10 +44,10 @@ async function checkNewTables() {
         console.log(`⚠️  members_new count (${membersNewCount.rows[0].count}) does not match members count (${originalMembersCount.rows[0].count})`);
       }
       
-      if (dependentsNewCount.rows[0].count === parseInt(originalDependantsCount.rows[0].count)) {
-        console.log('✅ dependents_new count matches dependants count - data migration appears complete');
+      if (dependentsNewCount.rows[0].count === parseInt(originalDependentsCount.rows[0].count)) {
+        console.log('✅ dependents_new count matches dependents count - data migration appears complete');
       } else {
-        console.log(`⚠️  dependents_new count (${dependentsNewCount.rows[0].count}) does not match dependants count (${originalDependantsCount.rows[0].count})`);
+        console.log(`⚠️  dependents_new count (${dependentsNewCount.rows[0].count}) does not match dependents count (${originalDependentsCount.rows[0].count})`);
       }
     }
     
