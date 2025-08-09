@@ -19,6 +19,7 @@ interface StripePaymentProps {
   onError: (error: string) => void;
   onCancel: () => void;
   inline?: boolean;
+  onPaymentReady?: (processPayment: () => Promise<void>) => void;
 }
 
 const PaymentForm: React.FC<StripePaymentProps> = ({ 
@@ -26,7 +27,8 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
   onSuccess, 
   onError, 
   onCancel,
-  inline = false
+  inline = false,
+  onPaymentReady
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -35,38 +37,12 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
   const cardElementRef = useRef<HTMLDivElement>(null);
   const cardElementFullRef = useRef<HTMLDivElement>(null);
 
-  // Handle accessibility issues with Stripe CardElement
-  useEffect(() => {
-    // Remove any conflicting aria-hidden attributes from Stripe elements
-    const removeAriaHidden = () => {
-      const refs = [cardElementRef.current, cardElementFullRef.current];
-      refs.forEach((ref) => {
-        if (ref) {
-          const stripeElements = ref.querySelectorAll('[data-elements-stable-field-name]');
-          stripeElements.forEach((element) => {
-            if (element.hasAttribute('aria-hidden')) {
-              element.removeAttribute('aria-hidden');
-            }
-            // Ensure proper focus management
-            if (element instanceof HTMLElement) {
-              element.setAttribute('tabindex', '0');
-            }
-          });
-        }
-      });
-    };
-
-    // Run after a short delay to ensure Stripe elements are rendered
-    const timeoutId = setTimeout(removeAriaHidden, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, []);
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
+  // Expose payment processing function to parent component
+  const processPayment = async () => {
     if (!stripe || !elements) {
-      setError('Stripe has not loaded yet. Please try again.');
+      const errorMsg = 'Stripe has not loaded yet. Please try again.';
+      setError(errorMsg);
+      onError(errorMsg);
       return;
     }
 
@@ -111,6 +87,79 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Expose the payment processing function to parent component
+  useEffect(() => {
+    if (onPaymentReady) {
+      onPaymentReady(processPayment);
+    }
+  }, [stripe, elements, donationData]);
+
+  // Handle accessibility issues with Stripe CardElement
+  useEffect(() => {
+    // Function to remove aria-hidden attributes from Stripe elements
+    const removeAriaHidden = () => {
+      const refs = [cardElementRef.current, cardElementFullRef.current];
+      refs.forEach((ref) => {
+        if (ref) {
+          // Remove aria-hidden from all Stripe elements
+          const stripeElements = ref.querySelectorAll('[data-elements-stable-field-name], .InputElement, .Input');
+          stripeElements.forEach((element) => {
+            if (element.hasAttribute('aria-hidden')) {
+              element.removeAttribute('aria-hidden');
+            }
+            // Ensure proper focus management
+            if (element instanceof HTMLElement) {
+              element.setAttribute('tabindex', '0');
+              // Remove any conflicting aria attributes
+              element.removeAttribute('aria-hidden');
+            }
+          });
+        }
+      });
+    };
+
+    // Use MutationObserver to watch for dynamic changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'aria-hidden') {
+          const target = mutation.target as HTMLElement;
+          if (target.hasAttribute('aria-hidden')) {
+            target.removeAttribute('aria-hidden');
+          }
+        }
+      });
+    });
+
+    // Start observing after a short delay
+    const timeoutId = setTimeout(() => {
+      removeAriaHidden();
+      
+      // Observe all Stripe elements for aria-hidden changes
+      const refs = [cardElementRef.current, cardElementFullRef.current];
+      refs.forEach((ref) => {
+        if (ref) {
+          const stripeElements = ref.querySelectorAll('[data-elements-stable-field-name], .InputElement, .Input');
+          stripeElements.forEach((element) => {
+            observer.observe(element, {
+              attributes: true,
+              attributeFilter: ['aria-hidden']
+            });
+          });
+        }
+      });
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, []);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await processPayment();
   };
 
   const cardElementOptions = {

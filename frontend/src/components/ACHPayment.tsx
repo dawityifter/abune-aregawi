@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPaymentIntent } from '../config/stripe';
 
 interface ACHPaymentProps {
@@ -18,6 +18,7 @@ interface ACHPaymentProps {
   onError: (error: string) => void;
   onCancel: () => void;
   inline?: boolean;
+  onPaymentReady?: (processPayment: () => Promise<void>) => void;
 }
 
 const ACHPayment: React.FC<ACHPaymentProps> = ({ 
@@ -25,7 +26,8 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
   onSuccess, 
   onError, 
   onCancel,
-  inline = false
+  inline = false,
+  onPaymentReady
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,22 +38,27 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
     accountHolderName: `${donationData.donor_first_name} ${donationData.donor_last_name}`
   });
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
+  // Expose payment processing function to parent component
+  const processPayment = async () => {
     // Validate bank information
     if (!bankInfo.accountNumber || !bankInfo.routingNumber || !bankInfo.accountHolderName) {
-      setError('Please fill in all required bank account information.');
+      const errorMsg = 'Please fill in all required bank account information.';
+      setError(errorMsg);
+      onError(errorMsg);
       return;
     }
 
     if (bankInfo.routingNumber.length !== 9) {
-      setError('Routing number must be 9 digits.');
+      const errorMsg = 'Routing number must be 9 digits.';
+      setError(errorMsg);
+      onError(errorMsg);
       return;
     }
 
     if (bankInfo.accountNumber.length < 4) {
-      setError('Account number must be at least 4 digits.');
+      const errorMsg = 'Account number must be at least 4 digits.';
+      setError(errorMsg);
+      onError(errorMsg);
       return;
     }
 
@@ -90,6 +97,18 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Expose the payment processing function to parent component
+  useEffect(() => {
+    if (onPaymentReady) {
+      onPaymentReady(processPayment);
+    }
+  }, [bankInfo, donationData]);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await processPayment();
   };
 
   const handleInputChange = (field: string, value: string) => {
