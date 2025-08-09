@@ -25,6 +25,8 @@ interface AddPaymentModalProps {
     console.log('🔍 Current user data:', user);
     console.log('🔍 User member data:', user?.data?.member);
   const [members, setMembers] = useState<Member[]>([]);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [memberSearchLoading, setMemberSearchLoading] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [month, setMonth] = useState('');
   const [amount, setAmount] = useState('');
@@ -39,11 +41,17 @@ interface AddPaymentModalProps {
   const [error, setError] = useState('');
   const [processStripePayment, setProcessStripePayment] = useState<null | (() => Promise<void>)>(null);
 
-  const fetchMembers = useCallback(async () => {
+  const fetchMembers = useCallback(async (query: string) => {
     if (!firebaseUser) return;
     
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?email=${encodeURIComponent(user?.email || '')}`, {
+      setMemberSearchLoading(true);
+      const params = new URLSearchParams();
+      params.set('email', user?.email || '');
+      if (query) params.set('search', query);
+      params.set('limit', '20');
+      params.set('page', '1');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
         }
@@ -58,12 +66,23 @@ interface AddPaymentModalProps {
       }
     } catch (error) {
       console.error('Error fetching members:', error);
+    } finally {
+      setMemberSearchLoading(false);
     }
   }, [user?.email, firebaseUser]);
 
   useEffect(() => {
-    fetchMembers();
+    // initial fetch first page without search
+    fetchMembers('');
   }, [fetchMembers]);
+
+  // Debounced server search
+  useEffect(() => {
+    const id = setTimeout(() => {
+      fetchMembers(memberSearch.trim());
+    }, 300);
+    return () => clearTimeout(id);
+  }, [memberSearch, fetchMembers]);
 
   // Close modal on Escape for better UX and to avoid feeling "frozen"
   useEffect(() => {
@@ -239,19 +258,29 @@ interface AddPaymentModalProps {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Member
               </label>
+              <input
+                type="text"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder="Search by name, email, or phone"
+                className="w-full px-3 py-2 mb-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
               <select
                 value={selectedMemberId}
                 onChange={(e) => setSelectedMemberId(e.target.value)}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Select a member</option>
+                <option value="" disabled>{memberSearchLoading ? 'Loading...' : 'Select a member'}</option>
                 {members.map((member) => (
                   <option key={member.id} value={member.id}>
                     {member.firstName} {member.lastName} ({member.id})
                   </option>
                 ))}
               </select>
+              {members.length === 20 && (
+                <p className="mt-1 text-xs text-gray-500">Showing first 20 results. Refine your search to narrow further.</p>
+              )}
             </div>
 
             {paymentView === 'old' ? (
