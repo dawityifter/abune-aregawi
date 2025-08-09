@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import StripePayment from '../StripePayment';
+import ACHPayment from '../ACHPayment';
+import { Elements } from '@stripe/react-stripe-js';
+import { stripePromise } from '../../config/stripe';
 
 interface Member {
   id: string;
@@ -33,6 +37,7 @@ interface AddPaymentModalProps {
   const [receiptNumber, setReceiptNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [processStripePayment, setProcessStripePayment] = useState<null | (() => Promise<void>)>(null);
 
   const fetchMembers = useCallback(async () => {
     if (!firebaseUser) return;
@@ -81,9 +86,19 @@ interface AddPaymentModalProps {
 
     try {
       let response;
-      
+
       if (paymentView === 'new') {
-        // New transaction system
+        // If treasurer selected Stripe methods, delegate to Stripe components
+        if (paymentMethod === 'credit_card' || paymentMethod === 'ach') {
+          if (!processStripePayment) {
+            setError('Payment form not ready. Please review the card/bank details.');
+            return;
+          }
+          await processStripePayment();
+          return;
+        }
+
+        // Non-Stripe methods: post transaction directly
         response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?email=${encodeURIComponent(user?.email || '')}`, {
           method: 'POST',
           headers: {
@@ -310,6 +325,59 @@ interface AddPaymentModalProps {
                     ))}
                   </select>
                 </div>
+
+                {/* Stripe payment forms when card/ACH selected */}
+                {(paymentMethod === 'credit_card' || paymentMethod === 'ach') && selectedMemberId && amount && paymentType && (
+                  <div className="mt-2">
+                    {paymentMethod === 'credit_card' ? (
+                      <Elements stripe={stripePromise}>
+                        <StripePayment
+                          donationData={{
+                            amount: parseFloat(amount || '0'),
+                            donation_type: 'one-time',
+                            payment_method: 'card',
+                            donor_first_name: (members.find(m => String(m.id) === String(selectedMemberId))?.firstName) || '',
+                            donor_last_name: (members.find(m => String(m.id) === String(selectedMemberId))?.lastName) || '',
+                            donor_email: (members.find(m => String(m.id) === String(selectedMemberId))?.email) || '',
+                            donor_phone: (members.find(m => String(m.id) === String(selectedMemberId))?.phoneNumber) || ''
+                          }}
+                          purpose={paymentType as any}
+                          inline
+                          onPaymentReady={(fn) => setProcessStripePayment(() => fn)}
+                          onSuccess={() => {
+                            onPaymentAdded();
+                            onClose();
+                          }}
+                          onError={(msg) => setError(msg)}
+                          onCancel={() => {}}
+                          onRefreshHistory={() => onPaymentAdded()}
+                        />
+                      </Elements>
+                    ) : (
+                      <ACHPayment
+                        donationData={{
+                          amount: parseFloat(amount || '0'),
+                          donation_type: 'one-time',
+                          payment_method: 'ach',
+                          donor_first_name: (members.find(m => String(m.id) === String(selectedMemberId))?.firstName) || '',
+                          donor_last_name: (members.find(m => String(m.id) === String(selectedMemberId))?.lastName) || '',
+                          donor_email: (members.find(m => String(m.id) === String(selectedMemberId))?.email) || '',
+                          donor_phone: (members.find(m => String(m.id) === String(selectedMemberId))?.phoneNumber) || ''
+                        }}
+                        purpose={paymentType as any}
+                        inline
+                        onPaymentReady={(fn) => setProcessStripePayment(() => fn)}
+                        onSuccess={() => {
+                          onPaymentAdded();
+                          onClose();
+                        }}
+                        onError={(msg) => setError(msg)}
+                        onCancel={() => {}}
+                        onRefreshHistory={() => onPaymentAdded()}
+                      />
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
