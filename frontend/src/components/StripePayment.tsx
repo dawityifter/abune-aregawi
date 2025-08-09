@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { stripePromise, createPaymentIntent, confirmPayment } from '../config/stripe';
 
@@ -32,6 +32,35 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const cardElementRef = useRef<HTMLDivElement>(null);
+  const cardElementFullRef = useRef<HTMLDivElement>(null);
+
+  // Handle accessibility issues with Stripe CardElement
+  useEffect(() => {
+    // Remove any conflicting aria-hidden attributes from Stripe elements
+    const removeAriaHidden = () => {
+      const refs = [cardElementRef.current, cardElementFullRef.current];
+      refs.forEach((ref) => {
+        if (ref) {
+          const stripeElements = ref.querySelectorAll('[data-elements-stable-field-name]');
+          stripeElements.forEach((element) => {
+            if (element.hasAttribute('aria-hidden')) {
+              element.removeAttribute('aria-hidden');
+            }
+            // Ensure proper focus management
+            if (element instanceof HTMLElement) {
+              element.setAttribute('tabindex', '0');
+            }
+          });
+        }
+      });
+    };
+
+    // Run after a short delay to ensure Stripe elements are rendered
+    const timeoutId = setTimeout(removeAriaHidden, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -97,19 +126,34 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
         color: '#9e2146',
       },
     },
+    hidePostalCode: true,
+    classes: {
+      focus: 'focused',
+      invalid: 'invalid',
+    },
   };
 
   if (inline) {
     return (
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="card-element">
           Card Information
         </label>
-        <div className="border border-gray-300 rounded-md p-3 bg-white">
-          <CardElement options={cardElementOptions} />
+        <div 
+          ref={cardElementRef}
+          className="border border-gray-300 rounded-md p-3 bg-white"
+          role="group"
+          aria-labelledby="card-element-label"
+        >
+          <div id="card-element-label" className="sr-only">Credit or debit card information</div>
+          <CardElement 
+            id="card-element"
+            options={cardElementOptions}
+            className="stripe-card-element"
+          />
         </div>
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-3">
+          <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-3" role="alert">
             <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
@@ -123,11 +167,21 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
         <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Information</h3>
         
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="card-element-full">
             Card Information
           </label>
-          <div className="border border-gray-300 rounded-md p-3 bg-white">
-            <CardElement options={cardElementOptions} />
+          <div 
+            ref={cardElementFullRef}
+            className="border border-gray-300 rounded-md p-3 bg-white"
+            role="group"
+            aria-labelledby="card-element-full-label"
+          >
+            <div id="card-element-full-label" className="sr-only">Credit or debit card information</div>
+            <CardElement 
+              id="card-element-full"
+              options={cardElementOptions}
+              className="stripe-card-element"
+            />
           </div>
         </div>
 
