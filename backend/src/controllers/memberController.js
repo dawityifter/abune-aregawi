@@ -547,7 +547,7 @@ exports.getAllMembersFirebase = async (req, res) => {
       offset: parseInt(offset),
       order: [['created_at', 'DESC']],
       include: [{
-        model: require('../models').Dependant,
+        model: Dependant,
         as: 'dependents',
         attributes: ['id'] // Only get the count, not full data
       }]
@@ -780,7 +780,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     const memberByUid = await Member.findOne({
       where: { firebase_uid: uid },
       include: [{
-        model: require('../models').Dependant,
+        model: Dependant,
         as: 'dependents'
       }]
     });
@@ -844,7 +844,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       member = await Member.findOne({
         where: { email: userEmail },
         include: [{
-          model: require('../models').Dependant,
+          model: Dependant,
           as: 'dependents'
         }]
       });
@@ -876,7 +876,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
           [Op.or]: phoneFormats.map(format => ({ phone_number: format }))
         },
         include: [{
-          model: require('../models').Dependant,
+          model: Dependant,
           as: 'dependents'
         }]
       });
