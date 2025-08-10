@@ -112,6 +112,10 @@ const DuesPage: React.FC = () => {
   if (!dues) return null;
 
   const { member, payment, transactions } = dues;
+  // Compute Other Payments (non-membership payments)
+  const otherPaymentsTotal = (transactions || []).filter(t => t.payment_type !== 'membership_due')
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const getStatus = (t: MemberTransaction) => t.payment_method === 'ach' ? 'Pending' : 'Succeeded';
   const yearlyPledge = (payment.monthlyPayment || 0) * 12;
 
   return (
@@ -134,8 +138,8 @@ const DuesPage: React.FC = () => {
                 <div className="text-xl font-semibold text-yellow-700">{currency(payment.balanceDue || 0)}</div>
               </div>
               <div className="p-4 rounded bg-blue-50 border border-blue-100">
-                <div className="text-sm text-gray-600">Future Dues</div>
-                <div className="text-xl font-semibold text-blue-700">{currency(payment.futureDues || 0)}</div>
+                <div className="text-sm text-gray-600">Other Payments</div>
+                <div className="text-xl font-semibold text-blue-700">{currency(otherPaymentsTotal)}</div>
               </div>
               <div className="p-4 rounded bg-purple-50 border border-purple-100">
                 <div className="text-sm text-gray-600">Yearly Pledge</div>
@@ -182,12 +186,13 @@ const DuesPage: React.FC = () => {
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt #</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {transactions.length === 0 && (
                       <tr>
-                        <td className="px-4 py-3 text-sm text-gray-500" colSpan={6}>No payments found for this year.</td>
+                        <td className="px-4 py-3 text-sm text-gray-500" colSpan={7}>No payments found for this year.</td>
                       </tr>
                     )}
                     {transactions.map(t => (
@@ -198,6 +203,7 @@ const DuesPage: React.FC = () => {
                         <td className="px-4 py-2 whitespace-nowrap capitalize">{t.payment_method.replace(/_/g, ' ')}</td>
                         <td className="px-4 py-2 whitespace-nowrap">{t.receipt_number || '-'}</td>
                         <td className="px-4 py-2 whitespace-nowrap">{t.note || '-'}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">{getStatus(t)}</td>
                       </tr>
                     ))}
                   </tbody>

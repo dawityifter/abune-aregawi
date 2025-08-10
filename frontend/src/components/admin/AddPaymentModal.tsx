@@ -420,7 +420,7 @@ interface AddPaymentModalProps {
                                   collected_by: parseInt(user?.id || '1'),
                                   payment_date: paymentDate,
                                   amount: parseFloat(amount || '0'),
-                                  payment_type: paymentType,
+                                  payment_type: (paymentType as any) || 'donation',
                                   payment_method: 'ach',
                                   receipt_number: receiptNumber,
                                   note: notes
