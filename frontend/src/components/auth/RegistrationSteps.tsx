@@ -452,11 +452,11 @@ const FamilyInfoStep: React.FC<{
             </label>
             <input
               type="tel"
-              value={formatPhoneNumber(formData.spousePhone || '')}
+              value={formData.spousePhone || ''}
               onChange={(e) => {
-                // Accept only up to 10 digits during input, format for display
+                // Accept only up to 10 digits; store formatted value for consistent UX
                 const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                handleInputChange('spousePhone', digits);
+                handleInputChange('spousePhone', formatPhoneNumber(digits));
               }}
               className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
                 errors.spousePhone 
