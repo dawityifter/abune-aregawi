@@ -355,15 +355,26 @@ const getTransactionStats = async (req, res) => {
     });
     
     const totalMembers = uniqueMembers.length;
-    
-    // For now, we'll use placeholder values for compatibility
-    // In a real implementation, you'd calculate these based on your business logic
-    const upToDateMembers = totalMembers; // Placeholder
-    const behindMembers = 0; // Placeholder
-    const totalCollected = totalAmount || 0;
-    const totalAmountDue = totalAmount || 0; // Placeholder
-    const outstandingAmount = 0; // Placeholder
-    const collectionRate = totalMembers > 0 ? '100' : '0'; // Placeholder
+
+    // Compute totals based on pledges and collections
+    // Sum of all members' yearly pledges (null-safe)
+    const totalPledgeRaw = await Member.sum('yearly_pledge');
+    const totalAmountDue = parseFloat(totalPledgeRaw || 0);
+
+    // Total collected from transactions (respecting any date/payment_type filters)
+    const totalCollected = parseFloat(totalAmount || 0);
+
+    // Outstanding = pledges - collected (never negative)
+    const outstandingAmount = Math.max(totalAmountDue - totalCollected, 0);
+
+    // Collection rate as percentage string (0-100)
+    const collectionRate = totalAmountDue > 0
+      ? ((totalCollected / totalAmountDue) * 100).toFixed(0)
+      : '0';
+
+    // Keep placeholders for member status counts until per-member calc is implemented
+    const upToDateMembers = 0;
+    const behindMembers = 0;
 
     const stats = {
       totalMembers,
