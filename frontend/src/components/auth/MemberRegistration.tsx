@@ -349,11 +349,43 @@ const MemberRegistration: React.FC = () => {
       const normalizedSpousePhone = formData.spousePhone ? normalizePhoneNumber(formData.spousePhone) : '';
       const normalizedEmergencyPhone = formData.emergencyContactPhone ? normalizePhoneNumber(formData.emergencyContactPhone) : '';
       
-      // Normalize dependent phone numbers
-      const normalizedDependents = dependents.map(dependent => ({
-        ...dependent,
-        phone: dependent.phone ? normalizePhoneNumber(dependent.phone) : ''
-      }));
+      // Normalize and sanitize dependents data (phone and dates)
+      const normalizedDependents = dependents.map((dependent) => {
+        // Normalize phone
+        const phone = dependent.phone ? normalizePhoneNumber(dependent.phone) : '';
+
+        // Relationship guard for DOB: only for Son/Daughter
+        const isChild = dependent.relationship === 'Son' || dependent.relationship === 'Daughter';
+
+        // Coerce date strings into YYYY-MM-DD or null
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        const cleanDate = (val?: string) => {
+          const v = (val || '').trim();
+          if (!v) return null;
+          return dateRegex.test(v) ? v : null;
+        };
+
+        const dateOfBirth = isChild ? cleanDate(dependent.dateOfBirth) : null;
+        const baptismDate = cleanDate(dependent.baptismDate);
+
+        // Remove empty-string fields so backend doesn't get "" for optional fields
+        const cleaned: any = {
+          ...dependent,
+          phone,
+          // Dates handled explicitly
+          dateOfBirth,
+          baptismDate,
+        };
+
+        Object.keys(cleaned).forEach((k) => {
+          const val = cleaned[k as keyof typeof cleaned] as any;
+          if (val === '') {
+            delete cleaned[k];
+          }
+        });
+
+        return cleaned;
+      });
       
       // Normalize head of household phone number
       const normalizedHeadOfHouseholdPhone = formData.headOfHouseholdPhone ? normalizePhoneNumber(formData.headOfHouseholdPhone) : '';
