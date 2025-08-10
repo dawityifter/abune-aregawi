@@ -407,9 +407,35 @@ interface AddPaymentModalProps {
                           purpose={(paymentType as any) || 'donation'}
                           inline
                           onPaymentReady={(fn) => setProcessStripePayment(() => fn)}
-                          onSuccess={() => {
-                            onPaymentAdded();
-                            onClose();
+                          onSuccess={async () => {
+                            try {
+                              const response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?email=${encodeURIComponent(user?.email || '')}`, {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
+                                },
+                                body: JSON.stringify({
+                                  member_id: parseInt(selectedMemberId),
+                                  collected_by: parseInt(user?.id || '1'),
+                                  payment_date: paymentDate,
+                                  amount: parseFloat(amount || '0'),
+                                  payment_type: paymentType,
+                                  payment_method: 'ach',
+                                  receipt_number: receiptNumber,
+                                  note: notes
+                                })
+                              });
+                              if (!response.ok) {
+                                const data = await response.json().catch(() => ({} as any));
+                                throw new Error(data.message || 'Failed to record ACH transaction');
+                              }
+                              try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch {}
+                              onPaymentAdded();
+                              onClose();
+                            } catch (err: any) {
+                              setError(err?.message || 'Failed to record ACH transaction');
+                            }
                           }}
                           onError={(msg) => setError(msg)}
                           onCancel={() => {}}
