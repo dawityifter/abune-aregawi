@@ -331,6 +331,13 @@ const translations = {
     'family.information': 'Family Information',
     'ministry.interests': 'Ministry Interests',
     'contribution.information': 'Contribution Information',
+
+    // Registration Steps (MemberRegistration stepConfig keys)
+    'personal.info': 'Personal Information',
+    'contact.address': 'Contact & Address',
+    'contribution.giving': 'Contribution & Giving',
+    'account.info': 'Account Information',
+    'dependents': 'Dependents',
     
     // Navigation & Actions
     'continue': 'Continue',
