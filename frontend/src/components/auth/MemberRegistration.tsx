@@ -152,31 +152,7 @@ const MemberRegistration: React.FC = () => {
     checkUserStatus();
   }, [currentUser, navigate, getUserProfile]);
   
-  // Show loading state while checking user status
-  if (checkingUser) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
-  
-  // If there was an error checking user status, show an error message
-  if (userStatus === 'error') {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          <p>An error occurred while checking your account status. Please try again later.</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-2 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Loading and error are rendered conditionally in JSX below to keep hooks order consistent
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev: typeof formData) => ({
@@ -510,12 +486,7 @@ const MemberRegistration: React.FC = () => {
     }
   };
 
-  // Redirect users without email/phone, but do not early-return before hooks
-  useEffect(() => {
-    if (!email && !phone) {
-      navigate('/login');
-    }
-  }, [email, phone, navigate]);
+  // Note: redirect logic handled within checkUserStatus effect to avoid conditional hook ordering issues
 
   const renderStep = () => {
     // Calculate the actual step based on whether dependents should be shown
