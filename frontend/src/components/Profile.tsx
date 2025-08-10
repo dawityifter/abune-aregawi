@@ -310,7 +310,9 @@ const Profile: React.FC = () => {
         languagePreference: formData.languagePreference,
         dateJoinedParish: formData.dateJoinedParish,
         baptismName: formData.baptismName,
-        interestedInServing: formData.interestedInServing,
+        interestedInServing: formData.interestedInServing
+          ? formData.interestedInServing.toLowerCase()
+          : undefined,
         streetLine1: formData.streetLine1,
         apartmentNo: formData.apartmentNo,
         city: formData.city,

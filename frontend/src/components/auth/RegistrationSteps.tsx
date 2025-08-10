@@ -11,7 +11,7 @@ const PersonalInfoStep: React.FC<{
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-4 sm:space-y-6">
-    <h3 className="text-lg sm:text-xl font-semibold text-gray-800">{t('personalInfo')}</h3>
+    <h3 className="text-lg sm:text-xl font-semibold text-gray-800">{t('personal.info')}</h3>
     
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
       <div className="space-y-1">
@@ -398,7 +398,7 @@ const FamilyInfoStep: React.FC<{
   t: any;
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-4 sm:space-y-6">
-    <h3 className="text-lg sm:text-xl font-semibold text-gray-800">{t('familyInfo')}</h3>
+    <h3 className="text-lg sm:text-xl font-semibold text-gray-800">{t('family.info')}</h3>
     <div className="space-y-3 sm:space-y-4">
       {formData.maritalStatus === 'Married' ? (
         <>
@@ -454,10 +454,9 @@ const FamilyInfoStep: React.FC<{
               type="tel"
               value={formatPhoneNumber(formData.spousePhone || '')}
               onChange={(e) => {
-                const normalized = normalizePhoneNumber(e.target.value);
-                if (normalized === '' || !isNaN(Number(normalized))) {
-                  handleInputChange('spousePhone', normalized);
-                }
+                // Accept only up to 10 digits during input, format for display
+                const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                handleInputChange('spousePhone', digits);
               }}
               className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
                 errors.spousePhone 
@@ -581,7 +580,7 @@ const SpiritualInfoStep: React.FC<{
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-4 sm:space-y-6">
     <h3 className="text-lg sm:text-xl font-semibold text-gray-800">
-      {t('spiritualInfo')}
+      {t('spiritual.info')}
     </h3>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
       <div className="space-y-1">
@@ -652,7 +651,7 @@ const ContributionStep: React.FC<{
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-4 sm:space-y-6">
     <h3 className="text-lg sm:text-xl font-semibold text-gray-800">
-      {t('contributionInfo')}
+      {t('contribution.giving')}
     </h3>
     
     <div className="space-y-4">
@@ -709,7 +708,7 @@ const AccountStep: React.FC<{
 }> = ({ formData, handleInputChange, errors, t }) => (
   <div className="space-y-4 sm:space-y-6">
     <h3 className="text-lg sm:text-xl font-semibold text-gray-800">
-      {t('accountInfo')}
+      {t('account.info')}
     </h3>
     
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
