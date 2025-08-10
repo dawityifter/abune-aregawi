@@ -9,6 +9,7 @@ interface Transaction {
   amount: number;
   payment_type: 'membership_due' | 'tithe' | 'donation' | 'event' | 'other';
   payment_method: 'cash' | 'check' | 'zelle' | 'credit_card' | 'debit_card' | 'ach' | 'other';
+  status?: 'pending' | 'succeeded' | 'failed' | 'canceled';
   receipt_number?: string;
   note?: string;
   created_at: string;
@@ -164,6 +165,22 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     return labels[method as keyof typeof labels] || method;
   };
 
+  const renderStatusBadge = (status?: string) => {
+    if (!status) return null;
+    const map: Record<string, { text: string; classes: string }> = {
+      pending: { text: 'Pending', classes: 'bg-yellow-100 text-yellow-800' },
+      succeeded: { text: 'Succeeded', classes: 'bg-green-100 text-green-800' },
+      failed: { text: 'Failed', classes: 'bg-red-100 text-red-800' },
+      canceled: { text: 'Canceled', classes: 'bg-gray-100 text-gray-800' }
+    };
+    const cfg = map[status] || { text: status || '', classes: 'bg-gray-100 text-gray-800' };
+    return (
+      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${cfg.classes}`}>
+        {cfg.text}
+      </span>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -274,6 +291,9 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                   Method
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Collected By
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -312,6 +332,9 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                       {getPaymentMethodLabel(transaction.payment_method)}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {renderStatusBadge(transaction.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">

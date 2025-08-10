@@ -127,7 +127,10 @@ const createTransaction = async (req, res) => {
       payment_type,
       payment_method,
       receipt_number,
-      note
+      note,
+      external_id,
+      status = 'succeeded',
+      donation_id
     } = req.body;
 
     // Validate required fields
@@ -174,16 +177,42 @@ const createTransaction = async (req, res) => {
       });
     }
 
-    const transaction = await Transaction.create({
-      member_id,
-      collected_by,
-      payment_date: payment_date || new Date(),
-      amount: parseFloat(amount),
-      payment_type,
-      payment_method,
-      receipt_number,
-      note
-    });
+    // If external_id provided, upsert to prevent duplicates
+    let transaction = null;
+    if (external_id) {
+      const existing = await Transaction.findOne({ where: { external_id } });
+      if (existing) {
+        await existing.update({
+          member_id,
+          collected_by,
+          payment_date: payment_date || new Date(),
+          amount: parseFloat(amount),
+          payment_type,
+          payment_method,
+          receipt_number,
+          note,
+          status,
+          donation_id: donation_id || existing.donation_id
+        });
+        transaction = existing;
+      }
+    }
+
+    if (!transaction) {
+      transaction = await Transaction.create({
+        member_id,
+        collected_by,
+        payment_date: payment_date || new Date(),
+        amount: parseFloat(amount),
+        payment_type,
+        payment_method,
+        receipt_number,
+        note,
+        external_id: external_id || null,
+        status,
+        donation_id: donation_id || null
+      });
+    }
 
     // Fetch the created transaction with associations
     const createdTransaction = await Transaction.findByPk(transaction.id, {

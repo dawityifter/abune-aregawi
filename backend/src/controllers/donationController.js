@@ -403,7 +403,7 @@ const handlePaymentSucceeded = async (paymentIntent) => {
     const existing = await Transaction.findOne({ where: { external_id: paymentIntent.id } });
     if (existing) {
       // Ensure it matches succeeded status use-case; optionally update
-      await existing.update({ amount, payment_date: occurredAt });
+      await existing.update({ amount, payment_date: occurredAt, status: 'succeeded' });
       return;
     }
 
@@ -416,7 +416,9 @@ const handlePaymentSucceeded = async (paymentIntent) => {
       payment_method,
       receipt_number: paymentIntent.charges?.data?.[0]?.receipt_number || null,
       note: `Stripe payment ${paymentIntent.id}`,
-      external_id: paymentIntent.id
+      external_id: paymentIntent.id,
+      status: 'succeeded',
+      donation_id: (await Donation.findOne({ where: { stripe_payment_intent_id: paymentIntent.id } }))?.id || null
     });
   } catch (err) {
     console.error('❌ Failed to upsert Transaction on payment success:', err.message);
@@ -433,6 +435,14 @@ const handlePaymentFailed = async (paymentIntent) => {
     await donation.update({
       status: 'failed'
     });
+  }
+  try {
+    const existing = await Transaction.findOne({ where: { external_id: paymentIntent.id } });
+    if (existing) {
+      await existing.update({ status: 'failed' });
+    }
+  } catch (e) {
+    console.warn('⚠️ Failed updating transaction on payment failure:', e.message);
   }
 };
 

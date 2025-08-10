@@ -87,7 +87,7 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
         }
       } as typeof donationData & { metadata?: any };
 
-      const { client_secret, payment_intent_id } = await createPaymentIntent(paymentData);
+      const { client_secret, payment_intent_id, donation_id } = await createPaymentIntent(paymentData);
 
       // For ACH payments, we'll simulate a successful payment since the actual processing
       // would require additional Stripe setup for ACH
@@ -97,7 +97,7 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
           payment_method: 'ach',
           status: 'pending',
           message: 'ACH payment submitted successfully. It will take 3-5 business days to process.'
-        });
+        , payment_intent_id, donation_id });
         // Trigger refresh after a short delay so the webhook can record the transaction when it clears
         setTimeout(() => {
           try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch {}
