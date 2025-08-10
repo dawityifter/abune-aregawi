@@ -66,7 +66,7 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
         }
       } as typeof donationData & { metadata?: any };
 
-      const { client_secret, payment_intent_id } = await createPaymentIntent(payload as any);
+      const { client_secret, payment_intent_id, donation_id } = await createPaymentIntent(payload as any);
 
       // Confirm the payment with Stripe
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
@@ -90,7 +90,7 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
       } else if (paymentIntent?.status === 'succeeded') {
         // Confirm payment on backend
         const result = await confirmPayment(payment_intent_id);
-        onSuccess(result.donation);
+        onSuccess({ ...result.donation, payment_intent_id, donation_id });
         // Trigger refresh of dues/payment history after a short delay to allow webhook to persist
         setTimeout(() => {
           try {

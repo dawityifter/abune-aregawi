@@ -407,7 +407,7 @@ interface AddPaymentModalProps {
                           purpose={(paymentType as any) || 'donation'}
                           inline
                           onPaymentReady={(fn) => setProcessStripePayment(() => fn)}
-                          onSuccess={async () => {
+                          onSuccess={async (result: any) => {
                             try {
                               const response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?email=${encodeURIComponent(user?.email || '')}`, {
                                 method: 'POST',
@@ -421,20 +421,23 @@ interface AddPaymentModalProps {
                                   payment_date: paymentDate,
                                   amount: parseFloat(amount || '0'),
                                   payment_type: (paymentType as any) || 'donation',
-                                  payment_method: 'ach',
+                                  payment_method: 'credit_card',
+                                  status: 'succeeded',
+                                  external_id: result?.payment_intent_id,
+                                  donation_id: result?.donation_id,
                                   receipt_number: receiptNumber,
                                   note: notes
                                 })
                               });
                               if (!response.ok) {
                                 const data = await response.json().catch(() => ({} as any));
-                                throw new Error(data.message || 'Failed to record ACH transaction');
+                                throw new Error(data.message || 'Failed to record card transaction');
                               }
                               try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch {}
                               onPaymentAdded();
                               onClose();
                             } catch (err: any) {
-                              setError(err?.message || 'Failed to record ACH transaction');
+                              setError(err?.message || 'Failed to record card transaction');
                             }
                           }}
                           onError={(msg) => setError(msg)}
@@ -456,9 +459,38 @@ interface AddPaymentModalProps {
                         purpose={(paymentType as any) || 'donation'}
                         inline
                         onPaymentReady={(fn) => setProcessStripePayment(() => fn)}
-                        onSuccess={() => {
-                          onPaymentAdded();
-                          onClose();
+                        onSuccess={async (result: any) => {
+                          try {
+                            const response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?email=${encodeURIComponent(user?.email || '')}`, {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
+                              },
+                              body: JSON.stringify({
+                                member_id: parseInt(selectedMemberId),
+                                collected_by: parseInt(user?.id || '1'),
+                                payment_date: paymentDate,
+                                amount: parseFloat(amount || '0'),
+                                payment_type: (paymentType as any) || 'donation',
+                                payment_method: 'ach',
+                                status: 'pending',
+                                external_id: result?.payment_intent_id,
+                                donation_id: result?.donation_id,
+                                receipt_number: receiptNumber,
+                                note: notes
+                              })
+                            });
+                            if (!response.ok) {
+                              const data = await response.json().catch(() => ({} as any));
+                              throw new Error(data.message || 'Failed to record ACH transaction');
+                            }
+                            try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch {}
+                            onPaymentAdded();
+                            onClose();
+                          } catch (err: any) {
+                            setError(err?.message || 'Failed to record ACH transaction');
+                          }
                         }}
                         onError={(msg) => setError(msg)}
                         onCancel={() => {}}

@@ -74,6 +74,12 @@ module.exports = (sequelize) => {
       allowNull: false,
       comment: 'Method of payment (cash, check, electronic, etc.)'
     },
+    status: {
+      type: DataTypes.ENUM('pending', 'succeeded', 'failed', 'canceled'),
+      allowNull: false,
+      defaultValue: 'succeeded',
+      comment: 'Settlement status for the transaction'
+    },
     receipt_number: {
       type: DataTypes.STRING(100),
       allowNull: true,
@@ -88,6 +94,17 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(191),
       allowNull: true,
       comment: 'External payment reference (e.g., Stripe payment_intent id)'
+    },
+    donation_id: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: 'donations',
+        key: 'id'
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
+      comment: 'Optional FK to donations table for Stripe/audit linkage'
     },
     created_at: {
       type: DataTypes.DATE,
@@ -126,6 +143,12 @@ module.exports = (sequelize) => {
       {
         unique: true,
         fields: ['external_id']
+      },
+      {
+        fields: ['status']
+      },
+      {
+        fields: ['donation_id']
       }
     ],
     hooks: {
