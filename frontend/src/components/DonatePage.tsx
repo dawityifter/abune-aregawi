@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import ZelleQR from '../assets/AbuneAregawiZelle.png';
 import StripePayment from './StripePayment';
 import ACHPayment from './ACHPayment';
 import { useAuth } from '../contexts/AuthContext';
@@ -415,11 +416,16 @@ const DonatePage: React.FC = () => {
                   {/* QR Code */}
                   <div className="flex flex-col items-center">
                     <img
-                      src="/AbuneAregawiZelle.png"
+                      src={ZelleQR}
                       alt="Zelle QR code for Abune Aregawi Church"
                       className="w-56 h-56 object-contain rounded-md border border-blue-200 bg-white"
                       loading="lazy"
                     />
+                    <noscript>
+                      <p className="text-xs text-blue-800">
+                        If the image does not load, <a className="underline" href={ZelleQR} target="_blank" rel="noreferrer">open the QR code</a>.
+                      </p>
+                    </noscript>
                     <p className="mt-2 text-xs text-blue-800">
                       Scan this QR code in your banking app to donate via Zelle.
                     </p>
