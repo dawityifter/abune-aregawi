@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from '../../contexts/LanguageContext';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
@@ -343,34 +343,22 @@ const MemberRegistration: React.FC = () => {
     });
     
     const isValid = await validateStep(currentStep);
-    if (isValid) {
-      let nextStepNumber = currentStep + 1;
-      
-      // Skip dependents step (7) if user doesn't have dependents
-      if (!formData.hasDependents && nextStepNumber === 7) {
-        nextStepNumber = 8; // Skip to the end
-      }
-      
-      if (nextStepNumber > totalSteps) {
-        // We've reached the end, submit the form
-        handleSubmit();
-      } else {
-        setCurrentStep(nextStepNumber);
-      }
-    } else {
+    if (!isValid) {
       console.log('🔍 Validation failed for step:', currentStep);
       console.log('🔍 Current errors:', errors);
+      return;
+    }
+    const nextStepNumber = currentStep + 1;
+    if (nextStepNumber > totalSteps) {
+      // We've reached the end, submit the form
+      handleSubmit();
+    } else {
+      setCurrentStep(nextStepNumber);
     }
   };
 
   const prevStep = () => {
-    let prevStepNumber = currentStep - 1;
-    
-    // Skip dependents step (7) if user doesn't have dependents when going backwards
-    if (!formData.hasDependents && prevStepNumber === 7) {
-      prevStepNumber = 6;
-    }
-    
+    const prevStepNumber = currentStep - 1;
     setCurrentStep(Math.max(prevStepNumber, 1));
   };
 
@@ -603,33 +591,35 @@ const MemberRegistration: React.FC = () => {
 
   // Determine if this is a phone sign-in user
   const isPhoneSignIn = phone && !email;
-  
-  // Define step titles based on conditions
-  const getStepTitles = () => {
-    const titles = [
-      t('personal.info'),
-      t('contact.address'),
-      t('family.info'),
-      t('spiritual.info'),
-      t('contribution.giving')
+
+  // Build dynamic step configuration
+  const stepConfig = useMemo(() => {
+    const steps: Array<{ key: string; titleKey: string; render: () => React.ReactNode }> = [
+      { key: 'personal', titleKey: 'personal.info', render: () => (
+        <PersonalInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
+      { key: 'contact', titleKey: 'contact.address', render: () => (
+        <ContactAddressStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
+      { key: 'family', titleKey: 'family.info', render: () => (
+        <FamilyInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
+      { key: 'spiritual', titleKey: 'spiritual.info', render: () => (
+        <SpiritualInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
+      { key: 'contribution', titleKey: 'contribution.giving', render: () => (
+        <ContributionStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
     ];
-    
-    // Add account info step for non-phone sign-ins
     if (!isPhoneSignIn) {
-      titles.push(t('account.info'));
+      steps.push({ key: 'account', titleKey: 'account.info', render: () => (
+        <AccountStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) });
     }
-    
-    // Add dependents step if needed (always at the end)
     if (formData.hasDependents) {
-      titles.push(t('dependants'));
+      steps.push({ key: 'dependents', titleKey: 'dependents', render: () => (
+        <DependentsStep dependents={dependents} onDependentsChange={setDependents} errors={errors} t={t} />) });
     }
-    
-    return titles;
-  };
-  
-  // Get current step titles and calculate total steps
-  const stepTitles = getStepTitles();
-  const totalSteps = stepTitles.length;
+    return steps;
+  }, [formData, errors, t, dependents, isPhoneSignIn]);
+
+  // Derive titles and total steps
+  const stepTitles = stepConfig.map(s => t(s.titleKey));
+  const totalSteps = stepConfig.length;
   
   // Navigation functions
   const handleNextStep = () => {
@@ -705,64 +695,8 @@ const MemberRegistration: React.FC = () => {
   );
 
   const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <PersonalInfoStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            errors={errors}
-            t={t}
-          />
-        );
-      case 2:
-        return (
-          <ContactAddressStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            errors={errors}
-            t={t}
-          />
-        );
-      case 3:
-        return (
-          <FamilyInfoStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            errors={errors}
-            t={t}
-          />
-        );
-      case 4:
-        return (
-          <SpiritualInfoStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            errors={errors}
-            t={t}
-          />
-        );
-      case 5:
-        return (
-          <ContributionStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            errors={errors}
-            t={t}
-          />
-        );
-      case 6:
-        return (
-          <AccountStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            errors={errors}
-            t={t}
-          />
-        );
-      default:
-        return null;
-    }
+    const idx = Math.max(0, Math.min(currentStep - 1, stepConfig.length - 1));
+    return stepConfig[idx]?.render() ?? null;
   };
 
   // Main render function
