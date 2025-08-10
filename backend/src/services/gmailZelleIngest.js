@@ -93,7 +93,7 @@ async function findMemberId({ senderEmail, phoneE164 }) {
     if (m) return m.id;
   }
   if (phoneE164) {
-    const m = await Member.findOne({ where: { phone: phoneE164 } });
+    const m = await Member.findOne({ where: { phone_number: phoneE164 } });
     if (m) return m.id;
   }
   return null;
