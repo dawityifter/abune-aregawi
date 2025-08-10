@@ -412,6 +412,18 @@ const DonatePage: React.FC = () => {
               <h3 className="text-xl font-semibold text-gray-800 mb-4">Donate via Zelle</h3>
               <div className="bg-blue-50 border border-blue-200 rounded p-4">
                 <div className="text-center space-y-4">
+                  {/* QR Code */}
+                  <div className="flex flex-col items-center">
+                    <img
+                      src="/AbuneAregawiZelle.png"
+                      alt="Zelle QR code for Abune Aregawi Church"
+                      className="w-56 h-56 object-contain rounded-md border border-blue-200 bg-white"
+                      loading="lazy"
+                    />
+                    <p className="mt-2 text-xs text-blue-800">
+                      Scan this QR code in your banking app to donate via Zelle.
+                    </p>
+                  </div>
                   <div>
                     <span className="text-lg font-bold text-blue-700 block mb-2">Zelle Email Address:</span>
                     <div 
@@ -440,7 +452,10 @@ const DonatePage: React.FC = () => {
                       <li>Select "Send Money" or "Send with Zelle"</li>
                       <li>Enter the email address: <span className="font-mono text-blue-600">abunearegawitx@gmail.com</span></li>
                       <li>Enter your donation amount</li>
-                      <li>Add a note: "Donation to Abune Aregawi Church - [Your Phone Number]"</li>
+                      <li>
+                        Add a memo/note: <span className="font-medium">"Donation to Abune Aregawi Church - [Your Phone Number]"</span>
+                        <span className="block text-xs text-blue-800 mt-1">Please include your phone number for proper tracking.</span>
+                      </li>
                       <li>Review and send your payment</li>
                     </ol>
                   </div>
