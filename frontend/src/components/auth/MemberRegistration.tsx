@@ -510,10 +510,12 @@ const MemberRegistration: React.FC = () => {
     }
   };
 
-  if (!email && !phone) {
-    navigate("/login");
-    return null;
-  }
+  // Redirect users without email/phone, but do not early-return before hooks
+  useEffect(() => {
+    if (!email && !phone) {
+      navigate('/login');
+    }
+  }, [email, phone, navigate]);
 
   const renderStep = () => {
     // Calculate the actual step based on whether dependents should be shown
