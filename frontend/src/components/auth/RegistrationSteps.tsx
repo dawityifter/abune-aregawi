@@ -838,7 +838,9 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
   });
 
   const addDependent = () => {
-    if (newDependent.firstName && newDependent.lastName && newDependent.dateOfBirth) {
+    const requiresDob = newDependent.relationship === 'Son' || newDependent.relationship === 'Daughter';
+    const hasDobIfRequired = !requiresDob || !!newDependent.dateOfBirth;
+    if (newDependent.firstName && newDependent.lastName && hasDobIfRequired) {
       onDependentsChange([...dependents, newDependent]);
       setNewDependent({
         firstName: '',
@@ -907,17 +909,19 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('date.of.birth')} *
-            </label>
-            <input
-              type="date"
-              value={newDependent.dateOfBirth}
-              onChange={(e) => setNewDependent({...newDependent, dateOfBirth: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          {(newDependent.relationship === 'Son' || newDependent.relationship === 'Daughter') && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('date.of.birth')}
+              </label>
+              <input
+                type="date"
+                value={newDependent.dateOfBirth}
+                onChange={(e) => setNewDependent({...newDependent, dateOfBirth: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -939,7 +943,16 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
             </label>
             <select
               value={newDependent.relationship || ''}
-              onChange={(e) => setNewDependent({...newDependent, relationship: e.target.value as Relationship || undefined})}
+              onChange={(e) => {
+                const rel = (e.target.value as Relationship) || undefined;
+                const isChild = rel === 'Son' || rel === 'Daughter';
+                setNewDependent({
+                  ...newDependent,
+                  relationship: rel,
+                  // Clear DOB if not a child relation to keep it optional/hidden
+                  dateOfBirth: isChild ? newDependent.dateOfBirth : ''
+                });
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Relationship</option>
@@ -1026,7 +1039,7 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
           <button
             type="button"
                           onClick={addDependent}
-                          disabled={!newDependent.firstName || !newDependent.lastName || !newDependent.dateOfBirth}
+                          disabled={!newDependent.firstName || !newDependent.lastName || ((newDependent.relationship === 'Son' || newDependent.relationship === 'Daughter') && !newDependent.dateOfBirth)}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {t('add.dependent')}
