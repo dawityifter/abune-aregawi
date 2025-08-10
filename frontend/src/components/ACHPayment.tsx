@@ -135,7 +135,7 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
 
   if (inline) {
     return (
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-6">
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Account Information</h3>
           
@@ -245,25 +245,7 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
             </p>
           </div>
         </div>
-
-        <div className="flex space-x-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isProcessing}
-            className="flex-1 bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-lg transition duration-200"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isProcessing}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg transition duration-200"
-          >
-            {isProcessing ? 'Processing...' : `Pay $${donationData.amount.toFixed(2)}`}
-          </button>
-        </div>
-      </form>
+      </div>
     );
   }
 

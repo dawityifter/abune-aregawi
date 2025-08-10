@@ -516,7 +516,13 @@ interface AddPaymentModalProps {
                 disabled={loading}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-md"
               >
-                {loading ? 'Adding...' : 'Add Payment'}
+                {loading
+                  ? (paymentView === 'new' && (paymentMethod === 'credit_card' || paymentMethod === 'ach')
+                      ? 'Processing...'
+                      : 'Adding...')
+                  : (paymentView === 'new' && (paymentMethod === 'credit_card' || paymentMethod === 'ach')
+                      ? `Pay $${(parseFloat(amount || '0') || 0).toFixed(2)}`
+                      : 'Add Payment')}
               </button>
             </div>
           </form>
