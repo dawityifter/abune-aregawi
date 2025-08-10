@@ -34,7 +34,7 @@ exports.register = async (req, res) => {
       });
     }
 
-    const {
+    let {
       // Personal Information
       firstName,
       middleName,
@@ -79,6 +79,25 @@ exports.register = async (req, res) => {
       // Dependents (legacy field name 'dependants' from client)
       dependants
     } = req.body;
+
+    // Accept both camelCase and snake_case for firebase UID
+    firebaseUid = firebaseUid || req.body.firebaseUid;
+
+    // Defensive normalization for enums/values (frontend already does this)
+    if (typeof gender === 'string') gender = gender.toLowerCase();
+    if (typeof maritalStatus === 'string') maritalStatus = maritalStatus.toLowerCase();
+    if (typeof req.body.preferredGivingMethod === 'string') {
+      req.body.preferredGivingMethod = req.body.preferredGivingMethod.toLowerCase();
+    }
+    if (typeof req.body.interestedInServing === 'string') {
+      req.body.interestedInServing = req.body.interestedInServing.toLowerCase();
+    }
+    if (typeof req.body.languagePreference === 'string') {
+      const lp = req.body.languagePreference;
+      // Map common labels to codes
+      if (lp === 'English' || lp === 'en') req.body.languagePreference = 'en';
+      else req.body.languagePreference = 'ti';
+    }
 
     // Normalize incoming dependents array: prefer 'dependents', fallback to legacy 'dependants'
     const dependents = Array.isArray(req.body.dependents)
@@ -234,17 +253,54 @@ exports.register = async (req, res) => {
 
     // Add dependents if provided and HoH
     if (isHeadOfHousehold && dependents && Array.isArray(dependents) && dependents.length > 0) {
-      const dependentsData = dependents.map(dependent => {
-        const {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      const cleanDate = (v) => {
+        if (!v || typeof v !== 'string') return null;
+        const s = v.trim();
+        if (!s) return null;
+        return dateRegex.test(s) ? s : null;
+      };
+
+      const dependentsData = dependents.map((dependent) => {
+        const rel = dependent.relationship;
+        const isChild = rel === 'Son' || rel === 'Daughter';
+
+        // Normalize phone
+        const phone = dependent.phone ? normalizePhoneNumber(dependent.phone) : null;
+
+        // Sanitize dates
+        const dateOfBirth = isChild ? cleanDate(dependent.dateOfBirth) : null;
+        const baptismDate = cleanDate(dependent.baptismDate);
+
+        // Start with allowed/known fields, drop empty strings
+        const base = {
+          firstName: dependent.firstName,
+          middleName: dependent.middleName || null,
+          lastName: dependent.lastName,
+          dateOfBirth,
+          gender: dependent.gender || null,
+          relationship: rel || null,
+          phone,
+          email: dependent.email || null,
+          baptismName: dependent.baptismName || null,
+          isBaptized: !!dependent.isBaptized,
           baptismDate,
-          nameDay,
-          ...cleaned
-        } = dependent;
-        return {
-          ...cleaned,
+          nameDay: dependent.nameDay || null,
+          medicalConditions: dependent.medicalConditions || null,
+          allergies: dependent.allergies || null,
+          medications: dependent.medications || null,
+          dietaryRestrictions: dependent.dietaryRestrictions || null,
+          notes: dependent.notes || null,
           memberId: member.id
         };
+
+        Object.keys(base).forEach((k) => {
+          if (base[k] === '') base[k] = null;
+        });
+
+        return base;
       });
+
       await Dependent.bulkCreate(dependentsData);
     }
 

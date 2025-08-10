@@ -67,6 +67,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+// Explicitly handle CORS preflight for all routes
+app.options('*', cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -81,6 +83,8 @@ const limiter = rateLimit({
     try {
       const url = req.originalUrl || '';
       const method = req.method || 'GET';
+      // Always skip preflight requests
+      if (method === 'OPTIONS') return true;
       // Example: /api/members/profile/firebase/:uid?email=...&phone=...
       return method === 'GET' && url.startsWith('/api/members/profile/firebase');
     } catch (_) {
