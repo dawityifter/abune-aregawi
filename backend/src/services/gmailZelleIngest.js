@@ -28,6 +28,21 @@ async function ensureLabel(gmail, userId, name) {
   return res.data.id;
 }
 
+// Sanitize boilerplate phrases commonly present in Zelle emails from Chase
+function sanitizeNote(input) {
+  if (!input) return input;
+  let out = String(input);
+  // Remove leading "You received money with Zelle®"
+  out = out.replace(/You received money with Zelle(?:®)?/gi, '');
+  // Remove optional separator + "Memo N/A"
+  out = out.replace(/(\s*\|\s*)?Memo N\/A/gi, '');
+  // Remove trailing "is registered with a Zelle®"
+  out = out.replace(/\s*is registered with a Zelle(?:®)?/gi, '');
+  // Collapse multiple spaces and separators, trim
+  out = out.replace(/\s{2,}/g, ' ').replace(/\s*\|\s*/g, ' ').trim();
+  return out;
+}
+
 function parseCandidatesFromMessage(msg) {
   // Extract headers
   const headers = msg.payload?.headers || [];
@@ -69,6 +84,7 @@ function parseCandidatesFromMessage(msg) {
     const memoIdx = bodyText.toLowerCase().indexOf('memo');
     note += memoIdx >= 0 ? ` | ${bodyText.substring(memoIdx, memoIdx + 160)}` : '';
   }
+  note = sanitizeNote(note);
 
   // Date
   const dt = internalDate ? moment(internalDate) : (dateHeader ? moment(new Date(dateHeader)) : moment());
@@ -225,7 +241,7 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
         payment_date: parsed.payment_date,
         sender_email: parsed.senderEmail,
         memo_phone_e164: parsed.phoneE164,
-        note_preview: parsed.note,
+        note_preview: sanitizeNote(parsed.note),
         subject: parsed.subject,
         matched_member_id: member_id,
         would_create: !!(parsed.amount && external_id && member_id),
