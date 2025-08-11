@@ -110,28 +110,26 @@ async function upsertTransaction(parsed, { dryRun = false } = {}) {
 
   if (dryRun) return { created: true, dryRun: true, member_id, collected_by };
 
-  const [tx, created] = await Transaction.findOrCreate({
-    where: { external_id: `gmail:${messageId}` },
-    defaults: {
-      member_id,
-      collected_by,
-      payment_date,
-      amount,
-      payment_type: 'donation',
-      payment_method: 'zelle',
-      status: 'succeeded',
-      receipt_number: null,
-      note,
-      external_id: `gmail:${messageId}`,
-      donation_id: null,
-    }
-  });
-
-  if (!created) {
-    // Update basic fields if amount/note/date changed
-    await tx.update({ member_id, collected_by, payment_date, amount, note });
+  // Insert-only behavior: if exists, do not modify
+  const existing = await Transaction.findOne({ where: { external_id: `gmail:${messageId}` } });
+  if (existing) {
+    return { created: false, reason: 'exists', transactionId: existing.id };
   }
-  return { created: created || false, transactionId: tx.id };
+
+  const tx = await Transaction.create({
+    member_id,
+    collected_by,
+    payment_date,
+    amount,
+    payment_type: 'donation',
+    payment_method: 'zelle',
+    status: 'succeeded',
+    receipt_number: null,
+    note,
+    external_id: `gmail:${messageId}`,
+    donation_id: null,
+  });
+  return { created: true, transactionId: tx.id };
 }
 
 async function syncZelleFromGmail({ dryRun = false } = {}) {

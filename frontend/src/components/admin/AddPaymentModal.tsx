@@ -213,7 +213,6 @@ interface AddPaymentModalProps {
   const transactionPaymentMethods = [
     { value: 'cash', label: 'Cash' },
     { value: 'check', label: 'Check' },
-    { value: 'zelle', label: 'Zelle' },
     // Combine Debit and Credit into one UI option; backend expects 'credit_card' or 'debit_card'. Use 'credit_card'.
     { value: 'credit_card', label: 'Debit/Credit Card' },
     { value: 'ach', label: 'ACH' },
