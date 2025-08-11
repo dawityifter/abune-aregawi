@@ -27,6 +27,7 @@ const TreasurerDashboard: React.FC = () => {
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
 
   console.log('🏦 TreasurerDashboard: Component loaded');
@@ -34,7 +35,7 @@ const TreasurerDashboard: React.FC = () => {
   console.log('🏦 Firebase user:', firebaseUser);
 
   // Check user permissions
-  const userRole = userProfile?.data?.member?.role || 'member';
+  const userRole = userProfile?.data?.member?.role || currentUser?.role || 'member';
   const permissions = getRolePermissions(userRole);
   
   // Check if user has financial permissions
@@ -42,6 +43,7 @@ const TreasurerDashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
+      setProfileLoading(true);
       if (currentUser) {
         try {
           console.log('🔍 TreasurerDashboard - currentUser:', currentUser);
@@ -62,6 +64,7 @@ const TreasurerDashboard: React.FC = () => {
           console.error('Error fetching user profile:', error);
         }
       }
+      setProfileLoading(false);
     };
 
     fetchUserProfile();
@@ -122,7 +125,7 @@ const TreasurerDashboard: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
@@ -243,13 +246,6 @@ const TreasurerDashboard: React.FC = () => {
                 Zelle Review
               </button>
             </nav>
-            <a
-              href="/admin/zelle-ingestion"
-              className="text-xs text-blue-600 hover:text-blue-700"
-              title="Read how Zelle ingestion works"
-            >
-              Zelle Ingestion Docs →
-            </a>
           </div>
         </div>
 

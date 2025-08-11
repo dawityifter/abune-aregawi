@@ -50,10 +50,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Handle temporary users (only allow access to specific routes)
+  // Handle temporary users (wait instead of redirecting)
   if (currentUser._temp && !allowTempUser) {
-    console.log('⏳ ProtectedRoute: Temporary user detected, only allowing access to dashboard');
-    return <Navigate to="/dashboard" replace />;
+    console.log('⏳ ProtectedRoute: Temporary user detected, waiting for full profile before allowing access');
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-800"></div>
+      </div>
+    );
   }
 
   // Log user details for debugging
