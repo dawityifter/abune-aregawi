@@ -6,6 +6,7 @@ import TransactionList from './TransactionList';
 import PaymentStats from './PaymentStats';
 import PaymentReports from './PaymentReports';
 import AddPaymentModal from './AddPaymentModal';
+import ZelleReview from './ZelleReview';
 
 type PaymentView = 'old' | 'new';
 
@@ -21,7 +22,7 @@ interface PaymentStatsData {
 
 const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'reports'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'reports' | 'zelle'>('overview');
   const [paymentView, setPaymentView] = useState<PaymentView>('new'); // Default to new view
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
@@ -199,38 +200,57 @@ const TreasurerDashboard: React.FC = () => {
 
         {/* Tab Navigation */}
         <div className="border-b border-gray-200 mb-8">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'overview'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+          <div className="-mb-px flex items-center justify-between">
+            <nav className="flex space-x-8">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'overview'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('payments')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'payments'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Member Payments
+              </button>
+              <button
+                onClick={() => setActiveTab('reports')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'reports'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Reports
+              </button>
+              <button
+                onClick={() => setActiveTab('zelle')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'zelle'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Zelle Review
+              </button>
+            </nav>
+            <a
+              href="/admin/zelle-ingestion"
+              className="text-xs text-blue-600 hover:text-blue-700"
+              title="Read how Zelle ingestion works"
             >
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab('payments')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'payments'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Member Payments
-            </button>
-            <button
-              onClick={() => setActiveTab('reports')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'reports'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Reports
-            </button>
-          </nav>
+              Zelle Ingestion Docs →
+            </a>
+          </div>
         </div>
 
         {/* Content */}
@@ -282,6 +302,12 @@ const TreasurerDashboard: React.FC = () => {
             <div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-6">Payment Reports</h2>
               <PaymentReports paymentView={paymentView} />
+            </div>
+          )}
+
+          {activeTab === 'zelle' && (
+            <div>
+              <ZelleReview />
             </div>
           )}
         </div>

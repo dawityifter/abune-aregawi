@@ -7,6 +7,7 @@ import MemberRegistration from './components/auth/MemberRegistration';
 import SignIn from './components/auth/SignIn';
 import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
+import ZelleIngestionDocs from './components/admin/ZelleIngestionDocs';
 import TreasurerDashboard from './components/admin/TreasurerDashboard';
 import Profile from './components/Profile';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -46,6 +47,14 @@ function App() {
                     <AdminDashboard />
                   </ProtectedRoute>
                 } 
+              />
+              <Route
+                path="/admin/zelle-ingestion"
+                element={
+                  <ProtectedRoute>
+                    <ZelleIngestionDocs />
+                  </ProtectedRoute>
+                }
               />
               <Route 
                 path="/treasurer" 
