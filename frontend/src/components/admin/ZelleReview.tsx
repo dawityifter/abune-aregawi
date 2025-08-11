@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 interface ZellePreviewItem {
   gmail_id?: string;
   external_id?: string | null;
-  amount?: number | null;
+  amount?: number | string | null;
   payment_date?: string | null;
   sender_email?: string | null;
   memo_phone_e164?: string | null;
@@ -73,8 +73,9 @@ const ZelleReview: React.FC = () => {
       if (!item.external_id) {
         throw new Error('Missing external_id for this item.');
       }
-      if (!item.amount || !item.payment_date) {
-        throw new Error('Missing amount or payment date.');
+      const numericAmount = typeof item.amount === 'number' ? item.amount : Number(item.amount);
+      if (!Number.isFinite(numericAmount) || !item.payment_date) {
+        throw new Error('Missing or invalid amount, or missing payment date.');
       }
 
       const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/zelle/reconcile/create-transaction`, {
@@ -85,7 +86,7 @@ const ZelleReview: React.FC = () => {
         },
         body: JSON.stringify({
           external_id: item.external_id,
-          amount: item.amount,
+          amount: numericAmount,
           payment_date: item.payment_date,
           note: item.note_preview || item.subject || undefined,
           member_id,
@@ -162,7 +163,12 @@ const ZelleReview: React.FC = () => {
               {items.map((it, idx) => (
                 <tr key={it.gmail_id || it.external_id || idx}>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.payment_date || '-'}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.amount ? `$${it.amount.toFixed(2)}` : '-'}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{
+                    (() => {
+                      const amt = typeof it.amount === 'number' ? it.amount : Number(it.amount);
+                      return Number.isFinite(amt) ? `$${amt.toFixed(2)}` : '-';
+                    })()
+                  }</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.sender_email || '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.memo_phone_e164 || '-'}</td>
                   <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={it.subject || ''}>{it.subject || '-'}</td>
