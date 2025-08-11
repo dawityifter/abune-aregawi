@@ -153,6 +153,7 @@ const ZelleReview: React.FC = () => {
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sender</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone in Memo</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Memo</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matched Member</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Would Create</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">External ID</th>
@@ -171,7 +172,8 @@ const ZelleReview: React.FC = () => {
                   }</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.sender_email || '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.memo_phone_e164 || '-'}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={it.subject || ''}>{it.subject || '-'}</td>
+                  <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title="Zelle">Zelle</td>
+                  <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={it.note_preview || ''}>{it.note_preview || '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm">
                     {it.matched_member_id ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
