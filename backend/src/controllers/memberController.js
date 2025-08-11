@@ -648,7 +648,10 @@ exports.getAllMembersFirebase = async (req, res) => {
       apartmentNo: member.apartment_no,
       emergencyContactName: member.emergency_contact_name,
       emergencyContactPhone: member.emergency_contact_phone,
-      dependants: member.dependents ? member.dependents.length : 0 // Include dependent count
+      // Provide dependents array for frontend (even if only IDs are included)
+      dependents: member.dependents || [],
+      // Also include a count field for robustness/backward-compatibility
+      dependentsCount: member.dependents ? member.dependents.length : 0
     }));
 
     res.json({
