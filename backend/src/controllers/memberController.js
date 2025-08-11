@@ -768,11 +768,13 @@ exports.deleteMember = async (req, res) => {
     }
 
     // Soft delete - just deactivate the account
-    await member.update({ isActive: false });
+    await member.update({ is_active: false });
+    const updated = await Member.findByPk(req.params.id, { attributes: ['id', 'is_active'] });
 
     res.json({
       success: true,
-      message: 'Member deactivated successfully'
+      message: 'Member deactivated successfully',
+      data: { member: updated }
     });
 
   } catch (error) {
