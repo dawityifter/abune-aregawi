@@ -80,6 +80,11 @@ exports.register = async (req, res) => {
       dependants
     } = req.body;
 
+    // Normalize primary phone number to match DB format
+    if (phoneNumber) {
+      phoneNumber = normalizePhoneNumber(phoneNumber);
+    }
+
     // Accept both camelCase and snake_case for firebase UID
     firebaseUid = firebaseUid || req.body.firebaseUid;
 
@@ -140,7 +145,7 @@ exports.register = async (req, res) => {
       // We'll check if the phone number belongs to a different Firebase user
       const existingMemberByPhone = await Member.findOne({
         where: { 
-          phoneNumber,
+          phone_number: phoneNumber,
           firebase_uid: { [require('sequelize').Op.ne]: firebaseUid } // Different Firebase UID
         }
       });
