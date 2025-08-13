@@ -155,18 +155,22 @@ const DonatePage: React.FC = () => {
     setPaymentError(null);
   };
 
-  const donationData = useMemo(() => ({
-    amount: parseFloat(amount),
-    donation_type: donationType,
-    frequency: donationType === 'recurring' ? frequency : undefined,
-    payment_method: paymentMethod,
-    donor_first_name: donorInfo.firstName,
-    donor_last_name: donorInfo.lastName,
-    donor_email: donorInfo.email,
-    donor_phone: donorInfo.phone || undefined,
-    donor_address: donorInfo.address || undefined,
-    donor_zip_code: donorInfo.zipCode || undefined,
-  }), [amount, donationType, frequency, paymentMethod, donorInfo]);
+  const donationData = useMemo(() => {
+    const parsed = parseFloat(amount);
+    const safeAmount = Number.isFinite(parsed) ? parsed : 0;
+    return {
+      amount: safeAmount,
+      donation_type: donationType,
+      frequency: donationType === 'recurring' ? frequency : undefined,
+      payment_method: paymentMethod,
+      donor_first_name: donorInfo.firstName,
+      donor_last_name: donorInfo.lastName,
+      donor_email: donorInfo.email,
+      donor_phone: donorInfo.phone || undefined,
+      donor_address: donorInfo.address || undefined,
+      donor_zip_code: donorInfo.zipCode || undefined,
+    };
+  }, [amount, donationType, frequency, paymentMethod, donorInfo]);
 
   return (
     <Elements stripe={stripePromise}>
