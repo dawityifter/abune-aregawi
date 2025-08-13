@@ -269,6 +269,7 @@ The system implements a comprehensive role-based access control system with six 
 ### 🔑 Role Hierarchy
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": { "background": "#ffffff" }}}%%
 graph TD
     A[Guest] --> B[Member]
     B --> C[Secretary]
