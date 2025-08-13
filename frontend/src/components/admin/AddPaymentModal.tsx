@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import StripePayment from '../StripePayment';
 import ACHPayment from '../ACHPayment';
@@ -30,6 +30,7 @@ interface AddPaymentModalProps {
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [month, setMonth] = useState('');
   const [amount, setAmount] = useState('');
+  const [amountError, setAmountError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [notes, setNotes] = useState('');
   
@@ -40,6 +41,25 @@ interface AddPaymentModalProps {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [processStripePayment, setProcessStripePayment] = useState<null | (() => Promise<void>)>(null);
+
+  // Amount input helpers (currency-like)
+  const amountPattern = useMemo(() => /^[0-9]*([.][0-9]{0,2})?$/, []);
+  const handleAmountChange = (value: string) => {
+    if (value === '' || amountPattern.test(value)) {
+      setAmount(value);
+      setAmountError(null);
+    } else {
+      setAmountError('Enter a valid amount (numbers only, up to 2 decimals).');
+    }
+  };
+  const normalizeAmountOnBlur = () => {
+    if (!amount) return;
+    const num = Number(amount);
+    if (Number.isFinite(num)) {
+      setAmount(num.toFixed(2));
+      setAmountError(null);
+    }
+  };
 
   const fetchMembers = useCallback(async (query: string) => {
     if (!firebaseUser) return;
@@ -115,6 +135,15 @@ interface AddPaymentModalProps {
     setError('');
 
     try {
+      // Validate amount for non-Stripe flows (Stripe components validate their own)
+      if (!(paymentView === 'new' && (paymentMethod === 'credit_card' || paymentMethod === 'ach'))) {
+        const amt = parseFloat(amount);
+        if (!amount || !Number.isFinite(amt) || amt <= 0) {
+          setAmountError('Please enter a valid amount greater than $0');
+          setLoading(false);
+          return;
+        }
+      }
       let response;
 
       if (paymentView === 'new') {
@@ -536,15 +565,18 @@ interface AddPaymentModalProps {
                 Amount
               </label>
               <input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => handleAmountChange(e.target.value)}
+                onBlur={normalizeAmountOnBlur}
                 required
                 placeholder="Enter amount"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {amountError && (
+                <p className="mt-1 text-xs text-red-600">{amountError}</p>
+              )}
             </div>
 
             <div>
