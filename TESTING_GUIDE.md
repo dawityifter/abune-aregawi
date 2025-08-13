@@ -20,17 +20,19 @@ This guide will help you test the complete Firebase authentication setup for the
 
 ### **2. Authentication Flow Test**
 
-#### **A. User Registration**
-1. **Navigate to registration**: Click "Register Member" or go to `/register`
-2. **Fill out the form**:
-   - Personal Information (Step 1)
-   - Contact & Address (Step 2)
-   - Family Information (Step 3)
-   - Spiritual Information (Step 4)
-   - Contribution & Giving (Step 5)
-   - Account Information (Step 6)
-3. **Submit registration**: Should create both Firebase Auth account and backend member record
-4. **Verify redirect**: Should redirect to dashboard after successful registration
+#### **A. Sign-in Driven Registration (Phone OTP)**
+1. **Go to Sign In**: Visit `/login`, select the "Phone" tab.
+2. **Verify phone**: Enter phone, send OTP, and complete verification.
+3. **Post-auth check**: After OTP success, the app calls backend profile:
+   - If backend returns **404 (not found)**, you are redirected to `/register` to complete profile.
+   - If backend returns **200 (found)**, you are taken directly to the dashboard.
+4. **Complete registration (when redirected)**:
+   - Fill out: Personal, Contact & Address, Family, Spiritual, Contribution.
+   - Submit: Should create backend member record and return 201.
+   - Redirect: Should navigate to dashboard on success.
+5. **Notes**:
+   - There is no standalone "regular registration" start anymore; it begins after successful phone sign-in when no member exists.
+   - Email/password login remains for existing accounts but is not used to initiate registration.
 
 #### **B. User Login (Email/Password)**
 1. **Navigate to login**: Click "Sign In" or go to `/login`
@@ -54,7 +56,7 @@ This guide will help you test the complete Firebase authentication setup for the
 7. **Verify OTP form**: Should show OTP input field
 8. **Enter OTP**: Input the 6-digit code received
 9. **Submit OTP**: Click "Verify OTP"
-10. **Verify authentication**: Should redirect to dashboard
+10. **Verify authentication**: On success, app either redirects to dashboard (existing member) or to `/register` (new user) as described above.
 11. **Test error handling**:
     - **Invalid OTP**: Should show "Invalid verification code" message
     - **Expired OTP**: Should show "Verification code has expired" message
