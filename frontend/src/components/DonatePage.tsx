@@ -459,7 +459,7 @@ const DonatePage: React.FC = () => {
                       <li>Enter the email address: <span className="font-mono text-blue-600">abunearegawitx@gmail.com</span></li>
                       <li>Enter your donation amount</li>
                       <li>
-                        Add a memo/note: <span className="font-medium">"Donation to Abune Aregawi Church - [Your Phone Number]"</span>
+                        Add a memo/note: <span className="font-medium">"[Your Phone Number] for [reason]"</span>
                         <span className="block text-xs text-blue-800 mt-1">Please include your phone number for proper tracking.</span>
                       </li>
                       <li>Review and send your payment</li>
