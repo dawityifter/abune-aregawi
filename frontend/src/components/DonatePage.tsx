@@ -11,6 +11,7 @@ const DonatePage: React.FC = () => {
   const [donationType, setDonationType] = useState<'one-time' | 'recurring'>('one-time');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'ach'>('card');
   const [amount, setAmount] = useState('');
+  const [amountError, setAmountError] = useState<string | null>(null);
   const [frequency, setFrequency] = useState('monthly');
   const [donorInfo, setDonorInfo] = useState({
     firstName: '',
@@ -54,11 +55,43 @@ const DonatePage: React.FC = () => {
     }
   };
 
+  // Amount validation helpers
+  const amountPattern = useMemo(() => /^[0-9]*([.][0-9]{0,2})?$/, []);
+
+  const handleAmountChange = (value: string) => {
+    // Allow empty string (so user can clear), otherwise must match pattern
+    if (value === '' || amountPattern.test(value)) {
+      setAmount(value);
+      setAmountError(null);
+    } else {
+      // Do not update amount, but show a gentle inline error
+      setAmountError('Enter a valid amount (numbers only, up to 2 decimals).');
+    }
+  };
+
+  const normalizeAmountOnBlur = () => {
+    if (!amount) return;
+    // Normalize to at most two decimals and remove extraneous leading zeros
+    const num = Number(amount);
+    if (Number.isFinite(num)) {
+      const normalized = num.toFixed(2);
+      setAmount(normalized);
+      setAmountError(null);
+    }
+  };
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
-    if (!amount || parseFloat(amount) < 1) {
+    if (!amount || !amountPattern.test(amount)) {
+      setAmountError('Please enter a valid amount (e.g., 10 or 10.00)');
+      alert('Please enter a valid amount (numbers only, up to 2 decimals).');
+      return;
+    }
+    const amtValue = parseFloat(amount);
+    if (!Number.isFinite(amtValue) || amtValue < 1) {
+      setAmountError('Minimum amount is $1.00');
       alert('Please enter a valid amount (minimum $1.00)');
       return;
     }
@@ -211,11 +244,15 @@ const DonatePage: React.FC = () => {
                       type="text"
                       inputMode="decimal"
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
+                      onChange={(e) => handleAmountChange(e.target.value)}
+                      onBlur={normalizeAmountOnBlur}
                       placeholder="0.00"
                       required
                       className="w-full border border-gray-300 rounded-md pl-8 pr-3 py-2"
                     />
+                    {amountError && (
+                      <p className="mt-1 text-xs text-red-600">{amountError}</p>
+                    )}
                   </div>
                 </div>
 
