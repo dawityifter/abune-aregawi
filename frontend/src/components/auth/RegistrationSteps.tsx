@@ -619,19 +619,37 @@ const ContributionStep: React.FC<{
         <label className="block text-sm font-medium text-gray-700">
           Yearly Membership Pledge (USD)
         </label>
-        <input
-          type="number"
-          min={0}
-          step={0.01}
-          value={formData.yearlyPledge || ''}
-          onChange={(e) => handleInputChange('yearlyPledge', e.target.value)}
-          className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
-            errors.yearlyPledge 
-              ? 'border-red-500 focus:ring-red-500' 
-              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
-          } focus:outline-none focus:ring-1`}
-          placeholder="e.g. 1200"
-        />
+        {(() => {
+          const amountPattern = /^[0-9]*([.][0-9]{0,2})?$/;
+          const onChange = (v: string) => {
+            if (v === '' || amountPattern.test(v)) {
+              handleInputChange('yearlyPledge', v);
+            }
+          };
+          const onBlur = () => {
+            const v = formData.yearlyPledge;
+            if (v === undefined || v === null || v === '') return;
+            const num = Number(v);
+            if (Number.isFinite(num)) {
+              handleInputChange('yearlyPledge', num.toFixed(2));
+            }
+          };
+          return (
+            <input
+              type="text"
+              inputMode="decimal"
+              value={formData.yearlyPledge || ''}
+              onChange={(e) => onChange(e.target.value)}
+              onBlur={onBlur}
+              className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
+                errors.yearlyPledge 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              } focus:outline-none focus:ring-1`}
+              placeholder="e.g. 1200"
+            />
+          );
+        })()}
         {errors.yearlyPledge && (
           <p className="text-red-500 text-xs sm:text-sm mt-1">
             {errors.yearlyPledge}
