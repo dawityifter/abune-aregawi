@@ -128,6 +128,10 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
           </button>
         </div>
 
+        <div className="mb-4 text-sm text-gray-600">
+          This will create a <span className="font-medium">Head of Household</span>. To add a non-head member, use <span className="font-medium">Add Dependent</span> from the member list.
+        </div>
+
         {error && (
           <div className="mb-4 text-sm text-red-600">{error}</div>
         )}
