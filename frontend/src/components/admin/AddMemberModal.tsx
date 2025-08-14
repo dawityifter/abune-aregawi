@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatPhoneNumber, normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
 
 interface AddMemberModalProps {
   onClose: () => void;
@@ -32,6 +33,10 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    if (name === 'phoneNumber') {
+      setForm(prev => ({ ...prev, [name]: formatPhoneNumber(value) }));
+      return;
+    }
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
@@ -51,6 +56,10 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
       setError('First name, last name, and phone number are required');
       return;
     }
+    if (!isValidPhoneNumber(form.phoneNumber)) {
+      setError('Please enter a valid phone number');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -60,7 +69,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
         firstName: form.firstName,
         middleName: form.middleName || undefined,
         lastName: form.lastName,
-        phoneNumber: normalizePhone(form.phoneNumber),
+        phoneNumber: normalizePhoneNumber(form.phoneNumber),
         email: form.email || undefined,
         dateOfBirth: form.dateOfBirth || undefined,
         gender: form.gender ? form.gender.toLowerCase() : undefined,
@@ -128,7 +137,14 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
-              <input name="phoneNumber" value={form.phoneNumber} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
+              <input
+                name="phoneNumber"
+                value={form.phoneNumber}
+                onChange={handleChange}
+                inputMode="tel"
+                placeholder="(555) 555-1234"
+                className="w-full px-3 py-2 border rounded"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
