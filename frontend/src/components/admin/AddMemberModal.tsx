@@ -40,7 +40,11 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     if (name === 'phoneNumber') {
-      setForm(prev => ({ ...prev, [name]: formatPhoneNumber(value) }));
+      const formatted = formatPhoneNumber(value);
+      // Clear duplicate state while user edits; will re-check on blur
+      if (phoneDuplicateMsg) setPhoneDuplicateMsg(null);
+      if (phoneCheckLoading) setPhoneCheckLoading(false);
+      setForm(prev => ({ ...prev, [name]: formatted }));
       return;
     }
     setForm(prev => ({ ...prev, [name]: value }));
