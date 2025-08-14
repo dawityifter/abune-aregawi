@@ -25,7 +25,6 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
     state: '',
     postalCode: '',
     country: 'USA',
-    role: 'member',
     baptismName: '',
     interestedInServing: 'maybe',
     yearlyPledge: '',
@@ -97,7 +96,6 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
         yearlyPledge: form.yearlyPledge ? Number(form.yearlyPledge) : undefined,
         // Admin-created members should default to head of household to bypass HoH phone requirement
         isHeadOfHousehold: true,
-        role: form.role || 'member',
       };
 
       const res = await fetch(`${process.env.REACT_APP_API_URL}/api/members/register`, {
@@ -210,19 +208,6 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
               <input type="email" name="email" value={form.email} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-              <select name="role" value={form.role} onChange={handleChange} className="w-full px-3 py-2 border rounded">
-                <option value="member">Member</option>
-                <option value="guest">Guest</option>
-                <option value="secretary">Secretary</option>
-                <option value="treasurer">Treasurer</option>
-                <option value="church_leadership">Church Leadership</option>
-                <option value="admin">Admin</option>
-                <option value="deacon">Deacon</option>
-                <option value="priest">Priest</option>
-              </select>
-            </div>
-            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
               <select name="gender" value={form.gender} onChange={handleChange} className="w-full px-3 py-2 border rounded">
                 <option value="">--</option>
@@ -249,7 +234,34 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Yearly Pledge</label>
-              <input name="yearlyPledge" type="number" min="0" step="1" value={form.yearlyPledge} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
+              {(() => {
+                const amountPattern = /^[0-9]*([.][0-9]{0,2})?$/;
+                const onChange = (v: string) => {
+                  if (v === '' || amountPattern.test(v)) {
+                    setForm(prev => ({ ...prev, yearlyPledge: v }));
+                  }
+                };
+                const onBlur = () => {
+                  const v = form.yearlyPledge;
+                  if (v === undefined || v === null || v === '') return;
+                  const num = Number(v);
+                  if (Number.isFinite(num)) {
+                    setForm(prev => ({ ...prev, yearlyPledge: num.toFixed(2) }));
+                  }
+                };
+                return (
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.yearlyPledge || ''}
+                    onChange={(e) => onChange(e.target.value)}
+                    onBlur={onBlur}
+                    className="w-full px-3 py-2 border rounded"
+                    placeholder="e.g. 1200"
+                    name="yearlyPledge"
+                  />
+                );
+              })()}
             </div>
           </div>
 
