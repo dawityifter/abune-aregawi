@@ -35,6 +35,8 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
   const [phoneCheckLoading, setPhoneCheckLoading] = useState(false);
   const [phoneDuplicateMsg, setPhoneDuplicateMsg] = useState<string | null>(null);
 
+  const isCreateDisabled = loading || phoneCheckLoading || !!phoneDuplicateMsg;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     if (name === 'phoneNumber') {
@@ -276,7 +278,12 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
 
           <div className="flex justify-end space-x-3 pt-4 border-t">
             <button type="button" onClick={onClose} className="px-4 py-2 border rounded">{t('cancel')}</button>
-            <button type="submit" disabled={loading} className="px-4 py-2 bg-primary-600 text-white rounded disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={isCreateDisabled}
+              title={phoneDuplicateMsg ? 'Phone already exists. Please enter a different number.' : undefined}
+              className="px-4 py-2 bg-primary-600 text-white rounded disabled:opacity-50"
+            >
               {loading ? (t('saving') || 'Saving...') : (t('create') || 'Create')}
             </button>
           </div>
