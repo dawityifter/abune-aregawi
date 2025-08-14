@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
+import AddMemberModal from './AddMemberModal';
+import AddDependentModal from './AddDependentModal';
 
 interface Member {
   id: string;
@@ -38,6 +40,8 @@ const MemberList: React.FC<MemberListProps> = ({
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [showAddDependentFor, setShowAddDependentFor] = useState<Member | null>(null);
 
   // Client-side filtering and pagination
   const filteredMembers = useMemo(() => {
@@ -185,6 +189,15 @@ const MemberList: React.FC<MemberListProps> = ({
             {t('total.members')}: {totalMembers}
           </p>
         </div>
+        <div>
+          <button
+            onClick={() => setShowAddMember(true)}
+            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+          >
+            <i className="fas fa-user-plus mr-2"></i>
+            {t('add.member') || 'Add Member'}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -329,6 +342,15 @@ const MemberList: React.FC<MemberListProps> = ({
                           <i className="fas fa-edit"></i>
                         </button>
                       )}
+                      {canEditMembers && (
+                        <button
+                          onClick={() => setShowAddDependentFor(member)}
+                          className="text-green-600 hover:text-green-900"
+                          title={t('add.dependent') || 'Add Dependent'}
+                        >
+                          <i className="fas fa-user-friends"></i>
+                        </button>
+                      )}
                       {canDeleteMembers && (
                         <button
                           onClick={() => handleDeleteMember(member.id)}
@@ -407,6 +429,28 @@ const MemberList: React.FC<MemberListProps> = ({
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      {showAddMember && (
+        <AddMemberModal
+          onClose={() => setShowAddMember(false)}
+          onCreated={() => {
+            setShowAddMember(false);
+            fetchAllMembers();
+          }}
+        />
+      )}
+      {showAddDependentFor && (
+        <AddDependentModal
+          memberId={showAddDependentFor.id}
+          memberName={`${showAddDependentFor.firstName} ${showAddDependentFor.lastName}`}
+          onClose={() => setShowAddDependentFor(null)}
+          onCreated={() => {
+            setShowAddDependentFor(null);
+            fetchAllMembers();
+          }}
+        />
+      )}
     </div>
   );
 };
