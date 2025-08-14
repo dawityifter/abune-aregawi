@@ -37,6 +37,9 @@ router.post('/register', validateMemberRegistration, memberController.register);
 // Validate head of household phone number
 router.get('/validate-head-of-household/:phoneNumber', memberController.validateHeadOfHouseholdPhone);
 
+// Public: check if a phone number already exists (for admin add-member validation)
+router.get('/check-phone/:phoneNumber', memberController.checkPhoneExists);
+
 // Complete registration after Firebase Auth (prevents partial saves)
 router.post('/complete-registration/:firebaseUid', memberController.completeRegistration);
 

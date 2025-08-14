@@ -347,6 +347,46 @@ exports.register = async (req, res) => {
   }
 };
 
+// Check if a phone number already exists in members
+exports.checkPhoneExists = async (req, res) => {
+  try {
+    const { phoneNumber } = req.params;
+
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required'
+      });
+    }
+
+    const normalized = normalizePhoneNumber(phoneNumber);
+    if (!normalized) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid phone number'
+      });
+    }
+
+    const member = await Member.findOne({
+      where: { phone_number: normalized },
+      attributes: ['id', 'first_name', 'last_name', 'is_active']
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: member
+        ? { exists: true, memberId: member.id, firstName: member.first_name, lastName: member.last_name, isActive: member.is_active }
+        : { exists: false }
+    });
+  } catch (error) {
+    console.error('Error checking phone existence:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Login member
 exports.login = async (req, res) => {
   try {
