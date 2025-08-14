@@ -18,7 +18,6 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
     lastName: '',
     phoneNumber: '',
     email: '',
-    dateOfBirth: '',
     gender: '',
     streetLine1: '',
     apartmentNo: '',
@@ -27,9 +26,14 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
     postalCode: '',
     country: 'USA',
     role: 'member',
+    baptismName: '',
+    interestedInServing: 'maybe',
+    yearlyPledge: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phoneCheckLoading, setPhoneCheckLoading] = useState(false);
+  const [phoneDuplicateMsg, setPhoneDuplicateMsg] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -60,6 +64,10 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
       setError('Please enter a valid phone number');
       return;
     }
+    if (phoneDuplicateMsg) {
+      setError(phoneDuplicateMsg);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -71,7 +79,6 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
         lastName: form.lastName,
         phoneNumber: normalizePhoneNumber(form.phoneNumber),
         email: form.email || undefined,
-        dateOfBirth: form.dateOfBirth || undefined,
         gender: form.gender ? form.gender.toLowerCase() : undefined,
         streetLine1: form.streetLine1 || undefined,
         apartmentNo: form.apartmentNo || undefined,
@@ -79,6 +86,9 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
         state: form.state || undefined,
         postalCode: form.postalCode || undefined,
         country: form.country || undefined,
+        baptismName: form.baptismName || undefined,
+        interestedInServing: form.interestedInServing ? String(form.interestedInServing).toLowerCase() : undefined,
+        yearlyPledge: form.yearlyPledge ? Number(form.yearlyPledge) : undefined,
         role: form.role || 'member',
       };
 
@@ -121,6 +131,55 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Phone first */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+              <input
+                name="phoneNumber"
+                value={form.phoneNumber}
+                onChange={handleChange}
+                onBlur={async () => {
+                  setPhoneDuplicateMsg(null);
+                  if (!form.phoneNumber || !isValidPhoneNumber(form.phoneNumber)) return;
+                  try {
+                    setPhoneCheckLoading(true);
+                    const idToken = firebaseUser ? await firebaseUser.getIdToken() : undefined;
+                    const normalized = normalizePhoneNumber(form.phoneNumber);
+                    const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/members/check-phone/${encodeURIComponent(normalized)}`, {
+                      headers: {
+                        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+                      },
+                    });
+                    const data = await resp.json().catch(() => ({}));
+                    if (resp.ok && data?.data?.exists) {
+                      const { firstName, lastName } = data.data;
+                      setPhoneDuplicateMsg(`A member with this phone already exists: ${firstName} ${lastName}`);
+                    } else {
+                      setPhoneDuplicateMsg(null);
+                    }
+                  } catch (e) {
+                    // Non-blocking: fail open
+                    setPhoneDuplicateMsg(null);
+                  } finally {
+                    setPhoneCheckLoading(false);
+                  }
+                }}
+                inputMode="tel"
+                placeholder="(555) 555-1234"
+                className={`w-full px-3 py-2 border rounded ${phoneDuplicateMsg ? 'border-red-500' : ''}`}
+              />
+              <div className="mt-1 text-xs">
+                {phoneCheckLoading && <span className="text-gray-500">Checking phone…</span>}
+                {!phoneCheckLoading && phoneDuplicateMsg && (
+                  <span className="text-red-600">{phoneDuplicateMsg}</span>
+                )}
+              </div>
+            </div>
+            <div className="md:col-span-2"></div>
+          </div>
+
+          {/* Names and basic info */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
@@ -133,18 +192,6 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
               <input name="lastName" value={form.lastName} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
-              <input
-                name="phoneNumber"
-                value={form.phoneNumber}
-                onChange={handleChange}
-                inputMode="tel"
-                placeholder="(555) 555-1234"
-                className="w-full px-3 py-2 border rounded"
-              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -163,11 +210,6 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
                 <option value="priest">Priest</option>
               </select>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-              <input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
-            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
               <select name="gender" value={form.gender} onChange={handleChange} className="w-full px-3 py-2 border rounded">
@@ -176,6 +218,26 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
                 <option value="female">Female</option>
                 <option value="other">Other</option>
               </select>
+            </div>
+          </div>
+
+          {/* Spiritual and contribution info */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Baptism Name</label>
+              <input name="baptismName" value={form.baptismName} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Interested in Serving</label>
+              <select name="interestedInServing" value={form.interestedInServing} onChange={handleChange} className="w-full px-3 py-2 border rounded">
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+                <option value="maybe">Maybe</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Yearly Pledge</label>
+              <input name="yearlyPledge" type="number" min="0" step="1" value={form.yearlyPledge} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
             </div>
           </div>
 
