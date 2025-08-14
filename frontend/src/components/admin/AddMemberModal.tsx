@@ -89,6 +89,8 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
         baptismName: form.baptismName || undefined,
         interestedInServing: form.interestedInServing ? String(form.interestedInServing).toLowerCase() : undefined,
         yearlyPledge: form.yearlyPledge ? Number(form.yearlyPledge) : undefined,
+        // Admin-created members should default to head of household to bypass HoH phone requirement
+        isHeadOfHousehold: true,
         role: form.role || 'member',
       };
 
