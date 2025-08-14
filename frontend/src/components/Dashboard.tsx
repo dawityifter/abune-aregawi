@@ -122,6 +122,10 @@ const Dashboard: React.FC = () => {
     // TODO: Navigate to account settings page
   };
 
+  const handleViewBylaw = () => {
+    navigate('/church-bylaw');
+  };
+
   // Removed unused handleRefreshProfile function
 
   if (!userProfile) {
@@ -187,6 +191,35 @@ const Dashboard: React.FC = () => {
                     className="w-full bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
                   >
                     {t('view.profile')}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Church Bylaw Card */}
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                      <i className="fas fa-book-open text-indigo-800"></i>
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Church Bylaw
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      View church bylaws (EN/ትግ)
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <button 
+                    onClick={handleViewBylaw}
+                    className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+                  >
+                    View Bylaw
                   </button>
                 </div>
               </div>

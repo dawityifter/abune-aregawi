@@ -75,7 +75,8 @@ jspm_packages/
 
 # Gatsby files
 .cache/
-public
+# Do NOT ignore all public directories; only ignore root /public (for Next.js etc.)
+# Keeping frontend/public tracked for React static assets
 
 # Storybook build outputs
 .out
@@ -258,3 +259,5 @@ dev/
 
 # Ignore all member full list CSVs containing PII data
 Member-full-list*.csv
+# Private data
+church-members-list.csv
