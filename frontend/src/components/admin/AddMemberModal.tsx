@@ -26,6 +26,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
     postalCode: '',
     country: 'USA',
     baptismName: '',
+    repentanceFather: '',
     interestedInServing: 'maybe',
     yearlyPledge: '',
   });
@@ -92,6 +93,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
         postalCode: form.postalCode || undefined,
         country: form.country || undefined,
         baptismName: form.baptismName || undefined,
+        repentanceFather: form.repentanceFather || undefined,
         interestedInServing: form.interestedInServing ? String(form.interestedInServing).toLowerCase() : undefined,
         yearlyPledge: form.yearlyPledge ? Number(form.yearlyPledge) : undefined,
         // Admin-created members should default to head of household to bypass HoH phone requirement
@@ -223,6 +225,10 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Baptism Name</label>
               <input name="baptismName" value={form.baptismName} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Repentance Father</label>
+              <input name="repentanceFather" value={form.repentanceFather} onChange={handleChange} className="w-full px-3 py-2 border rounded" placeholder="e.g. Fr. Gebremariam" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Interested in Serving</label>
