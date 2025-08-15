@@ -35,6 +35,7 @@ const SignIn: React.FC = () => {
   const [phone, setPhone] = useState(''); // Start with empty phone number
   const [otp, setOtp] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
+  const [redirecting, setRedirecting] = useState(false);
 
   // Validate confirmationResult when it changes
   useEffect(() => {
@@ -308,8 +309,11 @@ const SignIn: React.FC = () => {
           window.recaptchaVerifier = undefined;
         }
       }
-      
-      console.log('🔄 Login successful, reCAPTCHA cleaned up, AuthContext will handle navigation...');
+      // Avoid showing the login screen during post-auth processing
+      setRedirecting(true);
+      // Navigate away from /login immediately; AuthContext/ProtectedRoute will settle to dashboard or registration
+      navigate('/dashboard', { replace: true });
+      console.log('🔄 Login successful, navigating to /dashboard to avoid /login flash while AuthContext finalizes.');
     } catch (err: any) {
       setOtpVerifying(false);
       
