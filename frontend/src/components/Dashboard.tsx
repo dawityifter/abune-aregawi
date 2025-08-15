@@ -26,7 +26,7 @@ interface UserProfile {
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user, firebaseUser, loading: authLoading } = useAuth();
+  const { user, firebaseUser, loading: authLoading, authReady } = useAuth();
   const { t } = useLanguage();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,21 +53,33 @@ const Dashboard: React.FC = () => {
   
   // Update user profile when auth state changes
   useEffect(() => {
+    // Wait until initial Firebase auth state is resolved
+    if (!authReady) {
+      setLoading(true);
+      return;
+    }
+
     if (user) {
       setUserProfile(user);
       setLoading(false);
-    } else if (!authLoading && !firebaseUser) {
-      // If not loading and no user, redirect to login
+      return;
+    }
+
+    if (!authLoading && !firebaseUser) {
+      // If auth is ready and no firebase user, redirect to login
       navigate('/login');
-    } else if (authLoading) {
+      return;
+    }
+
+    if (authLoading) {
       setLoading(true);
     } else {
       setLoading(false);
     }
-  }, [user, firebaseUser, authLoading, navigate]);
+  }, [user, firebaseUser, authLoading, authReady, navigate]);
   
-  // Show loading state while checking if we need to fetch profile
-  if (loading) {
+  // Show loading state while auth is initializing or loading
+  if (!authReady || loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
