@@ -44,6 +44,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
+  // If Firebase user exists but app user profile hasn't been resolved yet, wait
+  if (firebaseUser && !currentUser) {
+    console.log('⏳ ProtectedRoute: Firebase user present but app user not ready; showing loader');
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-800"></div>
+      </div>
+    );
+  }
+
   // Handle unauthenticated users
   if (!firebaseUser && !currentUser) {
     console.log('❌ ProtectedRoute: No user found, redirecting to login');
@@ -51,7 +61,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Handle temporary users (wait instead of redirecting)
-  if (currentUser._temp && !allowTempUser) {
+  if (currentUser && currentUser._temp && !allowTempUser) {
     console.log('⏳ ProtectedRoute: Temporary user detected, waiting for full profile before allowing access');
     return (
       <div className="min-h-screen flex items-center justify-center">
