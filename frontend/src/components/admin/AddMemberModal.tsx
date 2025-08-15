@@ -228,7 +228,17 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Repentance Father</label>
-              <input name="repentanceFather" value={form.repentanceFather} onChange={handleChange} className="w-full px-3 py-2 border rounded" placeholder="e.g. Fr. Gebremariam" />
+              <select
+                name="repentanceFather"
+                value={form.repentanceFather}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border rounded"
+              >
+                <option value="">-- Select --</option>
+                <option value="H.G Abune Kerlos">H.G Abune Kerlos</option>
+                <option value="M.T Kesis Tadesse">M.T Kesis Tadesse</option>
+                <option value="M.M Kesis Seifu">M.M Kesis Seifu</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Interested in Serving</label>
