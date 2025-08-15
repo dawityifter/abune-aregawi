@@ -615,37 +615,39 @@ const SignIn: React.FC = () => {
               </div>
             )}
             
-            <button 
-              type="submit" 
-              disabled={loading || !isValidPhoneNumber(phone) || !recaptchaSolved} 
-              className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-all duration-300 ${
-                loading || !isValidPhoneNumber(phone) || !recaptchaSolved
-                  ? "bg-accent-400 cursor-not-allowed" 
-                  : "bg-primary-700 hover:bg-primary-800 transform hover:-translate-y-0.5 shadow-lg"
-              }`}
-            >
-              {loading ? (
-                <>
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
-                  Sending OTP...
-                </>
-              ) : !isValidPhoneNumber(phone) ? (
-                <>
-                  <i className="fas fa-keyboard mr-2"></i>
-                  Enter 10 Digits
-                </>
-              ) : recaptchaSolved ? (
-                <>
-                  <i className="fas fa-paper-plane mr-2"></i>
-                  Send OTP
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-shield-alt mr-2"></i>
-                  Complete reCAPTCHA First
-                </>
-              )}
-            </button>
+            <div className="mt-4 md:mt-6 sticky md:static bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur supports-backdrop-blur:bg-white/80 py-2">
+              <button 
+                type="submit" 
+                disabled={loading || !isValidPhoneNumber(phone) || !recaptchaSolved} 
+                className={`w-full py-4 px-5 rounded-xl font-semibold sm:font-bold text-base sm:text-lg transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 ${
+                  loading || !isValidPhoneNumber(phone) || !recaptchaSolved
+                    ? "bg-gray-300 text-gray-600 cursor-not-allowed ring-2 ring-primary-300/60 shadow"
+                    : "text-white bg-primary-700 hover:bg-primary-800 shadow-xl ring-2 ring-primary-600 hover:-translate-y-0.5"
+                }`}
+              >
+                {loading ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                    Sending OTP...
+                  </>
+                ) : !isValidPhoneNumber(phone) ? (
+                  <>
+                    <i className="fas fa-keyboard mr-2"></i>
+                    Enter 10 Digits
+                  </>
+                ) : recaptchaSolved ? (
+                  <>
+                    <i className="fas fa-paper-plane mr-2"></i>
+                    Send OTP
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-shield-alt mr-2"></i>
+                    Complete reCAPTCHA First
+                  </>
+                )}
+              </button>
+            </div>
           </form>
         )}
         {method === "phone" && featureFlags.enablePhoneAuth && confirmationResult && (
