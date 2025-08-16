@@ -185,6 +185,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
               onEditMember={handleEditMember}
               canEditMembers={permissions.canEditAllMembers}
               canDeleteMembers={permissions.canDeleteMembers}
+              canRegisterMembers={permissions.canRegisterMembers}
             />
           )}
           
@@ -205,6 +206,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
           onClose={handleCloseEditModal}
           onMemberUpdated={handleMemberUpdated}
           canEditMembers={permissions.canEditAllMembers}
+          canManageRoles={permissions.canManageRoles}
         />
       )}
     </div>

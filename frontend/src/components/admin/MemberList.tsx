@@ -23,12 +23,14 @@ interface MemberListProps {
   onEditMember: (member: Member) => void;
   canEditMembers: boolean;
   canDeleteMembers: boolean;
+  canRegisterMembers: boolean;
 }
 
 const MemberList: React.FC<MemberListProps> = ({ 
   onEditMember, 
   canEditMembers, 
-  canDeleteMembers 
+  canDeleteMembers,
+  canRegisterMembers
 }) => {
   const { t } = useLanguage();
   const { currentUser, firebaseUser } = useAuth();
@@ -190,13 +192,15 @@ const MemberList: React.FC<MemberListProps> = ({
           </p>
         </div>
         <div>
-          <button
-            onClick={() => setShowAddMember(true)}
-            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-          >
-            <i className="fas fa-user-plus mr-2"></i>
-            {t('add.member') || 'Add Member'}
-          </button>
+          {canRegisterMembers && (
+            <button
+              onClick={() => setShowAddMember(true)}
+              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+            >
+              <i className="fas fa-user-plus mr-2"></i>
+              {t('add.member') || 'Add Member'}
+            </button>
+          )}
         </div>
       </div>
 
