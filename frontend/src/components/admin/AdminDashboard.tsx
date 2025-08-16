@@ -74,18 +74,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     );
   }
 
-  // Check if user has admin permissions
+  // Determine role and permissions
   const userRole = userProfile?.data?.member?.role || 'member';
   const permissions = getRolePermissions(userRole as UserRole);
-  
+
+  // Broaden access: allow roles with member-management capabilities to access this page
+  const canAccessThisPage =
+    permissions.canAccessAdminPanel ||
+    permissions.canViewAllMembers ||
+    permissions.canEditAllMembers ||
+    permissions.canRegisterMembers;
+
   // Debug logging for admin dashboard
   console.log('🔍 AdminDashboard Debug Info:');
   console.log('  User Profile:', userProfile);
   console.log('  User Role:', userRole);
   console.log('  Permissions:', permissions);
-  console.log('  Can Access Admin Panel:', permissions.canAccessAdminPanel);
+  console.log('  Access Gate -> canAccessThisPage:', canAccessThisPage);
 
-  if (!permissions.canAccessAdminPanel) {
+  if (!canAccessThisPage) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -93,7 +100,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             Access Denied
           </div>
           <p className="text-gray-600 mb-4">
-            Administrator access is required to view this page.
+            You don't have permission to view this page.
           </p>
           <button 
             onClick={() => window.history.back()} 
