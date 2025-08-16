@@ -31,6 +31,16 @@ const Dashboard: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Temp user CTA timer should be declared at top-level, not conditionally
+  const [showTempCta, setShowTempCta] = useState(false);
+  useEffect(() => {
+    if (!(user?._temp)) {
+      setShowTempCta(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowTempCta(true), 10000);
+    return () => clearTimeout(timer);
+  }, [user]);
 
   // Get user's display name for the welcome message
   const userName = user?.first_name || user?.data?.member?.firstName || firebaseUser?.displayName || 'User';
@@ -87,14 +97,6 @@ const Dashboard: React.FC = () => {
     );
   }
   
-  // Handle temporary user state with timeout + CTA
-  const [showTempCta, setShowTempCta] = useState(false);
-  useEffect(() => {
-    if (!isTempUser) return;
-    const timer = setTimeout(() => setShowTempCta(true), 10000); // 10s
-    return () => clearTimeout(timer);
-  }, [isTempUser]);
-
   if (isTempUser) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
