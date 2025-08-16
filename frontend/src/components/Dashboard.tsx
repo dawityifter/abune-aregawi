@@ -87,7 +87,14 @@ const Dashboard: React.FC = () => {
     );
   }
   
-  // Handle temporary user state
+  // Handle temporary user state with timeout + CTA
+  const [showTempCta, setShowTempCta] = useState(false);
+  useEffect(() => {
+    if (!isTempUser) return;
+    const timer = setTimeout(() => setShowTempCta(true), 10000); // 10s
+    return () => clearTimeout(timer);
+  }, [isTempUser]);
+
   if (isTempUser) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -97,9 +104,25 @@ const Dashboard: React.FC = () => {
             <p className="text-gray-600 mb-6">
               We're setting up your account. This will just take a moment...
             </p>
-            <div className="flex justify-center">
+            <div className="flex justify-center mb-6">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
             </div>
+            {showTempCta && (
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={() => navigate('/register')}
+                  className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
+                >
+                  Complete Registration
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 border rounded hover:bg-gray-50"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
