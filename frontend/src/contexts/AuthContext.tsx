@@ -87,6 +87,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
+      // If we have neither email nor phone, assume new user and skip backend 400s
+      if (!email && !phone) {
+        console.log('⚠️ No email or phone available; treating as new user');
+        setNewUserCache(prev => new Set([...Array.from(prev), uid]));
+        return null;
+      }
+
       const params = new URLSearchParams();
       
       if (email) {
@@ -107,26 +114,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
       console.log('🔍 Backend check URL:', apiUrl);
       
-      const response = await fetch(apiUrl);
-      console.log('🔍 Backend response status:', response.status);
-      
-      if (response.status === 200) {
-        const responseData = await response.json();
-        console.log('✅ Backend user found:', responseData);
-        // Extract the member data from the response structure
-        return responseData.data?.member || responseData;
-      } else if (response.status === 404) {
-        console.log('❌ Backend user not found (status: 404)');
-        // Cache this user as new to prevent future API calls
-        setNewUserCache(prev => new Set([...Array.from(prev), uid]));
-        return null;
-      } else {
-        // For 5xx or other unexpected statuses, surface the error to caller
-        const err: any = new Error(`Backend error: ${response.status}`);
-        err.status = response.status;
-        console.log('⚠️ Backend error status (will throw):', response.status);
-        throw err;
+      // Retry/backoff for transient errors
+      const maxAttempts = 3;
+      let lastError: any = null;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const response = await fetch(apiUrl);
+          console.log(`🔍 Backend response status (attempt ${attempt}):`, response.status);
+
+          if (response.status === 200) {
+            const responseData = await response.json();
+            console.log('✅ Backend user found:', responseData);
+            return responseData.data?.member || responseData;
+          }
+
+          if (response.status === 404) {
+            console.log('❌ Backend user not found (status: 404)');
+            setNewUserCache(prev => new Set([...Array.from(prev), uid]));
+            return null;
+          }
+
+          if (response.status === 400) {
+            // Treat 400 (e.g., missing identifiers) as new user to avoid hangs
+            console.log('⚠️ Backend returned 400; treating as new user');
+            setNewUserCache(prev => new Set([...Array.from(prev), uid]));
+            return null;
+          }
+
+          if (response.status === 429 || response.status >= 500) {
+            const err: any = new Error(`Transient backend error: ${response.status}`);
+            err.status = response.status;
+            throw err;
+          }
+
+          // Other unexpected statuses: throw without retrying
+          const err: any = new Error(`Backend error: ${response.status}`);
+          err.status = response.status;
+          throw err;
+        } catch (err) {
+          lastError = err;
+          if (attempt < maxAttempts) {
+            const delay = 500 * Math.pow(2, attempt - 1); // 500ms, 1000ms
+            console.log(`⏳ Retry backend profile check in ${delay}ms (attempt ${attempt} failed)`);
+            await new Promise(res => setTimeout(res, delay));
+            continue;
+          }
+          break;
+        }
       }
+      throw lastError;
     } catch (error) {
       console.error('Error checking user profile:', error);
       // Re-throw so caller can decide navigation behavior
@@ -371,18 +407,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (error: any) {
         console.error('Error in auth state change handler:', error);
-        // If the backend explicitly said 404 (handled above), we'd have navigated.
-        // For other errors (e.g., 5xx), do NOT navigate to register. Keep user signed in
-        // and allow the app to retry or the user to refresh.
-        setUser((prev: any) => ({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          phoneNumber,
-          // Preserve prior _temp if set; otherwise mark unknown status without forcing register
-          _temp: prev?._temp ?? true,
-          role: 'member'
-        }));
-        // Optionally, we could show a toast elsewhere. Avoid navigation here to prevent loops.
+        // Do not force temp user on transient errors; surface error and let UI offer retry/CTA
+        setError('Failed to load profile. Please try again.');
+        // Leave user unchanged to avoid permanent temp/spinner state
       }
       // Initial auth state has been processed
       setAuthReady(true);
