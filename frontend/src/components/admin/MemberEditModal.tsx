@@ -39,13 +39,15 @@ interface MemberEditModalProps {
   onClose: () => void;
   onMemberUpdated: () => void;
   canEditMembers: boolean;
+  canManageRoles: boolean;
 }
 
 const MemberEditModal: React.FC<MemberEditModalProps> = ({
   member,
   onClose,
   onMemberUpdated,
-  canEditMembers
+  canEditMembers,
+  canManageRoles
 }) => {
   const { t } = useLanguage();
   const { currentUser, firebaseUser } = useAuth();
@@ -79,12 +81,17 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
     try {
       const idToken = firebaseUser ? await firebaseUser.getIdToken() : null;
       // Prepare payload with correct formats expected by backend
-      const payload = {
+      const payload: any = {
         ...formData,
         interestedInServing: formData.interestedInServing
           ? formData.interestedInServing.toLowerCase()
           : undefined,
       };
+
+      // If the user cannot manage roles, do not send role changes
+      if (!canManageRoles) {
+        delete payload.role;
+      }
 
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${member.id}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         method: 'PUT',
@@ -224,7 +231,9 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   value={formData.role}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  disabled={!canManageRoles}
+                  title={!canManageRoles ? t('no.permission.to.change.role') : ''}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${!canManageRoles ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 >
                   <option value="member">Member</option>
                   <option value="secretary">Secretary</option>

@@ -125,7 +125,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canViewEventPlanning: false,
     
     // System Administration
-    canAccessAdminPanel: false,
+    canAccessAdminPanel: true,
     canManageRoles: false,
     canViewSystemLogs: false,
     
