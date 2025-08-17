@@ -125,7 +125,7 @@ graph TB
 - **Member Registration**: Multi-step registration form with comprehensive validation
 - **Children Management**: Add, edit, and manage dependents with phone number formatting
 - **User Authentication**: Dual Firebase Auth (Phone + Email) with feature flags
-- **Role-Based Access Control**: Six-tier role system with proper admin access
+- **Role-Based Access Control**: Seven-tier role system with proper admin access
 - **Profile Management**: Separate name fields (first, middle, last) with backend sync
 - **Responsive Design**: Mobile-first approach with custom church theme
 - **Phone Authentication**: reCAPTCHA Enterprise with test number bypass
@@ -264,7 +264,7 @@ erDiagram
 
 ## 👥 Role-Based Access Control (RBAC)
 
-The system implements a comprehensive role-based access control system with six distinct roles, each with specific permissions and access levels. This ensures that users can only access features and data appropriate to their role within the church community.
+The system implements a comprehensive role-based access control system with seven distinct roles, each with specific permissions and access levels. This ensures that users can only access features and data appropriate to their role within the church community.
 
 ### 🔑 Role Hierarchy
 
@@ -274,17 +274,20 @@ graph TD
     A[Guest] --> B[Member]
     B --> C[Secretary]
     B --> D[Treasurer]
-    B --> E[Church Leadership]
-    C --> F[Admin]
-    D --> F
-    E --> F
+    B --> E[🤝 Relationship Department]
+    B --> F[Church Leadership]
+    C --> G[Admin]
+    D --> G
+    E --> G
+    F --> G
     
     style A fill:#ff9999
     style B fill:#99ccff
     style C fill:#99ff99
     style D fill:#ffcc99
-    style E fill:#cc99ff
-    style F fill:#ff6666
+    style E fill:#ffe599
+    style F fill:#cc99ff
+    style G fill:#ff6666
 ```
 
 ### 📋 Role Descriptions & Permissions
@@ -360,6 +363,26 @@ graph TD
 - ❌ Cannot modify member records
 - ❌ No access to member management features
 - ❌ Cannot change system settings
+
+---
+
+#### 🤝 **Relationship Department** (Engagement & Care)
+**Description**: Team focused on member engagement, care, and follow-up. Oversees visitor welcome, conflict resolution coordination, and community relationship-building.
+
+**Permissions**:
+- ✅ All Member permissions
+- ✅ View member directory (read-only)
+- ✅ Manage contact and relationship notes for members
+- ✅ Assign and track follow-ups (visitors, inactive members, care requests)
+- ✅ Access engagement metrics and simple reports
+- ✅ Export contact lists for outreach
+- ✅ Use approved communication templates (email/SMS) where available
+
+**Restrictions**:
+- ❌ No access to financial reports or contribution details
+- ❌ Cannot change member roles or statuses
+- ❌ Cannot edit core member records (name, DOB, household) beyond notes and follow-up fields
+- ❌ No access to system settings or admin features
 
 ---
 
@@ -611,5 +634,5 @@ This project is created for the Debre Tsehay Abune Aregawi Tigray Orthodox Tewah
 
 *Built with love for the Tigray Orthodox Christian community* 
 
-**Last Updated**: July 2025
+**Last Updated**: August 2025
 **Version**: 1.1.0 
