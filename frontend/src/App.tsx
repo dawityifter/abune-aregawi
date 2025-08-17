@@ -7,6 +7,7 @@ import MemberRegistration from './components/auth/MemberRegistration';
 import SignIn from './components/auth/SignIn';
 import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
+import OutreachDashboard from './components/admin/OutreachDashboard';
 import TreasurerDashboard from './components/admin/TreasurerDashboard';
 import Profile from './components/Profile';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -52,6 +53,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <TreasurerDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/outreach" 
+                element={
+                  <ProtectedRoute>
+                    <OutreachDashboard />
                   </ProtectedRoute>
                 } 
               />

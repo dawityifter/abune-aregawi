@@ -138,7 +138,14 @@ const Navigation: React.FC = () => {
                     {t('navigation.admin')}
                   </Link>
                 )}
-                
+                {(permissions.canAccessOutreachDashboard || permissions.canManageOnboarding) && (
+                  <Link
+                    to="/outreach"
+                    className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
+                  >
+                    Outreach
+                  </Link>
+                )}
                 {/* Profile link removed as requested */}
               </>
             )}
@@ -280,6 +287,16 @@ const Navigation: React.FC = () => {
                   >
                     <i className="fas fa-shield-alt mr-3 w-5 text-center"></i>
                     {t('navigation.admin')}
+                  </Link>
+                )}
+                {(permissions.canAccessOutreachDashboard || permissions.canManageOnboarding) && (
+                  <Link
+                    to="/outreach"
+                    className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <i className="fas fa-hands-helping mr-3 w-5 text-center"></i>
+                    Outreach
                   </Link>
                 )}
                 
