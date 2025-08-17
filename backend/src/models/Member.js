@@ -179,7 +179,7 @@ module.exports = (sequelize) => {
       field: 'family_id'
     },
     role: {
-      type: DataTypes.ENUM('member', 'admin', 'treasurer', 'secretary', 'church_leadership', 'guest', 'deacon', 'priest'),
+      type: DataTypes.ENUM('member', 'admin', 'treasurer', 'secretary', 'church_leadership', 'relationship', 'guest', 'deacon', 'priest'),
       allowNull: false,
       defaultValue: 'member'
     },
@@ -194,6 +194,32 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 'pending',
       field: 'registration_status'
+    },
+    // Onboarding / Welcome tracking
+    is_welcomed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: 'Whether the member has been welcomed by the Relationship Department',
+      field: 'is_welcomed'
+    },
+    welcomed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'Timestamp when the member was welcomed',
+      field: 'welcomed_at'
+    },
+    welcomed_by: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      comment: 'Member ID of the staff/admin who marked as welcomed',
+      references: {
+        model: 'members',
+        key: 'id'
+      },
+      onUpdate: 'SET NULL',
+      onDelete: 'SET NULL',
+      field: 'welcomed_by'
     },
     interested_in_serving: {
       type: DataTypes.ENUM('yes', 'no', 'maybe'),

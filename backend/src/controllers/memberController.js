@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const { Member, Dependent } = require('../models');
+const { newMemberRegistered } = require('../utils/notifications');
 
 // Utility function to normalize phone numbers
 const normalizePhoneNumber = (phoneNumber) => {
@@ -19,6 +20,92 @@ const normalizePhoneNumber = (phoneNumber) => {
   
   // Otherwise, remove all non-digits
   return trimmed.replace(/[^\d]/g, '');
+};
+
+// List members pending welcome (admin/relationship)
+exports.getPendingWelcomes = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const where = {
+      is_welcomed: false,
+      is_active: true,
+    };
+
+    const { count, rows } = await Member.findAndCountAll({
+      where,
+      attributes: [
+        'id', 'first_name', 'last_name', 'email', 'phone_number', 'created_at', 'registration_status'
+      ],
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+    });
+
+    const members = rows.map(m => ({
+      id: m.id,
+      firstName: m.first_name,
+      lastName: m.last_name,
+      email: m.email,
+      phoneNumber: m.phone_number,
+      createdAt: m.created_at,
+      registrationStatus: m.registration_status,
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        members,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(count / limit),
+          totalMembers: count,
+          hasNext: page * limit < count,
+          hasPrev: page > 1,
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get pending welcomes error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// Mark a member as welcomed (admin/relationship)
+exports.markWelcomed = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const actorId = req.user.id;
+
+    const member = await Member.findByPk(id);
+    if (!member) {
+      return res.status(404).json({ success: false, message: 'Member not found' });
+    }
+
+    if (member.is_welcomed) {
+      return res.status(200).json({
+        success: true,
+        message: 'Member already marked as welcomed',
+        data: { id: member.id, isWelcomed: true, welcomedAt: member.welcomed_at, welcomedBy: member.welcomed_by }
+      });
+    }
+
+    await member.update({
+      is_welcomed: true,
+      welcomed_at: new Date(),
+      welcomed_by: actorId,
+    });
+
+    res.json({
+      success: true,
+      message: 'Member marked as welcomed',
+      data: { id: member.id, isWelcomed: true, welcomedAt: member.welcomed_at, welcomedBy: member.welcomed_by }
+    });
+  } catch (error) {
+    console.error('Mark welcomed error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
 };
 
 // Register new member with Firebase UID
@@ -327,6 +414,19 @@ exports.register = async (req, res) => {
         as: 'dependents'
       }]
     });
+
+    // Notify outreach/relationship team of new registration (env-driven)
+    try {
+      newMemberRegistered({
+        id: member.id,
+        firstName: member.first_name,
+        lastName: member.last_name,
+        phoneNumber: member.phone_number,
+        email: member.email,
+      });
+    } catch (e) {
+      console.warn('New member notification failed (non-blocking):', e.message);
+    }
 
     res.status(201).json({
       success: true,

@@ -93,6 +93,18 @@ router.use(firebaseAuthMiddleware);
 router.get('/profile', memberController.getProfile);
 router.put('/profile', validateProfileUpdate, memberController.updateProfile);
 
+// Onboarding / Outreach routes
+router.get('/onboarding/pending', 
+  roleMiddleware(['admin', 'relationship']), 
+  memberController.getPendingWelcomes
+);
+
+router.post('/:id/mark-welcomed', 
+  roleMiddleware(['admin', 'relationship']), 
+  validateMemberId, 
+  memberController.markWelcomed
+);
+
 // Admin routes (require admin role)
 router.get('/all', 
   roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), 
