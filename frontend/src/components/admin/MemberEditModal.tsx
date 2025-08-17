@@ -86,6 +86,13 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
         interestedInServing: formData.interestedInServing
           ? formData.interestedInServing.toLowerCase()
           : undefined,
+        // Ensure enums match backend expectations
+        maritalStatus: typeof formData.maritalStatus === 'string'
+          ? formData.maritalStatus.toLowerCase()
+          : undefined,
+        gender: typeof formData.gender === 'string'
+          ? formData.gender.toLowerCase()
+          : undefined,
       };
 
       // If the user cannot manage roles, do not send role changes
