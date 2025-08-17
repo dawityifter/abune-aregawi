@@ -17,6 +17,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'stats'>('members');
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [refreshToken, setRefreshToken] = useState<number>(0);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -62,8 +63,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const handleMemberUpdated = () => {
     setShowEditModal(false);
     setSelectedMember(null);
-    // Refresh member list
-    window.location.reload();
+    // Refresh member list without page reload and stay on Manage Members tab
+    setActiveTab('members');
+    setRefreshToken((v) => v + 1);
   };
 
   if (loading) {
@@ -193,6 +195,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
               canEditMembers={permissions.canEditAllMembers}
               canDeleteMembers={permissions.canDeleteMembers}
               canRegisterMembers={permissions.canRegisterMembers}
+              refreshToken={refreshToken}
             />
           )}
           

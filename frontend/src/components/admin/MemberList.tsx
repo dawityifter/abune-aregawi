@@ -24,13 +24,15 @@ interface MemberListProps {
   canEditMembers: boolean;
   canDeleteMembers: boolean;
   canRegisterMembers: boolean;
+  refreshToken?: number;
 }
 
 const MemberList: React.FC<MemberListProps> = ({ 
   onEditMember, 
   canEditMembers, 
   canDeleteMembers,
-  canRegisterMembers
+  canRegisterMembers,
+  refreshToken
 }) => {
   const { t } = useLanguage();
   const { currentUser, firebaseUser } = useAuth();
@@ -116,7 +118,8 @@ const MemberList: React.FC<MemberListProps> = ({
 
   useEffect(() => {
     fetchAllMembers();
-  }, []);
+    // Refetch when refreshToken changes (e.g., after edit)
+  }, [refreshToken]);
 
   // Reset to first page when filters change
   useEffect(() => {
