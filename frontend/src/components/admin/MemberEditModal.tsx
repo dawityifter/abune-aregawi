@@ -51,13 +51,27 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 }) => {
   const { t } = useLanguage();
   const { currentUser, firebaseUser } = useAuth();
-  const [formData, setFormData] = useState<Member>(member);
+  // Normalize incoming member data to ensure enums are lowercase and snake_case is mapped
+  const normalizeMemberForForm = (m: Member | any): Member => {
+    const marital = (m?.maritalStatus ?? m?.marital_status ?? '').toString();
+    return {
+      ...m,
+      maritalStatus: marital ? marital.toLowerCase() : undefined,
+      gender: typeof m?.gender === 'string' ? m.gender.toLowerCase() : m?.gender,
+      interestedInServing:
+        typeof m?.interestedInServing === 'string'
+          ? m.interestedInServing.toLowerCase()
+          : m?.interestedInServing,
+    } as Member;
+  };
+
+  const [formData, setFormData] = useState<Member>(normalizeMemberForForm(member));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'basic' | 'contact' | 'spiritual' | 'family'>('basic');
 
   useEffect(() => {
-    setFormData(member);
+    setFormData(normalizeMemberForForm(member));
   }, [member]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
