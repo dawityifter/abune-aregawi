@@ -624,7 +624,61 @@ exports.updateProfile = async (req, res) => {
     // Remove sensitive fields that shouldn't be updated via this endpoint
     const { password, role, isActive, memberId, ...updateData } = req.body;
 
-    await member.update(updateData);
+    // Support both camelCase and snake_case from clients
+    if (updateData.maritalStatus === undefined && typeof req.body.marital_status === 'string') {
+      updateData.maritalStatus = req.body.marital_status;
+    }
+    if (updateData.gender === undefined && typeof req.body.gender === 'string') {
+      updateData.gender = req.body.gender;
+    }
+    if (updateData.interestedInServing === undefined && typeof req.body.interested_in_serving === 'string') {
+      updateData.interestedInServing = req.body.interested_in_serving;
+    }
+
+    // Normalize enums
+    if (typeof updateData.gender === 'string') updateData.gender = updateData.gender.toLowerCase();
+    if (typeof updateData.maritalStatus === 'string') updateData.maritalStatus = updateData.maritalStatus.toLowerCase();
+
+    // Map camelCase -> snake_case for DB
+    const mappedUpdateData = {
+      first_name: updateData.firstName,
+      middle_name: updateData.middleName,
+      last_name: updateData.lastName,
+      email: updateData.email,
+      phone_number: updateData.phoneNumber,
+      date_of_birth: updateData.dateOfBirth,
+      gender: updateData.gender,
+      marital_status: updateData.maritalStatus,
+      emergency_contact_name: updateData.emergencyContactName,
+      emergency_contact_phone: updateData.emergencyContactPhone,
+      ministries: updateData.ministries,
+      language_preference: updateData.languagePreference,
+      date_joined_parish: updateData.dateJoinedParish,
+      baptism_name: updateData.baptismName,
+      interested_in_serving: updateData.interestedInServing,
+      street_line1: updateData.streetLine1,
+      apartment_no: updateData.apartmentNo,
+      city: updateData.city,
+      state: updateData.state,
+      postal_code: updateData.postalCode,
+      country: updateData.country,
+      spouse_name: updateData.spouseName,
+      household_size: updateData.householdSize,
+      repentance_father: updateData.repentanceFather
+    };
+
+    // Drop undefined so we don't overwrite with null
+    Object.keys(mappedUpdateData).forEach(k => {
+      if (mappedUpdateData[k] === undefined) delete mappedUpdateData[k];
+    });
+
+    console.log('🔍 updateProfile mapped data:', mappedUpdateData);
+
+    await member.update(mappedUpdateData);
+
+    // Verify saved value
+    const reloaded = await Member.findByPk(member.id);
+    console.log('✅ Saved marital_status (updateProfile):', reloaded.marital_status);
 
     // Update dependents if provided (legacy field name 'dependants')
     if (req.body.dependants && Array.isArray(req.body.dependants)) {
@@ -859,8 +913,61 @@ exports.updateMember = async (req, res) => {
         message: 'Member not found'
       });
     }
+    // Remove sensitive/unexpected fields and normalize
+    const { password, role, isActive, memberId, ...updateData } = req.body;
 
-    await member.update(req.body);
+    // Support both camelCase and snake_case inputs
+    if (updateData.maritalStatus === undefined && typeof req.body.marital_status === 'string') {
+      updateData.maritalStatus = req.body.marital_status;
+    }
+    if (updateData.gender === undefined && typeof req.body.gender === 'string') {
+      updateData.gender = req.body.gender;
+    }
+    if (updateData.interestedInServing === undefined && typeof req.body.interested_in_serving === 'string') {
+      updateData.interestedInServing = req.body.interested_in_serving;
+    }
+
+    if (typeof updateData.gender === 'string') updateData.gender = updateData.gender.toLowerCase();
+    if (typeof updateData.maritalStatus === 'string') updateData.maritalStatus = updateData.maritalStatus.toLowerCase();
+    if (typeof updateData.interestedInServing === 'string') updateData.interestedInServing = updateData.interestedInServing.toLowerCase();
+
+    // Map camelCase -> snake_case
+    const mappedUpdateData = {
+      first_name: updateData.firstName,
+      middle_name: updateData.middleName,
+      last_name: updateData.lastName,
+      email: updateData.email,
+      phone_number: updateData.phoneNumber,
+      date_of_birth: updateData.dateOfBirth,
+      gender: updateData.gender,
+      marital_status: updateData.maritalStatus,
+      emergency_contact_name: updateData.emergencyContactName,
+      emergency_contact_phone: updateData.emergencyContactPhone,
+      ministries: updateData.ministries,
+      language_preference: updateData.languagePreference,
+      date_joined_parish: updateData.dateJoinedParish,
+      baptism_name: updateData.baptismName,
+      interested_in_serving: updateData.interestedInServing,
+      street_line1: updateData.streetLine1,
+      apartment_no: updateData.apartmentNo,
+      city: updateData.city,
+      state: updateData.state,
+      postal_code: updateData.postalCode,
+      country: updateData.country,
+      spouse_name: updateData.spouseName,
+      household_size: updateData.householdSize,
+      repentance_father: updateData.repentanceFather,
+      family_id: updateData.familyId
+    };
+
+    Object.keys(mappedUpdateData).forEach(k => {
+      if (mappedUpdateData[k] === undefined) delete mappedUpdateData[k];
+    });
+
+    console.log('🔍 updateMember received body:', req.body);
+    console.log('🔍 updateMember mapped data:', mappedUpdateData);
+
+    await member.update(mappedUpdateData);
 
     // Update dependents if provided
     if (req.body.dependants && Array.isArray(req.body.dependants)) {
@@ -1248,6 +1355,13 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
 
     console.log('🔍 Update data received:', updateData);
 
+    // Support both camelCase and snake_case keys and normalize enums
+    if (updateData.maritalStatus === undefined && typeof req.body.marital_status === 'string') {
+      updateData.maritalStatus = req.body.marital_status;
+    }
+    if (typeof updateData.gender === 'string') updateData.gender = updateData.gender.toLowerCase();
+    if (typeof updateData.maritalStatus === 'string') updateData.maritalStatus = updateData.maritalStatus.toLowerCase();
+
     // Map camelCase field names from frontend to snake_case field names for database
     const mappedUpdateData = {
       first_name: updateData.firstName,
@@ -1284,7 +1398,9 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
 
     await member.update(mappedUpdateData);
 
-    console.log('✅ Member updated successfully');
+    // Verify saved value
+    const reloaded = await Member.findByPk(member.id);
+    console.log('✅ Member updated successfully. Saved marital_status (by Firebase UID):', reloaded.marital_status);
 
     // Fetch updated member
     const updatedMember = await Member.findByPk(member.id, {
