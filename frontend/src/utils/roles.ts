@@ -1,6 +1,6 @@
 // Role-based access control utilities
 
-export type UserRole = 'admin' | 'church_leadership' | 'treasurer' | 'secretary' | 'member' | 'guest';
+export type UserRole = 'admin' | 'church_leadership' | 'treasurer' | 'relationship' | 'secretary' | 'member' | 'guest';
 
 export interface RolePermissions {
   // Profile Management
@@ -32,6 +32,14 @@ export interface RolePermissions {
   canManageDocumentation: boolean;
   canViewLeadershipActivities: boolean;
   
+  // Outreach & Relations
+  canAccessOnboardingNotifications: boolean; // Access new member registration notifications
+  canManageOnboarding: boolean; // Contact/manage onboarding, mark welcomed
+  canAccessOutreachDashboard: boolean; // View new members, follow-up tasks
+  canRecordEngagement: boolean; // Record/track member engagement activities
+  canManageExternalPartners: boolean; // Add/edit partner org info
+  canGenerateOutreachReports: boolean; // Generate outreach/relationship reports
+
   // Public Access
   canViewPublicInfo: boolean;
 }
@@ -67,6 +75,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canManageDocumentation: true,
     canViewLeadershipActivities: true,
     
+    // Outreach & Relations
+    canAccessOnboardingNotifications: true,
+    canManageOnboarding: true,
+    canAccessOutreachDashboard: true,
+    canRecordEngagement: true,
+    canManageExternalPartners: true,
+    canGenerateOutreachReports: true,
+    
     // Public Access
     canViewPublicInfo: true,
   },
@@ -99,6 +115,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     // Documentation
     canManageDocumentation: true,
     canViewLeadershipActivities: true,
+    
+    // Outreach & Relations
+    canAccessOnboardingNotifications: false,
+    canManageOnboarding: false,
+    canAccessOutreachDashboard: false,
+    canRecordEngagement: false,
+    canManageExternalPartners: false,
+    canGenerateOutreachReports: false,
     
     // Public Access
     canViewPublicInfo: true,
@@ -133,6 +157,55 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canManageDocumentation: false,
     canViewLeadershipActivities: false,
     
+    // Outreach & Relations
+    canAccessOnboardingNotifications: false,
+    canManageOnboarding: false,
+    canAccessOutreachDashboard: false,
+    canRecordEngagement: false,
+    canManageExternalPartners: false,
+    canGenerateOutreachReports: false,
+    
+    // Public Access
+    canViewPublicInfo: true,
+  },
+  relationship: {
+    // Profile Management (inherits Member base)
+    canViewOwnProfile: true,
+    canEditOwnProfile: true,
+    canViewAllMembers: true, // Needs to view new members
+    canEditAllMembers: false, // Restricted: cannot modify treasury/secretary records; keep off for safety
+    canDeleteMembers: false, // Restricted
+    canRegisterMembers: false, // Not responsible for registration itself
+
+    // Financial Management (restricted)
+    canSubmitDonation: true, // same as Member
+    canViewFinancialRecords: false,
+    canEditFinancialRecords: false,
+    canGenerateFinancialReports: false,
+    canTrackContributions: false,
+
+    // Event & Communication
+    canManageEvents: false,
+    canSendCommunications: false,
+    canViewEventPlanning: false,
+
+    // System Administration
+    canAccessAdminPanel: false, // Access via broadened member-management gate where applicable
+    canManageRoles: false,
+    canViewSystemLogs: false,
+
+    // Documentation
+    canManageDocumentation: false,
+    canViewLeadershipActivities: false,
+
+    // Outreach & Relations
+    canAccessOnboardingNotifications: true,
+    canManageOnboarding: true,
+    canAccessOutreachDashboard: true,
+    canRecordEngagement: true,
+    canManageExternalPartners: true,
+    canGenerateOutreachReports: true,
+
     // Public Access
     canViewPublicInfo: true,
   },
@@ -165,6 +238,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     // Documentation
     canManageDocumentation: true,
     canViewLeadershipActivities: true,
+    
+    // Outreach & Relations
+    canAccessOnboardingNotifications: false,
+    canManageOnboarding: false,
+    canAccessOutreachDashboard: false,
+    canRecordEngagement: false,
+    canManageExternalPartners: false,
+    canGenerateOutreachReports: false,
     
     // Public Access
     canViewPublicInfo: true,
@@ -199,6 +280,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canManageDocumentation: false,
     canViewLeadershipActivities: false,
     
+    // Outreach & Relations
+    canAccessOnboardingNotifications: false,
+    canManageOnboarding: false,
+    canAccessOutreachDashboard: false,
+    canRecordEngagement: false,
+    canManageExternalPartners: false,
+    canGenerateOutreachReports: false,
+    
     // Public Access
     canViewPublicInfo: true,
   },
@@ -232,6 +321,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canManageDocumentation: false,
     canViewLeadershipActivities: false,
     
+    // Outreach & Relations
+    canAccessOnboardingNotifications: false,
+    canManageOnboarding: false,
+    canAccessOutreachDashboard: false,
+    canRecordEngagement: false,
+    canManageExternalPartners: false,
+    canGenerateOutreachReports: false,
+    
     // Public Access
     canViewPublicInfo: true,
   },
@@ -258,6 +355,7 @@ export const getRoleDisplayName = (role: UserRole): string => {
     admin: 'Admin/Super Admin',
     church_leadership: 'Church Leadership',
     treasurer: 'Treasurer',
+    relationship: '🤝 Relationship Department',
     secretary: 'Secretary',
     member: 'Member',
     guest: 'Guest',
@@ -270,6 +368,7 @@ export const getRoleDescription = (role: UserRole): string => {
     admin: 'Full system access - can manage all aspects of the church management system',
     church_leadership: 'Access to member management, financial reports, event planning, and leadership activities',
     treasurer: 'Financial management, contribution tracking, and reporting capabilities',
+    relationship: 'Welcomes new members, facilitates integration into the community, and maintains relationships with external relief and community organizations. Can access onboarding notifications, manage onboarding, view outreach dashboard, record engagement, manage partner orgs, and generate outreach reports (no finance or system admin access).',
     secretary: 'Member registration, documentation, and communication management',
     member: 'Basic access to own profile and limited features like donation submission',
     guest: 'Public access to general information only',
