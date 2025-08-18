@@ -731,11 +731,12 @@ exports.getAllMembers = async (req, res) => {
     const whereClause = {};
     
     if (search) {
+      // Use snake_case fields as defined in Member model
       whereClause[Op.or] = [
-        { firstName: { [Op.iLike]: `%${search}%` } },
-        { lastName: { [Op.iLike]: `%${search}%` } },
+        { first_name: { [Op.iLike]: `%${search}%` } },
+        { last_name: { [Op.iLike]: `%${search}%` } },
         { email: { [Op.iLike]: `%${search}%` } },
-        { memberId: { [Op.iLike]: `%${search}%` } }
+        { phone_number: { [Op.iLike]: `%${search}%` } }
       ];
     }
 
@@ -744,7 +745,7 @@ exports.getAllMembers = async (req, res) => {
     }
 
     if (isActive !== undefined) {
-      whereClause.isActive = isActive === 'true';
+      whereClause.is_active = isActive === 'true';
     }
 
     const { count, rows: members } = await Member.findAndCountAll({
