@@ -965,6 +965,21 @@ exports.updateMember = async (req, res) => {
       if (mappedUpdateData[k] === undefined) delete mappedUpdateData[k];
     });
 
+    // Conditionally allow ROLE updates (admin-only), with whitelist
+    const allowedRoles = ['member', 'admin', 'church_leadership', 'treasurer', 'secretary', 'relationship', 'guest'];
+    if (req.body.role && typeof req.body.role === 'string') {
+      const requestedRole = req.body.role;
+      if (req.user && req.user.role === 'admin') {
+        if (allowedRoles.includes(requestedRole)) {
+          mappedUpdateData.role = requestedRole;
+        } else {
+          console.warn('❗ Ignoring invalid role value in updateMember:', requestedRole);
+        }
+      } else {
+        console.warn('❗ Unauthorized role change attempt by', req.user ? req.user.role : 'unknown');
+      }
+    }
+
     console.log('🔍 updateMember received body:', req.body);
     console.log('🔍 updateMember mapped data:', mappedUpdateData);
 
