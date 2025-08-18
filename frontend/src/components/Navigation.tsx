@@ -146,6 +146,14 @@ const Navigation: React.FC = () => {
                     Outreach
                   </Link>
                 )}
+                {(permissions.canSendCommunications || userProfile?.data?.member?.role === 'admin' || userProfile?.data?.member?.role === 'church_leadership' || userProfile?.data?.member?.role === 'secretary') && (
+                  <Link
+                    to="/sms"
+                    className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
+                  >
+                    SMS
+                  </Link>
+                )}
                 {/* Profile link removed as requested */}
               </>
             )}
@@ -297,6 +305,16 @@ const Navigation: React.FC = () => {
                   >
                     <i className="fas fa-hands-helping mr-3 w-5 text-center"></i>
                     Outreach
+                  </Link>
+                )}
+                {(permissions.canSendCommunications || userProfile?.data?.member?.role === 'admin' || userProfile?.data?.member?.role === 'church_leadership' || userProfile?.data?.member?.role === 'secretary') && (
+                  <Link
+                    to="/sms"
+                    className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <i className="fas fa-sms mr-3 w-5 text-center"></i>
+                    SMS
                   </Link>
                 )}
                 

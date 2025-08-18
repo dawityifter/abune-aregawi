@@ -92,13 +92,19 @@ const Dependent = require('./Dependent')(sequelize);
 const Transaction = require('./Transaction')(sequelize);
 const MemberPayment = require('./MemberPayment')(sequelize);
 const Donation = require('./Donation')(sequelize);
+const Group = require('./Group')(sequelize);
+const MemberGroup = require('./MemberGroup')(sequelize);
+const SmsLog = require('./SmsLog')(sequelize);
 
 // Define associations
-Member.associate({ Dependent, Member, Transaction, MemberPayment, Donation });
-Dependent.associate({ Dependent, Member, Transaction, MemberPayment, Donation });
-Transaction.associate({ Dependent, Member, Transaction, MemberPayment, Donation });
-MemberPayment.associate({ Dependent, Member, Transaction, MemberPayment, Donation });
-Donation.associate({ Dependent, Member, Transaction, MemberPayment, Donation });
+Member.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
+Dependent.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
+Transaction.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
+MemberPayment.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
+Donation.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
+Group.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
+MemberGroup.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
+SmsLog.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
 
 // Export models and sequelize instance
 module.exports = {
@@ -107,5 +113,8 @@ module.exports = {
   Dependent,
   Transaction,
   MemberPayment,
-  Donation
+  Donation,
+  Group,
+  MemberGroup,
+  SmsLog
 }; 
