@@ -87,7 +87,10 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
             'Content-Type': 'application/json'
           }
         });
-        if (!res.ok) return; // don't overwrite on error
+        if (!res.ok) {
+          console.warn('MemberEditModal: failed to fetch member details', res.status);
+          return; // don't overwrite on error
+        }
         const data = await res.json();
         const m = data?.data?.member || data?.member || data;
         if (m) {
@@ -341,9 +344,13 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t('marital.status')}
                 </label>
+                {/**
+                 * Ensure the select shows a value even if formData hasn't updated yet by
+                 * falling back to incoming member props (camelCase or snake_case).
+                 */}
                 <select
                   name="maritalStatus"
-                  value={formData.maritalStatus || ''}
+                  value={(formData.maritalStatus ?? (member as any)?.maritalStatus ?? (member as any)?.marital_status ?? '')}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
