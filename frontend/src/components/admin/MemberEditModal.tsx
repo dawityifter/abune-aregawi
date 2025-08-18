@@ -290,6 +290,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   <option value="secretary">Secretary</option>
                   <option value="treasurer">Treasurer</option>
                   <option value="church_leadership">Church Leadership</option>
+                  <option value="relationship">Relationship</option>
                   <option value="admin">Admin</option>
                   <option value="guest">Guest</option>
                 </select>

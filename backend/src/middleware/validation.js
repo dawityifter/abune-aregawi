@@ -8,7 +8,7 @@ const validateMemberQuery = [
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
   query('search').optional().isString().withMessage('Search must be a string'),
-  query('role').optional().isIn(['member', 'admin', 'church_leadership', 'treasurer', 'secretary']).withMessage('Invalid role filter'),
+  query('role').optional().isIn(['member', 'admin', 'church_leadership', 'treasurer', 'secretary', 'relationship']).withMessage('Invalid role filter'),
   query('phone').optional().isString().withMessage('Phone must be a string')
 ];
 
@@ -77,7 +77,7 @@ const validateMemberRegistration = [
   body('maritalStatus').optional().isIn(['single', 'married', 'divorced', 'widowed']).withMessage('Invalid marital status'),
   // Admin-created members may not have a Firebase account yet; allow missing firebaseUid
   body('firebaseUid').optional().isString().withMessage('Firebase UID must be a string'),
-  body('role').optional().isIn(['member', 'admin', 'church_leadership', 'treasurer', 'secretary']).withMessage('Invalid role'),
+  body('role').optional().isIn(['member', 'admin', 'church_leadership', 'treasurer', 'secretary', 'relationship']).withMessage('Invalid role'),
   body('streetLine1').optional().isString().withMessage('Street line 1 must be a string'),
   body('apartmentNo').optional().isString().withMessage('Apartment number must be a string'),
   body('city').optional().isString().withMessage('City must be a string'),
