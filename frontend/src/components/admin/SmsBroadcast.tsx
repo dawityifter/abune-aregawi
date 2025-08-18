@@ -95,8 +95,8 @@ const SmsBroadcast: React.FC = () => {
         const idToken = await firebaseUser.getIdToken(true);
         const url = new URL(`${process.env.REACT_APP_API_URL}/api/members/all`);
         if (memberQuery && memberQuery.trim().length > 0) {
-          // The backend validateMemberQuery may accept 'q' or 'search'; try 'q'
-          url.searchParams.set('q', memberQuery.trim());
+          // Backend expects 'search' query param
+          url.searchParams.set('search', memberQuery.trim());
         } else {
           url.searchParams.set('limit', '50');
         }
@@ -104,6 +104,11 @@ const SmsBroadcast: React.FC = () => {
           headers: { Authorization: `Bearer ${idToken}` },
           credentials: 'include',
         });
+        // Some environments may return 204 No Content for empty result sets
+        if (resp.status === 204) {
+          setMemberOptions([]);
+          return;
+        }
         if (!resp.ok) {
           const data = await resp.json().catch(() => ({} as any));
           throw new Error(data?.message || 'Failed to load members');
