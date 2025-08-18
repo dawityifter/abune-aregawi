@@ -237,6 +237,7 @@ const MemberList: React.FC<MemberListProps> = ({
               <option value="church_leadership">Church Leadership</option>
               <option value="treasurer">Treasurer</option>
               <option value="secretary">Secretary</option>
+              <option value="relationship">Relationship</option>
               <option value="member">Member</option>
               <option value="guest">Guest</option>
             </select>
@@ -319,6 +320,7 @@ const MemberList: React.FC<MemberListProps> = ({
                       member.role === 'church_leadership' ? 'bg-purple-100 text-purple-800' :
                       member.role === 'treasurer' ? 'bg-green-100 text-green-800' :
                       member.role === 'secretary' ? 'bg-blue-100 text-blue-800' :
+                      member.role === 'relationship' ? 'bg-orange-100 text-orange-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
                       {getRoleDisplayName(member.role)}

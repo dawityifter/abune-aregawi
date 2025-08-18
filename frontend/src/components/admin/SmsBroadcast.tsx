@@ -171,7 +171,8 @@ const SmsBroadcast: React.FC = () => {
 
       const data = await resp.json().catch(() => ({} as any));
       if (!resp.ok) {
-        throw new Error(data?.message || 'Failed to send SMS');
+        const detail = data?.error ? `: ${data.error}` : '';
+        throw new Error((data?.message || 'Failed to send SMS') + detail);
       }
       if (recipientType === 'individual') {
         setResultMsg('Message sent successfully to the selected member.');
