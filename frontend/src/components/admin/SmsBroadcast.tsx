@@ -114,7 +114,14 @@ const SmsBroadcast: React.FC = () => {
           throw new Error(data?.message || 'Failed to load members');
         }
         const data = await resp.json();
-        const members: any[] = data?.data?.members || data?.data || [];
+        const raw: any[] = data?.data?.members || data?.data || [];
+        const members: MemberOption[] = raw.map((m: any) => ({
+          id: m.id,
+          firstName: m.first_name ?? m.firstName ?? '',
+          middleName: m.middle_name ?? m.middleName ?? '',
+          lastName: m.last_name ?? m.lastName ?? '',
+          phoneNumber: m.phone_number ?? m.phoneNumber ?? ''
+        }));
         setMemberOptions(members);
       } catch (e: any) {
         setMembersError(e.message || 'Failed to load members');
