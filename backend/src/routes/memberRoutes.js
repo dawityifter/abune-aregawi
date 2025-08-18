@@ -74,7 +74,7 @@ router.get('/test-auth', firebaseAuthMiddleware, (req, res) => {
 });
 
 // Firebase Auth admin routes (Firebase token verification)
-router.get('/all/firebase', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), validateMemberQuery, memberController.getAllMembersFirebase);
+router.get('/all/firebase', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship']), validateMemberQuery, memberController.getAllMembersFirebase);
 
 // Dependents management routes (no JWT required - using member ID)
 router.get('/:memberId/dependents', validateMemberId, memberController.getMemberDependents);
@@ -107,7 +107,7 @@ router.post('/:id/mark-welcomed',
 
 // Admin routes (require admin role)
 router.get('/all', 
-  roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), 
+  roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship']), 
   validateMemberQuery, 
   memberController.getAllMembers
 );
