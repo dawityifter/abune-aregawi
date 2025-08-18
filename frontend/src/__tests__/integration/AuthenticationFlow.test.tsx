@@ -448,8 +448,8 @@ describe('Authentication Flow Integration', () => {
   });
 
   describe('State Management Integration', () => {
-    it('should maintain form state during method switching', () => {
-      renderWithProviders(<SignIn />);
+    it('should maintain form state during method switching', async () => {
+      await renderWithProviders(<SignIn />);
 
       // Fill email form
       const emailInput = screen.getByPlaceholderText('Email');
@@ -471,8 +471,8 @@ describe('Authentication Flow Integration', () => {
       expect(passwordInput).toHaveValue('');
     });
 
-    it('should clear errors when switching methods', () => {
-      renderWithProviders(<SignIn />);
+    it('should clear errors when switching methods', async () => {
+      await renderWithProviders(<SignIn />);
 
       // Trigger an error
       const submitButton = screen.getByText('Sign In');
@@ -496,7 +496,7 @@ describe('Authentication Flow Integration', () => {
       
       signInWithPhoneNumber.mockImplementation(mockSignInWithPhoneNumber);
 
-      renderWithProviders(<SignIn />);
+      await renderWithProviders(<SignIn />);
 
       // Switch to phone method
       const phoneButton = screen.getByText('Phone');

@@ -74,6 +74,33 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
     setFormData(normalizeMemberForForm(member));
   }, [member]);
 
+  // Fetch the latest member details to ensure we have complete fields (e.g., maritalStatus)
+  useEffect(() => {
+    const fetchDetails = async () => {
+      try {
+        if (!member?.id) return;
+        const idToken = firebaseUser ? await firebaseUser.getIdToken(true) : null;
+        const url = `${process.env.REACT_APP_API_URL}/api/members/${member.id}?email=${encodeURIComponent(currentUser?.email || '')}`;
+        const res = await fetch(url, {
+          headers: {
+            'Authorization': idToken ? `Bearer ${idToken}` : '',
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!res.ok) return; // don't overwrite on error
+        const data = await res.json();
+        const m = data?.data?.member || data?.member || data;
+        if (m) {
+          setFormData(normalizeMemberForForm({ ...member, ...m }));
+        }
+      } catch (_) {
+        // ignore fetch errors; form already seeded from props
+      }
+    };
+    fetchDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [member?.id]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     setFormData(prev => ({
