@@ -248,22 +248,11 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       lastName: member.last_name
     }, null, 2));
 
-    // Check if user has admin role (using PostgreSQL role)
-    const adminRoles = ['admin', 'church_leadership', 'treasurer', 'secretary'];
-    const userRole = member.role || (member.data && member.data.role); // Handle both flattened and nested role
-    
-    console.log('🔵 User role check:');
-    console.log('   - User role:', userRole);
-    console.log('   - Allowed roles:', adminRoles);
-    
-    if (!adminRoles.includes(userRole)) {
-      const errorMsg = `❌ Access denied. User role '${userRole}' is not in allowed roles: ${adminRoles.join(', ')}`;
-      console.error(errorMsg);
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. Admin privileges required.'
-      });
-    }
+    // Do NOT enforce admin-only access here.
+    // firebaseAuthMiddleware should only authenticate and load the member.
+    // Authorization is handled by route-level roleMiddleware.
+    const userRole = member.role || (member.data && member.data.role);
+    console.log('🔵 Authenticated user role (no global enforcement):', userRole);
 
     const identifier = userEmail || userPhone;
     console.log('✅ Firebase auth successful for user:', identifier, 'Role:', member.role);
