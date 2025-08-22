@@ -18,27 +18,35 @@ module.exports = {
       END$$;
     `);
 
-    // 2) Add onboarding columns
-    await queryInterface.addColumn('members', 'is_welcomed', {
-      type: Sequelize.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-      comment: 'Whether the member has been welcomed by the Relationship Department'
-    });
+    // 2) Add onboarding columns (idempotent)
+    const membersTable = await queryInterface.describeTable('members');
 
-    await queryInterface.addColumn('members', 'welcomed_at', {
-      type: Sequelize.DATE,
-      allowNull: true,
-      comment: 'Timestamp when the member was welcomed'
-    });
+    if (!membersTable.is_welcomed) {
+      await queryInterface.addColumn('members', 'is_welcomed', {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        comment: 'Whether the member has been welcomed by the Relationship Department'
+      });
+    }
 
-    await queryInterface.addColumn('members', 'welcomed_by', {
-      type: Sequelize.BIGINT,
-      allowNull: true,
-      comment: 'Member ID of the staff/admin who marked as welcomed'
-    });
+    if (!membersTable.welcomed_at) {
+      await queryInterface.addColumn('members', 'welcomed_at', {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: 'Timestamp when the member was welcomed'
+      });
+    }
 
-    // 3) Add foreign key for welcomed_by referencing members(id)
+    if (!membersTable.welcomed_by) {
+      await queryInterface.addColumn('members', 'welcomed_by', {
+        type: Sequelize.BIGINT,
+        allowNull: true,
+        comment: 'Member ID of the staff/admin who marked as welcomed'
+      });
+    }
+
+    // 3) Add foreign key for welcomed_by referencing members(id) (idempotent-ish)
     try {
       await queryInterface.addConstraint('members', {
         fields: ['welcomed_by'],
