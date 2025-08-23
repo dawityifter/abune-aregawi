@@ -60,6 +60,49 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
     setFormData(member);
   }, [member]);
 
+  // Fetch dependents to populate Family tab (children + spouse info)
+  useEffect(() => {
+    const fetchDependents = async () => {
+      if (!member?.id || !firebaseUser) return;
+      try {
+        const idToken = await firebaseUser.getIdToken(true);
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${member.id}/dependents`, {
+          headers: {
+            'Authorization': idToken ? `Bearer ${idToken}` : '',
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!res.ok) return; // avoid blocking modal if dependents fetch fails
+        const json = await res.json();
+        const dependents = Array.isArray(json?.data?.dependents) ? json.data.dependents : [];
+
+        // Prefill spouse fields if not provided on member object
+        const spouse = dependents.find((d: any) => d.relationship === 'Spouse');
+        // Children are Son/Daughter
+        const children = dependents
+          .filter((d: any) => d.relationship === 'Son' || d.relationship === 'Daughter')
+          .map((d: any) => ({
+            firstName: d.firstName,
+            lastName: d.lastName,
+            dateOfBirth: d.dateOfBirth,
+            gender: d.gender,
+          }));
+
+        setFormData(prev => ({
+          ...prev,
+          spouseName: prev.spouseName || spouse?.firstName || prev.spouseName,
+          spouseEmail: prev.spouseEmail || spouse?.email || prev.spouseEmail,
+          children,
+        }));
+      } catch (e) {
+        // Silent fail; family tab will just show none
+        console.warn('Failed to fetch dependents for member', member.id, e);
+      }
+    };
+    fetchDependents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [member?.id, firebaseUser]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     setFormData(prev => ({
@@ -94,6 +137,65 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
       // Map camelCase to snake_case for backend fields that use snake_case
       if (payload.maritalStatus) {
         payload.marital_status = payload.maritalStatus;
+        delete payload.maritalStatus;
+      }
+
+      // Ensure active status updates persist to backend (expects is_active)
+      if (typeof payload.isActive === 'boolean') {
+        payload.is_active = payload.isActive;
+        delete payload.isActive;
+      }
+
+      // Map interestedInServing to interested_in_serving for backend
+      if (payload.interestedInServing) {
+        payload.interested_in_serving = payload.interestedInServing;
+        delete payload.interestedInServing;
+      }
+
+      // Map common identity/contact fields to snake_case
+      if (payload.firstName !== undefined) {
+        payload.first_name = payload.firstName;
+        delete payload.firstName;
+      }
+      if (payload.middleName !== undefined) {
+        payload.middle_name = payload.middleName;
+        delete payload.middleName;
+      }
+      if (payload.lastName !== undefined) {
+        payload.last_name = payload.lastName;
+        delete payload.lastName;
+      }
+      if (payload.phoneNumber !== undefined) {
+        payload.phone_number = payload.phoneNumber;
+        delete payload.phoneNumber;
+      }
+      if (payload.dateJoinedParish !== undefined) {
+        payload.date_joined_parish = payload.dateJoinedParish;
+        delete payload.dateJoinedParish;
+      }
+      if (payload.dateOfBirth !== undefined) {
+        payload.date_of_birth = payload.dateOfBirth;
+        delete payload.dateOfBirth;
+      }
+      if (payload.streetLine1 !== undefined) {
+        payload.street_line1 = payload.streetLine1;
+        delete payload.streetLine1;
+      }
+      if (payload.postalCode !== undefined) {
+        payload.postal_code = payload.postalCode;
+        delete payload.postalCode;
+      }
+      if (payload.spouseName !== undefined) {
+        payload.spouse_name = payload.spouseName;
+        delete payload.spouseName;
+      }
+      if (payload.emergencyContactName !== undefined) {
+        payload.emergency_contact_name = payload.emergencyContactName;
+        delete payload.emergencyContactName;
+      }
+      if (payload.emergencyContactPhone !== undefined) {
+        payload.emergency_contact_phone = payload.emergencyContactPhone;
+        delete payload.emergencyContactPhone;
       }
 
       // If the user cannot manage roles, do not send role changes

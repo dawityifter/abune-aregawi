@@ -173,9 +173,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canViewOwnProfile: true,
     canEditOwnProfile: true,
     canViewAllMembers: true, // Needs to view new members
-    canEditAllMembers: false, // Restricted: cannot modify treasury/secretary records; keep off for safety
+    canEditAllMembers: true, //For a timebeing allow. Restricted: cannot modify treasury/secretary records; keep off for safety
     canDeleteMembers: false, // Restricted
-    canRegisterMembers: false, // Not responsible for registration itself
+    canRegisterMembers: true, // Not responsible for registration itself
 
     // Financial Management (restricted)
     canSubmitDonation: true, // same as Member

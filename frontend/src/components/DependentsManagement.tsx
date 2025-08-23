@@ -7,7 +7,7 @@ import { Dependent, getRelationshipOptions, Relationship } from '../utils/relati
 
 
 const DependentsManagement: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, getUserProfile } = useAuth();
   const [dependents, setDependents] = useState<Dependent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -34,37 +34,25 @@ const DependentsManagement: React.FC = () => {
 
   const fetchDependents = useCallback(async () => {
     try {
-      // First get the member profile to get the member ID
-      // Build query parameters based on available user data
-      const params = new URLSearchParams();
-      if (currentUser?.email) {
-        params.append('email', currentUser.email);
-      }
-      if (currentUser?.phoneNumber) {
-        params.append('phone', currentUser.phoneNumber);
-      }
-      
-      const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?${params.toString()}`, {
+      // First get the member profile (handles members and dependent logins)
+      if (!currentUser?.uid) return;
+      const profile = await getUserProfile(currentUser.uid, currentUser.email || null, currentUser.phoneNumber || null);
+      if (!profile || !profile.data?.member) return;
+
+      const profileMember = profile.data.member;
+      const memberId = profileMember.role === 'dependent' ? profileMember.linkedMember?.id : profileMember.id;
+      if (!memberId) return;
+
+      // Now fetch dependents using the resolved member ID (head of household)
+      const dependentsResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}/dependents`, {
         headers: {
           'Content-Type': 'application/json'
         }
       });
-      
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json();
-        const memberId = profileData.data.member.id;
-        
-        // Now fetch dependents using the member ID
-        const dependentsResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}/dependents`, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (dependentsResponse.ok) {
-          const data = await dependentsResponse.json();
-          setDependents(data.data.dependents || []);
-        }
+
+      if (dependentsResponse.ok) {
+        const data = await dependentsResponse.json();
+        setDependents(data.data.dependents || []);
       }
     } catch (error) {
       console.error('Error fetching dependents:', error);
@@ -83,28 +71,14 @@ const DependentsManagement: React.FC = () => {
     e.preventDefault();
     
     try {
-      // Get member ID first
-      // Build query parameters based on available user data
-      const params = new URLSearchParams();
-      if (currentUser?.email) {
-        params.append('email', currentUser.email);
-      }
-      if (currentUser?.phoneNumber) {
-        params.append('phone', currentUser.phoneNumber);
-      }
-      
-      const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?${params.toString()}`, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!profileResponse.ok) {
-        throw new Error('Failed to get member profile');
-      }
-      
-      const profileData = await profileResponse.json();
-      const memberId = profileData.data.member.id;
+      // Get the member (or linked member for dependent) ID first
+      if (!currentUser?.uid) throw new Error('Not authenticated');
+      const profile = await getUserProfile(currentUser.uid, currentUser.email || null, currentUser.phoneNumber || null);
+      if (!profile || !profile.data?.member) throw new Error('Failed to get member profile');
+
+      const profileMember = profile.data.member;
+      const memberId = profileMember.role === 'dependent' ? profileMember.linkedMember?.id : profileMember.id;
+      if (!memberId) throw new Error('Could not resolve member ID');
       
       const url = editingDependent 
         ? `${process.env.REACT_APP_API_URL}/api/members/dependents/${editingDependent.id}`

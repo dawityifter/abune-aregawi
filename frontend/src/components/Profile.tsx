@@ -175,6 +175,7 @@ const Profile: React.FC = () => {
               const hohName = linked
                 ? `${(linked.firstName || '').trim()} ${(linked.lastName || '').trim()}`.trim()
                 : (result?.data?.member?.headOfHouseholdName || '');
+              const isDep = result?.data?.member?.role === 'dependent';
               const mergedData = {
                 ...userProfile,
                 firstName: result.data.member.firstName,
@@ -194,14 +195,15 @@ const Profile: React.FC = () => {
                 dateJoinedParish: result.data.member.dateJoinedParish,
                 baptismName: result.data.member.baptismName,
                 interestedInServing: result.data.member.interestedInServing,
-                streetLine1: result.data.member.streetLine1,
-                apartmentNo: result.data.member.apartmentNo,
-                city: result.data.member.city,
-                state: result.data.member.state,
-                postalCode: result.data.member.postalCode,
+                // For dependents, show address from head of household when available
+                streetLine1: isDep ? (linked?.streetLine1 ?? result.data.member.streetLine1) : result.data.member.streetLine1,
+                apartmentNo: isDep ? (linked?.apartmentNo ?? result.data.member.apartmentNo) : result.data.member.apartmentNo,
+                city: isDep ? (linked?.city ?? result.data.member.city) : result.data.member.city,
+                state: isDep ? (linked?.state ?? result.data.member.state) : result.data.member.state,
+                postalCode: isDep ? (linked?.postalCode ?? result.data.member.postalCode) : result.data.member.postalCode,
                 dependents: result.data.member.dependents || [],
                 headOfHouseholdName: hohName || undefined,
-                isDependent: result?.data?.member?.role === 'dependent'
+                isDependent: isDep
               };
               
               setProfile(mergedData);
@@ -324,11 +326,16 @@ const Profile: React.FC = () => {
         interestedInServing: formData.interestedInServing
           ? formData.interestedInServing.toLowerCase()
           : undefined,
-        streetLine1: formData.streetLine1,
-        apartmentNo: formData.apartmentNo,
-        city: formData.city,
-        state: formData.state,
-        postalCode: formData.postalCode,
+        // Only allow address updates for non-dependents; dependents inherit from head of household
+        ...(profile?.isDependent
+          ? {}
+          : {
+              streetLine1: formData.streetLine1,
+              apartmentNo: formData.apartmentNo,
+              city: formData.city,
+              state: formData.state,
+              postalCode: formData.postalCode,
+            }),
         dependents: formData.dependents || null
       };
 
@@ -669,7 +676,9 @@ const Profile: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('street.line1')}
                     </label>
-                    {editing ? (
+                    {profile.isDependent ? (
+                      <p className="text-gray-900">{profile.streetLine1 || t('not.provided')}</p>
+                    ) : editing ? (
                       <input
                         type="text"
                         name="streetLine1"
@@ -687,7 +696,9 @@ const Profile: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('apartment.no')}
                     </label>
-                    {editing ? (
+                    {profile.isDependent ? (
+                      <p className="text-gray-900">{profile.apartmentNo || t('not.provided')}</p>
+                    ) : editing ? (
                       <input
                         type="text"
                         name="apartmentNo"
@@ -704,7 +715,9 @@ const Profile: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('city')}
                     </label>
-                    {editing ? (
+                    {profile.isDependent ? (
+                      <p className="text-gray-900">{profile.city || t('not.provided')}</p>
+                    ) : editing ? (
                       <input
                         type="text"
                         name="city"
@@ -721,7 +734,9 @@ const Profile: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('state')}
                     </label>
-                    {editing ? (
+                    {profile.isDependent ? (
+                      <p className="text-gray-900">{profile.state || t('not.provided')}</p>
+                    ) : editing ? (
                       <input
                         type="text"
                         name="state"
@@ -738,7 +753,9 @@ const Profile: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('zip.code')}
                     </label>
-                    {editing ? (
+                    {profile.isDependent ? (
+                      <p className="text-gray-900">{profile.postalCode || t('not.provided')}</p>
+                    ) : editing ? (
                       <input
                         type="text"
                         name="postalCode"

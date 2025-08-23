@@ -914,6 +914,7 @@ exports.getAllMembersFirebase = async (req, res) => {
       baptismName: member.baptism_name,
       dateOfBirth: member.date_of_birth,
       gender: member.gender,
+      maritalStatus: member.marital_status,
       streetLine1: member.street_line1,
       city: member.city,
       state: member.state,
@@ -1245,9 +1246,24 @@ exports.getProfileByFirebaseUid = async (req, res) => {
           return res.status(404).json(resp);
         }
 
-        // Load linked member summary
+        // Load linked member summary (include address fields for household address)
         const linkedMember = await Member.findByPk(dependent.linkedMemberId, {
-          attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number', 'role', 'is_active']
+          attributes: [
+            'id',
+            'first_name',
+            'last_name',
+            'email',
+            'phone_number',
+            'role',
+            'is_active',
+            // Address fields for household address display
+            'street_line1',
+            'apartment_no',
+            'city',
+            'state',
+            'postal_code',
+            'country'
+          ]
         });
 
         // Build a dependent-auth profile. Keep response shape with data.member
@@ -1273,7 +1289,14 @@ exports.getProfileByFirebaseUid = async (req, res) => {
                 lastName: linkedMember.last_name,
                 email: linkedMember.email,
                 phoneNumber: linkedMember.phone_number,
-                role: linkedMember.role
+                role: linkedMember.role,
+                // Map address fields to camelCase for frontend
+                streetLine1: linkedMember.street_line1,
+                apartmentNo: linkedMember.apartment_no,
+                city: linkedMember.city,
+                state: linkedMember.state,
+                postalCode: linkedMember.postal_code,
+                country: linkedMember.country
               }
             : { id: dependent.linkedMemberId },
           // Provide minimal fields expected by frontend; dependents array not applicable
