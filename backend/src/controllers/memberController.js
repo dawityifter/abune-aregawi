@@ -1262,6 +1262,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
           dateOfBirth: dependent.dateOfBirth || null,
           gender: dependent.gender || null,
           relationship: dependent.relationship || null,
+          languagePreference: dependent.languagePreference || null,
           interestedInServing: dependent.interestedInServing || null,
           role: 'dependent',
           isActive: linkedMember ? linkedMember.is_active : true,
@@ -1413,6 +1414,7 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
         dateOfBirth: req.body.dateOfBirth,
         gender: req.body.gender,
         relationship: req.body.relationship,
+        languagePreference: req.body.languagePreference,
         interestedInServing: req.body.interestedInServing,
       };
       // Sanitize (trims strings, converts empty strings to null)
@@ -1482,6 +1484,7 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
         dateOfBirth: dependent.dateOfBirth,
         gender: dependent.gender || null,
         relationship: dependent.relationship || null,
+        languagePreference: dependent.languagePreference || null,
         interestedInServing: dependent.interestedInServing || null,
         linkedMember: linkedMemberSummary
       };
