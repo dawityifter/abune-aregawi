@@ -1,7 +1,9 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { LanguageProvider } from '../../../contexts/LanguageContext';
 import '@testing-library/jest-dom';
+import { setFirebaseUserToken, extractHeader } from '../../../testUtils/authTestUtils';
 
 // Under test
 import OutreachDashboard from '../OutreachDashboard';
@@ -23,7 +25,9 @@ jest.mock('../../../contexts/AuthContext', () => ({
 // Helper wrapper
 const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <BrowserRouter>
-    {children}
+    <LanguageProvider>
+      {children}
+    </LanguageProvider>
   </BrowserRouter>
 );
 
@@ -39,6 +43,8 @@ beforeEach(() => {
     success: true,
     data: { member: { role: 'admin', firstName: 'Admin' } },
   });
+  // Reinitialize getIdToken after clearAllMocks so it returns a token
+  setFirebaseUserToken(mockFirebaseUser, 'test-token');
 });
 
 afterEach(() => {
@@ -134,8 +140,9 @@ describe('OutreachDashboard', () => {
     expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain('/api/members/onboarding/pending');
     const postCall = (global.fetch as jest.Mock).mock.calls[1];
     expect(postCall[0]).toMatch(/\/api\/members\/m1\/mark-welcomed$/);
-    // Validate Authorization header exists and is in the expected format
-    expect(postCall[1].headers.Authorization).toMatch(/^Bearer\s+\S+/);
+    const headers = postCall[1]?.headers as any;
+    const authHeader = extractHeader(headers, 'Authorization');
+    expect(authHeader).toBe('Bearer test-token');
   });
 
   it('shows error state when pending fetch fails', async () => {
@@ -149,11 +156,7 @@ describe('OutreachDashboard', () => {
       </Wrapper>
     );
 
-    // Ensure the dashboard rendered (profile finished loading)
-    await screen.findByText('Outreach & Member Relations');
-
-    // Error appears in both summary and detailed sections; assert at least one instance
-    const errors = await screen.findAllByText('Failed to load pending welcomes');
-    expect(errors.length).toBeGreaterThan(0);
+    const errs = await screen.findAllByText('Failed to load pending welcomes');
+    expect(errs.length).toBeGreaterThan(0);
   });
 });
