@@ -21,6 +21,18 @@ const { Sequelize } = require('sequelize');
     process.exit(1);
   }
 
+  // Idempotency check: if column already exists, skip migration
+  try {
+    const table = await qi.describeTable('members');
+    if (table && Object.prototype.hasOwnProperty.call(table, 'marital_status')) {
+      console.log('ℹ️ Column "marital_status" already exists on table "members". Skipping migration.');
+      try { await sequelize.close(); } catch (_) {}
+      return;
+    }
+  } catch (e) {
+    console.log('⚠️ Could not verify existing columns, proceeding with migration:', e.message);
+  }
+
   let migration;
   try {
     migration = require(migrationPath);
