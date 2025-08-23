@@ -375,15 +375,9 @@ const getTransactionStats = async (req, res) => {
     // Get basic transaction stats
     const totalTransactions = await Transaction.count({ where: whereClause });
     const totalAmount = await Transaction.sum('amount', { where: whereClause });
-    
-    // Get unique members who have made transactions
-    const uniqueMembers = await Transaction.findAll({
-      where: whereClause,
-      attributes: [[sequelize.fn('DISTINCT', sequelize.col('member_id')), 'member_id']],
-      raw: true
-    });
-    
-    const totalMembers = uniqueMembers.length;
+
+    // Count ALL households/members, not just those with transactions
+    const totalMembers = await Member.count();
 
     // Compute totals based on pledges and collections
     // Sum of all members' yearly pledges (null-safe)
