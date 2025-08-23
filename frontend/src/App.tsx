@@ -20,6 +20,7 @@ import DependentsManagement from './components/DependentsManagement';
 import ChurchBylaw from './components/ChurchBylaw';
 import ParishPulseSignUp from './components/ParishPulseSignUp';
 import './index.css';
+import DevBanner from './components/DevBanner';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
       <Router>
         <AuthProvider>
           <div className="App">
+            <DevBanner />
             <Navigation />
             <Routes>
               <Route path="/" element={<HomePage />} />
@@ -89,3 +91,4 @@ function App() {
 }
 
 export default App;
+
