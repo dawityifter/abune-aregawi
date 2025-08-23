@@ -1,16 +1,17 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider, useAuth } from '../../contexts/AuthContext';
+import { AuthProvider } from '../../contexts/AuthContext';
 import { LanguageProvider } from '../../contexts/LanguageContext';
 import Profile from '../Profile';
 import '@testing-library/jest-dom';
 
-// Mock the useLanguage hook
+// Mock the useLanguage hook (align with LanguageContextType)
 const mockUseLanguage = jest.fn().mockImplementation(() => ({
   t: (key: string) => key, // Return the key as the translation
   language: 'en',
-  changeLanguage: jest.fn()
+  currentLanguage: 'en',
+  setLanguage: jest.fn()
 }));
 
 // Mock the LanguageContext module
@@ -80,14 +81,49 @@ jest.mock('../../contexts/AuthContext', () => ({
 }));
 
 // Mock Firebase auth
-jest.mock('firebase/auth', () => ({
-  getAuth: jest.fn(() => ({
-    currentUser: mockCurrentUser,
-    onAuthStateChanged: jest.fn((callback) => {
-      callback(mockCurrentUser);
-      return jest.fn(); // Return mock unsubscribe function
+jest.mock('firebase/auth', () => {
+  // Define a local user to avoid TDZ with outer variables
+  const localUser = {
+    uid: 'test-uid',
+    email: 'test@example.com',
+    phoneNumber: '+15555555555',
+    displayName: 'Test User',
+    getIdToken: jest.fn().mockResolvedValue('test-token'),
+  } as any;
+
+  const makeUnsub = () => jest.fn();
+
+  return {
+    getAuth: jest.fn(() => ({
+      currentUser: localUser,
+      onAuthStateChanged: jest.fn((callback: any) => {
+        callback(localUser);
+        return makeUnsub();
+      }),
+      signOut: jest.fn().mockResolvedValue(undefined),
+      updateProfile: jest.fn().mockResolvedValue(undefined),
+      updateEmail: jest.fn().mockResolvedValue(undefined),
+      updatePassword: jest.fn().mockResolvedValue(undefined),
+      sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+      confirmPasswordReset: jest.fn().mockResolvedValue(undefined),
+      verifyPasswordResetCode: jest.fn().mockResolvedValue(undefined),
+      applyActionCode: jest.fn().mockResolvedValue(undefined),
+      checkActionCode: jest.fn().mockResolvedValue(undefined),
+      onIdTokenChanged: jest.fn((callback: any) => {
+        callback(localUser);
+        return makeUnsub();
+      })
+    })),
+    signInWithEmailAndPassword: jest.fn().mockResolvedValue({ user: localUser }),
+    createUserWithEmailAndPassword: jest.fn().mockResolvedValue({ user: localUser }),
+    signInWithPhoneNumber: jest.fn().mockResolvedValue({
+      confirm: jest.fn().mockResolvedValue({ user: localUser })
     }),
     signOut: jest.fn().mockResolvedValue(undefined),
+    onAuthStateChanged: jest.fn((auth: any, callback: any) => {
+      callback(localUser);
+      return makeUnsub();
+    }),
     updateProfile: jest.fn().mockResolvedValue(undefined),
     updateEmail: jest.fn().mockResolvedValue(undefined),
     updatePassword: jest.fn().mockResolvedValue(undefined),
@@ -96,41 +132,19 @@ jest.mock('firebase/auth', () => ({
     verifyPasswordResetCode: jest.fn().mockResolvedValue(undefined),
     applyActionCode: jest.fn().mockResolvedValue(undefined),
     checkActionCode: jest.fn().mockResolvedValue(undefined),
-    onIdTokenChanged: jest.fn((callback) => {
-      callback(mockCurrentUser);
-      return jest.fn(); // Return mock unsubscribe function
+    GoogleAuthProvider: jest.fn(() => ({
+      setCustomParameters: jest.fn(),
+      addScope: jest.fn()
+    })),
+    signInWithPopup: jest.fn().mockResolvedValue({ user: localUser }),
+    signInWithRedirect: jest.fn().mockResolvedValue(undefined),
+    getRedirectResult: jest.fn().mockResolvedValue({ user: localUser }),
+    onIdTokenChanged: jest.fn((auth: any, callback: any) => {
+      callback(localUser);
+      return makeUnsub();
     })
-  })),
-  signInWithEmailAndPassword: jest.fn().mockResolvedValue({ user: mockCurrentUser }),
-  createUserWithEmailAndPassword: jest.fn().mockResolvedValue({ user: mockCurrentUser }),
-  signInWithPhoneNumber: jest.fn().mockResolvedValue({
-    confirm: jest.fn().mockResolvedValue({ user: mockCurrentUser })
-  }),
-  signOut: jest.fn().mockResolvedValue(undefined),
-  onAuthStateChanged: jest.fn((auth, callback) => {
-    callback(mockCurrentUser);
-    return jest.fn(); // Return mock unsubscribe function
-  }),
-  updateProfile: jest.fn().mockResolvedValue(undefined),
-  updateEmail: jest.fn().mockResolvedValue(undefined),
-  updatePassword: jest.fn().mockResolvedValue(undefined),
-  sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
-  confirmPasswordReset: jest.fn().mockResolvedValue(undefined),
-  verifyPasswordResetCode: jest.fn().mockResolvedValue(undefined),
-  applyActionCode: jest.fn().mockResolvedValue(undefined),
-  checkActionCode: jest.fn().mockResolvedValue(undefined),
-  GoogleAuthProvider: jest.fn(() => ({
-    setCustomParameters: jest.fn(),
-    addScope: jest.fn()
-  })),
-  signInWithPopup: jest.fn().mockResolvedValue({ user: mockCurrentUser }),
-  signInWithRedirect: jest.fn().mockResolvedValue(undefined),
-  getRedirectResult: jest.fn().mockResolvedValue({ user: mockCurrentUser }),
-  onIdTokenChanged: jest.fn((auth, callback) => {
-    callback(mockCurrentUser);
-    return jest.fn(); // Return mock unsubscribe function
-  })
-}));
+  };
+});
 
 // Mock the fetch API
 global.fetch = jest.fn().mockImplementation((url, options) => {
@@ -180,7 +194,27 @@ const renderProfile = () => {
 
 describe('Profile Component', () => {
   beforeEach(() => {
+    // Clear calls but keep mock implementations
     jest.clearAllMocks();
+    // Re-apply mock implementations cleared by clearAllMocks
+    mockUseLanguage.mockImplementation(() => ({
+      t: (key: string) => key,
+      language: 'en',
+      currentLanguage: 'en',
+      setLanguage: jest.fn()
+    }));
+    mockUseAuth.mockImplementation(() => ({
+      currentUser: mockCurrentUser,
+      user: mockUserProfile,
+      loading: false,
+      error: null,
+      loginWithPhone: mockLoginWithPhone,
+      logout: mockLogout,
+      clearError: mockClearError,
+      getUserProfile: mockGetUserProfile,
+      updateUserProfile: mockUpdateUserProfile,
+      updateUserProfileData: mockUpdateUserProfileData
+    }));
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
@@ -233,11 +267,11 @@ describe('Profile Component', () => {
     expect(screen.getByText('member')).toBeInTheDocument();
   });
 
-  it('enters edit mode and updates profile', async () => {
+  it('enters edit mode and saves changes', async () => {
     renderProfile();
     await waitFor(() => expect(screen.getByText('edit')).toBeInTheDocument());
     fireEvent.click(screen.getByText('edit'));
-    const firstNameInput = screen.getByLabelText('first.name');
+    const firstNameInput = screen.getByDisplayValue('Test');
     fireEvent.change(firstNameInput, { target: { value: 'Updated' } });
     const saveButton = screen.getByText('save');
     (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
@@ -256,17 +290,21 @@ describe('Profile Component', () => {
   });
 
   it('shows loading spinner while loading', () => {
-    // Mock loading state
-    jest.spyOn(require('../../contexts/AuthContext'), 'useAuth').mockImplementation(() => ({
+    // Mock loading state just for this test
+    mockUseAuth.mockImplementationOnce(() => ({
       currentUser: mockCurrentUser,
+      user: null,
       loading: true,
       error: null,
-      user: null,
+      loginWithPhone: mockLoginWithPhone,
+      logout: mockLogout,
+      clearError: mockClearError,
       getUserProfile: mockGetUserProfile,
+      updateUserProfile: mockUpdateUserProfile,
+      updateUserProfileData: mockUpdateUserProfileData
     }));
-    
-    renderProfile();
-    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    const { container } = renderProfile();
+    expect(container.querySelector('.animate-spin')).toBeInTheDocument();
   });
 
   it('shows registration prompt if profile not found', async () => {
@@ -274,16 +312,19 @@ describe('Profile Component', () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false, json: () => Promise.resolve({}) });
     renderProfile();
     await waitFor(() => expect(screen.getByText('Profile not found')).toBeInTheDocument());
-    expect(screen.getByText(/complete your member registration/i)).toBeInTheDocument();
+    // Assert the actual CTA button text
+    expect(screen.getByText('Complete Registration')).toBeInTheDocument();
   });
 
   it('cancels edit mode and resets form', async () => {
     renderProfile();
     await waitFor(() => expect(screen.getByText('edit')).toBeInTheDocument());
     fireEvent.click(screen.getByText('edit'));
-    const firstNameInput = screen.getByLabelText('first.name');
+    const firstNameInput = screen.getByDisplayValue('Test');
     fireEvent.change(firstNameInput, { target: { value: 'Changed' } });
     fireEvent.click(screen.getByText('cancel'));
-    expect(firstNameInput).toHaveValue('Test');
+    // After cancel, the form should exit edit mode and show view-only text
+    expect(screen.getByText('Test')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Changed')).not.toBeInTheDocument();
   });
 }); 

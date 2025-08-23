@@ -19,8 +19,6 @@ const memberPaymentRoutes = require('./routes/memberPaymentRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const churchTransactionRoutes = require('./routes/churchTransactionRoutes');
 const donationRoutes = require('./routes/donationRoutes');
-const groupRoutes = require('./routes/groupRoutes');
-const smsRoutes = require('./routes/smsRoutes');
 const zelleRoutes = require('./routes/zelleRoutes');
 const donationController = require('./controllers/donationController');
 
@@ -187,8 +185,6 @@ app.use('/api/payments', memberPaymentRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/church-transactions', churchTransactionRoutes);
 app.use('/api/donations', donationRoutes);
-app.use('/api/groups', groupRoutes);
-app.use('/api/sms', smsRoutes);
 app.use('/api/zelle', zelleRoutes);
 
 // 404 handler

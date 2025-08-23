@@ -9,7 +9,11 @@ const {
   validateMemberId,
   validateMemberQuery,
   validateDependentId,
-  validateDependentData
+  validateDependentData,
+  validateDependentUpdate,
+  validateSelfClaimStart,
+  validateSelfClaimVerify,
+  validateSelfClaimLink
 } = require('../middleware/validation');
 const { authMiddleware, firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
@@ -74,12 +78,13 @@ router.get('/test-auth', firebaseAuthMiddleware, (req, res) => {
 });
 
 // Firebase Auth admin routes (Firebase token verification)
-router.get('/all/firebase', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship']), validateMemberQuery, memberController.getAllMembersFirebase);
+router.get('/all/firebase', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), validateMemberQuery, memberController.getAllMembersFirebase);
 
 // Dependents management routes (no JWT required - using member ID)
 router.get('/:memberId/dependents', validateMemberId, memberController.getMemberDependents);
 router.post('/:memberId/dependents', validateMemberId, validateDependentData, memberController.addDependent);
 router.put('/dependents/:dependentId', validateDependentId, validateDependentData, memberController.updateDependent);
+router.patch('/dependents/:dependentId', validateDependentId, validateDependentUpdate, memberController.updateDependent);
 router.delete('/dependents/:dependentId', validateDependentId, memberController.deleteDependent);
 
 // JWT-protected profile routes (for testing and JWT-based auth)
@@ -92,6 +97,11 @@ router.use(firebaseAuthMiddleware);
 // Member profile routes
 router.get('/profile', memberController.getProfile);
 router.put('/profile', validateProfileUpdate, memberController.updateProfile);
+
+// Dependent self-claim routes
+router.post('/dependents/self-claim/start', validateSelfClaimStart, memberController.selfClaimStart);
+router.post('/dependents/self-claim/verify', validateSelfClaimVerify, memberController.selfClaimVerify);
+router.post('/dependents/self-claim/link', validateSelfClaimLink, memberController.selfClaimLink);
 
 // Onboarding / Outreach routes
 router.get('/onboarding/pending', 
@@ -107,7 +117,7 @@ router.post('/:id/mark-welcomed',
 
 // Admin routes (require admin role)
 router.get('/all', 
-  roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship']), 
+  roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), 
   validateMemberQuery, 
   memberController.getAllMembers
 );

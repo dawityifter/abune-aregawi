@@ -7,11 +7,12 @@ describe('Health Check Endpoint', () => {
       .get('/health')
       .expect(200);
 
-    expect(response.body).toHaveProperty('success', true);
-    expect(response.body).toHaveProperty('message', 'Server is running');
+    expect(response.body).toHaveProperty('status', 'OK');
     expect(response.body).toHaveProperty('timestamp');
-    expect(response.body).toHaveProperty('uptime');
     expect(response.body).toHaveProperty('environment');
+    expect(response.body).toHaveProperty('database');
+    expect(response.body).toHaveProperty('stripe');
+    expect(response.body).toHaveProperty('firebase');
   });
 
   it('should return correct content type', async () => {
@@ -29,7 +30,7 @@ describe('Health Check Endpoint', () => {
     
     responses.forEach(response => {
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
+      expect(response.body.status).toBe('OK');
     });
   });
 }); 

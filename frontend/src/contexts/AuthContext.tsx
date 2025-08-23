@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { getAuth, signInWithEmailAndPassword, signInWithPhoneNumber, RecaptchaVerifier, User, signOut, onAuthStateChanged, updateProfile, Auth } from "firebase/auth";
+import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, User, signOut, onAuthStateChanged, updateProfile, Auth } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { normalizePhoneNumber } from "../utils/formatPhoneNumber";
 
@@ -9,11 +9,10 @@ interface AuthContextType {
   firebaseUser: User | null;
   loading: boolean;
   authReady: boolean;
-  loginWithEmail: (email: string, password: string) => Promise<void>;
   loginWithPhone: (phone: string, appVerifier: any, otp?: string, confirmationResult?: any) => Promise<any>;
   logout: () => Promise<void>;
   updateUserProfile: (updates: any) => Promise<void>;
-  getUserProfile: (uid: string, email?: string, phoneNumber?: string) => Promise<any>;
+  getUserProfile: (uid: string, email?: string | null, phoneNumber?: string | null) => Promise<any>;
   updateUserProfileData: (uid: string, updates: any) => Promise<void>;
   clearError: () => void;
   clearNewUserCache: () => void; // Add this function
@@ -69,12 +68,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check user profile in backend
   const checkUserProfile = useCallback(async (firebaseUser: User) => {
     const uid = firebaseUser.uid;
-    const email = firebaseUser.email;
     const phone = getPhoneNumber(firebaseUser);
+    const email = firebaseUser.email || null;
     
     console.log('🔍 Checking user profile:', { 
       uid, 
-      email, 
+      email,
       phone,
       phoneType: typeof phone,
       phoneExists: !!phone
@@ -88,18 +87,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       // If we have neither email nor phone, assume new user and skip backend 400s
-      if (!email && !phone) {
-        console.log('⚠️ No email or phone available; treating as new user');
+      if (!phone && !email) {
+        console.log('⚠️ No phone or email available; treating as new user');
         setNewUserCache(prev => new Set([...Array.from(prev), uid]));
         return null;
       }
 
       const params = new URLSearchParams();
-      
+      // Include email if present
       if (email) {
-        params.append("email", email);
+        params.append('email', email);
       }
-      
+      // Include phone if present
       if (phone) {
         const normalizedPhone = normalizePhoneNumber(phone);
         if (normalizedPhone) {
@@ -107,8 +106,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           console.log('⚠️ Could not normalize phone number:', phone);
         }
-      } else {
-        console.log('⚠️ No phone number available from Firebase user');
       }
       
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
@@ -174,19 +171,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearNewUserCache = useCallback(() => {
     setNewUserCache(new Set());
   }, []);
-
-  // Email sign-in
-  const loginWithEmail = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      await handlePostSignIn(cred.user);
-    } catch (err) {
-      setLoading(false);
-      throw err; // Re-throw error to be handled by calling component
-    }
-    setLoading(false);
-  };
 
   // Phone sign-in with OTP verification
   const loginWithPhone = useCallback(async (phone: string, appVerifier: any, otp?: string, confirmationResult?: any) => {
@@ -264,7 +248,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Get user profile from backend
-  const getUserProfile = async (uid: string, email?: string, phoneNumber?: string) => {
+  const getUserProfile = async (uid: string, email?: string | null, phoneNumber?: string | null) => {
     // Null-check guard to avoid calling with undefined uid
     if (!uid) {
       console.error('❌ getUserProfile called with undefined uid');
@@ -273,7 +257,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       const params = new URLSearchParams();
-      if (email) params.append("email", email);
+      if (email) {
+        params.append('email', email);
+      }
       if (phoneNumber) {
         const normalizedPhone = normalizePhoneNumber(phoneNumber);
         if (normalizedPhone) params.append("phone", normalizedPhone);
@@ -298,7 +284,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateUserProfileData = async (uid: string, updates: any) => {
     try {
       const params = new URLSearchParams();
-      if (user?.email) params.append("email", user.email);
       if (user?.phoneNumber) {
         const normalizedPhone = normalizePhoneNumber(user.phoneNumber);
         if (normalizedPhone) params.append("phone", normalizedPhone);
@@ -372,8 +357,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser({
             ...profile,
             uid: firebaseUser.uid,
-            // Prefer backend profile email if present; fallback to Firebase email
-            email: (profile as any).email || firebaseUser.email || '',
+            // Prefer backend profile email if present (email not used for login)
+            email: (profile as any).email || '',
             phoneNumber,
             role: profile.role, // Explicitly set the role
             _temp: false
@@ -388,7 +373,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('❌ User profile not found, setting as new user');
           setUser({
             uid: firebaseUser.uid,
-            email: firebaseUser.email,
+            email: '',
             phoneNumber,
             _temp: true,
             role: 'member'
@@ -399,8 +384,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('🔄 Navigating to register for new user');
             navigate('/register', { 
               state: { 
-                phone: phoneNumber,
-                email: firebaseUser.email 
+                phone: phoneNumber
               } 
             });
           }
@@ -421,7 +405,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Cleanup function
     return () => {
       console.log('🧹 Cleaning up auth state listener');
-      unsubscribe();
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
     };
   }, []); // Empty dependency array ensures listener is only registered once
 
@@ -432,7 +418,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     firebaseUser,
     loading,
     authReady,
-    loginWithEmail,
     loginWithPhone,
     logout,
     updateUserProfile,

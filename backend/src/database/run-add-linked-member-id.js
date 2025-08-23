@@ -9,7 +9,7 @@ const { Sequelize } = require('sequelize');
   const qi = sequelize.getQueryInterface();
   const migrationPath = path.resolve(
     __dirname,
-    '../../migrations/20250817000000-add-marital-status-to-members.js'
+    '../../migrations/20250820010000-add-linked-member-id-to-dependents.js'
   );
 
   console.log('🔌 Connecting to DB...');
@@ -30,7 +30,7 @@ const { Sequelize } = require('sequelize');
   }
 
   try {
-    console.log('🚀 Running migration up(): add marital_status enum column');
+    console.log('🚀 Running migration up(): add linked_member_id to dependents');
     await migration.up(qi, Sequelize);
     console.log('🎉 Migration completed successfully.');
   } catch (e) {

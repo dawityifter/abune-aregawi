@@ -114,12 +114,12 @@ export const handleRegistration = async (
  * Checks if a user exists in PostgreSQL but not in Firebase Auth
  */
 export const checkOrphanedUser = async (
-  getUserProfile: (uid: string) => Promise<any>,
+  getUserProfile: (uid: string, email?: string, phone?: string) => Promise<any>,
   email: string
 ): Promise<{ exists: boolean; user?: any }> => {
   try {
     // This will try to get user profile from backend
-    const user = await getUserProfile('temp-uid'); // We'll use email instead
+    const user = await getUserProfile('temp-uid', email || '', ''); // Prefer lookup by email
     return { exists: true, user };
   } catch (error) {
     return { exists: false };

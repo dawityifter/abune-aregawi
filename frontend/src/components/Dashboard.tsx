@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getRolePermissions, UserRole } from '../utils/roles';
+import { getDisplayEmail } from '../utils/email';
 
 interface UserProfile {
   success: boolean;
@@ -218,7 +219,7 @@ const Dashboard: React.FC = () => {
                       {t('profile')}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {userProfile?.data?.member?.firstName || firebaseUser?.email || 'User'}
+                      {userProfile?.data?.member?.firstName || getDisplayEmail(firebaseUser?.email) || 'User'}
                     </p>
                   </div>
                 </div>

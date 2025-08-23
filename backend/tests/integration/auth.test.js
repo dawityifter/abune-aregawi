@@ -1,8 +1,8 @@
 const request = require('supertest');
 const app = require('../../src/server');
 const { Member } = require('../../src/models');
-const bcrypt = require('bcryptjs');
 
+// Updated to align with phone-only auth policy. Email/password login tests removed.
 describe('Authentication Endpoints', () => {
   let testMember;
   let authToken;
@@ -24,15 +24,15 @@ describe('Authentication Endpoints', () => {
       email: 'john.doe@example.com',
       phoneNumber: '+1234567890',
       dateOfBirth: '1990-01-01',
-      gender: 'Male',
-      maritalStatus: 'Single',
+      gender: 'male',
+      maritalStatus: 'single',
       streetLine1: '123 Test St',
       city: 'Test City',
       state: 'CA',
       postalCode: '12345',
       country: 'USA',
-      languagePreference: 'English',
-      preferredGivingMethod: 'Online',
+      languagePreference: 'en',
+      preferredGivingMethod: 'online',
       titheParticipation: true,
       loginEmail: 'john.doe@example.com',
       password: 'password123',
@@ -55,6 +55,7 @@ describe('Authentication Endpoints', () => {
       expect(response.body.data.member).not.toHaveProperty('password');
 
       testMember = response.body.data.member;
+      authToken = response.body.data.token;
     });
 
     it('should reject registration with duplicate email', async () => {
@@ -80,19 +81,6 @@ describe('Authentication Endpoints', () => {
       expect(response.body.errors.some(error => error.msg.toLowerCase().includes('email'))).toBe(true);
     });
 
-    it('should reject registration with weak password', async () => {
-      const weakPasswordData = { ...validMemberData, email: 'test2@example.com', password: '123' };
-      
-      const response = await request(app)
-        .post('/api/members/register')
-        .send(weakPasswordData)
-        .expect(400);
-
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('errors');
-      expect(response.body.errors.some(error => error.msg.toLowerCase().includes('password'))).toBe(true);
-    });
-
     it('should reject registration with missing required fields', async () => {
       const incompleteData = { firstName: 'John' };
       
@@ -102,64 +90,6 @@ describe('Authentication Endpoints', () => {
         .expect(400);
 
       expect(response.body).toHaveProperty('success', false);
-    });
-  });
-
-  describe('POST /api/members/login', () => {
-    it('should login with valid credentials', async () => {
-      const response = await request(app)
-        .post('/api/members/login')
-        .send({
-          email: 'john.doe@example.com',
-          password: 'password123'
-        })
-        .expect(200);
-
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body).toHaveProperty('data');
-      expect(response.body.data).toHaveProperty('token');
-      expect(response.body.data).toHaveProperty('member');
-      expect(response.body.data.member).toHaveProperty('id');
-      expect(response.body.data.member.email).toBe('john.doe@example.com');
-
-      authToken = response.body.data.token;
-    });
-
-    it('should reject login with invalid email', async () => {
-      const response = await request(app)
-        .post('/api/members/login')
-        .send({
-          email: 'nonexistent@example.com',
-          password: 'password123'
-        })
-        .expect(401);
-
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body.message).toContain('Invalid credentials');
-    });
-
-    it('should reject login with invalid password', async () => {
-      const response = await request(app)
-        .post('/api/members/login')
-        .send({
-          email: 'john.doe@example.com',
-          password: 'wrongpassword'
-        })
-        .expect(401);
-
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body.message).toContain('Invalid credentials');
-    });
-
-    it('should reject login with missing credentials', async () => {
-      const response = await request(app)
-        .post('/api/members/login')
-        .send({})
-        .expect(400);
-
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('errors');
-      expect(response.body.errors.length).toBeGreaterThan(0);
     });
   });
 
@@ -198,9 +128,9 @@ describe('Authentication Endpoints', () => {
   describe('PUT /api/members/profile/jwt', () => {
     it('should update profile with valid data', async () => {
       const updateData = {
-        firstName: 'John Updated',
-        lastName: 'Doe Updated',
-        phoneNumber: '+1987654321'
+        first_name: 'John Updated',
+        last_name: 'Doe Updated',
+        phone_number: '+1987654321'
       };
 
       const response = await request(app)
@@ -211,9 +141,9 @@ describe('Authentication Endpoints', () => {
 
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('message', 'Profile updated successfully');
-      expect(response.body.data.member.firstName).toBe(updateData.firstName);
-      expect(response.body.data.member.lastName).toBe(updateData.lastName);
-      expect(response.body.data.member.phoneNumber).toBe(updateData.phoneNumber);
+      expect(response.body.data.member.first_name).toBe(updateData.first_name);
+      expect(response.body.data.member.last_name).toBe(updateData.last_name);
+      expect(response.body.data.member.phone_number).toBe(updateData.phone_number);
     });
 
     it('should reject profile update with invalid data', async () => {

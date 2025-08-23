@@ -119,8 +119,8 @@ describe('DonatePage', () => {
     const submitButton = screen.getByRole('button', { name: /Continue to Payment/ });
     fireEvent.click(submitButton);
     
-    // Should show validation error via alert
-    expect(mockAlert).toHaveBeenCalledWith('Please enter a valid amount (minimum $1.00)');
+    // Should show validation error via alert (format validation first)
+    expect(mockAlert).toHaveBeenCalledWith('Please enter a valid amount (numbers only, up to 2 decimals).');
   });
 
   test('prefills donor information from user profile', () => {

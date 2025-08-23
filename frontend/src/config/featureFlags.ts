@@ -48,9 +48,9 @@ const getFeatureFlagFromEnv = (envVar: string, defaultValue: boolean): boolean =
  * - REACT_APP_ENABLE_PHONE_AUTH: Enable/disable phone authentication (default: true)
  */
 export const featureFlags: FeatureFlags = {
-  // Email/Password Authentication
-  // Set REACT_APP_ENABLE_EMAIL_AUTH=false to disable email authentication
-  enableEmailPasswordAuth: getFeatureFlagFromEnv('REACT_APP_ENABLE_EMAIL_AUTH', true),
+  // Email/Password Authentication (disabled by default for phone-only policy)
+  // Set REACT_APP_ENABLE_EMAIL_AUTH=true to re-enable (not recommended per policy)
+  enableEmailPasswordAuth: getFeatureFlagFromEnv('REACT_APP_ENABLE_EMAIL_AUTH', false),
   
   // Phone Authentication  
   // Set REACT_APP_ENABLE_PHONE_AUTH=false to disable phone authentication

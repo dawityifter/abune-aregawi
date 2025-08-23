@@ -35,7 +35,7 @@ describe('Auth Middleware', () => {
       id: 'test-id',
       email: 'test@example.com',
       role: 'member',
-      isActive: true
+      is_active: true
     });
   });
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
+import { getDisplayEmail } from '../../utils/email';
 import AddMemberModal from './AddMemberModal';
 import AddDependentModal from './AddDependentModal';
 
@@ -24,15 +25,13 @@ interface MemberListProps {
   canEditMembers: boolean;
   canDeleteMembers: boolean;
   canRegisterMembers: boolean;
-  refreshToken?: number;
 }
 
 const MemberList: React.FC<MemberListProps> = ({ 
   onEditMember, 
   canEditMembers, 
   canDeleteMembers,
-  canRegisterMembers,
-  refreshToken
+  canRegisterMembers
 }) => {
   const { t } = useLanguage();
   const { currentUser, firebaseUser } = useAuth();
@@ -118,8 +117,7 @@ const MemberList: React.FC<MemberListProps> = ({
 
   useEffect(() => {
     fetchAllMembers();
-    // Refetch when refreshToken changes (e.g., after edit)
-  }, [refreshToken]);
+  }, []);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -237,7 +235,6 @@ const MemberList: React.FC<MemberListProps> = ({
               <option value="church_leadership">Church Leadership</option>
               <option value="treasurer">Treasurer</option>
               <option value="secretary">Secretary</option>
-              <option value="relationship">Relationship</option>
               <option value="member">Member</option>
               <option value="guest">Guest</option>
             </select>
@@ -312,7 +309,7 @@ const MemberList: React.FC<MemberListProps> = ({
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {member.email}
+                    {getDisplayEmail(member.email) || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -320,7 +317,6 @@ const MemberList: React.FC<MemberListProps> = ({
                       member.role === 'church_leadership' ? 'bg-purple-100 text-purple-800' :
                       member.role === 'treasurer' ? 'bg-green-100 text-green-800' :
                       member.role === 'secretary' ? 'bg-blue-100 text-blue-800' :
-                      member.role === 'relationship' ? 'bg-orange-100 text-orange-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
                       {getRoleDisplayName(member.role)}

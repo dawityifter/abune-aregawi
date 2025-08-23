@@ -248,11 +248,8 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       lastName: member.last_name
     }, null, 2));
 
-    // Do NOT enforce admin-only access here.
-    // firebaseAuthMiddleware should only authenticate and load the member.
-    // Authorization is handled by route-level roleMiddleware.
-    const userRole = member.role || (member.data && member.data.role);
-    console.log('🔵 Authenticated user role (no global enforcement):', userRole);
+    // Note: Do not enforce admin roles here. This middleware authenticates only.
+    // Route-level authorization is handled by roleMiddleware on specific routes.
 
     const identifier = userEmail || userPhone;
     console.log('✅ Firebase auth successful for user:', identifier, 'Role:', member.role);
