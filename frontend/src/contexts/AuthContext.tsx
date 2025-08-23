@@ -116,7 +116,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let lastError: any = null;
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-          const response = await fetch(apiUrl);
+          // Add an 8s timeout per attempt to avoid indefinite hangs
+          const controller = new AbortController();
+          const timeoutMs = 8000;
+          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+          const response = await fetch(apiUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
           console.log(`🔍 Backend response status (attempt ${attempt}):`, response.status);
 
           if (response.status === 200) {
@@ -126,7 +131,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           if (response.status === 404) {
-            console.log('❌ Backend user not found (status: 404)');
+            let body: any = null;
+            try {
+              body = await response.json();
+            } catch {}
+            const code = body?.code;
+            console.log('❌ Backend user not found (status: 404)', code ? `code=${code}` : '');
+            if (body) {
+              try {
+                console.log('🧾 404 response body:', JSON.stringify(body));
+              } catch {
+                console.log('🧾 404 response body (non-JSON):', body);
+              }
+            }
+            if (code === 'DEPENDENT_NOT_LINKED') {
+              const err: any = new Error('Dependent exists but not linked');
+              err.code = 'DEPENDENT_NOT_LINKED';
+              throw err;
+            }
             setNewUserCache(prev => new Set([...Array.from(prev), uid]));
             return null;
           }
@@ -149,7 +171,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           err.status = response.status;
           throw err;
         } catch (err) {
-          lastError = err;
+          // If aborted due to timeout, annotate and bubble up
+          if ((err as any)?.name === 'AbortError') {
+            const timeoutErr: any = new Error('Backend profile check timed out');
+            timeoutErr.code = 'TIMEOUT';
+            lastError = timeoutErr;
+          } else {
+            lastError = err;
+          }
           if (attempt < maxAttempts) {
             const delay = 500 * Math.pow(2, attempt - 1); // 500ms, 1000ms
             console.log(`⏳ Retry backend profile check in ${delay}ms (attempt ${attempt} failed)`);
@@ -382,15 +411,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Only navigate if we're not already on the register page
           if (window.location.pathname !== '/register') {
             console.log('🔄 Navigating to register for new user');
-            navigate('/register', { 
-              state: { 
+            navigate('/register', {
+              state: {
                 phone: phoneNumber
-              } 
+              }
             });
           }
         }
       } catch (error: any) {
         console.error('Error in auth state change handler:', error);
+        // Tailored handling for dependents that exist but are not linked
+        if (error && error.code === 'DEPENDENT_NOT_LINKED') {
+          console.log('ℹ️ Detected unlinked dependent login. Setting tailored state.');
+          setUser((prev: any) => ({
+            ...(prev || {}),
+            uid: firebaseUser.uid,
+            email: '',
+            phoneNumber,
+            role: 'dependent',
+            _temp: true,
+            unlinkedDependent: true
+          }));
+          setError('We found your dependent profile, but it is not yet linked to a head of household. Please contact them to link your profile or use the self-claim flow.');
+          // Avoid navigation to register; allow UI to present tailored CTA
+          setAuthReady(true);
+          return;
+        }
         // Do not force temp user on transient errors; surface error and let UI offer retry/CTA
         setError('Failed to load profile. Please try again.');
         // Leave user unchanged to avoid permanent temp/spinner state
