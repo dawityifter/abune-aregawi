@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const HeroSection: React.FC = () => {
   const { language, t } = useLanguage();
+  const { user } = useAuth();
 
   return (
     <header
@@ -80,10 +82,12 @@ const HeroSection: React.FC = () => {
 
         {/* CTA Buttons */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl mx-auto">
-          <Link to="/church-bylaw" className="btn btn-primary">
-            <i className="fas fa-book mr-2"></i>
-            {t('church.bylaw')}
-          </Link>
+          {user && (
+            <Link to="/church-bylaw" className="btn btn-primary">
+              <i className="fas fa-book mr-2"></i>
+              {t('church.bylaw')}
+            </Link>
+          )}
           <button 
             className="btn btn-secondary"
             onClick={() => window.open('https://www.facebook.com/abunearegawitx/', '_blank')}
@@ -91,10 +95,12 @@ const HeroSection: React.FC = () => {
             <i className="fas fa-video mr-2"></i>
             {t('watch.live')}
           </button>
-          <Link to="/member-status" className="btn btn-accent">
-            <i className="fas fa-chart-bar mr-2"></i>
-            {t('member.status')}
-          </Link>
+          {user && (
+            <Link to="/member-status" className="btn btn-accent">
+              <i className="fas fa-chart-bar mr-2"></i>
+              {t('member.status')}
+            </Link>
+          )}
         </div>
       </div>
     </header>
