@@ -1,5 +1,3 @@
-import React from 'react';
-
 // Test the step order logic directly
 describe('Registration Steps Order', () => {
   test('should have correct step order', () => {

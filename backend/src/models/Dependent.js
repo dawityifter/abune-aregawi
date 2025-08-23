@@ -25,6 +25,14 @@ module.exports = (sequelize) => {
         key: 'id'
       }
     },
+    linkedMemberId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: 'members',
+        key: 'id'
+      }
+    },
     firstName: {
       type: DataTypes.STRING(100),
       allowNull: false
@@ -122,6 +130,12 @@ module.exports = (sequelize) => {
     Dependent.belongsTo(models.Member, {
       foreignKey: 'memberId',
       as: 'member'
+    });
+
+    // When a dependent self-claims, it links to a Member account
+    Dependent.belongsTo(models.Member, {
+      foreignKey: 'linkedMemberId',
+      as: 'linkedMember'
     });
   };
 

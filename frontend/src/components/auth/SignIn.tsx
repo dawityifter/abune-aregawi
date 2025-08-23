@@ -5,7 +5,6 @@ import { RecaptchaVerifier } from "firebase/auth";
 import { auth } from "../../firebase";
 import ErrorBoundary from "../ErrorBoundary";
 import { formatPhoneNumber, isValidPhoneNumber, normalizePhoneNumber } from "../../utils/formatPhoneNumber";
-import { featureFlags, getDefaultAuthMethod, getEnabledAuthMethods } from "../../config/featureFlags";
 import { useLanguage } from "../../contexts/LanguageContext";
 
 declare global {
@@ -15,23 +14,11 @@ declare global {
 }
 
 const SignIn: React.FC = () => {
-  const { loginWithEmail, loginWithPhone, loading, currentUser, authReady } = useAuth();
+  const { loginWithPhone, loading, currentUser, authReady } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   
-  // Get enabled authentication methods and set default
-  const enabledMethods = getEnabledAuthMethods();
-  const defaultMethod = getDefaultAuthMethod();
-  
-  // Initialize method state with feature flag-aware default
-  const [method, setMethod] = useState<"email" | "phone">(() => {
-    if (!defaultMethod) {
-      return 'phone'; // Fallback
-    }
-    return defaultMethod;
-  });
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // Phone-only policy
   const [phone, setPhone] = useState(''); // Start with empty phone number
   const [otp, setOtp] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
@@ -55,9 +42,9 @@ const SignIn: React.FC = () => {
   const [recaptchaSolved, setRecaptchaSolved] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
 
-  // Initialize reCAPTCHA when component mounts and method is phone
+  // Initialize reCAPTCHA when component mounts (phone-only)
   const initializeRecaptcha = async () => {
-    if (method === "phone" && !window.recaptchaVerifier && !confirmationResult) {
+    if (!window.recaptchaVerifier && !confirmationResult) {
       try {
         // Check if container exists in DOM
         const existingContainer = document.getElementById('recaptcha-container');
@@ -104,33 +91,19 @@ const SignIn: React.FC = () => {
 
   // Initialize reCAPTCHA only when we need to show it (after 10 digits entered)
   const initializeRecaptchaIfNeeded = async () => {
-    if (method === "phone" && isValidPhoneNumber(phone) && !window.recaptchaVerifier && !confirmationResult) {
+    if (isValidPhoneNumber(phone) && !window.recaptchaVerifier && !confirmationResult) {
       await initializeRecaptcha();
     }
   };
 
   // Initialize reCAPTCHA when phone becomes valid (10 digits)
   useEffect(() => {
-    if (method === "phone" && isValidPhoneNumber(phone) && !recaptchaSolved) {
+    if (isValidPhoneNumber(phone) && !recaptchaSolved) {
       initializeRecaptchaIfNeeded();
     }
-  }, [method, phone, recaptchaSolved]);
+  }, [phone, recaptchaSolved]);
 
-  // Reset reCAPTCHA state when switching methods
-  useEffect(() => {
-    // Clean up existing reCAPTCHA when switching methods
-    if (window.recaptchaVerifier) {
-      try {
-        if (window.recaptchaVerifier && typeof window.recaptchaVerifier.clear === 'function') {
-          window.recaptchaVerifier.clear();
-        }
-      } catch (err) {
-        console.log('reCAPTCHA cleanup error on method change (non-critical):', err);
-      } finally {
-        window.recaptchaVerifier = undefined;
-      }
-    }
-  }, [method]);
+  // No method switching in phone-only policy
 
   // Cleanup recaptcha on unmount
   useEffect(() => {
@@ -156,7 +129,7 @@ const SignIn: React.FC = () => {
     // New user (no backend profile) should go to registration
     if (currentUser._temp) {
       if (window.location.pathname !== '/register') {
-        navigate('/register', { replace: true, state: { phone: currentUser.phoneNumber, email: currentUser.email } });
+        navigate('/register', { replace: true, state: { phone: currentUser.phoneNumber } });
       }
     } else {
       // Existing user -> dashboard
@@ -169,32 +142,6 @@ const SignIn: React.FC = () => {
   // Get clean phone number for Firebase (E.164 format)
   const getCleanPhoneNumber = (displayValue: string): string => {
     return normalizePhoneNumber(displayValue);
-  };
-
-
-
-  const handleEmailSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    
-    try {
-      await loginWithEmail(email, password);
-    } catch (err: any) {
-      setError(err.message || 'Email sign-in failed. Please try again.');
-      if (err.code === 'auth/user-not-found') {
-        setError("No account found with this email address.");
-      } else if (err.code === 'auth/wrong-password') {
-        setError("Incorrect password. Please try again.");
-      } else if (err.code === 'auth/invalid-email') {
-        setError("Invalid email address format.");
-      } else if (err.code === 'auth/user-disabled') {
-        setError("This account has been disabled. Please contact support.");
-      } else if (err.code === 'auth/too-many-requests') {
-        setError("Too many failed login attempts. Please try again later.");
-      } else {
-        setError("Login failed. Please check your credentials and try again.");
-      }
-    }
   };
 
   const handlePhoneSignIn = async (e: React.FormEvent) => {
@@ -414,128 +361,13 @@ const SignIn: React.FC = () => {
             <h2 className="text-3xl font-serif font-bold text-primary-700 mb-2">{t('welcome.back')}</h2>
             <p className="text-accent-600 text-sm">{t('sign.in.to.access.community')}</p>
           </div>
-        
-        {/* Only show method selection if multiple auth methods are enabled */}
-        {enabledMethods.length > 1 && (
-          <div className="flex gap-3 mb-6 justify-center">
-            {featureFlags.enableEmailPasswordAuth && (
-              <button
-                onClick={() => setMethod("email")}
-                className={`px-6 py-3 rounded-lg font-medium text-sm transition-all duration-300 ${
-                  method === "email" 
-                    ? "bg-primary-700 text-white shadow-lg transform -translate-y-0.5" 
-                    : "bg-white/50 text-accent-700 border border-accent-300 hover:bg-white/70"
-                }`}
-              >
-                <i className="fas fa-envelope mr-2"></i>
-                Email/Password
-              </button>
-            )}
-            {featureFlags.enablePhoneAuth && (
-              <button
-                onClick={() => setMethod("phone")}
-                className={`px-6 py-3 rounded-lg font-medium text-sm transition-all duration-300 ${
-                  method === "phone" 
-                    ? "bg-primary-700 text-white shadow-lg transform -translate-y-0.5" 
-                    : "bg-white/50 text-accent-700 border border-accent-300 hover:bg-white/70"
-                }`}
-              >
-                <i className="fas fa-phone mr-2"></i>
-                Phone
-              </button>
-            )}
-          </div>
-        )}
-        
-        {/* Show single method title if only one method is enabled */}
-        {enabledMethods.length === 1 && (
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center px-4 py-2 bg-primary-100 text-primary-700 rounded-lg text-sm font-medium">
-              {featureFlags.enableEmailPasswordAuth && (
-                <>
-                  <i className="fas fa-envelope mr-2"></i>
-                  Sign in with Email/Password
-                </>
-              )}
-              {featureFlags.enablePhoneAuth && (
-                <>
-                  <i className="fas fa-phone mr-2"></i>
-                  Sign in with Phone Number
-                </>
-              )}
-            </div>
-          </div>
-        )}
-        
-        {/* Show error if no auth methods are enabled */}
-        {enabledMethods.length === 0 && (
-          <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg mb-6 text-center">
-            <i className="fas fa-exclamation-triangle mr-2"></i>
-            <strong>No authentication methods available.</strong>
-            <br />
-            <span className="text-sm">Please contact your administrator for assistance.</span>
-          </div>
-        )}
         {error && (
           <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg mb-6 text-center">
             <i className="fas fa-exclamation-circle mr-2"></i>
             {error}
           </div>
         )}
-        {method === "email" && featureFlags.enableEmailPasswordAuth && (
-          <form onSubmit={handleEmailSignIn} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-accent-700 mb-2">
-                <i className="fas fa-envelope mr-2 text-primary-700"></i>
-                Email Address
-              </label>
-              <input
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                type="email"
-                required
-                className="w-full px-4 py-3 border border-accent-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors bg-white/50 backdrop-blur-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-accent-700 mb-2">
-                <i className="fas fa-lock mr-2 text-primary-700"></i>
-                Password
-              </label>
-              <input
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                type="password"
-                placeholder="Enter your password"
-                required
-                className="w-full px-4 py-3 border border-accent-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors bg-white/50 backdrop-blur-sm"
-              />
-            </div>
-            <button 
-              type="submit" 
-              disabled={loading} 
-              className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-all duration-300 ${
-                loading 
-                  ? "bg-accent-400 cursor-not-allowed" 
-                  : "bg-primary-700 hover:bg-primary-800 transform hover:-translate-y-0.5 shadow-lg"
-              }`}
-            >
-              {loading ? (
-                <>
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
-                  Signing In...
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-sign-in-alt mr-2"></i>
-                  Sign In
-                </>
-              )}
-            </button>
-          </form>
-        )}
-        {method === "phone" && featureFlags.enablePhoneAuth && !confirmationResult && (
+        {!confirmationResult && (
           <form onSubmit={handlePhoneSignIn} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-accent-700 mb-2">
@@ -654,7 +486,7 @@ const SignIn: React.FC = () => {
             </div>
           </form>
         )}
-        {method === "phone" && featureFlags.enablePhoneAuth && confirmationResult && (
+        {confirmationResult && (
           <form onSubmit={handleOtpVerify} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <label style={{ fontWeight: 500, marginBottom: 4 }}>Enter OTP</label>
             <input

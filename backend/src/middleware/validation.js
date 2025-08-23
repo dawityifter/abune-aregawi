@@ -1,4 +1,17 @@
-const { body, param, query } = require('express-validator');
+const { body, param, query, validationResult } = require('express-validator');
+
+// Centralized validation error handler
+function handleValidationErrors(req, res, next) {
+  const errors = validationResult(req);
+  if (errors.isEmpty()) {
+    return next();
+  }
+  return res.status(400).json({
+    success: false,
+    message: 'Validation failed',
+    errors: errors.array()
+  });
+}
 
 // Define allowed relationship values
 const RELATIONSHIP_VALUES = ['Son', 'Daughter', 'Spouse', 'Parent', 'Sibling', 'Other'];
@@ -8,7 +21,7 @@ const validateMemberQuery = [
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
   query('search').optional().isString().withMessage('Search must be a string'),
-  query('role').optional().isIn(['member', 'admin', 'church_leadership', 'treasurer', 'secretary', 'relationship']).withMessage('Invalid role filter'),
+  query('role').optional().isIn(['member', 'admin', 'church_leadership', 'treasurer', 'secretary']).withMessage('Invalid role filter'),
   query('phone').optional().isString().withMessage('Phone must be a string')
 ];
 
@@ -30,7 +43,27 @@ const validateDependentData = [
   body('gender').optional().isIn(['Male', 'Female']).withMessage('Gender must be Male or Female'),
   body('relationship').optional().isIn(RELATIONSHIP_VALUES).withMessage(`Relationship must be one of: ${RELATIONSHIP_VALUES.join(', ')}`),
   body('phone').optional().isString().withMessage('Phone must be a string'),
-  body('email').optional().isEmail().withMessage('Email must be a valid email address'),
+  body('email').optional({ nullable: true, checkFalsy: true }).isEmail().withMessage('Email must be a valid email address'),
+  body('baptismName').optional().isString().withMessage('Baptism name must be a string'),
+  body('isBaptized').optional().isBoolean().withMessage('Is baptized must be a boolean'),
+  body('baptismDate').optional().isISO8601().withMessage('Baptism date must be a valid date'),
+  body('nameDay').optional().isString().withMessage('Name day must be a string'),
+  body('medicalConditions').optional().isString().withMessage('Medical conditions must be a string'),
+  body('allergies').optional().isString().withMessage('Allergies must be a string'),
+  body('medications').optional().isString().withMessage('Medications must be a string'),
+  body('dietaryRestrictions').optional().isString().withMessage('Dietary restrictions must be a string'),
+  body('notes').optional().isString().withMessage('Notes must be a string')
+];
+
+// Validation for dependent partial update (PATCH) - all fields optional
+const validateDependentUpdate = [
+  body('firstName').optional().notEmpty().trim().withMessage('First name cannot be empty'),
+  body('lastName').optional().notEmpty().trim().withMessage('Last name cannot be empty'),
+  body('dateOfBirth').optional().isISO8601().withMessage('Date of birth must be a valid date'),
+  body('gender').optional().isIn(['Male', 'Female']).withMessage('Gender must be Male or Female'),
+  body('relationship').optional().isIn(RELATIONSHIP_VALUES).withMessage(`Relationship must be one of: ${RELATIONSHIP_VALUES.join(', ')}`),
+  body('phone').optional().isString().withMessage('Phone must be a string'),
+  body('email').optional({ nullable: true, checkFalsy: true }).isEmail().withMessage('Email must be a valid email address'),
   body('baptismName').optional().isString().withMessage('Baptism name must be a string'),
   body('isBaptized').optional().isBoolean().withMessage('Is baptized must be a boolean'),
   body('baptismDate').optional().isISO8601().withMessage('Baptism date must be a valid date'),
@@ -77,7 +110,7 @@ const validateMemberRegistration = [
   body('maritalStatus').optional().isIn(['single', 'married', 'divorced', 'widowed']).withMessage('Invalid marital status'),
   // Admin-created members may not have a Firebase account yet; allow missing firebaseUid
   body('firebaseUid').optional().isString().withMessage('Firebase UID must be a string'),
-  body('role').optional().isIn(['member', 'admin', 'church_leadership', 'treasurer', 'secretary', 'relationship']).withMessage('Invalid role'),
+  body('role').optional().isIn(['member', 'admin', 'church_leadership', 'treasurer', 'secretary']).withMessage('Invalid role'),
   body('streetLine1').optional().isString().withMessage('Street line 1 must be a string'),
   body('apartmentNo').optional().isString().withMessage('Apartment number must be a string'),
   body('city').optional().isString().withMessage('City must be a string'),
@@ -110,13 +143,51 @@ const validateLogin = [
   body('otp').notEmpty().withMessage('OTP is required')
 ];
 
+// Self-claim: start
+const validateSelfClaimStart = [
+  body('dateOfBirth').optional().isISO8601().withMessage('Date of birth must be a valid date'),
+  body('lastName').optional().isString().withMessage('Last name must be a string'),
+  handleValidationErrors
+];
+
+// Self-claim: verify
+const validateSelfClaimVerify = [
+  body('dependentId').isInt({ min: 1 }).withMessage('Dependent ID must be a positive integer'),
+  body('lastName').optional().isString().withMessage('Last name must be a string'),
+  body('dateOfBirth').optional().isISO8601().withMessage('Date of birth must be a valid date'),
+  // require at least one of lastName or dateOfBirth
+  (req, res, next) => {
+    const { lastName, dateOfBirth } = req.body || {};
+    if (!lastName && !dateOfBirth) {
+      return res.status(400).json({
+        success: false,
+        message: 'Provide lastName or dateOfBirth for verification'
+      });
+    }
+    return next();
+  },
+  handleValidationErrors
+];
+
+// Self-claim: link
+const validateSelfClaimLink = [
+  body('dependentId').isInt({ min: 1 }).withMessage('Dependent ID must be a positive integer'),
+  body('token').isString().withMessage('Verification token is required'),
+  handleValidationErrors
+];
+
 module.exports = {
   validateMemberRegistration,
   validateMemberQuery,
   validateMemberId,
   validateDependentId,
   validateDependentData,
+  validateDependentUpdate,
   validateProfileUpdate,
   validateLogin,
-  RELATIONSHIP_VALUES
-}; 
+  RELATIONSHIP_VALUES,
+  handleValidationErrors,
+  validateSelfClaimStart,
+  validateSelfClaimVerify,
+  validateSelfClaimLink
+};

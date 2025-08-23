@@ -94,11 +94,6 @@ module.exports = (sequelize) => {
       type: DataTypes.ENUM('male', 'female', 'other'),
       allowNull: true
     },
-    marital_status: {
-      type: DataTypes.ENUM('single', 'married', 'divorced', 'widowed'),
-      allowNull: true,
-      field: 'marital_status'
-    },
     baptism_name: {
       type: DataTypes.STRING(100),
       allowNull: true,

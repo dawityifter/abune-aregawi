@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getRolePermissions } from '../utils/roles';
+import { getDisplayEmail } from '../utils/email';
 import { isFeatureEnabled, featureFlags } from '../config/featureFlags';
 // import { Transition } from '@headlessui/react'; // Removed due to React 19 compatibility
 
@@ -56,10 +57,10 @@ const Navigation: React.FC = () => {
           setLoading(true);
           console.log('🔍 Navigation - currentUser:', currentUser);
           
-          // Handle different user object structures
+          // Handle different user object structures (phone-only)
           const uid = currentUser.uid || currentUser.id;
-          const email = currentUser.email;
-          const phone = currentUser.phoneNumber;
+          const email = currentUser.email || null;
+          const phone = currentUser.phoneNumber || null;
           
           if (!uid) {
             console.error('❌ No UID found in currentUser:', currentUser);
@@ -146,14 +147,6 @@ const Navigation: React.FC = () => {
                     Outreach
                   </Link>
                 )}
-                {(permissions.canSendCommunications || userProfile?.data?.member?.role === 'admin' || userProfile?.data?.member?.role === 'church_leadership' || userProfile?.data?.member?.role === 'secretary') && (
-                  <Link
-                    to="/sms"
-                    className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
-                  >
-                    SMS
-                  </Link>
-                )}
                 {/* Profile link removed as requested */}
               </>
             )}
@@ -191,7 +184,7 @@ const Navigation: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <div className="hidden lg:flex flex-col items-end">
                   <span className="text-sm font-medium text-white">
-                    {userProfile?.data?.member?.firstName || userProfile?.firstName || currentUser.displayName?.split(' ')[0] || currentUser.email?.split('@')[0]}
+                    {userProfile?.data?.member?.firstName || userProfile?.firstName || currentUser.displayName?.split(' ')[0] || getDisplayEmail(currentUser.email)?.split('@')[0]}
                   </span>
                   <span className="text-xs text-white/70">
                     {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
@@ -265,7 +258,7 @@ const Navigation: React.FC = () => {
                 </div>
                 <div className="ml-3">
                   <div className="text-base font-medium text-gray-900">
-                    {userProfile?.data?.member?.firstName || currentUser.displayName || currentUser.email}
+                    {userProfile?.data?.member?.firstName || currentUser.displayName || getDisplayEmail(currentUser.email)}
                   </div>
                   <div className="text-sm text-gray-500">
                     {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
@@ -305,16 +298,6 @@ const Navigation: React.FC = () => {
                   >
                     <i className="fas fa-hands-helping mr-3 w-5 text-center"></i>
                     Outreach
-                  </Link>
-                )}
-                {(permissions.canSendCommunications || userProfile?.data?.member?.role === 'admin' || userProfile?.data?.member?.role === 'church_leadership' || userProfile?.data?.member?.role === 'secretary') && (
-                  <Link
-                    to="/sms"
-                    className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <i className="fas fa-sms mr-3 w-5 text-center"></i>
-                    SMS
                   </Link>
                 )}
                 

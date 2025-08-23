@@ -51,58 +51,14 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 }) => {
   const { t } = useLanguage();
   const { currentUser, firebaseUser } = useAuth();
-  // Normalize incoming member data to ensure enums are lowercase and snake_case is mapped
-  const normalizeMemberForForm = (m: Member | any): Member => {
-    const marital = (m?.maritalStatus ?? m?.marital_status ?? '').toString();
-    return {
-      ...m,
-      maritalStatus: marital ? marital.toLowerCase() : undefined,
-      gender: typeof m?.gender === 'string' ? m.gender.toLowerCase() : m?.gender,
-      interestedInServing:
-        typeof m?.interestedInServing === 'string'
-          ? m.interestedInServing.toLowerCase()
-          : m?.interestedInServing,
-    } as Member;
-  };
-
-  const [formData, setFormData] = useState<Member>(normalizeMemberForForm(member));
+  const [formData, setFormData] = useState<Member>(member);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'basic' | 'contact' | 'spiritual' | 'family'>('basic');
 
   useEffect(() => {
-    setFormData(normalizeMemberForForm(member));
+    setFormData(member);
   }, [member]);
-
-  // Fetch the latest member details to ensure we have complete fields (e.g., maritalStatus)
-  useEffect(() => {
-    const fetchDetails = async () => {
-      try {
-        if (!member?.id) return;
-        const idToken = firebaseUser ? await firebaseUser.getIdToken(true) : null;
-        const url = `${process.env.REACT_APP_API_URL}/api/members/${member.id}?email=${encodeURIComponent(currentUser?.email || '')}`;
-        const res = await fetch(url, {
-          headers: {
-            'Authorization': idToken ? `Bearer ${idToken}` : '',
-            'Content-Type': 'application/json'
-          }
-        });
-        if (!res.ok) {
-          console.warn('MemberEditModal: failed to fetch member details', res.status);
-          return; // don't overwrite on error
-        }
-        const data = await res.json();
-        const m = data?.data?.member || data?.member || data;
-        if (m) {
-          setFormData(normalizeMemberForForm({ ...member, ...m }));
-        }
-      } catch (_) {
-        // ignore fetch errors; form already seeded from props
-      }
-    };
-    fetchDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [member?.id]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -129,13 +85,6 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
         ...formData,
         interestedInServing: formData.interestedInServing
           ? formData.interestedInServing.toLowerCase()
-          : undefined,
-        // Ensure enums match backend expectations
-        maritalStatus: typeof formData.maritalStatus === 'string'
-          ? formData.maritalStatus.toLowerCase()
-          : undefined,
-        gender: typeof formData.gender === 'string'
-          ? formData.gender.toLowerCase()
           : undefined,
       };
 
@@ -290,7 +239,6 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   <option value="secretary">Secretary</option>
                   <option value="treasurer">Treasurer</option>
                   <option value="church_leadership">Church Leadership</option>
-                  <option value="relationship">Relationship</option>
                   <option value="admin">Admin</option>
                   <option value="guest">Guest</option>
                 </select>
@@ -345,13 +293,9 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t('marital.status')}
                 </label>
-                {/**
-                 * Ensure the select shows a value even if formData hasn't updated yet by
-                 * falling back to incoming member props (camelCase or snake_case).
-                 */}
                 <select
                   name="maritalStatus"
-                  value={(formData.maritalStatus ?? (member as any)?.maritalStatus ?? (member as any)?.marital_status ?? '')}
+                  value={formData.maritalStatus || ''}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >

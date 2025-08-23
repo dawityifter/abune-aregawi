@@ -1,6 +1,12 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
+if (typeof window !== 'undefined') {
+  window.getIdToken = async () => {
+    const user = getAuth().currentUser;
+    return user ? user.getIdToken(true) : null;
+  };
+}
 // Firebase configuration using environment variables
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,

@@ -30,25 +30,11 @@ try {
   };
 
   if (isPostgres) {
-    // Enhanced SSL configuration for Supabase connections
-    const sslConfig = process.env.NODE_ENV === 'production' ? {
-      require: true,
-      rejectUnauthorized: false,
-      ca: false,
-      checkServerIdentity: () => undefined
-    } : {
-      require: true,
-      rejectUnauthorized: false
-    };
-    
-    config = {
+    // Make SSL optional for local development
+    const wantSSL = process.env.DATABASE_SSL === 'true';
+    const base = {
       ...config,
       dialect: 'postgres',
-      dialectOptions: {
-        ssl: sslConfig,
-        connectTimeout: 60000,
-        socketTimeout: 60000
-      },
       pool: {
         max: 5,
         min: 0,
@@ -68,6 +54,19 @@ try {
         max: 3
       }
     };
+
+    if (wantSSL) {
+      base.dialectOptions = {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false
+        },
+        connectTimeout: 60000,
+        socketTimeout: 60000
+      };
+    }
+
+    config = base;
   } else if (isSQLite) {
     config = {
       ...config,
@@ -92,19 +91,13 @@ const Dependent = require('./Dependent')(sequelize);
 const Transaction = require('./Transaction')(sequelize);
 const MemberPayment = require('./MemberPayment')(sequelize);
 const Donation = require('./Donation')(sequelize);
-const Group = require('./Group')(sequelize);
-const MemberGroup = require('./MemberGroup')(sequelize);
-const SmsLog = require('./SmsLog')(sequelize);
 
 // Define associations
-Member.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
-Dependent.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
-Transaction.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
-MemberPayment.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
-Donation.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
-Group.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
-MemberGroup.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
-SmsLog.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Group, MemberGroup, SmsLog });
+Member.associate({ Dependent, Member, Transaction, MemberPayment, Donation });
+Dependent.associate({ Dependent, Member, Transaction, MemberPayment, Donation });
+Transaction.associate({ Dependent, Member, Transaction, MemberPayment, Donation });
+MemberPayment.associate({ Dependent, Member, Transaction, MemberPayment, Donation });
+Donation.associate({ Dependent, Member, Transaction, MemberPayment, Donation });
 
 // Export models and sequelize instance
 module.exports = {
@@ -113,8 +106,5 @@ module.exports = {
   Dependent,
   Transaction,
   MemberPayment,
-  Donation,
-  Group,
-  MemberGroup,
-  SmsLog
+  Donation
 }; 

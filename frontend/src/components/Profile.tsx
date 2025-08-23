@@ -4,6 +4,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { formatDateForDisplay } from '../utils/dateUtils';
 import { Dependent } from '../utils/relationshipTypes';
 import { UserRole } from '../utils/roles';
+import { getDisplayEmail } from '../utils/email';
 
 interface ProfileData {
   displayName: string;
@@ -302,8 +303,8 @@ const Profile: React.FC = () => {
         email: formData.email,
         phoneNumber: formData.phoneNumber,
         dateOfBirth: formData.dateOfBirth,
-        gender: formData.gender ? formData.gender.toLowerCase() : undefined,
-        maritalStatus: formData.maritalStatus ? formData.maritalStatus.toLowerCase() : undefined,
+        gender: formData.gender,
+        maritalStatus: formData.maritalStatus,
         emergencyContactName: formData.emergencyContact,
         emergencyContactPhone: formData.emergencyPhone,
         ministries: formData.ministries ? JSON.stringify(formData.ministries) : null,
@@ -548,31 +549,6 @@ const Profile: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('email')}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        required
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.email || 'Not provided'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('role')}
-                    </label>
-                    <p className="text-gray-900">{profile.role || 'Member'}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('member.since')}
                     </label>
                     <p className="text-gray-900">
@@ -596,6 +572,13 @@ const Profile: React.FC = () => {
                     ) : (
                       <p className="text-gray-900">{profile.phoneNumber || t('not.provided')}</p>
                     )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('role')}
+                    </label>
+                    <p className="text-gray-900">{profile.role || 'Member'}</p>
                   </div>
 
                   <div>
@@ -910,7 +893,7 @@ const Profile: React.FC = () => {
                             {dependent.email && (
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
-                                <p className="text-gray-900">{dependent.email}</p>
+                                <p className="text-gray-900">{getDisplayEmail(dependent.email) || t('not.provided')}</p>
                               </div>
                             )}
                             {dependent.baptismName && (

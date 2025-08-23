@@ -9,6 +9,9 @@ jest.mock('express-validator', () => ({
     isLength: jest.fn().mockReturnThis(),
     withMessage: jest.fn().mockReturnThis(),
     isEmail: jest.fn().mockReturnThis(),
+    isString: jest.fn().mockReturnThis(),
+    isInt: jest.fn().mockReturnThis(),
+    isFloat: jest.fn().mockReturnThis(),
     normalizeEmail: jest.fn().mockReturnThis(),
     notEmpty: jest.fn().mockReturnThis(),
     isIn: jest.fn().mockReturnThis(),
@@ -22,12 +25,14 @@ jest.mock('express-validator', () => ({
     default: jest.fn().mockReturnThis()
   })),
   param: jest.fn(() => ({
+    isInt: jest.fn().mockReturnThis(),
     isUUID: jest.fn().mockReturnThis(),
     withMessage: jest.fn().mockReturnThis()
   })),
   query: jest.fn(() => ({
     optional: jest.fn().mockReturnThis(),
     isInt: jest.fn().mockReturnThis(),
+    isString: jest.fn().mockReturnThis(),
     withMessage: jest.fn().mockReturnThis(),
     trim: jest.fn().mockReturnThis(),
     isLength: jest.fn().mockReturnThis(),

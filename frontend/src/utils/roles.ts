@@ -145,7 +145,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     
     // Event & Communication
     canManageEvents: false,
-    canSendCommunications: true,
+    canSendCommunications: false,
     canViewEventPlanning: false,
     
     // System Administration
