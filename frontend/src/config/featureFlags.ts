@@ -13,6 +13,8 @@ export interface FeatureFlags {
   // Future feature flags can be added here
   // enableSocialAuth: boolean;
   // enableTwoFactorAuth: boolean;
+  // UI/Global banners
+  enableDevBanner: boolean;
 }
 
 /**
@@ -46,6 +48,7 @@ const getFeatureFlagFromEnv = (envVar: string, defaultValue: boolean): boolean =
  * Environment Variables:
  * - REACT_APP_ENABLE_EMAIL_AUTH: Enable/disable email/password authentication (default: true)
  * - REACT_APP_ENABLE_PHONE_AUTH: Enable/disable phone authentication (default: true)
+ * - REACT_APP_ENABLE_DEV_BANNER: Enable/disable development banner (default: true in dev, false in prod)
  */
 export const featureFlags: FeatureFlags = {
   // Email/Password Authentication (disabled by default for phone-only policy)
@@ -55,14 +58,23 @@ export const featureFlags: FeatureFlags = {
   // Phone Authentication  
   // Set REACT_APP_ENABLE_PHONE_AUTH=false to disable phone authentication
   enablePhoneAuth: getFeatureFlagFromEnv('REACT_APP_ENABLE_PHONE_AUTH', true),
+
+  // Development banner (global notice)
+  // Defaults: enabled in development, disabled in production
+  enableDevBanner: getFeatureFlagFromEnv(
+    'REACT_APP_ENABLE_DEV_BANNER',
+    process.env.NODE_ENV === 'production' ? false : true
+  ),
 };
 
 // Debug logging to see what values are being read
 console.log('🔧 Feature Flags Debug:', {
   REACT_APP_ENABLE_EMAIL_AUTH: process.env.REACT_APP_ENABLE_EMAIL_AUTH,
   REACT_APP_ENABLE_PHONE_AUTH: process.env.REACT_APP_ENABLE_PHONE_AUTH,
+  REACT_APP_ENABLE_DEV_BANNER: process.env.REACT_APP_ENABLE_DEV_BANNER,
   enableEmailPasswordAuth: featureFlags.enableEmailPasswordAuth,
   enablePhoneAuth: featureFlags.enablePhoneAuth,
+  enableDevBanner: featureFlags.enableDevBanner,
 });
 
 /**

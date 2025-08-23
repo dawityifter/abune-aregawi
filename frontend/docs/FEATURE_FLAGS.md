@@ -12,6 +12,7 @@ The Church Management System includes a feature flag system that allows you to e
 |------|---------------------|---------|-------------|
 | `enableEmailPasswordAuth` | `REACT_APP_ENABLE_EMAIL_AUTH` | `true` | Controls email/password authentication |
 | `enablePhoneAuth` | `REACT_APP_ENABLE_PHONE_AUTH` | `true` | Controls phone number authentication |
+| `enableDevBanner` | `REACT_APP_ENABLE_DEV_BANNER` | `true` (dev), `false` (prod) | Shows the development notice banner at the top |
 
 ### Configuration
 
@@ -22,6 +23,9 @@ Feature flags are configured via environment variables in your `.env` file:
 REACT_APP_ENABLE_EMAIL_AUTH=true
 REACT_APP_ENABLE_PHONE_AUTH=true
 
+# Show development banner (enabled by default in development)
+REACT_APP_ENABLE_DEV_BANNER=true
+
 # Disable email authentication (phone only)
 REACT_APP_ENABLE_EMAIL_AUTH=false
 REACT_APP_ENABLE_PHONE_AUTH=true
@@ -29,6 +33,9 @@ REACT_APP_ENABLE_PHONE_AUTH=true
 # Disable phone authentication (email only)
 REACT_APP_ENABLE_EMAIL_AUTH=true
 REACT_APP_ENABLE_PHONE_AUTH=false
+
+# Hide development banner
+REACT_APP_ENABLE_DEV_BANNER=false
 
 # Disable all authentication (not recommended)
 REACT_APP_ENABLE_EMAIL_AUTH=false
@@ -121,7 +128,7 @@ REACT_APP_ENABLE_PHONE_AUTH=false
 ## Deployment Considerations
 
 1. **Production Safety**: Always ensure at least one authentication method is enabled in production
-2. **Environment Consistency**: Keep feature flags consistent across environments unless testing
+2. **Environment Consistency**: Keep feature flags consistent across environments unless testing. The dev banner defaults to on in development and off in production; override with `REACT_APP_ENABLE_DEV_BANNER` if needed.
 3. **User Communication**: If disabling a method users rely on, communicate changes in advance
 4. **Rollback Plan**: Keep previous environment configuration for quick rollback if needed
 
