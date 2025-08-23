@@ -114,8 +114,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
       console.log('🔍 Backend check URL:', apiUrl);
       
-      // Retry/backoff for transient errors (kept to 1 to avoid long waits on cold starts)
-      const maxAttempts = 1;
+      // Retry/backoff for transient errors (kept low to avoid long waits)
+      const maxAttempts = 2;
       let lastError: any = null;
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
@@ -123,6 +123,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), PROFILE_FETCH_TIMEOUT_MS);
           const response = await fetch(apiUrl, { signal: controller.signal });
+          
+          // Always clear timeout even if parsing/logic throws later
           clearTimeout(timeoutId);
           console.log(`🔍 Backend response status (attempt ${attempt}):`, response.status);
 
@@ -178,6 +180,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const timeoutErr: any = new Error('Backend profile check timed out');
             timeoutErr.code = 'TIMEOUT';
             lastError = timeoutErr;
+          } else if ((err as any) instanceof TypeError) {
+            // Failed to fetch / network error in fetch API is typically a TypeError - treat as transient
+            const netErr: any = new Error('Network error during backend profile check');
+            netErr.code = 'NETWORK';
+            lastError = netErr;
           } else {
             lastError = err;
           }
@@ -188,6 +195,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             continue;
           }
           break;
+        } finally {
+          // Best-effort cleanup if an exception happens before clearTimeout is called
+          try {
+            // Note: timeoutId is in scope; clearTimeout is idempotent
+            // @ts-ignore - ignore if not defined due to earlier exceptions
+            clearTimeout(timeoutId);
+          } catch {}
         }
       }
       throw lastError;

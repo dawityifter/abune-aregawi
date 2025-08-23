@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
@@ -18,6 +18,11 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
   const [updating, setUpdating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
+  // Filters and sorting
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'member' | 'role'>('member');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     fetchMembers();
@@ -119,12 +124,48 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
     return acc;
   }, {} as Record<string, number>);
 
-  const totalMembers = members.length;
+  // Derived list: filter -> sort -> paginate
+  const filteredMembers = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return members.filter((m) => {
+      const matchesTerm = !term ||
+        `${m.firstName || ''} ${m.lastName || ''}`.toLowerCase().includes(term) ||
+        (m.email || '').toLowerCase().includes(term);
+      const matchesRole = !roleFilter || m.role === roleFilter;
+      return matchesTerm && matchesRole;
+    });
+  }, [members, searchTerm, roleFilter]);
+
+  const sortedMembers = useMemo(() => {
+    const arr = [...filteredMembers];
+    arr.sort((a, b) => {
+      if (sortBy === 'member') {
+        const aName = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase();
+        const bName = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase();
+        return sortDir === 'asc' ? aName.localeCompare(bName) : bName.localeCompare(aName);
+      }
+      const aRole = (a.role || '').toLowerCase();
+      const bRole = (b.role || '').toLowerCase();
+      return sortDir === 'asc' ? aRole.localeCompare(bRole) : bRole.localeCompare(aRole);
+    });
+    return arr;
+  }, [filteredMembers, sortBy, sortDir]);
+
+  const totalMembers = sortedMembers.length;
   const totalPages = Math.max(1, Math.ceil(totalMembers / pageSize));
   const safePage = Math.min(currentPage, totalPages);
   const startIndex = (safePage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalMembers);
-  const paginatedMembers = members.slice(startIndex, endIndex);
+  const paginatedMembers = sortedMembers.slice(startIndex, endIndex);
+
+  const toggleSort = (column: 'member' | 'role') => {
+    if (sortBy === column) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(column);
+      setSortDir('asc');
+    }
+  };
 
   if (loading) {
     return (
@@ -203,16 +244,47 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
         <h3 className="text-lg font-medium text-gray-900 mb-4">
           {t('update.member.roles')}
         </h3>
+        {/* Filters */}
+        <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('search')}</label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              placeholder={t('search.members')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('role')}</label>
+            <select
+              value={roleFilter}
+              onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">{t('all.roles')}</option>
+              <option value="admin">Admin</option>
+              <option value="church_leadership">Church Leadership</option>
+              <option value="treasurer">Treasurer</option>
+              <option value="secretary">Secretary</option>
+              <option value="relationship">Relationship</option>
+              <option value="member">Member</option>
+            </select>
+          </div>
+        </div>
         
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => toggleSort('member')}>
                   {t('member')}
+                  <span className="ml-1 text-gray-400">{sortBy === 'member' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => toggleSort('role')}>
                   {t('current.role')}
+                  <span className="ml-1 text-gray-400">{sortBy === 'role' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('actions')}
