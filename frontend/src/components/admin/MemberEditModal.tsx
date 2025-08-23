@@ -83,17 +83,29 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
       // Prepare payload with correct formats expected by backend
       const payload: any = {
         ...formData,
+        // Ensure lower-case strings for enums
+        gender: formData.gender ? formData.gender.toLowerCase() : undefined,
+        maritalStatus: formData.maritalStatus ? formData.maritalStatus.toLowerCase() : undefined,
         interestedInServing: formData.interestedInServing
           ? formData.interestedInServing.toLowerCase()
           : undefined,
       };
+
+      // Map camelCase to snake_case for backend fields that use snake_case
+      if (payload.maritalStatus) {
+        payload.marital_status = payload.maritalStatus;
+      }
 
       // If the user cannot manage roles, do not send role changes
       if (!canManageRoles) {
         delete payload.role;
       }
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${member.id}?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      // Include either email or phone for backend auth requirement
+      const userIdentifier = currentUser?.email
+        ? `email=${encodeURIComponent(currentUser.email)}`
+        : `phone=${encodeURIComponent(currentUser?.phoneNumber || '')}`;
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${member.id}?${userIdentifier}`, {
         method: 'PUT',
         headers: {
           'Authorization': idToken ? `Bearer ${idToken}` : '',
