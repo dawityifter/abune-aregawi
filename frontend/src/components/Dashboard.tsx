@@ -50,6 +50,8 @@ const Dashboard: React.FC = () => {
   const userRole = (user?.data?.member?.role || user?.role || 'member') as UserRole;
   const permissions = getRolePermissions(userRole);
   const isTempUser = user?._temp || false;
+  // Treat backend-returned 'dependent' as a restricted role for UI visibility
+  const isDependent = (user?.data?.member?.role || user?.role) === 'dependent';
   
   // Debug logging for role and permissions
   useEffect(() => {
@@ -97,7 +99,46 @@ const Dashboard: React.FC = () => {
       </div>
     );
   }
-  
+
+  // Tailored banner for unlinked dependent logins
+  if (user?.unlinkedDependent) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white shadow rounded-lg p-6 border border-yellow-200">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 mr-3">
+                <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                  <i className="fas fa-link text-yellow-700"></i>
+                </div>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Dependent Profile Not Linked</h2>
+                <p className="text-gray-700 mb-4">
+                  We found your dependent profile, but it is not yet linked to a head of household. Ask your parent/guardian to link you, or you can start a quick self-claim process to verify and link your profile.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => navigate('/dependents')}
+                    className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
+                  >
+                    Start Self-Claim
+                  </button>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 border rounded hover:bg-gray-50"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isTempUser) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -263,34 +304,36 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Dues Card */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-dollar-sign text-green-800"></i>
+            {/* Dues Card (hidden for dependents) */}
+            {!isDependent && (
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-6">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <i className="fas fa-dollar-sign text-green-800"></i>
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        {t('dues')}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {t('view.and.pay')}
+                      </p>
                     </div>
                   </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {t('dues')}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {t('view.and.pay')}
-                    </p>
+                  <div className="mt-4">
+                    <button 
+                      onClick={handleViewDues}
+                      className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      {t('view.dues')}
+                    </button>
                   </div>
                 </div>
-                <div className="mt-4">
-                  <button 
-                    onClick={handleViewDues}
-                    className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
-                  >
-                    {t('view.dues')}
-                  </button>
-                </div>
               </div>
-            </div>
+            )}
 
             {/* Events Card */}
             <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -379,34 +422,36 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Children Management Card */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-child text-pink-800"></i>
+            {/* Children Management Card (hidden for dependents) */}
+            {!isDependent && (
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-6">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
+                        <i className="fas fa-child text-pink-800"></i>
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Children & Dependents
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Manage family members
+                      </p>
                     </div>
                   </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      Children & Dependents
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      Manage family members
-                    </p>
+                  <div className="mt-4">
+                    <button 
+                      onClick={() => navigate('/dependents')}
+                      className="w-full bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 transition-colors"
+                    >
+                      Manage Children
+                    </button>
                   </div>
                 </div>
-                <div className="mt-4">
-                  <button 
-                    onClick={() => navigate('/dependents')}
-                    className="w-full bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 transition-colors"
-                  >
-                    Manage Children
-                  </button>
-                </div>
               </div>
-            </div>
+            )}
 
             {/* Settings Card */}
             <div className="bg-white overflow-hidden shadow rounded-lg">

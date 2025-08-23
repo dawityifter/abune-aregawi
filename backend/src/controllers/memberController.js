@@ -516,7 +516,8 @@ exports.register = async (req, res) => {
           medications: dependent.medications || null,
           dietaryRestrictions: dependent.dietaryRestrictions || null,
           notes: dependent.notes || null,
-          memberId: member.id
+          memberId: member.id,
+          linkedMemberId: member.id
         };
 
         Object.keys(base).forEach((k) => {
@@ -771,7 +772,8 @@ exports.updateProfile = async (req, res) => {
           const { baptismDate, nameDay, ...cleanDependent } = dependent;
           return {
             ...cleanDependent,
-            memberId: member.id
+            memberId: member.id,
+            linkedMemberId: member.id
           };
         });
         await Dependent.bulkCreate(dependentsData);
@@ -1004,7 +1006,8 @@ exports.updateMember = async (req, res) => {
       if (req.body.dependants.length > 0) {
         const dependentsData = req.body.dependants.map(dependent => ({
           ...dependent,
-          memberId: member.id
+          memberId: member.id,
+          linkedMemberId: member.id
         }));
         await Dependent.bulkCreate(dependentsData);
       }
@@ -1153,6 +1156,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         dateOfBirth: memberByUid.date_of_birth,
         gender: memberByUid.gender,
         maritalStatus: memberByUid.marital_status,
+        interestedInServing: memberByUid.interested_in_serving,
         streetLine1: memberByUid.street_line1,
         city: memberByUid.city,
         state: memberByUid.state,
@@ -1178,79 +1182,38 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       return res.status(200).json(responseData);
     }
 
-    // Phone-only authentication policy: require phone if UID did not directly match
-    if (!userPhone) {
+    // If no UID match, require at least email or phone
+    if (!userEmail && !userPhone) {
       return res.status(400).json({
         success: false,
-        message: 'User phone number is required'
+        message: 'Email or phone query parameter required'
       });
     }
 
-    // Find member by phone number (phone-only policy)
-    let member = null;
+    // Normalize phone to E.164 when provided
+    let normalizedPhone = null;
     if (userPhone) {
-      console.log('🔍 Searching by phone:', userPhone);
-      // Handle different phone number formats
-      const cleanPhone = userPhone.replace(/[^\d+]/g, '');
-      console.log('🔍 Clean phone for search:', cleanPhone);
-      
-      // Create comprehensive phone format variations
-      const digitsOnly = userPhone.replace(/[^\d]/g, '');
-      const last10Digits = digitsOnly.slice(-10); // Get last 10 digits (remove country code)
-      
-      const phoneFormats = [
-        userPhone,                                    // +14699078229
-        cleanPhone,                                   // +14699078229
-        digitsOnly,                                   // 14699078229
-        last10Digits,                                 // 4699078229
-        `+1${last10Digits}`,                         // +14699078229
-        `(${last10Digits.slice(0,3)}) ${last10Digits.slice(3,6)}-${last10Digits.slice(6)}`, // (469) 907-8229
-        `${last10Digits.slice(0,3)}-${last10Digits.slice(3,6)}-${last10Digits.slice(6)}`,   // 469-907-8229
-        `${last10Digits.slice(0,3)}.${last10Digits.slice(3,6)}.${last10Digits.slice(6)}`,   // 469.907.8229
-        `${last10Digits.slice(0,3)} ${last10Digits.slice(3,6)} ${last10Digits.slice(6)}`    // 469 907 8229
-      ];
-      console.log('🔍 Searching for phone in these formats:', phoneFormats);
-      
-      member = await Member.findOne({
-        where: {
-          [Op.or]: phoneFormats.map(format => ({ phone_number: format }))
-        },
-        include: [{
-          model: Dependent,
-          as: 'dependents'
-        }]
-      });
-      
-      // If not found, let's see what phone numbers exist in the database
-      if (!member) {
-        console.log('🔍 No member found with phone number, checking database contents...');
-        const allPhones = await Member.findAll({
-          attributes: ['id', 'first_name', 'last_name', 'phone_number', 'firebase_uid'],
-          where: {
-            phone_number: { [Op.not]: null }
-          },
-          limit: 10
+      let p = normalizePhoneNumber(userPhone);
+      const digits = p.replace(/[^\d]/g, '');
+      if (digits.length === 10) {
+        p = `+1${digits}`;
+      } else if (digits.length === 11 && digits.startsWith('1')) {
+        p = `+${digits}`;
+      }
+      normalizedPhone = p;
+    }
+
+    // Find member by email and/or normalized phone
+    let member = null;
+    {
+      const orConds = [];
+      if (userEmail) orConds.push({ email: userEmail });
+      if (normalizedPhone) orConds.push({ phone_number: normalizedPhone });
+      if (orConds.length > 0) {
+        member = await Member.findOne({
+          where: { [Op.or]: orConds },
+          include: [{ model: Dependent, as: 'dependents' }]
         });
-        console.log('🔍 Sample phone numbers in database:', allPhones.map(m => ({ 
-          id: m.id, 
-          name: `${m.first_name} ${m.last_name}`, 
-          phone: m.phone_number,
-          firebaseUid: m.firebase_uid 
-        })));
-        
-        // Also check for any members with similar phone numbers
-        const similarPhones = await Member.findAll({
-          attributes: ['id', 'first_name', 'last_name', 'phone_number', 'firebase_uid'],
-          where: {
-            phone_number: { [Op.like]: `%${last10Digits}%` }
-          }
-        });
-        console.log('🔍 Members with similar phone numbers:', similarPhones.map(m => ({ 
-          id: m.id, 
-          name: `${m.first_name} ${m.last_name}`, 
-          phone: m.phone_number,
-          firebaseUid: m.firebase_uid 
-        })));
       }
     }
 
@@ -1259,26 +1222,15 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       console.log('🔍 Found member:', { id: member.id, email: member.email, phoneNumber: member.phone_number, firebaseUid: member.firebase_uid });
     }
 
-    // If no member found, attempt to resolve as a dependent login (phone-only)
+    // If no member found, attempt to resolve as a dependent login (by email or normalized phone)
     if (!member) {
       console.log('❌ Member not found. Checking dependents for dependent login...');
       let dependent = null;
-      if (userPhone) {
-        // Reuse the same phone formats we computed for member search
-        const digitsOnly = userPhone.replace(/[^\d]/g, '');
-        const last10Digits = digitsOnly.slice(-10);
-        const phoneFormats = [
-          userPhone,
-          userPhone.replace(/[^\d+]/g, ''),
-          digitsOnly,
-          last10Digits,
-          `+1${last10Digits}`
-        ];
-        dependent = await Dependent.findOne({
-          where: {
-            [Op.or]: phoneFormats.map(format => ({ phone: format }))
-          }
-        });
+      const depOrConds = [];
+      if (userEmail) depOrConds.push({ email: userEmail });
+      if (normalizedPhone) depOrConds.push({ phone: normalizedPhone });
+      if (depOrConds.length > 0) {
+        dependent = await Dependent.findOne({ where: { [Op.or]: depOrConds } });
       }
 
       if (dependent) {
@@ -1299,6 +1251,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         });
 
         // Build a dependent-auth profile. Keep response shape with data.member
+        // Include gender and dateOfBirth so frontend reflects updates correctly
         const dependentProfile = {
           id: dependent.id,
           firstName: dependent.firstName,
@@ -1306,6 +1259,10 @@ exports.getProfileByFirebaseUid = async (req, res) => {
           lastName: dependent.lastName,
           email: dependent.email,
           phoneNumber: dependent.phone,
+          dateOfBirth: dependent.dateOfBirth || null,
+          gender: dependent.gender || null,
+          relationship: dependent.relationship || null,
+          interestedInServing: dependent.interestedInServing || null,
           role: 'dependent',
           isActive: linkedMember ? linkedMember.is_active : true,
           linkedMember: linkedMember
@@ -1364,6 +1321,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       dateOfBirth: member.date_of_birth,
       gender: member.gender,
       maritalStatus: member.marital_status,
+      interestedInServing: member.interested_in_serving,
       streetLine1: member.street_line1,
       city: member.city,
       state: member.state,
@@ -1412,70 +1370,190 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
     if (req.query.email) {
       whereClause.email = req.query.email;
     } else if (req.query.phone) {
-      whereClause.phone_number = req.query.phone; // Fixed: use snake_case field name
+      // Normalize phone in query to E.164 for consistent lookup
+      let p = normalizePhoneNumber(req.query.phone);
+      const digits = p.replace(/[^\d]/g, '');
+      if (digits.length === 10) {
+        p = `+1${digits}`;
+      } else if (digits.length === 11 && digits.startsWith('1')) {
+        p = `+${digits}`;
+      }
+      whereClause.phone_number = p; // Fixed: use snake_case field name
     } else {
       return res.status(400).json({
         success: false,
-        message: 'Either email or phone parameter is required'
+        message: 'Email or phone query parameter required'
       });
     }
 
-    console.log('🔍 Looking for member with whereClause:', whereClause);
+    let member = await Member.findOne({ where: whereClause });
 
-    const member = await Member.findOne({ where: whereClause });
-
+    // If no member is found, try to resolve as a dependent update
     if (!member) {
-      console.log('❌ Member not found with whereClause:', whereClause);
-      return res.status(404).json({
-        success: false,
-        message: 'Member not found. Please complete your registration first.',
-        code: 'REGISTRATION_REQUIRED'
+      const depWhere = {};
+      if (whereClause.email) depWhere.email = whereClause.email;
+      if (whereClause.phone_number) depWhere.phone = whereClause.phone_number;
+
+      const dependent = await Dependent.findOne({ where: depWhere });
+
+      if (!dependent) {
+        return res.status(404).json({
+          success: false,
+          message: 'Member not found'
+        });
+      }
+
+      // Update dependent fields from request body
+      const depRaw = {
+        firstName: req.body.firstName,
+        middleName: req.body.middleName,
+        lastName: req.body.lastName,
+        email: req.body.email,
+        phone: req.body.phoneNumber,
+        dateOfBirth: req.body.dateOfBirth,
+        gender: req.body.gender,
+        relationship: req.body.relationship,
+        interestedInServing: req.body.interestedInServing,
+      };
+      // Sanitize (trims strings, converts empty strings to null)
+      const depSanitized = sanitizeInput(depRaw);
+
+      // Normalize gender to a safe set if provided
+      if (typeof depSanitized.gender === 'string') {
+        const g = depSanitized.gender.toLowerCase();
+        const allowed = ['male', 'female', 'other'];
+        depSanitized.gender = allowed.includes(g) ? g : undefined;
+      }
+
+      // Normalize interestedInServing to lowercase and allowed values if provided
+      if (typeof depSanitized.interestedInServing === 'string') {
+        const s = depSanitized.interestedInServing.toLowerCase();
+        const allowedServing = ['yes', 'no', 'maybe'];
+        depSanitized.interestedInServing = allowedServing.includes(s) ? s : undefined;
+      }
+
+      // Normalize phone to digits, prefer E.164 +1 for 10-digit US numbers
+      if (depSanitized.phone) {
+        let p = normalizePhoneNumber(depSanitized.phone);
+        const digits = p.replace(/[^\d]/g, '');
+        if (digits.length === 10) {
+          p = `+1${digits}`;
+        } else if (digits.length === 11 && digits.startsWith('1')) {
+          p = `+${digits}`;
+        }
+        depSanitized.phone = p;
+      }
+
+      // Drop keys that are null/undefined to avoid overwriting existing data with nulls
+      const depClean = {};
+      Object.keys(depSanitized).forEach((k) => {
+        const v = depSanitized[k];
+        if (v !== null && v !== undefined) depClean[k] = v;
+      });
+
+      await dependent.update(depClean);
+
+      // Load linked head of household (if any) to include a summary in the response
+      let linkedMemberSummary = null;
+      if (dependent.linkedMemberId) {
+        const hoh = await Member.findByPk(dependent.linkedMemberId, {
+          attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
+        });
+        if (hoh) {
+          linkedMemberSummary = {
+            id: hoh.id,
+            firstName: hoh.first_name,
+            lastName: hoh.last_name,
+            email: hoh.email,
+            phoneNumber: hoh.phone_number
+          };
+        }
+      }
+
+      // Construct a member-like response object for dependents (consistent with GET handler shape)
+      const responseMember = {
+        role: 'dependent',
+        id: dependent.id,
+        firstName: dependent.firstName,
+        middleName: dependent.middleName || null,
+        lastName: dependent.lastName,
+        email: dependent.email,
+        phoneNumber: dependent.phone,
+        dateOfBirth: dependent.dateOfBirth,
+        gender: dependent.gender || null,
+        relationship: dependent.relationship || null,
+        interestedInServing: dependent.interestedInServing || null,
+        linkedMember: linkedMemberSummary
+      };
+
+      return res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: { member: responseMember }
       });
     }
 
-    console.log('✅ Found member:', member.id);
+    // Normalize phone in payload if present, then map update fields from request body to DB fields
+    let normalizedPayloadPhone = undefined;
+    if (req.body.phoneNumber) {
+      let p = normalizePhoneNumber(req.body.phoneNumber);
+      const digits = p.replace(/[^\d]/g, '');
+      if (digits.length === 10) {
+        p = `+1${digits}`;
+      } else if (digits.length === 11 && digits.startsWith('1')) {
+        p = `+${digits}`;
+      }
+      normalizedPayloadPhone = p;
+    }
 
-    // Remove sensitive fields that shouldn't be updated via this endpoint
-    const { password, role, isActive, memberId, ...updateData } = req.body;
-
-    console.log('🔍 Update data received:', updateData);
-
-    // Map camelCase field names from frontend to snake_case field names for database
+    // Map update fields from request body to DB fields
     const mappedUpdateData = {
-      first_name: updateData.firstName,
-      middle_name: updateData.middleName,
-      last_name: updateData.lastName,
-      email: updateData.email,
-      phone_number: updateData.phoneNumber,
-      date_of_birth: updateData.dateOfBirth,
-      gender: updateData.gender,
-      marital_status: updateData.maritalStatus,
-      emergency_contact_name: updateData.emergencyContactName,
-      emergency_contact_phone: updateData.emergencyContactPhone,
-      ministries: updateData.ministries,
-      language_preference: updateData.languagePreference,
-      date_joined_parish: updateData.dateJoinedParish,
-      baptism_name: updateData.baptismName,
-      interested_in_serving: updateData.interestedInServing,
-      street_line1: updateData.streetLine1,
-      apartment_no: updateData.apartmentNo,
-      city: updateData.city,
-      state: updateData.state,
-      postal_code: updateData.postalCode,
-      country: updateData.country
+      first_name: req.body.firstName,
+      middle_name: req.body.middleName,
+      last_name: req.body.lastName,
+      email: req.body.email,
+      phone_number: normalizedPayloadPhone,
+      date_of_birth: req.body.dateOfBirth,
+      gender: req.body.gender,
+      marital_status: req.body.maritalStatus,
+      emergency_contact_name: req.body.emergencyContactName,
+      emergency_contact_phone: req.body.emergencyContactPhone,
+      ministries: req.body.ministries,
+      language_preference: req.body.languagePreference,
+      date_joined_parish: req.body.dateJoinedParish,
+      baptism_name: req.body.baptismName,
+      interested_in_serving: req.body.interestedInServing,
+      street_line1: req.body.streetLine1,
+      apartment_no: req.body.apartmentNo,
+      city: req.body.city,
+      state: req.body.state,
+      postal_code: req.body.postalCode
     };
 
-    // Remove undefined values to avoid overwriting with null
+    // Remove undefined values first
     Object.keys(mappedUpdateData).forEach(key => {
-      if (mappedUpdateData[key] === undefined) {
-        delete mappedUpdateData[key];
+      if (mappedUpdateData[key] === undefined) delete mappedUpdateData[key];
+    });
+
+    // Normalize gender if present
+    if (typeof mappedUpdateData.gender === 'string') {
+      const g = mappedUpdateData.gender.toLowerCase();
+      const allowed = ['male', 'female', 'other'];
+      mappedUpdateData.gender = allowed.includes(g) ? g : undefined;
+      if (mappedUpdateData.gender === undefined) delete mappedUpdateData.gender;
+    }
+
+    // Sanitize then drop nulls to avoid overwriting existing columns with null
+    const mappedSanitized = sanitizeInput(mappedUpdateData);
+    Object.keys(mappedSanitized).forEach((k) => {
+      if (mappedSanitized[k] === null || mappedSanitized[k] === undefined) {
+        delete mappedSanitized[k];
       }
     });
 
-    console.log('🔍 Mapped update data:', mappedUpdateData);
+    console.log('🔍 Cleaned update data:', mappedSanitized);
 
-    // Sanitize the mapped payload to trim strings and convert empty strings to null
-    await member.update(sanitizeInput(mappedUpdateData));
+    await member.update(mappedSanitized);
 
     console.log('✅ Member updated successfully');
 
@@ -1675,7 +1753,8 @@ exports.addDependent = async (req, res) => {
 
     const dependent = await Dependent.create({
       ...dependantData,
-      memberId
+      memberId,
+      linkedMemberId: Number(memberId)
     });
 
     res.status(201).json({
