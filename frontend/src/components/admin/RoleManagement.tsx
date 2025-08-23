@@ -16,6 +16,8 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [newRole, setNewRole] = useState<UserRole>('member');
   const [updating, setUpdating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 20;
 
   useEffect(() => {
     fetchMembers();
@@ -56,6 +58,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
       }
 
       setMembers(allMembers);
+      setCurrentPage(1);
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -115,6 +118,13 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
     acc[member.role] = (acc[member.role] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  const totalMembers = members.length;
+  const totalPages = Math.max(1, Math.ceil(totalMembers / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalMembers);
+  const paginatedMembers = members.slice(startIndex, endIndex);
 
   if (loading) {
     return (
@@ -210,7 +220,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {members.map((member) => (
+              {paginatedMembers.map((member) => (
                 <tr key={member.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -252,6 +262,34 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            {totalMembers > 0
+              ? `${startIndex + 1}-${endIndex} ${t('of')} ${totalMembers}`
+              : `${t('members')}: 0`}
+          </div>
+          <div className="space-x-2">
+            <button
+              disabled={safePage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className={`px-3 py-1 rounded border ${safePage <= 1 ? 'text-gray-400 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+            >
+              {t('previous')}
+            </button>
+            <span className="text-sm text-gray-700">
+              {t('page')} {safePage} {t('of')} {totalPages}
+            </span>
+            <button
+              disabled={safePage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className={`px-3 py-1 rounded border ${safePage >= totalPages ? 'text-gray-400 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+            >
+              {t('next')}
+            </button>
+          </div>
         </div>
       </div>
 
