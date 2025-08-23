@@ -83,6 +83,34 @@ graph TB
 - ✅ **Test Infrastructure**: Enhanced backend testing with Jest integration
 - ✅ **Phone Number Formatting**: Comprehensive E.164 normalization throughout app
 
+### Frontend Testing Utilities
+- ✅ Added reusable auth testing utilities at `frontend/src/testUtils/authTestUtils.ts`
+  - `setFirebaseUserToken(firebaseUser, token)`: standardize mocking of `firebaseUser.getIdToken()`
+  - `extractHeader(headers, key)`: safely read headers from `Headers` or plain objects
+- Example usage in `frontend/src/components/admin/__tests__/OutreachDashboard.test.tsx`:
+
+```ts
+import { setFirebaseUserToken, extractHeader } from '../../../testUtils/authTestUtils';
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  setFirebaseUserToken(mockFirebaseUser, 'test-token');
+});
+
+// Later, when validating fetch calls
+const headers = postCall[1]?.headers as any;
+expect(extractHeader(headers, 'Authorization')).toBe('Bearer test-token');
+```
+
+### Running Frontend Tests
+```bash
+cd frontend
+npm test -- --watchAll=false --runInBand
+```
+Notes:
+- Tests mock Firebase Auth and network requests; no external services are called.
+- React Router v7 future-flag warnings are expected and safe to ignore during tests.
+
 ## 🛠️ Tech Stack
 
 ### Frontend
