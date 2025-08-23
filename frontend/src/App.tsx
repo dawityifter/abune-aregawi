@@ -21,6 +21,7 @@ import ChurchBylaw from './components/ChurchBylaw';
 import ParishPulseSignUp from './components/ParishPulseSignUp';
 import './index.css';
 import DevBanner from './components/DevBanner';
+import { isFeatureEnabled } from './config/featureFlags';
 
 function App() {
   return (
@@ -28,7 +29,7 @@ function App() {
       <Router>
         <AuthProvider>
           <div className="App">
-            <DevBanner />
+            {isFeatureEnabled('enableDevBanner') && <DevBanner />}
             <Navigation />
             <Routes>
               <Route path="/" element={<HomePage />} />
