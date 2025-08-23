@@ -106,6 +106,11 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true
     },
+    interestedInServing: {
+      type: DataTypes.STRING(10),
+      allowNull: false,
+      defaultValue: 'no'
+    },
     notes: {
       type: DataTypes.TEXT,
       allowNull: true

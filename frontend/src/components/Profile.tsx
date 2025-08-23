@@ -32,6 +32,10 @@ interface ProfileData {
   state?: string;
   postalCode?: string;
   dependents?: BackendDependentData[];
+  // For dependents, show the head of household name (non-editable)
+  headOfHouseholdName?: string;
+  // Backend may return role 'dependent' which isn't in UserRole union; use a flag
+  isDependent?: boolean;
 }
 
 interface BackendDependentData {
@@ -167,6 +171,10 @@ const Profile: React.FC = () => {
               const result = await response.json();
               
               // Merge backend data with Firebase data
+              const linked = result?.data?.member?.linkedMember || null;
+              const hohName = linked
+                ? `${(linked.firstName || '').trim()} ${(linked.lastName || '').trim()}`.trim()
+                : (result?.data?.member?.headOfHouseholdName || '');
               const mergedData = {
                 ...userProfile,
                 firstName: result.data.member.firstName,
@@ -191,7 +199,9 @@ const Profile: React.FC = () => {
                 city: result.data.member.city,
                 state: result.data.member.state,
                 postalCode: result.data.member.postalCode,
-                dependents: result.data.member.dependents || []
+                dependents: result.data.member.dependents || [],
+                headOfHouseholdName: hohName || undefined,
+                isDependent: result?.data?.member?.role === 'dependent'
               };
               
               setProfile(mergedData);
@@ -484,6 +494,17 @@ const Profile: React.FC = () => {
             </div>
 
             <div className="px-6 py-4">
+              {/* Head of Household (for dependents only) */}
+              {profile.isDependent && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Head of Household
+                  </label>
+                  <p className="text-gray-900">
+                    {profile.headOfHouseholdName || 'Not available'}
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Basic Information */}
                 <div className="space-y-4">
@@ -601,7 +622,7 @@ const Profile: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text.sm font-medium text-gray-700 mb-1">
                       {t('gender')}
                     </label>
                     {editing ? (
@@ -614,34 +635,35 @@ const Profile: React.FC = () => {
                         <option value="">{t('select.gender')}</option>
                         <option value="Male">{t('male')}</option>
                         <option value="Female">{t('female')}</option>
-                        <option value="Other">{t('other')}</option>
                       </select>
                     ) : (
                       <p className="text-gray-900">{profile.gender || t('not.provided')}</p>
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('marital.status')}
-                    </label>
-                    {editing ? (
-                      <select
-                        name="maritalStatus"
-                        value={formData.maritalStatus || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                        <option value="">{t('select.marital.status')}</option>
-                        <option value="Single">{t('single')}</option>
-                        <option value="Married">{t('married')}</option>
-                        <option value="Divorced">{t('divorced')}</option>
-                        <option value="Widowed">{t('widowed')}</option>
-                      </select>
-                    ) : (
-                      <p className="text-gray-900">{profile.maritalStatus || t('not.provided')}</p>
-                    )}
-                  </div>
+                  {!profile.isDependent && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t('marital.status')}
+                      </label>
+                      {editing ? (
+                        <select
+                          name="maritalStatus"
+                          value={formData.maritalStatus || ''}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                          <option value="">{t('select.marital.status')}</option>
+                          <option value="Single">{t('single')}</option>
+                          <option value="Married">{t('married')}</option>
+                          <option value="Divorced">{t('divorced')}</option>
+                          <option value="Widowed">{t('widowed')}</option>
+                        </select>
+                      ) : (
+                        <p className="text-gray-900">{profile.maritalStatus || t('not.provided')}</p>
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">

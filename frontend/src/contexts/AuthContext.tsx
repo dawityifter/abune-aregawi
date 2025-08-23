@@ -39,6 +39,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const auth = getAuth();
 
+  // Configurable timeout for backend profile fetch (default 20s)
+  const PROFILE_FETCH_TIMEOUT_MS = Number(process.env.REACT_APP_PROFILE_FETCH_TIMEOUT_MS || 20000);
+
   // Cache for 404 results to prevent retry storms
   const [newUserCache, setNewUserCache] = useState<Set<string>>(new Set());
 
@@ -111,15 +114,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
       console.log('🔍 Backend check URL:', apiUrl);
       
-      // Retry/backoff for transient errors
-      const maxAttempts = 3;
+      // Retry/backoff for transient errors (kept to 1 to avoid long waits on cold starts)
+      const maxAttempts = 1;
       let lastError: any = null;
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-          // Add an 8s timeout per attempt to avoid indefinite hangs
+          // Timeout per attempt to avoid indefinite hangs
           const controller = new AbortController();
-          const timeoutMs = 8000;
-          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+          const timeoutId = setTimeout(() => controller.abort(), PROFILE_FETCH_TIMEOUT_MS);
           const response = await fetch(apiUrl, { signal: controller.signal });
           clearTimeout(timeoutId);
           console.log(`🔍 Backend response status (attempt ${attempt}):`, response.status);
@@ -434,6 +436,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }));
           setError('We found your dependent profile, but it is not yet linked to a head of household. Please contact them to link your profile or use the self-claim flow.');
           // Avoid navigation to register; allow UI to present tailored CTA
+          setAuthReady(true);
+          return;
+        }
+        if (error && error.code === 'TIMEOUT') {
+          setError('The server is waking up. Please try again in a moment.');
           setAuthReady(true);
           return;
         }
