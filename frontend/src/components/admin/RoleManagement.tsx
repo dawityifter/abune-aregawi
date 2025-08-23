@@ -24,25 +24,38 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
   const fetchMembers = async () => {
     try {
       setLoading(true);
-      
-      if (!currentUser || (!currentUser.email && !currentUser.phoneNumber)) {
+
+      if (!firebaseUser) {
         throw new Error('User not authenticated');
       }
 
-      const userIdentifier = currentUser.email ? `email=${encodeURIComponent(currentUser.email)}` : `phone=${encodeURIComponent(currentUser.phoneNumber || '')}`;
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?limit=100&${userIdentifier}`, {
-        headers: {
-          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const idToken = await firebaseUser.getIdToken();
+      const pageSize = 200;
+      let page = 1;
+      let allMembers: any[] = [];
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch members');
+      while (true) {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?page=${page}&limit=${pageSize}` , {
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch members');
+        }
+
+        const data = await response.json();
+        const pageMembers = (data?.data?.members) || [];
+        allMembers = allMembers.concat(pageMembers);
+
+        const hasNext = Boolean(data?.data?.pagination?.hasNext);
+        if (!hasNext) break;
+        page += 1;
       }
 
-      const data = await response.json();
-      setMembers(data.data.members);
+      setMembers(allMembers);
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -56,16 +69,13 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
     setUpdating(true);
     try {
       const idToken = firebaseUser ? await firebaseUser.getIdToken() : null;
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${selectedMember.id}?email=${encodeURIComponent(currentUser?.email || '')}`, {
-        method: 'PUT',
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${selectedMember.id}/role`, {
+        method: 'PATCH',
         headers: {
           'Authorization': idToken ? `Bearer ${idToken}` : '',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ...selectedMember,
-          role: newRole
-        })
+        body: JSON.stringify({ role: newRole })
       });
 
       if (!response.ok) {
@@ -95,9 +105,8 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
       case 'church_leadership': return 'bg-purple-100 text-purple-800';
       case 'treasurer': return 'bg-green-100 text-green-800';
       case 'secretary': return 'bg-blue-100 text-blue-800';
-      case 'relationship': return 'bg-orange-100 text-orange-800';
+      case 'relationship': return 'bg-teal-100 text-teal-800';
       case 'member': return 'bg-gray-100 text-gray-800';
-      case 'guest': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -142,8 +151,8 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
       </div>
 
       {/* Role Statistics */}
-      <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
-        {(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship', 'member', 'guest'] as UserRole[]).map((role) => (
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        {(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship', 'member'] as UserRole[]).map((role) => (
           <div key={role} className="bg-white p-4 rounded-lg shadow text-center">
             <div className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getRoleColor(role)}`}>
               {getRoleDisplayName(role)}
@@ -164,7 +173,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
           {t('role.descriptions')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship', 'member', 'guest'] as UserRole[]).map((role) => (
+          {(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship', 'member'] as UserRole[]).map((role) => (
             <div key={role} className="border border-gray-200 rounded-lg p-4">
               <div className="flex items-center mb-2">
                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(role)}`}>
@@ -286,9 +295,8 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
                 <option value="secretary">Secretary</option>
                 <option value="treasurer">Treasurer</option>
                 <option value="church_leadership">Church Leadership</option>
-                <option value="relationship">Relationship</option>
                 <option value="admin">Admin</option>
-                <option value="guest">Guest</option>
+                <option value="relationship">Relationship</option>
               </select>
             </div>
 
