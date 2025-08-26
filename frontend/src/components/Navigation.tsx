@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getRolePermissions } from '../utils/roles';
-import { getDisplayEmail } from '../utils/email';
 import { isFeatureEnabled, featureFlags } from '../config/featureFlags';
 // import { Transition } from '@headlessui/react'; // Removed due to React 19 compatibility
 
@@ -57,10 +56,10 @@ const Navigation: React.FC = () => {
           setLoading(true);
           console.log('🔍 Navigation - currentUser:', currentUser);
           
-          // Handle different user object structures (phone-only)
+          // Handle different user object structures
           const uid = currentUser.uid || currentUser.id;
-          const email = currentUser.email || null;
-          const phone = currentUser.phoneNumber || null;
+          const email = currentUser.email;
+          const phone = currentUser.phoneNumber;
           
           if (!uid) {
             console.error('❌ No UID found in currentUser:', currentUser);
@@ -131,22 +130,9 @@ const Navigation: React.FC = () => {
                   {t('navigation.dashboard')}
                 </Link>
                 
-                {permissions.canViewAllMembers && (
-                  <Link 
-                    to="/admin" 
-                    className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
-                  >
-                    {t('navigation.admin')}
-                  </Link>
-                )}
-                {(permissions.canAccessOutreachDashboard || permissions.canManageOnboarding) && (
-                  <Link
-                    to="/outreach"
-                    className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
-                  >
-                    Outreach
-                  </Link>
-                )}
+                {/* Admin link removed from desktop header */}
+                {/* Outreach link removed; access via Dashboard Relationship Department card */}
+                {/* SMS link removed; access via Dashboard Communications card */}
                 {/* Profile link removed as requested */}
               </>
             )}
@@ -184,20 +170,14 @@ const Navigation: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <div className="hidden lg:flex flex-col items-end">
                   <span className="text-sm font-medium text-white">
-                    {userProfile?.data?.member?.firstName || userProfile?.firstName || currentUser.displayName?.split(' ')[0] || getDisplayEmail(currentUser.email)?.split('@')[0]}
+                    {userProfile?.data?.member?.firstName || userProfile?.firstName || currentUser.displayName?.split(' ')[0] || currentUser.email?.split('@')[0]}
                   </span>
                   <span className="text-xs text-white/70">
                     {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
                   </span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <Link
-                    to="/profile"
-                    className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
-                  >
-                    <i className="fas fa-user-circle mr-2"></i>
-                    {t('profile')}
-                  </Link>
+                  {/* Profile link removed from desktop header */}
                   <button
                     onClick={handleLogout}
                     className="px-3 py-2 text-sm font-medium text-red-300 hover:text-red-100 hover:bg-red-600/20 rounded-md transition-colors"
@@ -258,7 +238,7 @@ const Navigation: React.FC = () => {
                 </div>
                 <div className="ml-3">
                   <div className="text-base font-medium text-gray-900">
-                    {userProfile?.data?.member?.firstName || currentUser.displayName || getDisplayEmail(currentUser.email)}
+                    {userProfile?.data?.member?.firstName || currentUser.displayName || currentUser.email}
                   </div>
                   <div className="text-sm text-gray-500">
                     {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
@@ -280,26 +260,9 @@ const Navigation: React.FC = () => {
                   {t('navigation.dashboard')}
                 </Link>
                 
-                {permissions.canViewAllMembers && (
-                  <Link
-                    to="/admin"
-                    className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <i className="fas fa-shield-alt mr-3 w-5 text-center"></i>
-                    {t('navigation.admin')}
-                  </Link>
-                )}
-                {(permissions.canAccessOutreachDashboard || permissions.canManageOnboarding) && (
-                  <Link
-                    to="/outreach"
-                    className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <i className="fas fa-hands-helping mr-3 w-5 text-center"></i>
-                    Outreach
-                  </Link>
-                )}
+                {/* Admin link removed from mobile header */}
+                {/* Outreach link removed from mobile; access via Dashboard Relationship Department card */}
+                {/* SMS link removed from mobile menu; access via Dashboard Communications card */}
                 
                 {/* Profile link removed from mobile menu as requested */}
                 

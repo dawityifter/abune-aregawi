@@ -19,6 +19,8 @@ const memberPaymentRoutes = require('./routes/memberPaymentRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const churchTransactionRoutes = require('./routes/churchTransactionRoutes');
 const donationRoutes = require('./routes/donationRoutes');
+const smsRoutes = require('./routes/smsRoutes');
+const groupRoutes = require('./routes/groupRoutes');
 const zelleRoutes = require('./routes/zelleRoutes');
 const donationController = require('./controllers/donationController');
 
@@ -120,7 +122,9 @@ app.get('/', (req, res) => {
       health: '/health',
       members: '/api/members',
       payments: '/api/payments',
-      transactions: '/api/transactions'
+      transactions: '/api/transactions',
+      sms: '/api/sms',
+      groups: '/api/groups'
     }
   });
 });
@@ -185,7 +189,9 @@ app.use('/api/payments', memberPaymentRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/church-transactions', churchTransactionRoutes);
 app.use('/api/donations', donationRoutes);
+app.use('/api/sms', smsRoutes);
 app.use('/api/zelle', zelleRoutes);
+app.use('/api/groups', groupRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

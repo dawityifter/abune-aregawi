@@ -111,6 +111,18 @@ Notes:
 - Tests mock Firebase Auth and network requests; no external services are called.
 - React Router v7 future-flag warnings are expected and safe to ignore during tests.
 
+### Communications (SMS & Outreach)
+- ✅ Restored SMS messaging module using Twilio in the backend
+  - Endpoint uses Firebase auth; frontend passes ID token in Authorization header
+  - Member dropdown search fixed to use `search` query param against `/api/members/all/firebase`
+  - Logs persisted to `SmsLog` table via Sequelize
+- ✅ Dashboard cards
+  - Communications card (links to `/sms`) visible to roles with `canSendCommunications` (Admin, Church Leadership, Secretary)
+  - Relationship Department card (links to `/outreach`) visible when `canAccessOutreachDashboard` or `canManageOnboarding`
+- ✅ Navigation cleanup
+  - Removed SMS, Outreach, and Admin links from the top header to reduce duplication
+  - Access these via the Dashboard cards
+
 ## 🛠️ Tech Stack
 
 ### Frontend
@@ -158,6 +170,8 @@ Notes:
 - **Responsive Design**: Mobile-first approach with custom church theme
 - **Phone Authentication**: reCAPTCHA Enterprise with test number bypass
 - **Dashboard**: Member dashboard with corrected role extraction
+- **Communications**: SMS module with Twilio, role-based access, and Communications dashboard card
+- **Outreach**: Relationship Department dashboard card linking to Outreach tools
 - **Admin Panel**: Full admin interface with member/role management
 - **Database Integration**: Supabase PostgreSQL with enhanced SSL configuration
 - **API Security**: Dual JWT + Firebase authentication with comprehensive validation
@@ -177,7 +191,7 @@ Notes:
 - Ministry management
 - Calendar integration
 - PDF report generation
-- SMS notifications
+
 
 ## 🔧 Environment Setup
 
@@ -215,6 +229,44 @@ FIREBASE_SERVICE_ACCOUNT_BASE64=your_base64_encoded_service_account
 
 # CORS
 FRONTEND_URL=https://abune-aregawit-church.web.app
+```
+
+### Local Development (SMS + Ports)
+
+- **Ports**: Frontend runs on `http://localhost:3000`, Backend on `http://localhost:5001`.
+- **Frontend API URL**: Set `REACT_APP_API_URL` to the backend URL for local dev.
+- **Proxy note**: `frontend/package.json` may have a proxy pointing to `http://localhost:5000`. Using `REACT_APP_API_URL` with absolute URLs bypasses proxy issues.
+
+#### Frontend `.env.local`
+```env
+REACT_APP_API_URL=http://localhost:5001
+```
+
+#### Backend `.env` (Local with Twilio)
+```env
+# Server
+PORT=5001
+NODE_ENV=development
+
+# Database (example)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/church
+
+# Firebase
+FIREBASE_SERVICE_ACCOUNT_BASE64=your_base64_encoded_service_account
+
+# Twilio (required for SMS)
+TWILIO_ACCOUNT_SID=your_twilio_account_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_PHONE_NUMBER=+1234567890
+
+# CORS
+FRONTEND_URL=http://localhost:3000
+```
+
+After setting these, start services:
+```bash
+npm run start:backend   # starts on :5001
+npm run start:frontend  # starts on :3000
 ```
 
 ## 🚀 Deployment Architecture
