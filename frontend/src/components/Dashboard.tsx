@@ -453,34 +453,67 @@ const Dashboard: React.FC = () => {
               </div>
             )}
 
-            {/* Settings Card */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-cog text-gray-800"></i>
+            {/* Communications Card (visible to admin, church leadership, secretary) */}
+            {(permissions.canSendCommunications) && (
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-6">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <i className="fas fa-sms text-gray-800"></i>
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Communications
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Send SMS to members and groups
+                      </p>
                     </div>
                   </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {t('settings')}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {t('account.settings')}
-                    </p>
+                  <div className="mt-4">
+                    <button 
+                      onClick={() => navigate('/sms')}
+                      className="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+                    >
+                      Open SMS
+                    </button>
                   </div>
                 </div>
-                <div className="mt-4">
-                  <button 
-                    onClick={handleManageAccount}
-                    className="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
-                  >
-                    {t('manage.account')}
-                  </button>
+              </div>
+            )}
+
+            {/* Relationship Department Card (visible to roles with outreach/onboarding permissions) */}
+            {(permissions.canAccessOutreachDashboard || permissions.canManageOnboarding) && (
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-6">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
+                        <i className="fas fa-hands-helping text-teal-800"></i>
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Relationship Department
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Outreach, onboarding, and engagement tools
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <button 
+                      onClick={() => navigate('/outreach')}
+                      className="w-full bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700 transition-colors"
+                    >
+                      Open Relationship Dashboard
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Treasurer Card - Show for treasurer, admin, and church_leadership roles */}
             {(permissions.canViewFinancialRecords || permissions.canEditFinancialRecords) && (

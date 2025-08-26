@@ -9,6 +9,7 @@ import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
 import OutreachDashboard from './components/admin/OutreachDashboard';
 import TreasurerDashboard from './components/admin/TreasurerDashboard';
+import SmsBroadcast from './components/admin/SmsBroadcast';
 import Profile from './components/Profile';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Navigation from './components/Navigation';
@@ -66,6 +67,14 @@ function App() {
                     <OutreachDashboard />
                   </ProtectedRoute>
                 } 
+              />
+              <Route 
+                path="/sms" 
+                element={
+                  <ProtectedRoute>
+                    <SmsBroadcast />
+                  </ProtectedRoute>
+                }
               />
               <Route 
                 path="/profile" 
