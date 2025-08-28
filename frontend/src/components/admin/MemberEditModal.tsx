@@ -32,6 +32,7 @@ interface Member {
   preferredGivingMethod?: string;
   titheParticipation?: boolean;
   children?: any[];
+  yearlyPledge?: number | string;
 }
 
 interface MemberEditModalProps {
@@ -132,6 +133,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
         interestedInServing: formData.interestedInServing
           ? formData.interestedInServing.toLowerCase()
           : undefined,
+        yearlyPledge: formData.yearlyPledge ? formData.yearlyPledge : undefined,
       };
 
       // Map camelCase to snake_case for backend fields that use snake_case
@@ -196,6 +198,15 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
       if (payload.emergencyContactPhone !== undefined) {
         payload.emergency_contact_phone = payload.emergencyContactPhone;
         delete payload.emergencyContactPhone;
+      }
+
+      // Map yearlyPledge to yearly_pledge expected by backend
+      if (payload.yearlyPledge !== undefined && payload.yearlyPledge !== '') {
+        const num = Number(payload.yearlyPledge);
+        if (Number.isFinite(num)) {
+          payload.yearly_pledge = num;
+        }
+        delete payload.yearlyPledge;
       }
 
       // If the user cannot manage roles, do not send role changes
@@ -324,14 +335,13 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('email')} *
+                  {t('email')}
                 </label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
@@ -421,6 +431,39 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   <option value="widowed">{t('widowed')}</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('yearly.pledge') || 'Yearly Pledge'}
+                </label>
+                {(() => {
+                  const amountPattern = /^[0-9]*([.][0-9]{0,2})?$/;
+                  const onChange = (v: string) => {
+                    if (v === '' || amountPattern.test(v)) {
+                      setFormData(prev => ({ ...prev, yearlyPledge: v }));
+                    }
+                  };
+                  const onBlur = () => {
+                    const v = formData.yearlyPledge as string | number | undefined;
+                    if (v === undefined || v === null || v === '') return;
+                    const num = Number(v);
+                    if (Number.isFinite(num)) {
+                      setFormData(prev => ({ ...prev, yearlyPledge: num.toFixed(2) }));
+                    }
+                  };
+                  return (
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={(formData.yearlyPledge as string) || ''}
+                      onChange={(e) => onChange(e.target.value)}
+                      onBlur={onBlur}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="e.g. 1200"
+                      name="yearlyPledge"
+                    />
+                  );
+                })()}
+              </div>
             </div>
           )}
 
@@ -435,25 +478,8 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   type="tel"
                   name="phoneNumber"
                   value={formData.phoneNumber || ''}
-                  onChange={e => {
-                    let value = e.target.value.replace(/[^\d]/g, '');
-                    if (value.length > 10) value = value.slice(0, 10);
-                    let formatted = value;
-                    if (value.length > 6) {
-                      formatted = `${value.slice(0,3)}-${value.slice(3,6)}-${value.slice(6,10)}`;
-                    } else if (value.length > 3) {
-                      formatted = `${value.slice(0,3)}-${value.slice(3,6)}`;
-                    }
-                    // Create a synthetic event for handleInputChange
-                    handleInputChange({
-                      target: {
-                        name: 'phoneNumber',
-                        value: formatted,
-                        type: 'tel'
-                      }
-                    } as React.ChangeEvent<HTMLInputElement>);
-                  }}
-                  maxLength={12}
+                  readOnly
+                  title={t('read.only') || 'Read only'}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
