@@ -80,14 +80,8 @@ const HeroSection: React.FC = () => {
           </div>
         </div>
 
-        {/* CTA Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl mx-auto">
-          {user && (
-            <Link to="/church-bylaw" className="btn btn-primary">
-              <i className="fas fa-book mr-2"></i>
-              {t('church.bylaw')}
-            </Link>
-          )}
+        {/* CTA Buttons (Member Status and Church Bylaw removed) */}
+        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-4 max-w-3xl mx-auto">
           <button 
             className="btn btn-secondary"
             onClick={() => window.open('https://www.facebook.com/abunearegawitx/', '_blank')}
@@ -95,12 +89,6 @@ const HeroSection: React.FC = () => {
             <i className="fas fa-video mr-2"></i>
             {t('watch.live')}
           </button>
-          {user && (
-            <Link to="/member-status" className="btn btn-accent">
-              <i className="fas fa-chart-bar mr-2"></i>
-              {t('member.status')}
-            </Link>
-          )}
         </div>
       </div>
     </header>
