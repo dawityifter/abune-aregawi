@@ -194,6 +194,12 @@ module.exports = (sequelize) => {
       defaultValue: true,
       field: 'is_active'
     },
+    is_imported: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'is_imported'
+    },
     registration_status: {
       type: DataTypes.ENUM('pending', 'complete', 'incomplete'),
       allowNull: false,

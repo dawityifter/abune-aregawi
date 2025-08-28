@@ -45,10 +45,30 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   const [dateRangeFilter, setDateRangeFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
+  // Debounce search term to reduce API calls while typing
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchTerm(searchTerm.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // Fetch on filter/pagination changes (independent of search typing)
   useEffect(() => {
     fetchTransactions();
-  }, [searchTerm, paymentTypeFilter, paymentMethodFilter, dateRangeFilter, currentPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentTypeFilter, paymentMethodFilter, dateRangeFilter, currentPage]);
+
+  // Fetch only when search is cleared or has at least 3 characters
+  useEffect(() => {
+    const len = debouncedSearchTerm.length;
+    if (len === 0 || len >= 3) {
+      // Reset to first page when search changes significantly
+      setCurrentPage(1);
+      fetchTransactions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchTerm]);
 
   // Refetch when a refresh token changes
   useEffect(() => {
@@ -73,8 +93,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
         limit: '20'
       });
 
-      if (searchTerm) {
-        params.append('search', searchTerm);
+      if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
+        params.append('search', debouncedSearchTerm);
       }
 
       if (paymentTypeFilter !== 'all') {
@@ -202,9 +222,12 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by member name..."
+              placeholder="Search by member (min 3 characters)..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {searchTerm && searchTerm.trim().length < 3 && (
+              <p className="mt-1 text-xs text-gray-500">Type at least 3 characters to search</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
