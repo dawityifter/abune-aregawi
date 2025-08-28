@@ -7,7 +7,6 @@ const MemberStatus: React.FC = () => {
   const [members, setMembers] = useState<MemberData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedYear, setSelectedYear] = useState('2024');
   const [sortBy, setSortBy] = useState<'name' | 'balanceDue' | 'totalCollected'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -102,16 +101,10 @@ const MemberStatus: React.FC = () => {
             <div className="flex items-center">
               <i className="fas fa-cross text-2xl text-primary-800 mr-3"></i>
               <h1 className="text-xl font-semibold text-gray-900">
-                {t('member.status')} - {selectedYear}
+                {t('member.status')}
               </h1>
             </div>
-            <div className="text-sm text-gray-600">
-              {selectedYear === '2025' && (
-                <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs">
-                  Coming Soon
-                </span>
-              )}
-            </div>
+            <div className="text-sm text-gray-600"></div>
           </div>
         </div>
       </header>
@@ -119,33 +112,6 @@ const MemberStatus: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Year Selector */}
-          <div className="mb-6">
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setSelectedYear('2024')}
-                className={`px-4 py-2 rounded-md font-medium ${
-                  selectedYear === '2024'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                2024
-              </button>
-              <button
-                onClick={() => setSelectedYear('2025')}
-                className={`px-4 py-2 rounded-md font-medium ${
-                  selectedYear === '2025'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-                disabled={selectedYear === '2025'}
-              >
-                2025 (Coming Soon)
-              </button>
-            </div>
-          </div>
-
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
             <div className="bg-white overflow-hidden shadow rounded-lg">
