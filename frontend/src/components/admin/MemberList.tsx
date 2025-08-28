@@ -288,9 +288,6 @@ const MemberList: React.FC<MemberListProps> = ({
                   {t('status')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('joined')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('actions')}
                 </th>
               </tr>
@@ -342,9 +339,6 @@ const MemberList: React.FC<MemberListProps> = ({
                     }`}>
                       {member.isActive ? t('active') : t('inactive')}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {member.dateJoinedParish ? new Date(member.dateJoinedParish).toLocaleDateString() : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
