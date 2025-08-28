@@ -13,7 +13,8 @@ const getAllTransactions = async (req, res) => {
       start_date,
       end_date,
       min_amount,
-      max_amount
+      max_amount,
+      search
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -34,20 +35,46 @@ const getAllTransactions = async (req, res) => {
       if (max_amount) whereClause.amount[Op.lte] = parseFloat(max_amount);
     }
 
+    // Build includes, adding a search filter on member if provided
+    const memberInclude = {
+      model: Member,
+      as: 'member',
+      attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
+    };
+
+    if (search && String(search).trim()) {
+      const term = String(search).trim();
+      const tokens = term.split(/\s+/).filter(Boolean);
+      
+      // Build an AND of token-matchers, where each token can match any of the name/email/phone fields
+      const tokenClauses = tokens.map(t => ({
+        [Op.or]: [
+          { first_name: { [Op.iLike]: `%${t}%` } },
+          { middle_name: { [Op.iLike]: `%${t}%` } },
+          { last_name: { [Op.iLike]: `%${t}%` } },
+          { email: { [Op.iLike]: `%${t}%` } },
+          { phone_number: { [Op.iLike]: `%${t}%` } }
+        ]
+      }));
+
+      memberInclude.where = {
+        [Op.and]: tokenClauses
+      };
+      memberInclude.required = true; // Ensure join filters results
+    }
+
+    const includes = [
+      memberInclude,
+      {
+        model: Member,
+        as: 'collector',
+        attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
+      }
+    ];
+
     const { count, rows: transactions } = await Transaction.findAndCountAll({
       where: whereClause,
-      include: [
-        {
-          model: Member,
-          as: 'member',
-          attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
-        },
-        {
-          model: Member,
-          as: 'collector',
-          attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
-        }
-      ],
+      include: includes,
       order: [['payment_date', 'DESC'], ['created_at', 'DESC']],
       limit: parseInt(limit),
       offset: parseInt(offset)
