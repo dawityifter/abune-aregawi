@@ -149,6 +149,27 @@ async function findMemberByMemo(note) {
   return { id: null, name: null, candidates };
 }
 
+// Exact memo match using zelle_memo_matches (case-insensitive match on sanitized memo)
+async function findMemberByExactMemo(note) {
+  const cleaned = sanitizeNote(note || '');
+  if (!cleaned) return { id: null, name: null, candidates: [] };
+  const memoLower = cleaned.toLowerCase();
+  // Match case-insensitively by comparing lower(memo) = memoLower
+  const match = await ZelleMemoMatch.findOne({
+    where: sequelize.where(sequelize.fn('lower', sequelize.col('memo')), memoLower)
+  });
+  if (!match) return { id: null, name: null, candidates: [] };
+
+  // Load member name for display
+  const member = await Member.findByPk(match.member_id, { attributes: ['id', 'first_name', 'last_name'] });
+  if (!member) return { id: null, name: null, candidates: [] };
+  return {
+    id: member.id,
+    name: `${member.first_name || ''} ${member.last_name || ''}`.trim(),
+    candidates: []
+  };
+}
+
 async function upsertTransaction(parsed, { dryRun = false } = {}) {
   const { amount, messageId, note, payment_date } = parsed;
   if (!amount || !messageId) return { created: false, reason: 'missing_amount_or_message_id' };
