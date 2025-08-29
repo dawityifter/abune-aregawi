@@ -221,7 +221,6 @@ const ZelleReview: React.FC = () => {
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sender</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone in Memo</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Memo</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matched Member</th>
@@ -239,7 +238,6 @@ const ZelleReview: React.FC = () => {
                       return Number.isFinite(amt) ? `$${amt.toFixed(2)}` : '-';
                     })()
                   }</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.sender_email || '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.memo_phone_e164 || '-'}</td>
                   <td className="px-3 py-2 text-sm text-gray-900 max-w-3xl whitespace-normal break-words" title={it.note_preview || ''}>{it.note_preview || '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm">
