@@ -175,7 +175,7 @@ const ZelleReview: React.FC = () => {
         <div className="flex items-center space-x-2">
           <input
             type="text"
-            placeholder="Filter by memo, subject, external ID, matched name"
+            placeholder="Filter by memo or matched name"
             value={textFilter}
             onChange={(e) => setTextFilter(e.target.value)}
             className="w-72 px-2 py-1 border border-gray-300 rounded"
@@ -223,11 +223,9 @@ const ZelleReview: React.FC = () => {
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sender</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone in Memo</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Memo</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matched Member</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Would Create</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">External ID</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reconcile</th>
               </tr>
             </thead>
@@ -243,8 +241,7 @@ const ZelleReview: React.FC = () => {
                   }</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.sender_email || '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.memo_phone_e164 || '-'}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={it.subject || ''}>{it.subject || 'Zelle'}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={it.note_preview || ''}>{it.note_preview || '-'}</td>
+                  <td className="px-3 py-2 text-sm text-gray-900 max-w-3xl whitespace-normal break-words" title={it.note_preview || ''}>{it.note_preview || '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm">
                     {it.matched_member_id ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title={it.matched_member_name || ''}>
@@ -263,7 +260,6 @@ const ZelleReview: React.FC = () => {
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">No</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{it.external_id || '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm">
                     <div className="flex items-center space-x-2">
                       {!it.matched_member_id && (
