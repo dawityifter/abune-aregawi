@@ -317,9 +317,7 @@ const ZelleReview: React.FC = () => {
         </div>
       )}
 
-      <div className="mt-4 text-xs text-gray-500">
-        Preview only: no database changes are made from this view.
-      </div>
+      
     </div>
   );
 };
