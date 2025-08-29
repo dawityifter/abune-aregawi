@@ -298,6 +298,17 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
       }
       const member_id = memoMatch.id;
       const external_id = parsed.messageId ? `gmail:${parsed.messageId}` : null;
+      // Check if a transaction with this external_id already exists
+      let already_exists = false;
+      let existing_transaction_id = null;
+      if (external_id) {
+        const existing = await Transaction.findOne({ where: { external_id } });
+        if (existing) {
+          already_exists = true;
+          existing_transaction_id = existing.id;
+        }
+      }
+      const would_create = !!(parsed.amount && external_id && member_id) && !already_exists;
       results.push({
         gmail_id: m.id,
         external_id,
@@ -310,7 +321,9 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
         matched_member_id: member_id,
         matched_member_name: memoMatch.name || null,
         matched_candidates: memoMatch.candidates || [],
-        would_create: !!(parsed.amount && external_id && member_id),
+        would_create,
+        already_exists,
+        existing_transaction_id,
         payment_method: 'zelle',
         payment_type: 'donation',
         status: 'succeeded'
