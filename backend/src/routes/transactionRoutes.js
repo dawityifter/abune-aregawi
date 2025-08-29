@@ -7,7 +7,8 @@ const {
   updateTransaction,
   deleteTransaction,
   getTransactionStats,
-  getMemberPaymentSummaries
+  getMemberPaymentSummaries,
+  updateTransactionPaymentType
 } = require('../controllers/transactionController');
 const { firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
@@ -32,6 +33,9 @@ router.post('/', roleMiddleware(['admin', 'treasurer']), createTransaction);
 
 // Update a transaction (requires admin or treasurer role)
 router.put('/:id', roleMiddleware(['admin', 'treasurer']), updateTransaction);
+
+// Update only payment_type (Zelle-only) (requires admin or treasurer role)
+router.patch('/:id/payment-type', roleMiddleware(['admin', 'treasurer']), updateTransactionPaymentType);
 
 // Delete a transaction (requires admin role only)
 router.delete('/:id', roleMiddleware(['admin']), deleteTransaction);
