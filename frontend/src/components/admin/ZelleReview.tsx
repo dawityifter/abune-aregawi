@@ -119,6 +119,39 @@ const ZelleReview: React.FC = () => {
     }
   }, [firebaseUser, fetchPreview, rowSearch]);
 
+  const handleUpdatePaymentType = useCallback(async (item: ZellePreviewItem, idx?: number) => {
+    if (!firebaseUser) return;
+    const key = getKey(item, idx ?? 0);
+    if (!item.already_exists || !item.existing_transaction_id) {
+      setError('Cannot update: no existing transaction id.');
+      return;
+    }
+    try {
+      setBusyIds((m) => ({ ...m, [key]: true }));
+      setError('');
+      const paymentTypeSelect = (document.getElementById(`paymentType-${key}`) as HTMLSelectElement | null);
+      const newType = paymentTypeSelect?.value || item.payment_type || 'donation';
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions/${item.existing_transaction_id}/payment-type`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
+        },
+        body: JSON.stringify({ payment_type: newType })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(data.message || `Update failed with status ${resp.status}`);
+      }
+      // optimistic update
+      setItems((prev) => prev.map((it, i) => (getKey(it, i) === key ? { ...it, payment_type: newType } : it)));
+    } catch (e: any) {
+      setError(e.message || 'Failed to update payment type');
+    } finally {
+      setBusyIds((m) => ({ ...m, [key]: false }));
+    }
+  }, [firebaseUser]);
+
   const handleSearchChange = useCallback(async (key: string, query: string) => {
     setRowSearch((prev) => ({
       ...prev,
@@ -296,9 +329,11 @@ const ZelleReview: React.FC = () => {
                         </div>
                       )}
                       <select
+                        key={`pt-${getKey(it, idx)}-${it.payment_type || 'donation'}`}
                         id={`paymentType-${getKey(it, idx)}`}
                         className="px-2 py-1 border border-gray-300 rounded"
                         defaultValue={it.payment_type || 'donation'}
+                        disabled={!!busyIds[getKey(it, idx)]}
                         title="Payment Type"
                       >
                         <option value="membership_due">Membership Due</option>
@@ -307,14 +342,30 @@ const ZelleReview: React.FC = () => {
                         <option value="event">Event</option>
                         <option value="other">Other</option>
                       </select>
-                      <button
-                        onClick={() => handleCreate(it, idx)}
-                        disabled={!!busyIds[getKey(it, idx)] || !!it.already_exists}
-                        className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-1.5 rounded"
-                        title={it.already_exists ? (it.existing_transaction_id ? `Already saved (TX #${it.existing_transaction_id})` : 'Already saved') : 'Create transaction'}
-                      >
-                        {it.already_exists ? 'Saved' : (busyIds[getKey(it, idx)] ? 'Creating…' : 'Create')}
-                      </button>
+                      {!it.already_exists ? (
+                        <button
+                          onClick={() => handleCreate(it, idx)}
+                          disabled={!!busyIds[getKey(it, idx)]}
+                          className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-1.5 rounded"
+                          title="Create transaction"
+                        >
+                          {busyIds[getKey(it, idx)] ? 'Creating…' : 'Create'}
+                        </button>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title={it.existing_transaction_id ? `TX #${it.existing_transaction_id}` : 'Already saved'}>
+                            Saved
+                          </span>
+                          <button
+                            onClick={() => handleUpdatePaymentType(it, idx)}
+                            disabled={!!busyIds[getKey(it, idx)]}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1.5 rounded"
+                            title="Update payment type"
+                          >
+                            {busyIds[getKey(it, idx)] ? 'Saving…' : 'Save'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>

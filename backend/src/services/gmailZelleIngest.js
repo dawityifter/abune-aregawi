@@ -301,11 +301,15 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
       // Check if a transaction with this external_id already exists
       let already_exists = false;
       let existing_transaction_id = null;
+      let payment_type = 'donation';
       if (external_id) {
         const existing = await Transaction.findOne({ where: { external_id } });
         if (existing) {
           already_exists = true;
           existing_transaction_id = existing.id;
+          if (existing.payment_type) {
+            payment_type = existing.payment_type;
+          }
         }
       }
       const would_create = !!(parsed.amount && external_id && member_id) && !already_exists;
@@ -325,7 +329,7 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
         already_exists,
         existing_transaction_id,
         payment_method: 'zelle',
-        payment_type: 'donation',
+        payment_type,
         status: 'succeeded'
       });
     } catch (e) {

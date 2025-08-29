@@ -20,6 +20,36 @@ const getAllTransactions = async (req, res) => {
     const offset = (page - 1) * limit;
     const whereClause = {};
 
+// Patch: update only the payment_type of an existing transaction (admin/treasurer via routes)
+// Restricted to Zelle transactions in this context
+const updateTransactionPaymentType = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { payment_type } = req.body || {};
+
+    const allowed = ['membership_due', 'tithe', 'donation', 'event', 'other'];
+    if (!payment_type || !allowed.includes(payment_type)) {
+      return res.status(400).json({ success: false, message: `Invalid payment_type. Allowed: ${allowed.join(', ')}` });
+    }
+
+    const tx = await Transaction.findByPk(id);
+    if (!tx) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+
+    // Scope to Zelle-only for now
+    if (tx.payment_method !== 'zelle') {
+      return res.status(400).json({ success: false, message: 'Only Zelle transactions can be updated via this endpoint' });
+    }
+
+    await tx.update({ payment_type });
+    return res.json({ success: true, data: { id: tx.id, payment_type: tx.payment_type } });
+  } catch (error) {
+    console.error('Error updating transaction payment_type:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update payment_type', error: error.message });
+  }
+};
+
     // Add filters
     if (member_id) whereClause.member_id = member_id;
     if (payment_type) whereClause.payment_type = payment_type;
@@ -590,5 +620,6 @@ module.exports = {
   updateTransaction,
   deleteTransaction,
   getTransactionStats,
-  getMemberPaymentSummaries
-}; 
+  getMemberPaymentSummaries,
+  updateTransactionPaymentType
+};
