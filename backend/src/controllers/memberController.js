@@ -33,6 +33,67 @@ const normalizePhoneNumber = (phoneNumber) => {
   return digitsOnly;
 };
 
+// Search members by name or phone (include inactive). Minimum 3 chars. Limit 10.
+exports.searchMembers = async (req, res) => {
+  try {
+    const { q } = req.query;
+    const query = (q || '').trim();
+    if (!query || query.length < 3) {
+      return res.status(400).json({ success: false, message: 'Query must be at least 3 characters' });
+    }
+
+    // Prepare tokens from query for AND matching
+    const lower = query.toLowerCase();
+    const tokens = lower.split(/\s+/).filter(Boolean).slice(0, 5);
+
+    // If looks like phone, also create normalized candidates
+    let phoneCandidates = [];
+    const digits = lower.replace(/[^0-9]/g, '');
+    if (digits.length >= 10) {
+      const e164 = digits.length === 11 ? `+${digits}` : `+1${digits.slice(-10)}`;
+      phoneCandidates.push(e164);
+    }
+
+    const nameTokenClauses = tokens.map(t => ({
+      [Op.or]: [
+        { first_name: { [Op.iLike]: `%${t}%` } },
+        { middle_name: { [Op.iLike]: `%${t}%` } },
+        { last_name: { [Op.iLike]: `%${t}%` } },
+      ]
+    }));
+
+    const where = nameTokenClauses.length > 0
+      ? { [Op.and]: nameTokenClauses }
+      : {};
+
+    if (phoneCandidates.length > 0) {
+      where[Op.or] = [
+        ...(where[Op.or] || []),
+        { phone_number: { [Op.in]: phoneCandidates } }
+      ];
+    }
+
+    const members = await Member.findAll({
+      where,
+      attributes: ['id', 'first_name', 'last_name', 'phone_number', 'is_active'],
+      order: [['last_name', 'ASC'], ['first_name', 'ASC']],
+      limit: 10
+    });
+
+    const results = members.map(m => ({
+      id: m.id,
+      name: `${m.first_name || ''} ${m.last_name || ''}`.trim(),
+      phoneNumber: m.phone_number,
+      isActive: m.is_active
+    }));
+
+    return res.json({ success: true, data: { results } });
+  } catch (error) {
+    console.error('searchMembers error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 
 // List members pending welcome (admin/relationship)
 exports.getPendingWelcomes = async (req, res) => {

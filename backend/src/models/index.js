@@ -94,18 +94,22 @@ const Donation = require('./Donation')(sequelize);
 const SmsLog = require('./SmsLog')(sequelize);
 const Group = require('./Group')(sequelize);
 const MemberGroup = require('./MemberGroup')(sequelize);
+const ZelleMemoMatch = require('./ZelleMemoMatch')(sequelize);
 
 // Define associations
-Member.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup });
-Dependent.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup });
-Transaction.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup });
-MemberPayment.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup });
-Donation.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup });
+Member.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch });
+Dependent.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch });
+Transaction.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch });
+MemberPayment.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch });
+Donation.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch });
 if (typeof Group.associate === 'function') {
-  Group.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup });
+  Group.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch });
 }
 if (typeof MemberGroup.associate === 'function') {
-  MemberGroup.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup });
+  MemberGroup.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch });
+}
+if (typeof ZelleMemoMatch.associate === 'function') {
+  ZelleMemoMatch.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch });
 }
 
 // Export models and sequelize instance
@@ -118,5 +122,6 @@ module.exports = {
   Donation,
   SmsLog,
   Group,
-  MemberGroup
+  MemberGroup,
+  ZelleMemoMatch
 }; 

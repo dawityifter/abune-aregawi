@@ -11,6 +11,8 @@ interface ZellePreviewItem {
   note_preview?: string | null;
   subject?: string | null;
   matched_member_id?: number | null;
+  matched_member_name?: string | null;
+  matched_candidates?: Array<{ id: number; name: string }>;
   would_create?: boolean;
   payment_method?: 'zelle';
   payment_type?: string;
@@ -25,6 +27,15 @@ const ZelleReview: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [limit, setLimit] = useState<number>(10);
   const [busyIds, setBusyIds] = useState<Record<string, boolean>>({});
+  const [textFilter, setTextFilter] = useState<string>('');
+  const [onlyUnmatched, setOnlyUnmatched] = useState<boolean>(false);
+
+  // Per-row reconcile selection and search state
+  type SearchResult = { id: number; name: string; phoneNumber?: string | null; isActive?: boolean };
+  type RowSearchState = { query: string; results: SearchResult[]; loading: boolean; selectedId?: number };
+  const [rowSearch, setRowSearch] = useState<Record<string, RowSearchState>>({});
+
+  const getKey = (it: ZellePreviewItem, idx: number) => it.gmail_id || it.external_id || String(idx);
 
   const fetchPreview = useCallback(async () => {
     if (!firebaseUser || !currentUser?.email) return;
@@ -54,15 +65,15 @@ const ZelleReview: React.FC = () => {
     fetchPreview();
   }, [fetchPreview]);
 
-  const handleCreate = useCallback(async (item: ZellePreviewItem) => {
+  const handleCreate = useCallback(async (item: ZellePreviewItem, idx?: number) => {
     if (!firebaseUser) return;
-    const key = item.gmail_id || item.external_id || Math.random().toString();
+    const key = getKey(item, idx ?? 0);
     try {
       setBusyIds((m) => ({ ...m, [key]: true }));
       setError('');
 
-      const memberIdInput = (document.getElementById(`memberId-${key}`) as HTMLInputElement | null)?.value?.trim();
-      const member_id = item.matched_member_id || (memberIdInput ? Number(memberIdInput) : undefined);
+      const selected = rowSearch[key]?.selectedId;
+      const member_id = item.matched_member_id || selected;
       if (!member_id) {
         throw new Error('Please provide a member ID to reconcile.');
       }
@@ -104,7 +115,55 @@ const ZelleReview: React.FC = () => {
     } finally {
       setBusyIds((m) => ({ ...m, [key]: false }));
     }
-  }, [firebaseUser, fetchPreview]);
+  }, [firebaseUser, fetchPreview, rowSearch]);
+
+  const handleSearchChange = useCallback(async (key: string, query: string) => {
+    setRowSearch((prev) => ({
+      ...prev,
+      [key]: { ...(prev[key] || { results: [], selectedId: undefined }), query, loading: query.length >= 3 }
+    }));
+
+    if (!firebaseUser) return;
+    if (query.trim().length < 3) {
+      setRowSearch((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), results: [], loading: false } as RowSearchState }));
+      return;
+    }
+
+    try {
+      const url = `${process.env.REACT_APP_API_URL}/api/members/search?q=${encodeURIComponent(query)}`;
+      const resp = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` }
+      });
+      const data = await resp.json();
+      const results: SearchResult[] = data?.data?.results || [];
+      setRowSearch((prev) => ({
+        ...prev,
+        [key]: { ...(prev[key] || {}), query, results, loading: false }
+      }));
+    } catch (e) {
+      setRowSearch((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), loading: false } as RowSearchState }));
+    }
+  }, [firebaseUser]);
+
+  const handleSelectMember = useCallback((key: string, memberId: number) => {
+    setRowSearch((prev) => ({
+      ...prev,
+      [key]: { ...(prev[key] || { results: [], query: '' }), selectedId: memberId }
+    }));
+  }, []);
+
+  const filteredItems = items.filter((it) => {
+    if (onlyUnmatched && it.matched_member_id) return false;
+    const q = textFilter.trim().toLowerCase();
+    if (!q) return true;
+    const fields = [
+      it.note_preview || '',
+      it.subject || '',
+      it.external_id || '',
+      it.matched_member_name || ''
+    ].map(s => String(s).toLowerCase());
+    return fields.some(f => f.includes(q));
+  });
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -114,6 +173,18 @@ const ZelleReview: React.FC = () => {
           <p className="text-sm text-gray-600">Preview of Gmail-parsed Zelle payments for reconciliation</p>
         </div>
         <div className="flex items-center space-x-2">
+          <input
+            type="text"
+            placeholder="Filter by memo, subject, external ID, matched name"
+            value={textFilter}
+            onChange={(e) => setTextFilter(e.target.value)}
+            className="w-72 px-2 py-1 border border-gray-300 rounded"
+            aria-label="Text filter"
+          />
+          <label className="flex items-center space-x-1 text-sm text-gray-700">
+            <input type="checkbox" checked={onlyUnmatched} onChange={(e) => setOnlyUnmatched(e.target.checked)} />
+            <span>Only Unmatched</span>
+          </label>
           <input
             type="number"
             min={1}
@@ -161,8 +232,8 @@ const ZelleReview: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {items.map((it, idx) => (
-                <tr key={it.gmail_id || it.external_id || idx}>
+              {filteredItems.map((it, idx) => (
+                <tr key={getKey(it, idx)}>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.payment_date || '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{
                     (() => {
@@ -172,12 +243,12 @@ const ZelleReview: React.FC = () => {
                   }</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.sender_email || '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.memo_phone_e164 || '-'}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title="Zelle">Zelle</td>
+                  <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={it.subject || ''}>{it.subject || 'Zelle'}</td>
                   <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={it.note_preview || ''}>{it.note_preview || '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm">
                     {it.matched_member_id ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                        #{it.matched_member_id}
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title={it.matched_member_name || ''}>
+                        {it.matched_member_name ? `${it.matched_member_name} ` : ''}#{it.matched_member_id}
                       </span>
                     ) : (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -196,15 +267,39 @@ const ZelleReview: React.FC = () => {
                   <td className="px-3 py-2 whitespace-nowrap text-sm">
                     <div className="flex items-center space-x-2">
                       {!it.matched_member_id && (
-                        <input
-                          id={`memberId-${it.gmail_id || it.external_id || idx}`}
-                          type="number"
-                          placeholder="Member ID"
-                          className="w-24 px-2 py-1 border border-gray-300 rounded"
-                        />
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="Type name or phone (3+ chars)"
+                            className="w-64 px-2 py-1 border border-gray-300 rounded"
+                            value={rowSearch[getKey(it, idx)]?.query || ''}
+                            onChange={(e) => handleSearchChange(getKey(it, idx), e.target.value)}
+                          />
+                          {(rowSearch[getKey(it, idx)]?.loading) && (
+                            <div className="absolute right-2 top-1.5 text-xs text-gray-400">Searching…</div>
+                          )}
+                          {(rowSearch[getKey(it, idx)]?.results?.length || 0) > 0 && (
+                            <div className="absolute z-10 mt-1 w-72 max-h-56 overflow-auto bg-white border border-gray-200 rounded shadow">
+                              {rowSearch[getKey(it, idx)]!.results!.map((r) => (
+                                <button
+                                  key={r.id}
+                                  type="button"
+                                  onClick={() => handleSelectMember(getKey(it, idx), r.id)}
+                                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50"
+                                  title={r.phoneNumber ? `${r.name} • ${r.phoneNumber}` : r.name}
+                                >
+                                  {r.name} {r.phoneNumber ? `• ${r.phoneNumber}` : ''} {!r.isActive ? '(inactive)' : ''}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {rowSearch[getKey(it, idx)]?.selectedId && (
+                            <div className="mt-1 text-xs text-gray-600">Selected: #{rowSearch[getKey(it, idx)]?.selectedId}</div>
+                          )}
+                        </div>
                       )}
                       <select
-                        id={`paymentType-${it.gmail_id || it.external_id || idx}`}
+                        id={`paymentType-${getKey(it, idx)}`}
                         className="px-2 py-1 border border-gray-300 rounded"
                         defaultValue={it.payment_type || 'donation'}
                         title="Payment Type"
@@ -216,12 +311,12 @@ const ZelleReview: React.FC = () => {
                         <option value="other">Other</option>
                       </select>
                       <button
-                        onClick={() => handleCreate(it)}
-                        disabled={!!busyIds[it.gmail_id || it.external_id || String(idx)]}
+                        onClick={() => handleCreate(it, idx)}
+                        disabled={!!busyIds[getKey(it, idx)]}
                         className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-1.5 rounded"
                         title="Create transaction"
                       >
-                        {busyIds[it.gmail_id || it.external_id || String(idx)] ? 'Creating…' : 'Create'}
+                        {busyIds[getKey(it, idx)] ? 'Creating…' : 'Create'}
                       </button>
                     </div>
                   </td>
