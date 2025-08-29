@@ -98,6 +98,12 @@ router.use(firebaseAuthMiddleware);
 router.get('/profile', memberController.getProfile);
 router.put('/profile', validateProfileUpdate, memberController.updateProfile);
 
+// Member search (treasurer/admin)
+router.get('/search', 
+  roleMiddleware(['admin', 'treasurer']), 
+  memberController.searchMembers
+);
+
 // Dependent self-claim routes
 router.post('/dependents/self-claim/start', validateSelfClaimStart, memberController.selfClaimStart);
 router.post('/dependents/self-claim/verify', validateSelfClaimVerify, memberController.selfClaimVerify);

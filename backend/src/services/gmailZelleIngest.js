@@ -1,7 +1,7 @@
 const { google } = require('googleapis');
 const moment = require('moment');
 const { Op } = require('sequelize');
-const { Member, Transaction, sequelize } = require('../models');
+const { Member, Transaction, sequelize, ZelleMemoMatch } = require('../models');
 
 const LABEL_PROCESSED = 'Zelle/Processed';
 const LABEL_NEEDS_REVIEW = 'Zelle/NeedsReview';
@@ -102,17 +102,51 @@ async function findCollectorMemberId() {
   throw new Error('No member found to set as collected_by');
 }
 
-async function findMemberId({ senderEmail, phoneE164 }) {
-  // Try match by email first, then phone
-  if (senderEmail) {
-    const m = await Member.findOne({ where: { email: senderEmail } });
-    if (m) return m.id;
-  }
-  if (phoneE164) {
-    const m = await Member.findOne({ where: { phone_number: phoneE164 } });
-    if (m) return m.id;
-  }
+// Do not use sender email or memo phone for matching (per requirements)
+async function findMemberId(_parsed) {
   return null;
+}
+
+// Memo-based matching: use note text only (name tokens), do NOT use phone from memo
+async function findMemberByMemo(note) {
+  if (!note) return { id: null, name: null, candidates: [] };
+
+  const raw = String(note || '').toLowerCase();
+
+  // Name tokens (letters only, collapse spaces)
+  const nameTokens = raw
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 8); // limit tokens considered
+
+  let candidates = [];
+
+  // Then try name token matching (AND of tokens across first/middle/last)
+  if (nameTokens.length > 0) {
+    const tokenClauses = nameTokens.map(t => ({
+      [Op.or]: [
+        { first_name: { [Op.iLike]: `%${t}%` } },
+        { middle_name: { [Op.iLike]: `%${t}%` } },
+        { last_name: { [Op.iLike]: `%${t}%` } },
+      ]
+    }));
+
+    const byName = await Member.findAll({
+      where: { [Op.and]: tokenClauses },
+      attributes: ['id', 'first_name', 'last_name']
+    });
+    candidates.push(...byName.map(m => ({ id: m.id, name: `${m.first_name || ''} ${m.last_name || ''}`.trim() })));
+  }
+
+  // Deduplicate candidates by id
+  const seen = new Set();
+  candidates = candidates.filter(c => (seen.has(c.id) ? false : (seen.add(c.id), true)));
+
+  if (candidates.length === 1) {
+    return { id: candidates[0].id, name: candidates[0].name, candidates };
+  }
+  return { id: null, name: null, candidates };
 }
 
 async function upsertTransaction(parsed, { dryRun = false } = {}) {
@@ -232,7 +266,16 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
     try {
       const full = await gmail.users.messages.get({ userId, id: m.id, format: 'full' });
       const parsed = parseCandidatesFromMessage(full.data);
-      const member_id = await findMemberId(parsed);
+      // Ignore PayPal sender
+      if (parsed.senderEmail && parsed.senderEmail.trim().toLowerCase() === 'service@paypal.com') {
+        continue;
+      }
+      // Do not use sender email or memo phone; first try exact memo match, then token-based
+      let memoMatch = await findMemberByExactMemo(parsed.note);
+      if (!memoMatch.id) {
+        memoMatch = await findMemberByMemo(parsed.note);
+      }
+      const member_id = memoMatch.id;
       const external_id = parsed.messageId ? `gmail:${parsed.messageId}` : null;
       results.push({
         gmail_id: m.id,
@@ -244,6 +287,8 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
         note_preview: sanitizeNote(parsed.note),
         subject: parsed.subject,
         matched_member_id: member_id,
+        matched_member_name: memoMatch.name || null,
+        matched_candidates: memoMatch.candidates || [],
         would_create: !!(parsed.amount && external_id && member_id),
         payment_method: 'zelle',
         payment_type: 'donation',

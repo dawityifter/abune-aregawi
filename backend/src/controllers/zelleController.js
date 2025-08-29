@@ -1,5 +1,16 @@
 const { syncZelleFromGmail, previewZelleFromGmail } = require('../services/gmailZelleIngest');
-const { Transaction } = require('../models');
+const { Transaction, ZelleMemoMatch, Member } = require('../models');
+
+// Keep memo normalization consistent with the ingest service
+function sanitizeNote(input) {
+  if (!input) return input;
+  let out = String(input);
+  out = out.replace(/You received money with Zelle(?:®)?/gi, '');
+  out = out.replace(/(\s*\|\s*)?Memo N\/A/gi, '');
+  out = out.replace(/\s*is registered with a Zelle(?:®)?/gi, '');
+  out = out.replace(/\s{2,}/g, ' ').replace(/\s*\|\s*/g, ' ').trim();
+  return out;
+}
 
 async function syncFromGmail(req, res) {
   try {
@@ -60,6 +71,32 @@ async function createTransactionFromPreview(req, res) {
       external_id,
       donation_id: null,
     });
+
+    // Persist memo -> member mapping to enable future automatic matches
+    try {
+      const memo = sanitizeNote(note || '');
+      if (memo) {
+        const existing = await ZelleMemoMatch.findOne({ where: { memo } });
+        let first_name = null;
+        let last_name = null;
+        const m = await Member.findByPk(member_id, { attributes: ['first_name', 'last_name'] });
+        if (m) {
+          first_name = m.first_name || null;
+          last_name = m.last_name || null;
+        }
+        if (!existing) {
+          await ZelleMemoMatch.create({ member_id, first_name, last_name, memo });
+        } else if (existing.member_id !== member_id || existing.first_name !== first_name || existing.last_name !== last_name) {
+          existing.member_id = member_id;
+          existing.first_name = first_name;
+          existing.last_name = last_name;
+          await existing.save();
+        }
+      }
+    } catch (memoErr) {
+      console.warn('Zelle memo match upsert warning:', memoErr.message || memoErr);
+      // Do not fail the transaction creation if memo upsert fails
+    }
 
     return res.json({ success: true, id: tx.id, data: tx });
   } catch (error) {
