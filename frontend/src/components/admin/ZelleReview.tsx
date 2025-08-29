@@ -14,6 +14,8 @@ interface ZellePreviewItem {
   matched_member_name?: string | null;
   matched_candidates?: Array<{ id: number; name: string }>;
   would_create?: boolean;
+  already_exists?: boolean;
+  existing_transaction_id?: number | null;
   payment_method?: 'zelle';
   payment_type?: string;
   status?: string;
@@ -253,6 +255,11 @@ const ZelleReview: React.FC = () => {
                     ) : (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">No</span>
                     )}
+                    {it.already_exists && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title={it.existing_transaction_id ? `TX #${it.existing_transaction_id}` : 'Already saved'}>
+                        Saved
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm">
                     <div className="flex items-center space-x-2">
@@ -302,11 +309,11 @@ const ZelleReview: React.FC = () => {
                       </select>
                       <button
                         onClick={() => handleCreate(it, idx)}
-                        disabled={!!busyIds[getKey(it, idx)]}
+                        disabled={!!busyIds[getKey(it, idx)] || !!it.already_exists}
                         className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-1.5 rounded"
-                        title="Create transaction"
+                        title={it.already_exists ? (it.existing_transaction_id ? `Already saved (TX #${it.existing_transaction_id})` : 'Already saved') : 'Create transaction'}
                       >
-                        {busyIds[getKey(it, idx)] ? 'Creating…' : 'Create'}
+                        {it.already_exists ? 'Saved' : (busyIds[getKey(it, idx)] ? 'Creating…' : 'Create')}
                       </button>
                     </div>
                   </td>
