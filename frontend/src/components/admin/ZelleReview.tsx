@@ -169,7 +169,12 @@ const ZelleReview: React.FC = () => {
       const resp = await fetch(url, {
         headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` }
       });
-      const data = await resp.json();
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        setError((data && (data.message || data.error)) || `Search failed with status ${resp.status}`);
+        setRowSearch((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), loading: false } as RowSearchState }));
+        return;
+      }
       const results: SearchResult[] = data?.data?.results || [];
       setRowSearch((prev) => ({
         ...prev,
@@ -180,10 +185,11 @@ const ZelleReview: React.FC = () => {
     }
   }, [firebaseUser]);
 
-  const handleSelectMember = useCallback((key: string, memberId: number) => {
+  const handleSelectMember = useCallback((key: string, result: SearchResult) => {
+    const label = `${result.name}${result.phoneNumber ? ` • ${result.phoneNumber}` : ''}`;
     setRowSearch((prev) => ({
       ...prev,
-      [key]: { ...(prev[key] || { results: [], query: '' }), selectedId: memberId }
+      [key]: { ...(prev[key] || { results: [], query: '' }), selectedId: result.id, query: label, results: [] }
     }));
   }, []);
 
@@ -305,6 +311,7 @@ const ZelleReview: React.FC = () => {
                             value={rowSearch[getKey(it, idx)]?.query || ''}
                             onChange={(e) => handleSearchChange(getKey(it, idx), e.target.value)}
                           />
+                          <div className="mt-1 text-xs text-gray-400">Type 3+ characters</div>
                           {(rowSearch[getKey(it, idx)]?.loading) && (
                             <div className="absolute right-2 top-1.5 text-xs text-gray-400">Searching…</div>
                           )}
@@ -314,7 +321,7 @@ const ZelleReview: React.FC = () => {
                                 <button
                                   key={r.id}
                                   type="button"
-                                  onClick={() => handleSelectMember(getKey(it, idx), r.id)}
+                                  onMouseDown={() => handleSelectMember(getKey(it, idx), r)}
                                   className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50"
                                   title={r.phoneNumber ? `${r.name} • ${r.phoneNumber}` : r.name}
                                 >
