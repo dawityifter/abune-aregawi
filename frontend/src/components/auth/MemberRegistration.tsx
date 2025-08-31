@@ -54,7 +54,7 @@ const MemberRegistration: React.FC = () => {
     streetLine1: '',
     apartmentNo: '',
     city: '',
-    state: '',
+    state: 'TX',
     postalCode: '',
     country: 'United States',
     
