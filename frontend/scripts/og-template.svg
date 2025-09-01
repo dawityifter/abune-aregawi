@@ -1,0 +1,30 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#dc2626"/>
+      <stop offset="60%" stop-color="#b91c1c"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+    <pattern id="lattice" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="40" height="40" fill="rgba(255,255,255,0.03)"/>
+      <path d="M20 0 V40 M0 20 H40" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <rect width="1200" height="630" fill="url(#lattice)"/>
+
+  <g fill="#fff" opacity="0.9">
+    <circle cx="80" cy="80" r="4"/>
+    <circle cx="1120" cy="550" r="4"/>
+  </g>
+
+  <text x="60" y="300" font-family="Georgia, 'Times New Roman', serif" font-size="72" fill="#fff" font-weight="700">
+    Debre Tsehay Abune Aregawi
+  </text>
+  <text x="60" y="370" font-family="'Noto Sans Ethiopic', serif" font-size="44" fill="#fff" opacity="0.95">
+    ደብረ ጸሓይ አቡነ ኣረጋዊ
+  </text>
+  <text x="60" y="440" font-family="Inter, system-ui, sans-serif" font-size="28" fill="#fff" opacity="0.95">
+    Tigray Orthodox Tewahedo Church • Dallas, TX
+  </text>
+</svg>

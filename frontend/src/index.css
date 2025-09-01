@@ -114,4 +114,15 @@
   .clergy-info {
     @apply text-h4 font-serif text-primary-600;
   }
+
+  /* Subtle cross lattice background inspired by traditional motifs */
+  .bg-cross-lattice {
+    background-image:
+      linear-gradient(45deg, rgba(146, 64, 14, 0.06) 25%, rgba(0,0,0,0) 25%),
+      linear-gradient(-45deg, rgba(146, 64, 14, 0.06) 25%, rgba(0,0,0,0) 25%),
+      linear-gradient(45deg, rgba(146, 64, 14, 0.06) 75%, rgba(0,0,0,0) 75%),
+      linear-gradient(-45deg, rgba(146, 64, 14, 0.06) 75%, rgba(0,0,0,0) 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  }
 }

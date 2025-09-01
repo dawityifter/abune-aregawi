@@ -1,6 +1,7 @@
 import React from 'react';
-import { useLanguage } from '../contexts/LanguageContext';
-import HeroSection from './sections/HeroSection';
+import { useI18n } from '../i18n/I18nProvider';
+import Hero from './Hero';
+import QuickLinks from './QuickLinks';
 import WhatsHappeningSection from './sections/WhatsHappeningSection';
 import WatchListenSection from './sections/WatchListenSection';
 import ParticipationSection from './sections/ParticipationSection';
@@ -9,22 +10,15 @@ import NewcomerSection from './sections/NewcomerSection';
 import GrowSpirituallySection from './sections/GrowSpirituallySection';
 // import DashboardPreviewSection from './sections/DashboardPreviewSection';
 import Footer from './sections/Footer';
-import { Link } from 'react-router-dom';
+// import { Link } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
-  const { language } = useLanguage();
+  const { lang } = useI18n();
 
   return (
-    <div className={`min-h-screen ${language === 'ti' ? 'text-tigrigna' : ''}`}>
-      <HeroSection />
-      <div className="flex justify-center my-8">
-        <Link to="/donate">
-          <button className="btn btn-secondary text-lg shadow-lg">
-            <i className="fas fa-heart mr-2"></i>
-            Donate
-          </button>
-        </Link>
-      </div>
+    <div className={`min-h-screen ${lang === 'ti' ? 'text-tigrigna' : ''}`}>
+      <Hero />
+      <QuickLinks />
       <WhatsHappeningSection />
       <WatchListenSection />
       <ParticipationSection />

@@ -366,7 +366,6 @@ const MemberRegistration: React.FC = () => {
         };
 
         const dateOfBirth = isChild ? cleanDate(dependent.dateOfBirth) : null;
-        const baptismDate = cleanDate(dependent.baptismDate);
 
         // Remove empty-string fields so backend doesn't get "" for optional fields
         const cleaned: any = {
@@ -374,7 +373,6 @@ const MemberRegistration: React.FC = () => {
           phone,
           // Dates handled explicitly
           dateOfBirth,
-          baptismDate,
         };
 
         Object.keys(cleaned).forEach((k) => {

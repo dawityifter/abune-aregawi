@@ -1,13 +1,13 @@
 import React from 'react';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { useI18n } from '../../i18n/I18nProvider';
 
 const WhatsHappeningSection: React.FC = () => {
-  const { t } = useLanguage();
+  const { t } = useI18n();
 
   return (
     <section className="py-16 bg-accent-50">
       <div className="container mx-auto px-4">
-        <h2 className="section-title">Community Announcements</h2>
+        <h2 className="section-title">{t('sections.announcements.title')}</h2>
         <div className="max-w-4xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8">
             {/* Featured Events */}

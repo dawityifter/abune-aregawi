@@ -22,7 +22,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
     streetLine1: '',
     apartmentNo: '',
     city: '',
-    state: '',
+    state: 'TX',
     postalCode: '',
     country: 'USA',
     baptismName: '',

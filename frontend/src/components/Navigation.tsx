@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, Fragment } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useI18n } from '../i18n/I18nProvider';
 import { useAuth } from '../contexts/AuthContext';
 import { getRolePermissions } from '../utils/roles';
 import { isFeatureEnabled, featureFlags } from '../config/featureFlags';
@@ -9,7 +9,7 @@ import { isFeatureEnabled, featureFlags } from '../config/featureFlags';
 // type Language = 'en' | 'ti';
 
 const Navigation: React.FC = () => {
-  const { language, setLanguage, t } = useLanguage();
+  const { lang, setLang, t } = useI18n();
   const { currentUser, logout, getUserProfile } = useAuth();
   const location = useLocation();
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -144,22 +144,22 @@ const Navigation: React.FC = () => {
             <div className="flex rounded-md overflow-hidden border border-white/20">
               <button
                 className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                  language === 'en' 
+                  lang === 'en' 
                     ? 'bg-secondary-600 text-white' 
                     : 'bg-transparent text-white hover:bg-white/10'
                 }`}
-                onClick={() => setLanguage('en')}
+                onClick={() => setLang('en')}
               >
                 EN
               </button>
               <div className="h-6 w-px bg-white/30"></div>
               <button
                 className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                  language === 'ti' 
+                  lang === 'ti' 
                     ? 'bg-secondary-600 text-white' 
                     : 'bg-transparent text-white hover:bg-white/10'
                 }`}
-                onClick={() => setLanguage('ti')}
+                onClick={() => setLang('ti')}
               >
                 ትግ
               </button>
@@ -201,7 +201,7 @@ const Navigation: React.FC = () => {
                     to="/register"
                     className="px-4 py-1.5 bg-secondary-600 text-white text-sm font-medium rounded-md hover:bg-secondary-700 transition-colors"
                   >
-                    {t('sign.up')}
+                    {t('auth.sign.up')}
                   </Link>
                 )}
                 {/* Force Logout button for stuck users */}
@@ -324,12 +324,12 @@ const Navigation: React.FC = () => {
               <div className="flex rounded-lg overflow-hidden border border-gray-300">
                 <button
                   className={`flex-1 px-4 py-2.5 text-sm font-medium flex items-center justify-center space-x-2 ${
-                    language === 'en' 
+                    lang === 'en' 
                       ? 'bg-primary-600 text-white' 
                       : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                   onClick={() => {
-                    setLanguage('en');
+                    setLang('en');
                     setIsMenuOpen(false);
                   }}
                 >
@@ -338,12 +338,12 @@ const Navigation: React.FC = () => {
                 <div className="h-10 w-px bg-gray-300"></div>
                 <button
                   className={`flex-1 px-4 py-2.5 text-sm font-medium flex items-center justify-center space-x-2 ${
-                    language === 'ti' 
+                    lang === 'ti' 
                       ? 'bg-primary-600 text-white' 
                       : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                   onClick={() => {
-                    setLanguage('ti');
+                    setLang('ti');
                     setIsMenuOpen(false);
                   }}
                 >
