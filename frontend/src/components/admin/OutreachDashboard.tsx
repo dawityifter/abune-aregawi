@@ -156,7 +156,6 @@ const OutreachDashboard: React.FC = () => {
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registered</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                       </tr>
                     </thead>
@@ -169,9 +168,6 @@ const OutreachDashboard: React.FC = () => {
                           <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
                             <div>{m.phoneNumber || '-'}</div>
                             <div className="text-gray-500">{m.email || '-'}</div>
-                          </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
-                            {m.createdAt ? new Date(m.createdAt).toLocaleDateString() : '-'}
                           </td>
                           <td className="px-4 py-2 whitespace-nowrap text-sm">
                             {permissions.canManageOnboarding ? (
