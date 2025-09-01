@@ -51,8 +51,6 @@ interface BackendDependentData {
   email?: string;
   baptismName?: string;
   isBaptized: boolean;
-  baptismDate?: string;
-  nameDay?: string;
   medicalConditions?: string;
   allergies?: string;
   medications?: string;
@@ -945,18 +943,6 @@ const Profile: React.FC = () => {
                               <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptized')}</label>
                               <p className="text-gray-900">{dependent.isBaptized ? t('yes') : t('no')}</p>
                             </div>
-                            {dependent.baptismDate && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptism.date')}</label>
-                                <p className="text-gray-900">{dependent.baptismDate}</p>
-                              </div>
-                            )}
-                            {dependent.nameDay && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('name.day')}</label>
-                                <p className="text-gray-900">{dependent.nameDay}</p>
-                              </div>
-                            )}
                             {dependent.medicalConditions && (
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('medical.conditions')}</label>

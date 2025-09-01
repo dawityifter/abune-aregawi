@@ -86,10 +86,6 @@ module.exports = (sequelize) => {
       type: DataTypes.DATEONLY,
       allowNull: true
     },
-    nameDay: {
-      type: DataTypes.STRING(100),
-      allowNull: true
-    },
     medicalConditions: {
       type: DataTypes.TEXT,
       allowNull: true

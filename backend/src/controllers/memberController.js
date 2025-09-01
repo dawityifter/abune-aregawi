@@ -581,7 +581,6 @@ exports.register = async (req, res) => {
           baptismName: dependent.baptismName || null,
           isBaptized: !!dependent.isBaptized,
           baptismDate,
-          nameDay: dependent.nameDay || null,
           medicalConditions: dependent.medicalConditions || null,
           allergies: dependent.allergies || null,
           medications: dependent.medications || null,
@@ -839,8 +838,8 @@ exports.updateProfile = async (req, res) => {
       // Add new dependents
       if (req.body.dependants.length > 0) {
         const dependentsData = req.body.dependants.map(dependent => {
-          // Remove baptismDate and nameDay fields if they're empty or invalid
-          const { baptismDate, nameDay, ...cleanDependent } = dependent;
+          // Remove baptismDate field if it's empty or invalid
+          const { baptismDate, ...cleanDependent } = dependent;
           return {
             ...cleanDependent,
             memberId: member.id,

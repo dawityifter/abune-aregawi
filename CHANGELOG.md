@@ -2,6 +2,35 @@
 
 All notable changes to this repository will be documented in this file.
 
+## 2025-08-31
+
+### Database
+
+- Added migration `backend/migrations/20250831152500-drop-name-day-from-dependents.js` to drop `name_day` from `dependents`.
+  - Up: drop column if exists.
+  - Down: restore nullable `STRING(100)` column.
+
+### Backend
+
+- Removed `nameDay` from Sequelize model `backend/src/models/Dependent.js`.
+- Removed `nameDay` handling from validators `backend/src/middleware/validation.js` and controller mappings in `backend/src/controllers/memberController.js`.
+- `GET /api/members/profile/firebase/:uid` continues to support dependent resolution and returns `DEPENDENT_NOT_LINKED` (404) for unlinked dependents.
+
+### Frontend
+
+- Removed `nameDay` from types and transformers:
+  - `frontend/src/utils/relationshipTypes.ts`
+  - `frontend/src/utils/dataTransformers.ts`
+- Removed `Name Day` UI and state from:
+  - `frontend/src/components/DependentsManagement.tsx`
+  - `frontend/src/components/Profile.tsx`
+- Registration/auth flows remain phone-first with E.164 normalization as documented in `formatPhoneNumber` usage and `AuthContext` profile checks.
+
+### Notes
+
+- Frontend profile lookups use `REACT_APP_API_URL` and include normalized `phone` (and `email` when present) to avoid 400s.
+- Dependent login flow: if dependent exists and is linked, a profile with `role='dependent'` is returned; if unlinked, frontend receives `DEPENDENT_NOT_LINKED` and shows tailored messaging.
+
 ## 2025-08-23
 
 ### Frontend

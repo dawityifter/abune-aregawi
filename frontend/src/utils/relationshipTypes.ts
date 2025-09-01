@@ -17,15 +17,13 @@ export interface Dependent {
   firstName: string;
   middleName?: string;
   lastName: string;
-  dateOfBirth: string;
+  dateOfBirth?: string;
   gender: 'Male' | 'Female';
   relationship?: Relationship;
   phone?: string;
   email?: string;
   baptismName?: string;
   isBaptized: boolean;
-  baptismDate?: string;
-  nameDay?: string;
   medicalConditions?: string;
   allergies?: string;
   medications?: string;

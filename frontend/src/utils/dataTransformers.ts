@@ -146,8 +146,6 @@ export interface BackendDependent {
   email?: string;
   baptismName?: string;
   isBaptized: boolean;
-  baptismDate?: string;
-  nameDay?: string;
   medicalConditions?: string;
   allergies?: string;
   medications?: string;
@@ -170,8 +168,6 @@ export interface FrontendDependent {
   email?: string;
   baptismName?: string;
   isBaptized: boolean;
-  baptismDate?: string;
-  nameDay?: string;
   medicalConditions?: string;
   allergies?: string;
   medications?: string;
@@ -194,8 +190,6 @@ export const transformDependentFromBackend = (backendDependent: BackendDependent
   email: backendDependent.email,
   baptismName: backendDependent.baptismName,
   isBaptized: backendDependent.isBaptized,
-  baptismDate: backendDependent.baptismDate,
-  nameDay: backendDependent.nameDay,
   medicalConditions: backendDependent.medicalConditions,
   allergies: backendDependent.allergies,
   medications: backendDependent.medications,
@@ -218,8 +212,6 @@ export const transformDependentToBackend = (frontendDependent: FrontendDependent
   email: frontendDependent.email,
   baptismName: frontendDependent.baptismName,
   isBaptized: frontendDependent.isBaptized,
-  baptismDate: frontendDependent.baptismDate,
-  nameDay: frontendDependent.nameDay,
   medicalConditions: frontendDependent.medicalConditions,
   allergies: frontendDependent.allergies,
   medications: frontendDependent.medications,

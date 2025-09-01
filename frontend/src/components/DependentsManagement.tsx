@@ -23,8 +23,6 @@ const DependentsManagement: React.FC = () => {
     email: '',
     baptismName: '',
     isBaptized: false,
-    baptismDate: '',
-    nameDay: '',
     medicalConditions: '',
     allergies: '',
     medications: '',
@@ -150,8 +148,6 @@ const DependentsManagement: React.FC = () => {
       email: '',
       baptismName: '',
       isBaptized: false,
-      baptismDate: '',
-      nameDay: '',
       medicalConditions: '',
       allergies: '',
       medications: '',
@@ -234,12 +230,11 @@ const DependentsManagement: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date of Birth *
+                  Date of Birth
                 </label>
                 <input
                   type="date"
-                  required
-                  value={formData.dateOfBirth}
+                  value={formData.dateOfBirth || ''}
                   onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -314,29 +309,9 @@ const DependentsManagement: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Baptism Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.baptismDate || ''}
-                  onChange={(e) => setFormData({...formData, baptismDate: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name Day
-                </label>
-                <input
-                  type="text"
-                  value={formData.nameDay || ''}
-                  onChange={(e) => setFormData({...formData, nameDay: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              
 
               <div className="flex items-center">
                 <input
@@ -418,7 +393,7 @@ const DependentsManagement: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDateForDisplay(dependent.dateOfBirth)}
+                      {dependent.dateOfBirth ? formatDateForDisplay(dependent.dateOfBirth) : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {dependent.gender}
