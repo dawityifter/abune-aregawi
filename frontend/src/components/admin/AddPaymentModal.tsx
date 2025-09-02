@@ -12,6 +12,9 @@ interface Member {
   memberId?: string; // Optional since backend might not return this
   phoneNumber: string;
   email: string;
+  // Optional address fields if API returns them
+  streetLine1?: string;
+  postalCode?: string;
 }
 
 interface AddPaymentModalProps {
@@ -430,7 +433,9 @@ interface AddPaymentModalProps {
                             donor_first_name: (members.find(m => String(m.id) === String(selectedMemberId))?.firstName) || '',
                             donor_last_name: (members.find(m => String(m.id) === String(selectedMemberId))?.lastName) || '',
                             donor_email: (members.find(m => String(m.id) === String(selectedMemberId))?.email) || '',
-                            donor_phone: (members.find(m => String(m.id) === String(selectedMemberId))?.phoneNumber) || ''
+                            donor_phone: (members.find(m => String(m.id) === String(selectedMemberId))?.phoneNumber) || '',
+                            donor_address: (members.find(m => String(m.id) === String(selectedMemberId))?.streetLine1) || '',
+                            donor_zip_code: (members.find(m => String(m.id) === String(selectedMemberId))?.postalCode) || ''
                           }}
                           purpose={(paymentType as any) || 'donation'}
                           inline

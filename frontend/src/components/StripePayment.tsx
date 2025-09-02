@@ -50,6 +50,20 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
   const [billingAddress1, setBillingAddress1] = useState<string>(donationData.donor_address || '');
   const [billingPostal, setBillingPostal] = useState<string>(donationData.donor_zip_code || '');
 
+  // Prefill inputs when donationData changes, without overriding user-entered values
+  useEffect(() => {
+    const suggestedName = `${donationData.donor_first_name || ''} ${donationData.donor_last_name || ''}`.trim();
+    if (!nameOnCard && suggestedName) {
+      setNameOnCard(suggestedName);
+    }
+    if (!billingAddress1 && donationData.donor_address) {
+      setBillingAddress1(donationData.donor_address);
+    }
+    if (!billingPostal && donationData.donor_zip_code) {
+      setBillingPostal(donationData.donor_zip_code);
+    }
+  }, [donationData.donor_first_name, donationData.donor_last_name, donationData.donor_address, donationData.donor_zip_code]);
+
   // Expose payment processing function to parent component
   const processPayment = useCallback(async () => {
     if (!stripe || !elements) {
