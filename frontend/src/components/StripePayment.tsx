@@ -42,6 +42,13 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
   const [error, setError] = useState<string | null>(null);
   const cardElementRef = useRef<HTMLDivElement>(null);
   const cardElementFullRef = useRef<HTMLDivElement>(null);
+  // Visible billing inputs for treasurer inline flow
+  const [nameOnCard, setNameOnCard] = useState<string>(() => {
+    const name = `${donationData.donor_first_name || ''} ${donationData.donor_last_name || ''}`.trim();
+    return name;
+  });
+  const [billingAddress1, setBillingAddress1] = useState<string>(donationData.donor_address || '');
+  const [billingPostal, setBillingPostal] = useState<string>(donationData.donor_zip_code || '');
 
   // Expose payment processing function to parent component
   const processPayment = useCallback(async () => {
@@ -73,12 +80,12 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
         payment_method: {
           card: elements.getElement(CardElement)!,
           billing_details: {
-            name: `${donationData.donor_first_name} ${donationData.donor_last_name}`,
+            name: nameOnCard || `${donationData.donor_first_name} ${donationData.donor_last_name}`.trim(),
             email: donationData.donor_email,
             phone: donationData.donor_phone,
             address: {
-              line1: donationData.donor_address,
-              postal_code: donationData.donor_zip_code,
+              line1: billingAddress1 || donationData.donor_address,
+              postal_code: billingPostal || donationData.donor_zip_code,
             },
           },
         },
@@ -138,6 +145,7 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
         color: '#9e2146',
       },
     },
+    // We provide our own postal input below
     hidePostalCode: true,
     classes: {
       focus: 'focused',
@@ -163,6 +171,42 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
             options={cardElementOptions}
             className="stripe-card-element"
           />
+        </div>
+        {/* Billing details visible inputs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="name-on-card">Name on card</label>
+            <input
+              id="name-on-card"
+              type="text"
+              value={nameOnCard}
+              onChange={(e) => setNameOnCard(e.target.value)}
+              placeholder="Full name as shown on card"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="billing-address1">Billing address</label>
+            <input
+              id="billing-address1"
+              type="text"
+              value={billingAddress1}
+              onChange={(e) => setBillingAddress1(e.target.value)}
+              placeholder="Street address"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="billing-postal">ZIP / Postal code</label>
+            <input
+              id="billing-postal"
+              type="text"
+              value={billingPostal}
+              onChange={(e) => setBillingPostal(e.target.value)}
+              placeholder="ZIP"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-3" role="alert">
