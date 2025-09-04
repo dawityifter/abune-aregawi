@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
+import AddDependentModal from './AddDependentModal';
+import EditDependentModal from './EditDependentModal';
 
 interface Member {
   id: string;
@@ -56,53 +58,81 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'basic' | 'contact' | 'spiritual' | 'family'>('basic');
+  const [dependents, setDependents] = useState<any[]>([]);
+  const [showAddDependent, setShowAddDependent] = useState(false);
+  const [editingDependent, setEditingDependent] = useState<any | null>(null);
+  const [showEditDependent, setShowEditDependent] = useState(false);
 
   useEffect(() => {
     setFormData(member);
   }, [member]);
 
   // Fetch dependents to populate Family tab (children + spouse info)
-  useEffect(() => {
-    const fetchDependents = async () => {
-      if (!member?.id || !firebaseUser) return;
-      try {
-        const idToken = await firebaseUser.getIdToken(true);
-        const res = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${member.id}/dependents`, {
-          headers: {
-            'Authorization': idToken ? `Bearer ${idToken}` : '',
-            'Content-Type': 'application/json'
-          }
-        });
-        if (!res.ok) return; // avoid blocking modal if dependents fetch fails
-        const json = await res.json();
-        const dependents = Array.isArray(json?.data?.dependents) ? json.data.dependents : [];
+  const refreshDependents = useCallback(async () => {
+    if (!member?.id || !firebaseUser) return;
+    try {
+      const idToken = await firebaseUser.getIdToken(true);
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${member.id}/dependents`, {
+        headers: {
+          'Authorization': idToken ? `Bearer ${idToken}` : '',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!res.ok) return; // avoid blocking modal if dependents fetch fails
+      const json = await res.json();
+      const deps = Array.isArray(json?.data?.dependents) ? json.data.dependents : [];
+      setDependents(deps);
 
-        // Prefill spouse fields if not provided on member object
-        const spouse = dependents.find((d: any) => d.relationship === 'Spouse');
-        // Children are Son/Daughter
-        const children = dependents
-          .filter((d: any) => d.relationship === 'Son' || d.relationship === 'Daughter')
-          .map((d: any) => ({
-            firstName: d.firstName,
-            lastName: d.lastName,
-            dateOfBirth: d.dateOfBirth,
-            gender: d.gender,
-          }));
-
-        setFormData(prev => ({
-          ...prev,
-          spouseName: prev.spouseName || spouse?.firstName || prev.spouseName,
-          spouseEmail: prev.spouseEmail || spouse?.email || prev.spouseEmail,
-          children,
+      // Prefill spouse fields if not provided on member object
+      const spouse = deps.find((d: any) => d.relationship === 'Spouse');
+      // Children are Son/Daughter
+      const children = deps
+        .filter((d: any) => d.relationship === 'Son' || d.relationship === 'Daughter')
+        .map((d: any) => ({
+          firstName: d.firstName,
+          lastName: d.lastName,
+          dateOfBirth: d.dateOfBirth,
+          gender: d.gender,
         }));
-      } catch (e) {
-        // Silent fail; family tab will just show none
-        console.warn('Failed to fetch dependents for member', member.id, e);
-      }
-    };
-    fetchDependents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+      setFormData(prev => ({
+        ...prev,
+        spouseName: prev.spouseName || spouse?.firstName || prev.spouseName,
+        spouseEmail: prev.spouseEmail || spouse?.email || prev.spouseEmail,
+        children,
+      }));
+    } catch (e) {
+      // Silent fail; family tab will just show none
+      console.warn('Failed to fetch dependents for member', member.id, e);
+    }
   }, [member?.id, firebaseUser]);
+
+  useEffect(() => {
+    refreshDependents();
+  }, [refreshDependents]);
+
+  const handleDeleteDependent = async (dependentId: string) => {
+    if (!window.confirm(t('confirm.delete') || 'Are you sure you want to delete this dependent?')) return;
+    try {
+      const idToken = firebaseUser ? await firebaseUser.getIdToken() : undefined;
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/members/dependents/${dependentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        }
+      });
+      if (res.ok) {
+        await refreshDependents();
+      } else {
+        const data = await res.json().catch(() => ({} as any));
+        setError(data.message || 'Failed to delete dependent');
+      }
+    } catch (e: any) {
+      console.error('Failed to delete dependent', e);
+      setError(e?.message || 'Failed to delete dependent');
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -680,81 +710,98 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
           {/* Family Information Tab */}
           {activeTab === 'family' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('spouse.name')}
-                </label>
-                <input
-                  type="text"
-                  name="spouseName"
-                  value={formData.spouseName || ''}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('spouse.name')}
+                  </label>
+                  <input
+                    type="text"
+                    name="spouseName"
+                    value={formData.spouseName || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('spouse.email')}
+                  </label>
+                  <input
+                    type="email"
+                    name="spouseEmail"
+                    value={formData.spouseEmail || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('spouse.email')}
-                </label>
-                <input
-                  type="email"
-                  name="spouseEmail"
-                  value={formData.spouseEmail || ''}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <h4 className="text-lg font-medium text-gray-900 mb-4">
-                  {t('children')} ({formData.children?.length || 0})
+              <div className="flex items-center justify-between">
+                <h4 className="text-lg font-medium text-gray-900">
+                  {t('dependents') || 'Dependents'} ({dependents.length})
                 </h4>
-                {formData.children && formData.children.length > 0 ? (
-                  <div className="space-y-4">
-                    {formData.children.map((child, index) => (
-                      <div key={index} className="border border-gray-200 rounded-md p-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              {t('child.name')}
-                            </label>
-                            <input
-                              type="text"
-                              value={child.firstName || ''}
-                              readOnly
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              {t('date.of.birth')}
-                            </label>
-                            <input
-                              type="date"
-                              value={child.dateOfBirth || ''}
-                              readOnly
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              {t('gender')}
-                            </label>
-                            <input
-                              type="text"
-                              value={child.gender || ''}
-                              readOnly
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddDependent(true)}
+                  className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md"
+                >
+                  {t('add.dependent') || 'Add Dependent'}
+                </button>
+              </div>
+
+              <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+                {dependents.length === 0 ? (
+                  <div className="p-6 text-center text-gray-500">{t('no.dependents') || 'No dependents added yet.'}</div>
                 ) : (
-                  <p className="text-gray-500">{t('no.children.registered')}</p>
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('name') || 'Name'}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('date.of.birth') || 'Date of Birth'}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('gender') || 'Gender'}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('relationship') || 'Relationship'}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('baptized') || 'Baptized'}</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('actions') || 'Actions'}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {dependents.map((d: any) => (
+                        <tr key={d.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{d.firstName} {d.middleName} {d.lastName}</div>
+                            {d.email && <div className="text-sm text-gray-500">{d.email}</div>}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{d.dateOfBirth || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{d.gender || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{d.relationship || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${d.isBaptized ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                              {d.isBaptized ? (t('yes') || 'Yes') : (t('no') || 'No')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                            <button
+                              type="button"
+                              onClick={() => { setEditingDependent(d); setShowEditDependent(true); }}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              {t('edit') || 'Edit'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => d.id && handleDeleteDependent(d.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              {t('delete') || 'Delete'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
               </div>
             </div>
@@ -778,6 +825,33 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
             </button>
           </div>
         </form>
+        {/* Dependent Modals */}
+        {showAddDependent && (
+          <AddDependentModal
+            memberId={member.id}
+            memberName={`${member.firstName} ${member.lastName}`}
+            onClose={() => setShowAddDependent(false)}
+            onCreated={async () => {
+              setShowAddDependent(false);
+              await refreshDependents();
+            }}
+          />
+        )}
+
+        {showEditDependent && editingDependent && (
+          <EditDependentModal
+            dependent={editingDependent}
+            onClose={() => {
+              setShowEditDependent(false);
+              setEditingDependent(null);
+            }}
+            onUpdated={async () => {
+              setShowEditDependent(false);
+              setEditingDependent(null);
+              await refreshDependents();
+            }}
+          />
+        )}
       </div>
     </div>
   );

@@ -151,7 +151,7 @@ const MemberRegistration: React.FC = () => {
     
     checkUserStatus();
   }, [currentUser, navigate, getUserProfile]);
-  
+
   // Loading and error are rendered conditionally in JSX below to keep hooks order consistent
 
   const handleInputChange = (field: string, value: any) => {
@@ -307,29 +307,40 @@ const MemberRegistration: React.FC = () => {
   };
 
   const nextStep = async () => {
-    console.log('🔍 nextStep called for step:', currentStep);
-    console.log('🔍 formData for step 2:', {
-      email: formData.email,
-      phoneNumber: formData.phoneNumber,
-      streetLine1: formData.streetLine1,
-      city: formData.city,
-      state: formData.state,
-      postalCode: formData.postalCode,
-      country: formData.country
-    });
-    
-    const isValid = await validateStep(currentStep);
-    if (!isValid) {
-      console.log('🔍 Validation failed for step:', currentStep);
-      console.log('🔍 Current errors:', errors);
-      return;
-    }
-    const nextStepNumber = currentStep + 1;
-    if (nextStepNumber > totalSteps) {
-      // We've reached the end, submit the form
-      handleSubmit();
-    } else {
-      setCurrentStep(nextStepNumber);
+    try {
+      console.log('🔍 nextStep called for step:', currentStep);
+      if (currentStep === 2) {
+        console.log('🔍 Step 2 debug snapshot:', {
+          email: formData.email,
+          phoneNumber: formData.phoneNumber,
+          streetLine1: formData.streetLine1,
+          city: formData.city,
+          state: formData.state,
+          postalCode: formData.postalCode,
+          country: formData.country
+        });
+      }
+
+      const isValid = await validateStep(currentStep);
+      if (!isValid) {
+        console.log('🔍 Validation failed for step:', currentStep);
+        console.log('🔍 Current errors:', errors);
+        return;
+      }
+      const nextStepNumber = currentStep + 1;
+      if (nextStepNumber > totalSteps) {
+        // We've reached the end, submit the form
+        handleSubmit();
+      } else {
+        setCurrentStep(nextStepNumber);
+      }
+    } catch (e: any) {
+      console.error('🔴 Unexpected error during nextStep:', e);
+      // Surface a friendly error for the user
+      setErrors((prev: any) => ({
+        ...prev,
+        submit: e?.message ? `An unexpected error occurred: ${e.message}` : 'An unexpected error occurred. Please try again.',
+      }));
     }
   };
 
@@ -459,7 +470,7 @@ const MemberRegistration: React.FC = () => {
       if (res.status === 201) {
         // Registration successful - show success message and navigate to dashboard
         alert("Registration successful! You will be redirected to your dashboard.");
-        
+
         // Clear the new user cache to force a fresh profile check
         clearNewUserCache();
         

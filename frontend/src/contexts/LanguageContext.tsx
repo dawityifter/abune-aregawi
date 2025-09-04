@@ -74,6 +74,12 @@ const translations = {
     'back.to.login': 'Back to Login',
     'send.reset.email': 'Send Reset Email',
     'sending': 'Sending...',
+
+    // First Login Modal
+    'firstLoginModal.title': 'Complete your registration',
+    'firstLoginModal.body': 'Welcome! Please complete your registration to join our church community, or continue browsing as a guest.',
+    'firstLoginModal.ok': 'Continue to registration',
+    'firstLoginModal.cancel': 'Cancel',
     
     // Dashboard
     'member.dashboard': 'Member Dashboard',
@@ -439,6 +445,12 @@ const translations = {
     'back.to.login': 'ናብ እተኻ ተመለስ',
     'send.reset.email': 'ኢመይል ምልኣኽ ልእኽ',
     'sending': 'እየ ልእኽ...',
+
+    // First Login Modal (TODO: translate)
+    'firstLoginModal.title': 'Complete your registration',
+    'firstLoginModal.body': 'Welcome! Please complete your registration to join our church community, or continue browsing as a guest.',
+    'firstLoginModal.ok': 'Continue to registration',
+    'firstLoginModal.cancel': 'Cancel',
     
     // Sign In Page - New translations
     'welcome.back': 'እንቋዕ ብሰላም መጻእኩም',

@@ -204,6 +204,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch {}
         }
       }
+      // If we exhausted retries and it's a timeout or network issue, treat as transient
+      if (lastError && (lastError.code === 'TIMEOUT' || lastError.code === 'NETWORK')) {
+        console.log('⏱️ checkUserProfile giving up after timeout/network; treating as transient and returning null');
+        return null;
+      }
       throw lastError;
     } catch (error) {
       console.error('Error checking user profile:', error);
