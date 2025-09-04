@@ -100,6 +100,14 @@ const Profile: React.FC = () => {
     postalCode: ''
   });
 
+  // Shared tiled background style (same as bylaws page)
+  const bgStyle: React.CSSProperties = {
+    backgroundImage: `url(${process.env.PUBLIC_URL}/bylaws/TigrayOrthodox-background.png)`,
+    backgroundRepeat: 'repeat',
+    backgroundPosition: 'top left',
+    backgroundSize: 'auto',
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       console.log('🔍 Profile component - currentUser:', currentUser);
@@ -410,7 +418,7 @@ const Profile: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-800"></div>
       </div>
     );
@@ -418,7 +426,7 @@ const Profile: React.FC = () => {
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
         <div className="text-center">
           <div className="text-red-600 text-lg mb-4">Profile not found</div>
           <p className="text-gray-600 mb-4">
@@ -444,7 +452,7 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={bgStyle}>
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -597,6 +605,24 @@ const Profile: React.FC = () => {
                       />
                     ) : (
                       <p className="text-gray-900">{profile.phoneNumber || t('not.provided')}</p>
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('email')}
+                    </label>
+                    {editing ? (
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email || ''}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">{getDisplayEmail(profile.email) || t('not.provided')}</p>
                     )}
                   </div>
 

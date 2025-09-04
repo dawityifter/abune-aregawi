@@ -414,8 +414,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             _temp: false
           });
           
-          // Only navigate if we're not already on the dashboard
-          if (window.location.pathname !== '/dashboard') {
+          // Only navigate to dashboard if we're not already there and not on public pages
+          const NO_REDIRECT_PATHS = new Set<string>([
+            '/',
+            '/credits',
+            '/church-bylaw',
+            '/donate',
+            '/member-status',
+            '/parish-pulse-sign-up',
+          ]);
+          const currentPath = window.location.pathname;
+          if (!NO_REDIRECT_PATHS.has(currentPath) && currentPath !== '/dashboard') {
             console.log('🔄 Navigating to dashboard for existing user');
             navigate('/dashboard');
           }
