@@ -162,8 +162,10 @@ describe('AuthContext', () => {
     });
 
     // Verify backend profile endpoint was called (URL contains expected path)
+    // Allow the second argument (options) since code passes an AbortSignal
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/members/profile/firebase/test-uid')
+      expect.stringContaining('/api/members/profile/firebase/test-uid'),
+      expect.any(Object)
     );
   });
 

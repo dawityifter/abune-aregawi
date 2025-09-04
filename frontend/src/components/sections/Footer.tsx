@@ -1,9 +1,15 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 const Footer: React.FC = () => {
+  const location = useLocation();
+  const isHome = location.pathname === '/';
+
   return (
-    <footer className="traditional-footer py-12">
+    <footer
+      className="traditional-footer py-12"
+      style={isHome ? { background: 'transparent' } : undefined}
+    >
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-2 gap-8 justify-center text-center place-items-center">
           {/* Contact Information */}
@@ -36,18 +42,8 @@ const Footer: React.FC = () => {
             </a>
           </p>
         </div>
-        {/* Parish Pulse, Email List, Follow Us, Stream Us */}
+        {/* Follow Us, Stream Us */}
         <div className="mt-10 pt-8 border-t border-accent-400 flex flex-col md:flex-row items-center justify-center gap-8 text-center">
-          {/* Parish Pulse */}
-          <Link to="/parish-pulse-sign-up" className="text-secondary-400 hover:text-secondary-200 font-semibold flex items-center gap-2">
-            <i className="fas fa-bullhorn"></i>
-            Parish Pulse
-          </Link>
-          {/* Email List */}
-          <button className="text-secondary-400 hover:text-secondary-200 font-semibold flex items-center gap-2 bg-transparent border-none cursor-pointer">
-            <i className="fas fa-envelope"></i>
-            Email List
-          </button>
           {/* Follow Us */}
           <span className="flex items-center gap-2">
             <span className="text-secondary-400 font-semibold">Follow Us:</span>

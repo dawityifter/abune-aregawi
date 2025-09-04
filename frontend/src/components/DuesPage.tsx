@@ -54,6 +54,14 @@ const DuesPage: React.FC = () => {
 
   const apiUrl = process.env.REACT_APP_API_URL;
 
+  // Shared tiled background style (same as bylaws page)
+  const bgStyle: React.CSSProperties = {
+    backgroundImage: `url(${process.env.PUBLIC_URL}/bylaws/TigrayOrthodox-background.png)`,
+    backgroundRepeat: 'repeat',
+    backgroundPosition: 'top left',
+    backgroundSize: 'auto',
+  };
+
   const fetchDues = useMemo(() => async () => {
     try {
       if (!firebaseUser) {
@@ -90,7 +98,7 @@ const DuesPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
       </div>
     );
@@ -98,7 +106,7 @@ const DuesPage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6" style={bgStyle}>
         <div className="max-w-xl w-full bg-white shadow rounded p-6 text-center">
           <div className="text-red-600 mb-4">{error}</div>
           <button onClick={() => { setLoading(true); setError(null); fetchDues(); }} className="bg-primary-600 text-white px-4 py-2 rounded">
@@ -119,7 +127,7 @@ const DuesPage: React.FC = () => {
   const yearlyPledge = (payment.monthlyPayment || 0) * 12;
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen pt-16" style={bgStyle}>
       <main className="max-w-5xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
           <div className="bg-white shadow rounded-lg p-6">

@@ -172,9 +172,17 @@ const DonatePage: React.FC = () => {
     };
   }, [amount, donationType, frequency, paymentMethod, donorInfo]);
 
+  // Shared tiled background style (same as bylaws page)
+  const bgStyle: React.CSSProperties = {
+    backgroundImage: `url(${process.env.PUBLIC_URL}/bylaws/TigrayOrthodox-background.png)`,
+    backgroundRepeat: 'repeat',
+    backgroundPosition: 'top left',
+    backgroundSize: 'auto',
+  };
+
   return (
     <Elements stripe={stripePromise}>
-      <div className="min-h-screen bg-gray-50 pt-16 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen pt-16 py-12 px-4 sm:px-6 lg:px-8" style={bgStyle}>
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Support Our Church</h1>
