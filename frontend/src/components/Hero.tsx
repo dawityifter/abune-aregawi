@@ -44,7 +44,7 @@ const Hero: React.FC = () => {
         <p className={`mt-4 max-w-2xl text-base sm:text-lg md:text-xl text-white/90 ${lang === 'ti' ? 'text-tigrigna' : ''}`}>
           {t('hero.subtitle')}
         </p>
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-8 flex flex-wrap gap-3 justify-center">
           <Link to="/donate" className="btn btn-secondary">
             <i className="fas fa-heart mr-2" />
             {t('hero.cta.give')}

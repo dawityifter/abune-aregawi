@@ -81,7 +81,7 @@ const HeroSection: React.FC = () => {
         </div>
 
         {/* CTA Buttons (Member Status and Church Bylaw removed) */}
-        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-4 max-w-3xl mx-auto">
+        <div className="flex justify-center gap-4 max-w-3xl mx-auto">
           <button 
             className="btn btn-secondary"
             onClick={() => window.open('https://www.facebook.com/abunearegawitx/', '_blank')}
