@@ -13,11 +13,13 @@ const {
   validateDependentUpdate,
   validateSelfClaimStart,
   validateSelfClaimVerify,
-  validateSelfClaimLink
+  validateSelfClaimLink,
+  validateOutreachCreate
 } = require('../middleware/validation');
 const { authMiddleware, firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
 const admin = require('firebase-admin');
+const outreachController = require('../controllers/outreachController');
 
 // Only verifies Firebase ID token, does not check DB
 const verifyFirebaseTokenOnly = async (req, res, next) => {
@@ -115,6 +117,19 @@ router.get('/onboarding/pending',
   memberController.getPendingWelcomes
 );
 
+// Outreach note routes
+router.post('/:id/outreach',
+  roleMiddleware(['admin', 'relationship']),
+  validateOutreachCreate,
+  outreachController.createOutreach
+);
+
+router.get('/:id/outreach',
+  roleMiddleware(['admin', 'relationship']),
+  validateMemberId,
+  outreachController.listOutreach
+);
+
 router.post('/:id/mark-welcomed', 
   roleMiddleware(['admin', 'relationship']), 
   validateMemberId, 
@@ -129,7 +144,7 @@ router.get('/all',
 );
 
 router.get('/:id', 
-  roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), 
+  roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship']), 
   validateMemberId, 
   memberController.getMemberById
 );

@@ -2,6 +2,50 @@
 
 All notable changes to this repository will be documented in this file.
 
+## 2025-09-06
+
+### Database
+
+- Added migration `backend/migrations/20250907000000-create-outreach.js` to create `outreach` table.
+  - Columns: `id (uuid, default gen_random_uuid())`, `member_id (FK→members.id, CASCADE)`, `welcomed_by (string)`, `welcomed_date (timestamp, default NOW)`, `note (text, 1–2000)`, `created_at`, `updated_at`.
+  - Ensures `pgcrypto` extension for `gen_random_uuid()`.
+
+### Backend
+
+- New model: `backend/src/models/Outreach.js` with association `Outreach.belongsTo(Member)`.
+- Wired associations in `backend/src/models/index.js` and `backend/src/models/Member.js` (`Member.hasMany(Outreach, as: 'outreach_notes')`).
+- New controller: `backend/src/controllers/outreachController.js` with endpoints to create and list outreach notes.
+- Routes updated in `backend/src/routes/memberRoutes.js`:
+  - `POST /api/members/:id/outreach` (auth + role: `admin`, `relationship`).
+  - `GET /api/members/:id/outreach` (auth + role: `admin`, `relationship`).
+  - Allowed `relationship` role to read `GET /api/members/:id` to support outreach review in modal.
+- Validation: added `validateOutreachCreate` in `backend/src/middleware/validation.js`.
+
+### Frontend
+
+- Added `frontend/src/components/admin/ModalWelcomeNote.tsx`:
+  - Textarea with 2000-char limit and counter; improved pastoral placeholder guidance.
+  - Shows Member Summary (Name, Phone, Email, Address, Yearly Pledge, Registration Status, Household Size).
+  - Accepts `memberId`, `memberName`, `memberPhone`, `onClose` props and fetches profile on open.
+- Updated `frontend/src/components/admin/OutreachDashboard.tsx`:
+  - “Mark Welcomed” now opens the modal and, upon Save, calls:
+    1) `POST /api/members/:id/outreach` with note,
+    2) then `POST /api/members/:id/mark-welcomed`.
+  - Removes member from Pending on success.
+  - Added request timeout wrapper to avoid indefinite hangs; timeout errors are suppressed in UI to allow quick retry.
+- Phone display uses `formatE164ToDisplay`.
+
+### Tests
+
+- Added `backend/tests/integration/outreach.test.js` covering successful note creation + mark-welcomed, and note validation.
+- Adjusted test middlewares to mirror onboarding tests; all integration suites pass locally.
+
+### Notes
+
+- Frontend uses `REACT_APP_API_URL` to target backend (e.g., `http://localhost:5001`).
+- Modal gracefully continues if profile summary fetch fails.
+- Timeout handling for outreach-related requests is user-friendly: no disruptive error surfaced; user can retry immediately.
+
 ## 2025-08-31
 
 ### Database
