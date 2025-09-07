@@ -16,6 +16,17 @@ function handleValidationErrors(req, res, next) {
 // Define allowed relationship values
 const RELATIONSHIP_VALUES = ['Son', 'Daughter', 'Spouse', 'Parent', 'Sibling', 'Other'];
 
+// Validation for outreach note creation
+const validateOutreachCreate = [
+  param('id').isInt({ min: 1 }).withMessage('Member ID must be a positive integer'),
+  body('note')
+    .isString().withMessage('Note must be text')
+    .bail()
+    .trim()
+    .isLength({ min: 1, max: 2000 }).withMessage('Note must be between 1 and 2000 characters'),
+  handleValidationErrors
+];
+
 // Validation for member queries
 const validateMemberQuery = [
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
@@ -187,5 +198,6 @@ module.exports = {
   handleValidationErrors,
   validateSelfClaimStart,
   validateSelfClaimVerify,
-  validateSelfClaimLink
+  validateSelfClaimLink,
+  validateOutreachCreate
 };

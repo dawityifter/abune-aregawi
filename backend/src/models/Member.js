@@ -31,6 +31,14 @@ module.exports = (sequelize) => {
         foreignKey: 'family_id',
         as: 'family_members'
       });
+
+      // Outreach notes
+      if (models.Outreach) {
+        Member.hasMany(models.Outreach, {
+          foreignKey: 'member_id',
+          as: 'outreach_notes'
+        });
+      }
     }
   }
 

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import ModalWelcomeNote from './ModalWelcomeNote';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRolePermissions, UserRole } from '../../utils/roles';
+import { formatE164ToDisplay } from '../../utils/formatPhoneNumber';
 
 const OutreachDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
@@ -10,6 +12,27 @@ const OutreachDashboard: React.FC = () => {
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingError, setPendingError] = useState<string | null>(null);
   const [actionBusyId, setActionBusyId] = useState<string | number | null>(null);
+  const [modalMember, setModalMember] = useState<any | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
+
+  // Helper: request with timeout to prevent hanging requests
+  const requestWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 15000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(input, { ...init, signal: controller.signal });
+      return resp;
+    } catch (e: any) {
+      if (e?.name === 'AbortError') {
+        const err: any = new Error('Request timed out');
+        err.code = 'TIMEOUT';
+        throw err;
+      }
+      throw e;
+    } finally {
+      clearTimeout(id);
+    }
+  };
 
   useEffect(() => {
     const fetch = async () => {
@@ -173,34 +196,13 @@ const OutreachDashboard: React.FC = () => {
                             {permissions.canManageOnboarding ? (
                               <button
                                 disabled={actionBusyId === m.id}
-                                onClick={async () => {
-                                  if (!firebaseUser) return;
-                                  setActionBusyId(m.id);
-                                  try {
-                                    const idToken = await firebaseUser.getIdToken(true);
-                                    const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${encodeURIComponent(m.id)}/mark-welcomed`, {
-                                      method: 'POST',
-                                      headers: {
-                                        'Content-Type': 'application/json',
-                                        Authorization: `Bearer ${idToken}`,
-                                      },
-                                      credentials: 'include',
-                                    });
-                                    if (!resp.ok) {
-                                      const data = await resp.json().catch(() => ({} as any));
-                                      throw new Error(data?.message || 'Failed to mark welcomed');
-                                    }
-                                    // Remove from local list
-                                    setPending(prev => prev.filter(x => x.id !== m.id));
-                                  } catch (e) {
-                                    alert((e as any).message || 'Failed to mark welcomed');
-                                  } finally {
-                                    setActionBusyId(null);
-                                  }
+                                onClick={() => {
+                                  setModalError(null);
+                                  setModalMember(m);
                                 }}
                                 className={`px-3 py-1.5 rounded text-white ${actionBusyId === m.id ? 'bg-gray-400' : 'bg-primary-600 hover:bg-primary-700'}`}
                               >
-                                {actionBusyId === m.id ? 'Marking…' : 'Mark Welcomed'}
+                                Mark Welcomed
                               </button>
                             ) : (
                               <span className="text-gray-400">No permission</span>
@@ -216,6 +218,69 @@ const OutreachDashboard: React.FC = () => {
           </section>
         </div>
       </main>
+
+      {modalMember && (
+        <ModalWelcomeNote
+          memberId={modalMember.id}
+          memberName={`${modalMember.firstName} ${modalMember.middleName ? modalMember.middleName + ' ' : ''}${modalMember.lastName}`}
+          memberPhone={formatE164ToDisplay(modalMember.phoneNumber || '')}
+          busy={actionBusyId === modalMember.id}
+          error={modalError}
+          onClose={async (success: boolean, note?: string) => {
+            if (!success) {
+              setModalMember(null);
+              return;
+            }
+            if (!firebaseUser) return;
+            setActionBusyId(modalMember.id);
+            setModalError(null);
+            try {
+              const idToken = await firebaseUser.getIdToken(true);
+              // 1) Create outreach note
+              const respCreate = await requestWithTimeout(`${process.env.REACT_APP_API_URL}/api/members/${encodeURIComponent(modalMember.id)}/outreach`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${idToken}`,
+                },
+                credentials: 'include',
+                body: JSON.stringify({ note })
+              });
+              if (!respCreate.ok) {
+                const data = await respCreate.json().catch(() => ({} as any));
+                throw new Error(data?.message || 'Failed to save outreach note');
+              }
+              // 2) Mark welcomed
+              const respMark = await requestWithTimeout(`${process.env.REACT_APP_API_URL}/api/members/${encodeURIComponent(modalMember.id)}/mark-welcomed`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${idToken}`,
+                },
+                credentials: 'include',
+              });
+              if (!respMark.ok) {
+                const data = await respMark.json().catch(() => ({} as any));
+                throw new Error(data?.message || 'Failed to mark welcomed');
+              }
+              // Update UI
+              setPending(prev => prev.filter(x => x.id !== modalMember.id));
+              alert('Welcomed note saved and member marked welcomed.');
+              setModalMember(null);
+            } catch (e: any) {
+              if (e?.code === 'TIMEOUT') {
+                // Suppress timeout error in UI; allow the user to retry silently
+                // eslint-disable-next-line no-console
+                console.warn('Outreach/mark-welcomed request timed out; suppressing error to user.');
+              } else {
+                setModalError(e?.message || 'Failed to complete outreach');
+              }
+            } finally {
+              setActionBusyId(null);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
