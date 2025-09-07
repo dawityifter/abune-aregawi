@@ -1,4 +1,5 @@
 const { Outreach, Member } = require('../models');
+const { v4: uuidv4 } = require('uuid');
 const { validationResult } = require('express-validator');
 
 // Create an outreach note for a member
@@ -28,6 +29,7 @@ const createOutreach = async (req, res) => {
     } catch (_) {}
 
     const outreach = await Outreach.create({
+      id: uuidv4(),
       member_id: memberId,
       welcomed_by: welcomedBy,
       welcomed_date: new Date(),
@@ -45,8 +47,19 @@ const createOutreach = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('createOutreach error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to create outreach note' });
+    // Log full error with context for diagnosis
+    console.error('❌ createOutreach error:', {
+      message: err?.message,
+      name: err?.name,
+      code: err?.code,
+      stack: err?.stack,
+      original: err?.original?.message || err?.original
+    });
+    const body = { success: false, message: 'Failed to create outreach note' };
+    if (process.env.NODE_ENV !== 'production') {
+      body.error = err?.message || String(err);
+    }
+    return res.status(500).json(body);
   }
 };
 
@@ -66,8 +79,18 @@ const listOutreach = async (req, res) => {
 
     return res.status(200).json({ success: true, data: notes });
   } catch (err) {
-    console.error('listOutreach error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to load outreach notes' });
+    console.error('❌ listOutreach error:', {
+      message: err?.message,
+      name: err?.name,
+      code: err?.code,
+      stack: err?.stack,
+      original: err?.original?.message || err?.original
+    });
+    const body = { success: false, message: 'Failed to load outreach notes' };
+    if (process.env.NODE_ENV !== 'production') {
+      body.error = err?.message || String(err);
+    }
+    return res.status(500).json(body);
   }
 };
 
