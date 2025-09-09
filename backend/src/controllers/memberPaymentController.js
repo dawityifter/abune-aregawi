@@ -149,7 +149,7 @@ const addMemberPayment = async (req, res) => {
 // Generate payment reports (kept minimal and resilient)
 const generatePaymentReport = async (req, res) => {
   try {
-    const { reportType = 'summary' } = req.query;
+    const reportType = req.params.reportType || req.query.reportType || 'summary';
 
     if (reportType !== 'summary') {
       return res.status(400).json({ success: false, message: 'Only summary report is supported currently' });

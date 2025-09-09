@@ -613,6 +613,140 @@ const updateTransactionPaymentType = async (req, res) => {
   }
 };
 
+// Generate transaction-based reports for Treasurer > Reports
+// Returns one of:
+// - { success: true, data: { summary: { ... } } }
+// - { success: true, data: { behindPayments: [ ... ] } }
+// - { success: true, data: { monthlyTotals: { january: 0, ... } } }
+const generateTransactionReport = async (req, res) => {
+  try {
+    const { reportType } = req.params; // 'summary' | 'behind_payments' | 'monthly_breakdown'
+
+    if (reportType === 'summary') {
+      // Reuse logic similar to getTransactionStats but wrap under data.summary
+      const { start_date, end_date, payment_type } = req.query;
+      const whereClause = {};
+      if (start_date || end_date) {
+        whereClause.payment_date = {};
+        if (start_date) whereClause.payment_date[Op.gte] = start_date;
+        if (end_date) whereClause.payment_date[Op.lte] = end_date;
+      }
+      if (payment_type) whereClause.payment_type = payment_type;
+
+      const totalTransactions = await Transaction.count({ where: whereClause });
+      const totalAmount = await Transaction.sum('amount', { where: whereClause });
+      const totalMembers = await Member.count();
+      const totalPledgeRaw = await Member.sum('yearly_pledge');
+      const totalAmountDue = parseFloat(totalPledgeRaw || 0);
+      const totalCollected = parseFloat(totalAmount || 0);
+      const outstandingAmount = Math.max(totalAmountDue - totalCollected, 0);
+      const collectionRate = totalAmountDue > 0
+        ? ((totalCollected / totalAmountDue) * 100).toFixed(0)
+        : '0';
+
+      const summary = {
+        totalMembers,
+        upToDateMembers: 0,
+        behindMembers: 0,
+        totalAmountDue,
+        totalCollected,
+        collectionRate,
+        outstandingAmount
+      };
+
+      return res.json({ success: true, data: { summary } });
+    }
+
+    if (reportType === 'behind_payments') {
+      // Build a lightweight per-member aggregation to find those behind
+      const members = await Member.findAll({
+        attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number', 'spouse_name', 'yearly_pledge']
+      });
+
+      const memberIds = members.map(m => m.id);
+      const txSums = await Transaction.findAll({
+        where: { member_id: memberIds, payment_type: 'membership_due' },
+        attributes: [
+          'member_id',
+          [sequelize.fn('SUM', sequelize.col('amount')), 'totalCollected']
+        ],
+        group: ['member_id'],
+        raw: true
+      });
+
+      const collectedMap = {};
+      txSums.forEach(r => { collectedMap[r.member_id] = parseFloat(r.totalCollected || 0); });
+
+      const behindPayments = members
+        .map(m => {
+          const totalAmountDue = parseFloat(m.yearly_pledge || 0);
+          const totalCollected = collectedMap[m.id] || 0;
+          const balanceDue = Math.max(totalAmountDue - totalCollected, 0);
+          return {
+            id: m.id,
+            memberName: `${m.first_name || ''} ${m.last_name || ''}`.trim(),
+            totalAmountDue,
+            totalCollected,
+            balanceDue,
+            member: {
+              firstName: m.first_name || '',
+              lastName: m.last_name || '',
+              memberId: String(m.id),
+              phoneNumber: m.phone_number || '',
+              email: m.email || ''
+            }
+          };
+        })
+        .filter(x => x.balanceDue > 0)
+        .sort((a, b) => b.balanceDue - a.balanceDue);
+
+      return res.json({ success: true, data: { behindPayments } });
+    }
+
+    if (reportType === 'monthly_breakdown') {
+      const now = new Date();
+      const year = now.getFullYear();
+      const start = new Date(year, 0, 1);
+      const end = new Date(year, 11, 31, 23, 59, 59, 999);
+
+      const txs = await Transaction.findAll({
+        where: { payment_date: { [Op.gte]: start, [Op.lte]: end } },
+        attributes: ['id', 'amount', 'payment_date']
+      });
+
+      const monthlyTotals = {
+        january: 0,
+        february: 0,
+        march: 0,
+        april: 0,
+        may: 0,
+        june: 0,
+        july: 0,
+        august: 0,
+        september: 0,
+        october: 0,
+        november: 0,
+        december: 0
+      };
+
+      const monthKeys = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+      for (const t of txs) {
+        const d = new Date(t.payment_date);
+        const idx = d.getMonth();
+        const key = monthKeys[idx];
+        monthlyTotals[key] += parseFloat(t.amount || 0);
+      }
+
+      return res.json({ success: true, data: { monthlyTotals } });
+    }
+
+    return res.status(400).json({ success: false, message: `Unsupported report type: ${reportType}` });
+  } catch (error) {
+    console.error('Error generating transaction report:', error);
+    return res.status(500).json({ success: false, message: 'Failed to generate report', error: error.message });
+  }
+};
+
 module.exports = {
   getAllTransactions,
   getTransactionById,
@@ -621,5 +755,6 @@ module.exports = {
   deleteTransaction,
   getTransactionStats,
   getMemberPaymentSummaries,
-  updateTransactionPaymentType
+  updateTransactionPaymentType,
+  generateTransactionReport
 };
