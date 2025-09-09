@@ -261,3 +261,6 @@ dev/
 Member-full-list*.csv
 # Private data
 church-members-list.csv
+
+# Backend backup folder
+backend/backup
