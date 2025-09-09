@@ -55,6 +55,9 @@ interface AddPaymentModalProps {
       setAmountError('Enter a valid amount (numbers only, up to 2 decimals).');
     }
   };
+
+  // Whether receipt number is required (new transaction flow only)
+  const receiptRequired = useMemo(() => paymentView === 'new' && (paymentMethod === 'cash' || paymentMethod === 'check'), [paymentView, paymentMethod]);
   const normalizeAmountOnBlur = () => {
     if (!amount) return;
     const num = Number(amount);
@@ -150,6 +153,12 @@ interface AddPaymentModalProps {
       let response;
 
       if (paymentView === 'new') {
+        // Enforce receipt number for cash/check per business rule
+        if (receiptRequired && !receiptNumber.trim()) {
+          setError('Receipt number is required for cash and check payments.');
+          setLoading(false);
+          return;
+        }
         // If treasurer selected Stripe methods, delegate to Stripe components
         if (paymentMethod === 'credit_card' || paymentMethod === 'ach') {
           if (!processStripePayment) {
@@ -235,11 +244,14 @@ interface AddPaymentModalProps {
 
   // New transaction payment types and methods
   const transactionPaymentTypes = [
-    { value: 'membership_due', label: 'Membership Due' },
-    { value: 'tithe', label: 'Tithe' },
-    { value: 'donation', label: 'Donation' },
-    { value: 'event', label: 'Event' },
-    { value: 'other', label: 'Other' }
+    { value: 'membership_due', label: 'Membership Fee (ናይ አባልነት ኽፍሊት)' },
+    { value: 'tithe', label: 'Tithe (አስራት)' },
+    // Combine Donation and Other into one UI option mapping to 'donation'
+    { value: 'donation', label: 'Other Donation / ካልእ' },
+    { value: 'building_fund', label: 'Building Fund (ንሕንጻ ቤተክርስቲያን)' },
+    { value: 'offering', label: 'Offering (መባእ)' },
+    { value: 'vow', label: 'Vow (ስእለት)' },
+    // Removed explicit 'event' and 'other' options from dropdown per request
   ];
 
   const transactionPaymentMethods = [
@@ -262,7 +274,7 @@ interface AddPaymentModalProps {
       onClick={onClose}
     >
       <div
-        className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white"
+        className="relative top-20 mx-auto p-5 border w-full max-w-3xl md:max-w-4xl shadow-lg rounded-md bg-white"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mt-3">
@@ -284,8 +296,8 @@ interface AddPaymentModalProps {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Member
               </label>
@@ -411,7 +423,7 @@ interface AddPaymentModalProps {
 
                 {/* Stripe payment forms when card/ACH selected */}
                 {(paymentMethod === 'credit_card' || paymentMethod === 'ach') && (
-                  <div className="mt-2">
+                  <div className="mt-2 md:col-span-2">
                     {/* Guidance for missing fields */}
                     {(!selectedMemberId || !amount || !paymentType) && (
                       <div className="mb-3 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2">
@@ -535,15 +547,19 @@ interface AddPaymentModalProps {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Receipt Number
+                    Receipt Number {receiptRequired && <span className="text-red-600">*</span>}
                   </label>
                   <input
                     type="text"
                     value={receiptNumber}
                     onChange={(e) => setReceiptNumber(e.target.value)}
-                    placeholder="Enter receipt number (optional)"
+                    placeholder={receiptRequired ? 'Enter receipt number (required for Cash/Check)' : 'Enter receipt number (optional)'}
+                    required={receiptRequired}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  {receiptRequired && (
+                    <p className="mt-1 text-xs text-gray-600">Required for Cash and Check payments.</p>
+                  )}
                 </div>
 
                 <div>
@@ -584,7 +600,7 @@ interface AddPaymentModalProps {
               )}
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Notes (Optional)
               </label>
@@ -597,7 +613,7 @@ interface AddPaymentModalProps {
               />
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4">
+            <div className="md:col-span-2 flex justify-end space-x-3 pt-4">
               <button
                 type="button"
                 onClick={onClose}

@@ -63,7 +63,7 @@ module.exports = (sequelize) => {
       comment: 'Payment amount in dollars and cents'
     },
     payment_type: {
-      type: DataTypes.ENUM('membership_due', 'tithe', 'donation', 'event', 'other'),
+      type: DataTypes.ENUM('membership_due', 'tithe', 'donation', 'event', 'building_fund', 'offering', 'vow', 'other'),
       allowNull: false,
       comment: 'Type of payment (membership dues, tithes, donations, etc.)'
     },

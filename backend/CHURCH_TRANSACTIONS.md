@@ -29,6 +29,9 @@ The Church Transactions system allows tracking of payments made by members for v
 - `tithe` - Tithes
 - `donation` - General donations
 - `event` - Event-specific payments
+- `building_fund` - Building Fund (ንሕንጻ ቤተክርስቲያን)
+- `offering` - Offering (መባእ)
+- `vow` - Vow (ስእለት)
 - `other` - Other types of payments
 
 #### Payment Methods
