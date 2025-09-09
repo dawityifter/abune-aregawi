@@ -8,7 +8,8 @@ const {
   deleteTransaction,
   getTransactionStats,
   getMemberPaymentSummaries,
-  updateTransactionPaymentType
+  updateTransactionPaymentType,
+  generateTransactionReport
 } = require('../controllers/transactionController');
 const { firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
@@ -21,6 +22,9 @@ router.get('/', roleMiddleware(['admin', 'treasurer']), getAllTransactions);
 
 // Get transaction statistics (requires admin or treasurer role)
 router.get('/stats', roleMiddleware(['admin', 'treasurer']), getTransactionStats);
+
+// Generate transaction reports (requires admin or treasurer role)
+router.get('/reports/:reportType', roleMiddleware(['admin', 'treasurer']), generateTransactionReport);
 
 // Get member payment summaries for new system (requires admin or treasurer role)
 router.get('/member-summaries', roleMiddleware(['admin', 'treasurer']), getMemberPaymentSummaries);
