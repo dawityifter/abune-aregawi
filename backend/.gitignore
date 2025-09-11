@@ -117,3 +117,5 @@ dist/
 # Ignore all member full list CSVs containing PII data
 **/church-members-list.csv
 **/Member-full-list*.csv
+# Backend backup folder
+backup/

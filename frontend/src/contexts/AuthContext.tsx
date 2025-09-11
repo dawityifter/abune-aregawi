@@ -376,7 +376,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Listen for Firebase auth state changes
   useEffect(() => {
     console.log('🔌 Setting up auth state listener');
-    
+
     const handleAuthStateChange = async (firebaseUser: User | null) => {
       console.log('🔥 Firebase auth state changed:', firebaseUser ? 'User signed in' : 'User signed out');
       setFirebaseUser(firebaseUser);
@@ -401,7 +401,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       try {
+        // Always check profile first, don't navigate until we know the result
         const profile = await checkUserProfile(firebaseUser);
+
         if (profile) {
           console.log('✅ User profile loaded, updating state');
           setUser({
@@ -413,7 +415,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: profile.role, // Explicitly set the role
             _temp: false
           });
-          
+
           // Only navigate to dashboard if we're not already there and not on public pages
           const NO_REDIRECT_PATHS = new Set<string>([
             '/',
@@ -437,8 +439,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             _temp: true,
             role: 'member'
           });
-          
-          // Only navigate if we're not already on the register page
+
+          // Only navigate to register if we're not already there
           if (window.location.pathname !== '/register') {
             console.log('🔄 Navigating to register for new user');
             navigate('/register', {
@@ -472,7 +474,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setAuthReady(true);
           return;
         }
-        // Do not force temp user on transient errors; surface error and let UI offer retry/CTA
+        // Do not force temp user on transient errors; surface error and let UI handle it
         setError('Failed to load profile. Please try again.');
         // Leave user unchanged to avoid permanent temp/spinner state
       }
@@ -482,7 +484,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Set up the auth state listener
     const unsubscribe = onAuthStateChanged(auth, handleAuthStateChange);
-    
+
     // Cleanup function
     return () => {
       console.log('🧹 Cleaning up auth state listener');
