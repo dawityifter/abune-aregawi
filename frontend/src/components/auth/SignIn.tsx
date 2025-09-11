@@ -126,18 +126,12 @@ const SignIn: React.FC = () => {
   useEffect(() => {
     if (!authReady) return;
     if (!currentUser) return;
-    // New user (no backend profile) should go to registration
-    if (currentUser._temp) {
-      if (window.location.pathname !== '/register') {
-        navigate('/register', { replace: true, state: { phone: currentUser.phoneNumber } });
-      }
-    } else {
-      // Existing user -> dashboard
-      if (window.location.pathname !== '/dashboard') {
-        navigate('/dashboard', { replace: true });
-      }
+    // AuthContext handles all navigation now - SignIn component should not navigate
+    // This prevents race conditions between AuthContext and SignIn navigation
+    if (window.location.pathname === '/login') {
+      console.log('🔄 User authenticated on /login, letting AuthContext handle navigation');
     }
-  }, [authReady, currentUser, navigate]);
+  }, [authReady, currentUser]);
 
   // Get clean phone number for Firebase (E.164 format)
   const getCleanPhoneNumber = (displayValue: string): string => {

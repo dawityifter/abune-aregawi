@@ -41,6 +41,14 @@ const Hero: React.FC = () => {
       <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
       <div className="relative max-w-7xl mx-auto px-4 pt-24 pb-16 sm:pt-28 sm:pb-20">
         {/* Title temporarily removed per request */}
+        
+        {/* Mission Statement */}
+        <div className="mb-8 text-center">
+          <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight max-w-5xl mx-auto px-4 drop-shadow-lg">
+            We want everyone, everywhere to have an everyday relationship with the lord. By uniting through the Eucharist.
+          </p>
+        </div>
+        
         <p className={`mt-4 max-w-2xl text-base sm:text-lg md:text-xl text-white/90 ${lang === 'ti' ? 'text-tigrigna' : ''}`}>
           {t('hero.subtitle')}
         </p>
