@@ -59,7 +59,7 @@ const QuickLinks: React.FC = () => {
           to="#worship-times"
         />
         <Card
-          icon="fas fa-map-marker-alt"
+          icon="fas fa-map-marker"
           title="Location"
           desc={(
             <>
