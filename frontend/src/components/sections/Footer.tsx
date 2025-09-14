@@ -15,7 +15,7 @@ const Footer: React.FC = () => {
           {/* Contact Information */}
           <div className="info-block w-full flex-1">
             <h3 className="clergy-info mb-4">
-              <i className="fas fa-star-of-david mr-2"></i>
+              <i className="fas fa-map-marker mr-2"></i>
               Location
             </h3>
             <p className="contact-info">
