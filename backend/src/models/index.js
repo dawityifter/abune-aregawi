@@ -91,6 +91,7 @@ const Dependent = require('./Dependent')(sequelize);
 const Transaction = require('./Transaction')(sequelize);
 const MemberPayment = require('./MemberPayment')(sequelize);
 const Donation = require('./Donation')(sequelize);
+const Pledge = require('./Pledge')(sequelize);
 const Outreach = require('./Outreach')(sequelize);
 const SmsLog = require('./SmsLog')(sequelize);
 const Group = require('./Group')(sequelize);
@@ -98,12 +99,13 @@ const MemberGroup = require('./MemberGroup')(sequelize);
 const ZelleMemoMatch = require('./ZelleMemoMatch')(sequelize);
 
 // Define associations
-Member.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
-Dependent.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
-Transaction.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
-MemberPayment.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
-Donation.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
-Outreach.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
+Member.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
+Dependent.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
+Transaction.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
+MemberPayment.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
+Donation.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
+Pledge.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
+Outreach.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
 if (typeof Group.associate === 'function') {
   Group.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch });
 }
@@ -122,6 +124,7 @@ module.exports = {
   Transaction,
   MemberPayment,
   Donation,
+  Pledge,
   Outreach,
   SmsLog,
   Group,

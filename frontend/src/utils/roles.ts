@@ -17,6 +17,8 @@ export interface RolePermissions {
   canEditFinancialRecords: boolean;
   canGenerateFinancialReports: boolean;
   canTrackContributions: boolean;
+  canManagePledges: boolean;
+  canViewPledgeReports: boolean;
   
   // Event & Communication
   canManageEvents: boolean;
@@ -60,6 +62,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditFinancialRecords: true,
     canGenerateFinancialReports: true,
     canTrackContributions: true,
+    canManagePledges: true,
+    canViewPledgeReports: true,
     
     // Event & Communication
     canManageEvents: true,
@@ -101,6 +105,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditFinancialRecords: false,
     canGenerateFinancialReports: true,
     canTrackContributions: false,
+    canManagePledges: true,
+    canViewPledgeReports: true,
     
     // Event & Communication
     canManageEvents: true,
@@ -142,6 +148,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditFinancialRecords: true,
     canGenerateFinancialReports: true,
     canTrackContributions: true,
+    canManagePledges: true,
+    canViewPledgeReports: true,
     
     // Event & Communication
     canManageEvents: false,
@@ -183,6 +191,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditFinancialRecords: false,
     canGenerateFinancialReports: false,
     canTrackContributions: false,
+    canManagePledges: false,
+    canViewPledgeReports: false,
 
     // Event & Communication
     canManageEvents: false,
@@ -224,6 +234,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditFinancialRecords: false,
     canGenerateFinancialReports: false,
     canTrackContributions: false,
+    canManagePledges: false,
+    canViewPledgeReports: false,
     
     // Event & Communication
     canManageEvents: true,
@@ -265,6 +277,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditFinancialRecords: false,
     canGenerateFinancialReports: false,
     canTrackContributions: false,
+    canManagePledges: false,
+    canViewPledgeReports: false,
     
     // Event & Communication
     canManageEvents: false,
@@ -306,6 +320,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditFinancialRecords: false,
     canGenerateFinancialReports: false,
     canTrackContributions: false,
+    canManagePledges: false,
+    canViewPledgeReports: false,
     
     // Event & Communication
     canManageEvents: false,
