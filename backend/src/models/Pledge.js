@@ -81,9 +81,20 @@ module.exports = (sequelize) => {
     },
     email: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       validate: {
-        isEmail: true
+        isEmailOrEmpty(value) {
+          // Allow null, undefined, or empty string
+          if (!value || value.trim() === '') {
+            return true;
+          }
+          // If value is provided, validate email format
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value)) {
+            throw new Error('Please enter a valid email address');
+          }
+          return true;
+        }
       }
     },
     phone: {
