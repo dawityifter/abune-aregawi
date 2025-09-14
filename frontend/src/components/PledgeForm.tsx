@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { formatPhoneNumber } from '../utils/formatPhoneNumber';
 
 interface Member {
   id: string;
@@ -132,8 +133,8 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
       newErrors.last_name = 'Last name is required';
     }
 
-    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Valid email is required';
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
 
     // Phone validation only for non-members
@@ -173,6 +174,11 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
   };
 
   const handleInputChange = (field: keyof PledgeFormData, value: string) => {
+    // Apply phone formatting for phone field
+    if (field === 'phone') {
+      value = formatPhoneNumber(value);
+    }
+
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -388,7 +394,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email *
+              Email
             </label>
             <input
               type="email"
@@ -415,7 +421,8 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
                 className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                   errors.phone ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="(555) 123-4567"
+                placeholder="(555) 555-1234"
+                inputMode="tel"
               />
               {errors.phone && (
                 <p className="mt-1 text-sm text-red-600">{errors.phone}</p>

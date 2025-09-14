@@ -22,9 +22,18 @@ const validatePledge = [
     .isLength({ min: 1 })
     .withMessage('Last name is required'),
   body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Valid email is required'),
+    .custom((value) => {
+      // Allow empty, null, or undefined values
+      if (!value || value.trim() === '') {
+        return true;
+      }
+      // If value is provided, validate email format
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        throw new Error('Please enter a valid email address');
+      }
+      return true;
+    })
+    .optional({ nullable: true, checkFalsy: true }),
   body('phone')
     .optional()
     .isMobilePhone()
