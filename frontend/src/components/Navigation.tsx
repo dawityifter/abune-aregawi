@@ -130,6 +130,13 @@ const Navigation: React.FC = () => {
                   {t('navigation.dashboard')}
                 </Link>
                 
+                <Link 
+                  to="/pledge" 
+                  className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
+                >
+                  Make a Pledge
+                </Link>
+                
                 {/* Admin link removed from desktop header */}
                 {/* Outreach link removed; access via Dashboard Relationship Department card */}
                 {/* SMS link removed; access via Dashboard Communications card */}
@@ -258,6 +265,15 @@ const Navigation: React.FC = () => {
                 >
                   <i className="fas fa-tachometer-alt mr-3 w-5 text-center"></i>
                   {t('navigation.dashboard')}
+                </Link>
+                
+                <Link
+                  to="/pledge"
+                  className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <i className="fas fa-hand-holding-heart mr-3 w-5 text-center"></i>
+                  Make a Pledge
                 </Link>
                 
                 {/* Admin link removed from mobile header */}

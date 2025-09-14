@@ -22,6 +22,7 @@ const donationRoutes = require('./routes/donationRoutes');
 const smsRoutes = require('./routes/smsRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const zelleRoutes = require('./routes/zelleRoutes');
+const pledgeRoutes = require('./routes/pledgeRoutes');
 const donationController = require('./controllers/donationController');
 
 // Import database
@@ -192,6 +193,7 @@ app.use('/api/donations', donationRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/zelle', zelleRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/pledges', pledgeRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

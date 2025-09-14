@@ -6,6 +6,7 @@ import MemberList from './MemberList';
 import MemberEditModal from './MemberEditModal';
 import RoleManagement from './RoleManagement';
 import AdminStats from './AdminStats';
+import PledgeManagement from '../PledgeManagement';
 
 interface AdminDashboardProps {}
 
@@ -14,7 +15,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const { t } = useLanguage();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'stats'>('members');
+  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'stats' | 'pledges'>('members');
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -171,15 +172,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             
             {permissions.canViewFinancialRecords && (
               <button
-                onClick={() => setActiveTab('stats')}
+                onClick={() => setActiveTab('pledges')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'stats'
+                  activeTab === 'pledges'
                     ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <i className="fas fa-chart-bar mr-2"></i>
-                {t('statistics')}
+                <i className="fas fa-hand-holding-heart mr-2"></i>
+                Pledges
               </button>
             )}
           </nav>
@@ -205,6 +206,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
           
           {activeTab === 'stats' && permissions.canViewFinancialRecords && (
             <AdminStats />
+          )}
+          
+          {activeTab === 'pledges' && permissions.canManagePledges && (
+            <PledgeManagement />
           )}
         </div>
       </main>

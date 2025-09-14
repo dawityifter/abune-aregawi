@@ -935,8 +935,15 @@ exports.getAllMembers = async (req, res) => {
 // Get all members (Firebase auth - admin only)
 exports.getAllMembersFirebase = async (req, res) => {
   try {
+    console.log('🔍 getAllMembersFirebase called');
+    console.log('🔍 Request user:', req.user);
+    console.log('🔍 Request firebaseUid:', req.firebaseUid);
+    console.log('🔍 Request query:', req.query);
+    
     const { page = 1, limit = 20, search, role, isActive } = req.query;
     const offset = (page - 1) * limit;
+
+    console.log('🔍 Parsed params:', { page, limit, search, role, isActive });
 
     const whereClause = {};
     
@@ -956,6 +963,9 @@ exports.getAllMembersFirebase = async (req, res) => {
       whereClause.is_active = isActive === 'true';
     }
 
+    console.log('🔍 Where clause:', whereClause);
+    console.log('🔍 Limit:', parseInt(limit), 'Offset:', parseInt(offset));
+
     const { count, rows: members } = await Member.findAndCountAll({
       where: whereClause,
       limit: parseInt(limit),
@@ -967,6 +977,8 @@ exports.getAllMembersFirebase = async (req, res) => {
         attributes: ['id'] // Only get the count, not full data
       }]
     });
+
+    console.log('🔍 Query result - count:', count, 'members found:', members.length);
 
     // Transform snake_case to camelCase for frontend compatibility
     const transformedMembers = members.map(member => ({
@@ -1005,7 +1017,9 @@ exports.getAllMembersFirebase = async (req, res) => {
       dependentsCount: member.dependents ? member.dependents.length : 0
     }));
 
-    res.json({
+    console.log('🔍 Transformed members count:', transformedMembers.length);
+
+    const response = {
       success: true,
       data: {
         members: transformedMembers,
@@ -1017,10 +1031,14 @@ exports.getAllMembersFirebase = async (req, res) => {
           hasPrev: page > 1
         }
       }
-    });
+    };
+
+    console.log('🔍 Final response:', JSON.stringify(response, null, 2));
+    
+    res.json(response);
 
   } catch (error) {
-    console.error('Get all members Firebase error:', error);
+    console.error('❌ Get all members Firebase error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
