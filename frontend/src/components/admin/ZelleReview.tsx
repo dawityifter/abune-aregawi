@@ -351,6 +351,7 @@ const ZelleReview: React.FC = () => {
                       </select>
                       {!it.already_exists ? (
                         <button
+                          type="button"
                           onClick={() => handleCreate(it, idx)}
                           disabled={!!busyIds[getKey(it, idx)]}
                           className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-1.5 rounded"
@@ -364,6 +365,7 @@ const ZelleReview: React.FC = () => {
                             Saved
                           </span>
                           <button
+                            type="button"
                             onClick={() => handleUpdatePaymentType(it, idx)}
                             disabled={!!busyIds[getKey(it, idx)]}
                             className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1.5 rounded"
