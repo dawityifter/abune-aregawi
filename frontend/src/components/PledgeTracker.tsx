@@ -209,8 +209,11 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
                   </div>
                 </div>
 
-                {/* Individual pledges */}
-                <div className="space-y-2">
+                {/* Individual pledges - scrollable for pending/fulfilled */}
+                <div
+                  className="space-y-2"
+                  style={['pending', 'fulfilled'].includes(status.status) ? { maxHeight: '22rem', overflowY: 'auto', paddingRight: '4px' } : undefined}
+                >
                   {status.pledges.map((pledge) => (
                     <div key={pledge.id} className="bg-white rounded border p-2">
                       <div className="flex items-center justify-between">
@@ -238,27 +241,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
         </div>
       )}
 
-      {/* Recent Pledges */}
-      {showRecentPledges && !compact && stats.recent_pledges.length > 0 && (
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">Recent Pledges</h3>
-          <div className="space-y-3">
-            {stats.recent_pledges.slice(0, 10).map((pledge) => (
-              <div key={pledge.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900">{pledge.name}</div>
-                  <div className="text-sm text-gray-500 capitalize">
-                    {pledge.pledge_type} • {formatDate(pledge.created_at)}
-                  </div>
-                </div>
-                <div className="text-lg font-semibold text-green-600">
-                  {formatCurrency(pledge.amount)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Recent Pledges - hidden per requirement */}
 
       {/* Last Updated */}
       <div className="text-center text-xs text-gray-500 mt-6">
