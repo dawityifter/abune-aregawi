@@ -187,7 +187,7 @@ const PledgePage: React.FC = () => {
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Make a Difference</h3>
-                <p className="text-gray-600">Your pledge helps us serve our community and spread God's word.</p>
+                <p className="text-gray-600">In the spirit of Abune Aregawi and in the name of our Lord Jesus Christ, your pledge helps renew His Church, sustain our worship, and bless our community.</p>
               </div>
             </div>
           </div>

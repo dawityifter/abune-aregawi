@@ -35,7 +35,7 @@ const validatePledge = [
     })
     .optional({ nullable: true, checkFalsy: true }),
   body('phone')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isMobilePhone()
     .withMessage('Valid phone number is required'),
   body('due_date')
@@ -43,7 +43,7 @@ const validatePledge = [
     .isISO8601()
     .withMessage('Due date must be a valid date'),
   body('zip_code')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .matches(/^\d{5}(-\d{4})?$/)
     .withMessage('Valid ZIP code is required')
 ];

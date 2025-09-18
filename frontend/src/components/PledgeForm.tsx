@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { formatPhoneNumber } from '../utils/formatPhoneNumber';
@@ -41,6 +41,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [selectedMember, setSelectedMember] = useState<string>('');
+  const [memberSearchQuery, setMemberSearchQuery] = useState<string>('');
 
   const [formData, setFormData] = useState<PledgeFormData>({
     amount: '',
@@ -142,17 +143,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
       newErrors.phone = 'Phone number is required for new members';
     }
 
-    // Address and ZIP validation only for non-members
-    if (!selectedMember && (!formData.address || !formData.address.trim())) {
-      newErrors.address = 'Address is required for new members';
-    }
-
-    if (!selectedMember && (!formData.zip_code || !formData.zip_code.trim())) {
-      newErrors.zip_code = 'ZIP code is required for new members';
-    }
-
-    // Address and ZIP validation for members (can be empty or modified)
-    // No validation required for members since we allow modification
+    // Address and ZIP are optional for all users now
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -172,6 +163,25 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
       console.error('Pledge submission error:', error);
     }
   };
+
+  // Normalize helpers for search
+  const normalize = (s: string) => (s || '').toLowerCase().trim();
+  const digitsOnly = (s: string) => (s || '').replace(/\D+/g, '');
+
+  // Compute filtered members based on search query (name or phone)
+  const filteredMembers = useMemo(() => {
+    const q = memberSearchQuery.trim();
+    if (!q) return members;
+    const qNorm = normalize(q);
+    const qDigits = digitsOnly(q);
+    return members.filter(m => {
+      const name = `${m.firstName || ''} ${m.lastName || ''}`;
+      const phone = m.phoneNumber || '';
+      const matchName = normalize(name).includes(qNorm);
+      const matchPhone = qDigits ? digitsOnly(phone).includes(qDigits) : false;
+      return matchName || matchPhone;
+    });
+  }, [members, memberSearchQuery]);
 
   const handleInputChange = (field: keyof PledgeFormData, value: string) => {
     // Apply phone formatting for phone field
@@ -244,6 +254,16 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Select Member (Optional)
             </label>
+            <div className="grid grid-cols-1 gap-2 mb-2">
+              <input
+                type="text"
+                value={memberSearchQuery}
+                onChange={(e) => setMemberSearchQuery(e.target.value)}
+                placeholder="Search by name or phone"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                aria-label="Search members by name or phone"
+              />
+            </div>
             <select
               value={selectedMember}
               onChange={(e) => handleMemberSelect(e.target.value)}
@@ -251,11 +271,14 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
               disabled={loadingMembers}
             >
               <option value="">
-                {loadingMembers ? 'Loading members...' : 'Select existing member or leave blank for new'}
+                {loadingMembers ? 'Loading members...' : (memberSearchQuery ? 'Select a matched member or clear to show all' : 'Select existing member or leave blank for new')}
               </option>
-              {members.map(member => (
+              {filteredMembers.length === 0 && !loadingMembers && (
+                <option value="" disabled>{memberSearchQuery ? 'No matches' : 'No members found'}</option>
+              )}
+              {filteredMembers.map(member => (
                 <option key={member.id} value={member.id}>
-                  {member.firstName} {member.lastName} - {member.phoneNumber}
+                  {member.firstName} {member.lastName} {member.phoneNumber ? `- ${member.phoneNumber}` : ''}
                 </option>
               ))}
             </select>
@@ -337,15 +360,14 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
           <div className="relative">
             <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={formData.amount}
               onChange={(e) => handleInputChange('amount', e.target.value)}
               className={`w-full pl-8 pr-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.amount ? 'border-red-500' : 'border-gray-300'
               }`}
               placeholder="Enter custom amount"
-              min="1"
-              step="0.01"
             />
           </div>
           {errors.amount && (
@@ -363,9 +385,11 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
               type="text"
               value={formData.first_name}
               onChange={(e) => handleInputChange('first_name', e.target.value)}
+              readOnly={!!selectedMember}
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.first_name ? 'border-red-500' : 'border-gray-300'
-              }`}
+              } ${selectedMember ? 'bg-blue-50' : ''}`}
+              title={selectedMember ? 'Auto-filled from selected member' : undefined}
             />
             {errors.first_name && (
               <p className="mt-1 text-sm text-red-600">{errors.first_name}</p>
@@ -380,9 +404,11 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
               type="text"
               value={formData.last_name}
               onChange={(e) => handleInputChange('last_name', e.target.value)}
+              readOnly={!!selectedMember}
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.last_name ? 'border-red-500' : 'border-gray-300'
-              }`}
+              } ${selectedMember ? 'bg-blue-50' : ''}`}
+              title={selectedMember ? 'Auto-filled from selected member' : undefined}
             />
             {errors.last_name && (
               <p className="mt-1 text-sm text-red-600">{errors.last_name}</p>
@@ -400,50 +426,54 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
+              readOnly={!!selectedMember}
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.email ? 'border-red-500' : 'border-gray-300'
-              }`}
+              } ${selectedMember ? 'bg-blue-50' : ''}`}
+              placeholder={selectedMember ? 'Auto-filled from member' : ''}
+              title={selectedMember ? 'Auto-filled from selected member' : undefined}
             />
             {errors.email && (
               <p className="mt-1 text-sm text-red-600">{errors.email}</p>
             )}
           </div>
-
-          {!selectedMember && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone *
-              </label>
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                  errors.phone ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="(555) 555-1234"
-                inputMode="tel"
-              />
-              {errors.phone && (
-                <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-              )}
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Phone {selectedMember ? '' : '*'}
+            </label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
+              readOnly={!!selectedMember}
+              className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                errors.phone ? 'border-red-500' : 'border-gray-300'
+              } ${selectedMember ? 'bg-blue-50' : ''}`}
+              placeholder={selectedMember ? 'Auto-filled from member' : '(555) 555-1234'}
+              inputMode="tel"
+              title={selectedMember ? 'Auto-filled from selected member' : undefined}
+            />
+            {errors.phone && (
+              <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+            )}
+          </div>
         </div>
 
         {/* Address */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Address {selectedMember ? '(Auto-filled from member)' : '(Required)'}
+            Address {selectedMember ? '(Auto-filled from member)' : '(Optional)'}
           </label>
           <input
             type="text"
             value={formData.address}
             onChange={(e) => handleInputChange('address', e.target.value)}
+            readOnly={!!selectedMember}
             className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
               errors.address ? 'border-red-500' : 'border-gray-300'
             } ${selectedMember ? 'bg-blue-50' : ''}`}
             placeholder={selectedMember ? 'Auto-filled from member' : 'Street address'}
+            title={selectedMember ? 'Auto-filled from selected member' : undefined}
           />
           {errors.address && (
             <p className="mt-1 text-sm text-red-600">{errors.address}</p>
@@ -459,16 +489,18 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-1">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              ZIP Code {selectedMember ? '(Auto-filled from member)' : '(Required)'}
+              ZIP Code {selectedMember ? '(Auto-filled from member)' : '(Optional)'}
             </label>
             <input
               type="text"
               value={formData.zip_code}
               onChange={(e) => handleInputChange('zip_code', e.target.value)}
+              readOnly={!!selectedMember}
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.zip_code ? 'border-red-500' : 'border-gray-300'
               } ${selectedMember ? 'bg-blue-50' : ''}`}
               placeholder={selectedMember ? 'Auto-filled from member' : '12345'}
+              title={selectedMember ? 'Auto-filled from selected member' : undefined}
             />
             {errors.zip_code && (
               <p className="mt-1 text-sm text-red-600">{errors.zip_code}</p>
@@ -515,13 +547,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
           </button>
         </div>
 
-        {/* Terms */}
-        <div className="text-center text-sm text-gray-600">
-          <p>
-            By making this pledge, you agree to our terms and conditions.
-            You will receive a confirmation email with payment instructions.
-          </p>
-        </div>
+        
       </form>
     </div>
   );
