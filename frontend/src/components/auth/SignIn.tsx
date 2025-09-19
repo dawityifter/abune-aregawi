@@ -444,6 +444,18 @@ const SignIn: React.FC = () => {
                 </button>
               </div>
             )}
+            {/* SMS consent disclaimer */}
+            <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 text-gray-700 p-3">
+              <div className="flex items-start gap-2">
+                <i className="fas fa-sms mt-0.5 text-primary-700"></i>
+                <div className="text-[11px] sm:text-xs leading-relaxed">
+                  <span className="font-semibold text-gray-800">SMS Consent:</span> By entering your phone number you consent to receive SMS notifications from Abune Aregawi Church about event reminders.
+                  <div className="mt-1 text-gray-600">
+                    Frequency may vary; SMS and data rates may apply. Consent is not a condition of purchase. Reply <span className="font-semibold">HELP</span> for help and <span className="font-semibold">STOP</span> to unsubscribe.
+                  </div>
+                </div>
+              </div>
+            </div>
             
             <div className="mt-4 md:mt-6 sticky md:static bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur supports-backdrop-blur:bg-white/80 py-2">
               <button 

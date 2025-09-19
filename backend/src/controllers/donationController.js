@@ -45,7 +45,7 @@ const createPaymentIntent = async (req, res) => {
       payment_method,
       donor_first_name,
       donor_last_name,
-      donor_email,
+      donor_email = 'abunearegawitx@gmail.com',
       donor_phone,
       donor_address,
       donor_zip_code,
