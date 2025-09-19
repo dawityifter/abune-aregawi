@@ -24,6 +24,7 @@ const validateDonation = [
     .isLength({ min: 1 })
     .withMessage('Last name is required'),
   body('donor_email')
+    .optional()
     .isEmail()
     .normalizeEmail()
     .withMessage('Valid email is required'),

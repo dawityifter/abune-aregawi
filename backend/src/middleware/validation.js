@@ -21,7 +21,6 @@ const validateOutreachCreate = [
   param('id').isInt({ min: 1 }).withMessage('Member ID must be a positive integer'),
   body('note')
     .isString().withMessage('Note must be text')
-    .bail()
     .trim()
     .isLength({ min: 1, max: 2000 }).withMessage('Note must be between 1 and 2000 characters'),
   handleValidationErrors

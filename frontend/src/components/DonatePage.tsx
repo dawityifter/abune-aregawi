@@ -96,8 +96,8 @@ const DonatePage: React.FC = () => {
       return;
     }
 
-    if (!donorInfo.firstName || !donorInfo.lastName || !donorInfo.email) {
-      alert('Please fill in all required fields');
+    if (!donorInfo.firstName || !donorInfo.lastName) {
+      alert('Please fill in your first and last name');
       return;
     }
 
@@ -165,7 +165,7 @@ const DonatePage: React.FC = () => {
       payment_method: paymentMethod,
       donor_first_name: donorInfo.firstName,
       donor_last_name: donorInfo.lastName,
-      donor_email: donorInfo.email,
+      donor_email: donorInfo.email || 'abunearegawitx@gmail.com',
       donor_phone: donorInfo.phone || undefined,
       donor_address: donorInfo.address || undefined,
       donor_zip_code: donorInfo.zipCode || undefined,
@@ -377,13 +377,12 @@ const DonatePage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email *
+                      Email
                     </label>
                     <input
                       type="email"
                       value={donorInfo.email}
                       onChange={(e) => setDonorInfo({...donorInfo, email: e.target.value})}
-                      required
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
                     />
                   </div>
