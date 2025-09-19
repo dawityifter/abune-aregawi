@@ -23,6 +23,7 @@ import ChurchBylaw from './components/ChurchBylaw';
 import ParishPulseSignUp from './components/ParishPulseSignUp';
 import PledgePage from './pages/PledgePage';
 import ThankYouPage from './pages/ThankYouPage';
+import PrivacyPage from './pages/PrivacyPage';
 import './index.css';
 import DevBanner from './components/DevBanner';
 import { isFeatureEnabled } from './config/featureFlags';
@@ -99,6 +100,7 @@ function App() {
               <Route path="/parish-pulse-sign-up" element={<ParishPulseSignUp />} />
               <Route path="/pledge" element={<PledgePage />} />
               <Route path="/thank-you" element={<ThankYouPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
               {/* Add more routes here as we build them */}
             </Routes>
           </div>
