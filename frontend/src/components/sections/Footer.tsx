@@ -35,10 +35,15 @@ const Footer: React.FC = () => {
         </div>
         <div className="text-center mt-8 pt-8 border-t border-accent-400">
             <p className="text-white/90">&copy; 2025 Tigray Orthodox Church. All rights reserved.</p>
-            <p className="mt-4">
+            <p className="mt-4 flex items-center justify-center gap-4">
             <a href="/credits" className="text-secondary-200 hover:text-secondary-100 transition-colors">
               <i className="fas fa-code mr-2"></i>
               Tech Team / Credits
+            </a>
+            <span className="text-secondary-400">|</span>
+            <a href="/privacy" className="text-secondary-200 hover:text-secondary-100 transition-colors">
+              <i className="fas fa-user-shield mr-2"></i>
+              Privacy
             </a>
           </p>
         </div>
