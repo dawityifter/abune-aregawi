@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PledgeStats {
   total_pledged: number;
@@ -41,6 +42,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
   compact = false
 }) => {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [stats, setStats] = useState<PledgeStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,6 +131,10 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
   const progressPercentage = stats.total_pledged > 0
     ? (stats.total_fulfilled / stats.total_pledged) * 100
     : 0;
+
+  // Determine if current user can see individual pledge names
+  const privilegedRoles = new Set(['admin', 'secretary', 'treasurer']);
+  const canSeeNames = privilegedRoles.has((user?.role || '').toLowerCase());
 
   return (
     <div className={`bg-white rounded-lg shadow-lg p-6 ${compact ? 'max-w-md' : 'max-w-4xl mx-auto'}`}>
@@ -219,9 +225,15 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="font-medium text-gray-900 text-sm">
-                            {pledge.name}
-                            {pledge.spouse_name && (
-                              <span className="text-gray-500"> & {pledge.spouse_name}</span>
+                            {canSeeNames ? (
+                              <>
+                                {pledge.name}
+                                {pledge.spouse_name && (
+                                  <span className="text-gray-500"> & {pledge.spouse_name}</span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="italic text-gray-600">Anonymous</span>
                             )}
                           </div>
                           <div className="text-xs text-gray-500 capitalize">
