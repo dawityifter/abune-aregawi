@@ -55,7 +55,8 @@ const MemberList: React.FC<MemberListProps> = ({
   const filteredMembers = useMemo(() => {
     return allMembers.filter(member => {
       const searchLower = searchTerm.toLowerCase();
-      const memberNumber = String((member as any).memberId ?? (member as any).member_id ?? '').toLowerCase();
+      const memberNumberRaw = (member as any).memberId ?? (member as any).member_id ?? member.id ?? '';
+      const memberNumber = String(memberNumberRaw).toLowerCase();
       const matchesSearch = !searchTerm || 
         (member.firstName?.toLowerCase() || '').includes(searchLower) ||
         (member.lastName?.toLowerCase() || '').includes(searchLower) ||
@@ -281,9 +282,6 @@ const MemberList: React.FC<MemberListProps> = ({
                   {t('name')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('member.number') || 'Member #'}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('email')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -314,16 +312,16 @@ const MemberList: React.FC<MemberListProps> = ({
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {member.firstName} {member.middleName} {member.lastName}
+                          {member.firstName} {member.middleName} {member.lastName} {' '}
+                          <span className="text-gray-500">(
+                            {String((member as any).memberId ?? (member as any).member_id ?? member.id)}
+                          )</span>
                         </div>
                         <div className="text-sm text-gray-500">
                           {member.dependents?.length || 0} {t('dependents')}
                         </div>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {String((member as any).memberId ?? (member as any).member_id ?? '-')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {getDisplayEmail(member.email) || '-'}
