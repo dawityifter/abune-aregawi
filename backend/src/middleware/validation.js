@@ -49,7 +49,18 @@ const validateDependentId = [
 const validateDependentData = [
   body('firstName').notEmpty().trim().withMessage('First name is required'),
   body('lastName').notEmpty().trim().withMessage('Last name is required'),
-  body('dateOfBirth').notEmpty().isISO8601().withMessage('Date of birth must be a valid date'),
+  // DOB optional for all; if provided must be a valid date
+  body('dateOfBirth')
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      if (value) {
+        const d = Date.parse(value);
+        if (Number.isNaN(d)) {
+          throw new Error('Date of birth must be a valid date');
+        }
+      }
+      return true;
+    }),
   body('gender').optional().isIn(['Male', 'Female']).withMessage('Gender must be Male or Female'),
   body('relationship').optional().isIn(RELATIONSHIP_VALUES).withMessage(`Relationship must be one of: ${RELATIONSHIP_VALUES.join(', ')}`),
   body('phone').optional().isString().withMessage('Phone must be a string'),
@@ -68,7 +79,18 @@ const validateDependentData = [
 const validateDependentUpdate = [
   body('firstName').optional().notEmpty().trim().withMessage('First name cannot be empty'),
   body('lastName').optional().notEmpty().trim().withMessage('Last name cannot be empty'),
-  body('dateOfBirth').optional().isISO8601().withMessage('Date of birth must be a valid date'),
+  // DOB optional for all; if provided must be a valid date
+  body('dateOfBirth')
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      if (value) {
+        const d = Date.parse(value);
+        if (Number.isNaN(d)) {
+          throw new Error('Date of birth must be a valid date');
+        }
+      }
+      return true;
+    }),
   body('gender').optional().isIn(['Male', 'Female']).withMessage('Gender must be Male or Female'),
   body('relationship').optional().isIn(RELATIONSHIP_VALUES).withMessage(`Relationship must be one of: ${RELATIONSHIP_VALUES.join(', ')}`),
   body('phone').optional().isString().withMessage('Phone must be a string'),
