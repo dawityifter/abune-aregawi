@@ -30,6 +30,9 @@ const DependentsManagement: React.FC = () => {
     notes: ''
   });
 
+  // Explicit form validity for enabling submit (DOB optional)
+  const isSubmitDisabled = !formData.firstName?.trim() || !formData.lastName?.trim() || !formData.gender;
+
   const fetchDependents = useCallback(async () => {
     try {
       // First get the member profile (handles members and dependent logins)
@@ -238,6 +241,7 @@ const DependentsManagement: React.FC = () => {
                   onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                <p className="mt-1 text-xs text-gray-500">Optional</p>
               </div>
 
               <div>
@@ -337,7 +341,8 @@ const DependentsManagement: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                disabled={!!isSubmitDisabled}
+                className={`px-4 py-2 rounded-md text-white ${isSubmitDisabled ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
               >
                 {editingDependent ? 'Update Dependent' : 'Add Dependent'}
               </button>

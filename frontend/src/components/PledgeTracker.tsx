@@ -75,9 +75,8 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
 
   useEffect(() => {
     fetchStats();
-    // Refresh stats every 30 seconds
-    const interval = setInterval(fetchStats, 30000);
-    return () => clearInterval(interval);
+    // Removed auto-refresh per requirement; manual refresh button provided instead
+    return () => {};
   }, [eventName]);
 
   const formatCurrency = (amount: number) => {
@@ -138,14 +137,26 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
 
   return (
     <div className={`bg-white rounded-lg shadow-lg p-6 ${compact ? 'max-w-md' : 'max-w-4xl mx-auto'}`}>
-      {/* Header */}
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          {eventName ? `${eventName} Pledges` : 'Pledge Tracker'}
-        </h2>
-        <p className="text-gray-600">
-          See how our Abune Aregawi church community is coming together to support this cause.
-        </p>
+      {/* Header with manual refresh */}
+      <div className={`mb-6 ${compact ? '' : 'flex items-center justify-between'}`}>
+        <div className={`${compact ? 'text-center' : 'text-left'}`}>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {eventName ? `${eventName} Pledges` : 'Pledge Tracker'}
+          </h2>
+          <p className="text-gray-600">
+            See how our Abune Aregawi church community is coming together to support this cause.
+          </p>
+        </div>
+        {!compact && (
+          <button
+            onClick={fetchStats}
+            className="mt-3 md:mt-0 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary-600 hover:bg-primary-700 text-white shadow"
+            title="Refresh"
+          >
+            <i className="fas fa-rotate-right"></i>
+            Refresh
+          </button>
+        )}
       </div>
 
       {/* Main Stats */}
