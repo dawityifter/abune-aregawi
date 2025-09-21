@@ -988,6 +988,9 @@ exports.getAllMembersFirebase = async (req, res) => {
       lastName: member.last_name,
       email: member.email,
       phoneNumber: member.phone_number,
+      // Expose member number for frontend table
+      memberId: member.member_id,
+      member_id: member.member_id,
       role: member.role,
       isActive: member.is_active,
       dateJoinedParish: member.date_joined_parish,
