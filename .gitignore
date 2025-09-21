@@ -266,5 +266,4 @@ church-members-list.csv
 backend/backup
 
 # Zelle payment CSV files containing PII data
-Combined_Zelle_Payments_with_Phone.csv
-Combined_Zelle_Payments_with_Phone_and_Names.csv
+Combined_Zelle_Payments_with_Phone*.csv
