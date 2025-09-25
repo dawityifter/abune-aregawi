@@ -267,3 +267,4 @@ backend/backup
 
 # Zelle payment CSV files containing PII data
 Combined_Zelle_Payments_with_Phone*.csv
+Zelle_Activity*

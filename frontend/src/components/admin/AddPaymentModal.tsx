@@ -141,14 +141,12 @@ interface AddPaymentModalProps {
     setError('');
 
     try {
-      // Validate amount for non-Stripe flows (Stripe components validate their own)
-      if (!(paymentView === 'new' && (paymentMethod === 'credit_card' || paymentMethod === 'ach'))) {
-        const amt = parseFloat(amount);
-        if (!amount || !Number.isFinite(amt) || amt <= 0) {
-          setAmountError('Please enter a valid amount greater than $0');
-          setLoading(false);
-          return;
-        }
+      // Validate amount for ALL flows (including Stripe)
+      const amt = parseFloat(amount);
+      if (!amount || !Number.isFinite(amt) || amt <= 0) {
+        setAmountError('Please enter a valid amount greater than $0');
+        setLoading(false);
+        return;
       }
       let response;
 
@@ -583,7 +581,7 @@ interface AddPaymentModalProps {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Amount
+                Amount <span className="text-red-600">*</span>
               </label>
               <input
                 type="text"
@@ -592,6 +590,8 @@ interface AddPaymentModalProps {
                 onChange={(e) => handleAmountChange(e.target.value)}
                 onBlur={normalizeAmountOnBlur}
                 required
+                aria-required="true"
+                aria-invalid={!!amountError}
                 placeholder="Enter amount"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />

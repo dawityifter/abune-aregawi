@@ -9,6 +9,7 @@ interface AuthContextType {
   firebaseUser: User | null;
   loading: boolean;
   authReady: boolean;
+  backendStarting?: boolean;
   loginWithPhone: (phone: string, appVerifier: any, otp?: string, confirmationResult?: any) => Promise<any>;
   logout: () => Promise<void>;
   updateUserProfile: (updates: any) => Promise<void>;
@@ -36,11 +37,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Indicates the first Firebase auth state has been resolved
   const [authReady, setAuthReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backendStarting, setBackendStarting] = useState<boolean>(false);
   const navigate = useNavigate();
   const auth = getAuth();
 
   // Configurable timeout for backend profile fetch (default 20s)
   const PROFILE_FETCH_TIMEOUT_MS = Number(process.env.REACT_APP_PROFILE_FETCH_TIMEOUT_MS || 20000);
+  const READY_PROBE_TIMEOUT_MS = 8000;
+  const READY_BACKOFFS_MS = [3000, 7000, 15000, 25000, 30000]; // ~80s total
 
   // Cache for 404 results to prevent retry storms
   const [newUserCache, setNewUserCache] = useState<Set<string>>(new Set());
@@ -216,6 +220,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     }
   }, [newUserCache]);
+
+  // Probe backend readiness with short exponential backoff
+  const probeBackendReady = useCallback(async (): Promise<boolean> => {
+    try {
+      const baseUrl = process.env.REACT_APP_API_URL;
+      if (!baseUrl) return false;
+      for (let i = 0; i < READY_BACKOFFS_MS.length; i++) {
+        // Try probe
+        try {
+          const controller = new AbortController();
+          const to = setTimeout(() => controller.abort(), READY_PROBE_TIMEOUT_MS);
+          const res = await fetch(`${baseUrl}/api/ready`, { signal: controller.signal });
+          clearTimeout(to);
+          if (res.ok) {
+            return true;
+          }
+        } catch (_) {
+          // ignore and backoff
+        }
+        // Backoff delay
+        const delay = READY_BACKOFFS_MS[i];
+        await new Promise(r => setTimeout(r, delay));
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }, []);
 
   // Clear new user cache when user logs out
   const clearNewUserCache = useCallback(() => {
@@ -402,7 +434,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         // Always check profile first, don't navigate until we know the result
-        const profile = await checkUserProfile(firebaseUser);
+        let profile = await checkUserProfile(firebaseUser);
 
         if (profile) {
           console.log('✅ User profile loaded, updating state');
@@ -431,23 +463,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             navigate('/dashboard');
           }
         } else {
-          console.log('❌ User profile not found, setting as new user');
-          setUser({
-            uid: firebaseUser.uid,
-            email: '',
-            phoneNumber,
-            _temp: true,
-            role: 'member'
-          });
+          // Before treating as new user, attempt readiness warm-up with exponential backoff
+          console.log('ℹ️ Profile not found or backend unavailable. Probing readiness...');
+          setBackendStarting(true);
+          const ready = await probeBackendReady();
+          if (ready) {
+            console.log('✅ Backend reports ready. Retrying profile fetch...');
+            profile = await checkUserProfile(firebaseUser);
+          }
+          setBackendStarting(false);
 
-          // Only navigate to register if we're not already there
-          if (window.location.pathname !== '/register') {
-            console.log('🔄 Navigating to register for new user');
-            navigate('/register', {
-              state: {
-                phone: phoneNumber
-              }
+          if (profile) {
+            console.log('✅ User profile loaded after warm-up, updating state');
+            setUser({
+              ...profile,
+              uid: firebaseUser.uid,
+              email: (profile as any).email || '',
+              phoneNumber,
+              role: profile.role,
+              _temp: false
             });
+            const NO_REDIRECT_PATHS = new Set<string>([
+              '/', '/credits', '/church-bylaw', '/donate', '/member-status', '/parish-pulse-sign-up',
+            ]);
+            const currentPath = window.location.pathname;
+            if (!NO_REDIRECT_PATHS.has(currentPath) && currentPath !== '/dashboard') {
+              navigate('/dashboard');
+            }
+          } else {
+            console.log('❌ Still no profile after warm-up, treating as new user');
+            setUser({
+              uid: firebaseUser.uid,
+              email: '',
+              phoneNumber,
+              _temp: true,
+              role: 'member'
+            });
+            if (window.location.pathname !== '/register') {
+              navigate('/register', { state: { phone: phoneNumber } });
+            }
           }
         }
       } catch (error: any) {
@@ -501,6 +555,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     firebaseUser,
     loading,
     authReady,
+    backendStarting,
     loginWithPhone,
     logout,
     updateUserProfile,
@@ -513,6 +568,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={value}>
+      {/* Warm-up banner during backend startup */}
+      {backendStarting && (
+        <div role="status" aria-live="polite" className="fixed top-0 inset-x-0 z-50">
+          <div className="mx-auto max-w-4xl mt-2 px-4 py-2 rounded-md shadow bg-yellow-50 border border-yellow-200 text-yellow-900 flex items-center gap-2">
+            <svg className="animate-spin h-4 w-4 text-yellow-700" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span>Backend starting… give us a minute. We’ll continue automatically once it’s ready.</span>
+          </div>
+        </div>
+      )}
       {children}
     </AuthContext.Provider>
   );
