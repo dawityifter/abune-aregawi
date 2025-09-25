@@ -50,7 +50,7 @@ const QuickLinks: React.FC = () => {
               />
               <div className="mt-3 text-center">
                 <div className="text-sm font-semibold text-accent-900">{t('priest.name')}</div>
-                <div className="text-xs text-accent-700">{t('priest.title')}</div>
+                <div className="text-xs font-semibold text-accent-700">{t('priest.title')}</div>
               </div>
             </>
           )}

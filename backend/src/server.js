@@ -158,6 +158,33 @@ app.get('/api/health', (req, res) => {
   res.json(health);
 });
 
+// Readiness endpoint that verifies DB connectivity with a short timeout
+app.get('/api/ready', async (req, res) => {
+  try {
+    const toMs = 5000; // 5s timeout for readiness probe
+    const timeout = new Promise((_, reject) => {
+      const id = setTimeout(() => reject(new Error('READINESS_TIMEOUT')), toMs);
+      // attach id to promise to allow potential cleanup (optional)
+      // @ts-ignore
+      timeout._id = id;
+    });
+    const authPromise = sequelize.authenticate();
+
+    await Promise.race([authPromise, timeout]);
+    return res.status(200).json({
+      status: 'ready',
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    return res.status(503).json({
+      status: 'starting',
+      code: (err && err.message) === 'READINESS_TIMEOUT' ? 'COLD_START_TIMEOUT' : 'COLD_START',
+      message: 'Backend is starting up or database is not yet ready',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Firebase test endpoint
 app.get('/firebase-test', (req, res) => {
   const admin = require('firebase-admin');
