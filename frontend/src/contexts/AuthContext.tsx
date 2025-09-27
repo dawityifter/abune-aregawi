@@ -548,6 +548,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []); // Empty dependency array ensures listener is only registered once
 
+  // Client warm-up: background health ping on app load (prod-only, once per session)
+  useEffect(() => {
+    try {
+      // Only run in production; allow opt-out via env flag
+      if (process.env.NODE_ENV !== 'production') return;
+      if (process.env.REACT_APP_ENABLE_WARMUP === 'false') return;
+
+      const baseUrl = process.env.REACT_APP_API_URL;
+      if (!baseUrl) return;
+
+      // Throttle: once per session or when TTL has expired
+      const KEY = 'warmup.health.lastPingAt';
+      const TTL_MS = Number(process.env.REACT_APP_WARMUP_TTL_MS || 30 * 60 * 1000); // 30 minutes default
+      const now = Date.now();
+      const last = Number(sessionStorage.getItem(KEY) || 0);
+      if (last && now - last < TTL_MS) return;
+
+      const doPing = () => {
+        const controller = new AbortController();
+        const timeoutMs = Number(process.env.REACT_APP_WARMUP_TIMEOUT_MS || 2500);
+        const to = setTimeout(() => controller.abort(), timeoutMs);
+        fetch(`${baseUrl}/api/health`, { method: 'GET', signal: controller.signal })
+          .catch(() => { /* ignore network errors; purely best-effort */ })
+          .finally(() => {
+            clearTimeout(to);
+            try { sessionStorage.setItem(KEY, String(Date.now())); } catch {}
+          });
+      };
+
+      // Truly background: schedule when idle if possible; otherwise next tick
+      if (typeof (window as any).requestIdleCallback === 'function') {
+        (window as any).requestIdleCallback(doPing, { timeout: 1000 });
+      } else {
+        setTimeout(doPing, 0);
+      }
+    } catch {
+      // Never surface errors to UI
+    }
+  }, []);
+
   // Provide auth context
   const value = {
     user,
