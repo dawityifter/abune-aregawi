@@ -41,18 +41,15 @@ graph TB
     style F fill:#336791
     style G fill:#ffca28
     style H fill:#3ecf8e
-    style I fill:#ffca28
     style ex fill:#000;
-```
-
 ## 🚀 Deployment Status
 
-| Service | Platform | Status | URL |
-|---------|----------|--------|-----|
-| **Frontend** | Firebase Hosting | ✅ Deployed | [Live Site](https://abune-aregawit-church.web.app/) |
-| **Backend API** | Render | 🔄 Deploying | [API Endpoint](https://abune-aregawi-backend.onrender.com) |
-| **Database** | Supabase | ✅ Connected | PostgreSQL Cloud (Free Tier) |
-| **Authentication** | Firebase | ✅ Active | Phone + Email Auth |
+ | Service | Platform | Status | URL |
+ |---------|----------|--------|-----|
+ | **Frontend** | Firebase Hosting | ✅ Deployed | [Live Site](https://abune-aregawi-church-app.web.app) |
+ | **Backend API** | Render | 🔄 Deploying | [API Endpoint](https://abune-aregawi-backend.onrender.com) |
+ | **Database** | Supabase | ✅ Connected | PostgreSQL Cloud (Free Tier) |
+ | **Authentication** | Firebase | ✅ Active | Phone + Email Auth |
 
 ### 📊 Current Status
 - ✅ **Frontend**: Successfully deployed to Firebase Hosting with asset fixes
@@ -228,7 +225,7 @@ JWT_SECRET=your_secure_jwt_secret_key
 FIREBASE_SERVICE_ACCOUNT_BASE64=your_base64_encoded_service_account
 
 # CORS
-FRONTEND_URL=https://abune-aregawit-church.web.app
+FRONTEND_URL=https://abune-aregawi-church-app.web.app
 ```
 
 ### Local Development (SMS + Ports)
@@ -279,14 +276,14 @@ graph LR
     
     subgraph "CI/CD Pipeline"
         B --> C[GitHub Actions]
-        C --> D[Vercel Build]
+        C --> D[Firebase Hosting Build]
         C --> E[Render Build]
     end
     
     subgraph "Production"
-        D --> F[Vercel Frontend]
+        D --> F[Firebase Hosting Frontend]
         E --> G[Render Backend]
-        F --> H[Neon Database]
+        F --> H[Supabase Database]
         G --> H
         F --> I[Firebase Auth]
         G --> I
@@ -294,7 +291,7 @@ graph LR
     
     style F fill:#61dafb
     style G fill:#68a063
-    style H fill:#336791
+    style H fill:#3ecf8e
     style I fill:#ffca28
 ```
 
@@ -580,7 +577,7 @@ The admin dashboard provides insights into role distribution and usage:
 ### Prerequisites
 - Node.js (v18 or higher)
 - npm or yarn
-- PostgreSQL database (local or Neon)
+- PostgreSQL database (local) or Supabase account
 - Firebase project
 
 ### Installation
@@ -642,11 +639,11 @@ npm run db:test
 
 ## 🔄 CI/CD Pipeline
 
-### Vercel (Frontend)
-- **Trigger**: Push to main branch
-- **Build**: `npm run build`
-- **Deploy**: Automatic deployment to Vercel
-- **Domain**: Custom domain with SSL
+### Firebase Hosting (Frontend)
+- **Trigger**: Push to main branch (via GitHub Actions) or manual `firebase deploy`
+- **Build**: `npm run build` in `frontend/`
+- **Deploy**: Automatic via Firebase Hosting GitHub Action, or `firebase deploy --only hosting`
+- **Domain**: `*.web.app` and `*.firebaseapp.com` with automatic SSL
 
 ### Render (Backend)
 - **Trigger**: Push to main branch
@@ -656,9 +653,9 @@ npm run db:test
 
 ## 📊 Monitoring & Analytics
 
-- **Vercel Analytics**: Frontend performance monitoring
+- **Firebase Hosting Logs**: Frontend hosting logs and deployment status
 - **Render Logs**: Backend application logs
-- **Neon Metrics**: Database performance monitoring
+- **Supabase Metrics**: Database performance monitoring
 - **Firebase Analytics**: User behavior tracking
 
 ## 🤝 Contributing
@@ -683,7 +680,7 @@ npm run db:test
 ### Common Issues
 
 **Frontend Build Failures**
-- Check environment variables in Vercel
+- Check Firebase configuration and `.env` values
 - Verify Firebase configuration
 - Ensure all dependencies are installed
 
@@ -693,7 +690,7 @@ npm run db:test
 - Review Render build logs
 
 **Database Connection Issues**
-- Verify Neon connection string
+- Verify Supabase connection string
 - Check SSL configuration
 - Ensure database is accessible from Render
 
@@ -703,8 +700,8 @@ This project is created for the Debre Tsehay Abune Aregawi Tigray Orthodox Tewah
 
 ## 🙏 Acknowledgments
 
-- **Neon** for providing the PostgreSQL database
-- **Vercel** for frontend hosting and CI/CD
+- **Supabase** for providing the PostgreSQL database
+- **Firebase Hosting** for frontend hosting and CI/CD
 - **Render** for backend hosting and deployment
 - **Firebase** for authentication services
 - **TailwindCSS** for the beautiful UI framework
@@ -713,5 +710,5 @@ This project is created for the Debre Tsehay Abune Aregawi Tigray Orthodox Tewah
 
 *Built with love for the Tigray Orthodox Christian community* 
 
-**Last Updated**: August 2025
-**Version**: 1.1.0 
+**Last Updated**: September 2025
+**Version**: 1.1.1 
