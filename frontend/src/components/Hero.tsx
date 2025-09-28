@@ -58,7 +58,7 @@ const Hero: React.FC = () => {
             {t('hero.cta.give')}
           </Link>
           <a
-            href="https://www.facebook.com/abunearegawitx/"
+            href="https://www.youtube.com/@debretsehayeotcdallastexas7715/live"
             target="_blank"
             rel="noreferrer"
             className="btn btn-outline"

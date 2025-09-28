@@ -84,7 +84,7 @@ const HeroSection: React.FC = () => {
         <div className="flex justify-center gap-4 max-w-3xl mx-auto">
           <button 
             className="btn btn-secondary"
-            onClick={() => window.open('https://www.facebook.com/abunearegawitx/', '_blank')}
+            onClick={() => window.open('https://www.youtube.com/@debretsehayeotcdallastexas7715/live', '_blank')}
           >
             <i className="fas fa-video mr-2"></i>
             {t('watch.live')}
