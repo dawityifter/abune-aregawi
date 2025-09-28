@@ -143,24 +143,6 @@ function showSuccessMessage(message) {
     }, 5000);
 }
 
-// Create RSVP form
-function createRSVPForm() {
-    return `
-        <form class="rsvp-form">
-            <input type="text" name="name" placeholder="Your Name" required>
-            <input type="email" name="email" placeholder="Email Address" required>
-            <input type="tel" name="phone" placeholder="Phone Number">
-            <select name="attending" required>
-                <option value="">Will you attend?</option>
-                <option value="yes">Yes, I will attend</option>
-                <option value="maybe">Maybe, I'll let you know</option>
-                <option value="no">No, I cannot attend</option>
-            </select>
-            <textarea name="message" placeholder="Any special requirements or questions?"></textarea>
-            <button type="submit" class="btn btn-primary">Submit RSVP</button>
-        </form>
-    `;
-}
 
 // Handle CTA actions
 function handleCTAAction(action) {
@@ -169,7 +151,8 @@ function handleCTAAction(action) {
             showModal('Plan Your Visit', createVisitForm());
             break;
         case 'Watch Live':
-            window.open('https://www.facebook.com/abunearegawitx/', '_blank');
+            // Open YouTube live page in a new tab for best UX when not live
+            window.open('https://www.youtube.com/@debretsehayeotcdallastexas7715/live', '_blank');
             break;
         case 'Give Online':
             showModal('Online Giving', createDonationForm());
