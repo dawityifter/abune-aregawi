@@ -310,36 +310,34 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Dues Card (hidden for dependents) */}
-            {!isDependent && (
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                        <i className="fas fa-dollar-sign text-green-800"></i>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {t('dues')}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {t('view.and.pay')}
-                      </p>
+            {/* Dues Card (visible to all, dependents see head-of-household dues) */}
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <i className="fas fa-dollar-sign text-green-800"></i>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <button 
-                      onClick={handleViewDues}
-                      className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
-                    >
-                      {t('view.dues')}
-                    </button>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      {t('dues')}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {isDependent ? 'View Dues/Login' : t('view.and.pay')}
+                    </p>
                   </div>
                 </div>
+                <div className="mt-4">
+                  <button 
+                    onClick={handleViewDues}
+                    className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+                  >
+                    {t('view.dues')}
+                  </button>
+                </div>
               </div>
-            )}
+            </div>
 
             {/* Events Card */}
             <div className="bg-white overflow-hidden shadow rounded-lg">

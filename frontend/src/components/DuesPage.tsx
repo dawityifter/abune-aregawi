@@ -47,7 +47,7 @@ const monthLabel = (m: string) => m.charAt(0).toUpperCase() + m.slice(1);
 const currency = (n: number) => n.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
 
 const DuesPage: React.FC = () => {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, user, authReady } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dues, setDues] = useState<DuesResponse['data'] | null>(null);
@@ -70,7 +70,21 @@ const DuesPage: React.FC = () => {
         return;
       }
       const token = await firebaseUser.getIdToken();
-      const res = await fetch(`${apiUrl}/api/members/dues/my`, {
+      // If the current user is a dependent with a linked head-of-household member id, fetch that member's dues
+      const role = (user?.data?.member?.role || user?.role) as string | undefined;
+      const isDependent = role === 'dependent';
+      // Support both nested (data.member.linkedMember) and flat (linkedMember) shapes
+      const linkedHeadId = (user as any)?.data?.member?.linkedMember?.id || (user as any)?.linkedMember?.id;
+      // If dependent but no linked head, inform the user and stop
+      if (isDependent && !linkedHeadId) {
+        setError('Your dependent profile is not linked to a head of household yet. Please contact the head to link your profile or use the self-claim flow.');
+        setLoading(false);
+        return;
+      }
+      const endpoint = isDependent
+        ? `${apiUrl}/api/members/dues/by-member/${linkedHeadId}`
+        : `${apiUrl}/api/members/dues/my`;
+      const res = await fetch(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -93,8 +107,10 @@ const DuesPage: React.FC = () => {
   }, [firebaseUser, apiUrl]);
 
   useEffect(() => {
+    // Wait for auth to be ready before attempting fetch
+    if (!authReady) return;
     fetchDues();
-  }, [fetchDues]);
+  }, [authReady, fetchDues]);
 
   if (loading) {
     return (

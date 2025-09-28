@@ -31,6 +31,10 @@ const verifyFirebaseTokenOnly = async (req, res, next) => {
     const firebaseToken = authHeader.substring(7);
     const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
     req.firebaseUid = decodedToken.uid;
+    // Attach phone number from token when present to help authorize dependents
+    if (decodedToken.phone_number) {
+      req.firebasePhone = decodedToken.phone_number;
+    }
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Invalid or expired Firebase token.' });
@@ -65,6 +69,10 @@ router.put('/profile/firebase/:uid', validateProfileUpdate, memberController.upd
 
 // Member dues (current user's own dues) using Firebase token only
 router.get('/dues/my', verifyFirebaseTokenOnly, memberPaymentController.getMyDues);
+
+// Member dues for a specific member (for dependents viewing head-of-household dues)
+// Authorization: caller must be the same member OR a dependent linked to that member
+router.get('/dues/by-member/:memberId', verifyFirebaseTokenOnly, memberPaymentController.getDuesByMemberIdWithAuth);
 
 // Test endpoint to debug authentication
 router.get('/test-auth', firebaseAuthMiddleware, (req, res) => {
