@@ -1,4 +1,4 @@
-const { MemberPayment, Member, Transaction } = require('../models');
+const { MemberPayment, Member, Transaction, Dependent } = require('../models');
 const { Op, literal } = require('sequelize');
 
 // Get all member payments with pagination and filtering
@@ -360,5 +360,142 @@ module.exports = {
   addMemberPayment,
   generatePaymentReport,
   getPaymentStats,
-  getMyDues
+  getMyDues,
+  getDuesByMemberIdWithAuth
 };
+
+// Fetch dues for a specific memberId with authorization:
+// - Allow if caller is the same member (by firebase_uid)
+// - Allow if caller is a Dependent whose linkedMemberId === memberId
+async function getDuesByMemberIdWithAuth(req, res) {
+  try {
+    const { memberId } = req.params;
+    const firebaseUid = req.firebaseUid;
+    const firebasePhone = req.firebasePhone;
+    if (!firebaseUid) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    // 1) Caller is a Member?
+    const callerMember = await Member.findOne({ where: { firebase_uid: firebaseUid } });
+    if (callerMember && String(callerMember.id) === String(memberId)) {
+      return computeAndReturnDues(res, callerMember);
+    }
+
+    // 2) Caller is a Dependent linked to this member?
+    // We use phone match from Firebase token (E.164) per project policy: phone-only auth.
+    if (!callerMember && firebasePhone) {
+      const callerDependent = await Dependent.findOne({ where: { phone: firebasePhone } });
+      if (callerDependent && String(callerDependent.linkedMemberId || callerDependent.memberId) === String(memberId)) {
+        // If linkedMemberId exists, we treat that as head-of-household. Otherwise fallback to memberId field.
+        const targetMemberId = callerDependent.linkedMemberId || callerDependent.memberId;
+        const member = await Member.findOne({ where: { id: targetMemberId } });
+        if (!member) {
+          return res.status(404).json({ success: false, message: 'Member not found for dependent link' });
+        }
+        return computeAndReturnDues(res, member);
+      }
+    }
+
+    return res.status(403).json({ success: false, message: 'Forbidden' });
+  } catch (error) {
+    console.error('Error fetching dues by member with auth:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch dues' });
+  }
+}
+
+// Helper to compute and return dues for a given Member instance (reuses getMyDues logic)
+async function computeAndReturnDues(res, member) {
+  const months = [
+    'january','february','march','april','may','june','july','august','september','october','november','december'
+  ];
+  const now = new Date();
+  const currentMonthIndex = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  let monthlyPayment = 0;
+  let monthStatuses = [];
+  let totalCollected = 0;
+  let totalAmountDue = 0;
+  let balanceDue = 0;
+  let futureDues = 0;
+
+  const memberTransactions = await Transaction.findAll({
+    where: {
+      member_id: member.id,
+      payment_date: { [Op.gte]: new Date(currentYear, 0, 1), [Op.lte]: new Date(currentYear, 11, 31, 23, 59, 59, 999) }
+    },
+    order: [['payment_date', 'ASC']]
+  });
+  const duesTransactions = memberTransactions.filter(t => String(t.payment_type) === 'membership_due');
+  const totalsByCalendarMonth = new Array(12).fill(0);
+  for (const t of duesTransactions) {
+    const d = new Date(t.payment_date);
+    if (d.getFullYear() === currentYear) totalsByCalendarMonth[d.getMonth()] += Number(t.amount || 0);
+  }
+
+  const yearlyPledge = Number(member.yearly_pledge || 0);
+  if (yearlyPledge > 0) {
+    monthlyPayment = Math.round((yearlyPledge / 12) * 100) / 100;
+    const totalDuesCollected = duesTransactions.reduce((s, t) => s + Number(t.amount || 0), 0);
+    totalAmountDue = yearlyPledge;
+    balanceDue = Math.max(yearlyPledge - totalDuesCollected, 0);
+
+    let remaining = totalDuesCollected;
+    monthStatuses = months.map((m, idx) => {
+      const isFutureMonth = idx > currentMonthIndex;
+      const paidForMonth = Math.min(monthlyPayment, Math.max(remaining, 0));
+      remaining = Math.max(remaining - monthlyPayment, 0);
+      const dueForMonth = Math.max(monthlyPayment - paidForMonth, 0);
+      const status = paidForMonth >= monthlyPayment ? 'paid' : (idx <= currentMonthIndex ? 'due' : 'upcoming');
+      return { month: m, paid: Number(paidForMonth.toFixed(2)), due: Number(dueForMonth.toFixed(2)), status, isFutureMonth };
+    });
+    totalCollected = totalDuesCollected;
+    futureDues = monthStatuses.filter(ms => ms.isFutureMonth).reduce((s, m) => s + m.due, 0);
+  } else {
+    monthStatuses = months.map((m, idx) => {
+      const paid = totalsByCalendarMonth[idx] || 0;
+      const isFutureMonth = idx > currentMonthIndex;
+      return { month: m, paid, due: 0, status: paid > 0 ? 'paid' : (idx <= currentMonthIndex ? 'due' : 'upcoming'), isFutureMonth };
+    });
+    totalCollected = totalsByCalendarMonth.reduce((a, b) => a + b, 0);
+    totalAmountDue = 0;
+    balanceDue = 0;
+    futureDues = 0;
+  }
+
+  const transactions = memberTransactions
+    .map(t => ({
+      id: t.id,
+      payment_date: t.payment_date,
+      amount: Number(t.amount || 0),
+      payment_type: t.payment_type,
+      payment_method: t.payment_method,
+      receipt_number: t.receipt_number,
+      note: t.note,
+    }))
+    .sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date));
+
+  return res.json({
+    success: true,
+    data: {
+      member: {
+        id: member.id,
+        firstName: member.first_name || member.firstName || '',
+        lastName: member.last_name || member.lastName || '',
+        email: member.email || '',
+        phoneNumber: member.phone_number || member.phoneNumber || ''
+      },
+      payment: {
+        year: currentYear,
+        monthlyPayment,
+        totalAmountDue,
+        totalCollected,
+        balanceDue,
+        monthStatuses,
+        futureDues
+      },
+      transactions
+    }
+  });
+}
