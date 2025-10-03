@@ -3,11 +3,16 @@ import React from 'react';
 interface PaymentStatsProps {
   stats: {
     totalMembers: number;
+    contributingMembers: number;
     upToDateMembers: number;
     behindMembers: number;
     totalAmountDue: number;
+    totalMembershipCollected: number;
+    otherPayments: number;
     totalCollected: number;
-    collectionRate: string;
+    totalExpenses: number;
+    netIncome: number;
+    collectionRate: number;
     outstandingAmount: number;
   };
 }
@@ -28,6 +33,12 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats }) => {
       icon: '👥'
     },
     {
+      title: 'Contributing Members',
+      value: stats.contributingMembers,
+      color: 'bg-indigo-500',
+      icon: '🤝'
+    },
+    {
       title: 'Up to Date',
       value: stats.upToDateMembers,
       color: 'bg-green-500',
@@ -46,10 +57,34 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats }) => {
       icon: '📊'
     },
     {
+      title: 'Total Membership Collected',
+      value: formatCurrency(stats.totalMembershipCollected),
+      color: 'bg-green-600',
+      icon: '💵'
+    },
+    {
+      title: 'Other Payments',
+      value: formatCurrency(stats.otherPayments),
+      color: 'bg-blue-600',
+      icon: '🎁'
+    },
+    {
       title: 'Total Collected',
       value: formatCurrency(stats.totalCollected),
-      color: 'bg-green-600',
+      color: 'bg-emerald-600',
       icon: '💰'
+    },
+    {
+      title: 'Total Expenses',
+      value: formatCurrency(stats.totalExpenses),
+      color: 'bg-red-600',
+      icon: '💳'
+    },
+    {
+      title: 'Net Income',
+      value: formatCurrency(stats.netIncome),
+      color: stats.netIncome >= 0 ? 'bg-teal-600' : 'bg-red-700',
+      icon: stats.netIncome >= 0 ? '📈' : '📉'
     },
     {
       title: 'Outstanding Amount',
@@ -95,10 +130,14 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats }) => {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-green-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-green-800">Collected</p>
-              <p className="text-2xl font-bold text-green-900">{formatCurrency(stats.totalCollected)}</p>
+              <p className="text-sm font-medium text-green-800">Membership Collected</p>
+              <p className="text-2xl font-bold text-green-900">{formatCurrency(stats.totalMembershipCollected)}</p>
+            </div>
+            <div className="bg-blue-50 rounded-lg p-4">
+              <p className="text-sm font-medium text-blue-800">Other Payments</p>
+              <p className="text-2xl font-bold text-blue-900">{formatCurrency(stats.otherPayments)}</p>
             </div>
             <div className="bg-red-50 rounded-lg p-4">
               <p className="text-sm font-medium text-red-800">Outstanding</p>
