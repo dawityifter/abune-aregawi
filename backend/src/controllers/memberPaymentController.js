@@ -1,4 +1,4 @@
-const { MemberPayment, Member, Transaction, Dependent } = require('../models');
+const { MemberPayment, Member, Transaction, Dependent, LedgerEntry } = require('../models');
 const { Op, literal } = require('sequelize');
 
 // Get all member payments with pagination and filtering
@@ -320,31 +320,150 @@ const getMyDues = async (req, res) => {
   }
 };
 
-// Get payment statistics for dashboard
+// Get payment statistics for dashboard (based on members.yearly_pledge and ledger_entries membership_due)
 const getPaymentStats = async (req, res) => {
   try {
-    const [
-      totalMembers,
-      upToDateMembers,
-      behindMembers,
-      totalAmountDue,
-      totalCollected
-    ] = await Promise.all([
-      MemberPayment.count(),
-      MemberPayment.count({ where: { totalAmountDue: { [Op.lte]: 0 } } }),
-      MemberPayment.count({ where: { totalAmountDue: { [Op.gt]: 0 } } }),
-      MemberPayment.sum('totalAmountDue'),
-      MemberPayment.sum('totalCollected')
-    ]);
+    const now = new Date();
+    const year = now.getFullYear();
+    const start = new Date(year, 0, 1);
+    const end = new Date(year, 11, 31, 23, 59, 59, 999);
+    const currentMonth = now.getMonth() + 1; // 1-12
+
+    // All real members
+    const totalMembers = await Member.count();
+
+    // Members with a non-zero pledge
+    const contributingMembersList = await Member.findAll({
+      where: { yearly_pledge: { [Op.gt]: 0 } },
+      attributes: ['id', 'yearly_pledge'],
+      raw: true
+    });
+    const contributingMembers = contributingMembersList.length;
+
+    if (contributingMembers === 0) {
+      // Even with no pledges, calculate other payments
+      const otherPaymentsResult = await LedgerEntry.sum('amount', {
+        where: {
+          category: { [Op.ne]: 'membership_due' },
+          entry_date: { [Op.gte]: start, [Op.lte]: end }
+        }
+      });
+      const otherPayments = Number(otherPaymentsResult || 0);
+      
+      return res.json({
+        success: true,
+        data: {
+          totalMembers,
+          contributingMembers: 0,
+          upToDateMembers: 0,
+          behindMembers: 0,
+          totalAmountDue: 0,
+          totalMembershipCollected: 0,
+          otherPayments: Number(otherPayments.toFixed(2)),
+          totalCollected: Number(otherPayments.toFixed(2)),
+          outstandingAmount: 0,
+          collectionRate: 0
+        }
+      });
+    }
+
+    // Calculate total membership collected from ALL ledger_entries with category='membership_due' in current year
+    const totalMembershipCollectedResult = await LedgerEntry.sum('amount', {
+      where: {
+        category: 'membership_due',
+        entry_date: { [Op.gte]: start, [Op.lte]: end }
+      }
+    });
+    let totalMembershipCollected = parseFloat(totalMembershipCollectedResult) || 0;
+    // Ensure it's a valid number
+    if (!Number.isFinite(totalMembershipCollected)) {
+      totalMembershipCollected = 0;
+    }
+
+    // For calculating up-to-date vs behind members, we need per-member totals
+    const paidRows = await LedgerEntry.findAll({
+      where: {
+        category: 'membership_due',
+        entry_date: { [Op.gte]: start, [Op.lte]: end }
+      },
+      attributes: ['member_id', [literal('SUM("amount")'), 'paid_to_date']],
+      group: ['member_id'],
+      raw: true
+    });
+
+    const paidMap = new Map();
+    for (const r of paidRows) {
+      // r.paid_to_date may be string/number depending on dialect
+      paidMap.set(String(r.member_id), Number(r.paid_to_date || 0));
+    }
+
+    let upToDateMembers = 0;
+    let behindMembers = 0;
+    let totalAmountDue = 0; // expected-to-date total across contributing members
+
+    for (const m of contributingMembersList) {
+      const pledge = Number(m.yearly_pledge || 0);
+      if (pledge <= 0) continue;
+      const expectedToDate = (pledge / 12) * currentMonth;
+      const paidToDate = paidMap.get(String(m.id)) || 0;
+
+      totalAmountDue += expectedToDate;
+      if (paidToDate + 1e-6 >= expectedToDate) {
+        upToDateMembers += 1;
+      } else {
+        behindMembers += 1;
+      }
+    }
+
+    // Calculate other payments (all non-membership_due payments)
+    const otherPaymentsResult = await LedgerEntry.sum('amount', {
+      where: {
+        category: { [Op.ne]: 'membership_due' },
+        entry_date: { [Op.gte]: start, [Op.lte]: end }
+      }
+    });
+    let otherPayments = parseFloat(otherPaymentsResult) || 0;
+    // Ensure it's a valid number
+    if (!Number.isFinite(otherPayments)) {
+      otherPayments = 0;
+    }
+
+    // Total collected = membership + other payments
+    const totalCollected = totalMembershipCollected + otherPayments;
+
+    // Calculate total expenses for the year
+    const totalExpensesResult = await LedgerEntry.sum('amount', {
+      where: {
+        type: 'expense',
+        entry_date: { [Op.gte]: start, [Op.lte]: end }
+      }
+    });
+    let totalExpenses = parseFloat(totalExpensesResult) || 0;
+    if (!Number.isFinite(totalExpenses)) {
+      totalExpenses = 0;
+    }
+
+    // Calculate net income
+    const netIncome = totalCollected - totalExpenses;
+
+    const outstandingAmount = Math.max(totalAmountDue - totalMembershipCollected, 0);
+    const collectionRate = contributingMembers > 0
+      ? Number(((upToDateMembers / contributingMembers) * 100).toFixed(2))
+      : 0;
 
     const stats = {
       totalMembers,
+      contributingMembers,
       upToDateMembers,
       behindMembers,
-      totalAmountDue: totalAmountDue || 0,
-      totalCollected: totalCollected || 0,
-      collectionRate: totalMembers > 0 ? ((upToDateMembers / totalMembers) * 100).toFixed(2) : 0,
-      outstandingAmount: (totalAmountDue || 0) - (totalCollected || 0)
+      totalAmountDue: Number((totalAmountDue || 0).toFixed(2)),
+      totalMembershipCollected: Number((totalMembershipCollected || 0).toFixed(2)),
+      otherPayments: Number((otherPayments || 0).toFixed(2)),
+      totalCollected: Number((totalCollected || 0).toFixed(2)),
+      totalExpenses: Number((totalExpenses || 0).toFixed(2)),
+      netIncome: Number((netIncome || 0).toFixed(2)),
+      outstandingAmount: Number((outstandingAmount || 0).toFixed(2)),
+      collectionRate
     };
 
     res.json({ success: true, data: stats });
@@ -354,12 +473,156 @@ const getPaymentStats = async (req, res) => {
   }
 };
 
+// Get weekly collection report (income, expenses, and net deposits by payment method)
+const getWeeklyReport = async (req, res) => {
+  try {
+    const { week_start } = req.query;
+    
+    // Calculate week start (Monday) and end (Sunday)
+    let weekStart;
+    if (week_start) {
+      weekStart = new Date(week_start);
+    } else {
+      // Default to current week's Monday
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust for Sunday (0) or other days
+      weekStart = new Date(today);
+      weekStart.setDate(today.getDate() + diff);
+    }
+    
+    // Ensure it's a Monday
+    if (weekStart.getDay() !== 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'week_start must be a Monday'
+      });
+    }
+    
+    // Calculate week end (Sunday)
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    // Format dates for query
+    const startDate = weekStart.toISOString().split('T')[0];
+    const endDate = weekEnd.toISOString().split('T')[0];
+    
+    console.log('📅 Fetching weekly report from', startDate, 'to', endDate);
+    
+    // Query all transactions (income and expenses) for the week
+    const transactions = await LedgerEntry.findAll({
+      where: {
+        entry_date: {
+          [Op.gte]: startDate,
+          [Op.lte]: endDate
+        }
+      },
+      include: [
+        {
+          model: Member,
+          as: 'collector',
+          attributes: ['id', 'first_name', 'last_name', 'email'],
+          required: false
+        }
+      ],
+      order: [['payment_method', 'ASC'], ['type', 'ASC'], ['amount', 'DESC']]
+    });
+    
+    // Group transactions by payment method
+    const byPaymentMethod = {};
+    
+    transactions.forEach(transaction => {
+      const paymentMethod = transaction.payment_method || 'other';
+      
+      if (!byPaymentMethod[paymentMethod]) {
+        byPaymentMethod[paymentMethod] = {
+          income: [],
+          expenses: [],
+          totalIncome: 0,
+          totalExpenses: 0,
+          netToDeposit: 0
+        };
+      }
+      
+      const amount = parseFloat(transaction.amount) || 0;
+      const collectorName = transaction.collector 
+        ? `${transaction.collector.first_name} ${transaction.collector.last_name}`
+        : 'System';
+      
+      const item = {
+        id: transaction.id,
+        type: transaction.type,
+        category: transaction.category,
+        collected_by: transaction.collected_by,
+        collector_name: collectorName,
+        amount: amount,
+        entry_date: transaction.entry_date,
+        receipt_number: transaction.receipt_number,
+        memo: transaction.memo
+      };
+      
+      if (transaction.type === 'expense') {
+        byPaymentMethod[paymentMethod].expenses.push(item);
+        byPaymentMethod[paymentMethod].totalExpenses += amount;
+      } else {
+        // All other types are income (payment, donation, pledge_payment, etc.)
+        byPaymentMethod[paymentMethod].income.push(item);
+        byPaymentMethod[paymentMethod].totalIncome += amount;
+      }
+    });
+    
+    // Calculate net to deposit for each payment method
+    Object.keys(byPaymentMethod).forEach(method => {
+      byPaymentMethod[method].netToDeposit = 
+        byPaymentMethod[method].totalIncome - byPaymentMethod[method].totalExpenses;
+    });
+    
+    // Calculate summary
+    let totalIncome = 0;
+    let totalExpenses = 0;
+    let totalTransactions = transactions.length;
+    const depositBreakdown = {};
+    
+    Object.keys(byPaymentMethod).forEach(method => {
+      totalIncome += byPaymentMethod[method].totalIncome;
+      totalExpenses += byPaymentMethod[method].totalExpenses;
+      depositBreakdown[method] = byPaymentMethod[method].netToDeposit;
+    });
+    
+    const netTotal = totalIncome - totalExpenses;
+    
+    // Format response
+    const response = {
+      weekStart: startDate,
+      weekEnd: endDate,
+      byPaymentMethod,
+      summary: {
+        totalIncome: Number(totalIncome.toFixed(2)),
+        totalExpenses: Number(totalExpenses.toFixed(2)),
+        netTotal: Number(netTotal.toFixed(2)),
+        totalTransactions,
+        depositBreakdown
+      }
+    };
+    
+    res.json({ success: true, data: response });
+  } catch (error) {
+    console.error('Error fetching weekly report:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch weekly report',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllMemberPayments,
   getMemberPaymentDetails,
   addMemberPayment,
   generatePaymentReport,
   getPaymentStats,
+  getWeeklyReport,
   getMyDues,
   getDuesByMemberIdWithAuth
 };
