@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useStripe } from '@stripe/react-stripe-js';
 import { createPaymentIntent } from '../config/stripe';
 
 interface ACHPaymentProps {
@@ -34,6 +35,7 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
   purpose,
   onRefreshHistory
 }) => {
+  const stripe = useStripe();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bankInfo, setBankInfo] = useState({
@@ -45,6 +47,12 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
 
   // Expose payment processing function to parent component
   const processPayment = useCallback(async () => {
+    if (!stripe) {
+      const msg = 'Stripe has not loaded yet. Please try again.';
+      setError(msg);
+      onError(msg);
+      return;
+    }
     // Validate bank information
     if (!bankInfo.accountNumber || !bankInfo.routingNumber || !bankInfo.accountHolderName) {
       const errorMsg = 'Please fill in all required bank account information.';
@@ -89,21 +97,38 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
 
       const { client_secret, payment_intent_id, donation_id } = await createPaymentIntent(paymentData);
 
-      // For ACH payments, we'll simulate a successful payment since the actual processing
-      // would require additional Stripe setup for ACH
-      setTimeout(() => {
-        onSuccess({
-          amount: donationData.amount,
-          payment_method: 'ach',
-          status: 'pending',
-          message: 'ACH payment submitted successfully. It will take 3-5 business days to process.'
-        , payment_intent_id, donation_id });
-        // Trigger refresh after a short delay so the webhook can record the transaction when it clears
-        setTimeout(() => {
-          try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch {}
-          if (onRefreshHistory) onRefreshHistory();
-        }, 1200);
-      }, 2000);
+      // Confirm ACH payment by attaching bank account details
+      const { error: stripeError, paymentIntent } = await stripe.confirmUsBankAccountPayment(client_secret, {
+        payment_method: {
+          us_bank_account: {
+            account_number: bankInfo.accountNumber,
+            routing_number: bankInfo.routingNumber,
+            account_holder_type: bankInfo.accountType === 'company' ? 'company' : 'individual',
+          },
+          billing_details: {
+            name: bankInfo.accountHolderName,
+            email: donationData.donor_email,
+            phone: donationData.donor_phone,
+          }
+        }
+      } as any);
+
+      if (stripeError) {
+        const msg = stripeError.message || 'ACH confirmation failed';
+        setError(msg);
+        onError(msg);
+        return;
+      }
+
+      // paymentIntent.status will likely be 'processing' or 'requires_payment_method' in edge cases
+      onSuccess({
+        amount: donationData.amount,
+        payment_method: 'ach',
+        status: paymentIntent?.status || 'processing',
+        payment_intent_id,
+        donation_id
+      });
+      if (onRefreshHistory) onRefreshHistory();
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
