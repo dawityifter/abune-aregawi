@@ -4,6 +4,7 @@ import StripePayment from '../StripePayment';
 import ACHPayment from '../ACHPayment';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from '../../config/stripe';
+import { fetchIncomeCategories, IncomeCategory, getIncomeCategoryByPaymentType } from '../../utils/incomeCategoryApi';
 
 interface Member {
   id: string;
@@ -37,6 +38,14 @@ interface AddPaymentModalProps {
   const [paymentMethod, setPaymentMethod] = useState('');
   const [notes, setNotes] = useState('');
   
+  // Anonymous payment mode
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [donorType, setDonorType] = useState<'individual' | 'organization'>('individual');
+  const [donorName, setDonorName] = useState('');
+  const [donorEmail, setDonorEmail] = useState('');
+  const [donorPhone, setDonorPhone] = useState('');
+  const [donorMemo, setDonorMemo] = useState('');
+  
   // New transaction fields
   const [paymentDate, setPaymentDate] = useState('');
   const [paymentType, setPaymentType] = useState('');
@@ -44,6 +53,11 @@ interface AddPaymentModalProps {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [processStripePayment, setProcessStripePayment] = useState<null | (() => Promise<void>)>(null);
+  
+  // Income category fields
+  const [incomeCategories, setIncomeCategories] = useState<IncomeCategory[]>([]);
+  const [selectedIncomeCategoryId, setSelectedIncomeCategoryId] = useState<string>('');
+  const [incomeCategoriesLoading, setIncomeCategoriesLoading] = useState(false);
 
   // Amount input helpers (currency-like)
   const amountPattern = useMemo(() => /^[0-9]*([.][0-9]{0,2})?$/, []);
@@ -133,6 +147,37 @@ interface AddPaymentModalProps {
     }
   }, [paymentDate]);
 
+  // Fetch income categories on mount
+  useEffect(() => {
+    const loadIncomeCategories = async () => {
+      try {
+        setIncomeCategoriesLoading(true);
+        const categories = await fetchIncomeCategories(true);
+        setIncomeCategories(categories);
+      } catch (error) {
+        console.error('Error loading income categories:', error);
+      } finally {
+        setIncomeCategoriesLoading(false);
+      }
+    };
+
+    if (paymentView === 'new') {
+      loadIncomeCategories();
+    }
+  }, [paymentView]);
+
+  // Auto-select income category when payment type changes
+  useEffect(() => {
+    if (paymentType && incomeCategories.length > 0) {
+      const matchedCategory = getIncomeCategoryByPaymentType(incomeCategories, paymentType);
+      if (matchedCategory) {
+        setSelectedIncomeCategoryId(String(matchedCategory.id));
+      } else {
+        // No mapping found, clear selection
+        setSelectedIncomeCategoryId('');
+      }
+    }
+  }, [paymentType, incomeCategories]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -143,8 +188,8 @@ interface AddPaymentModalProps {
     try {
       // Validate amount for ALL flows (including Stripe)
       const amt = parseFloat(amount);
-      if (!amount || !Number.isFinite(amt) || amt <= 0) {
-        setAmountError('Please enter a valid amount greater than $0');
+      if (!amount || !Number.isFinite(amt) || amt < 1) {
+        setAmountError('Please enter a valid amount of at least $1.00');
         setLoading(false);
         return;
       }
@@ -168,22 +213,38 @@ interface AddPaymentModalProps {
         }
 
         // Non-Stripe methods: post transaction directly
+        const requestBody: any = {
+          member_id: isAnonymous ? null : parseInt(selectedMemberId),
+          collected_by: parseInt(user?.id || '1'), // Always use logged-in member
+          payment_date: paymentDate,
+          amount: parseFloat(amount),
+          payment_type: paymentType,
+          payment_method: paymentMethod,
+          receipt_number: receiptNumber,
+          note: notes
+        };
+        
+        // Add income category if selected
+        if (selectedIncomeCategoryId) {
+          requestBody.income_category_id = parseInt(selectedIncomeCategoryId);
+        }
+        
+        // Add donor fields if anonymous
+        if (isAnonymous) {
+          requestBody.donor_type = donorType;
+          requestBody.donor_name = donorName;
+          requestBody.donor_email = donorEmail;
+          requestBody.donor_phone = donorPhone;
+          requestBody.donor_memo = donorMemo;
+        }
+        
         response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?email=${encodeURIComponent(user?.email || '')}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
           },
-          body: JSON.stringify({
-            member_id: parseInt(selectedMemberId),
-            collected_by: parseInt(user?.id || '1'), // Always use logged-in member
-            payment_date: paymentDate,
-            amount: parseFloat(amount),
-            payment_type: paymentType,
-            payment_method: paymentMethod,
-            receipt_number: receiptNumber,
-            note: notes
-          })
+          body: JSON.stringify(requestBody)
         });
       } else {
         // Old payment system
@@ -241,16 +302,21 @@ interface AddPaymentModalProps {
   ];
 
   // New transaction payment types and methods
-  const transactionPaymentTypes = [
-    { value: 'membership_due', label: 'Membership Fee (ናይ አባልነት ኽፍሊት)' },
-    { value: 'tithe', label: 'Tithe (አስራት)' },
-    // Combine Donation and Other into one UI option mapping to 'donation'
-    { value: 'donation', label: 'Other Donation / ካልእ' },
-    { value: 'building_fund', label: 'Building Fund (ንሕንጻ ቤተክርስቲያን)' },
-    { value: 'offering', label: 'Offering (መባእ)' },
-    { value: 'vow', label: 'Vow (ስእለት)' },
-    // Removed explicit 'event' and 'other' options from dropdown per request
-  ];
+  // Filter out membership_due for anonymous payments
+  const transactionPaymentTypes = useMemo(() => {
+    const types = [
+      { value: 'membership_due', label: 'Membership Fee (ናይ አባልነት ኽፍሊት)' },
+      { value: 'tithe', label: 'Tithe (አስራት)' },
+      // Combine Donation and Other into one UI option mapping to 'donation'
+      { value: 'donation', label: 'Other Donation / ካልእ' },
+      { value: 'building_fund', label: 'Building Fund (ንሕንጻ ቤተክርስቲያን)' },
+      { value: 'offering', label: 'Offering (መባእ)' },
+      { value: 'vow', label: 'Vow (ስእለት)' },
+      // Removed explicit 'event' and 'other' options from dropdown per request
+    ];
+    // Remove membership_due for anonymous
+    return isAnonymous ? types.filter(t => t.value !== 'membership_due') : types;
+  }, [isAnonymous]);
 
   const transactionPaymentMethods = [
     { value: 'cash', label: 'Cash' },
@@ -295,10 +361,46 @@ interface AddPaymentModalProps {
           )}
 
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Member
-              </label>
+            {paymentView === 'new' && (
+              <div className="md:col-span-2 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Payment Mode
+                </label>
+                <div className="flex items-center space-x-6">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={!isAnonymous}
+                      onChange={() => {
+                        setIsAnonymous(false);
+                        setSelectedMemberId('');
+                      }}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Member Payment</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={isAnonymous}
+                      onChange={() => {
+                        setIsAnonymous(true);
+                        setSelectedMemberId('');
+                        setPaymentType('');
+                      }}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Anonymous / Non-Member Payment</span>
+                  </label>
+                </div>
+              </div>
+            )}
+            
+            {!isAnonymous && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Member
+                </label>
               <input
                 type="text"
                 value={memberSearch}
@@ -309,7 +411,7 @@ interface AddPaymentModalProps {
               <select
                 value={selectedMemberId}
                 onChange={(e) => setSelectedMemberId(e.target.value)}
-                required
+                required={!isAnonymous}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="" disabled>{memberSearchLoading ? 'Loading...' : 'Select a member'}</option>
@@ -322,7 +424,78 @@ interface AddPaymentModalProps {
               {members.length === 20 && (
                 <p className="mt-1 text-xs text-gray-500">Showing first 20 results. Refine your search to narrow further.</p>
               )}
-            </div>
+              </div>
+            )}
+            
+            {isAnonymous && paymentView === 'new' && (
+              <>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Donor Type
+                  </label>
+                  <select
+                    value={donorType}
+                    onChange={(e) => setDonorType(e.target.value as 'individual' | 'organization')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="individual">Individual</option>
+                    <option value="organization">Organization / Group</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Donor Name (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={donorName}
+                    onChange={(e) => setDonorName(e.target.value)}
+                    placeholder="Enter donor name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email (Optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={donorEmail}
+                    onChange={(e) => setDonorEmail(e.target.value)}
+                    placeholder="Enter email"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone (Optional)
+                  </label>
+                  <input
+                    type="tel"
+                    value={donorPhone}
+                    onChange={(e) => setDonorPhone(e.target.value)}
+                    placeholder="Enter phone number"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Memo (Optional)
+                  </label>
+                  <textarea
+                    value={donorMemo}
+                    onChange={(e) => setDonorMemo(e.target.value)}
+                    rows={2}
+                    placeholder="Additional information about the donor..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </>
+            )}
 
             {paymentView === 'old' ? (
               // Old payment system fields
@@ -402,6 +575,27 @@ interface AddPaymentModalProps {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Income Category (GL Code)
+                    {incomeCategoriesLoading && <span className="text-gray-400 ml-2 text-xs">Loading...</span>}
+                  </label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700">
+                    {incomeCategoriesLoading ? (
+                      <span className="text-gray-400">Loading categories...</span>
+                    ) : selectedIncomeCategoryId ? (
+                      <span className="font-medium">
+                        {incomeCategories.find(c => c.id === parseInt(selectedIncomeCategoryId))?.gl_code} - {incomeCategories.find(c => c.id === parseInt(selectedIncomeCategoryId))?.name}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 italic">Auto-assigned based on payment type</span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Automatically assigned based on payment type
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Payment Method
                   </label>
                   <select
@@ -445,7 +639,9 @@ interface AddPaymentModalProps {
                             donor_email: (members.find(m => String(m.id) === String(selectedMemberId))?.email) || '',
                             donor_phone: (members.find(m => String(m.id) === String(selectedMemberId))?.phoneNumber) || '',
                             donor_address: (members.find(m => String(m.id) === String(selectedMemberId))?.streetLine1) || '',
-                            donor_zip_code: (members.find(m => String(m.id) === String(selectedMemberId))?.postalCode) || ''
+                            donor_zip_code: (members.find(m => String(m.id) === String(selectedMemberId))?.postalCode) || '',
+                            // Metadata to associate payment with the selected member (treasurer flow)
+                            ...(true && { metadata: { memberId: selectedMemberId, firebaseUid: firebaseUser?.uid } } as any)
                           }}
                           purpose={(paymentType as any) || 'donation'}
                           inline
@@ -469,14 +665,14 @@ interface AddPaymentModalProps {
                                   external_id: result?.payment_intent_id,
                                   donation_id: result?.donation_id,
                                   receipt_number: receiptNumber,
-                                  note: notes
+                                  note: notes,
+                                  ...(selectedIncomeCategoryId && { income_category_id: parseInt(selectedIncomeCategoryId) })
                                 })
                               });
                               if (!response.ok) {
                                 const data = await response.json().catch(() => ({} as any));
                                 throw new Error(data.message || 'Failed to record card transaction');
                               }
-                              try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch {}
                               onPaymentAdded();
                               onClose();
                             } catch (err: any) {
@@ -489,20 +685,23 @@ interface AddPaymentModalProps {
                         />
                       </Elements>
                     ) : (
-                      <ACHPayment
-                        donationData={{
-                          amount: parseFloat(amount || '0'),
-                          donation_type: 'one-time',
-                          payment_method: 'ach',
-                          donor_first_name: (members.find(m => String(m.id) === String(selectedMemberId))?.firstName) || '',
-                          donor_last_name: (members.find(m => String(m.id) === String(selectedMemberId))?.lastName) || '',
-                          donor_email: (members.find(m => String(m.id) === String(selectedMemberId))?.email) || '',
-                          donor_phone: (members.find(m => String(m.id) === String(selectedMemberId))?.phoneNumber) || ''
-                        }}
-                        purpose={(paymentType as any) || 'donation'}
-                        inline
-                        onPaymentReady={(fn) => setProcessStripePayment(() => fn)}
-                        onSuccess={async (result: any) => {
+                      <Elements stripe={stripePromise}>
+                        <ACHPayment
+                          donationData={{
+                            amount: parseFloat(amount || '0'),
+                            donation_type: 'one-time',
+                            payment_method: 'ach',
+                            donor_first_name: (members.find(m => String(m.id) === String(selectedMemberId))?.firstName) || '',
+                            donor_last_name: (members.find(m => String(m.id) === String(selectedMemberId))?.lastName) || '',
+                            donor_email: (members.find(m => String(m.id) === String(selectedMemberId))?.email) || '',
+                            donor_phone: (members.find(m => String(m.id) === String(selectedMemberId))?.phoneNumber) || '',
+                            // Metadata to associate payment with the selected member (treasurer flow)
+                            ...(true && { metadata: { memberId: selectedMemberId, firebaseUid: firebaseUser?.uid } } as any)
+                          }}
+                          purpose={(paymentType as any) || 'donation'}
+                          inline
+                          onPaymentReady={(fn) => setProcessStripePayment(() => fn)}
+                          onSuccess={async (result: any) => {
                           try {
                             const response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?email=${encodeURIComponent(user?.email || '')}`, {
                               method: 'POST',
@@ -521,24 +720,25 @@ interface AddPaymentModalProps {
                                 external_id: result?.payment_intent_id,
                                 donation_id: result?.donation_id,
                                 receipt_number: receiptNumber,
-                                note: notes
+                                note: notes,
+                                ...(selectedIncomeCategoryId && { income_category_id: parseInt(selectedIncomeCategoryId) })
                               })
                             });
                             if (!response.ok) {
                               const data = await response.json().catch(() => ({} as any));
                               throw new Error(data.message || 'Failed to record ACH transaction');
                             }
-                            try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch {}
                             onPaymentAdded();
                             onClose();
                           } catch (err: any) {
                             setError(err?.message || 'Failed to record ACH transaction');
                           }
-                        }}
-                        onError={(msg) => setError(msg)}
-                        onCancel={() => {}}
-                        onRefreshHistory={() => onPaymentAdded()}
-                      />
+                          }}
+                          onError={(msg) => setError(msg)}
+                          onCancel={() => {}}
+                          onRefreshHistory={() => onPaymentAdded()}
+                        />
+                      </Elements>
                     )}
                   </div>
                 )}
