@@ -6,26 +6,35 @@ import TransactionList from './TransactionList';
 import PaymentStats from './PaymentStats';
 import PaymentReports from './PaymentReports';
 import AddPaymentModal from './AddPaymentModal';
+import AddExpenseModal from './AddExpenseModal';
+import ExpenseList from './ExpenseList';
+import WeeklyCollectionReport from './WeeklyCollectionReport';
 import ZelleReview from './ZelleReview';
 
 type PaymentView = 'old' | 'new';
 
 interface PaymentStatsData {
   totalMembers: number;
+  contributingMembers: number;
   upToDateMembers: number;
   behindMembers: number;
   totalAmountDue: number;
+  totalMembershipCollected: number;
+  otherPayments: number;
   totalCollected: number;
-  collectionRate: string;
+  totalExpenses: number;
+  netIncome: number;
+  collectionRate: number;
   outstandingAmount: number;
 }
 
 const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'reports' | 'zelle'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle'>('overview');
   const [paymentView, setPaymentView] = useState<PaymentView>('new'); // Default to new view
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -95,12 +104,13 @@ const TreasurerDashboard: React.FC = () => {
       setStats(null);
       setLoading(true);
       
-      // Use different endpoints based on the selected view
-      const endpoint = paymentView === 'new' ? '/api/transactions/stats' : '/api/payments/stats';
+      // For the overview cards, always use pledge/ledger-based stats
+      // regardless of paymentView selection
+      const endpoint = '/api/payments/stats';
       
       console.log('🔍 Using endpoint:', endpoint);
       
-      const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}?email=${encodeURIComponent(currentUser?.email || '')}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
@@ -226,6 +236,16 @@ const TreasurerDashboard: React.FC = () => {
                 Member Payments
               </button>
               <button
+                onClick={() => setActiveTab('expenses')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'expenses'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Expenses
+              </button>
+              <button
                 onClick={() => setActiveTab('reports')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'reports'
@@ -256,12 +276,22 @@ const TreasurerDashboard: React.FC = () => {
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-900">Payment Overview</h2>
                 {paymentView === 'new' && (
-                  <button
-                    onClick={() => setShowAddPaymentModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
-                  >
-                    Add Payment
-                  </button>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => setShowAddPaymentModal(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                    >
+                      Add Payment
+                    </button>
+                    {permissions.canAddExpenses && (
+                      <button
+                        onClick={() => setShowAddExpenseModal(true)}
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
+                      >
+                        Add Expense
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               {stats && <PaymentStats stats={stats} />}
@@ -294,10 +324,34 @@ const TreasurerDashboard: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'reports' && (
+          {activeTab === 'expenses' && permissions.canViewExpenses && (
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900 mb-6">Payment Reports</h2>
-              <PaymentReports paymentView={paymentView} />
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-semibold text-gray-900">Expenses</h2>
+                {permissions.canAddExpenses && (
+                  <button
+                    onClick={() => setShowAddExpenseModal(true)}
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
+                  >
+                    Add Expense
+                  </button>
+                )}
+              </div>
+              <ExpenseList />
+            </div>
+          )}
+
+          {activeTab === 'reports' && (
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">📅 Weekly Collection Report</h2>
+                <WeeklyCollectionReport />
+              </div>
+              
+              <div className="border-t pt-8">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Payment Reports</h2>
+                <PaymentReports paymentView={paymentView} />
+              </div>
             </div>
           )}
 
@@ -317,6 +371,20 @@ const TreasurerDashboard: React.FC = () => {
               fetchPaymentStats();
             }}
             paymentView={paymentView}
+          />
+        )}
+
+        {/* Add Expense Modal */}
+        {showAddExpenseModal && (
+          <AddExpenseModal
+            isOpen={showAddExpenseModal}
+            onClose={() => setShowAddExpenseModal(false)}
+            onSuccess={() => {
+              setShowAddExpenseModal(false);
+              fetchPaymentStats();
+              // Trigger refresh for expense list if on that tab
+              window.dispatchEvent(new CustomEvent('expenses:refresh'));
+            }}
           />
         )}
       </div>
