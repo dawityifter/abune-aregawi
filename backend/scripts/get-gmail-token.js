@@ -1,9 +1,12 @@
 // One-time Gmail OAuth token generator for gmail.readonly
 // Usage:
-//   export GMAIL_CLIENT_ID=... 
-//   export GMAIL_CLIENT_SECRET=...
+//   Add GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET to your .env file
+//   OR export them as environment variables
 //   node scripts/get-gmail-token.js
 // It will open a browser for consent and print tokens, including refresh_token.
+
+// Load environment variables from .env file
+require('dotenv').config();
 
 const http = require('http');
 const url = require('url');
