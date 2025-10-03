@@ -20,6 +20,12 @@ export interface RolePermissions {
   canManagePledges: boolean;
   canViewPledgeReports: boolean;
   
+  // Expense Management
+  canViewExpenses: boolean;
+  canAddExpenses: boolean;
+  canEditExpenses: boolean;
+  canDeleteExpenses: boolean;
+  
   // Event & Communication
   canManageEvents: boolean;
   canSendCommunications: boolean;
@@ -65,6 +71,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canManagePledges: true,
     canViewPledgeReports: true,
     
+    // Expense Management
+    canViewExpenses: true,
+    canAddExpenses: true,
+    canEditExpenses: true,
+    canDeleteExpenses: true,
+    
     // Event & Communication
     canManageEvents: true,
     canSendCommunications: true,
@@ -107,6 +119,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canTrackContributions: false,
     canManagePledges: true,
     canViewPledgeReports: true,
+    
+    // Expense Management
+    canViewExpenses: true,
+    canAddExpenses: false,
+    canEditExpenses: false,
+    canDeleteExpenses: false,
     
     // Event & Communication
     canManageEvents: true,
@@ -151,6 +169,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canManagePledges: true,
     canViewPledgeReports: true,
     
+    // Expense Management
+    canViewExpenses: true,
+    canAddExpenses: true,
+    canEditExpenses: true,
+    canDeleteExpenses: false,
+    
     // Event & Communication
     canManageEvents: false,
     canSendCommunications: false,
@@ -193,6 +217,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canTrackContributions: false,
     canManagePledges: false,
     canViewPledgeReports: false,
+
+    // Expense Management
+    canViewExpenses: false,
+    canAddExpenses: false,
+    canEditExpenses: false,
+    canDeleteExpenses: false,
 
     // Event & Communication
     canManageEvents: false,
@@ -237,6 +267,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canManagePledges: false,
     canViewPledgeReports: false,
     
+    // Expense Management
+    canViewExpenses: false,
+    canAddExpenses: false,
+    canEditExpenses: false,
+    canDeleteExpenses: false,
+    
     // Event & Communication
     canManageEvents: true,
     canSendCommunications: true,
@@ -280,6 +316,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canManagePledges: false,
     canViewPledgeReports: false,
     
+    // Expense Management
+    canViewExpenses: false,
+    canAddExpenses: false,
+    canEditExpenses: false,
+    canDeleteExpenses: false,
+    
     // Event & Communication
     canManageEvents: false,
     canSendCommunications: false,
@@ -322,6 +364,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canTrackContributions: false,
     canManagePledges: false,
     canViewPledgeReports: false,
+    
+    // Expense Management
+    canViewExpenses: false,
+    canAddExpenses: false,
+    canEditExpenses: false,
+    canDeleteExpenses: false,
     
     // Event & Communication
     canManageEvents: false,
