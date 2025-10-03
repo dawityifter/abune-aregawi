@@ -10,7 +10,8 @@
     "build": "cd frontend && npm run build",
     "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
     "start:frontend": "cd frontend && npm start",
-    "start:backend": "cd backend && npm start"
+    "start:backend": "cd backend && npm start",
+    "emulators": "cd frontend && firebase emulators:start --only auth --import ./firebase_data --export-on-exit"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
