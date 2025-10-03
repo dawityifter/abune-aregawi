@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface Transaction {
   id: number;
-  member_id: number;
+  member_id: number | null;
   collected_by: number;
   payment_date: string;
   amount: number;
@@ -12,6 +12,7 @@ interface Transaction {
   status?: 'pending' | 'succeeded' | 'failed' | 'canceled';
   receipt_number?: string;
   note?: string;
+  income_category_id?: number | null;
   created_at: string;
   updated_at: string;
   member?: {
@@ -27,6 +28,12 @@ interface Transaction {
     last_name: string;
     email: string;
     phone_number: string;
+  };
+  incomeCategory?: {
+    id: number;
+    gl_code: string;
+    name: string;
+    description: string;
   };
 }
 
@@ -128,7 +135,10 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
         params.append('end_date', today.toISOString().split('T')[0]);
       }
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?${params}`, {
+      // Always use real endpoint
+      const endpoint = '/api/transactions';
+      
+      const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}?${params}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
@@ -199,6 +209,23 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
         {cfg.text}
       </span>
     );
+  };
+
+  // Extract donor info from note field for anonymous donations
+  const parseDonorInfo = (note?: string) => {
+    if (!note || !note.includes('[Anonymous Donor]')) return null;
+    
+    const lines = note.split('\n');
+    const donorInfo: { name?: string; type?: string; email?: string; phone?: string } = {};
+    
+    for (const line of lines) {
+      if (line.startsWith('Name:')) donorInfo.name = line.replace('Name:', '').trim();
+      if (line.startsWith('Type:')) donorInfo.type = line.replace('Type:', '').trim();
+      if (line.startsWith('Email:')) donorInfo.email = line.replace('Email:', '').trim();
+      if (line.startsWith('Phone:')) donorInfo.phone = line.replace('Phone:', '').trim();
+    }
+    
+    return donorInfo;
   };
 
   if (loading) {
@@ -314,6 +341,9 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                   Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  GL Code
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Method
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -337,16 +367,43 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                     {formatDate(transaction.payment_date)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {transaction.member?.id ?? transaction.member_id}
+                    {transaction.member_id ? (transaction.member?.id ?? transaction.member_id) : (
+                      <span className="italic text-gray-500">Anonymous</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {transaction.member ? `${transaction.member.first_name} ${transaction.member.last_name}` : `Member ${transaction.member_id}`}
-                    </div>
-                    {transaction.member?.email && (
-                      <div className="text-sm text-gray-500">
-                        {transaction.member.email}
-                      </div>
+                    {transaction.member_id ? (
+                      <>
+                        <div className="text-sm font-medium text-gray-900">
+                          {transaction.member ? `${transaction.member.first_name} ${transaction.member.last_name}` : `Member ${transaction.member_id}`}
+                        </div>
+                        {transaction.member?.email && (
+                          <div className="text-sm text-gray-500">
+                            {transaction.member.email}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium text-gray-900">
+                            {parseDonorInfo(transaction.note)?.name || 'Anonymous Donor'}
+                          </span>
+                          <span className="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                            Non-Member
+                          </span>
+                        </div>
+                        {parseDonorInfo(transaction.note)?.email && (
+                          <div className="text-sm text-gray-500">
+                            {parseDonorInfo(transaction.note)?.email}
+                          </div>
+                        )}
+                        {parseDonorInfo(transaction.note)?.type && (
+                          <div className="text-xs text-gray-400">
+                            {parseDonorInfo(transaction.note)?.type === 'organization' ? 'Organization/Group' : 'Individual'}
+                          </div>
+                        )}
+                      </>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -356,6 +413,16 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                       {getPaymentTypeLabel(transaction.payment_type)}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {transaction.incomeCategory ? (
+                      <div className="text-sm">
+                        <div className="font-medium text-gray-900">{transaction.incomeCategory.gl_code}</div>
+                        <div className="text-xs text-gray-500">{transaction.incomeCategory.name}</div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 italic">Auto-assigned</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
