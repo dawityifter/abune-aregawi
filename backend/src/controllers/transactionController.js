@@ -1,4 +1,4 @@
-const { Transaction, Member, sequelize } = require('../models');
+const { Transaction, Member, LedgerEntry, IncomeCategory, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 // Get all transactions with optional filtering
@@ -36,10 +36,12 @@ const getAllTransactions = async (req, res) => {
     }
 
     // Build includes, adding a search filter on member if provided
+    // Member can be null for anonymous donations
     const memberInclude = {
       model: Member,
       as: 'member',
-      attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
+      attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number'],
+      required: false // Allow null member_id for anonymous donations
     };
 
     if (search && String(search).trim()) {
@@ -60,7 +62,7 @@ const getAllTransactions = async (req, res) => {
       memberInclude.where = {
         [Op.and]: tokenClauses
       };
-      memberInclude.required = true; // Ensure join filters results
+      memberInclude.required = true; // When searching, only show matching members (excludes anonymous)
     }
 
     const includes = [
@@ -69,6 +71,12 @@ const getAllTransactions = async (req, res) => {
         model: Member,
         as: 'collector',
         attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
+      },
+      {
+        model: IncomeCategory,
+        as: 'incomeCategory',
+        attributes: ['id', 'gl_code', 'name', 'description'],
+        required: false
       }
     ];
 
@@ -112,7 +120,8 @@ const getTransactionById = async (req, res) => {
         {
           model: Member,
           as: 'member',
-          attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
+          attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number'],
+          required: false // Allow null for anonymous donations
         },
         {
           model: Member,
@@ -143,8 +152,10 @@ const getTransactionById = async (req, res) => {
   }
 };
 
-// Create a new transaction
+// Create a new transaction with dual-write to ledger_entries
 const createTransaction = async (req, res) => {
+  const t = await sequelize.transaction();
+  
   try {
     const {
       member_id,
@@ -156,23 +167,38 @@ const createTransaction = async (req, res) => {
       receipt_number,
       note,
       external_id,
-      status = 'succeeded',
-      donation_id
+      status = 'succeeded', // Default transaction status
+      donation_id,
+      income_category_id, // New: GL code support
+      // Anonymous donor fields
+      donor_type,
+      donor_name,
+      donor_email,
+      donor_phone,
+      donor_memo
     } = req.body;
 
-    // Validate required fields
-    if (!member_id || !collected_by || !amount || !payment_type || !payment_method) {
+    // Validate required fields (member_id is optional for anonymous donations)
+    if (!collected_by || !amount || !payment_type || !payment_method) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: member_id, collected_by, amount, payment_type, payment_method'
+        message: 'Missing required fields: collected_by, amount, payment_type, payment_method'
       });
     }
 
-    // Validate amount
-    if (parseFloat(amount) <= 0) {
+    // Validate: membership_due requires a member_id
+    if (!member_id && payment_type === 'membership_due') {
       return res.status(400).json({
         success: false,
-        message: 'Amount must be greater than 0'
+        message: 'Membership dues cannot be paid anonymously. A member must be selected.'
+      });
+    }
+
+    // Validate amount (minimum $1)
+    if (parseFloat(amount) < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Amount must be at least $1.00'
       });
     }
 
@@ -184,19 +210,73 @@ const createTransaction = async (req, res) => {
       });
     }
 
-    // Verify that both member and collector exist
-    const [member, collector] = await Promise.all([
-      Member.findByPk(member_id),
-      Member.findByPk(collected_by)
-    ]);
-
-    if (!member) {
-      return res.status(400).json({
-        success: false,
-        message: 'Member not found'
+    // Determine GL code from income_category_id or auto-assign from payment_type
+    let glCode = payment_type; // Fallback to payment_type for backward compatibility
+    let finalIncomeCategoryId = income_category_id;
+    
+    if (income_category_id) {
+      // User explicitly selected an income category
+      const incomeCategory = await IncomeCategory.findByPk(income_category_id);
+      if (incomeCategory) {
+        glCode = incomeCategory.gl_code;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid income category ID'
+        });
+      }
+    } else {
+      // Auto-assign income category based on payment_type mapping
+      let incomeCategory = await IncomeCategory.findOne({
+        where: { payment_type_mapping: payment_type }
       });
+      
+      // Fallback mappings for payment types without direct mapping
+      if (!incomeCategory) {
+        const fallbackMappings = {
+          'tithe': 'offering',        // tithe → INC002 (Weekly Offering)
+          'building_fund': 'event'    // building_fund → INC003 (Fundraising)
+        };
+        
+        const fallbackType = fallbackMappings[payment_type];
+        if (fallbackType) {
+          incomeCategory = await IncomeCategory.findOne({
+            where: { payment_type_mapping: fallbackType }
+          });
+        }
+      }
+      
+      if (incomeCategory) {
+        finalIncomeCategoryId = incomeCategory.id;
+        glCode = incomeCategory.gl_code;
+      }
     }
 
+    // Build donor info note if anonymous donation
+    let finalNote = note || '';
+    if (!member_id && (donor_name || donor_email || donor_phone || donor_memo || donor_type)) {
+      const donorInfo = [];
+      if (donor_type) donorInfo.push(`Type: ${donor_type}`);
+      if (donor_name) donorInfo.push(`Name: ${donor_name}`);
+      if (donor_email) donorInfo.push(`Email: ${donor_email}`);
+      if (donor_phone) donorInfo.push(`Phone: ${donor_phone}`);
+      if (donor_memo) donorInfo.push(`Memo: ${donor_memo}`);
+      
+      const donorSection = `[Anonymous Donor]\n${donorInfo.join('\n')}`;
+      finalNote = finalNote ? `${donorSection}\n\n${finalNote}` : donorSection;
+    }
+
+    // Normalize and map statuses between transactions and ledger entries
+    const txStatus = status === 'completed'
+      ? 'succeeded'
+      : (status === 'cancelled' ? 'canceled' : status);
+    // Ledger uses 'completed' and 'cancelled'
+    const ledgerStatus = txStatus === 'succeeded'
+      ? 'completed'
+      : (txStatus === 'canceled' ? 'cancelled' : txStatus);
+
+    // Verify that collector exists and member exists (if provided)
+    const collector = await Member.findByPk(collected_by);
     if (!collector) {
       return res.status(400).json({
         success: false,
@@ -204,27 +284,52 @@ const createTransaction = async (req, res) => {
       });
     }
 
-    // If external_id provided, upsert to prevent duplicates
-    let transaction = null;
-    if (external_id) {
-      const existing = await Transaction.findOne({ where: { external_id } });
-      if (existing) {
-        await existing.update({
-          member_id,
-          collected_by,
-          payment_date: payment_date || new Date(),
-          amount: parseFloat(amount),
-          payment_type,
-          payment_method,
-          receipt_number,
-          note,
-          status,
-          donation_id: donation_id || existing.donation_id
+    // Verify member exists only if member_id is provided (not anonymous)
+    if (member_id) {
+      const member = await Member.findByPk(member_id);
+      if (!member) {
+        return res.status(400).json({
+          success: false,
+          message: 'Member not found'
         });
-        transaction = existing;
       }
     }
 
+    // If external_id provided, check for existing transaction
+    let transaction = null;
+    if (external_id) {
+      transaction = await Transaction.findOne({ 
+        where: { external_id },
+        transaction: t
+      });
+      
+      if (transaction) {
+        // Update existing transaction and its ledger entries
+        await Promise.all([
+          transaction.update({
+            member_id,
+            collected_by,
+            payment_date: payment_date || new Date(),
+            amount: parseFloat(amount),
+            payment_type,
+            payment_method,
+            receipt_number,
+            note: finalNote,
+            status: txStatus,
+            donation_id: donation_id || transaction.donation_id,
+            income_category_id: finalIncomeCategoryId
+          }, { transaction: t }),
+          
+          // Update corresponding ledger entries
+          LedgerEntry.destroy({ 
+            where: { transaction_id: transaction.id },
+            transaction: t 
+          })
+        ]);
+      }
+    }
+
+    // Create new transaction if it doesn't exist
     if (!transaction) {
       transaction = await Transaction.create({
         member_id,
@@ -234,36 +339,80 @@ const createTransaction = async (req, res) => {
         payment_type,
         payment_method,
         receipt_number,
-        note,
+        note: finalNote,
         external_id: external_id || null,
-        status,
-        donation_id: donation_id || null
-      });
+        status: txStatus,
+        donation_id: donation_id || null,
+        income_category_id: finalIncomeCategoryId
+      }, { transaction: t });
     }
+    
+    // Create corresponding ledger entry using Sequelize (avoids enum issues)
+    const entryDate = payment_date || new Date();
+    const memo = `${glCode} - ${finalNote || 'No description'}`;
+    
+    await LedgerEntry.create({
+      type: payment_type, // Keep payment_type for backward compatibility
+      category: glCode, // Use GL code for categorization (INC001, INC002, etc.)
+      amount: parseFloat(amount),
+      entry_date: entryDate,
+      payment_method,
+      receipt_number: receipt_number || null,
+      memo,
+      collected_by,
+      member_id,
+      transaction_id: transaction.id,
+      source_system: 'manual',
+      external_id: external_id || null,
+      fund: null,
+      attachment_url: null,
+      statement_date: null
+    }, { transaction: t });
 
-    // Fetch the created transaction with associations
+    // Fetch the created transaction with associations and ledger entries
     const createdTransaction = await Transaction.findByPk(transaction.id, {
       include: [
         {
           model: Member,
           as: 'member',
-          attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
+          attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number'],
+          required: false // Allow null for anonymous donations
         },
         {
           model: Member,
           as: 'collector',
           attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
+        },
+        {
+          model: IncomeCategory,
+          as: 'incomeCategory',
+          attributes: ['id', 'gl_code', 'name', 'description'],
+          required: false
         }
-      ]
+      ],
+      transaction: t
     });
+
+    // Commit the transaction
+    await t.commit();
 
     res.status(201).json({
       success: true,
-      message: 'Transaction created successfully',
-      data: { transaction: createdTransaction }
+      message: 'Transaction created successfully with ledger entries',
+      data: { 
+        transaction: createdTransaction
+      }
     });
   } catch (error) {
-    console.error('Error creating transaction:', error);
+    // Rollback the transaction in case of error
+    await t.rollback();
+    
+    console.error('❌ Error creating transaction:', error);
+    console.error('Error details:', error.message);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error stack:', error.stack);
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Failed to create transaction',
@@ -272,30 +421,36 @@ const createTransaction = async (req, res) => {
   }
 };
 
-// Update a transaction
+// Update a transaction and its associated ledger entries
 const updateTransaction = async (req, res) => {
+  const t = await sequelize.transaction();
+  
   try {
     const { id } = req.params;
     const updateData = req.body;
 
-    const transaction = await Transaction.findByPk(id);
+    // Find the transaction within the transaction
+    const transaction = await Transaction.findByPk(id, { transaction: t });
     if (!transaction) {
+      await t.rollback();
       return res.status(404).json({
         success: false,
         message: 'Transaction not found'
       });
     }
 
-    // Validate amount if provided
-    if (updateData.amount && parseFloat(updateData.amount) <= 0) {
+    // Validate amount if provided (minimum $1)
+    if (updateData.amount && parseFloat(updateData.amount) < 1) {
+      await t.rollback();
       return res.status(400).json({
         success: false,
-        message: 'Amount must be greater than 0'
+        message: 'Amount must be at least $1.00'
       });
     }
 
     // Validate receipt number for cash/check payments
     if (updateData.payment_method && ['cash', 'check'].includes(updateData.payment_method) && !updateData.receipt_number) {
+      await t.rollback();
       return res.status(400).json({
         success: false,
         message: 'Receipt number is required for cash and check payments'
@@ -304,8 +459,9 @@ const updateTransaction = async (req, res) => {
 
     // Verify that both member and collector exist if they're being updated
     if (updateData.member_id) {
-      const member = await Member.findByPk(updateData.member_id);
+      const member = await Member.findByPk(updateData.member_id, { transaction: t });
       if (!member) {
+        await t.rollback();
         return res.status(400).json({
           success: false,
           message: 'Member not found'
@@ -314,8 +470,9 @@ const updateTransaction = async (req, res) => {
     }
 
     if (updateData.collected_by) {
-      const collector = await Member.findByPk(updateData.collected_by);
+      const collector = await Member.findByPk(updateData.collected_by, { transaction: t });
       if (!collector) {
+        await t.rollback();
         return res.status(400).json({
           success: false,
           message: 'Collector not found'
@@ -323,7 +480,44 @@ const updateTransaction = async (req, res) => {
       }
     }
 
-    await transaction.update(updateData);
+    // Update the transaction
+    await transaction.update(updateData, { transaction: t });
+    
+    // Delete existing ledger entries for this transaction
+    await LedgerEntry.destroy({ 
+      where: { transaction_id: id },
+      transaction: t 
+    });
+
+    // Recreate a single income ledger entry aligned with current schema
+    const entryDate = updateData.payment_date || transaction.payment_date || new Date();
+    const paymentType = updateData.payment_type || transaction.payment_type;
+    const paymentMethod = updateData.payment_method || transaction.payment_method;
+    const amount = updateData.amount ? parseFloat(updateData.amount) : transaction.amount;
+    const memberId = updateData.member_id || transaction.member_id;
+    const collectedById = updateData.collected_by || transaction.collected_by;
+    const receiptNumber = updateData.receipt_number || transaction.receipt_number || null;
+    const note = updateData.note || transaction.note || '';
+    const memo = `${paymentType} - ${note || 'No description'}`;
+
+    // Create ledger entry using Sequelize (avoids enum issues)
+    await LedgerEntry.create({
+      type: paymentType, // Use paymentType directly - Sequelize handles it as STRING
+      category: paymentType,
+      amount: amount,
+      entry_date: entryDate,
+      payment_method: paymentMethod,
+      receipt_number: receiptNumber,
+      memo,
+      collected_by: collectedById,
+      member_id: memberId,
+      transaction_id: id,
+      source_system: 'manual',
+      external_id: null,
+      fund: null,
+      attachment_url: null,
+      statement_date: null
+    }, { transaction: t });
 
     // Fetch the updated transaction with associations
     const updatedTransaction = await Transaction.findByPk(id, {
@@ -338,48 +532,93 @@ const updateTransaction = async (req, res) => {
           as: 'collector',
           attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
         }
-      ]
+      ],
+      transaction: t
     });
+    // Commit the transaction
+    await t.commit();
 
     res.json({
       success: true,
-      message: 'Transaction updated successfully',
-      data: { transaction: updatedTransaction }
+      message: 'Transaction and ledger entries updated successfully',
+      data: { 
+        transaction: updatedTransaction
+      }
     });
   } catch (error) {
+    // Rollback the transaction in case of error
+    if (t && !t.finished) {
+      await t.rollback();
+    }
+    
     console.error('Error updating transaction:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update transaction',
+      message: 'Failed to update transaction and ledger entries',
       error: error.message
     });
   }
 };
 
-// Delete a transaction
+// Delete a transaction and its associated ledger entries
 const deleteTransaction = async (req, res) => {
+  const t = await sequelize.transaction();
+  
   try {
     const { id } = req.params;
 
-    const transaction = await Transaction.findByPk(id);
+    // Find the transaction within the transaction
+    const transaction = await Transaction.findByPk(id, { 
+      include: [
+        {
+          model: LedgerEntry,
+          as: 'ledgerEntries',
+          attributes: ['id']
+        }
+      ],
+      transaction: t 
+    });
+    
     if (!transaction) {
+      await t.rollback();
       return res.status(404).json({
         success: false,
         message: 'Transaction not found'
       });
     }
 
-    await transaction.destroy();
+    // Delete associated ledger entries first (if any)
+    if (transaction.ledgerEntries && transaction.ledgerEntries.length > 0) {
+      await LedgerEntry.destroy({
+        where: { transaction_id: id },
+        transaction: t
+      });
+    }
+
+    // Delete the transaction
+    await transaction.destroy({ transaction: t });
+    
+    // Commit the transaction
+    await t.commit();
 
     res.json({
       success: true,
-      message: 'Transaction deleted successfully'
+      message: 'Transaction and associated ledger entries deleted successfully',
+      data: {
+        transaction_id: id,
+        deleted_ledger_entries_count: transaction.ledgerEntries ? transaction.ledgerEntries.length : 0
+      }
     });
   } catch (error) {
+    // Rollback the transaction in case of error
+    if (t && !t.finished) {
+      await t.rollback();
+    }
+    
     console.error('Error deleting transaction:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete transaction',
+      message: 'Failed to delete transaction and associated ledger entries',
       error: error.message
     });
   }

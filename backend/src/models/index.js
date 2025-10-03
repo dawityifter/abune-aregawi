@@ -12,11 +12,12 @@ console.log('  DATABASE_URL preview:', process.env.DATABASE_URL ?
 
 // Database configuration
 let sequelize;
-try {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
 
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is required');
+}
+
+try {
   // Determine database type from URL
   const isPostgres = process.env.DATABASE_URL.startsWith('postgres');
   const isSQLite = process.env.DATABASE_URL.startsWith('sqlite');
@@ -32,7 +33,7 @@ try {
   if (isPostgres) {
     // Make SSL optional for local development
     const wantSSL = process.env.DATABASE_SSL === 'true';
-    const base = {
+    config = {
       ...config,
       dialect: 'postgres',
       pool: {
@@ -48,86 +49,88 @@ try {
           /ConnectionError/,
           /ConnectionRefusedError/,
           /ConnectionTimedOutError/,
-          /TimeoutError/,
-          /SASL/
+          /SequelizeConnectionError/,
+          /SequelizeConnectionRefusedError/,
+          /SequelizeHostNotFoundError/,
+          /SequelizeHostNotReachableError/,
+          /SequelizeInvalidConnectionError/,
+          /SequelizeConnectionTimedOutError/,
+          /SequelizeConnectionAcquireTimeoutError/
         ],
-        max: 3
-      }
-    };
-
-    if (wantSSL) {
-      base.dialectOptions = {
-        ssl: {
+        max: 3,
+        timeout: 30000
+      },
+      dialectOptions: {
+        ssl: wantSSL ? {
           require: true,
           rejectUnauthorized: false
-        },
-        connectTimeout: 60000,
-        socketTimeout: 60000
-      };
-    }
-
-    config = base;
+        } : false,
+        statement_timeout: 10000,
+        idle_in_transaction_session_timeout: 10000
+      }
+    };
   } else if (isSQLite) {
     config = {
       ...config,
       dialect: 'sqlite',
-      storage: process.env.DATABASE_URL === 'sqlite::memory:' ? ':memory:' : process.env.DATABASE_URL.replace('sqlite:', ''),
-      logging: process.env.NODE_ENV === 'test' ? false : config.logging
+      storage: process.env.DATABASE_URL === 'sqlite::memory:' ? ':memory:' : process.env.DATABASE_URL.replace('sqlite:', '')
     };
   } else {
     throw new Error(`Unsupported database URL format: ${process.env.DATABASE_URL}`);
   }
 
+  // Initialize Sequelize
   sequelize = new Sequelize(process.env.DATABASE_URL, config);
   console.log(`✅ Sequelize instance created successfully (${config.dialect})`);
+  
+  // Import models
+  const Member = require('./Member')(sequelize);
+  const Dependent = require('./Dependent')(sequelize);
+  const Transaction = require('./Transaction')(sequelize);
+  const MemberPayment = require('./MemberPayment')(sequelize);
+  const Donation = require('./Donation')(sequelize);
+  const Pledge = require('./Pledge')(sequelize);
+  const SmsLog = require('./SmsLog')(sequelize);
+  const Group = require('./Group')(sequelize);
+  const MemberGroup = require('./MemberGroup')(sequelize);
+  const ZelleMemoMatch = require('./ZelleMemoMatch')(sequelize);
+  const Outreach = require('./Outreach')(sequelize);
+  const LedgerEntry = require('./LedgerEntry')(sequelize);
+  const ExpenseCategory = require('./ExpenseCategory')(sequelize);
+  const IncomeCategory = require('./IncomeCategory')(sequelize);
+
+  // Define models object
+  const models = {
+    Member, 
+    Dependent, 
+    Transaction, 
+    MemberPayment, 
+    Donation, 
+    Pledge, 
+    SmsLog, 
+    Group, 
+    MemberGroup, 
+    ZelleMemoMatch, 
+    Outreach, 
+    LedgerEntry,
+    ExpenseCategory,
+    IncomeCategory
+  };
+
+  // Call associate on each model
+  Object.values(models).forEach(model => {
+    if (typeof model.associate === 'function') {
+      model.associate(models);
+    }
+  });
+
+  // Export models and sequelize instance
+  module.exports = {
+    sequelize,
+    ...models
+  };
+  
 } catch (error) {
-  console.error('❌ Error creating Sequelize instance:', error.message);
-  throw error;
+  console.error('❌ Error initializing database:', error.message);
+  process.exit(1);
 }
-
-// Import models
-const Member = require('./Member')(sequelize);
-const Dependent = require('./Dependent')(sequelize);
-const Transaction = require('./Transaction')(sequelize);
-const MemberPayment = require('./MemberPayment')(sequelize);
-const Donation = require('./Donation')(sequelize);
-const Pledge = require('./Pledge')(sequelize);
-const Outreach = require('./Outreach')(sequelize);
-const SmsLog = require('./SmsLog')(sequelize);
-const Group = require('./Group')(sequelize);
-const MemberGroup = require('./MemberGroup')(sequelize);
-const ZelleMemoMatch = require('./ZelleMemoMatch')(sequelize);
-
-// Define associations
-Member.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
-Dependent.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
-Transaction.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
-MemberPayment.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
-Donation.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
-Pledge.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
-Outreach.associate({ Dependent, Member, Transaction, MemberPayment, Donation, Pledge, SmsLog, Group, MemberGroup, ZelleMemoMatch, Outreach });
-if (typeof Group.associate === 'function') {
-  Group.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch });
-}
-if (typeof MemberGroup.associate === 'function') {
-  MemberGroup.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch });
-}
-if (typeof ZelleMemoMatch.associate === 'function') {
-  ZelleMemoMatch.associate({ Dependent, Member, Transaction, MemberPayment, Donation, SmsLog, Group, MemberGroup, ZelleMemoMatch });
-}
-
-// Export models and sequelize instance
-module.exports = {
-  sequelize,
-  Member,
-  Dependent,
-  Transaction,
-  MemberPayment,
-  Donation,
-  Pledge,
-  Outreach,
-  SmsLog,
-  Group,
-  MemberGroup,
-  ZelleMemoMatch
-}; 
