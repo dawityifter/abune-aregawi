@@ -42,7 +42,7 @@ This document summarizes the comprehensive database refactoring performed to con
 #### Updated Models
 - ✅ `Member.js` - Updated to use BIGINT and new field structure
 - ✅ `Dependent.js` - New model (renamed from Dependant)
-- ✅ `Transaction.js` - New model (renamed from ChurchTransaction)
+- ✅ `Transaction.js` - Transaction model
 
 #### Model Associations
 - ✅ Member ↔ Dependent (one-to-many)

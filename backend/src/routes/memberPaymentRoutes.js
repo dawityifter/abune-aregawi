@@ -5,27 +5,34 @@ const {
   getMemberPaymentDetails, 
   addMemberPayment, 
   generatePaymentReport, 
-  getPaymentStats 
+  getPaymentStats,
+  getWeeklyReport
 } = require('../controllers/memberPaymentController');
 const { firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
 
-// All routes require Firebase authentication and treasurer role
+// Apply authentication middleware to all routes
 router.use(firebaseAuthMiddleware);
 
+// All routes require treasurer or admin role
+router.use(roleMiddleware(['treasurer', 'admin']));
+
 // Get all member payments with filtering and pagination
-router.get('/', roleMiddleware(['treasurer', 'admin']), getAllMemberPayments);
+router.get('/', getAllMemberPayments);
 
 // Get payment statistics for dashboard
-router.get('/stats', roleMiddleware(['treasurer', 'admin']), getPaymentStats);
+router.get('/stats', getPaymentStats);
+
+// Get weekly collection report (must be before /:memberId to avoid conflicts)
+router.get('/weekly-report', getWeeklyReport);
 
 // Get payment details for a specific member
-router.get('/:memberId', roleMiddleware(['treasurer', 'admin']), getMemberPaymentDetails);
+router.get('/:memberId', getMemberPaymentDetails);
 
 // Add or update payment for a member
-router.post('/:memberId/payment', roleMiddleware(['treasurer', 'admin']), addMemberPayment);
+router.post('/:memberId/payment', addMemberPayment);
 
 // Generate payment reports
-router.get('/reports/:reportType', roleMiddleware(['treasurer', 'admin']), generatePaymentReport);
+router.get('/reports/:reportType', generatePaymentReport);
 
 module.exports = router; 
