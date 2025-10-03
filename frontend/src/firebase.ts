@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
 
 if (typeof window !== 'undefined') {
   window.getIdToken = async () => {
@@ -29,15 +29,14 @@ if (missingKeys.length > 0) {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Disable reCAPTCHA Enterprise in development
-if (process.env.NODE_ENV === 'development') {
-  console.log('Development mode: Disabling reCAPTCHA Enterprise');
-  // This will prevent Firebase from trying to load reCAPTCHA Enterprise scripts
-  (window as any).__FIREBASE_DISABLE_RECAPTCHA_ENTERPRISE__ = true;
-  
-  // Also try to disable Enterprise mode in Firebase Auth
-  if (typeof window !== 'undefined') {
-    (window as any).__FIREBASE_AUTH_EMULATOR_HOST__ = 'localhost:9099';
+// Connect to Auth Emulator locally
+if (typeof window !== 'undefined') {
+  const host = window.location.hostname;
+  const isLocal = host === 'localhost' || host === '127.0.0.1';
+  if (isLocal) {
+    // Prefer 127.0.0.1 to align with emulator and reCAPTCHA domain policy
+    connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+    console.log('[Auth] Connected to Firebase Auth Emulator at 127.0.0.1:9099');
   }
 }
 
