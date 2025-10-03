@@ -60,6 +60,23 @@ graph TB
 
 ## 🆕 Recent Improvements
 
+### Financial Management (October 2025)
+- ✅ **Payment Overview Dashboard**: Pledge-based statistics with real-time metrics
+  - Computes member payment status from `yearly_pledge` and actual payments
+  - New "Contributing Members" metric shows members with active pledges
+  - Up-to-date vs Behind tracking based on expected-to-date calculations
+  - Uses normalized `ledger_entries` table for consistent reporting
+- ✅ **Anonymous Payment Support**: Full treasurer capability for non-member donations
+  - Accept payments from truly anonymous donors, named non-members, or groups
+  - Separate donor fields: type (Individual/Organization), name, email, phone, memo
+  - All payment methods supported (cash, check, card, ACH)
+  - Business rule: Membership dues require a member (cannot be anonymous)
+  - Transaction list displays anonymous donations with "Non-Member" badge
+- ✅ **Payment Validation**: Minimum payment amount of $1.00 enforced
+  - Frontend validation with clear error messages
+  - Backend validation at controller and model levels
+  - Applied to all payment types and methods
+
 ### Deployment & Infrastructure
 - ✅ **Firebase Hosting**: Migrated from Vercel to Firebase Hosting with asset path fixes
 - ✅ **Supabase Integration**: Switched from Neon to Supabase for free PostgreSQL hosting
@@ -175,6 +192,12 @@ Notes:
 - **Feature Flags**: Environment-based authentication method toggles
 - **Error Handling**: User-friendly error messages and retry mechanisms
 - **Deployment**: Production-ready Firebase Hosting + Render deployment
+- **Financial Management**: Complete treasurer dashboard with payment tracking
+  - **Payment Overview**: Pledge-based statistics with Contributing Members metric
+  - **Transaction Recording**: Support for all payment methods (cash, check, card, ACH)
+  - **Anonymous Payments**: Accept donations from non-members with optional donor details
+  - **Dual-Write System**: Transactions + Ledger entries for comprehensive financial tracking
+  - **Payment Validation**: Minimum $1.00 payment amounts enforced
 
 ### 🚧 In Progress
 - **Backend Deployment**: Final Render deployment with Supabase connection
@@ -300,7 +323,7 @@ graph LR
 ```mermaid
 erDiagram
     MEMBERS {
-        uuid id PK
+        bigint id PK
         string firstName
         string lastName
         string email UK
@@ -312,6 +335,7 @@ erDiagram
         string loginEmail UK
         enum role
         boolean isActive
+        decimal yearlyPledge
     }
     
     CHILDREN {
@@ -326,7 +350,42 @@ erDiagram
         string baptismName
     }
     
+    TRANSACTIONS {
+        bigint id PK
+        bigint memberId FK "nullable for anonymous"
+        bigint collectedBy FK
+        date paymentDate
+        decimal amount "min 1.00"
+        enum paymentType
+        enum paymentMethod
+        enum status
+        string receiptNumber
+        text note "includes donor info"
+        string externalId
+    }
+    
+    LEDGER_ENTRIES {
+        uuid id PK
+        bigint transactionId FK
+        bigint memberId FK "nullable for anonymous"
+        bigint collectedBy FK
+        date entryDate
+        string type
+        decimal amount
+        string fund
+        string category
+        text memo
+        string paymentMethod
+        string receiptNumber
+        string sourceSystem
+        string externalId
+        date statementDate
+    }
+    
     MEMBERS ||--o{ CHILDREN : "has"
+    MEMBERS ||--o{ TRANSACTIONS : "pays"
+    MEMBERS ||--o{ TRANSACTIONS : "collects"
+    TRANSACTIONS ||--o{ LEDGER_ENTRIES : "records"
 ```
 
 ## 🔐 Security Features
@@ -434,11 +493,15 @@ graph TD
 - ✅ Track online and offline donations
 - ✅ Export financial data
 - ✅ View member contribution history
+- ✅ **Record payments for members** (cash, check, card, ACH)
+- ✅ **Accept anonymous/non-member donations** with optional donor information
+- ✅ **Payment Overview Dashboard** with pledge-based statistics and metrics
 
 **Restrictions**:
 - ❌ Cannot modify member records
 - ❌ No access to member management features
 - ❌ Cannot change system settings
+- ❌ Cannot record membership dues for anonymous donors
 
 ---
 
@@ -630,12 +693,23 @@ npm run db:test
 - `GET /api/members` - List members (admin)
 - `PUT /api/members/profile` - Update profile
 - `GET /api/members/:id` - Get member details
+- `GET /api/members/all/firebase` - Search members with Firebase auth
 
 ### Children
 - `GET /api/members/:memberId/dependents` - Get member's dependents
 - `POST /api/members/:memberId/dependents` - Add dependent
 - `PUT /api/members/dependents/:id` - Update dependent
 - `DELETE /api/members/dependents/:id` - Remove dependent
+
+### Payments (Treasurer)
+- `GET /api/payments/stats` - Get payment overview statistics
+- `GET /api/transactions` - List all transactions with filters
+- `GET /api/transactions/:id` - Get transaction details
+- `POST /api/transactions` - Record new payment (member or anonymous)
+- `PUT /api/transactions/:id` - Update transaction
+
+### Communications
+- `POST /api/sms/send` - Send SMS message (requires Twilio configuration)
 
 ## 🔄 CI/CD Pipeline
 
@@ -710,5 +784,12 @@ This project is created for the Debre Tsehay Abune Aregawi Tigray Orthodox Tewah
 
 *Built with love for the Tigray Orthodox Christian community* 
 
-**Last Updated**: September 2025
-**Version**: 1.1.1 
+**Last Updated**: October 2025
+**Version**: 1.2.0
+
+### Recent Updates (October 2025)
+- Payment Overview Dashboard with pledge-based statistics
+- Anonymous payment support for non-member donations
+- Contributing Members metric
+- Minimum payment validation ($1.00)
+- Ledger entries normalization and cleanup 
