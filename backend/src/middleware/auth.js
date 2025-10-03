@@ -8,24 +8,32 @@ const path = require('path');
 let firebaseInitialized = false;
 try {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
-    console.log('🔧 Initializing Firebase Admin SDK...');
+    console.log('🔧 Initializing Firebase Admin SDK with service account...');
     const serviceAccount = JSON.parse(
       Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8')
     );
-    
-    // Check if Firebase is already initialized
     if (admin.apps.length === 0) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         projectId: serviceAccount.project_id
       });
-      console.log('✅ Firebase Admin SDK initialized successfully');
+      console.log('✅ Firebase Admin SDK initialized (service account)');
+    } else {
+      console.log('ℹ️  Firebase Admin SDK already initialized');
+    }
+    firebaseInitialized = true;
+  } else if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    // Initialize Admin SDK for Auth Emulator (no credentials required)
+    const projectId = process.env.FIREBASE_PROJECT_ID || 'demo-project';
+    if (admin.apps.length === 0) {
+      admin.initializeApp({ projectId });
+      console.log(`✅ Firebase Admin SDK initialized for emulator (projectId=${projectId})`);
     } else {
       console.log('ℹ️  Firebase Admin SDK already initialized');
     }
     firebaseInitialized = true;
   } else {
-    console.log('⚠️  No Firebase service account found. Firebase Admin SDK not initialized.');
+    console.log('⚠️  No Firebase service account or emulator detected. Firebase Admin SDK not initialized.');
   }
 } catch (error) {
   console.error('❌ Firebase Admin SDK initialization failed:', error.message);
