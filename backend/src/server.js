@@ -17,12 +17,13 @@ console.log('  FRONTEND_URL:', process.env.FRONTEND_URL);
 const memberRoutes = require('./routes/memberRoutes');
 const memberPaymentRoutes = require('./routes/memberPaymentRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
-const churchTransactionRoutes = require('./routes/churchTransactionRoutes');
 const donationRoutes = require('./routes/donationRoutes');
 const smsRoutes = require('./routes/smsRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const zelleRoutes = require('./routes/zelleRoutes');
 const pledgeRoutes = require('./routes/pledgeRoutes');
+const expenseRoutes = require('./routes/expenseRoutes');
+const incomeCategoryRoutes = require('./routes/incomeCategoryRoutes');
 const donationController = require('./controllers/donationController');
 
 // Import database
@@ -161,21 +162,40 @@ app.get('/api/health', (req, res) => {
 // Readiness endpoint that verifies DB connectivity with a short timeout
 app.get('/api/ready', async (req, res) => {
   try {
-    const toMs = 5000; // 5s timeout for readiness probe
+    console.log('🔍 API Ready check initiated');
+    
+    // For SQLite, just return ready immediately since it's usually fast
+    if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('sqlite')) {
+      console.log('✅ SQLite database detected, returning ready immediately');
+      return res.status(200).json({
+        status: 'ready',
+        timestamp: new Date().toISOString(),
+        database: 'sqlite'
+      });
+    }
+    
+    const toMs = 3000; // Reduced timeout for faster response
+    console.log('🔄 Checking database connectivity with', toMs, 'ms timeout');
+    
     const timeout = new Promise((_, reject) => {
-      const id = setTimeout(() => reject(new Error('READINESS_TIMEOUT')), toMs);
-      // attach id to promise to allow potential cleanup (optional)
-      // @ts-ignore
-      timeout._id = id;
+      const id = setTimeout(() => {
+        console.log('⏰ Database readiness check timed out after', toMs, 'ms');
+        reject(new Error('READINESS_TIMEOUT'));
+      }, toMs);
     });
+    
     const authPromise = sequelize.authenticate();
-
+    console.log('🔌 Starting database authentication...');
+    
     await Promise.race([authPromise, timeout]);
+    console.log('✅ Database authentication successful');
+    
     return res.status(200).json({
       status: 'ready',
       timestamp: new Date().toISOString()
     });
   } catch (err) {
+    console.log('❌ API Ready check failed:', err.message);
     return res.status(503).json({
       status: 'starting',
       code: (err && err.message) === 'READINESS_TIMEOUT' ? 'COLD_START_TIMEOUT' : 'COLD_START',
@@ -185,42 +205,18 @@ app.get('/api/ready', async (req, res) => {
   }
 });
 
-// Firebase test endpoint
-app.get('/firebase-test', (req, res) => {
-  const admin = require('firebase-admin');
-  try {
-    const firebaseStatus = {
-      appsInitialized: admin.apps.length,
-      serviceAccountExists: !!process.env.FIREBASE_SERVICE_ACCOUNT_BASE64,
-      serviceAccountLength: process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 ? process.env.FIREBASE_SERVICE_ACCOUNT_BASE64.length : 0
-    };
-    
-    res.json({
-      success: true,
-      message: 'Firebase Admin SDK Status',
-      firebase: firebaseStatus,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Firebase Admin SDK Error',
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
 
 // API routes
 app.use('/api/members', memberRoutes);
 app.use('/api/payments', memberPaymentRoutes);
 app.use('/api/transactions', transactionRoutes);
-app.use('/api/church-transactions', churchTransactionRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/zelle', zelleRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/pledges', pledgeRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/income-categories', incomeCategoryRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

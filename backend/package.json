@@ -16,7 +16,14 @@
     "db:reset": "node src/database/reset.js",
     "db:test": "node src/database/test.js",
     "db:sync": "node -e \"require('./src/models').sequelize.sync({force: false}).then(() => process.exit(0))\"",
-    "db:update-roles": "node src/database/updateRoles.js"
+    "db:update-roles": "node src/database/updateRoles.js",
+    "db:migrate:expenses": "node src/database/migrations/createExpenseCategories.js",
+    "db:migrate:ledger-fix": "node src/database/migrations/updateLedgerEntryTransactionId.js",
+    "db:migrate:ledger-enum": "node src/database/migrations/updateLedgerEntryTypeEnum.js",
+    "db:migrate:income": "node src/database/migrations/addIncomeCategorySupport.js",
+    "db:migrate:ledger-types": "node src/database/migrations/addNewPaymentTypesToLedgerEnum.js",
+    "db:seed:expenses": "node src/database/seedExpenseCategories.js",
+    "db:seed:income": "node src/database/seedIncomeCategories.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
