@@ -1,7 +1,7 @@
 const { google } = require('googleapis');
 const moment = require('moment');
 const { Op } = require('sequelize');
-const { Member, Transaction, sequelize, ZelleMemoMatch } = require('../models');
+const { Member, Transaction, sequelize, ZelleMemoMatch, IncomeCategory } = require('../models');
 
 const LABEL_PROCESSED = 'Zelle/Processed';
 const LABEL_NEEDS_REVIEW = 'Zelle/NeedsReview';
@@ -187,6 +187,15 @@ async function upsertTransaction(parsed, { dryRun = false } = {}) {
     return { created: false, reason: 'exists', transactionId: existing.id };
   }
 
+  // Auto-assign income category for 'donation' payment type
+  let income_category_id = null;
+  const incomeCategory = await IncomeCategory.findOne({
+    where: { payment_type_mapping: 'donation' }
+  });
+  if (incomeCategory) {
+    income_category_id = incomeCategory.id;
+  }
+
   const tx = await Transaction.create({
     member_id,
     collected_by,
@@ -199,6 +208,7 @@ async function upsertTransaction(parsed, { dryRun = false } = {}) {
     note,
     external_id: `gmail:${messageId}`,
     donation_id: null,
+    income_category_id
   });
   return { created: true, transactionId: tx.id };
 }

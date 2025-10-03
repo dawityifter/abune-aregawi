@@ -1,5 +1,5 @@
 const { syncZelleFromGmail, previewZelleFromGmail } = require('../services/gmailZelleIngest');
-const { Transaction, ZelleMemoMatch, Member } = require('../models');
+const { Transaction, ZelleMemoMatch, Member, IncomeCategory } = require('../models');
 
 // Keep memo normalization consistent with the ingest service
 function sanitizeNote(input) {
@@ -58,18 +58,45 @@ async function createTransactionFromPreview(req, res) {
       return res.status(403).json({ success: false, message: 'Missing collector context' });
     }
 
+    // Auto-assign income category based on payment_type
+    const finalPaymentType = payment_type || 'donation';
+    let income_category_id = null;
+    let incomeCategory = await IncomeCategory.findOne({
+      where: { payment_type_mapping: finalPaymentType }
+    });
+    
+    // Fallback mappings for payment types without direct mapping
+    if (!incomeCategory) {
+      const fallbackMappings = {
+        'tithe': 'offering',        // tithe → INC002 (Weekly Offering)
+        'building_fund': 'event'    // building_fund → INC003 (Fundraising)
+      };
+      
+      const fallbackType = fallbackMappings[finalPaymentType];
+      if (fallbackType) {
+        incomeCategory = await IncomeCategory.findOne({
+          where: { payment_type_mapping: fallbackType }
+        });
+      }
+    }
+    
+    if (incomeCategory) {
+      income_category_id = incomeCategory.id;
+    }
+
     const tx = await Transaction.create({
       member_id,
       collected_by,
       payment_date,
       amount,
-      payment_type: payment_type || 'donation',
+      payment_type: finalPaymentType,
       payment_method: 'zelle',
       status: 'succeeded',
       receipt_number: null,
       note: note || null,
       external_id,
       donation_id: null,
+      income_category_id
     });
 
     // Persist memo -> member mapping to enable future automatic matches

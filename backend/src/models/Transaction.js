@@ -15,6 +15,20 @@ module.exports = (sequelize) => {
         foreignKey: 'collected_by',
         as: 'collector'
       });
+      
+      // Add association with LedgerEntry
+      Transaction.hasMany(models.LedgerEntry, {
+        foreignKey: 'transaction_id',
+        as: 'ledgerEntries',
+        onDelete: 'CASCADE',
+        hooks: true
+      });
+      
+      // Add association with IncomeCategory
+      Transaction.belongsTo(models.IncomeCategory, {
+        foreignKey: 'income_category_id',
+        as: 'incomeCategory'
+      });
     }
   }
 
@@ -27,13 +41,14 @@ module.exports = (sequelize) => {
     },
     member_id: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'members',
         key: 'id'
       },
       onUpdate: 'CASCADE',
-      onDelete: 'RESTRICT'
+      onDelete: 'SET NULL',
+      comment: 'Member ID (null for anonymous/non-member donations)'
     },
     collected_by: {
       type: DataTypes.BIGINT,
@@ -55,14 +70,14 @@ module.exports = (sequelize) => {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       validate: {
-        min: 0.01,
-        isPositive(value) {
-          if (parseFloat(value) <= 0) {
-            throw new Error('Amount must be greater than 0');
+        min: 1.00,
+        isValidAmount(value) {
+          if (parseFloat(value) < 1) {
+            throw new Error('Amount must be at least $1.00');
           }
         }
       },
-      comment: 'Payment amount in dollars and cents'
+      comment: 'Payment amount in dollars and cents (minimum $1.00)'
     },
     payment_type: {
       type: DataTypes.ENUM('membership_due', 'tithe', 'donation', 'event', 'other'),
@@ -105,6 +120,17 @@ module.exports = (sequelize) => {
       onUpdate: 'CASCADE',
       onDelete: 'SET NULL',
       comment: 'Optional FK to donations table for Stripe/audit linkage'
+    },
+    income_category_id: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: 'income_categories',
+        key: 'id'
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
+      comment: 'Optional FK to income_categories table for GL code mapping'
     },
     created_at: {
       type: DataTypes.DATE,
