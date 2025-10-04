@@ -348,26 +348,32 @@ const createTransaction = async (req, res) => {
     }
     
     // Create corresponding ledger entry using Sequelize (avoids enum issues)
-    const entryDate = payment_date || new Date();
-    const memo = `${glCode} - ${finalNote || 'No description'}`;
-    
-    await LedgerEntry.create({
-      type: payment_type, // Keep payment_type for backward compatibility
-      category: glCode, // Use GL code for categorization (INC001, INC002, etc.)
-      amount: parseFloat(amount),
-      entry_date: entryDate,
-      payment_method,
-      receipt_number: receipt_number || null,
-      memo,
-      collected_by,
-      member_id,
-      transaction_id: transaction.id,
-      source_system: 'manual',
-      external_id: external_id || null,
-      fund: null,
-      attachment_url: null,
-      statement_date: null
-    }, { transaction: t });
+    // Wrapped in try-catch to make ledger entries optional (for gradual migration)
+    try {
+      const entryDate = payment_date || new Date();
+      const memo = `${glCode} - ${finalNote || 'No description'}`;
+      
+      await LedgerEntry.create({
+        type: payment_type, // Keep payment_type for backward compatibility
+        category: glCode, // Use GL code for categorization (INC001, INC002, etc.)
+        amount: parseFloat(amount),
+        entry_date: entryDate,
+        payment_method,
+        receipt_number: receipt_number || null,
+        memo,
+        collected_by,
+        member_id,
+        transaction_id: transaction.id,
+        source_system: 'manual',
+        external_id: external_id || null,
+        fund: null,
+        attachment_url: null,
+        statement_date: null
+      }, { transaction: t });
+    } catch (ledgerError) {
+      // Ledger entries are optional - log error but don't fail transaction
+      console.warn('⚠️  Could not create ledger entry (table may not exist):', ledgerError.message);
+    }
 
     // Fetch the created transaction with associations and ledger entries
     const createdTransaction = await Transaction.findByPk(transaction.id, {
@@ -501,23 +507,28 @@ const updateTransaction = async (req, res) => {
     const memo = `${paymentType} - ${note || 'No description'}`;
 
     // Create ledger entry using Sequelize (avoids enum issues)
-    await LedgerEntry.create({
-      type: paymentType, // Use paymentType directly - Sequelize handles it as STRING
-      category: paymentType,
-      amount: amount,
-      entry_date: entryDate,
-      payment_method: paymentMethod,
-      receipt_number: receiptNumber,
-      memo,
-      collected_by: collectedById,
-      member_id: memberId,
-      transaction_id: id,
-      source_system: 'manual',
-      external_id: null,
-      fund: null,
-      attachment_url: null,
-      statement_date: null
-    }, { transaction: t });
+    // Wrapped in try-catch to make ledger entries optional
+    try {
+      await LedgerEntry.create({
+        type: paymentType, // Use paymentType directly - Sequelize handles it as STRING
+        category: paymentType,
+        amount: amount,
+        entry_date: entryDate,
+        payment_method: paymentMethod,
+        receipt_number: receiptNumber,
+        memo,
+        collected_by: collectedById,
+        member_id: memberId,
+        transaction_id: id,
+        source_system: 'manual',
+        external_id: null,
+        fund: null,
+        attachment_url: null,
+        statement_date: null
+      }, { transaction: t });
+    } catch (ledgerError) {
+      console.warn('⚠️  Could not create ledger entry:', ledgerError.message);
+    }
 
     // Fetch the updated transaction with associations
     const updatedTransaction = await Transaction.findByPk(id, {
