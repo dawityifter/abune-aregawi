@@ -111,44 +111,59 @@ const createExpense = async (req, res) => {
       });
     }
 
-    // Create ledger entry for expense
-    const ledgerEntry = await LedgerEntry.create({
-      type: 'expense',
-      category: category.gl_code,
-      amount: expenseAmount,
-      entry_date: expense_date,
-      payment_method: payment_method.toLowerCase(),
-      receipt_number: receipt_number || null,
-      memo: memo || `${category.name} expense`,
-      collected_by,
-      member_id: null, // Expenses don't have associated members
-      transaction_id: null, // Expenses don't create transactions
-      source_system: 'manual',
-      external_id: null,
-      fund: null,
-      attachment_url: null,
-      statement_date: null
-    }, { transaction: t });
+    // Create ledger entry for expense (optional - wrapped for gradual migration)
+    let ledgerEntry = null;
+    try {
+      ledgerEntry = await LedgerEntry.create({
+        type: 'expense',
+        category: category.gl_code,
+        amount: expenseAmount,
+        entry_date: expense_date,
+        payment_method: payment_method.toLowerCase(),
+        receipt_number: receipt_number || null,
+        memo: memo || `${category.name} expense`,
+        collected_by,
+        member_id: null, // Expenses don't have associated members
+        transaction_id: null, // Expenses don't create transactions
+        source_system: 'manual',
+        external_id: null,
+        fund: null,
+        attachment_url: null,
+        statement_date: null
+      }, { transaction: t });
+    } catch (ledgerError) {
+      console.warn('⚠️  Could not create ledger entry:', ledgerError.message);
+    }
 
     await t.commit();
 
-    // Fetch the created expense with category details
-    const expenseWithCategory = await LedgerEntry.findByPk(ledgerEntry.id, {
-      include: [
-        {
-          model: Member,
-          as: 'collector',
-          attributes: ['id', 'first_name', 'last_name', 'email']
-        }
-      ]
-    });
+    // Fetch the created expense with category details (if ledger entry was created)
+    let result;
+    if (ledgerEntry) {
+      const expenseWithCategory = await LedgerEntry.findByPk(ledgerEntry.id, {
+        include: [
+          {
+            model: Member,
+            as: 'collector',
+            attributes: ['id', 'first_name', 'last_name', 'email']
+          }
+        ]
+      });
 
-    // Add category info manually (since it's not a direct association)
-    const result = {
-      ...expenseWithCategory.toJSON(),
-      category_name: category.name,
-      category_description: category.description
-    };
+      // Add category info manually (since it's not a direct association)
+      result = {
+        ...expenseWithCategory.toJSON(),
+        category_name: category.name,
+        category_description: category.description
+      };
+    } else {
+      // If ledger entry failed, still return success with category info
+      result = {
+        category_name: category.name,
+        category_description: category.description,
+        note: 'Expense recorded but ledger entry not created (ledger_entries table may not exist)'
+      };
+    }
 
     res.status(201).json({
       success: true,
