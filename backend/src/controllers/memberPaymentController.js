@@ -344,7 +344,7 @@ const getPaymentStats = async (req, res) => {
       // Even with no pledges, calculate other payments
       const otherPaymentsResult = await LedgerEntry.sum('amount', {
         where: {
-          category: { [Op.ne]: 'INC001' }, // Use GL code instead of payment_type
+          type: { [Op.ne]: 'membership_due' },
           entry_date: { [Op.gte]: start, [Op.lte]: end }
         }
       });
@@ -367,10 +367,10 @@ const getPaymentStats = async (req, res) => {
       });
     }
 
-    // Calculate total membership collected from ALL ledger_entries with category='INC001' (Membership GL code) in current year
+    // Calculate total membership collected from ALL ledger_entries with type='membership_due' in current year
     const totalMembershipCollectedResult = await LedgerEntry.sum('amount', {
       where: {
-        category: 'INC001', // Use GL code instead of payment_type
+        type: 'membership_due',
         entry_date: { [Op.gte]: start, [Op.lte]: end }
       }
     });
@@ -383,7 +383,7 @@ const getPaymentStats = async (req, res) => {
     // For calculating up-to-date vs behind members, we need per-member totals
     const paidRows = await LedgerEntry.findAll({
       where: {
-        category: 'INC001', // Use GL code instead of payment_type
+        type: 'membership_due',
         entry_date: { [Op.gte]: start, [Op.lte]: end }
       },
       attributes: ['member_id', [literal('SUM("amount")'), 'paid_to_date']],
@@ -415,10 +415,10 @@ const getPaymentStats = async (req, res) => {
       }
     }
 
-    // Calculate other payments (all non-membership payments, i.e., not INC001)
+    // Calculate other payments (all non-membership_due payments)
     const otherPaymentsResult = await LedgerEntry.sum('amount', {
       where: {
-        category: { [Op.ne]: 'INC001' }, // Use GL code instead of payment_type
+        type: { [Op.ne]: 'membership_due' },
         entry_date: { [Op.gte]: start, [Op.lte]: end }
       }
     });
