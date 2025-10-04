@@ -10,6 +10,9 @@ async function up(sequelize) {
   console.log('🔄 Adding new payment types to ledger_entries type enum...');
 
   try {
+    // Set schema to public for Supabase
+    await sequelize.query(`SET search_path TO public;`);
+    
     // For PostgreSQL, we need to add new values to the enum
     // Note: This only works if the new values don't already exist
     const newTypes = ['vow', 'tithe', 'building_fund'];

@@ -4,6 +4,9 @@ async function addIncomeCategorySupport() {
   try {
     console.log('🔧 Adding income category support...');
 
+    // Set schema to public for Supabase
+    await sequelize.query(`SET search_path TO public;`);
+
     // Step 1: Create income_categories table
     console.log('\n📋 Step 1: Creating income_categories table...');
     await sequelize.query(`
