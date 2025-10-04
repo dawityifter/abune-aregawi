@@ -4,6 +4,9 @@ async function createExpenseCategoriesTable() {
   try {
     console.log('Creating expense_categories table...');
 
+    // Set schema to public for Supabase
+    await sequelize.query(`SET search_path TO public;`);
+
     await sequelize.query(`
       CREATE TABLE IF NOT EXISTS expense_categories (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRolePermissions } from '../../utils/roles';
-import PaymentList from './PaymentList';
 import TransactionList from './TransactionList';
 import PaymentStats from './PaymentStats';
 import PaymentReports from './PaymentReports';
@@ -10,8 +9,6 @@ import AddExpenseModal from './AddExpenseModal';
 import ExpenseList from './ExpenseList';
 import WeeklyCollectionReport from './WeeklyCollectionReport';
 import ZelleReview from './ZelleReview';
-
-type PaymentView = 'old' | 'new';
 
 interface PaymentStatsData {
   totalMembers: number;
@@ -31,7 +28,6 @@ interface PaymentStatsData {
 const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle'>('overview');
-  const [paymentView, setPaymentView] = useState<PaymentView>('new'); // Default to new view
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
@@ -83,7 +79,7 @@ const TreasurerDashboard: React.FC = () => {
     if (hasFinancialAccess) {
       fetchPaymentStats();
     }
-  }, [hasFinancialAccess, paymentView]);
+  }, [hasFinancialAccess]);
 
   // Keep stats in sync when payments complete (Stripe or non-Stripe)
   useEffect(() => {
@@ -98,14 +94,12 @@ const TreasurerDashboard: React.FC = () => {
       console.log('🔍 Fetching payment stats...');
       console.log('🔍 Current user:', currentUser);
       console.log('🔍 Firebase user:', firebaseUser);
-      console.log('🔍 Payment view:', paymentView);
       
-      // Clear existing stats when switching views
+      // Clear existing stats
       setStats(null);
       setLoading(true);
       
-      // For the overview cards, always use pledge/ledger-based stats
-      // regardless of paymentView selection
+      // Fetch pledge/ledger-based stats
       const endpoint = '/api/payments/stats';
       
       console.log('🔍 Using endpoint:', endpoint);
@@ -167,48 +161,6 @@ const TreasurerDashboard: React.FC = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Treasurer Dashboard</h1>
           <p className="mt-2 text-gray-600">Manage member payments and generate reports</p>
-        </div>
-
-        {/* Payment View Toggle */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <span className="text-sm font-medium text-gray-700">View:</span>
-              <div className="flex items-center space-x-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="paymentView"
-                    value="new"
-                    checked={paymentView === 'new'}
-                    onChange={(e) => {
-                      setPaymentView(e.target.value as PaymentView);
-                      console.log('🔄 Switching to new view');
-                    }}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">New</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="paymentView"
-                    value="old"
-                    checked={paymentView === 'old'}
-                    onChange={(e) => {
-                      setPaymentView(e.target.value as PaymentView);
-                      console.log('🔄 Switching to old view');
-                    }}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Old</span>
-                </label>
-              </div>
-            </div>
-            <div className="text-xs text-gray-500">
-              {paymentView === 'new' ? 'Using transactions table' : 'Using member_payments_2024 table'}
-            </div>
-          </div>
         </div>
 
         {/* Tab Navigation */}
@@ -275,24 +227,22 @@ const TreasurerDashboard: React.FC = () => {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-900">Payment Overview</h2>
-                {paymentView === 'new' && (
-                  <div className="flex space-x-3">
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setShowAddPaymentModal(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                  >
+                    Add Payment
+                  </button>
+                  {permissions.canAddExpenses && (
                     <button
-                      onClick={() => setShowAddPaymentModal(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                      onClick={() => setShowAddExpenseModal(true)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
                     >
-                      Add Payment
+                      Add Expense
                     </button>
-                    {permissions.canAddExpenses && (
-                      <button
-                        onClick={() => setShowAddExpenseModal(true)}
-                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
-                      >
-                        Add Expense
-                      </button>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
               {stats && <PaymentStats stats={stats} />}
             </div>
@@ -302,25 +252,16 @@ const TreasurerDashboard: React.FC = () => {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-900">Member Payments</h2>
-                {paymentView === 'new' && (
-                  <button
-                    onClick={() => setShowAddPaymentModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
-                  >
-                    Add Payment
-                  </button>
-                )}
+                <button
+                  onClick={() => setShowAddPaymentModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                >
+                  Add Payment
+                </button>
               </div>
-              {paymentView === 'new' ? (
-                <TransactionList 
-                  onTransactionAdded={fetchPaymentStats} 
-                />
-              ) : (
-                <PaymentList 
-                  onPaymentAdded={fetchPaymentStats} 
-                  paymentView={paymentView}
-                />
-              )}
+              <TransactionList 
+                onTransactionAdded={fetchPaymentStats} 
+              />
             </div>
           )}
 
@@ -350,7 +291,7 @@ const TreasurerDashboard: React.FC = () => {
               
               <div className="border-t pt-8">
                 <h2 className="text-2xl font-semibold text-gray-900 mb-6">Payment Reports</h2>
-                <PaymentReports paymentView={paymentView} />
+                <PaymentReports paymentView="new" />
               </div>
             </div>
           )}
@@ -370,7 +311,7 @@ const TreasurerDashboard: React.FC = () => {
               setShowAddPaymentModal(false);
               fetchPaymentStats();
             }}
-            paymentView={paymentView}
+            paymentView="new"
           />
         )}
 

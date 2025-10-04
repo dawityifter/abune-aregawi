@@ -2,9 +2,12 @@ const { sequelize } = require('../../models');
 
 async function updateLedgerEntryTypeEnum() {
   try {
-    console.log('📋 Checking current enum_ledger_entries_type values...');
+    console.log('Adding expense and refund to ledger_entries type enum...');
 
-    // First, let's see what values currently exist
+    // Set schema to public for Supabase
+    await sequelize.query(`SET search_path TO public;`);
+
+    // Add 'expense' to enum
     const currentValues = await sequelize.query(`
       SELECT enumlabel 
       FROM pg_enum 

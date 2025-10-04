@@ -2,9 +2,12 @@ const { sequelize } = require('../../models');
 
 async function updateLedgerEntryTransactionId() {
   try {
-    console.log('Updating ledger_entries table to allow null transaction_id...');
+    console.log('Updating ledger_entries transaction_id column...');
 
-    // Check if the column constraint exists
+    // Set schema to public for Supabase
+    await sequelize.query(`SET search_path TO public;`);
+
+    // Check if ledger_entries table exists
     await sequelize.query(`
       ALTER TABLE ledger_entries 
       ALTER COLUMN transaction_id DROP NOT NULL;
