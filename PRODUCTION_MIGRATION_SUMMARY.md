@@ -181,9 +181,7 @@
 ### Pre-Migration Checklist:
 
 - [ ] **Backup Database** 
-  ```bash
-  pg_dump "postgresql://postgres.sqjdhtqiuvmsabaqgqhx:AksumTsion21@aws-0-us-west-1.pooler.supabase.com:6543/postgres" > prod_backup_$(date +%Y%m%d_%H%M%S).sql
-  ```
+
 
 - [ ] **Stop Backend Server** (optional, but safer)
   ```bash
