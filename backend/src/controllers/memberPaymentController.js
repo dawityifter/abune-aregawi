@@ -481,7 +481,9 @@ const getWeeklyReport = async (req, res) => {
     // Calculate week start (Monday) and end (Sunday)
     let weekStart;
     if (week_start) {
-      weekStart = new Date(week_start);
+      // Parse date string in local timezone to avoid UTC conversion issues
+      const [year, month, day] = week_start.split('-').map(Number);
+      weekStart = new Date(year, month - 1, day);
     } else {
       // Default to current week's Monday
       const today = new Date();
@@ -493,9 +495,16 @@ const getWeeklyReport = async (req, res) => {
     
     // Ensure it's a Monday
     if (weekStart.getDay() !== 1) {
+      // Calculate the nearest Monday (before the provided date)
+      const dayOfWeek = weekStart.getDay();
+      const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, adjust to previous Monday
+      const nearestMonday = new Date(weekStart);
+      nearestMonday.setDate(weekStart.getDate() - daysToSubtract);
+      const formattedMonday = nearestMonday.toISOString().split('T')[0];
+      
       return res.status(400).json({
         success: false,
-        message: 'week_start must be a Monday'
+        message: `week_start must be a Monday. You provided ${week_start} (${weekStart.toDateString()}), which is a ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek]}. Try using ${formattedMonday} instead.`
       });
     }
     
@@ -518,6 +527,12 @@ const getWeeklyReport = async (req, res) => {
         }
       },
       include: [
+        {
+          model: Member,
+          as: 'member',
+          attributes: ['id', 'first_name', 'last_name'],
+          required: false
+        },
         {
           model: Member,
           as: 'collector',
@@ -548,11 +563,16 @@ const getWeeklyReport = async (req, res) => {
       const collectorName = transaction.collector 
         ? `${transaction.collector.first_name} ${transaction.collector.last_name}`
         : 'System';
+      const memberName = transaction.member
+        ? `${transaction.member.first_name} ${transaction.member.last_name}`
+        : null;
       
       const item = {
         id: transaction.id,
         type: transaction.type,
         category: transaction.category,
+        member_id: transaction.member_id,
+        member_name: memberName,
         collected_by: transaction.collected_by,
         collector_name: collectorName,
         amount: amount,
