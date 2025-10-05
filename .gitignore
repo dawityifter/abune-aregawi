@@ -268,3 +268,25 @@ backend/backup
 # Zelle payment CSV files containing PII data
 Combined_Zelle_Payments_with_Phone*.csv
 Zelle_Activity*
+
+# Database backups and dumps (may contain sensitive data)
+*.sql
+*.dump
+prod_backup_*
+db_backup_*
+*_backup_*.sql
+
+# Migration and deployment documentation with sensitive info
+*MIGRATION_SUMMARY*.md
+*DEPLOYMENT_NOTES*.md
+deployment-notes*.md
+
+# Any file with 'password', 'secret', 'credential' in name
+*password*
+*secret*
+*credential*
+*api-key*
+
+# Phone lists and contact information
+phone-list*.csv
+contact-list*.csv
