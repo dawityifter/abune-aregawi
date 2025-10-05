@@ -5,6 +5,8 @@ interface Transaction {
   id: string;
   type: string;
   category: string;
+  member_id: number | null;
+  member_name: string | null;
   collected_by: number;
   collector_name: string;
   amount: number;
@@ -41,14 +43,33 @@ const WeeklyCollectionReport: React.FC = () => {
   const [weekStart, setWeekStart] = useState<string>('');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['cash', 'check', 'zelle']));
 
+  // Helper function to get the Monday of a given date's week
+  const getMondayOfWeek = (date: Date | string): string => {
+    // If string is passed, parse it carefully to avoid timezone issues
+    let workingDate: Date;
+    if (typeof date === 'string') {
+      const [year, month, day] = date.split('-').map(Number);
+      workingDate = new Date(year, month - 1, day);
+    } else {
+      workingDate = new Date(date);
+    }
+    
+    const dayOfWeek = workingDate.getDay();
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday (0), go back 6 days; otherwise go to Monday
+    const monday = new Date(workingDate);
+    monday.setDate(workingDate.getDate() + diff);
+    
+    // Format as YYYY-MM-DD
+    const year = monday.getFullYear();
+    const month = String(monday.getMonth() + 1).padStart(2, '0');
+    const day = String(monday.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   useEffect(() => {
     // Set default to current week's Monday
     const today = new Date();
-    const dayOfWeek = today.getDay();
-    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() + diff);
-    setWeekStart(monday.toISOString().split('T')[0]);
+    setWeekStart(getMondayOfWeek(today));
   }, []);
 
   useEffect(() => {
@@ -127,15 +148,23 @@ const WeeklyCollectionReport: React.FC = () => {
   };
 
   const goToPreviousWeek = () => {
-    const current = new Date(weekStart);
+    const [year, month, day] = weekStart.split('-').map(Number);
+    const current = new Date(year, month - 1, day);
     current.setDate(current.getDate() - 7);
-    setWeekStart(current.toISOString().split('T')[0]);
+    setWeekStart(getMondayOfWeek(current)); // Ensure it's a Monday
   };
 
   const goToNextWeek = () => {
-    const current = new Date(weekStart);
+    const [year, month, day] = weekStart.split('-').map(Number);
+    const current = new Date(year, month - 1, day);
     current.setDate(current.getDate() + 7);
-    setWeekStart(current.toISOString().split('T')[0]);
+    setWeekStart(getMondayOfWeek(current)); // Ensure it's a Monday
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedDateStr = e.target.value;
+    // Always adjust to the Monday of the selected week
+    setWeekStart(getMondayOfWeek(selectedDateStr));
   };
 
   if (loading) {
@@ -160,32 +189,40 @@ const WeeklyCollectionReport: React.FC = () => {
           </h2>
         </div>
 
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={goToPreviousWeek}
-            className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            ← Previous Week
-          </button>
+        <div className="space-y-2">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={goToPreviousWeek}
+              className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              ← Previous Week
+            </button>
 
-          <input
-            type="date"
-            value={weekStart}
-            onChange={(e) => setWeekStart(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+            <div className="flex flex-col">
+              <input
+                type="date"
+                value={weekStart}
+                onChange={handleDateChange}
+                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                title="Select any date - will automatically adjust to the Monday of that week"
+              />
+              <span className="text-xs text-gray-500 mt-1">
+                📌 Week starts on Monday
+              </span>
+            </div>
 
-          <button
-            onClick={goToNextWeek}
-            className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            Next Week →
-          </button>
+            <button
+              onClick={goToNextWeek}
+              className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Next Week →
+            </button>
 
-          <div className="flex-1 text-right">
-            <span className="text-lg font-semibold text-gray-700">
-              {formatDate(reportData.weekStart)} - {formatDate(reportData.weekEnd)}
-            </span>
+            <div className="flex-1 text-right">
+              <span className="text-lg font-semibold text-gray-700">
+                {formatDate(reportData.weekStart)} - {formatDate(reportData.weekEnd)}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -264,7 +301,7 @@ const WeeklyCollectionReport: React.FC = () => {
                           <tr>
                             <th className="px-4 py-2 text-left text-xs font-medium text-green-800">Date</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-green-800">Type</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-green-800">Collected By</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-green-800">Member Name</th>
                             <th className="px-4 py-2 text-right text-xs font-medium text-green-800">Amount</th>
                           </tr>
                         </thead>
@@ -278,7 +315,7 @@ const WeeklyCollectionReport: React.FC = () => {
                                 {transaction.type.replace('_', ' ')}
                               </td>
                               <td className="px-4 py-2 text-sm text-gray-700">
-                                {transaction.collector_name}
+                                {transaction.member_name || 'Anonymous'}
                               </td>
                               <td className="px-4 py-2 text-sm text-right font-semibold text-green-700">
                                 +{formatCurrency(transaction.amount)}
@@ -303,7 +340,7 @@ const WeeklyCollectionReport: React.FC = () => {
                           <tr>
                             <th className="px-4 py-2 text-left text-xs font-medium text-red-800">Date</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-red-800">Category</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-red-800">Paid By</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-red-800">Recorded By</th>
                             <th className="px-4 py-2 text-right text-xs font-medium text-red-800">Amount</th>
                           </tr>
                         </thead>

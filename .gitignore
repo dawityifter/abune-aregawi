@@ -290,3 +290,7 @@ deployment-notes*.md
 # Phone lists and contact information
 phone-list*.csv
 contact-list*.csv
+
+# Documentation files that may contain sensitive info
+*ROLE_PERMISSIONS*.md
+*PERMISSIONS_SUMMARY*.md
