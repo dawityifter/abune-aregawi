@@ -1014,6 +1014,7 @@ exports.getAllMembersFirebase = async (req, res) => {
       apartmentNo: member.apartment_no,
       emergencyContactName: member.emergency_contact_name,
       emergencyContactPhone: member.emergency_contact_phone,
+      yearlyPledge: member.yearly_pledge,
       // Provide dependents array for frontend (even if only IDs are included)
       dependents: member.dependents || [],
       // Also include a count field for robustness/backward-compatibility
