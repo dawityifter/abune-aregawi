@@ -14,25 +14,26 @@ const roleMiddleware = require('../middleware/role');
 // Apply authentication middleware to all routes
 router.use(firebaseAuthMiddleware);
 
-// All routes require treasurer or admin role
-router.use(roleMiddleware(['treasurer', 'admin']));
+// Read-only routes - allow church_leadership to view financial data
+const viewRoles = ['treasurer', 'admin', 'church_leadership'];
+const editRoles = ['treasurer', 'admin'];
 
-// Get all member payments with filtering and pagination
-router.get('/', getAllMemberPayments);
+// Get payment statistics for dashboard (READ-ONLY)
+router.get('/stats', roleMiddleware(viewRoles), getPaymentStats);
 
-// Get payment statistics for dashboard
-router.get('/stats', getPaymentStats);
+// Get weekly collection report (READ-ONLY - must be before /:memberId to avoid conflicts)
+router.get('/weekly-report', roleMiddleware(viewRoles), getWeeklyReport);
 
-// Get weekly collection report (must be before /:memberId to avoid conflicts)
-router.get('/weekly-report', getWeeklyReport);
+// Generate payment reports (READ-ONLY)
+router.get('/reports/:reportType', roleMiddleware(viewRoles), generatePaymentReport);
 
-// Get payment details for a specific member
-router.get('/:memberId', getMemberPaymentDetails);
+// Get all member payments with filtering and pagination (READ-ONLY)
+router.get('/', roleMiddleware(viewRoles), getAllMemberPayments);
 
-// Add or update payment for a member
-router.post('/:memberId/payment', addMemberPayment);
+// Get payment details for a specific member (READ-ONLY)
+router.get('/:memberId', roleMiddleware(viewRoles), getMemberPaymentDetails);
 
-// Generate payment reports
-router.get('/reports/:reportType', generatePaymentReport);
+// Add or update payment for a member (WRITE - treasurer/admin only)
+router.post('/:memberId/payment', roleMiddleware(editRoles), addMemberPayment);
 
 module.exports = router; 

@@ -11,6 +11,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
   const { t } = useLanguage();
   const { currentUser, firebaseUser } = useAuth();
   const [members, setMembers] = useState<any[]>([]);
+  const [totalDependents, setTotalDependents] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<any>(null);
@@ -26,6 +27,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
 
   useEffect(() => {
     fetchMembers();
+    fetchDependentsCount();
   }, []);
 
   const fetchMembers = async () => {
@@ -68,6 +70,28 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
       setError(error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDependentsCount = async () => {
+    try {
+      if (!firebaseUser) return;
+
+      const idToken = await firebaseUser.getIdToken();
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/dependents/count`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTotalDependents(data?.data?.count || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch dependents count:', error);
+      // Don't set error state - this is non-critical
     }
   };
 
@@ -218,24 +242,20 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
         ))}
       </div>
 
-      {/* Role Descriptions */}
+      {/* Dependents Count */}
       <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
-          {t('role.descriptions')}
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship', 'member'] as UserRole[]).map((role) => (
-            <div key={role} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center mb-2">
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(role)}`}>
-                  {getRoleDisplayName(role)}
-                </span>
-              </div>
-              <p className="text-sm text-gray-600">
-                {/* getRoleDescription(role) removed as per new_code */}
-              </p>
-            </div>
-          ))}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">
+              {t('total.dependents') || 'Total Dependents'}
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              {t('registered.dependents.across.all.members') || 'Registered dependents across all members'}
+            </p>
+          </div>
+          <div className="text-4xl font-bold text-blue-600">
+            {totalDependents}
+          </div>
         </div>
       </div>
 

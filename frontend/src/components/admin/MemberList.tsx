@@ -41,6 +41,7 @@ const MemberList: React.FC<MemberListProps> = ({
   const { t } = useLanguage();
   const { currentUser, firebaseUser } = useAuth();
   const [allMembers, setAllMembers] = useState<Member[]>([]);
+  const [totalDependents, setTotalDependents] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -123,8 +124,30 @@ const MemberList: React.FC<MemberListProps> = ({
     }
   };
 
+  const fetchDependentsCount = async () => {
+    try {
+      if (!firebaseUser) return;
+
+      const idToken = await firebaseUser.getIdToken();
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/dependents/count`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTotalDependents(data?.data?.count || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch dependents count:', error);
+    }
+  };
+
   useEffect(() => {
     fetchAllMembers();
+    fetchDependentsCount();
   }, []);
 
   // Refetch when parent signals a refresh (e.g., after save)
@@ -197,26 +220,62 @@ const MemberList: React.FC<MemberListProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            {t('manage.members')}
-          </h2>
-          <p className="text-gray-600">
-            {t('total.members')}: {totalMembers}
-          </p>
+      {/* Header with Stats */}
+      <div className="flex justify-between items-start">
+        <h2 className="text-2xl font-bold text-gray-900">
+          {t('manage.members')}
+        </h2>
+        {canRegisterMembers && (
+          <button
+            onClick={() => setShowAddMember(true)}
+            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+          >
+            <i className="fas fa-user-plus mr-2"></i>
+            {t('add.member') || 'Add Member'}
+          </button>
+        )}
+      </div>
+
+      {/* Eye-catching Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Total Members (Households) Card */}
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm font-medium uppercase tracking-wide">
+                {t('total.households') || 'Total Households'}
+              </p>
+              <p className="text-5xl font-bold mt-2">
+                {allMembers.length}
+              </p>
+              <p className="text-blue-100 text-sm mt-2">
+                {t('registered.members') || 'Registered Members'}
+              </p>
+            </div>
+            <div className="bg-blue-400 bg-opacity-30 rounded-full p-4">
+              <i className="fas fa-home text-4xl"></i>
+            </div>
+          </div>
         </div>
-        <div>
-          {canRegisterMembers && (
-            <button
-              onClick={() => setShowAddMember(true)}
-              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-            >
-              <i className="fas fa-user-plus mr-2"></i>
-              {t('add.member') || 'Add Member'}
-            </button>
-          )}
+
+        {/* Total Dependents Card */}
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-100 text-sm font-medium uppercase tracking-wide">
+                {t('total.dependents') || 'Total Dependents'}
+              </p>
+              <p className="text-5xl font-bold mt-2">
+                {totalDependents}
+              </p>
+              <p className="text-purple-100 text-sm mt-2">
+                {t('family.members') || 'Family Members'}
+              </p>
+            </div>
+            <div className="bg-purple-400 bg-opacity-30 rounded-full p-4">
+              <i className="fas fa-users text-4xl"></i>
+            </div>
+          </div>
         </div>
       </div>
 

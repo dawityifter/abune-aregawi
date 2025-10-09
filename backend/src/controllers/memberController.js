@@ -1853,6 +1853,25 @@ exports.getMemberDependents = async (req, res) => {
   }
 };
 
+// Get total count of all dependents (admin only)
+exports.getTotalDependentsCount = async (req, res) => {
+  try {
+    const count = await Dependent.count();
+
+    res.json({
+      success: true,
+      data: { count }
+    });
+
+  } catch (error) {
+    console.error('Get total dependents count error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Add a dependant to a member
 exports.addDependent = async (req, res) => {
   try {

@@ -17,31 +17,36 @@ const roleMiddleware = require('../middleware/role');
 // Apply authentication middleware to all routes
 router.use(firebaseAuthMiddleware);
 
-// Get all transactions (requires admin or treasurer role)
-router.get('/', roleMiddleware(['admin', 'treasurer']), getAllTransactions);
+// Define role groups
+const viewRoles = ['admin', 'treasurer', 'church_leadership']; // Can view financial data
+const editRoles = ['admin', 'treasurer']; // Can edit financial data
+const deleteRoles = ['admin']; // Can delete transactions
 
-// Get transaction statistics (requires admin or treasurer role)
-router.get('/stats', roleMiddleware(['admin', 'treasurer']), getTransactionStats);
+// Get transaction statistics (READ-ONLY)
+router.get('/stats', roleMiddleware(viewRoles), getTransactionStats);
 
-// Generate transaction reports (requires admin or treasurer role)
-router.get('/reports/:reportType', roleMiddleware(['admin', 'treasurer']), generateTransactionReport);
+// Generate transaction reports (READ-ONLY)
+router.get('/reports/:reportType', roleMiddleware(viewRoles), generateTransactionReport);
 
-// Get member payment summaries for new system (requires admin or treasurer role)
-router.get('/member-summaries', roleMiddleware(['admin', 'treasurer']), getMemberPaymentSummaries);
+// Get member payment summaries for new system (READ-ONLY)
+router.get('/member-summaries', roleMiddleware(viewRoles), getMemberPaymentSummaries);
 
-// Get a single transaction by ID (requires admin or treasurer role)
-router.get('/:id', roleMiddleware(['admin', 'treasurer']), getTransactionById);
+// Get all transactions (READ-ONLY)
+router.get('/', roleMiddleware(viewRoles), getAllTransactions);
 
-// Create a new transaction (requires admin or treasurer role)
-router.post('/', roleMiddleware(['admin', 'treasurer']), createTransaction);
+// Get a single transaction by ID (READ-ONLY)
+router.get('/:id', roleMiddleware(viewRoles), getTransactionById);
 
-// Update a transaction (requires admin or treasurer role)
-router.put('/:id', roleMiddleware(['admin', 'treasurer']), updateTransaction);
+// Create a new transaction (WRITE - treasurer/admin only)
+router.post('/', roleMiddleware(editRoles), createTransaction);
 
-// Update only payment_type (Zelle-only) (requires admin or treasurer role)
-router.patch('/:id/payment-type', roleMiddleware(['admin', 'treasurer']), updateTransactionPaymentType);
+// Update a transaction (WRITE - treasurer/admin only)
+router.put('/:id', roleMiddleware(editRoles), updateTransaction);
 
-// Delete a transaction (requires admin role only)
-router.delete('/:id', roleMiddleware(['admin']), deleteTransaction);
+// Update only payment_type (Zelle-only) (WRITE - treasurer/admin only)
+router.patch('/:id/payment-type', roleMiddleware(editRoles), updateTransactionPaymentType);
+
+// Delete a transaction (DELETE - admin only)
+router.delete('/:id', roleMiddleware(deleteRoles), deleteTransaction);
 
 module.exports = router; 
