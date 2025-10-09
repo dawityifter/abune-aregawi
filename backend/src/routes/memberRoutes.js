@@ -91,6 +91,7 @@ router.get('/test-auth', firebaseAuthMiddleware, (req, res) => {
 router.get('/all/firebase', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), validateMemberQuery, memberController.getAllMembersFirebase);
 
 // Dependents management routes (no JWT required - using member ID)
+router.get('/dependents/count', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), memberController.getTotalDependentsCount);
 router.get('/:memberId/dependents', validateMemberId, memberController.getMemberDependents);
 router.post('/:memberId/dependents', validateMemberId, validateDependentData, memberController.addDependent);
 router.put('/dependents/:dependentId', validateDependentId, validateDependentData, memberController.updateDependent);
