@@ -60,6 +60,18 @@ graph TB
 
 ## 🆕 Recent Improvements
 
+### SMS & Communications (October 2025)
+- ✅ **Department SMS Broadcasting**: Send messages to entire departments
+  - Target all members of a ministry, committee, or service team
+  - Department dropdown shows name, type, and member count
+  - Batch sending with rate limiting to prevent Twilio errors
+  - Success tracking with detailed delivery counts
+  - All SMS logged with department tracking
+- ✅ **Enhanced SMS System**: Multi-target messaging (individual, group, department, all)
+  - Real-time member search with filtering
+  - Role-based access control (Admin, Church Leadership, Secretary)
+  - Comprehensive logging and error handling
+
 ### Department Management (October 2025)
 - ✅ **Complete Department System**: Full CRUD operations for church departments
   - Create, edit, and manage departments (ministries, committees, services, etc.)
@@ -151,12 +163,16 @@ Notes:
 - React Router v7 future-flag warnings are expected and safe to ignore during tests.
 
 ### Communications (SMS & Outreach)
-- ✅ Restored SMS messaging module using Twilio in the backend
-  - Endpoint uses Firebase auth; frontend passes ID token in Authorization header
-  - Member dropdown search fixed to use `search` query param against `/api/members/all/firebase`
-  - Logs persisted to `SmsLog` table via Sequelize
+- ✅ **SMS Broadcast System** using Twilio backend
+  - Send to individual members, groups, **departments**, or all members
+  - Department SMS: Target entire ministry/committee with one click
+  - Batch sending with rate limiting (20 concurrent, 1s delay between batches)
+  - Firebase auth with role-based access (Admin, Church Leadership, Secretary)
+  - Member dropdown search with real-time filtering
+  - Logs all SMS to `sms_logs` table with sender, recipient type, department, status
+  - Success/failure tracking with detailed counts
 - ✅ Dashboard cards
-  - Communications card (links to `/sms`) visible to roles with `canSendCommunications` (Admin, Church Leadership, Secretary)
+  - Communications card (links to `/sms`) visible to roles with `canSendCommunications`
   - Relationship Department card (links to `/outreach`) visible when `canAccessOutreachDashboard` or `canManageOnboarding`
 - ✅ Navigation cleanup
   - Removed SMS, Outreach, and Admin links from the top header to reduce duplication
@@ -779,8 +795,11 @@ npm run db:test
 - `DELETE /api/departments/:id/members/:memberId` - Remove member from department
 - `PUT /api/departments/:id/members/:memberId` - Update member role in department
 
-### Communications
-- `POST /api/sms/send` - Send SMS message (requires Twilio configuration)
+### Communications (SMS)
+- `POST /api/sms/sendIndividual/:memberId` - Send SMS to individual member
+- `POST /api/sms/sendGroup/:groupId` - Send SMS to all members in a group
+- `POST /api/sms/sendDepartment/:departmentId` - Send SMS to all members in a department
+- `POST /api/sms/sendAll` - Send SMS to all active members (broadcast)
 
 ## 🔄 CI/CD Pipeline
 
