@@ -97,14 +97,14 @@ const SmsBroadcast: React.FC = () => {
       setDepartmentsError(null);
       try {
         const idToken = await firebaseUser.getIdToken(true);
-        const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/departments?is_active=true`, {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/departments?is_active=true&include_members=true`, {
           headers: { Authorization: `Bearer ${idToken}` },
           credentials: 'include',
         });
         const data = await resp.json().catch(() => ({} as any));
         if (!resp.ok) throw new Error(data?.message || 'Failed to load departments');
         const list: any[] = data?.data?.departments || [];
-        setDepartments(list.map(d => ({ id: d.id, name: d.name, type: d.type, member_count: d.member_count })));
+        setDepartments(list.map(d => ({ id: d.id, name: d.name, type: d.type, member_count: d.member_count || 0 })));
       } catch (e: any) {
         setDepartmentsError(e.message || 'Failed to load departments');
         setDepartments([]);
