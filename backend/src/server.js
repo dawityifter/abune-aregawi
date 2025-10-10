@@ -20,6 +20,7 @@ const transactionRoutes = require('./routes/transactionRoutes');
 const donationRoutes = require('./routes/donationRoutes');
 const smsRoutes = require('./routes/smsRoutes');
 const groupRoutes = require('./routes/groupRoutes');
+const departmentRoutes = require('./routes/departmentRoutes');
 const zelleRoutes = require('./routes/zelleRoutes');
 const pledgeRoutes = require('./routes/pledgeRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
@@ -126,7 +127,8 @@ app.get('/', (req, res) => {
       payments: '/api/payments',
       transactions: '/api/transactions',
       sms: '/api/sms',
-      groups: '/api/groups'
+      groups: '/api/groups',
+      departments: '/api/departments'
     }
   });
 });
@@ -214,6 +216,7 @@ app.use('/api/donations', donationRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/zelle', zelleRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/departments', departmentRoutes);
 app.use('/api/pledges', pledgeRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/income-categories', incomeCategoryRoutes);

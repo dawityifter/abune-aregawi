@@ -93,6 +93,8 @@ try {
   const SmsLog = require('./SmsLog')(sequelize);
   const Group = require('./Group')(sequelize);
   const MemberGroup = require('./MemberGroup')(sequelize);
+  const Department = require('./Department')(sequelize);
+  const DepartmentMember = require('./DepartmentMember')(sequelize);
   const ZelleMemoMatch = require('./ZelleMemoMatch')(sequelize);
   const Outreach = require('./Outreach')(sequelize);
   const LedgerEntry = require('./LedgerEntry')(sequelize);
@@ -110,6 +112,8 @@ try {
     SmsLog, 
     Group, 
     MemberGroup, 
+    Department,
+    DepartmentMember,
     ZelleMemoMatch, 
     Outreach, 
     LedgerEntry,
