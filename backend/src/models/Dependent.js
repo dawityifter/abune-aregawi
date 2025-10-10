@@ -133,13 +133,13 @@ module.exports = (sequelize) => {
 
   Dependent.associate = (models) => {
     Dependent.belongsTo(models.Member, {
-      foreignKey: 'memberId',
+      foreignKey: 'member_id',
       as: 'member'
     });
 
     // When a dependent self-claims, it links to a Member account
     Dependent.belongsTo(models.Member, {
-      foreignKey: 'linkedMemberId',
+      foreignKey: 'linked_member_id',
       as: 'linkedMember'
     });
   };
