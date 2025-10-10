@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRolePermissions, UserRole } from '../../utils/roles';
 
-type RecipientType = 'individual' | 'group' | 'department' | 'all';
+type RecipientType = 'individual' | 'department' | 'all';
 
 interface MemberOption {
   id: string | number;
@@ -25,11 +25,6 @@ const SmsBroadcast: React.FC = () => {
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
-
-  const [groupId, setGroupId] = useState<string>('');
-  const [groups, setGroups] = useState<Array<{ id: string | number; name: string; label?: string }>>([]);
-  const [groupsLoading, setGroupsLoading] = useState(false);
-  const [groupsError, setGroupsError] = useState<string | null>(null);
 
   const [departmentId, setDepartmentId] = useState<string>('');
   const [departments, setDepartments] = useState<Array<{ id: string | number; name: string; type: string; member_count: number }>>([]);
@@ -62,32 +57,6 @@ const SmsBroadcast: React.FC = () => {
   const userRole: UserRole = (userProfile?.data?.member?.role || 'member') as UserRole;
   const permissions = useMemo(() => getRolePermissions(userRole), [userRole]);
   const canSend = permissions.canSendCommunications || userRole === 'admin' || userRole === 'church_leadership' || userRole === 'secretary';
-
-  // Load active groups for authorized users (RBAC enforced in backend)
-  useEffect(() => {
-    const fetchGroups = async () => {
-      if (!firebaseUser || !canSend) return;
-      setGroupsLoading(true);
-      setGroupsError(null);
-      try {
-        const idToken = await firebaseUser.getIdToken(true);
-        const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/groups/active?includeCounts=true`, {
-          headers: { Authorization: `Bearer ${idToken}` },
-          credentials: 'include',
-        });
-        const data = await resp.json().catch(() => ({} as any));
-        if (!resp.ok) throw new Error(data?.message || 'Failed to load groups');
-        const list: any[] = data?.data || [];
-        setGroups(list.map(g => ({ id: g.id, name: g.name, label: g.label })));
-      } catch (e: any) {
-        setGroupsError(e.message || 'Failed to load groups');
-        setGroups([]);
-      } finally {
-        setGroupsLoading(false);
-      }
-    };
-    fetchGroups();
-  }, [firebaseUser, canSend]);
 
   // Load active departments for authorized users
   useEffect(() => {
@@ -170,9 +139,6 @@ const SmsBroadcast: React.FC = () => {
       if (recipientType === 'individual') {
         if (!selectedMemberId) throw new Error('Please select a member');
         endpoint = `${process.env.REACT_APP_API_URL}/api/sms/sendIndividual/${encodeURIComponent(selectedMemberId)}`;
-      } else if (recipientType === 'group') {
-        if (!groupId) throw new Error('Please enter a group ID');
-        endpoint = `${process.env.REACT_APP_API_URL}/api/sms/sendGroup/${encodeURIComponent(groupId)}`;
       } else if (recipientType === 'department') {
         if (!departmentId) throw new Error('Please select a department');
         endpoint = `${process.env.REACT_APP_API_URL}/api/sms/sendDepartment/${encodeURIComponent(departmentId)}`;
@@ -196,8 +162,6 @@ const SmsBroadcast: React.FC = () => {
       }
       if (recipientType === 'individual') {
         setResultMsg('Message sent successfully to the selected member.');
-      } else if (recipientType === 'group') {
-        setResultMsg(`Group message request queued. Success: ${data?.successCount ?? '-'} / ${data?.total ?? '-'}`);
       } else if (recipientType === 'department') {
         setResultMsg(`Department message sent to "${data?.departmentName || 'Unknown'}". Success: ${data?.successCount ?? '-'} / ${data?.total ?? '-'}`);
       } else {
@@ -249,14 +213,14 @@ const SmsBroadcast: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Recipient</label>
             <div className="flex flex-wrap gap-2">
-              {(['individual','group','department','all'] as RecipientType[]).map((t) => (
+              {(['individual','department','all'] as RecipientType[]).map((t) => (
                 <button
                   type="button"
                   key={t}
                   onClick={() => setRecipientType(t)}
                   className={`px-3 py-1.5 rounded border ${recipientType === t ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                 >
-                  {t === 'individual' ? 'Individual' : t === 'group' ? 'Group' : t === 'department' ? 'Department' : 'All Members'}
+                  {t === 'individual' ? 'Individual' : t === 'department' ? 'Department' : 'All Members'}
                 </button>
               ))}
             </div>
@@ -288,27 +252,6 @@ const SmsBroadcast: React.FC = () => {
                   ))}
                 </select>
               )}
-            </div>
-          )}
-
-          {recipientType === 'group' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Group</label>
-              {groupsLoading && <div className="text-sm text-gray-500">Loading groups…</div>}
-              {groupsError && <div className="text-sm text-red-600">{groupsError}</div>}
-              {!groupsLoading && !groupsError && (
-                <select
-                  value={groupId}
-                  onChange={(e) => setGroupId(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="">-- Select a group --</option>
-                  {groups.map(g => (
-                    <option key={String(g.id)} value={String(g.id)}>{g.label || g.name}</option>
-                  ))}
-                </select>
-              )}
-              <p className="text-xs text-gray-500 mt-1">Only active groups you are authorized to target are listed.</p>
             </div>
           )}
 
