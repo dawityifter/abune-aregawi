@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRolePermissions, UserRole } from '../../utils/roles';
 
-type RecipientType = 'individual' | 'group' | 'all';
+type RecipientType = 'individual' | 'group' | 'department' | 'all';
 
 interface MemberOption {
   id: string | number;
@@ -30,6 +30,11 @@ const SmsBroadcast: React.FC = () => {
   const [groups, setGroups] = useState<Array<{ id: string | number; name: string; label?: string }>>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
   const [groupsError, setGroupsError] = useState<string | null>(null);
+
+  const [departmentId, setDepartmentId] = useState<string>('');
+  const [departments, setDepartments] = useState<Array<{ id: string | number; name: string; type: string; member_count: number }>>([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+  const [departmentsError, setDepartmentsError] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
@@ -82,6 +87,32 @@ const SmsBroadcast: React.FC = () => {
       }
     };
     fetchGroups();
+  }, [firebaseUser, canSend]);
+
+  // Load active departments for authorized users
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      if (!firebaseUser || !canSend) return;
+      setDepartmentsLoading(true);
+      setDepartmentsError(null);
+      try {
+        const idToken = await firebaseUser.getIdToken(true);
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/departments?is_active=true`, {
+          headers: { Authorization: `Bearer ${idToken}` },
+          credentials: 'include',
+        });
+        const data = await resp.json().catch(() => ({} as any));
+        if (!resp.ok) throw new Error(data?.message || 'Failed to load departments');
+        const list: any[] = data?.data?.departments || [];
+        setDepartments(list.map(d => ({ id: d.id, name: d.name, type: d.type, member_count: d.member_count })));
+      } catch (e: any) {
+        setDepartmentsError(e.message || 'Failed to load departments');
+        setDepartments([]);
+      } finally {
+        setDepartmentsLoading(false);
+      }
+    };
+    fetchDepartments();
   }, [firebaseUser, canSend]);
 
   // Debounced members search
@@ -142,6 +173,9 @@ const SmsBroadcast: React.FC = () => {
       } else if (recipientType === 'group') {
         if (!groupId) throw new Error('Please enter a group ID');
         endpoint = `${process.env.REACT_APP_API_URL}/api/sms/sendGroup/${encodeURIComponent(groupId)}`;
+      } else if (recipientType === 'department') {
+        if (!departmentId) throw new Error('Please select a department');
+        endpoint = `${process.env.REACT_APP_API_URL}/api/sms/sendDepartment/${encodeURIComponent(departmentId)}`;
       } else {
         endpoint = `${process.env.REACT_APP_API_URL}/api/sms/sendAll`;
       }
@@ -164,6 +198,8 @@ const SmsBroadcast: React.FC = () => {
         setResultMsg('Message sent successfully to the selected member.');
       } else if (recipientType === 'group') {
         setResultMsg(`Group message request queued. Success: ${data?.successCount ?? '-'} / ${data?.total ?? '-'}`);
+      } else if (recipientType === 'department') {
+        setResultMsg(`Department message sent to "${data?.departmentName || 'Unknown'}". Success: ${data?.successCount ?? '-'} / ${data?.total ?? '-'}`);
       } else {
         setResultMsg(`Broadcast request queued. Success: ${data?.successCount ?? '-'} / ${data?.total ?? '-'}`);
       }
@@ -213,14 +249,14 @@ const SmsBroadcast: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Recipient</label>
             <div className="flex flex-wrap gap-2">
-              {(['individual','group','all'] as RecipientType[]).map((t) => (
+              {(['individual','group','department','all'] as RecipientType[]).map((t) => (
                 <button
                   type="button"
                   key={t}
                   onClick={() => setRecipientType(t)}
                   className={`px-3 py-1.5 rounded border ${recipientType === t ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                 >
-                  {t === 'individual' ? 'Individual' : t === 'group' ? 'Group' : 'All Members'}
+                  {t === 'individual' ? 'Individual' : t === 'group' ? 'Group' : t === 'department' ? 'Department' : 'All Members'}
                 </button>
               ))}
             </div>
@@ -273,6 +309,29 @@ const SmsBroadcast: React.FC = () => {
                 </select>
               )}
               <p className="text-xs text-gray-500 mt-1">Only active groups you are authorized to target are listed.</p>
+            </div>
+          )}
+
+          {recipientType === 'department' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Select Department</label>
+              {departmentsLoading && <div className="text-sm text-gray-500">Loading departments…</div>}
+              {departmentsError && <div className="text-sm text-red-600">{departmentsError}</div>}
+              {!departmentsLoading && !departmentsError && (
+                <select
+                  value={departmentId}
+                  onChange={(e) => setDepartmentId(e.target.value)}
+                  className="w-full border rounded px-3 py-2"
+                >
+                  <option value="">-- Select a department --</option>
+                  {departments.map(d => (
+                    <option key={String(d.id)} value={String(d.id)}>
+                      {d.name} ({d.type}) - {d.member_count} members
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-xs text-gray-500 mt-1">Only active departments with members are listed.</p>
             </div>
           )}
 
