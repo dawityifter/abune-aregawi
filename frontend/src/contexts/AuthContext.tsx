@@ -448,8 +448,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             _temp: false
           });
 
-          // Only navigate to dashboard if we're not already there and not on public pages
-          const NO_REDIRECT_PATHS = new Set<string>([
+          // Only navigate to dashboard if on login page or public pages
+          // Don't redirect if user is already on a protected page (let them stay there)
+          const REDIRECT_TO_DASHBOARD_PATHS = new Set<string>([
+            '/login',
             '/',
             '/credits',
             '/church-bylaw',
@@ -458,9 +460,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             '/parish-pulse-sign-up',
           ]);
           const currentPath = window.location.pathname;
-          if (!NO_REDIRECT_PATHS.has(currentPath) && currentPath !== '/dashboard') {
-            console.log('🔄 Navigating to dashboard for existing user');
+          if (REDIRECT_TO_DASHBOARD_PATHS.has(currentPath)) {
+            console.log('🔄 Navigating to dashboard from public/login page');
             navigate('/dashboard');
+          } else {
+            console.log('✅ User already on protected route, staying on:', currentPath);
           }
         } else {
           // Before treating as new user, attempt readiness warm-up with exponential backoff
@@ -483,12 +487,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               role: profile.role,
               _temp: false
             });
-            const NO_REDIRECT_PATHS = new Set<string>([
-              '/', '/credits', '/church-bylaw', '/donate', '/member-status', '/parish-pulse-sign-up',
+            // Only navigate to dashboard if on login page or public pages
+            const REDIRECT_TO_DASHBOARD_PATHS = new Set<string>([
+              '/login', '/', '/credits', '/church-bylaw', '/donate', '/member-status', '/parish-pulse-sign-up',
             ]);
             const currentPath = window.location.pathname;
-            if (!NO_REDIRECT_PATHS.has(currentPath) && currentPath !== '/dashboard') {
+            if (REDIRECT_TO_DASHBOARD_PATHS.has(currentPath)) {
+              console.log('🔄 Navigating to dashboard from public/login page after warm-up');
               navigate('/dashboard');
+            } else {
+              console.log('✅ User already on protected route after warm-up, staying on:', currentPath);
             }
           } else {
             console.log('❌ Still no profile after warm-up, treating as new user');

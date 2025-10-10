@@ -981,6 +981,7 @@ exports.getAllMembersFirebase = async (req, res) => {
     console.log('🔍 Query result - count:', count, 'members found:', members.length);
 
     // Transform snake_case to camelCase for frontend compatibility
+    // Optimized: Only return fields actually used by frontend components
     const transformedMembers = members.map(member => ({
       id: member.id,
       firstName: member.first_name,
@@ -988,36 +989,12 @@ exports.getAllMembersFirebase = async (req, res) => {
       lastName: member.last_name,
       email: member.email,
       phoneNumber: member.phone_number,
+      role: member.role,
+      isActive: member.is_active,
       // Expose member number for frontend table
       memberId: member.member_id,
       member_id: member.member_id,
-      role: member.role,
-      isActive: member.is_active,
-      dateJoinedParish: member.date_joined_parish,
-      createdAt: member.created_at,
-      updatedAt: member.updated_at,
-      baptismName: member.baptism_name,
-      dateOfBirth: member.date_of_birth,
-      gender: member.gender,
-      maritalStatus: member.marital_status,
-      streetLine1: member.street_line1,
-      city: member.city,
-      state: member.state,
-      postalCode: member.postal_code,
-      country: member.country,
-      spouseName: member.spouse_name,
-      householdSize: member.household_size,
-      repentanceFather: member.repentance_father,
-      registrationStatus: member.registration_status,
-      firebaseUid: member.firebase_uid,
-      familyId: member.family_id,
-      apartmentNo: member.apartment_no,
-      emergencyContactName: member.emergency_contact_name,
-      emergencyContactPhone: member.emergency_contact_phone,
-      yearlyPledge: member.yearly_pledge,
-      // Provide dependents array for frontend (even if only IDs are included)
-      dependents: member.dependents || [],
-      // Also include a count field for robustness/backward-compatibility
+      // Dependent count for display
       dependentsCount: member.dependents ? member.dependents.length : 0
     }));
 

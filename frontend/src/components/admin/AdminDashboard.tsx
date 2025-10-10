@@ -6,6 +6,7 @@ import MemberList from './MemberList';
 import MemberEditModal from './MemberEditModal';
 import RoleManagement from './RoleManagement';
 import AdminStats from './AdminStats';
+import DepartmentList from './DepartmentList';
 
 interface AdminDashboardProps {}
 
@@ -14,7 +15,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const { t } = useLanguage();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'stats'>('members');
+  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'stats' | 'departments'>('members');
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -168,6 +169,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 {t('role.management')}
               </button>
             )}
+            
+            <button
+              onClick={() => setActiveTab('departments')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'departments'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <i className="fas fa-building mr-2"></i>
+              {t('departments') || 'Departments'}
+            </button>
           </nav>
         </div>
       </div>
@@ -191,6 +204,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
           
           {activeTab === 'stats' && permissions.canViewFinancialRecords && (
             <AdminStats />
+          )}
+          
+          {activeTab === 'departments' && (
+            <DepartmentList />
           )}
         </div>
       </main>

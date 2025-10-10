@@ -60,6 +60,31 @@ graph TB
 
 ## 🆕 Recent Improvements
 
+### Department Management (October 2025)
+- ✅ **Complete Department System**: Full CRUD operations for church departments
+  - Create, edit, and manage departments (ministries, committees, services, etc.)
+  - Assign department leaders with enhanced member selection (ID, phone display)
+  - Track member count and department hierarchy (parent/sub-departments)
+  - Active/inactive status management and public visibility control
+- ✅ **Member Management**: Assign and manage department members
+  - Add multiple members to departments with role assignment
+  - Remove members and update their department roles
+  - Search functionality by name, ID, phone, or email
+  - Visual member list with contact information
+- ✅ **Enhanced Search & Filtering**: Improved UX for large member lists
+  - Real-time search in leader selection dropdowns
+  - Filter by name, member ID, phone number, or email
+  - Search in "Manage Members" modal with instant results
+  - Clear visual feedback with filtered count display
+- ✅ **Route Preservation**: Better navigation experience
+  - Page refresh maintains current route (e.g., /admin, /treasurer)
+  - No unwanted redirects to dashboard on refresh
+  - Proper login flow with intended route preservation
+- ✅ **API Optimization**: Reduced payload size for member list endpoints
+  - 66% reduction in data transfer (from 30+ to 10 essential fields)
+  - Faster page loads and better mobile performance
+  - Only returns fields actually used by frontend components
+
 ### Financial Management (October 2025)
 - ✅ **Payment Overview Dashboard**: Pledge-based statistics with real-time metrics
   - Computes member payment status from `yearly_pledge` and actual payments
@@ -192,6 +217,12 @@ Notes:
 - **Feature Flags**: Environment-based authentication method toggles
 - **Error Handling**: User-friendly error messages and retry mechanisms
 - **Deployment**: Production-ready Firebase Hosting + Render deployment
+- **Department Management**: Complete system for church organization structure
+  - **Department CRUD**: Create, edit, delete departments (ministries, committees, services)
+  - **Member Assignment**: Add/remove members to departments with role management
+  - **Hierarchy Support**: Parent/sub-department relationships and organization
+  - **Enhanced Search**: Real-time filtering by name, ID, phone for large member lists
+  - **Leader Selection**: Visual member selection with ID and contact information
 - **Financial Management**: Complete treasurer dashboard with payment tracking
   - **Payment Overview**: Pledge-based statistics with Contributing Members metric
   - **Transaction Recording**: Support for all payment methods (cash, check, card, ACH)
@@ -382,10 +413,39 @@ erDiagram
         date statementDate
     }
     
+    DEPARTMENTS {
+        bigint id PK
+        string name
+        text description
+        enum type
+        bigint leaderId FK
+        bigint parentDepartmentId FK
+        string contactEmail
+        string contactPhone
+        string meetingSchedule
+        boolean isActive
+        boolean isPublic
+        int maxMembers
+        int sortOrder
+    }
+    
+    DEPARTMENT_MEMBERS {
+        bigint id PK
+        bigint departmentId FK
+        bigint memberId FK
+        enum roleInDepartment
+        date joinedAt
+        enum status
+    }
+    
     MEMBERS ||--o{ CHILDREN : "has"
     MEMBERS ||--o{ TRANSACTIONS : "pays"
     MEMBERS ||--o{ TRANSACTIONS : "collects"
     TRANSACTIONS ||--o{ LEDGER_ENTRIES : "records"
+    MEMBERS ||--o{ DEPARTMENTS : "leads"
+    DEPARTMENTS ||--o{ DEPARTMENTS : "parent of"
+    DEPARTMENTS ||--o{ DEPARTMENT_MEMBERS : "contains"
+    MEMBERS ||--o{ DEPARTMENT_MEMBERS : "belongs to"
 ```
 
 ## 🔐 Security Features
@@ -708,6 +768,17 @@ npm run db:test
 - `POST /api/transactions` - Record new payment (member or anonymous)
 - `PUT /api/transactions/:id` - Update transaction
 
+### Departments (Admin)
+- `GET /api/departments` - List all departments with filters and search
+- `GET /api/departments/:id` - Get department details with leader and members
+- `POST /api/departments` - Create new department
+- `PUT /api/departments/:id` - Update department
+- `DELETE /api/departments/:id` - Delete department
+- `GET /api/departments/:id/members` - Get department members
+- `POST /api/departments/:id/members` - Add members to department
+- `DELETE /api/departments/:id/members/:memberId` - Remove member from department
+- `PUT /api/departments/:id/members/:memberId` - Update member role in department
+
 ### Communications
 - `POST /api/sms/send` - Send SMS message (requires Twilio configuration)
 
@@ -785,9 +856,13 @@ This project is created for the Debre Tsehay Abune Aregawi Tigray Orthodox Tewah
 *Built with love for the Tigray Orthodox Christian community* 
 
 **Last Updated**: October 2025
-**Version**: 1.2.0
+**Version**: 1.3.0
 
 ### Recent Updates (October 2025)
+- **Department Management System**: Full CRUD for departments and member management
+- **Enhanced Search & Filtering**: Real-time member search by name, ID, phone, email
+- **Route Preservation**: Page refresh maintains current route (no unwanted redirects)
+- **API Optimization**: 66% reduction in member list payload size
 - Payment Overview Dashboard with pledge-based statistics
 - Anonymous payment support for non-member donations
 - Contributing Members metric

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { RecaptchaVerifier } from "firebase/auth";
 import { auth } from "../../firebase";
@@ -17,6 +17,7 @@ const SignIn: React.FC = () => {
   const { loginWithPhone, loading, currentUser, authReady } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Phone-only policy
   const [phone, setPhone] = useState(''); // Start with empty phone number
@@ -252,9 +253,10 @@ const SignIn: React.FC = () => {
       }
       // Avoid showing the login screen during post-auth processing
       setRedirecting(true);
-      // Navigate away from /login immediately; AuthContext/ProtectedRoute will settle to dashboard or registration
-      navigate('/dashboard', { replace: true });
-      console.log('🔄 Login successful, navigating to /dashboard to avoid /login flash while AuthContext finalizes.');
+      // Navigate to intended route (from state) or dashboard as fallback
+      const intendedRoute = (location.state as any)?.from?.pathname || '/dashboard';
+      navigate(intendedRoute, { replace: true });
+      console.log('🔄 Login successful, navigating to:', intendedRoute);
     } catch (err: any) {
       setOtpVerifying(false);
       
