@@ -29,10 +29,10 @@ module.exports = (sequelize) => {
 
   LedgerEntry.init({
     id: {
-      type: DataTypes.UUID,
+      type: DataTypes.BIGINT,  // Match production database schema
       primaryKey: true,
-      allowNull: false,
-      defaultValue: DataTypes.UUIDV4
+      autoIncrement: true,
+      allowNull: false
     },
     transaction_id: {
       type: DataTypes.BIGINT,
