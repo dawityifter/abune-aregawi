@@ -53,7 +53,7 @@ const INCOME_CATEGORIES = [
     gl_code: 'INC007',
     name: 'Event Hall & Church Item Rental',
     description: 'Rental income from event hall and church items',
-    payment_type_mapping: 'event',
+    payment_type_mapping: null,
     is_active: true,
     display_order: 7
   },
