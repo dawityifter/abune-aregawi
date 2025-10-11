@@ -23,6 +23,20 @@ module.exports = (sequelize) => {
     }
   }
 
+  // Dynamically determine member ID type by checking database schema
+  // This supports both BIGINT (local) and UUID (production) configurations
+  let memberIdType = DataTypes.BIGINT; // Default for local dev
+  
+  // Check if we're in production mode or if DATABASE_URL suggests Supabase/production
+  const databaseUrl = process.env.DATABASE_URL || '';
+  const isProduction = databaseUrl.includes('supabase') || 
+                       databaseUrl.includes('render') ||
+                       process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    memberIdType = DataTypes.UUID; // Production uses UUID for members
+  }
+
   LedgerEntry.init({
     id: {
       type: DataTypes.UUID,
@@ -41,7 +55,7 @@ module.exports = (sequelize) => {
       onDelete: 'CASCADE'
     },
     member_id: {
-      type: DataTypes.BIGINT,
+      type: memberIdType, // Dynamically set based on environment
       allowNull: true, // Can be null for non-member related entries
       references: {
         model: 'members',
@@ -51,7 +65,7 @@ module.exports = (sequelize) => {
       onDelete: 'SET NULL'
     },
     collected_by: {
-      type: DataTypes.BIGINT,
+      type: memberIdType, // Dynamically set based on environment
       allowNull: true, // Can be null for system-generated entries
       references: {
         model: 'members',

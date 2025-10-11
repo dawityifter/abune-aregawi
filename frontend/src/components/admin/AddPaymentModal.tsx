@@ -147,6 +147,24 @@ interface AddPaymentModalProps {
     }
   }, [paymentDate]);
 
+  // Calculate collector ID from user (database ID, not Firebase UID)
+  // In production, user.id might be database ID (BIGINT) or Firebase UID (UUID string)
+  // We need the database ID for collected_by field
+  const collectorId = useMemo(() => {
+    if (!user?.id) return 1; // Default fallback
+    // If it's already a number, use it directly
+    if (typeof user.id === 'number') return user.id;
+    // If it's a string that looks like a number, parse it
+    const parsed = parseInt(String(user.id));
+    // If parsing results in NaN (e.g., UUID string), this indicates a data issue
+    // Log a warning and return fallback
+    if (isNaN(parsed)) {
+      console.warn('⚠️ user.id is not a valid database ID:', user.id);
+      return 1; // Fallback to ID 1 (admin)
+    }
+    return parsed;
+  }, [user?.id]);
+
   // Fetch income categories on mount
   useEffect(() => {
     const loadIncomeCategories = async () => {
@@ -215,7 +233,7 @@ interface AddPaymentModalProps {
         // Non-Stripe methods: post transaction directly
         const requestBody: any = {
           member_id: isAnonymous ? null : parseInt(selectedMemberId),
-          collected_by: parseInt(user?.id || '1'), // Always use logged-in member
+          collected_by: collectorId, // Always use logged-in member's database ID
           payment_date: paymentDate,
           amount: parseFloat(amount),
           payment_type: paymentType,
@@ -711,7 +729,7 @@ interface AddPaymentModalProps {
                               },
                               body: JSON.stringify({
                                 member_id: parseInt(selectedMemberId),
-                                collected_by: parseInt(user?.id || '1'),
+                                collected_by: collectorId,
                                 payment_date: paymentDate,
                                 amount: parseFloat(amount || '0'),
                                 payment_type: (paymentType as any) || 'donation',
