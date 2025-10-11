@@ -231,6 +231,25 @@ To add a new fallback mapping:
 
 ---
 
+## Database Fixes
+
+### 2025-10-10 - Fixed INC007 Duplicate Mapping
+
+**Issue**: INC007 (Event Hall & Church Item Rental) had `payment_type_mapping: 'event'`, which conflicted with INC003 (Fundraising). This caused the frontend to always select INC003 when selecting payment types, preventing other categories from being auto-selected.
+
+**Fix**: 
+- Updated seed data to set INC007 `payment_type_mapping` to `null`
+- Created migration `fixINC007Mapping.js` to update existing database records
+- INC007 now requires manual selection (as intended per design)
+
+**Result**: 
+- Only INC003 maps to 'event' payment type
+- 'building_fund' correctly maps to INC003 via fallback
+- All payment type auto-selections now work correctly
+
+---
+
 ## Last Updated
 
+2025-10-10 - Fixed INC007 duplicate mapping issue
 2025-10-03 - Added tithe and building_fund fallback mappings
