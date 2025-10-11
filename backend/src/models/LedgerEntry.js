@@ -23,19 +23,8 @@ module.exports = (sequelize) => {
     }
   }
 
-  // Dynamically determine member ID type by checking database schema
-  // This supports both BIGINT (local) and UUID (production) configurations
-  let memberIdType = DataTypes.BIGINT; // Default for local dev
-  
-  // Check if we're in production mode or if DATABASE_URL suggests Supabase/production
-  const databaseUrl = process.env.DATABASE_URL || '';
-  const isProduction = databaseUrl.includes('supabase') || 
-                       databaseUrl.includes('render') ||
-                       process.env.NODE_ENV === 'production';
-  
-  if (isProduction) {
-    memberIdType = DataTypes.UUID; // Production uses UUID for members
-  }
+  // Member ID type is BIGINT in both local and production
+  const memberIdType = DataTypes.BIGINT;
 
   LedgerEntry.init({
     id: {
