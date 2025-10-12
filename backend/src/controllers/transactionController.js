@@ -178,14 +178,6 @@ const createTransaction = async (req, res) => {
       donor_memo
     } = req.body;
 
-    console.log('####-##- [1] Request Body Received:', JSON.stringify({
-      member_id,
-      collected_by,
-      payment_type,
-      amount,
-      income_category_id
-    }, null, 2));
-
     // Validate required fields (member_id is optional for anonymous donations)
     if (!collected_by || !amount || !payment_type || !payment_method) {
       return res.status(400).json({
@@ -284,14 +276,7 @@ const createTransaction = async (req, res) => {
       : (txStatus === 'canceled' ? 'cancelled' : txStatus);
 
     // Verify that collector exists and member exists (if provided)
-    console.log('####-##- [2] Looking up collector with ID:', collected_by, 'Type:', typeof collected_by);
     const collector = await Member.findByPk(collected_by);
-    console.log('####-##- [3] Collector found:', {
-      id: collector?.id,
-      id_type: typeof collector?.id,
-      first_name: collector?.first_name,
-      last_name: collector?.last_name
-    });
     if (!collector) {
       return res.status(400).json({
         success: false,
@@ -346,14 +331,6 @@ const createTransaction = async (req, res) => {
 
     // Create new transaction if it doesn't exist
     if (!transaction) {
-      console.log('####-##- [4] About to create Transaction with:', JSON.stringify({
-        member_id,
-        collected_by,
-        collected_by_type: typeof collected_by,
-        payment_type,
-        amount: parseFloat(amount),
-        income_category_id: finalIncomeCategoryId
-      }, null, 2));
       transaction = await Transaction.create({
         member_id,
         collected_by,
@@ -368,7 +345,6 @@ const createTransaction = async (req, res) => {
         donation_id: donation_id || null,
         income_category_id: finalIncomeCategoryId
       }, { transaction: t });
-      console.log('####-##- [5] Transaction created with ID:', transaction.id, 'Type:', typeof transaction.id);
     }
     
     // Create corresponding ledger entry using Sequelize (avoids enum issues)
@@ -376,15 +352,6 @@ const createTransaction = async (req, res) => {
     try {
       const entryDate = payment_date || new Date();
       const memo = `${glCode} - ${finalNote || 'No description'}`;
-      
-      console.log('####-##- [6] About to create LedgerEntry with:', JSON.stringify({
-        collected_by,
-        collected_by_type: typeof collected_by,
-        member_id,
-        member_id_type: typeof member_id,
-        transaction_id: transaction.id,
-        transaction_id_type: typeof transaction.id
-      }, null, 2));
       
       await LedgerEntry.create({
         type: payment_type, // Keep payment_type for backward compatibility
@@ -403,15 +370,8 @@ const createTransaction = async (req, res) => {
         attachment_url: null,
         statement_date: null
       }, { transaction: t });
-      console.log('####-##- [7] LedgerEntry created successfully');
     } catch (ledgerError) {
       // Ledger entries are optional - log error but don't fail transaction
-      console.error('####-##- [8] LedgerEntry creation FAILED:', ledgerError.message);
-      console.error('####-##- [8a] Full error details:', JSON.stringify({
-        name: ledgerError.name,
-        message: ledgerError.message,
-        sql: ledgerError.sql?.substring(0, 200)
-      }, null, 2));
       console.warn('⚠️  Could not create ledger entry (table may not exist):', ledgerError.message);
     }
 
