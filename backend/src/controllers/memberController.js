@@ -981,7 +981,7 @@ exports.getAllMembersFirebase = async (req, res) => {
     console.log('🔍 Query result - count:', count, 'members found:', members.length);
 
     // Transform snake_case to camelCase for frontend compatibility
-    // Optimized: Only return fields actually used by frontend components
+    // Return all fields needed for MemberList display and Edit Member modal
     const transformedMembers = members.map(member => ({
       id: member.id,
       firstName: member.first_name,
@@ -991,6 +991,30 @@ exports.getAllMembersFirebase = async (req, res) => {
       phoneNumber: member.phone_number,
       role: member.role,
       isActive: member.is_active,
+      // Personal info for Edit Member modal
+      gender: member.gender,
+      maritalStatus: member.marital_status,
+      dateOfBirth: member.date_of_birth,
+      dateJoinedParish: member.date_joined_parish,
+      baptismName: member.baptism_name,
+      // Address fields
+      streetLine1: member.street_line1,
+      city: member.city,
+      state: member.state,
+      postalCode: member.postal_code,
+      country: member.country,
+      // Contact info
+      emergencyContactName: member.emergency_contact_name,
+      emergencyContactPhone: member.emergency_contact_phone,
+      // Spiritual info
+      interestedInServing: member.interested_in_serving,
+      languagePreference: member.language_preference,
+      ministries: member.ministries,
+      // Spouse info
+      spouseName: member.spouse_name,
+      spouseEmail: member.spouse_email,
+      // Other
+      yearlyPledge: member.yearly_pledge,
       // Expose member number for frontend table
       memberId: member.member_id,
       member_id: member.member_id,
