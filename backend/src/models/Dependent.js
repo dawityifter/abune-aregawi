@@ -17,17 +17,19 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
-    memberId: {
+    member_id: {
       type: DataTypes.BIGINT,
       allowNull: false,
+      field: 'member_id',  // Explicitly map to DB column
       references: {
         model: 'members',
         key: 'id'
       }
     },
-    linkedMemberId: {
+    linked_member_id: {
       type: DataTypes.BIGINT,
       allowNull: true,
+      field: 'linked_member_id',  // Explicitly map to DB column
       references: {
         model: 'members',
         key: 'id'
