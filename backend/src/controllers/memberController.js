@@ -979,24 +979,37 @@ exports.getAllMembersFirebase = async (req, res) => {
     });
 
     console.log('🔍 Query result - count:', count, 'members found:', members.length);
+    
+    // Debug: Check if dependents are being loaded
+    if (members.length > 0) {
+      console.log('🔍 First member dependents check:', {
+        hasDependents: !!members[0].dependents,
+        dependentsArray: members[0].dependents,
+        dependentsLength: members[0].dependents ? members[0].dependents.length : 0
+      });
+    }
 
     // Transform snake_case to camelCase for frontend compatibility
     // Optimized: Only return fields actually used by frontend components
-    const transformedMembers = members.map(member => ({
-      id: member.id,
-      firstName: member.first_name,
-      middleName: member.middle_name,
-      lastName: member.last_name,
-      email: member.email,
-      phoneNumber: member.phone_number,
-      role: member.role,
-      isActive: member.is_active,
-      // Expose member number for frontend table
-      memberId: member.member_id,
-      member_id: member.member_id,
-      // Dependent count for display
-      dependentsCount: member.dependents ? member.dependents.length : 0
-    }));
+    const transformedMembers = members.map(member => {
+      const depCount = member.dependents ? member.dependents.length : 0;
+      console.log(`🔍 Member ${member.first_name} ${member.last_name}: dependents array =`, member.dependents, 'count =', depCount);
+      return {
+        id: member.id,
+        firstName: member.first_name,
+        middleName: member.middle_name,
+        lastName: member.last_name,
+        email: member.email,
+        phoneNumber: member.phone_number,
+        role: member.role,
+        isActive: member.is_active,
+        // Expose member number for frontend table
+        memberId: member.member_id,
+        member_id: member.member_id,
+        // Dependent count for display
+        dependentsCount: depCount
+      };
+    });
 
     console.log('🔍 Transformed members count:', transformedMembers.length);
 

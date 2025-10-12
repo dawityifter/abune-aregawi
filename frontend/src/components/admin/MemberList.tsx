@@ -21,6 +21,7 @@ interface Member {
   dateJoinedParish?: string;
   createdAt: string;
   dependents?: any[];
+  dependentsCount?: number;
 }
 
 interface MemberListProps {
@@ -116,6 +117,13 @@ const MemberList: React.FC<MemberListProps> = ({
       }
 
       const data = await response.json();
+      console.log('📊 Sample member data (first member):', data.data.members[0]);
+      console.log('📊 Checking dependentsCount field:', {
+        hasDependentsCount: 'dependentsCount' in (data.data.members[0] || {}),
+        value: data.data.members[0]?.dependentsCount,
+        hasDependents: 'dependents' in (data.data.members[0] || {}),
+        dependentsLength: data.data.members[0]?.dependents?.length
+      });
       setAllMembers(data.data.members);
     } catch (error: any) {
       setError(error.message);
@@ -377,7 +385,7 @@ const MemberList: React.FC<MemberListProps> = ({
                           )</span>
                         </div>
                         <div className="text-sm text-gray-500">
-                          {member.dependents?.length || 0} {t('dependents')}
+                          {member.dependentsCount ?? member.dependents?.length ?? 0} {t('dependents')}
                         </div>
                       </div>
                     </div>
