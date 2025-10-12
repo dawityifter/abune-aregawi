@@ -64,12 +64,21 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
   const [showEditDependent, setShowEditDependent] = useState(false);
 
   useEffect(() => {
+    console.log('🔍 MemberEditModal - Received member data:', {
+      gender: member.gender,
+      maritalStatus: member.maritalStatus
+    });
     // Normalize gender and maritalStatus to lowercase to match dropdown options
-    setFormData({
+    const normalized = {
       ...member,
       gender: member.gender ? member.gender.toLowerCase() : member.gender,
       maritalStatus: member.maritalStatus ? member.maritalStatus.toLowerCase() : member.maritalStatus
+    };
+    console.log('🔍 MemberEditModal - After normalization:', {
+      gender: normalized.gender,
+      maritalStatus: normalized.maritalStatus
     });
+    setFormData(normalized);
   }, [member]);
 
   // Fetch dependents to populate Family tab (children + spouse info)
@@ -427,6 +436,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   name="gender"
                   value={formData.gender || ''}
                   onChange={handleInputChange}
+                  onFocus={() => console.log('🔍 Gender dropdown focused. Current value:', formData.gender)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">{t('select.gender')}</option>
@@ -457,6 +467,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   name="maritalStatus"
                   value={formData.maritalStatus || ''}
                   onChange={handleInputChange}
+                  onFocus={() => console.log('🔍 Marital Status dropdown focused. Current value:', formData.maritalStatus)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">{t('select.marital.status')}</option>
