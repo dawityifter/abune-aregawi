@@ -25,7 +25,6 @@ module.exports = (sequelize) => {
 
   // Member ID type is BIGINT in both local and production
   const memberIdType = DataTypes.BIGINT;
-  console.log('####-##- [MODEL] LedgerEntry initialized with memberIdType:', memberIdType.key || 'BIGINT');
 
   LedgerEntry.init({
     id: {
