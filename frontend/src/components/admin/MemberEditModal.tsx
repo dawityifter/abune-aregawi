@@ -64,7 +64,12 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
   const [showEditDependent, setShowEditDependent] = useState(false);
 
   useEffect(() => {
-    setFormData(member);
+    // Normalize gender and maritalStatus to lowercase to match dropdown options
+    setFormData({
+      ...member,
+      gender: member.gender ? member.gender.toLowerCase() : member.gender,
+      maritalStatus: member.maritalStatus ? member.maritalStatus.toLowerCase() : member.maritalStatus
+    });
   }, [member]);
 
   // Fetch dependents to populate Family tab (children + spouse info)
