@@ -4,6 +4,7 @@ const { Op } = require('sequelize');
 const { Member, Dependent } = require('../models');
 const { sanitizeInput } = require('../utils/sanitize');
 const { newMemberRegistered } = require('../utils/notifications');
+const logger = require('../utils/logger');
 
 // Utility function to normalize phone numbers
 const normalizePhoneNumber = (phoneNumber) => {
@@ -935,15 +936,16 @@ exports.getAllMembers = async (req, res) => {
 // Get all members (Firebase auth - admin only)
 exports.getAllMembersFirebase = async (req, res) => {
   try {
-    console.log('🔍 getAllMembersFirebase called');
-    console.log('🔍 Request user:', req.user);
-    console.log('🔍 Request firebaseUid:', req.firebaseUid);
-    console.log('🔍 Request query:', req.query);
+    logger.debug('getAllMembersFirebase called', {
+      hasUser: !!req.user,
+      firebaseUid: req.firebaseUid,
+      queryParams: { page: req.query.page, limit: req.query.limit, search: !!req.query.search }
+    });
     
     const { page = 1, limit = 20, search, role, isActive } = req.query;
     const offset = (page - 1) * limit;
 
-    console.log('🔍 Parsed params:', { page, limit, search, role, isActive });
+    logger.debug('Query params parsed', { page, limit, hasSearch: !!search, role, isActive });
 
     const whereClause = {};
     
@@ -963,8 +965,11 @@ exports.getAllMembersFirebase = async (req, res) => {
       whereClause.is_active = isActive === 'true';
     }
 
-    console.log('🔍 Where clause:', whereClause);
-    console.log('🔍 Limit:', parseInt(limit), 'Offset:', parseInt(offset));
+    logger.debug('Query filters applied', { 
+      filtersCount: Object.keys(whereClause).length,
+      limit: parseInt(limit), 
+      offset: parseInt(offset) 
+    });
 
     const { count, rows: members } = await Member.findAndCountAll({
       where: whereClause,
@@ -978,7 +983,7 @@ exports.getAllMembersFirebase = async (req, res) => {
       }]
     });
 
-    console.log('🔍 Query result - count:', count, 'members found:', members.length);
+    logger.info('Members query executed', { totalCount: count, returnedCount: members.length });
 
     // Transform snake_case to camelCase for frontend compatibility
     // Return all fields needed for MemberList display and Edit Member modal
@@ -1022,7 +1027,7 @@ exports.getAllMembersFirebase = async (req, res) => {
       dependentsCount: member.dependents ? member.dependents.length : 0
     }));
 
-    console.log('🔍 Transformed members count:', transformedMembers.length);
+    logger.debug('Members transformed', { count: transformedMembers.length });
 
     const response = {
       success: true,
@@ -1038,12 +1043,12 @@ exports.getAllMembersFirebase = async (req, res) => {
       }
     };
 
-    console.log('🔍 Final response:', JSON.stringify(response, null, 2));
+    // Response sent without logging full member data
     
     res.json(response);
 
   } catch (error) {
-    console.error('❌ Get all members Firebase error:', error);
+    logger.error('Get all members Firebase error', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -1203,8 +1208,11 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     const { uid } = req.params;
     const userEmail = req.query.email;
     const userPhone = req.query.phone;
-    console.log('🔍 getProfileByFirebaseUid called:', { uid, userEmail, userPhone });
-    console.log('🔍 Request headers:', req.headers);
+    logger.debug('getProfileByFirebaseUid called', { 
+      uid, 
+      hasEmail: !!userEmail, 
+      hasPhone: !!userPhone 
+    });
     
     // Set cache control headers to prevent 304 responses
     res.set({
@@ -1214,7 +1222,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     });
 
     // First, let's check if there's a member with this Firebase UID
-    console.log('🔍 Checking for member with Firebase UID:', uid);
+    logger.debug('Checking for member with Firebase UID');
     const memberByUid = await Member.findOne({
       where: { firebase_uid: uid },
       include: [{
@@ -1224,14 +1232,12 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     });
     
     if (memberByUid) {
-      console.log('✅ Found member by Firebase UID:', { 
-        id: memberByUid.id, 
-        email: memberByUid.email, 
+      logger.info('Found member by Firebase UID', logger.safeSummary({
+        id: memberByUid.id,
+        email: memberByUid.email,
         phoneNumber: memberByUid.phone_number,
-        firebaseUid: memberByUid.firebase_uid 
-      });
-      
-      console.log('✅ Returning member profile by Firebase UID');
+        firebaseUid: memberByUid.firebase_uid
+      }));
       
       // Transform snake_case to camelCase for frontend compatibility
       const transformedMember = {
@@ -1272,7 +1278,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         success: true,
         data: { member: transformedMember }
       };
-      console.log('📤 Response status: 200, data:', { memberId: memberByUid.id, email: memberByUid.email, phone: memberByUid.phone_number });
+      logger.info('Profile returned by Firebase UID', { memberId: memberByUid.id });
       return res.status(200).json(responseData);
     }
 
@@ -1315,14 +1321,18 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       }
     }
 
-    console.log('🔍 Member search result:', member ? 'FOUND' : 'NOT FOUND');
+    logger.debug('Member search result', { found: !!member });
     if (member) {
-      console.log('🔍 Found member:', { id: member.id, email: member.email, phoneNumber: member.phone_number, firebaseUid: member.firebase_uid });
+      logger.debug('Found member', logger.safeSummary({ 
+        id: member.id, 
+        email: member.email, 
+        phoneNumber: member.phone_number 
+      }));
     }
 
     // If no member found, attempt to resolve as a dependent login (by email or normalized phone)
     if (!member) {
-      console.log('❌ Member not found. Checking dependents for dependent login...');
+      logger.debug('Member not found, checking dependents for dependent login');
       let dependent = null;
       const depOrConds = [];
       if (userEmail) depOrConds.push({ email: userEmail });
@@ -1332,15 +1342,14 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       }
 
       if (dependent) {
-        console.log('🔍 Dependent match found:', { id: dependent.id, linkedMemberId: dependent.linkedMemberId });
+        logger.debug('Dependent match found', { id: dependent.id, hasLinkedMember: !!dependent.linkedMemberId });
         if (!dependent.linkedMemberId) {
-          const resp = {
+          logger.info('Dependent not linked to member', { dependentId: dependent.id });
+          return res.status(404).json({
             success: false,
             message: 'Dependent account is not yet linked to a member. Please complete self-claim linking first.',
             code: 'DEPENDENT_NOT_LINKED'
-          };
-          console.log('📤 Response status: 404, data:', resp);
-          return res.status(404).json(resp);
+          });
         }
 
         // Load linked member summary (include address fields for household address)
@@ -1464,10 +1473,10 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       success: true,
       data: { member: transformedMember }
     };
-    console.log('📤 Response status: 200, data:', { memberId: member.id, email: member.email, phone: member.phone_number });
+    logger.info('Profile returned', { memberId: member.id });
     res.status(200).json(responseData);
   } catch (error) {
-    console.error('Get profile by Firebase UID error:', error);
+    logger.error('Get profile by Firebase UID error', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

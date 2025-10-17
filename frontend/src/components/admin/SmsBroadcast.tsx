@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRolePermissions, UserRole } from '../../utils/roles';
 
-type RecipientType = 'individual' | 'department' | 'all';
+type RecipientType = 'individual' | 'department' | 'all' | 'pending_pledges' | 'fulfilled_pledges';
 
 interface MemberOption {
   id: string | number;
@@ -30,6 +30,16 @@ const SmsBroadcast: React.FC = () => {
   const [departments, setDepartments] = useState<Array<{ id: string | number; name: string; type: string; member_count: number }>>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(false);
   const [departmentsError, setDepartmentsError] = useState<string | null>(null);
+
+  const [departmentRecipients, setDepartmentRecipients] = useState<any[]>([]);
+  const [departmentRecipientsCount, setDepartmentRecipientsCount] = useState(0);
+  const [departmentRecipientsLoading, setDepartmentRecipientsLoading] = useState(false);
+  const [showDepartmentRecipientsList, setShowDepartmentRecipientsList] = useState(false);
+
+  const [pledgeRecipients, setPledgeRecipients] = useState<any[]>([]);
+  const [pledgeRecipientsCount, setPledgeRecipientsCount] = useState(0);
+  const [pledgeRecipientsLoading, setPledgeRecipientsLoading] = useState(false);
+  const [showPledgeRecipientsList, setShowPledgeRecipientsList] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
@@ -83,6 +93,80 @@ const SmsBroadcast: React.FC = () => {
     };
     fetchDepartments();
   }, [firebaseUser, canSend]);
+
+  // Load department recipients when a department is selected
+  useEffect(() => {
+    const fetchDepartmentRecipients = async () => {
+      if (!firebaseUser || !canSend || !departmentId) {
+        setDepartmentRecipients([]);
+        setDepartmentRecipientsCount(0);
+        return;
+      }
+
+      setDepartmentRecipientsLoading(true);
+      try {
+        const idToken = await firebaseUser.getIdToken(true);
+        const resp = await fetch(
+          `${process.env.REACT_APP_API_URL}/api/sms/departmentRecipients/${encodeURIComponent(departmentId)}`,
+          {
+            headers: { Authorization: `Bearer ${idToken}` },
+            credentials: 'include',
+          }
+        );
+        
+        const data = await resp.json().catch(() => ({} as any));
+        if (!resp.ok) throw new Error(data?.message || 'Failed to load department members');
+        
+        setDepartmentRecipients(data?.data?.recipients || []);
+        setDepartmentRecipientsCount(data?.data?.totalCount || 0);
+      } catch (e: any) {
+        console.error('Failed to load department recipients:', e);
+        setDepartmentRecipients([]);
+        setDepartmentRecipientsCount(0);
+      } finally {
+        setDepartmentRecipientsLoading(false);
+      }
+    };
+    fetchDepartmentRecipients();
+  }, [firebaseUser, canSend, departmentId]);
+
+  // Load pledge recipients when pledge types are selected
+  useEffect(() => {
+    const fetchPledgeRecipients = async () => {
+      if (!firebaseUser || !canSend) return;
+      if (recipientType !== 'pending_pledges' && recipientType !== 'fulfilled_pledges') {
+        setPledgeRecipients([]);
+        setPledgeRecipientsCount(0);
+        return;
+      }
+
+      setPledgeRecipientsLoading(true);
+      try {
+        const idToken = await firebaseUser.getIdToken(true);
+        const endpoint = recipientType === 'pending_pledges' 
+          ? `${process.env.REACT_APP_API_URL}/api/sms/pendingPledgesRecipients`
+          : `${process.env.REACT_APP_API_URL}/api/sms/fulfilledPledgesRecipients`;
+        
+        const resp = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${idToken}` },
+          credentials: 'include',
+        });
+        
+        const data = await resp.json().catch(() => ({} as any));
+        if (!resp.ok) throw new Error(data?.message || 'Failed to load recipients');
+        
+        setPledgeRecipients(data?.data?.recipients || []);
+        setPledgeRecipientsCount(data?.data?.totalCount || 0);
+      } catch (e: any) {
+        console.error('Failed to load pledge recipients:', e);
+        setPledgeRecipients([]);
+        setPledgeRecipientsCount(0);
+      } finally {
+        setPledgeRecipientsLoading(false);
+      }
+    };
+    fetchPledgeRecipients();
+  }, [firebaseUser, canSend, recipientType]);
 
   // Debounced members search
   useEffect(() => {
@@ -142,6 +226,10 @@ const SmsBroadcast: React.FC = () => {
       } else if (recipientType === 'department') {
         if (!departmentId) throw new Error('Please select a department');
         endpoint = `${process.env.REACT_APP_API_URL}/api/sms/sendDepartment/${encodeURIComponent(departmentId)}`;
+      } else if (recipientType === 'pending_pledges') {
+        endpoint = `${process.env.REACT_APP_API_URL}/api/sms/sendPendingPledges`;
+      } else if (recipientType === 'fulfilled_pledges') {
+        endpoint = `${process.env.REACT_APP_API_URL}/api/sms/sendFulfilledPledges`;
       } else {
         endpoint = `${process.env.REACT_APP_API_URL}/api/sms/sendAll`;
       }
@@ -164,6 +252,10 @@ const SmsBroadcast: React.FC = () => {
         setResultMsg('Message sent successfully to the selected member.');
       } else if (recipientType === 'department') {
         setResultMsg(`Department message sent to "${data?.departmentName || 'Unknown'}". Success: ${data?.successCount ?? '-'} / ${data?.total ?? '-'}`);
+      } else if (recipientType === 'pending_pledges') {
+        setResultMsg(`Message sent to members with pending pledges. Success: ${data?.successCount ?? '-'} / ${data?.total ?? '-'}`);
+      } else if (recipientType === 'fulfilled_pledges') {
+        setResultMsg(`Message sent to members with fulfilled pledges. Success: ${data?.successCount ?? '-'} / ${data?.total ?? '-'}`);
       } else {
         setResultMsg(`Broadcast request queued. Success: ${data?.successCount ?? '-'} / ${data?.total ?? '-'}`);
       }
@@ -213,14 +305,18 @@ const SmsBroadcast: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Recipient</label>
             <div className="flex flex-wrap gap-2">
-              {(['individual','department','all'] as RecipientType[]).map((t) => (
+              {(['individual','department','pending_pledges','fulfilled_pledges','all'] as RecipientType[]).map((t) => (
                 <button
                   type="button"
                   key={t}
                   onClick={() => setRecipientType(t)}
                   className={`px-3 py-1.5 rounded border ${recipientType === t ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                 >
-                  {t === 'individual' ? 'Individual' : t === 'department' ? 'Department' : 'All Members'}
+                  {t === 'individual' ? 'Individual' 
+                   : t === 'department' ? 'Department' 
+                   : t === 'pending_pledges' ? 'Pending Pledges'
+                   : t === 'fulfilled_pledges' ? 'Fulfilled Pledges'
+                   : 'All Members'}
                 </button>
               ))}
             </div>
@@ -275,14 +371,159 @@ const SmsBroadcast: React.FC = () => {
                 </select>
               )}
               <p className="text-xs text-gray-500 mt-1">Only active departments with members are listed.</p>
+              
+              {/* Department Members Preview */}
+              {departmentId && (
+                <div className="mt-3 bg-purple-50 border border-purple-200 rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-purple-900">
+                      Department Members
+                    </h4>
+                    {departmentRecipientsLoading && <span className="text-xs text-purple-600">Loading...</span>}
+                  </div>
+                  
+                  {!departmentRecipientsLoading && (
+                    <>
+                      <p className="text-sm text-purple-800 mb-2">
+                        <strong>{departmentRecipientsCount}</strong> member{departmentRecipientsCount !== 1 ? 's' : ''} will receive this message
+                      </p>
+                      
+                      {departmentRecipientsCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowDepartmentRecipientsList(!showDepartmentRecipientsList)}
+                          className="text-xs text-purple-600 hover:text-purple-800 underline"
+                        >
+                          {showDepartmentRecipientsList ? 'Hide' : 'Show'} member list
+                        </button>
+                      )}
+                      
+                      {showDepartmentRecipientsList && departmentRecipients.length > 0 && (
+                        <div className="mt-3 max-h-48 overflow-y-auto bg-white border border-purple-200 rounded p-2">
+                          <ul className="text-xs space-y-1">
+                            {departmentRecipients.map((recipient, idx) => (
+                              <li key={recipient.id || idx} className="py-1 border-b border-gray-100 last:border-0">
+                                <div className="font-medium text-gray-900">
+                                  {recipient.firstName} {recipient.lastName}
+                                  {recipient.roleInDepartment && (
+                                    <span className="ml-2 text-purple-600 text-xs">({recipient.roleInDepartment})</span>
+                                  )}
+                                </div>
+                                <div className="text-gray-500">
+                                  {recipient.phoneNumber} {recipient.email && `• ${recipient.email}`}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {departmentRecipientsCount === 0 && (
+                        <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">
+                          No active members with phone numbers found in this department.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {(recipientType === 'pending_pledges' || recipientType === 'fulfilled_pledges') && (
+            <div className="bg-blue-50 border border-blue-200 rounded p-3">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-blue-900">
+                  {recipientType === 'pending_pledges' ? 'Pending Pledges Recipients' : 'Fulfilled Pledges Recipients'}
+                </h4>
+                {pledgeRecipientsLoading && <span className="text-xs text-blue-600">Loading...</span>}
+              </div>
+              
+              {!pledgeRecipientsLoading && (
+                <>
+                  <p className="text-sm text-blue-800 mb-2">
+                    <strong>{pledgeRecipientsCount}</strong> member{pledgeRecipientsCount !== 1 ? 's' : ''} will receive this message
+                  </p>
+                  
+                  {pledgeRecipientsCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPledgeRecipientsList(!showPledgeRecipientsList)}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {showPledgeRecipientsList ? 'Hide' : 'Show'} recipient list
+                    </button>
+                  )}
+                  
+                  {showPledgeRecipientsList && pledgeRecipients.length > 0 && (
+                    <div className="mt-3 max-h-48 overflow-y-auto bg-white border border-blue-200 rounded p-2">
+                      <ul className="text-xs space-y-1">
+                        {pledgeRecipients.map((recipient, idx) => (
+                          <li key={recipient.id || idx} className="py-1 border-b border-gray-100 last:border-0">
+                            <div className="font-medium text-gray-900">
+                              {recipient.firstName} {recipient.lastName}
+                            </div>
+                            <div className="text-gray-500">
+                              {recipient.phoneNumber} {recipient.email && `• ${recipient.email}`}
+                            </div>
+                            {recipientType === 'pending_pledges' && recipient.pendingPledges && (
+                              <div className="text-blue-600 mt-0.5">
+                                {recipient.pendingPledges.length} pending pledge{recipient.pendingPledges.length !== 1 ? 's' : ''} 
+                                (Total: ${recipient.pendingPledges.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0).toFixed(2)})
+                              </div>
+                            )}
+                            {recipientType === 'fulfilled_pledges' && recipient.fulfilledPledges && (
+                              <div className="text-green-600 mt-0.5">
+                                {recipient.fulfilledPledges.length} fulfilled pledge{recipient.fulfilledPledges.length !== 1 ? 's' : ''} 
+                                (Total: ${recipient.fulfilledPledges.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0).toFixed(2)})
+                              </div>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {pledgeRecipientsCount === 0 && (
+                    <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">
+                      No members found with {recipientType === 'pending_pledges' ? 'pending' : 'fulfilled'} pledges.
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+            
+            {(recipientType === 'pending_pledges' || recipientType === 'fulfilled_pledges') && (
+              <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
+                <p className="font-medium text-green-800 mb-1">💡 Available Template Variables:</p>
+                <div className="grid grid-cols-2 gap-1 text-green-700">
+                  <span><code className="bg-white px-1 rounded">{'{firstName}'}</code> - First name</span>
+                  <span><code className="bg-white px-1 rounded">{'{lastName}'}</code> - Last name</span>
+                  <span><code className="bg-white px-1 rounded">{'{fullName}'}</code> - Full name</span>
+                  <span><code className="bg-white px-1 rounded">{'{amount}'}</code> - Pledge amount (single)</span>
+                  <span><code className="bg-white px-1 rounded">{'{totalAmount}'}</code> - Total of all pledges</span>
+                  <span><code className="bg-white px-1 rounded">{'{pledgeCount}'}</code> - Number of pledges</span>
+                  {recipientType === 'pending_pledges' && (
+                    <span><code className="bg-white px-1 rounded">{'{dueDate}'}</code> - Due date (single)</span>
+                  )}
+                </div>
+                <p className="text-green-600 mt-1 italic">Each member will receive a personalized message!</p>
+              </div>
+            )}
+            
             <textarea
               rows={5}
-              placeholder="Type your SMS message…"
+              placeholder={
+                recipientType === 'pending_pledges' 
+                  ? "Example: Hi {firstName}, reminder about your pending pledge of {amount}. Due: {dueDate}. Thank you!"
+                  : recipientType === 'fulfilled_pledges'
+                  ? "Example: Thank you {firstName} for fulfilling your pledge of {amount}! God bless you."
+                  : "Type your SMS message…"
+              }
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               className="w-full border rounded px-3 py-2"

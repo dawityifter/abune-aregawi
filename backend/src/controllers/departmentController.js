@@ -2,10 +2,16 @@
 
 const { Department, DepartmentMember, Member, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const logger = require('../utils/logger');
 
 // Get all departments with optional filters
 exports.getAllDepartments = async (req, res) => {
   try {
+    logger.debug('getAllDepartments called', {
+      query: req.query,
+      user: logger.safeSummary(req.user)
+    });
+    
     const {
       type,
       is_active,
@@ -82,6 +88,12 @@ exports.getAllDepartments = async (req, res) => {
       return deptData;
     });
 
+    logger.info('Departments fetched successfully', {
+      totalCount: count,
+      returnedCount: departmentsWithCounts.length,
+      filters: { type, is_active, search, include_members }
+    });
+
     res.json({
       success: true,
       data: {
@@ -95,7 +107,7 @@ exports.getAllDepartments = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get all departments error:', error);
+    logger.error('Get all departments error', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch departments',

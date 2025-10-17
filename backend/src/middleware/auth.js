@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const admin = require('firebase-admin');
 const { Op } = require('sequelize');
 const { Member } = require('../models');
+const logger = require('../utils/logger');
 const path = require('path');
 
 // Initialize Firebase Admin with better error handling
@@ -169,25 +170,26 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       try {
         const userRecord = await admin.auth().getUser(decodedToken.uid);
         userPhone = userRecord.phoneNumber;
-        console.log('📞 Got phone number from user profile');
+        logger.debug('Got phone number from user profile');
       } catch (profileError) {
-        console.log('⚠️ Could not get user profile:', profileError.message);
+        logger.debug('Could not get user profile', profileError.message);
         // If we can't get the phone from profile, check if there's a phone in the request query params
         const requestPhone = req.query.phone;
         if (requestPhone) {
           userPhone = requestPhone;
-          console.log('📞 Using phone number from request query');
+          logger.debug('Using phone number from request query');
         }
       }
     }
 
-    console.log('🔵 Firebase token verification summary:');
-    console.log('   - Email:', userEmail || 'Not provided');
-    console.log('   - Phone:', userPhone || 'Not provided');
-    console.log('   - UID:', decodedToken.uid);
+    logger.debug('Firebase token verification summary', {
+      email: userEmail,
+      phone: userPhone,
+      uid: decodedToken.uid
+    });
 
     if (!userEmail && !userPhone) {
-      console.log('❌ No email or phone found in token');
+      logger.warn('No email or phone found in token', { uid: decodedToken.uid });
       return res.status(401).json({
         success: false,
         message: 'User email not found in Firebase token.'
@@ -197,14 +199,14 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     // Find member by email or phone
     let member = null;
     if (userEmail) {
-      console.log(`🔍 Searching for member by email: ${userEmail}`);
+      logger.debug('Searching for member by email');
       try {
         member = await Member.findOne({
           where: { email: userEmail }
         });
-        console.log('🔍 Member search by email result:', member ? 'Found' : 'Not found');
+        logger.debug('Member search by email result', { found: !!member });
       } catch (dbError) {
-        console.error('❌ Database error when searching by email:', dbError.message);
+        logger.error('Database error when searching by email', dbError);
         return res.status(500).json({
           success: false,
           message: 'Database error during authentication.'
@@ -215,14 +217,14 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     if (!member && userPhone) {
       // Normalize phone number for search
       const normalizedPhone = userPhone.startsWith('+') ? userPhone : `+${userPhone}`;
-      console.log(`🔍 Searching for member by phone: ${normalizedPhone}`);
+      logger.debug('Searching for member by phone');
       try {
         member = await Member.findOne({
           where: { phone_number: normalizedPhone }
         });
-        console.log('🔍 Member search by phone result:', member ? 'Found' : 'Not found');
+        logger.debug('Member search by phone result', { found: !!member });
       } catch (dbError) {
-        console.error('❌ Database error when searching by phone:', dbError.message);
+        logger.error('Database error when searching by phone', dbError);
         return res.status(500).json({
           success: false,
           message: 'Database error during authentication.'
@@ -231,7 +233,11 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     }
 
     if (!member) {
-      console.log('❌ Member not found for:', { email: userEmail, phone: userPhone });
+      logger.warn('Member not found during authentication', { 
+        hasEmail: !!userEmail, 
+        hasPhone: !!userPhone,
+        uid: decodedToken.uid
+      });
       return res.status(401).json({
         success: false,
         message: 'Member not found. Please complete your registration first.'
