@@ -18,6 +18,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'stats' | 'departments'>('members');
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [editModalInitialTab, setEditModalInitialTab] = useState<'basic' | 'contact' | 'spiritual' | 'family'>('basic');
   const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
@@ -51,8 +52,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     fetchUserProfile();
   }, [currentUser, getUserProfile]);
 
-  const handleEditMember = (member: any) => {
+  const handleEditMember = (member: any, initialTab: 'basic' | 'contact' | 'spiritual' | 'family' = 'basic') => {
     setSelectedMember(member);
+    setEditModalInitialTab(initialTab);
     setShowEditModal(true);
   };
 
@@ -220,6 +222,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
           onMemberUpdated={handleMemberUpdated}
           canEditMembers={permissions.canEditAllMembers}
           canManageRoles={permissions.canManageRoles}
+          initialTab={editModalInitialTab}
         />
       )}
     </div>

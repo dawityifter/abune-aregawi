@@ -43,6 +43,7 @@ interface MemberEditModalProps {
   onMemberUpdated: () => void;
   canEditMembers: boolean;
   canManageRoles: boolean;
+  initialTab?: 'basic' | 'contact' | 'spiritual' | 'family';
 }
 
 const MemberEditModal: React.FC<MemberEditModalProps> = ({
@@ -50,14 +51,15 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
   onClose,
   onMemberUpdated,
   canEditMembers,
-  canManageRoles
+  canManageRoles,
+  initialTab = 'basic'
 }) => {
   const { t } = useLanguage();
   const { currentUser, firebaseUser } = useAuth();
   const [formData, setFormData] = useState<Member>(member);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'basic' | 'contact' | 'spiritual' | 'family'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'contact' | 'spiritual' | 'family'>(initialTab);
   const [dependents, setDependents] = useState<any[]>([]);
   const [showAddDependent, setShowAddDependent] = useState(false);
   const [editingDependent, setEditingDependent] = useState<any | null>(null);
