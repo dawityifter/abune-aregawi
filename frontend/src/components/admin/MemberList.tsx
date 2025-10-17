@@ -25,7 +25,7 @@ interface Member {
 }
 
 interface MemberListProps {
-  onEditMember: (member: Member) => void;
+  onEditMember: (member: Member, initialTab?: 'basic' | 'contact' | 'spiritual' | 'family') => void;
   canEditMembers: boolean;
   canDeleteMembers: boolean;
   canRegisterMembers: boolean;
@@ -421,9 +421,22 @@ const MemberList: React.FC<MemberListProps> = ({
                       )}
                       {canEditMembers && (
                         <button
-                          onClick={() => setShowAddDependentFor(member)}
+                          onClick={() => {
+                            const hasDependent = (member.dependentsCount ?? 0) > 0;
+                            if (hasDependent) {
+                              // Open Edit Member modal with Family tab active
+                              onEditMember(member, 'family');
+                            } else {
+                              // Open Add Dependent modal
+                              setShowAddDependentFor(member);
+                            }
+                          }}
                           className="text-green-600 hover:text-green-900"
-                          title={t('add.dependent') || 'Add Dependent'}
+                          title={
+                            (member.dependentsCount ?? 0) > 0
+                              ? t('manage.dependents') || 'Manage Dependents'
+                              : t('add.dependent') || 'Add Dependent'
+                          }
                         >
                           <i className="fas fa-user-friends"></i>
                         </button>
