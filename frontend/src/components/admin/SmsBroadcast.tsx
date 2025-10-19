@@ -303,22 +303,66 @@ const SmsBroadcast: React.FC = () => {
       <main className="max-w-5xl mx-auto py-6 sm:px-6 lg:px-8">
         <form onSubmit={handleSubmit} className="bg-white border rounded-lg shadow-sm p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Recipient</label>
-            <div className="flex flex-wrap gap-2">
-              {(['individual','department','pending_pledges','fulfilled_pledges','all'] as RecipientType[]).map((t) => (
-                <button
-                  type="button"
-                  key={t}
-                  onClick={() => setRecipientType(t)}
-                  className={`px-3 py-1.5 rounded border ${recipientType === t ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                >
-                  {t === 'individual' ? 'Individual' 
-                   : t === 'department' ? 'Department' 
-                   : t === 'pending_pledges' ? 'Pending Pledges'
-                   : t === 'fulfilled_pledges' ? 'Fulfilled Pledges'
-                   : 'All Members'}
-                </button>
-              ))}
+            <label className="block text-sm font-medium text-gray-700 mb-3">Select Recipient Type</label>
+            <div className="flex flex-wrap gap-3">
+              {(['individual','department','pending_pledges','fulfilled_pledges','all'] as RecipientType[]).map((t) => {
+                const isActive = recipientType === t;
+                
+                // Define colors and icons for each type
+                const typeStyles = {
+                  individual: {
+                    icon: 'fa-user',
+                    activeClass: 'bg-gradient-to-br from-blue-500 to-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200',
+                    inactiveClass: 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50 hover:border-blue-400 hover:shadow-md'
+                  },
+                  department: {
+                    icon: 'fa-building',
+                    activeClass: 'bg-gradient-to-br from-purple-500 to-purple-600 text-white border-purple-600 shadow-lg shadow-purple-200',
+                    inactiveClass: 'bg-white text-purple-700 border-purple-300 hover:bg-purple-50 hover:border-purple-400 hover:shadow-md'
+                  },
+                  pending_pledges: {
+                    icon: 'fa-clock',
+                    activeClass: 'bg-gradient-to-br from-orange-500 to-orange-600 text-white border-orange-600 shadow-lg shadow-orange-200',
+                    inactiveClass: 'bg-white text-orange-700 border-orange-300 hover:bg-orange-50 hover:border-orange-400 hover:shadow-md'
+                  },
+                  fulfilled_pledges: {
+                    icon: 'fa-check-circle',
+                    activeClass: 'bg-gradient-to-br from-green-500 to-green-600 text-white border-green-600 shadow-lg shadow-green-200',
+                    inactiveClass: 'bg-white text-green-700 border-green-300 hover:bg-green-50 hover:border-green-400 hover:shadow-md'
+                  },
+                  all: {
+                    icon: 'fa-users',
+                    activeClass: 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-200',
+                    inactiveClass: 'bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-50 hover:border-indigo-400 hover:shadow-md'
+                  }
+                };
+
+                const style = typeStyles[t as keyof typeof typeStyles];
+                
+                return (
+                  <button
+                    type="button"
+                    key={t}
+                    onClick={() => setRecipientType(t)}
+                    className={`
+                      px-4 py-2.5 rounded-lg border-2 font-medium text-sm
+                      transition-all duration-200 transform
+                      flex items-center gap-2
+                      ${isActive ? style.activeClass + ' scale-105' : style.inactiveClass}
+                      ${isActive ? '' : 'hover:scale-102'}
+                    `}
+                  >
+                    <i className={`fas ${style.icon} ${isActive ? 'text-white' : ''}`}></i>
+                    <span>
+                      {t === 'individual' ? 'Individual' 
+                       : t === 'department' ? 'Department' 
+                       : t === 'pending_pledges' ? 'Pending Pledges'
+                       : t === 'fulfilled_pledges' ? 'Fulfilled Pledges'
+                       : 'All Members'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
