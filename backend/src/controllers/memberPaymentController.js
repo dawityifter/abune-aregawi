@@ -636,15 +636,26 @@ const getWeeklyReport = async (req, res) => {
   }
 };
 
-module.exports = {
-  getAllMemberPayments,
-  getMemberPaymentDetails,
-  addMemberPayment,
-  generatePaymentReport,
-  getPaymentStats,
-  getWeeklyReport,
-  getMyDues,
-  getDuesByMemberIdWithAuth
+// Get dues for any member (treasurer only) - same as getMyDues but for any member
+const getMemberDuesForTreasurer = async (req, res) => {
+  try {
+    const { memberId } = req.params;
+
+    if (!memberId) {
+      return res.status(400).json({ success: false, message: 'Member ID is required' });
+    }
+
+    const member = await Member.findOne({ where: { id: memberId } });
+    if (!member) {
+      return res.status(404).json({ success: false, message: 'Member not found' });
+    }
+
+    // Reuse the same logic as getMyDues but for any member
+    return computeAndReturnDues(res, member);
+  } catch (error) {
+    console.error('Error fetching member dues for treasurer:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch member dues' });
+  }
 };
 
 // Fetch dues for a specific memberId with authorization:
@@ -781,4 +792,16 @@ async function computeAndReturnDues(res, member) {
       transactions
     }
   });
-}
+};
+
+module.exports = {
+  getAllMemberPayments,
+  getMemberPaymentDetails,
+  addMemberPayment,
+  generatePaymentReport,
+  getPaymentStats,
+  getWeeklyReport,
+  getMyDues,
+  getDuesByMemberIdWithAuth,
+  getMemberDuesForTreasurer
+};

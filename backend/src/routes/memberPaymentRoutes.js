@@ -6,7 +6,8 @@ const {
   addMemberPayment, 
   generatePaymentReport, 
   getPaymentStats,
-  getWeeklyReport
+  getWeeklyReport,
+  getMemberDuesForTreasurer
 } = require('../controllers/memberPaymentController');
 const { firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
@@ -33,7 +34,7 @@ router.get('/', roleMiddleware(viewRoles), getAllMemberPayments);
 // Get payment details for a specific member (READ-ONLY)
 router.get('/:memberId', roleMiddleware(viewRoles), getMemberPaymentDetails);
 
-// Add or update payment for a member (WRITE - treasurer/admin only)
-router.post('/:memberId/payment', roleMiddleware(editRoles), addMemberPayment);
+// Get dues and payment history for any member (treasurer only - same as /dues page)
+router.get('/:memberId/dues', roleMiddleware(viewRoles), getMemberDuesForTreasurer);
 
 module.exports = router; 
