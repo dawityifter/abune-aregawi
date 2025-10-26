@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stripe Payment Email Testing - Test Scenarios</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2563eb;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #1e40af;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2563eb;
+            padding-left: 15px;
+        }
+        h3 {
+            color: #1e40af;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        .test-scenario {
+            background: #f8fafc;
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .test-scenario h3 {
+            margin-top: 0;
+            color: #059669;
+        }
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin: 8px 0;
+        }
+        .checkbox {
+            margin-right: 8px;
+        }
+        a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .important-links {
+            background: #eff6ff;
+            border: 2px solid #2563eb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .important-links strong {
+            color: #1e40af;
+        }
+        .tip {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #f3f4f6;
+            font-weight: 600;
+        }
+        .steps, .results, .verification {
+            margin: 15px 0;
+        }
+        .steps strong, .results strong, .verification strong {
+            color: #1e40af;
+        }
+        hr {
+            border: none;
+            border-top: 2px solid #e5e7eb;
+            margin: 30px 0;
+        }
+        .critical {
+            background: #fee2e2;
+            border-left: 4px solid #dc2626;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .critical strong {
+            color: #991b1b;
+        }
+        .checklist-section {
+            background: #f0fdf4;
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Stripe Payment Email Testing - Test Scenarios</h1>
+
+        <h2>🔧 Test Environment Setup</h2>
+        
+        <h3>Prerequisites</h3>
+        <ul>
+            <li><input type="checkbox" class="checkbox"> Backend using Stripe test keys (<code>sk_test_...</code>)</li>
+            <li><input type="checkbox" class="checkbox"> Frontend using Stripe test publishable key (<code>pk_test_...</code>)</li>
+            <li><input type="checkbox" class="checkbox"> Test members created with different email configurations</li>
+            <li><input type="checkbox" class="checkbox"> Access to Stripe Dashboard test mode: <strong><a href="https://dashboard.stripe.com/test" target="_blank">https://dashboard.stripe.com/test</a></strong></li>
+        </ul>
+
+        <h3>Test Members Setup</h3>
+        <p>Create these test members in your database:</p>
+        <ol>
+            <li><strong>Member A</strong> - Has valid email
+                <ul>
+                    <li>Name: John Doe</li>
+                    <li>Email: <code>john.test@example.com</code></li>
+                    <li>Phone: (555) 123-4567</li>
+                </ul>
+            </li>
+            <li><strong>Member B</strong> - No email (empty/null)
+                <ul>
+                    <li>Name: Jane Smith</li>
+                    <li>Email: <code>null</code> or empty string</li>
+                    <li>Phone: (555) 987-6543</li>
+                </ul>
+            </li>
+            <li><strong>Member C</strong> - Has default church email
+                <ul>
+                    <li>Name: Bob Wilson</li>
+                    <li>Email: <code>abunearegawitx@gmail.com</code></li>
+                    <li>Phone: (555) 555-5555</li>
+                </ul>
+            </li>
+        </ol>
+
+        <div class="important-links">
+            <h3 style="margin-top: 0;">Stripe Test Dashboard Quick Access</h3>
+            <ul style="margin-bottom: 0;">
+                <li><strong>Main Dashboard:</strong> <a href="https://dashboard.stripe.com/test" target="_blank">https://dashboard.stripe.com/test</a></li>
+                <li><strong>Payments List:</strong> <a href="https://dashboard.stripe.com/test/payments" target="_blank">https://dashboard.stripe.com/test/payments</a></li>
+                <li><strong>Customers:</strong> <a href="https://dashboard.stripe.com/test/customers" target="_blank">https://dashboard.stripe.com/test/customers</a></li>
+                <li><strong>Logs:</strong> <a href="https://dashboard.stripe.com/test/logs" target="_blank">https://dashboard.stripe.com/test/logs</a></li>
+            </ul>
+        </div>
+
+        <div class="tip">
+            💡 <strong>Tip:</strong> Keep the Stripe test dashboard open in a separate tab while testing to immediately verify each payment.
+        </div>
+
+        <hr>
+
+        <h2>✅ Test Scenarios</h2>
+
+        <div class="test-scenario">
+            <h3>Test 1: Member WITH Email - Email Field Empty - Credit Card</h3>
+            <div class="steps">
+                <strong>Steps:</strong>
+                <ol>
+                    <li>Open Add Payment modal</li>
+                    <li>Select "Member A" (john.test@example.com)</li>
+                    <li>Amount: $25.00</li>
+                    <li>Payment Type: Tithe</li>
+                    <li>Payment Method: Debit/Credit Card</li>
+                    <li><strong>DO NOT</strong> enter anything in Email Address field</li>
+                    <li>Fill card details: 4242 4242 4242 4242, any future date, any CVC</li>
+                    <li>Submit payment</li>
+                </ol>
+            </div>
+            <div class="results">
+                <strong>Expected Results:</strong>
+                <ul>
+                    <li><input type="checkbox" class="checkbox"> Payment processes successfully</li>
+                    <li><input type="checkbox" class="checkbox"> Backend logs show member email used: <code>john.test@example.com</code></li>
+                    <li><input type="checkbox" class="checkbox"> Stripe Dashboard shows payment with email: <code>john.test@example.com</code></li>
+                    <li><input type="checkbox" class="checkbox"> Transaction record created with correct member_id</li>
+                    <li><input type="checkbox" class="checkbox"> No errors in console</li>
+                </ul>
+            </div>
+            <div class="verification">
+                <strong>Verification:</strong>
+                <ul>
+                    <li>Check <a href="https://dashboard.stripe.com/test/payments" target="_blank">Stripe Dashboard</a> → Latest payment → Receipt email</li>
+                    <li>Check backend logs for email used in payment intent</li>
+                    <li>Verify transaction in database has correct member association</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-scenario">
+            <h3>Test 2: Member WITH Email - Email Field Empty - ACH</h3>
+            <div class="steps">
+                <strong>Steps:</strong>
+                <ol>
+                    <li>Open Add Payment modal</li>
+                    <li>Select "Member A" (john.test@example.com)</li>
+                    <li>Amount: $30.00</li>
+                    <li>Payment Type: Building Fund</li>
+                    <li>Payment Method: ACH</li>
+                    <li><strong>DO NOT</strong> enter anything in Email Address field (if shown)</li>
+                    <li>Fill bank details: Routing 110000000, Account 000123456789</li>
+                    <li>Submit payment</li>
+                </ol>
+            </div>
+            <div class="results">
+                <strong>Expected Results:</strong>
+                <ul>
+                    <li><input type="checkbox" class="checkbox"> Payment processes successfully (status: processing)</li>
+                    <li><input type="checkbox" class="checkbox"> Backend uses member email: <code>john.test@example.com</code></li>
+                    <li><input type="checkbox" class="checkbox"> Stripe Dashboard shows ACH payment with correct email</li>
+                    <li><input type="checkbox" class="checkbox"> Transaction record created</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-scenario">
+            <h3>Test 3: Member WITHOUT Email - Email Field Empty - Credit Card</h3>
+            <div class="steps">
+                <strong>Steps:</strong>
+                <ol>
+                    <li>Open Add Payment modal</li>
+                    <li>Select "Member B" (no email)</li>
+                    <li>Amount: $50.00</li>
+                    <li>Payment Type: Offering</li>
+                    <li>Payment Method: Debit/Credit Card</li>
+                    <li>Email Address field should be empty</li>
+                    <li><strong>DO NOT</strong> enter email</li>
+                    <li>Fill card details: 4242 4242 4242 4242</li>
+                    <li>Submit payment</li>
+                </ol>
+            </div>
+            <div class="results">
+                <strong>Expected Results:</strong>
+                <ul>
+                    <li><input type="checkbox" class="checkbox"> Payment processes successfully</li>
+                    <li><input type="checkbox" class="checkbox"> Backend applies default email: <code>abunearegawitx@gmail.com</code></li>
+                    <li><input type="checkbox" class="checkbox"> Stripe Dashboard shows payment with default church email</li>
+                    <li><input type="checkbox" class="checkbox"> Transaction record created with correct member_id</li>
+                    <li><input type="checkbox" class="checkbox"> Backend logs show "No member email, using default"</li>
+                </ul>
+            </div>
+            <div class="critical">
+                <strong>Critical:</strong> Backend MUST handle this - verify backend code adds default email
+            </div>
+        </div>
+
+        <p style="text-align: center; margin: 30px 0; color: #64748b;"><em>... Continue through all 12 test scenarios ...</em></p>
+
+        <hr>
+
+        <h2>📊 Stripe Dashboard Verification</h2>
+        <p>After each test, verify in <a href="https://dashboard.stripe.com/test/payments" target="_blank">Stripe Dashboard</a>:</p>
+        <ol>
+            <li><strong>Payment Details</strong>
+                <ul>
+                    <li><input type="checkbox" class="checkbox"> Amount matches</li>
+                    <li><input type="checkbox" class="checkbox"> Email matches expected</li>
+                    <li><input type="checkbox" class="checkbox"> Metadata includes memberId (if applicable)</li>
+                    <li><input type="checkbox" class="checkbox"> Metadata includes purpose</li>
+                </ul>
+            </li>
+            <li><strong>Customer Object</strong>
+                <ul>
+                    <li><input type="checkbox" class="checkbox"> Customer created/updated with correct email</li>
+                    <li><input type="checkbox" class="checkbox"> Phone number included (if available)</li>
+                </ul>
+            </li>
+            <li><strong>Receipt</strong>
+                <ul>
+                    <li><input type="checkbox" class="checkbox"> Receipt sent to correct email</li>
+                    <li><input type="checkbox" class="checkbox"> Check spam folder for test emails</li>
+                </ul>
+            </li>
+        </ol>
+
+        <hr>
+
+        <h2>📝 Backend Logs to Monitor</h2>
+        <p>Check your backend logs for each test:</p>
+        <pre><code>✅ "Payment intent created for member ID: XXX"
+✅ "Using member email: john.test@example.com" OR
+✅ "No member email found, using default: abunearegawitx@gmail.com" OR
+✅ "Using provided email: newemail@example.com"
+✅ "Transaction recorded successfully"</code></pre>
+
+        <hr>
+
+        <div class="checklist-section">
+            <h2 style="margin-top: 0;">🚀 Production Readiness Checklist</h2>
+            <p>Before deploying to production:</p>
+            <ul>
+                <li><input type="checkbox" class="checkbox"> All 12 test scenarios pass</li>
+                <li><input type="checkbox" class="checkbox"> Backend correctly handles missing emails</li>
+                <li><input type="checkbox" class="checkbox"> Backend correctly handles provided emails</li>
+                <li><input type="checkbox" class="checkbox"> Backend correctly applies default email</li>
+                <li><input type="checkbox" class="checkbox"> Stripe webhooks handle all payment statuses</li>
+                <li><input type="checkbox" class="checkbox"> Error messages are user-friendly</li>
+                <li><input type="checkbox" class="checkbox"> Console has no errors</li>
+                <li><input type="checkbox" class="checkbox"> Backend logs show correct email logic</li>
+                <li><input type="checkbox" class="checkbox"> Test with real staging members</li>
+                <li><input type="checkbox" class="checkbox"> Verify email receipts go to correct addresses</li>
+                <li><input type="checkbox" class="checkbox"> Test on mobile devices (responsive)</li>
+                <li><input type="checkbox" class="checkbox"> Test with slow network (throttle connection)</li>
+            </ul>
+        </div>
+
+        <hr>
+
+        <h2>📋 Test Tracking Sheet</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Test #</th>
+                    <th>Scenario</th>
+                    <th>Payment Method</th>
+                    <th>Expected Email</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>Member with email, empty field</td>
+                    <td>Card</td>
+                    <td>member email</td>
+                    <td><input type="checkbox"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Member with email, empty field</td>
+                    <td>ACH</td>
+                    <td>member email</td>
+                    <td><input type="checkbox"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>Member no email, empty field</td>
+                    <td>Card</td>
+                    <td>default</td>
+                    <td><input type="checkbox"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>Member no email, empty field</td>
+                    <td>ACH</td>
+                    <td>default</td>
+                    <td><input type="checkbox"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>Member with email, user enters</td>
+                    <td>Card</td>
+                    <td>user entered</td>
+                    <td><input type="checkbox"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>Member with email, user enters</td>
+                    <td>ACH</td>
+                    <td>user entered</td>
+                    <td><input type="checkbox"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td>Member no email, user enters</td>
+                    <td>Card</td>
+                    <td>user entered</td>
+                    <td><input type="checkbox"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td>Anonymous, no email</td>
+                    <td>Card</td>
+                    <td>default</td>
+                    <td><input type="checkbox"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>9</td>
+                    <td>Anonymous, with email</td>
+                    <td>Card</td>
+                    <td>provided</td>
+                    <td><input type="checkbox"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>10</td>
+                    <td>Invalid email format</td>
+                    <td>Card</td>
+                    <td>N/A - should block</td>
+                    <td><input type="checkbox"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>11</td>
+                    <td>Declined card, no email</td>
+                    <td>Card</td>
+                    <td>N/A - should fail gracefully</td>
+                    <td><input type="checkbox"></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>12</td>
+                    <td>3D Secure, with email</td>
+                    <td>Card</td>
+                    <td>member email</td>
+                    <td><input type="checkbox"></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb; color: #64748b;">
+            <em>Open the full markdown file for complete test scenarios and details</em>
+        </p>
+    </div>
+</body>
+</html>
