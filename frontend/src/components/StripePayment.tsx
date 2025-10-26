@@ -13,7 +13,10 @@ interface StripePaymentProps {
     donor_email: string;
     donor_phone?: string;
     donor_address?: string;
+    donor_city?: string;
+    donor_state?: string;
     donor_zip_code?: string;
+    donor_country?: string;
   };
   onSuccess: (donation: any) => void;
   onError: (error: string) => void;
@@ -25,6 +28,32 @@ interface StripePaymentProps {
   // Optional callback to refresh dues/payment history after success
   onRefreshHistory?: () => void;
 }
+
+// Convert country name to ISO 2-character code
+const normalizeCountryCode = (country?: string): string => {
+  if (!country) return 'US';
+  
+  // Already a 2-char code
+  if (country.length === 2) return country.toUpperCase();
+  
+  // Common country name mappings
+  const countryMap: Record<string, string> = {
+    'united states': 'US',
+    'united states of america': 'US',
+    'usa': 'US',
+    'canada': 'CA',
+    'mexico': 'MX',
+    'united kingdom': 'GB',
+    'great britain': 'GB',
+    'uk': 'GB',
+    'ethiopia': 'ET',
+    'eritrea': 'ER',
+    // Add more as needed
+  };
+  
+  const normalized = country.toLowerCase().trim();
+  return countryMap[normalized] || 'US';
+};
 
 const PaymentForm: React.FC<StripePaymentProps> = ({ 
   donationData, 
@@ -47,8 +76,12 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     const name = `${donationData.donor_first_name || ''} ${donationData.donor_last_name || ''}`.trim();
     return name;
   });
+  const [donorEmail, setDonorEmail] = useState<string>('');
   const [billingAddress1, setBillingAddress1] = useState<string>(donationData.donor_address || '');
+  const [billingCity, setBillingCity] = useState<string>(donationData.donor_city || '');
+  const [billingState, setBillingState] = useState<string>(donationData.donor_state || '');
   const [billingPostal, setBillingPostal] = useState<string>(donationData.donor_zip_code || '');
+  const [billingCountry, setBillingCountry] = useState<string>(normalizeCountryCode(donationData.donor_country));
 
   // Prefill inputs when donationData changes, without overriding user-entered values
   useEffect(() => {
@@ -56,13 +89,23 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     if (!nameOnCard && suggestedName) {
       setNameOnCard(suggestedName);
     }
+    // Don't pre-fill email field with default email - keep it empty for user input
     if (!billingAddress1 && donationData.donor_address) {
       setBillingAddress1(donationData.donor_address);
+    }
+    if (!billingCity && donationData.donor_city) {
+      setBillingCity(donationData.donor_city);
+    }
+    if (!billingState && donationData.donor_state) {
+      setBillingState(donationData.donor_state);
     }
     if (!billingPostal && donationData.donor_zip_code) {
       setBillingPostal(donationData.donor_zip_code);
     }
-  }, [donationData.donor_first_name, donationData.donor_last_name, donationData.donor_address, donationData.donor_zip_code]);
+    if (!billingCountry && donationData.donor_country) {
+      setBillingCountry(normalizeCountryCode(donationData.donor_country));
+    }
+  }, [donationData.donor_first_name, donationData.donor_last_name, donationData.donor_email, donationData.donor_address, donationData.donor_city, donationData.donor_state, donationData.donor_zip_code, donationData.donor_country]);
 
   // Expose payment processing function to parent component
   const processPayment = useCallback(async () => {
@@ -77,15 +120,24 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     setError(null);
 
     try {
-      // Create payment intent on the backend (attach purpose in metadata)
-      const payload = {
+      // Only pass email if user actually entered one - backend will handle default
+      const payload: any = {
         ...donationData,
+        // Send full name from "Name on Card" field - backend will parse it
+        donor_full_name: nameOnCard || undefined,
         metadata: {
           ...(donationData as any).metadata,
           purpose: purpose || 'donation',
-          payment_method: donationData.payment_method
+          payment_method: donationData.payment_method,
+          // Track if treasurer manually entered email
+          email_manually_entered: !!donorEmail
         }
-      } as typeof donationData & { metadata?: any };
+      };
+      
+      // Only include donor_email if user entered one
+      if (donorEmail) {
+        payload.donor_email = donorEmail;
+      }
 
       const { client_secret, payment_intent_id, donation_id } = await createPaymentIntent(payload as any);
 
@@ -95,11 +147,15 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
           card: elements.getElement(CardElement)!,
           billing_details: {
             name: nameOnCard || `${donationData.donor_first_name} ${donationData.donor_last_name}`.trim(),
-            email: donationData.donor_email,
+            // Only pass email to Stripe if user entered one, otherwise let backend handle it
+            ...(donorEmail && { email: donorEmail }),
             phone: donationData.donor_phone,
             address: {
               line1: billingAddress1 || donationData.donor_address,
+              city: billingCity || donationData.donor_city,
+              state: billingState || donationData.donor_state,
               postal_code: billingPostal || donationData.donor_zip_code,
+              country: normalizeCountryCode(billingCountry || donationData.donor_country),
             },
           },
         },
@@ -186,41 +242,17 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
             className="stripe-card-element"
           />
         </div>
-        {/* Billing details visible inputs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="name-on-card">Name on card</label>
-            <input
-              id="name-on-card"
-              type="text"
-              value={nameOnCard}
-              onChange={(e) => setNameOnCard(e.target.value)}
-              placeholder="Full name as shown on card"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="billing-address1">Billing address</label>
-            <input
-              id="billing-address1"
-              type="text"
-              value={billingAddress1}
-              onChange={(e) => setBillingAddress1(e.target.value)}
-              placeholder="Street address"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="billing-postal">ZIP / Postal code</label>
-            <input
-              id="billing-postal"
-              type="text"
-              value={billingPostal}
-              onChange={(e) => setBillingPostal(e.target.value)}
-              placeholder="ZIP"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+        {/* Name on card - billing address handled by parent form */}
+        <div className="mt-3">
+          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="name-on-card">Name on card</label>
+          <input
+            id="name-on-card"
+            type="text"
+            value={nameOnCard}
+            onChange={(e) => setNameOnCard(e.target.value)}
+            placeholder="Full name as shown on card"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-3" role="alert">

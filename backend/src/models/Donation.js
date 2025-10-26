@@ -53,15 +53,18 @@ module.exports = (sequelize) => {
     },
     donor_first_name: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: true,
+      comment: 'Donor first name (null for anonymous donations)'
     },
     donor_last_name: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: true,
+      comment: 'Donor last name (null for anonymous donations)'
     },
     donor_email: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: true,
+      comment: 'Donor email (null for anonymous donations, defaults to church email if not provided)'
     },
     donor_phone: {
       type: DataTypes.STRING,
