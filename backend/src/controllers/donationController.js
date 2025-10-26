@@ -13,8 +13,9 @@ try {
   stripe = null;
 }
 
-const { Donation, Member, Transaction } = require('../models');
+const { Donation, Member, Transaction, LedgerEntry, IncomeCategory } = require('../models');
 const { validationResult } = require('express-validator');
+const { parseFullName } = require('../../utils/nameParser');
 
 // Create payment intent for donation
 const createPaymentIntent = async (req, res) => {
@@ -45,12 +46,26 @@ const createPaymentIntent = async (req, res) => {
       payment_method,
       donor_first_name,
       donor_last_name,
+      donor_full_name, // New: full name from "Name on Card" or "Account Holder Name"
       donor_email = 'abunearegawitx@gmail.com',
       donor_phone,
       donor_address,
       donor_zip_code,
       metadata = {}
     } = req.body;
+
+    // Parse full name if provided (from Name on Card/Account Holder Name)
+    // Otherwise fall back to separate first/last names for backward compatibility
+    let parsedName = { firstName: null, middleName: null, lastName: null };
+    if (donor_full_name) {
+      parsedName = parseFullName(donor_full_name);
+      console.log(`📝 Parsed name: "${donor_full_name}" → First: "${parsedName.firstName}", Middle: "${parsedName.middleName}", Last: "${parsedName.lastName}"`);
+    }
+    
+    // Use parsed names, fallback to original fields if parsing didn't happen
+    const finalFirstName = parsedName.firstName || donor_first_name || null;
+    const finalLastName = parsedName.lastName || donor_last_name || null;
+    const finalMiddleName = parsedName.middleName || null;
 
     // Validate amount
     if (!amount || amount < 1) {
@@ -87,9 +102,11 @@ const createPaymentIntent = async (req, res) => {
         donation_type,
         frequency: frequency || '',
         payment_method,
-        donor_first_name,
-        donor_last_name,
-        donor_email,
+        donor_first_name: finalFirstName || '',
+        donor_last_name: finalLastName || '',
+        donor_middle_name: finalMiddleName || '',
+        donor_full_name: donor_full_name || '',
+        donor_email: donor_email || '',
         donor_phone: donor_phone || '',
         donor_address: donor_address || '',
         donor_zip_code: donor_zip_code || '',
@@ -111,13 +128,17 @@ const createPaymentIntent = async (req, res) => {
       frequency,
       payment_method,
       status: 'pending',
-      donor_first_name,
-      donor_last_name,
+      donor_first_name: finalFirstName,
+      donor_last_name: finalLastName,
       donor_email,
       donor_phone,
       donor_address,
       donor_zip_code,
-      metadata
+      metadata: {
+        ...metadata,
+        donor_middle_name: finalMiddleName,
+        donor_full_name: donor_full_name
+      }
     });
 
     res.status(200).json({
@@ -404,10 +425,46 @@ const handlePaymentSucceeded = async (paymentIntent) => {
     if (existing) {
       // Ensure it matches succeeded status use-case; optionally update
       await existing.update({ amount, payment_date: occurredAt, status: 'succeeded' });
+      
+      // Update or create ledger entry for existing transaction
+      try {
+        const existingLedger = await LedgerEntry.findOne({ where: { transaction_id: existing.id } });
+        
+        const incomeCategory = await IncomeCategory.findOne({ 
+          where: { payment_type_mapping: payment_type } 
+        });
+        const glCode = incomeCategory?.gl_code || 'INC999';
+        const memo = `${glCode} - Stripe payment ${paymentIntent.id}`;
+        
+        if (existingLedger) {
+          await existingLedger.update({
+            amount: parseFloat(amount),
+            entry_date: occurredAt,
+            category: glCode,
+            memo: memo
+          });
+          console.log(`✅ Updated existing ledger entry for transaction ${existing.id}`);
+        } else {
+          await LedgerEntry.create({
+            type: payment_type,
+            category: glCode,
+            amount: parseFloat(amount),
+            entry_date: occurredAt,
+            member_id: memberId,
+            payment_method: payment_method,
+            memo: memo,
+            transaction_id: existing.id
+          });
+          console.log(`✅ Created ledger entry for existing transaction ${existing.id}`);
+        }
+      } catch (ledgerErr) {
+        console.error('⚠️ Failed to update/create ledger entry for existing transaction:', ledgerErr.message);
+      }
+      
       return;
     }
 
-    await Transaction.create({
+    const transaction = await Transaction.create({
       member_id: memberId,
       collected_by: memberId, // automated collection – attribute to member
       payment_date: occurredAt,
@@ -420,6 +477,33 @@ const handlePaymentSucceeded = async (paymentIntent) => {
       status: 'succeeded',
       donation_id: (await Donation.findOne({ where: { stripe_payment_intent_id: paymentIntent.id } }))?.id || null
     });
+
+    // Create corresponding ledger entry
+    try {
+      // Map payment_type to GL code
+      const incomeCategory = await IncomeCategory.findOne({ 
+        where: { payment_type_mapping: payment_type } 
+      });
+      
+      const glCode = incomeCategory?.gl_code || 'INC999'; // Fallback GL code
+      const memo = `${glCode} - Stripe payment ${paymentIntent.id}`;
+
+      await LedgerEntry.create({
+        type: payment_type,
+        category: glCode,
+        amount: parseFloat(amount),
+        entry_date: occurredAt,
+        member_id: memberId,
+        payment_method: payment_method,
+        memo: memo,
+        transaction_id: transaction.id
+      });
+      
+      console.log(`✅ Created ledger entry for transaction ${transaction.id} with GL code ${glCode}`);
+    } catch (ledgerErr) {
+      console.error('⚠️ Failed to create ledger entry for Stripe payment:', ledgerErr.message);
+      // Don't fail the entire operation if ledger entry creation fails
+    }
   } catch (err) {
     console.error('❌ Failed to upsert Transaction on payment success:', err.message);
   }

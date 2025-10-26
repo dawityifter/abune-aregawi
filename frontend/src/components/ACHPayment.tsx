@@ -80,8 +80,11 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
 
     try {
       // Create payment intent on the backend with ACH payment method
-      const paymentData = {
+      // Only pass email if it exists - backend will handle default
+      const paymentData: any = {
         ...donationData,
+        // Send full name from "Account Holder Name" field - backend will parse it
+        donor_full_name: bankInfo.accountHolderName || undefined,
         metadata: {
           ...(donationData as any).metadata,
           purpose: purpose || 'donation',
@@ -93,7 +96,12 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
           account_type: bankInfo.accountType,
           account_holder_name: bankInfo.accountHolderName
         }
-      } as typeof donationData & { metadata?: any };
+      };
+      
+      // Only include donor_email if it exists
+      if (donationData.donor_email) {
+        paymentData.donor_email = donationData.donor_email;
+      }
 
       const { client_secret, payment_intent_id, donation_id } = await createPaymentIntent(paymentData);
 
@@ -107,7 +115,8 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
           },
           billing_details: {
             name: bankInfo.accountHolderName,
-            email: donationData.donor_email,
+            // Only pass email to Stripe if it exists
+            ...(donationData.donor_email && { email: donationData.donor_email }),
             phone: donationData.donor_phone,
           }
         }
