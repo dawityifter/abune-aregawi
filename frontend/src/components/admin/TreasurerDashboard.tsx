@@ -9,6 +9,7 @@ import AddExpenseModal from './AddExpenseModal';
 import ExpenseList from './ExpenseList';
 import WeeklyCollectionReport from './WeeklyCollectionReport';
 import ZelleReview from './ZelleReview';
+import MemberSearch from './MemberSearch';
 
 interface PaymentStatsData {
   totalMembers: number;
@@ -27,10 +28,11 @@ interface PaymentStatsData {
 
 const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle' | 'member-dues'>('overview');
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+  const [showMemberSearch, setShowMemberSearch] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -217,6 +219,16 @@ const TreasurerDashboard: React.FC = () => {
               >
                 Zelle Review
               </button>
+              <button
+                onClick={() => setActiveTab('member-dues')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'member-dues'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Member Dues
+              </button>
             </nav>
           </div>
         </div>
@@ -301,7 +313,50 @@ const TreasurerDashboard: React.FC = () => {
               <ZelleReview />
             </div>
           )}
+
+          {activeTab === 'member-dues' && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900">Member Dues Viewer</h2>
+                  <p className="text-gray-600 mt-1">View any member's dues and payment history</p>
+                </div>
+                <button
+                  onClick={() => setShowMemberSearch(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium flex items-center"
+                >
+                  <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  Search Member
+                </button>
+              </div>
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Search for a Member</h3>
+                <p className="text-gray-600 mb-4">
+                  Click the "Search Member" button above to find a member and view their dues and payment history.
+                </p>
+                <p className="text-sm text-gray-500">
+                  You'll see the same information that members see on their /dues page.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Member Search Modal */}
+        {showMemberSearch && (
+          <MemberSearch
+            onMemberSelect={(memberId) => {
+              // The MemberSearch component handles showing the MemberDuesViewer
+              console.log('Selected member:', memberId);
+            }}
+            onClose={() => setShowMemberSearch(false)}
+          />
+        )}
 
         {/* Add Payment Modal */}
         {showAddPaymentModal && (
