@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import Hero from './Hero';
 import QuickLinks from './QuickLinks';
@@ -8,10 +8,14 @@ import NewcomerSection from './sections/NewcomerSection';
 import GrowSpirituallySection from './sections/GrowSpirituallySection';
 // import DashboardPreviewSection from './sections/DashboardPreviewSection';
 import Footer from './sections/Footer';
+import useServerWarmup from '../hooks/useServerWarmup';
 // import { Link } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
   const { lang } = useI18n();
+  
+  // Trigger server warmup when component mounts
+  useServerWarmup();
 
   return (
     <div
