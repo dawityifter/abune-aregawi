@@ -10,6 +10,8 @@ import ExpenseList from './ExpenseList';
 import WeeklyCollectionReport from './WeeklyCollectionReport';
 import ZelleReview from './ZelleReview';
 import MemberSearch from './MemberSearch';
+import EmployeeList from './EmployeeList';
+import VendorList from './VendorList';
 
 interface PaymentStatsData {
   totalMembers: number;
@@ -28,7 +30,7 @@ interface PaymentStatsData {
 
 const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle' | 'member-dues'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle' | 'member-dues' | 'employees' | 'vendors'>('overview');
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
@@ -229,6 +231,26 @@ const TreasurerDashboard: React.FC = () => {
               >
                 Member Dues
               </button>
+              <button
+                onClick={() => setActiveTab('employees')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'employees'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Employees
+              </button>
+              <button
+                onClick={() => setActiveTab('vendors')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'vendors'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Vendors
+              </button>
             </nav>
           </div>
         </div>
@@ -343,6 +365,18 @@ const TreasurerDashboard: React.FC = () => {
                   You'll see the same information that members see on their /dues page.
                 </p>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'employees' && (
+            <div>
+              <EmployeeList />
+            </div>
+          )}
+
+          {activeTab === 'vendors' && (
+            <div>
+              <VendorList />
             </div>
           )}
         </div>

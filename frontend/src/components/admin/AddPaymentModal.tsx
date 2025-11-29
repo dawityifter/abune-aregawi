@@ -197,6 +197,13 @@ interface AddPaymentModalProps {
     }
   }, [paymentType, incomeCategories]);
 
+  // Clear Stripe payment methods when switching to religious_item_sales (not a donation)
+  useEffect(() => {
+    if (paymentType === 'religious_item_sales' && (paymentMethod === 'credit_card' || paymentMethod === 'ach')) {
+      setPaymentMethod('');
+      setProcessStripePayment(null);
+    }
+  }, [paymentType, paymentMethod]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -330,20 +337,32 @@ interface AddPaymentModalProps {
       { value: 'building_fund', label: 'Building Fund (ንሕንጻ ቤተክርስቲያን)' },
       { value: 'offering', label: 'Offering (መባእ)' },
       { value: 'vow', label: 'Vow (ስእለት)' },
+      { value: 'religious_item_sales', label: 'Religious Item Sales (Bibles, candles, etc.)' },
       // Removed explicit 'event' and 'other' options from dropdown per request
     ];
     // Remove membership_due for anonymous
     return isAnonymous ? types.filter(t => t.value !== 'membership_due') : types;
   }, [isAnonymous]);
 
-  const transactionPaymentMethods = [
-    { value: 'cash', label: 'Cash' },
-    { value: 'check', label: 'Check' },
-    // Combine Debit and Credit into one UI option; backend expects 'credit_card' or 'debit_card'. Use 'credit_card'.
-    { value: 'credit_card', label: 'Debit/Credit Card' },
-    { value: 'ach', label: 'ACH' },
-    { value: 'other', label: 'Other' }
-  ];
+  // Payment methods available based on payment type
+  // Religious item sales are not donations, so they shouldn't use Stripe (card/ACH)
+  const transactionPaymentMethods = useMemo(() => {
+    const allMethods = [
+      { value: 'cash', label: 'Cash' },
+      { value: 'check', label: 'Check' },
+      // Combine Debit and Credit into one UI option; backend expects 'credit_card' or 'debit_card'. Use 'credit_card'.
+      { value: 'credit_card', label: 'Debit/Credit Card' },
+      { value: 'ach', label: 'ACH' },
+      { value: 'other', label: 'Other' }
+    ];
+    
+    // For religious_item_sales, exclude Stripe payment methods (card/ACH) since it's not a donation
+    if (paymentType === 'religious_item_sales') {
+      return allMethods.filter(m => m.value !== 'credit_card' && m.value !== 'ach');
+    }
+    
+    return allMethods;
+  }, [paymentType]);
 
   // Detect if Stripe publishable key exists at build time
   const hasStripeKey = !!process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;

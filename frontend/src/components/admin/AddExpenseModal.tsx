@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { getCurrentDateCST } from '../../utils/dateUtils';
 
 interface ExpenseCategory {
   id: string;
@@ -8,6 +9,21 @@ interface ExpenseCategory {
   description: string;
   is_active: boolean;
   is_fixed: boolean;
+}
+
+interface Employee {
+  id: string;
+  first_name: string;
+  last_name: string;
+  position?: string;
+  is_active: boolean;
+}
+
+interface Vendor {
+  id: string;
+  name: string;
+  vendor_type: string;
+  is_active: boolean;
 }
 
 interface AddExpenseModalProps {
@@ -19,25 +35,38 @@ interface AddExpenseModalProps {
 const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { firebaseUser } = useAuth();
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const [loadingVendors, setLoadingVendors] = useState(false);
 
   // Form state
   const [glCode, setGlCode] = useState('');
   const [amount, setAmount] = useState('');
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [expenseDate, setExpenseDate] = useState(getCurrentDateCST());
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'check'>('check');
   const [receiptNumber, setReceiptNumber] = useState('');
+  const [checkNumber, setCheckNumber] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
   const [memo, setMemo] = useState('');
+
+  // Payee fields
+  const [employeeId, setEmployeeId] = useState('');
+  const [vendorId, setVendorId] = useState('');
+  const [payeeName, setPayeeName] = useState('');
 
   // Error states
   const [error, setError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
 
-  // Fetch expense categories
+  // Fetch expense categories, employees, and vendors
   useEffect(() => {
     if (isOpen) {
       fetchCategories();
+      fetchEmployees();
+      fetchVendors();
     }
   }, [isOpen]);
 
@@ -62,6 +91,50 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
       setError('Failed to load expense categories');
     } finally {
       setLoadingCategories(false);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      setLoadingEmployees(true);
+      const token = await firebaseUser?.getIdToken();
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/employees?is_active=true`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setEmployees(data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching employees:', err);
+      // Don't show error - employees are optional
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
+
+  const fetchVendors = async () => {
+    try {
+      setLoadingVendors(true);
+      const token = await firebaseUser?.getIdToken();
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/vendors?is_active=true`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setVendors(data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching vendors:', err);
+      // Don't show error - vendors are optional
+    } finally {
+      setLoadingVendors(false);
     }
   };
 
@@ -93,11 +166,12 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
       return false;
     }
 
-    // Validate date is not in future
-    const selectedDate = new Date(expenseDate);
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    if (selectedDate > today) {
+    // Validate date is not in future (in CST timezone)
+    const selectedDate = new Date(expenseDate + 'T00:00:00');
+    const now = new Date();
+    const todayCST = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    todayCST.setHours(23, 59, 59, 999);
+    if (selectedDate > todayCST) {
       setError('Expense date cannot be in the future');
       return false;
     }
@@ -117,8 +191,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     try {
       setLoading(true);
       const token = await firebaseUser?.getIdToken();
-      
-      const requestBody = {
+
+      const requestBody: any = {
         gl_code: glCode,
         amount: parseFloat(amount),
         expense_date: expenseDate,
@@ -126,6 +200,25 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
         receipt_number: receiptNumber || null,
         memo: memo || null
       };
+
+      // Add payee information (only one should be set)
+      if (employeeId) {
+        requestBody.employee_id = employeeId;
+      } else if (vendorId) {
+        requestBody.vendor_id = vendorId;
+      } else if (payeeName) {
+        requestBody.payee_name = payeeName;
+      }
+
+      // Add check number if payment method is check
+      if (paymentMethod === 'check' && checkNumber) {
+        requestBody.check_number = checkNumber;
+      }
+
+      // Add invoice number if provided
+      if (invoiceNumber) {
+        requestBody.invoice_number = invoiceNumber;
+      }
 
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/expenses`, {
         method: 'POST',
@@ -142,11 +235,16 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
         // Reset form
         setGlCode('');
         setAmount('');
-        setExpenseDate(new Date().toISOString().split('T')[0]);
+        setExpenseDate(getCurrentDateCST());
         setPaymentMethod('check');
         setReceiptNumber('');
+        setCheckNumber('');
+        setInvoiceNumber('');
         setMemo('');
-        
+        setEmployeeId('');
+        setVendorId('');
+        setPayeeName('');
+
         onSuccess();
         onClose();
       } else {
@@ -164,8 +262,53 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     if (!loading) {
       setError(null);
       setAmountError(null);
+      // Reset form
+      setGlCode('');
+      setAmount('');
+      setExpenseDate(getCurrentDateCST());
+      setPaymentMethod('check');
+      setReceiptNumber('');
+      setCheckNumber('');
+      setInvoiceNumber('');
+      setMemo('');
+      setEmployeeId('');
+      setVendorId('');
+      setPayeeName('');
       onClose();
     }
+  };
+
+  // Determine which payee fields to show based on expense category
+  const shouldShowEmployeeField = () => {
+    // Salary/Allowance expenses typically use EXP001 or similar
+    // You can customize this logic based on your GL codes
+    return glCode && (glCode.includes('6000') || glCode.includes('EXP001') ||
+      selectedCategory?.name?.toLowerCase().includes('salary') ||
+      selectedCategory?.name?.toLowerCase().includes('allowance'));
+  };
+
+  const shouldShowVendorField = () => {
+    // Vendor expenses for utilities, services, etc.
+    return glCode && !shouldShowEmployeeField() && (
+      glCode.includes('6100') || glCode.includes('EXP005') ||
+      selectedCategory?.name?.toLowerCase().includes('utility') ||
+      selectedCategory?.name?.toLowerCase().includes('service') ||
+      selectedCategory?.name?.toLowerCase().includes('supplier')
+    );
+  };
+
+  const shouldShowPayeeNameField = () => {
+    // Generic payee for other expenses
+    return glCode && !shouldShowEmployeeField() && !shouldShowVendorField();
+  };
+
+  // Reset payee fields when category changes
+  const handleGlCodeChange = (value: string) => {
+    setGlCode(value);
+    // Clear payee fields when category changes
+    setEmployeeId('');
+    setVendorId('');
+    setPayeeName('');
   };
 
   if (!isOpen) return null;
@@ -199,7 +342,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
             ) : (
               <select
                 value={glCode}
-                onChange={(e) => setGlCode(e.target.value)}
+                onChange={(e) => handleGlCodeChange(e.target.value)}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
@@ -215,6 +358,101 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
               <p className="mt-1 text-xs text-gray-500">{selectedCategory.description}</p>
             )}
           </div>
+
+          {/* Payee Section - Employee (for salary/allowance expenses) */}
+          {shouldShowEmployeeField() && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Employee <span className="text-red-500">*</span>
+              </label>
+              {loadingEmployees ? (
+                <div className="text-gray-500 text-sm">Loading employees...</div>
+              ) : (
+                <select
+                  value={employeeId}
+                  onChange={(e) => {
+                    setEmployeeId(e.target.value);
+                    setVendorId('');
+                    setPayeeName('');
+                  }}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Select Employee --</option>
+                  {employees.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.first_name} {employee.last_name}
+                      {employee.position ? ` - ${employee.position}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {employees.length === 0 && !loadingEmployees && (
+                <p className="mt-1 text-xs text-gray-500">
+                  No active employees found. Add employees in the Employee Management section.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Payee Section - Vendor (for vendor payments) */}
+          {shouldShowVendorField() && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Vendor <span className="text-red-500">*</span>
+              </label>
+              {loadingVendors ? (
+                <div className="text-gray-500 text-sm">Loading vendors...</div>
+              ) : (
+                <select
+                  value={vendorId}
+                  onChange={(e) => {
+                    setVendorId(e.target.value);
+                    setEmployeeId('');
+                    setPayeeName('');
+                  }}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Select Vendor --</option>
+                  {vendors.map((vendor) => (
+                    <option key={vendor.id} value={vendor.id}>
+                      {vendor.name} ({vendor.vendor_type})
+                    </option>
+                  ))}
+                </select>
+              )}
+              {vendors.length === 0 && !loadingVendors && (
+                <p className="mt-1 text-xs text-gray-500">
+                  No active vendors found. Add vendors in the Vendor Management section.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Payee Section - Generic Payee Name (for other expenses) */}
+          {shouldShowPayeeNameField() && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Payee Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={payeeName}
+                onChange={(e) => {
+                  setPayeeName(e.target.value);
+                  setEmployeeId('');
+                  setVendorId('');
+                }}
+                placeholder="Enter payee name"
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Enter the name of the person or organization being paid
+              </p>
+            </div>
+          )}
 
           {/* Amount */}
           <div>
@@ -258,43 +496,86 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Payment Method <span className="text-red-500">*</span>
             </label>
-            <div className="flex space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  value="cash"
-                  checked={paymentMethod === 'cash'}
-                  onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'check')}
-                  className="mr-2"
-                />
-                Cash
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  value="check"
-                  checked={paymentMethod === 'check'}
-                  onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'check')}
-                  className="mr-2"
-                />
-                Check
-              </label>
+            <div className="flex flex-col space-y-2">
+              <div className="flex space-x-4">
+                <label className="flex items-center text-gray-400 cursor-not-allowed" title="Paying in cash is discouraged">
+                  <input
+                    type="radio"
+                    value="cash"
+                    checked={paymentMethod === 'cash'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'check')}
+                    className="mr-2"
+                    disabled
+                  />
+                  Cash
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value="check"
+                    checked={paymentMethod === 'check'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'check')}
+                    className="mr-2"
+                  />
+                  Check
+                </label>
+              </div>
+              <p className="text-xs text-amber-600 italic">
+                Note: Paying in cash is discouraged. Please use Check whenever possible.
+              </p>
             </div>
           </div>
 
-          {/* Receipt/Check Number */}
+          {/* Check Number (only for check payments) */}
+          {paymentMethod === 'check' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Check Number
+              </label>
+              <input
+                type="text"
+                value={checkNumber}
+                onChange={(e) => setCheckNumber(e.target.value)}
+                placeholder="CHK-1234"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
+
+          {/* Receipt Number */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {paymentMethod === 'check' ? 'Check Number' : 'Receipt Number'}
+              Receipt Number
             </label>
             <input
               type="text"
               value={receiptNumber}
               onChange={(e) => setReceiptNumber(e.target.value)}
-              placeholder={paymentMethod === 'check' ? 'CHK-1234' : 'REC-1234'}
+              placeholder="REC-1234"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+
+
+          {/* Invoice Number (optional, shown for vendor payments or when vendor is selected) */}
+          {(shouldShowVendorField() || vendorId) && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Invoice Number
+              </label>
+              <input
+                type="text"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+                placeholder="INV-2024-001"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Optional: Invoice or bill number from vendor
+              </p>
+            </div>
+          )}
 
           {/* Memo */}
           <div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatDateForDisplay } from '../../utils/dateUtils';
 
 interface Department {
   id: number;
@@ -28,10 +29,10 @@ interface ManageDepartmentMembersModalProps {
   onUpdate: () => void;
 }
 
-const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> = ({ 
-  department, 
-  onClose, 
-  onUpdate 
+const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> = ({
+  department,
+  onClose,
+  onUpdate
 }) => {
   const { t } = useLanguage();
   const { firebaseUser } = useAuth();
@@ -52,7 +53,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
     try {
       setLoading(true);
       const idToken = await firebaseUser?.getIdToken();
-      
+
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/api/departments/${department.id}/members`,
         {
@@ -105,7 +106,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
 
     try {
       const idToken = await firebaseUser?.getIdToken();
-      
+
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/api/departments/${department.id}/members`,
         {
@@ -142,7 +143,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
 
     try {
       const idToken = await firebaseUser?.getIdToken();
-      
+
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/api/departments/${department.id}/members/${memberId}`,
         {
@@ -169,7 +170,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
   const handleUpdateMemberRole = async (memberId: number, newRole: string) => {
     try {
       const idToken = await firebaseUser?.getIdToken();
-      
+
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/api/departments/${department.id}/members/${memberId}`,
         {
@@ -197,7 +198,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
   };
 
   const toggleMemberSelection = (memberId: number) => {
-    setSelectedMembers(prev => 
+    setSelectedMembers(prev =>
       prev.includes(memberId)
         ? prev.filter(id => id !== memberId)
         : [...prev, memberId]
@@ -303,11 +304,11 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                   const email = (member.email || '').toLowerCase();
                   const memberId = String(member.memberId || member.member_id || member.id).toLowerCase();
                   const phoneNumber = (member.phoneNumber || member.phone_number || '').toLowerCase();
-                  return firstName.includes(searchLower) || 
-                         lastName.includes(searchLower) || 
-                         email.includes(searchLower) ||
-                         memberId.includes(searchLower) ||
-                         phoneNumber.includes(searchLower);
+                  return firstName.includes(searchLower) ||
+                    lastName.includes(searchLower) ||
+                    email.includes(searchLower) ||
+                    memberId.includes(searchLower) ||
+                    phoneNumber.includes(searchLower);
                 });
 
                 if (availableMembers.length === 0) {
@@ -331,7 +332,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                   const lastName = member.lastName || member.last_name || '';
                   const memberId = member.memberId || member.member_id || member.id;
                   const phoneNumber = member.phoneNumber || member.phone_number || '';
-                  
+
                   return (
                     <label
                       key={member.id}
@@ -424,7 +425,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                         </select>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(membership.joined_at).toLocaleDateString()}
+                        {formatDateForDisplay(membership.joined_at)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button

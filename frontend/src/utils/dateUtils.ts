@@ -1,15 +1,20 @@
 /**
  * Utility functions for handling dates consistently across the application
+ * All dates are handled in CST (America/Chicago) timezone
  */
 
+// CST timezone identifier
+const CST_TIMEZONE = 'America/Chicago';
+
 /**
- * Formats a date string to display in the local timezone without timezone conversion issues
+ * Formats a date string to display in CST timezone
  * This is useful for dates that should be displayed as-is (like birth dates, join dates, etc.)
  * 
  * @param dateString - The date string from the database (e.g., "1990-01-15")
- * @returns Formatted date string in the user's locale
+ * @param options - Optional Intl.DateTimeFormat options
+ * @returns Formatted date string in CST
  */
-export function formatDateForDisplay(dateString: string): string {
+export function formatDateForDisplay(dateString: string, options?: Intl.DateTimeFormatOptions): string {
   if (!dateString) return '';
   
   // For dates that are already in YYYY-MM-DD format (like from date inputs),
@@ -18,11 +23,30 @@ export function formatDateForDisplay(dateString: string): string {
     // Parse as local date to avoid timezone conversion
     const [year, month, day] = dateString.split('-').map(Number);
     const date = new Date(year, month - 1, day); // month is 0-indexed
-    return date.toLocaleDateString();
+    
+    // Format in CST timezone
+    const defaultOptions: Intl.DateTimeFormatOptions = {
+      timeZone: CST_TIMEZONE,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      ...options
+    };
+    
+    return date.toLocaleDateString('en-US', defaultOptions);
   }
   
-  // For other date formats, use the original behavior
-  return new Date(dateString).toLocaleDateString();
+  // For other date formats, parse and format in CST
+  const date = new Date(dateString);
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    timeZone: CST_TIMEZONE,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    ...options
+  };
+  
+  return date.toLocaleDateString('en-US', defaultOptions);
 }
 
 /**
@@ -40,11 +64,21 @@ export function formatDateForInput(dateString: string): string {
     return dateString;
   }
   
-  // Convert to YYYY-MM-DD format
+  // Convert to YYYY-MM-DD format in CST timezone
   const date = new Date(dateString);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  
+  // Format in CST timezone to get the correct date
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: CST_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  
+  const parts = formatter.formatToParts(date);
+  const year = parts.find(p => p.type === 'year')?.value;
+  const month = parts.find(p => p.type === 'month')?.value;
+  const day = parts.find(p => p.type === 'day')?.value;
   
   return `${year}-${month}-${day}`;
 }
@@ -60,4 +94,49 @@ export function isValidDate(dateString: string): boolean {
   
   const date = new Date(dateString);
   return !isNaN(date.getTime());
+}
+
+/**
+ * Get current date in CST timezone formatted as YYYY-MM-DD
+ * @returns Current date string in YYYY-MM-DD format
+ */
+export function getCurrentDateCST(): string {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: CST_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  
+  const parts = formatter.formatToParts(now);
+  const year = parts.find(p => p.type === 'year')?.value;
+  const month = parts.find(p => p.type === 'month')?.value;
+  const day = parts.find(p => p.type === 'day')?.value;
+  
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Format a date with time in CST timezone
+ * @param dateString - The date string to format
+ * @param options - Optional Intl.DateTimeFormat options
+ * @returns Formatted date and time string
+ */
+export function formatDateTimeForDisplay(dateString: string, options?: Intl.DateTimeFormatOptions): string {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    timeZone: CST_TIMEZONE,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    ...options
+  };
+  
+  return date.toLocaleString('en-US', defaultOptions);
 } 

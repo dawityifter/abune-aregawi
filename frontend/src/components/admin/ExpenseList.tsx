@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatDateForDisplay } from '../../utils/dateUtils';
 
 interface Expense {
   id: string;
@@ -80,7 +81,7 @@ const ExpenseList: React.FC = () => {
     try {
       setLoading(true);
       const token = await firebaseUser?.getIdToken();
-      
+
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '20'
@@ -121,7 +122,7 @@ const ExpenseList: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return formatDateForDisplay(dateString, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -293,11 +294,10 @@ const ExpenseList: React.FC = () => {
                         {formatCurrency(expense.amount)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          expense.payment_method === 'cash' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${expense.payment_method === 'cash'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-blue-100 text-blue-800'
+                          }`}>
                           {expense.payment_method.toUpperCase()}
                         </span>
                       </td>
@@ -305,7 +305,7 @@ const ExpenseList: React.FC = () => {
                         {expense.receipt_number || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {expense.collector 
+                        {expense.collector
                           ? `${expense.collector.first_name} ${expense.collector.last_name}`
                           : 'Unknown'}
                       </td>
