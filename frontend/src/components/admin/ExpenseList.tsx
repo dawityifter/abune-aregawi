@@ -11,7 +11,20 @@ interface Expense {
   entry_date: string;
   payment_method: string;
   receipt_number: string;
+  check_number: string;
   memo: string;
+  payee_name?: string;
+  employee?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    position: string;
+  };
+  vendor?: {
+    id: string;
+    name: string;
+    vendor_type: string;
+  };
   collector?: {
     id: number;
     first_name: string;
@@ -127,6 +140,37 @@ const ExpenseList: React.FC = () => {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const getPayeeDisplay = (expense: Expense) => {
+    if (expense.employee) {
+      return (
+        <div>
+          <div className="text-sm font-medium text-gray-900">
+            {expense.employee.first_name} {expense.employee.last_name}
+          </div>
+          <div className="text-xs text-gray-500">Employee</div>
+        </div>
+      );
+    }
+    if (expense.vendor) {
+      return (
+        <div>
+          <div className="text-sm font-medium text-gray-900">
+            {expense.vendor.name}
+          </div>
+          <div className="text-xs text-gray-500">Vendor</div>
+        </div>
+      );
+    }
+    if (expense.payee_name) {
+      return (
+        <div className="text-sm text-gray-900">
+          {expense.payee_name}
+        </div>
+      );
+    }
+    return <span className="text-sm text-gray-400">-</span>;
   };
 
   const clearFilters = () => {
@@ -260,13 +304,16 @@ const ExpenseList: React.FC = () => {
                       Category
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Payee
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Amount
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Method
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Receipt #
+                      Check #
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Recorded By
@@ -290,6 +337,9 @@ const ExpenseList: React.FC = () => {
                           {expense.category_name}
                         </div>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getPayeeDisplay(expense)}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                         {formatCurrency(expense.amount)}
                       </td>
@@ -302,7 +352,7 @@ const ExpenseList: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {expense.receipt_number || '-'}
+                        {expense.check_number || expense.receipt_number || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {expense.collector

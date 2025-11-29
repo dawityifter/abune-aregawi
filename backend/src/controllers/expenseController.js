@@ -6,7 +6,7 @@ const tz = require('../config/timezone');
 const getExpenseCategories = async (req, res) => {
   try {
     const { include_inactive } = req.query;
-    
+
     const whereClause = {};
     if (include_inactive !== 'true') {
       whereClause.is_active = true;
@@ -34,7 +34,7 @@ const getExpenseCategories = async (req, res) => {
 // Create a new expense
 const createExpense = async (req, res) => {
   const t = await sequelize.transaction();
-  
+
   try {
     const {
       gl_code,
@@ -97,7 +97,7 @@ const createExpense = async (req, res) => {
     // Validate expense date is not in the future
     const expDate = tz.parseDate(expense_date);
     const today = tz.endOfDay();
-    
+
     if (expDate > today) {
       await t.rollback();
       return res.status(400).json({
@@ -244,6 +244,16 @@ const getExpenses = async (req, res) => {
           model: Member,
           as: 'collector',
           attributes: ['id', 'first_name', 'last_name', 'email']
+        },
+        {
+          model: Employee,
+          as: 'employee',
+          attributes: ['id', 'first_name', 'last_name', 'position']
+        },
+        {
+          model: Vendor,
+          as: 'vendor',
+          attributes: ['id', 'name', 'vendor_type']
         }
       ],
       limit: parseInt(limit),
@@ -344,7 +354,7 @@ const getExpenseById = async (req, res) => {
 // Update an expense
 const updateExpense = async (req, res) => {
   const t = await sequelize.transaction();
-  
+
   try {
     const { id } = req.params;
     const {
@@ -411,7 +421,7 @@ const updateExpense = async (req, res) => {
       const expDate = new Date(expense_date);
       const today = new Date();
       today.setHours(23, 59, 59, 999);
-      
+
       if (expDate > today) {
         await t.rollback();
         return res.status(400).json({
@@ -579,7 +589,7 @@ const getExpenseStats = async (req, res) => {
     for (let month = 0; month < 12; month++) {
       const monthStart = new Date(year, month, 1);
       const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
-      
+
       const monthTotal = await LedgerEntry.sum('amount', {
         where: {
           type: 'expense',
