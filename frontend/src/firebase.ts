@@ -33,11 +33,11 @@ export const auth = getAuth(app);
 if (typeof window !== 'undefined') {
   const host = window.location.hostname;
   const isLocal = host === 'localhost' || host === '127.0.0.1';
-  if (isLocal) {
-    // Prefer 127.0.0.1 to align with emulator and reCAPTCHA domain policy
-    connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-    console.log('[Auth] Connected to Firebase Auth Emulator at 127.0.0.1:9099');
-  }
+  // if (isLocal) {
+  //   // Prefer 127.0.0.1 to align with emulator and reCAPTCHA domain policy
+  //   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  //   console.log('[Auth] Connected to Firebase Auth Emulator at 127.0.0.1:9099');
+  // }
 }
 
 export default app; 

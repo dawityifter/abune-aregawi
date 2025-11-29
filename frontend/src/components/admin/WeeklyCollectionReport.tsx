@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatDateForDisplay } from '../../utils/dateUtils';
 
 interface Transaction {
   id: string;
@@ -43,7 +44,7 @@ const WeeklyCollectionReport: React.FC = () => {
   const [weekStart, setWeekStart] = useState<string>('');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['cash', 'check', 'zelle']));
 
-  // Helper function to get the Monday of a given date's week
+  // Helper function to get the Monday of a given date's week in CST
   const getMondayOfWeek = (date: Date | string): string => {
     // If string is passed, parse it carefully to avoid timezone issues
     let workingDate: Date;
@@ -53,16 +54,25 @@ const WeeklyCollectionReport: React.FC = () => {
     } else {
       workingDate = new Date(date);
     }
-    
+
     const dayOfWeek = workingDate.getDay();
     const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday (0), go back 6 days; otherwise go to Monday
     const monday = new Date(workingDate);
     monday.setDate(workingDate.getDate() + diff);
-    
-    // Format as YYYY-MM-DD
-    const year = monday.getFullYear();
-    const month = String(monday.getMonth() + 1).padStart(2, '0');
-    const day = String(monday.getDate()).padStart(2, '0');
+
+    // Format as YYYY-MM-DD in CST timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+
+    const parts = formatter.formatToParts(monday);
+    const year = parts.find(p => p.type === 'year')?.value;
+    const month = parts.find(p => p.type === 'month')?.value;
+    const day = parts.find(p => p.type === 'day')?.value;
+
     return `${year}-${month}-${day}`;
   };
 
@@ -82,7 +92,7 @@ const WeeklyCollectionReport: React.FC = () => {
     try {
       setLoading(true);
       const token = await firebaseUser?.getIdToken();
-      
+
       const params = new URLSearchParams();
       if (weekStart) params.append('week_start', weekStart);
 
@@ -116,7 +126,7 @@ const WeeklyCollectionReport: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return formatDateForDisplay(dateString, {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
@@ -269,7 +279,7 @@ const WeeklyCollectionReport: React.FC = () => {
                       {getPaymentMethodLabel(method)} Transactions
                     </h3>
                     <p className="text-sm text-gray-600">
-                      Income: {formatCurrency(data.totalIncome)} | 
+                      Income: {formatCurrency(data.totalIncome)} |
                       Expenses: {formatCurrency(data.totalExpenses)}
                     </p>
                   </div>

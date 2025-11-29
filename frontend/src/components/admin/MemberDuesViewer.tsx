@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatDateForDisplay } from '../../utils/dateUtils';
 
 interface MemberDuesData {
   member: {
@@ -205,11 +206,10 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
                       <div>Due: ${monthStatus.due.toFixed(2)}</div>
                     )}
                     <div className="mt-1">
-                      <span className={`inline-block px-2 py-1 text-xs rounded-full ${
-                        monthStatus.status === 'paid' ? 'bg-green-200 text-green-800' :
+                      <span className={`inline-block px-2 py-1 text-xs rounded-full ${monthStatus.status === 'paid' ? 'bg-green-200 text-green-800' :
                         monthStatus.status === 'due' ? 'bg-red-200 text-red-800' :
-                        'bg-blue-200 text-blue-800'
-                      }`}>
+                          'bg-blue-200 text-blue-800'
+                        }`}>
                         {monthStatus.status}
                       </span>
                     </div>
@@ -252,7 +252,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
                   {transactions.map((transaction) => (
                     <tr key={transaction.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(transaction.payment_date).toLocaleDateString()}
+                        {formatDateForDisplay(transaction.payment_date)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         ${transaction.amount.toFixed(2)}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatDateForDisplay } from '../../utils/dateUtils';
 
 interface Transaction {
   id: number;
@@ -115,7 +116,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
       if (dateRangeFilter !== 'all') {
         const today = new Date();
         let startDate = new Date();
-        
+
         switch (dateRangeFilter) {
           case 'today':
             startDate = today;
@@ -130,14 +131,14 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
             startDate.setFullYear(today.getFullYear() - 1);
             break;
         }
-        
+
         params.append('start_date', startDate.toISOString().split('T')[0]);
         params.append('end_date', today.toISOString().split('T')[0]);
       }
 
       // Always use real endpoint
       const endpoint = '/api/transactions';
-      
+
       const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}?${params}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
@@ -164,7 +165,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return formatDateForDisplay(dateString, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -214,17 +215,17 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   // Extract donor info from note field for anonymous donations
   const parseDonorInfo = (note?: string) => {
     if (!note || !note.includes('[Anonymous Donor]')) return null;
-    
+
     const lines = note.split('\n');
     const donorInfo: { name?: string; type?: string; email?: string; phone?: string } = {};
-    
+
     for (const line of lines) {
       if (line.startsWith('Name:')) donorInfo.name = line.replace('Name:', '').trim();
       if (line.startsWith('Type:')) donorInfo.type = line.replace('Type:', '').trim();
       if (line.startsWith('Email:')) donorInfo.email = line.replace('Email:', '').trim();
       if (line.startsWith('Phone:')) donorInfo.phone = line.replace('Phone:', '').trim();
     }
-    
+
     return donorInfo;
   };
 
