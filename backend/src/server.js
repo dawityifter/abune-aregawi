@@ -25,6 +25,8 @@ const zelleRoutes = require('./routes/zelleRoutes');
 const pledgeRoutes = require('./routes/pledgeRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const incomeCategoryRoutes = require('./routes/incomeCategoryRoutes');
+const employeeRoutes = require('./routes/employeeRoutes');
+const vendorRoutes = require('./routes/vendorRoutes');
 const donationController = require('./controllers/donationController');
 
 // Import database
@@ -51,16 +53,16 @@ const corsOptions = {
     if (process.env.NODE_ENV === 'development') {
       return callback(null, true);
     }
-    
+
     // In production, only allow specific origins
-    const allowedOrigins = process.env.FRONTEND_URL 
+    const allowedOrigins = process.env.FRONTEND_URL
       ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
       : [];
-      
+
     if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    
+
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -143,7 +145,7 @@ app.get('/health', (req, res) => {
     stripe: process.env.STRIPE_SECRET_KEY ? 'configured' : 'not_configured',
     firebase: process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 ? 'configured' : 'not_configured'
   };
-  
+
   res.json(health);
 });
 
@@ -157,7 +159,7 @@ app.get('/api/health', (req, res) => {
     stripe: process.env.STRIPE_SECRET_KEY ? 'configured' : 'not_configured',
     firebase: process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 ? 'configured' : 'not_configured'
   };
-  
+
   res.json(health);
 });
 
@@ -165,7 +167,7 @@ app.get('/api/health', (req, res) => {
 app.get('/api/ready', async (req, res) => {
   try {
     console.log('🔍 API Ready check initiated');
-    
+
     // For SQLite, just return ready immediately since it's usually fast
     if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('sqlite')) {
       console.log('✅ SQLite database detected, returning ready immediately');
@@ -175,23 +177,29 @@ app.get('/api/ready', async (req, res) => {
         database: 'sqlite'
       });
     }
-    
+
     const toMs = 3000; // Reduced timeout for faster response
     console.log('🔄 Checking database connectivity with', toMs, 'ms timeout');
-    
+
+    let timeoutId;
     const timeout = new Promise((_, reject) => {
-      const id = setTimeout(() => {
+      timeoutId = setTimeout(() => {
         console.log('⏰ Database readiness check timed out after', toMs, 'ms');
         reject(new Error('READINESS_TIMEOUT'));
       }, toMs);
     });
-    
-    const authPromise = sequelize.authenticate();
+
+    // Wrap auth promise to clear timeout on success
+    const authPromise = sequelize.authenticate().then(() => {
+      clearTimeout(timeoutId);
+      return true;
+    });
+
     console.log('🔌 Starting database authentication...');
-    
+
     await Promise.race([authPromise, timeout]);
     console.log('✅ Database authentication successful');
-    
+
     return res.status(200).json({
       status: 'ready',
       timestamp: new Date().toISOString()
@@ -220,6 +228,8 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/pledges', pledgeRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/income-categories', incomeCategoryRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/vendors', vendorRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -232,7 +242,7 @@ app.use('*', (req, res) => {
 // Global error handler
 app.use((error, req, res, next) => {
   console.error('Global error handler:', error);
-  
+
   res.status(error.status || 500).json({
     success: false,
     message: error.message || 'Internal server error',
@@ -244,7 +254,7 @@ app.use((error, req, res, next) => {
 const startServer = async () => {
   try {
     console.log('🚀 Starting server...');
-    
+
     // Debug environment variables
     console.log('🔍 Server Environment Debug:');
     console.log('  NODE_ENV:', process.env.NODE_ENV);
@@ -252,11 +262,11 @@ const startServer = async () => {
     console.log('  DATABASE_URL exists:', !!process.env.DATABASE_URL);
     console.log('  FRONTEND_URL:', process.env.FRONTEND_URL);
     console.log('  FIREBASE_SERVICE_ACCOUNT_BASE64 exists:', !!process.env.FIREBASE_SERVICE_ACCOUNT_BASE64);
-    
+
     // Initialize database connection with better error handling
     console.log('🔌 Starting database connection...');
     let sequelize;
-    
+
     try {
       const models = require('./models');
       sequelize = models.sequelize;
@@ -266,12 +276,12 @@ const startServer = async () => {
       console.error('❌ Model error stack:', modelError.stack);
       throw modelError;
     }
-    
+
     // Test database connection with retries
     console.log('🔌 Connecting to database...');
     let retries = 3;
     let dbConnected = false;
-    
+
     while (retries > 0 && !dbConnected) {
       try {
         await sequelize.authenticate();
@@ -280,7 +290,7 @@ const startServer = async () => {
       } catch (dbError) {
         retries--;
         console.error(`❌ Database connection failed (${3 - retries}/3):`, dbError.message);
-        
+
         if (retries === 0) {
           console.error('❌ All database connection attempts failed.');
           console.error('❌ Database error details:', {
@@ -289,23 +299,23 @@ const startServer = async () => {
             code: dbError.code,
             errno: dbError.errno
           });
-          
+
           // Don't crash the server, just log the error and continue
           console.log('⚠️  Starting server without database connection for debugging...');
           break;
         }
-        
+
         console.log(`🔄 Retrying database connection in 2 seconds... (${retries} attempts left)`);
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
-    
+
     // Check if we're in a test environment
     if (process.env.NODE_ENV === 'test') {
       console.log('🧪 Test environment detected, skipping database sync.');
       return;
     }
-    
+
     // Sync database (in development)
     if (process.env.NODE_ENV === 'development') {
       console.log('🔄 Syncing database models...');
@@ -320,7 +330,7 @@ const startServer = async () => {
         throw syncError;
       }
     }
-    
+
     // Start server
     console.log(`🚀 Starting HTTP server on port ${PORT}...`);
     app.listen(PORT, () => {
@@ -329,7 +339,7 @@ const startServer = async () => {
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
       console.log('✅ Server startup completed successfully!');
     });
-    
+
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     console.error('❌ Error stack:', error.stack);

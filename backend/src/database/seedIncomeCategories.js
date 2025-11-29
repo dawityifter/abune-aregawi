@@ -66,6 +66,14 @@ const INCOME_CATEGORIES = [
     display_order: 8
   },
   {
+    gl_code: 'INC009',
+    name: 'Religious Item Sales',
+    description: 'Income from sales of Bibles, candles, and other religious articles',
+    payment_type_mapping: 'religious_item_sales',
+    is_active: true,
+    display_order: 9
+  },
+  {
     gl_code: 'INC999',
     name: 'Other Income',
     description: 'Miscellaneous income not covered by other categories',

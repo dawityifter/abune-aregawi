@@ -20,6 +20,16 @@ module.exports = (sequelize) => {
         foreignKey: 'transaction_id',
         as: 'transaction'
       });
+      
+      LedgerEntry.belongsTo(models.Employee, {
+        foreignKey: 'employee_id',
+        as: 'employee'
+      });
+      
+      LedgerEntry.belongsTo(models.Vendor, {
+        foreignKey: 'vendor_id',
+        as: 'vendor'
+      });
     }
   }
 
@@ -121,6 +131,43 @@ module.exports = (sequelize) => {
     statement_date: {
       type: DataTypes.DATEONLY,
       allowNull: true
+    },
+    employee_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'employees',
+        key: 'id'
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
+      comment: 'Employee ID for salary/allowance expenses'
+    },
+    vendor_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'vendors',
+        key: 'id'
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
+      comment: 'Vendor ID for vendor payments'
+    },
+    payee_name: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Generic payee name for expenses without employee/vendor'
+    },
+    check_number: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: 'Check number if paid by check'
+    },
+    invoice_number: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'Invoice or bill number'
     }
   }, {
     sequelize,
@@ -133,7 +180,9 @@ module.exports = (sequelize) => {
       { fields: ['member_id'] },
       { fields: ['entry_date'] },
       { fields: ['category'] },
-      { fields: ['external_id'], unique: true }
+      { fields: ['external_id'], unique: true },
+      { fields: ['employee_id'] },
+      { fields: ['vendor_id'] }
     ]
   });
 
