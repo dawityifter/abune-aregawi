@@ -1,5 +1,6 @@
-const { ExpenseCategory, LedgerEntry, Member, sequelize } = require('../models');
+const { ExpenseCategory, LedgerEntry, Member, Employee, Vendor, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const tz = require('../config/timezone');
 
 // Get all expense categories (active only by default)
 const getExpenseCategories = async (req, res) => {
@@ -41,7 +42,12 @@ const createExpense = async (req, res) => {
       expense_date,
       payment_method,
       receipt_number,
-      memo
+      memo,
+      employee_id,
+      vendor_id,
+      payee_name,
+      check_number,
+      invoice_number
     } = req.body;
 
     // Validate required fields
@@ -89,9 +95,8 @@ const createExpense = async (req, res) => {
     }
 
     // Validate expense date is not in the future
-    const expDate = new Date(expense_date);
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
+    const expDate = tz.parseDate(expense_date);
+    const today = tz.endOfDay();
     
     if (expDate > today) {
       await t.rollback();
@@ -129,7 +134,12 @@ const createExpense = async (req, res) => {
         external_id: null,
         fund: null,
         attachment_url: null,
-        statement_date: null
+        statement_date: null,
+        employee_id: employee_id || null,
+        vendor_id: vendor_id || null,
+        payee_name: payee_name || null,
+        check_number: check_number || null,
+        invoice_number: invoice_number || null
       }, { transaction: t });
     } catch (ledgerError) {
       console.warn('⚠️  Could not create ledger entry:', ledgerError.message);
@@ -146,6 +156,16 @@ const createExpense = async (req, res) => {
             model: Member,
             as: 'collector',
             attributes: ['id', 'first_name', 'last_name', 'email']
+          },
+          {
+            model: Employee,
+            as: 'employee',
+            attributes: ['id', 'first_name', 'last_name', 'position']
+          },
+          {
+            model: Vendor,
+            as: 'vendor',
+            attributes: ['id', 'name', 'vendor_type', 'contact_person']
           }
         ]
       });

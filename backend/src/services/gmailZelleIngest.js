@@ -1,7 +1,8 @@
 const { google } = require('googleapis');
-const moment = require('moment');
+const moment = require('moment-timezone');
 const { Op } = require('sequelize');
 const { Member, Transaction, sequelize, ZelleMemoMatch, IncomeCategory } = require('../models');
+const tz = require('../config/timezone');
 
 const LABEL_PROCESSED = 'Zelle/Processed';
 const LABEL_NEEDS_REVIEW = 'Zelle/NeedsReview';
@@ -86,9 +87,9 @@ function parseCandidatesFromMessage(msg) {
   }
   note = sanitizeNote(note);
 
-  // Date
-  const dt = internalDate ? moment(internalDate) : (dateHeader ? moment(new Date(dateHeader)) : moment());
-  const payment_date = dt.isValid() ? dt.format('YYYY-MM-DD') : moment().format('YYYY-MM-DD');
+  // Date - ensure timezone is CST
+  const dt = internalDate ? moment(internalDate).tz(tz.TIMEZONE) : (dateHeader ? moment(new Date(dateHeader)).tz(tz.TIMEZONE) : moment().tz(tz.TIMEZONE));
+  const payment_date = dt.isValid() ? dt.format('YYYY-MM-DD') : moment().tz(tz.TIMEZONE).format('YYYY-MM-DD');
 
   return { amount, phoneE164, senderEmail, messageId, note, payment_date, subject, bodyText };
 }

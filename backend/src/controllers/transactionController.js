@@ -1,5 +1,6 @@
 const { Transaction, Member, LedgerEntry, IncomeCategory, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const tz = require('../config/timezone');
 
 // Get all transactions with optional filtering
 const getAllTransactions = async (req, res) => {
@@ -334,7 +335,7 @@ const createTransaction = async (req, res) => {
       transaction = await Transaction.create({
         member_id,
         collected_by,
-        payment_date: payment_date || new Date(),
+        payment_date: payment_date ? tz.parseDate(payment_date) : tz.now(),
         amount: parseFloat(amount),
         payment_type,
         payment_method,
@@ -350,7 +351,7 @@ const createTransaction = async (req, res) => {
     // Create corresponding ledger entry using Sequelize (avoids enum issues)
     // Wrapped in try-catch to make ledger entries optional (for gradual migration)
     try {
-      const entryDate = payment_date || new Date();
+      const entryDate = payment_date ? tz.parseDate(payment_date) : tz.now();
       const memo = `${glCode} - ${finalNote || 'No description'}`;
       
       await LedgerEntry.create({
@@ -840,7 +841,7 @@ const updateTransactionPaymentType = async (req, res) => {
     const { id } = req.params;
     const { payment_type } = req.body || {};
 
-    const allowed = ['membership_due', 'tithe', 'donation', 'event', 'other'];
+    const allowed = ['membership_due', 'tithe', 'donation', 'event', 'offering', 'vow', 'building_fund', 'religious_item_sales', 'other'];
     if (!payment_type || !allowed.includes(payment_type)) {
       return res.status(400).json({ success: false, message: `Invalid payment_type. Allowed: ${allowed.join(', ')}` });
     }

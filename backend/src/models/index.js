@@ -24,6 +24,7 @@ try {
   
   let config = {
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
+    timezone: '-06:00', // CST timezone offset
     define: {
       timestamps: true,
       underscored: true
@@ -66,7 +67,8 @@ try {
           rejectUnauthorized: false
         } : false,
         statement_timeout: 10000,
-        idle_in_transaction_session_timeout: 10000
+        idle_in_transaction_session_timeout: 10000,
+        timezone: '-06:00' // CST timezone offset for PostgreSQL
       }
     };
   } else if (isSQLite) {
@@ -100,6 +102,8 @@ try {
   const LedgerEntry = require('./LedgerEntry')(sequelize);
   const ExpenseCategory = require('./ExpenseCategory')(sequelize);
   const IncomeCategory = require('./IncomeCategory')(sequelize);
+  const Employee = require('./Employee')(sequelize);
+  const Vendor = require('./Vendor')(sequelize);
 
   // Define models object
   const models = {
@@ -118,7 +122,9 @@ try {
     Outreach, 
     LedgerEntry,
     ExpenseCategory,
-    IncomeCategory
+    IncomeCategory,
+    Employee,
+    Vendor
   };
 
   // Call associate on each model

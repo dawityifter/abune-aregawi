@@ -2,6 +2,7 @@
 
 const { Member, Group, MemberGroup, SmsLog, Department, DepartmentMember, Pledge } = require('../models');
 const { sendSms, sendSmsBatch } = require('../services/twilioService');
+const tz = require('../config/timezone');
 
 // Normalize phone numbers to E.164 if possible (basic handling)
 function normalizePhone(phone) {
@@ -48,10 +49,9 @@ function substituteTemplateVariables(template, data) {
     message = message.replace(/{pledgeCount}/gi, data.pledgeCount.toString());
   }
   
-  // Replace {dueDate} - format date nicely
+  // Replace {dueDate} - format date nicely in CST
   if (data.dueDate) {
-    const date = new Date(data.dueDate);
-    const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const formatted = tz.formatForDisplay(data.dueDate, 'MMM DD, YYYY');
     message = message.replace(/{dueDate}/gi, formatted);
   }
   
