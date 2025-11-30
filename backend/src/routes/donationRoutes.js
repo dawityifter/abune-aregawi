@@ -24,25 +24,25 @@ const validateDonation = [
     .isLength({ min: 1 })
     .withMessage('Last name is required'),
   body('donor_email')
-    .optional()
+    .optional({ checkFalsy: true })
     .isEmail()
     .normalizeEmail()
     .withMessage('Valid email is required'),
   body('frequency')
-    .optional()
+    .optional({ checkFalsy: true })
     .isIn(['weekly', 'monthly', 'quarterly', 'yearly'])
     .withMessage('Frequency must be weekly, monthly, quarterly, or yearly'),
   body('donor_phone')
-    .optional()
+    .optional({ checkFalsy: true })
     .isMobilePhone()
     .withMessage('Valid phone number is required'),
   body('donor_address')
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isLength({ min: 1 })
     .withMessage('Address must not be empty'),
   body('donor_zip_code')
-    .optional()
+    .optional({ checkFalsy: true })
     .matches(/^\d{5}(-\d{4})?$/)
     .withMessage('Valid ZIP code is required')
 ];

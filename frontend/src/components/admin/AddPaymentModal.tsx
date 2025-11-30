@@ -24,10 +24,9 @@ interface AddPaymentModalProps {
   paymentView: 'old' | 'new';
 }
 
-    const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdded, paymentView }) => {
-    const { user, firebaseUser } = useAuth();
-    console.log('🔍 Current user data:', user);
-    console.log('🔍 User member data:', user?.data?.member);
+const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdded, paymentView }) => {
+  const { user, firebaseUser } = useAuth();
+
   const [members, setMembers] = useState<Member[]>([]);
   const [memberSearch, setMemberSearch] = useState('');
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
@@ -37,7 +36,7 @@ interface AddPaymentModalProps {
   const [amountError, setAmountError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [notes, setNotes] = useState('');
-  
+
   // Anonymous payment mode
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [donorType, setDonorType] = useState<'individual' | 'organization'>('individual');
@@ -45,7 +44,7 @@ interface AddPaymentModalProps {
   const [donorEmail, setDonorEmail] = useState('');
   const [donorPhone, setDonorPhone] = useState('');
   const [donorMemo, setDonorMemo] = useState('');
-  
+
   // New transaction fields
   const [paymentDate, setPaymentDate] = useState('');
   const [paymentType, setPaymentType] = useState('');
@@ -53,7 +52,7 @@ interface AddPaymentModalProps {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [processStripePayment, setProcessStripePayment] = useState<null | (() => Promise<void>)>(null);
-  
+
   // Income category fields
   const [incomeCategories, setIncomeCategories] = useState<IncomeCategory[]>([]);
   const [selectedIncomeCategoryId, setSelectedIncomeCategoryId] = useState<string>('');
@@ -83,7 +82,7 @@ interface AddPaymentModalProps {
 
   const fetchMembers = useCallback(async (query: string) => {
     if (!firebaseUser) return;
-    
+
     try {
       setMemberSearchLoading(true);
       const params = new URLSearchParams();
@@ -248,12 +247,12 @@ interface AddPaymentModalProps {
           receipt_number: receiptNumber,
           note: notes
         };
-        
+
         // Add income category if selected
         if (selectedIncomeCategoryId) {
           requestBody.income_category_id = parseInt(selectedIncomeCategoryId);
         }
-        
+
         // Add donor fields if anonymous
         if (isAnonymous) {
           requestBody.donor_type = donorType;
@@ -262,7 +261,7 @@ interface AddPaymentModalProps {
           requestBody.donor_phone = donorPhone;
           requestBody.donor_memo = donorMemo;
         }
-        
+
         response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?email=${encodeURIComponent(user?.email || '')}`, {
           method: 'POST',
           headers: {
@@ -290,7 +289,7 @@ interface AddPaymentModalProps {
       }
 
       if (response.ok) {
-        try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch {}
+        try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch { }
         onPaymentAdded();
         onClose();
       } else {
@@ -355,12 +354,12 @@ interface AddPaymentModalProps {
       { value: 'ach', label: 'ACH' },
       { value: 'other', label: 'Other' }
     ];
-    
+
     // For religious_item_sales, exclude Stripe payment methods (card/ACH) since it's not a donation
     if (paymentType === 'religious_item_sales') {
       return allMethods.filter(m => m.value !== 'credit_card' && m.value !== 'ach');
     }
-    
+
     return allMethods;
   }, [paymentType]);
 
@@ -432,38 +431,38 @@ interface AddPaymentModalProps {
                 </div>
               </div>
             )}
-            
+
             {!isAnonymous && (
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Member
                 </label>
-              <input
-                type="text"
-                value={memberSearch}
-                onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Search by name, email, or phone"
-                className="w-full px-3 py-2 mb-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <select
-                value={selectedMemberId}
-                onChange={(e) => setSelectedMemberId(e.target.value)}
-                required={!isAnonymous}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="" disabled>{memberSearchLoading ? 'Loading...' : 'Select a member'}</option>
-                {members.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.firstName} {member.lastName} ({member.id})
-                  </option>
-                ))}
-              </select>
-              {members.length === 20 && (
-                <p className="mt-1 text-xs text-gray-500">Showing first 20 results. Refine your search to narrow further.</p>
-              )}
+                <input
+                  type="text"
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Search by name, email, or phone"
+                  className="w-full px-3 py-2 mb-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <select
+                  value={selectedMemberId}
+                  onChange={(e) => setSelectedMemberId(e.target.value)}
+                  required={!isAnonymous}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="" disabled>{memberSearchLoading ? 'Loading...' : 'Select a member'}</option>
+                  {members.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.firstName} {member.lastName} ({member.id})
+                    </option>
+                  ))}
+                </select>
+                {members.length === 20 && (
+                  <p className="mt-1 text-xs text-gray-500">Showing first 20 results. Refine your search to narrow further.</p>
+                )}
               </div>
             )}
-            
+
             {isAnonymous && paymentView === 'new' && (
               <>
                 <div className="md:col-span-2">
@@ -479,7 +478,7 @@ interface AddPaymentModalProps {
                     <option value="organization">Organization / Group</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Donor Name (Optional)
@@ -492,7 +491,7 @@ interface AddPaymentModalProps {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Email (Optional)
@@ -505,7 +504,7 @@ interface AddPaymentModalProps {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Phone (Optional)
@@ -518,7 +517,7 @@ interface AddPaymentModalProps {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                
+
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Memo (Optional)
@@ -717,7 +716,7 @@ interface AddPaymentModalProps {
                             }
                           }}
                           onError={(msg) => setError(msg)}
-                          onCancel={() => {}}
+                          onCancel={() => { }}
                           onRefreshHistory={() => onPaymentAdded()}
                         />
                       </Elements>
@@ -739,40 +738,40 @@ interface AddPaymentModalProps {
                           inline
                           onPaymentReady={(fn) => setProcessStripePayment(() => fn)}
                           onSuccess={async (result: any) => {
-                          try {
-                            const response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?email=${encodeURIComponent(user?.email || '')}`, {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
-                              },
-                              body: JSON.stringify({
-                                member_id: parseInt(selectedMemberId),
-                                collected_by: collectorId,
-                                payment_date: paymentDate,
-                                amount: parseFloat(amount || '0'),
-                                payment_type: (paymentType as any) || 'donation',
-                                payment_method: 'ach',
-                                status: 'pending',
-                                external_id: result?.payment_intent_id,
-                                donation_id: result?.donation_id,
-                                receipt_number: receiptNumber,
-                                note: notes,
-                                ...(selectedIncomeCategoryId && { income_category_id: parseInt(selectedIncomeCategoryId) })
-                              })
-                            });
-                            if (!response.ok) {
-                              const data = await response.json().catch(() => ({} as any));
-                              throw new Error(data.message || 'Failed to record ACH transaction');
+                            try {
+                              const response = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions?email=${encodeURIComponent(user?.email || '')}`, {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
+                                },
+                                body: JSON.stringify({
+                                  member_id: parseInt(selectedMemberId),
+                                  collected_by: collectorId,
+                                  payment_date: paymentDate,
+                                  amount: parseFloat(amount || '0'),
+                                  payment_type: (paymentType as any) || 'donation',
+                                  payment_method: 'ach',
+                                  status: 'pending',
+                                  external_id: result?.payment_intent_id,
+                                  donation_id: result?.donation_id,
+                                  receipt_number: receiptNumber,
+                                  note: notes,
+                                  ...(selectedIncomeCategoryId && { income_category_id: parseInt(selectedIncomeCategoryId) })
+                                })
+                              });
+                              if (!response.ok) {
+                                const data = await response.json().catch(() => ({} as any));
+                                throw new Error(data.message || 'Failed to record ACH transaction');
+                              }
+                              onPaymentAdded();
+                              onClose();
+                            } catch (err: any) {
+                              setError(err?.message || 'Failed to record ACH transaction');
                             }
-                            onPaymentAdded();
-                            onClose();
-                          } catch (err: any) {
-                            setError(err?.message || 'Failed to record ACH transaction');
-                          }
                           }}
                           onError={(msg) => setError(msg)}
-                          onCancel={() => {}}
+                          onCancel={() => { }}
                           onRefreshHistory={() => onPaymentAdded()}
                         />
                       </Elements>
@@ -803,9 +802,9 @@ interface AddPaymentModalProps {
                   </label>
                   <input
                     type="text"
-                    value={user?.firstName && user?.lastName 
+                    value={user?.firstName && user?.lastName
                       ? `${user.firstName} ${user.lastName} (${user.id})`
-                      : user?.firstName 
+                      : user?.firstName
                         ? `${user.firstName} (${user.id})`
                         : 'Loading...'
                     }
@@ -865,11 +864,11 @@ interface AddPaymentModalProps {
               >
                 {loading
                   ? (paymentView === 'new' && (paymentMethod === 'credit_card' || paymentMethod === 'ach')
-                      ? 'Processing...'
-                      : 'Adding...')
+                    ? 'Processing...'
+                    : 'Adding...')
                   : (paymentView === 'new' && (paymentMethod === 'credit_card' || paymentMethod === 'ach')
-                      ? `Pay $${(parseFloat(amount || '0') || 0).toFixed(2)}`
-                      : 'Add Payment')}
+                    ? `Pay $${(parseFloat(amount || '0') || 0).toFixed(2)}`
+                    : 'Add Payment')}
               </button>
             </div>
           </form>
