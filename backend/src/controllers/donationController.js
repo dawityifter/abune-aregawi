@@ -31,6 +31,7 @@ const createPaymentIntent = async (req, res) => {
     // Validate request
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.warn('⚠️ Payment Intent Validation Failed:', JSON.stringify(errors.array()));
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
@@ -61,7 +62,7 @@ const createPaymentIntent = async (req, res) => {
       parsedName = parseFullName(donor_full_name);
       console.log(`📝 Parsed name: "${donor_full_name}" → First: "${parsedName.firstName}", Middle: "${parsedName.middleName}", Last: "${parsedName.lastName}"`);
     }
-    
+
     // Use parsed names, fallback to original fields if parsing didn't happen
     const finalFirstName = parsedName.firstName || donor_first_name || null;
     const finalLastName = parsedName.lastName || donor_last_name || null;
@@ -425,17 +426,17 @@ const handlePaymentSucceeded = async (paymentIntent) => {
     if (existing) {
       // Ensure it matches succeeded status use-case; optionally update
       await existing.update({ amount, payment_date: occurredAt, status: 'succeeded' });
-      
+
       // Update or create ledger entry for existing transaction
       try {
         const existingLedger = await LedgerEntry.findOne({ where: { transaction_id: existing.id } });
-        
-        const incomeCategory = await IncomeCategory.findOne({ 
-          where: { payment_type_mapping: payment_type } 
+
+        const incomeCategory = await IncomeCategory.findOne({
+          where: { payment_type_mapping: payment_type }
         });
         const glCode = incomeCategory?.gl_code || 'INC999';
         const memo = `${glCode} - Stripe payment ${paymentIntent.id}`;
-        
+
         if (existingLedger) {
           await existingLedger.update({
             amount: parseFloat(amount),
@@ -460,7 +461,7 @@ const handlePaymentSucceeded = async (paymentIntent) => {
       } catch (ledgerErr) {
         console.error('⚠️ Failed to update/create ledger entry for existing transaction:', ledgerErr.message);
       }
-      
+
       return;
     }
 
@@ -481,10 +482,10 @@ const handlePaymentSucceeded = async (paymentIntent) => {
     // Create corresponding ledger entry
     try {
       // Map payment_type to GL code
-      const incomeCategory = await IncomeCategory.findOne({ 
-        where: { payment_type_mapping: payment_type } 
+      const incomeCategory = await IncomeCategory.findOne({
+        where: { payment_type_mapping: payment_type }
       });
-      
+
       const glCode = incomeCategory?.gl_code || 'INC999'; // Fallback GL code
       const memo = `${glCode} - Stripe payment ${paymentIntent.id}`;
 
@@ -498,7 +499,7 @@ const handlePaymentSucceeded = async (paymentIntent) => {
         memo: memo,
         transaction_id: transaction.id
       });
-      
+
       console.log(`✅ Created ledger entry for transaction ${transaction.id} with GL code ${glCode}`);
     } catch (ledgerErr) {
       console.error('⚠️ Failed to create ledger entry for Stripe payment:', ledgerErr.message);
