@@ -32,7 +32,15 @@ export const createPaymentIntent = async (donationData: {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to create payment intent');
+      let errorMessage = errorData.message || 'Failed to create payment intent';
+
+      // Append specific validation errors if available
+      if (errorData.errors && Array.isArray(errorData.errors)) {
+        const details = errorData.errors.map((e: any) => e.msg).join(', ');
+        errorMessage = `${errorMessage}: ${details}`;
+      }
+
+      throw new Error(errorMessage);
     }
 
     return await response.json();
