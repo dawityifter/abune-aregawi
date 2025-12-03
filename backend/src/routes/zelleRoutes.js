@@ -15,5 +15,6 @@ router.get('/preview/gmail', previewFromGmail);
 
 // Reconciliation: create a Transaction from a preview item
 router.post('/reconcile/create-transaction', createTransactionFromPreview);
+router.post('/reconcile/batch-create', require('../controllers/zelleController').createBatchTransactions);
 
 module.exports = router;
