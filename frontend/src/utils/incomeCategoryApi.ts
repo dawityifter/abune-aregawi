@@ -91,21 +91,42 @@ export function getIncomeCategoryByPaymentType(
   categories: IncomeCategory[],
   paymentType: string
 ): IncomeCategory | undefined {
-  // First try direct mapping
+  // 1. Try direct mapping via payment_type_mapping field
   let category = categories.find(cat => cat.payment_type_mapping === paymentType);
-  
-  // Fallback mappings for payment types without direct mapping
-  if (!category) {
-    const fallbackMappings: { [key: string]: string } = {
-      'tithe': 'offering',        // tithe → INC002 (Weekly Offering)
-      'building_fund': 'event'    // building_fund → INC003 (Fundraising)
-    };
-    
-    const fallbackType = fallbackMappings[paymentType];
-    if (fallbackType) {
-      category = categories.find(cat => cat.payment_type_mapping === fallbackType);
-    }
+  if (category) return category;
+
+  // 2. Try fallback mappings for payment types that might be mapped to other keys
+  const fallbackMappings: { [key: string]: string } = {
+    'tithe': 'offering',        // tithe might be mapped to offering
+    'vow': 'donation',          // vow might be mapped to donation
+    'religious_item_sales': 'other' // sales might be mapped to other
+  };
+
+  const fallbackType = fallbackMappings[paymentType];
+  if (fallbackType) {
+    category = categories.find(cat => cat.payment_type_mapping === fallbackType);
+    if (category) return category;
   }
-  
+
+  // 3. Try keyword matching in the category name (case-insensitive)
+  // This is useful if payment_type_mapping is not set in the database
+  const keywordMap: { [key: string]: string[] } = {
+    'membership_due': ['membership', 'dues', 'member'],
+    'tithe': ['tithe', 'asrat'],
+    'donation': ['donation', 'general'],
+    'building_fund': ['building', 'fund', 'construction'],
+    'offering': ['offering', 'meba', 'collection'],
+    'vow': ['vow', 'silet', 'pledge'],
+    'religious_item_sales': ['sales', 'religious', 'store', 'shop']
+  };
+
+  const keywords = keywordMap[paymentType];
+  if (keywords) {
+    category = categories.find(cat => {
+      const nameLower = cat.name.toLowerCase();
+      return keywords.some(keyword => nameLower.includes(keyword));
+    });
+  }
+
   return category;
 }
