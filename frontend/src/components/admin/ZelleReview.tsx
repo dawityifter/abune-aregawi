@@ -31,6 +31,8 @@ const ZelleReview: React.FC = () => {
   const [busyIds, setBusyIds] = useState<Record<string, boolean>>({});
   const [textFilter, setTextFilter] = useState<string>('');
   const [onlyUnmatched, setOnlyUnmatched] = useState<boolean>(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
 
   // Per-row reconcile selection and search state
   type SearchResult = { id: number; name: string; phoneNumber?: string | null; isActive?: boolean };
@@ -66,6 +68,81 @@ const ZelleReview: React.FC = () => {
   useEffect(() => {
     fetchPreview();
   }, [fetchPreview]);
+
+  // Reset selection on items change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [items]);
+
+  const toggleSelection = (key: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const selectable = filteredItems
+      .filter(it => !it.already_exists && (it.matched_member_id || rowSearch[getKey(it, items.indexOf(it))]?.selectedId))
+      .map((it, idx) => getKey(it, idx));
+
+    if (selectedIds.size === selectable.length && selectable.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectable));
+    }
+  };
+
+  const handleBatchCreate = async () => {
+    if (!firebaseUser || selectedIds.size === 0) return;
+    setBatchLoading(true);
+    setError('');
+    try {
+      const payloadItems = items
+        .map((it, idx) => ({ item: it, key: getKey(it, idx) }))
+        .filter(({ key }) => selectedIds.has(key))
+        .map(({ item, key }) => {
+          const selected = rowSearch[key]?.selectedId;
+          const member_id = item.matched_member_id || selected;
+          const paymentTypeSelect = (document.getElementById(`paymentType-${key}`) as HTMLSelectElement | null);
+          const payment_type = paymentTypeSelect?.value || 'donation';
+          const numericAmount = typeof item.amount === 'number' ? item.amount : Number(item.amount);
+
+          return {
+            external_id: item.external_id,
+            amount: numericAmount,
+            payment_date: item.payment_date,
+            note: item.note_preview || item.subject || undefined,
+            member_id,
+            payment_type
+          };
+        });
+
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/zelle/reconcile/batch-create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
+        },
+        body: JSON.stringify({ items: payloadItems })
+      });
+
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(data.message || `Batch create failed with status ${resp.status}`);
+      }
+
+      // Refresh list after success
+      await fetchPreview();
+      setSelectedIds(new Set());
+    } catch (e: any) {
+      setError(e.message || 'Failed to process batch');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
 
   const handleCreate = useCallback(async (item: ZellePreviewItem, idx?: number) => {
     if (!firebaseUser) return;
@@ -240,6 +317,15 @@ const ZelleReview: React.FC = () => {
           >
             Refresh
           </button>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleBatchCreate}
+              disabled={batchLoading}
+              className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-2 rounded shadow-sm"
+            >
+              {batchLoading ? 'Processing...' : `Process Selected (${selectedIds.size})`}
+            </button>
+          )}
         </div>
       </div>
 
@@ -258,17 +344,34 @@ const ZelleReview: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-3 py-2 w-8">
+                  <input
+                    type="checkbox"
+                    onChange={toggleSelectAll}
+                    checked={filteredItems.length > 0 && selectedIds.size === filteredItems.filter(it => !it.already_exists && (it.matched_member_id || rowSearch[getKey(it, items.indexOf(it))]?.selectedId)).length && selectedIds.size > 0}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Memo</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matched Member</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Would Create</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reconcile</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredItems.map((it, idx) => (
                 <tr key={getKey(it, idx)}>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(getKey(it, idx))}
+                      onChange={() => toggleSelection(getKey(it, idx))}
+                      disabled={!!it.already_exists || (!it.matched_member_id && !rowSearch[getKey(it, idx)]?.selectedId)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                    />
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.payment_date || '-'}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{
                     (() => {
@@ -283,21 +386,36 @@ const ZelleReview: React.FC = () => {
                         {it.matched_member_name ? `${it.matched_member_name} ` : ''}#{it.matched_member_id}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                        Unmatched
-                      </span>
+                      <div className="flex flex-col space-y-1">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                          Unmatched
+                        </span>
+                        {it.matched_candidates && it.matched_candidates.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {it.matched_candidates.map(c => (
+                              <button
+                                key={c.id}
+                                onClick={() => handleSelectMember(getKey(it, idx), { id: c.id, name: c.name, isActive: true })}
+                                className="text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded px-1.5 py-0.5 text-gray-700"
+                                title={`Select ${c.name}`}
+                              >
+                                {c.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm">
-                    {it.would_create ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Yes</span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">No</span>
-                    )}
-                    {it.already_exists && (
-                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title={it.existing_transaction_id ? `TX #${it.existing_transaction_id}` : 'Already saved'}>
+                    {it.already_exists ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title={it.existing_transaction_id ? `TX #${it.existing_transaction_id}` : 'Already saved'}>
                         Saved
                       </span>
+                    ) : (it.matched_member_id || rowSearch[getKey(it, idx)]?.selectedId) ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Ready</span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">Needs Match</span>
                     )}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm">
@@ -384,7 +502,7 @@ const ZelleReview: React.FC = () => {
         </div>
       )}
 
-      
+
     </div>
   );
 };
