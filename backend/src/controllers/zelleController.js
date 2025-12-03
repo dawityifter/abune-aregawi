@@ -37,99 +37,138 @@ async function previewFromGmail(req, res) {
 
 module.exports.previewFromGmail = previewFromGmail;
 
+// Helper to process a single transaction creation
+async function processTransactionCreation({ external_id, amount, payment_date, note, member_id, payment_type }, user) {
+  if (!external_id || !member_id || !amount || !payment_date) {
+    throw new Error('external_id, member_id, amount, and payment_date are required');
+  }
+
+  // Ensure insert-only semantics
+  const existing = await Transaction.findOne({ where: { external_id } });
+  if (existing) {
+    return { success: false, message: 'Transaction already exists for this external_id', id: existing.id, code: 'EXISTS' };
+  }
+
+  const collected_by = user?.id || null;
+  if (!collected_by) {
+    throw new Error('Missing collector context');
+  }
+
+  // Auto-assign income category based on payment_type
+  const finalPaymentType = payment_type || 'donation';
+  let income_category_id = null;
+  let incomeCategory = await IncomeCategory.findOne({
+    where: { payment_type_mapping: finalPaymentType }
+  });
+
+  // Fallback mappings for payment types without direct mapping
+  if (!incomeCategory) {
+    const fallbackMappings = {
+      'tithe': 'offering',        // tithe → INC002 (Weekly Offering)
+      'building_fund': 'event'    // building_fund → INC003 (Fundraising)
+    };
+
+    const fallbackType = fallbackMappings[finalPaymentType];
+    if (fallbackType) {
+      incomeCategory = await IncomeCategory.findOne({
+        where: { payment_type_mapping: fallbackType }
+      });
+    }
+  }
+
+  if (incomeCategory) {
+    income_category_id = incomeCategory.id;
+  }
+
+  const tx = await Transaction.create({
+    member_id,
+    collected_by,
+    payment_date,
+    amount,
+    payment_type: finalPaymentType,
+    payment_method: 'zelle',
+    status: 'succeeded',
+    receipt_number: null,
+    note: note || null,
+    external_id,
+    donation_id: null,
+    income_category_id
+  });
+
+  // Persist memo -> member mapping to enable future automatic matches
+  try {
+    const memo = sanitizeNote(note || '');
+    if (memo) {
+      const existingMemo = await ZelleMemoMatch.findOne({ where: { memo } });
+      let first_name = null;
+      let last_name = null;
+      const m = await Member.findByPk(member_id, { attributes: ['first_name', 'last_name'] });
+      if (m) {
+        first_name = m.first_name || null;
+        last_name = m.last_name || null;
+      }
+      if (!existingMemo) {
+        await ZelleMemoMatch.create({ member_id, first_name, last_name, memo });
+      } else if (existingMemo.member_id !== member_id || existingMemo.first_name !== first_name || existingMemo.last_name !== last_name) {
+        existingMemo.member_id = member_id;
+        existingMemo.first_name = first_name;
+        existingMemo.last_name = last_name;
+        await existingMemo.save();
+      }
+    }
+  } catch (memoErr) {
+    console.warn('Zelle memo match upsert warning:', memoErr.message || memoErr);
+    // Do not fail the transaction creation if memo upsert fails
+  }
+
+  return { success: true, id: tx.id, data: tx };
+}
+
 // POST /api/zelle/reconcile/create-transaction
 // Body: { external_id, amount, payment_date, note, member_id, payment_type }
 // Insert-only: if external_id exists, do not modify existing
 async function createTransactionFromPreview(req, res) {
   try {
-    const { external_id, amount, payment_date, note, member_id, payment_type } = req.body || {};
-    if (!external_id || !member_id || !amount || !payment_date) {
-      return res.status(400).json({ success: false, message: 'external_id, member_id, amount, and payment_date are required' });
+    const result = await processTransactionCreation(req.body || {}, req.user);
+    if (!result.success && result.code === 'EXISTS') {
+      return res.status(409).json(result);
     }
-
-    // Ensure insert-only semantics
-    const existing = await Transaction.findOne({ where: { external_id } });
-    if (existing) {
-      return res.status(409).json({ success: false, message: 'Transaction already exists for this external_id', id: existing.id });
-    }
-
-    const collected_by = req.user?.id || null;
-    if (!collected_by) {
-      return res.status(403).json({ success: false, message: 'Missing collector context' });
-    }
-
-    // Auto-assign income category based on payment_type
-    const finalPaymentType = payment_type || 'donation';
-    let income_category_id = null;
-    let incomeCategory = await IncomeCategory.findOne({
-      where: { payment_type_mapping: finalPaymentType }
-    });
-    
-    // Fallback mappings for payment types without direct mapping
-    if (!incomeCategory) {
-      const fallbackMappings = {
-        'tithe': 'offering',        // tithe → INC002 (Weekly Offering)
-        'building_fund': 'event'    // building_fund → INC003 (Fundraising)
-      };
-      
-      const fallbackType = fallbackMappings[finalPaymentType];
-      if (fallbackType) {
-        incomeCategory = await IncomeCategory.findOne({
-          where: { payment_type_mapping: fallbackType }
-        });
-      }
-    }
-    
-    if (incomeCategory) {
-      income_category_id = incomeCategory.id;
-    }
-
-    const tx = await Transaction.create({
-      member_id,
-      collected_by,
-      payment_date,
-      amount,
-      payment_type: finalPaymentType,
-      payment_method: 'zelle',
-      status: 'succeeded',
-      receipt_number: null,
-      note: note || null,
-      external_id,
-      donation_id: null,
-      income_category_id
-    });
-
-    // Persist memo -> member mapping to enable future automatic matches
-    try {
-      const memo = sanitizeNote(note || '');
-      if (memo) {
-        const existing = await ZelleMemoMatch.findOne({ where: { memo } });
-        let first_name = null;
-        let last_name = null;
-        const m = await Member.findByPk(member_id, { attributes: ['first_name', 'last_name'] });
-        if (m) {
-          first_name = m.first_name || null;
-          last_name = m.last_name || null;
-        }
-        if (!existing) {
-          await ZelleMemoMatch.create({ member_id, first_name, last_name, memo });
-        } else if (existing.member_id !== member_id || existing.first_name !== first_name || existing.last_name !== last_name) {
-          existing.member_id = member_id;
-          existing.first_name = first_name;
-          existing.last_name = last_name;
-          await existing.save();
-        }
-      }
-    } catch (memoErr) {
-      console.warn('Zelle memo match upsert warning:', memoErr.message || memoErr);
-      // Do not fail the transaction creation if memo upsert fails
-    }
-
-    return res.json({ success: true, id: tx.id, data: tx });
+    return res.json(result);
   } catch (error) {
     console.error('Zelle reconcile create-transaction error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 }
 
-module.exports.createTransactionFromPreview = createTransactionFromPreview;
+// POST /api/zelle/reconcile/batch-create
+// Body: { items: [{ external_id, amount, payment_date, note, member_id, payment_type }, ...] }
+async function createBatchTransactions(req, res) {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ success: false, message: 'items array is required' });
+    }
+
+    const results = [];
+    for (const item of items) {
+      try {
+        const result = await processTransactionCreation(item, req.user);
+        results.push({ ...result, external_id: item.external_id });
+      } catch (e) {
+        results.push({ success: false, message: e.message, external_id: item.external_id });
+      }
+    }
+
+    return res.json({ success: true, results });
+  } catch (error) {
+    console.error('Zelle batch create error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+module.exports = {
+  syncFromGmail,
+  previewFromGmail,
+  createTransactionFromPreview,
+  createBatchTransactions
+};
