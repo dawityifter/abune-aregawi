@@ -22,9 +22,17 @@ interface AddPaymentModalProps {
   onClose: () => void;
   onPaymentAdded: () => void;
   paymentView: 'old' | 'new';
+  initialMemberId?: string;      // Optional: Pre-select member
+  initialPaymentType?: string;   // Optional: Pre-select payment type
 }
 
-const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdded, paymentView }) => {
+const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
+  onClose,
+  onPaymentAdded,
+  paymentView,
+  initialMemberId,
+  initialPaymentType
+}) => {
   const { user, firebaseUser } = useAuth();
 
   const [members, setMembers] = useState<Member[]>([]);
@@ -47,7 +55,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
 
   // New transaction fields
   const [paymentDate, setPaymentDate] = useState('');
-  const [paymentType, setPaymentType] = useState('');
+  const [paymentType, setPaymentType] = useState(initialPaymentType || '');
   const [receiptNumber, setReceiptNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -134,6 +142,67 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
+
+  // Set initial member ID if provided, but only after members are loaded
+  useEffect(() => {
+    if (initialMemberId && members.length > 0 && firebaseUser) {
+      // Verify the member exists in the loaded members list
+      const memberExists = members.some(m => String(m.id) === String(initialMemberId));
+      if (memberExists) {
+        console.log('✅ Setting initial member ID:', initialMemberId);
+        setSelectedMemberId(String(initialMemberId));
+      } else {
+        console.warn('⚠️ Initial member ID not found in members list:', initialMemberId);
+        // Fetch the specific member and add to the list
+        const fetchSpecificMember = async () => {
+          try {
+            const response = await fetch(
+              `${process.env.REACT_APP_API_URL}/api/members/${initialMemberId}?email=${encodeURIComponent(user?.email || '')}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
+                }
+              }
+            );
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success && data.data && data.data.member) {
+                const memberData = data.data.member;
+                console.log('✅ Fetched specific member - RAW DATA:', JSON.stringify(memberData, null, 2));
+
+                // Transform the member data to match the Member interface
+                const transformedMember: Member = {
+                  id: String(memberData.id),
+                  firstName: memberData.first_name || memberData.firstName || '',
+                  lastName: memberData.last_name || memberData.lastName || '',
+                  memberId: memberData.member_id || memberData.memberId,
+                  phoneNumber: memberData.phone_number || memberData.phoneNumber || '',
+                  email: memberData.email || '',
+                  streetLine1: memberData.street_line1 || memberData.streetLine1,
+                  postalCode: memberData.postal_code || memberData.postalCode
+                };
+                console.log('✅ Transformed member:', transformedMember);
+
+                // Add the member to the list if not already present (double check to avoid duplicates)
+                setMembers(prev => {
+                  if (prev.some(m => String(m.id) === String(transformedMember.id))) {
+                    return prev;
+                  }
+                  return [transformedMember, ...prev];
+                });
+                setSelectedMemberId(String(initialMemberId));
+              } else {
+                console.error('❌ Unexpected API response structure:', data);
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching specific member:', error);
+          }
+        };
+        fetchSpecificMember();
+      }
+    }
+  }, [initialMemberId, members, firebaseUser, user?.email]);
 
   // Default payment date to today's local date (YYYY-MM-DD)
   useEffect(() => {
@@ -619,7 +688,10 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ onClose, onPaymentAdd
                       <span className="text-gray-400">Loading categories...</span>
                     ) : selectedIncomeCategoryId ? (
                       <span className="font-medium">
-                        {incomeCategories.find(c => c.id === parseInt(selectedIncomeCategoryId))?.gl_code} - {incomeCategories.find(c => c.id === parseInt(selectedIncomeCategoryId))?.name}
+                        {(() => {
+                          const category = incomeCategories.find(c => String(c.id) === String(selectedIncomeCategoryId));
+                          return category ? `${category.gl_code} - ${category.name}` : 'Category not found';
+                        })()}
                       </span>
                     ) : (
                       <span className="text-gray-400 italic">Auto-assigned based on payment type</span>
