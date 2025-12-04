@@ -24,6 +24,8 @@ import ParishPulseSignUp from './components/ParishPulseSignUp';
 import PledgePage from './pages/PledgePage';
 import ThankYouPage from './pages/ThankYouPage';
 import PrivacyPage from './pages/PrivacyPage';
+import DepartmentsPage from './components/DepartmentsPage';
+import DepartmentDashboard from './components/DepartmentDashboard';
 import './index.css';
 import DevBanner from './components/DevBanner';
 import { isFeatureEnabled } from './config/featureFlags';
@@ -43,53 +45,53 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<SignIn />} />
               <Route path="/register" element={<ErrorBoundary><MemberRegistration /></ErrorBoundary>} />
-              <Route 
-                path="/dashboard" 
+              <Route
+                path="/dashboard"
                 element={
                   <ProtectedRoute allowTempUser={true}>
                     <Dashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/admin" 
+              <Route
+                path="/admin"
                 element={
                   <ProtectedRoute>
                     <AdminDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/treasurer" 
+              <Route
+                path="/treasurer"
                 element={
                   <ProtectedRoute>
                     <TreasurerDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/outreach" 
+              <Route
+                path="/outreach"
                 element={
                   <ProtectedRoute>
                     <OutreachDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/sms" 
+              <Route
+                path="/sms"
                 element={
                   <ProtectedRoute>
                     <SmsBroadcast />
                   </ProtectedRoute>
                 }
               />
-              <Route 
-                path="/profile" 
+              <Route
+                path="/profile"
                 element={
                   <ProtectedRoute>
                     <Profile />
                   </ProtectedRoute>
-                } 
+                }
               />
               <Route path="/credits" element={<CreditsPage />} />
               <Route path="/member-status" element={<MemberStatus />} />
@@ -101,6 +103,8 @@ function App() {
               <Route path="/pledge" element={<PledgePage />} />
               <Route path="/thank-you" element={<ThankYouPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/departments" element={<ProtectedRoute><DepartmentsPage /></ProtectedRoute>} />
+              <Route path="/departments/:id" element={<ProtectedRoute><DepartmentDashboard /></ProtectedRoute>} />
               {/* Add more routes here as we build them */}
             </Routes>
           </div>

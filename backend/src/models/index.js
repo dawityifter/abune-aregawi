@@ -6,8 +6,8 @@ console.log('🔍 Environment Debug Info:');
 console.log('  NODE_ENV:', process.env.NODE_ENV);
 console.log('  DATABASE_URL exists:', !!process.env.DATABASE_URL);
 console.log('  DATABASE_URL length:', process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0);
-console.log('  DATABASE_URL preview:', process.env.DATABASE_URL ? 
-  process.env.DATABASE_URL.substring(0, 20) + '...' + process.env.DATABASE_URL.substring(process.env.DATABASE_URL.length - 20) : 
+console.log('  DATABASE_URL preview:', process.env.DATABASE_URL ?
+  process.env.DATABASE_URL.substring(0, 20) + '...' + process.env.DATABASE_URL.substring(process.env.DATABASE_URL.length - 20) :
   'NOT SET');
 
 // Database configuration
@@ -21,7 +21,7 @@ try {
   // Determine database type from URL
   const isPostgres = process.env.DATABASE_URL.startsWith('postgres');
   const isSQLite = process.env.DATABASE_URL.startsWith('sqlite');
-  
+
   let config = {
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
     timezone: '-06:00', // CST timezone offset
@@ -77,6 +77,7 @@ try {
       dialect: 'sqlite',
       storage: process.env.DATABASE_URL === 'sqlite::memory:' ? ':memory:' : process.env.DATABASE_URL.replace('sqlite:', '')
     };
+    delete config.timezone;
   } else {
     throw new Error(`Unsupported database URL format: ${process.env.DATABASE_URL}`);
   }
@@ -84,7 +85,7 @@ try {
   // Initialize Sequelize
   sequelize = new Sequelize(process.env.DATABASE_URL, config);
   console.log(`✅ Sequelize instance created successfully (${config.dialect})`);
-  
+
   // Import models
   const Member = require('./Member')(sequelize);
   const Dependent = require('./Dependent')(sequelize);
@@ -105,21 +106,26 @@ try {
   const Employee = require('./Employee')(sequelize);
   const Vendor = require('./Vendor')(sequelize);
 
+  const DepartmentMeeting = require('./DepartmentMeeting')(sequelize);
+  const DepartmentTask = require('./DepartmentTask')(sequelize);
+
   // Define models object
   const models = {
-    Member, 
-    Dependent, 
-    Transaction, 
-    MemberPayment, 
-    Donation, 
-    Pledge, 
-    SmsLog, 
-    Group, 
-    MemberGroup, 
+    Member,
+    Dependent,
+    Transaction,
+    MemberPayment,
+    Donation,
+    Pledge,
+    SmsLog,
+    Group,
+    MemberGroup,
     Department,
     DepartmentMember,
-    ZelleMemoMatch, 
-    Outreach, 
+    DepartmentMeeting,
+    DepartmentTask,
+    ZelleMemoMatch,
+    Outreach,
     LedgerEntry,
     ExpenseCategory,
     IncomeCategory,
@@ -139,7 +145,7 @@ try {
     sequelize,
     ...models
   };
-  
+
 } catch (error) {
   console.error('❌ Error initializing database:', error.message);
   process.exit(1);

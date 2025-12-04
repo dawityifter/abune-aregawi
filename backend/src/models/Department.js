@@ -35,6 +35,18 @@ module.exports = (sequelize) => {
         foreignKey: 'parent_department_id',
         as: 'subDepartments'
       });
+
+      // Department has many meetings
+      Department.hasMany(models.DepartmentMeeting, {
+        foreignKey: 'department_id',
+        as: 'meetings'
+      });
+
+      // Department has many tasks
+      Department.hasMany(models.DepartmentTask, {
+        foreignKey: 'department_id',
+        as: 'tasks'
+      });
     }
   }
 

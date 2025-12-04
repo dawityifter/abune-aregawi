@@ -11,7 +11,7 @@ exports.getAllDepartments = async (req, res) => {
       query: req.query,
       user: logger.safeSummary(req.user)
     });
-    
+
     const {
       type,
       is_active,
@@ -346,13 +346,13 @@ exports.updateDepartment = async (req, res) => {
     // Sanitize empty strings to null for optional fields
     const sanitizedUpdates = { ...updates };
     if (sanitizedUpdates.contact_email !== undefined) {
-      sanitizedUpdates.contact_email = sanitizedUpdates.contact_email && sanitizedUpdates.contact_email.trim() !== '' 
-        ? sanitizedUpdates.contact_email 
+      sanitizedUpdates.contact_email = sanitizedUpdates.contact_email && sanitizedUpdates.contact_email.trim() !== ''
+        ? sanitizedUpdates.contact_email
         : null;
     }
     if (sanitizedUpdates.contact_phone !== undefined) {
-      sanitizedUpdates.contact_phone = sanitizedUpdates.contact_phone && sanitizedUpdates.contact_phone.trim() !== '' 
-        ? sanitizedUpdates.contact_phone 
+      sanitizedUpdates.contact_phone = sanitizedUpdates.contact_phone && sanitizedUpdates.contact_phone.trim() !== ''
+        ? sanitizedUpdates.contact_phone
         : null;
     }
     if (sanitizedUpdates.description !== undefined && !sanitizedUpdates.description) {
@@ -443,7 +443,7 @@ exports.getDepartmentStats = async (req, res) => {
     });
 
     const totalDepartments = await Department.count({ where: { is_active: true } });
-    
+
     const totalMembers = await DepartmentMember.count({
       where: { status: 'active' },
       distinct: true,
@@ -468,6 +468,299 @@ exports.getDepartmentStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch department statistics',
+      error: error.message
+    });
+  }
+};
+
+// ========== MEETING ENDPOINTS ==========
+
+// Get meetings for a department
+exports.getDepartmentMeetings = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit = 10, offset = 0 } = req.query;
+
+    const { DepartmentMeeting, DepartmentTask } = require('../models');
+
+    const meetings = await DepartmentMeeting.findAll({
+      where: { department_id: id },
+      include: [
+        {
+          model: Member,
+          as: 'creator',
+          attributes: ['id', 'first_name', 'last_name']
+        },
+        {
+          model: DepartmentTask,
+          as: 'tasks',
+          required: false
+        }
+      ],
+      order: [['meeting_date', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    res.json({
+      success: true,
+      data: { meetings }
+    });
+  } catch (error) {
+    console.error('Error fetching department meetings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch meetings',
+      error: error.message
+    });
+  }
+};
+
+// Create a new meeting
+exports.createMeeting = async (req, res) => {
+  try {
+    const { department_id, title, meeting_date, location, attendees, minutes } = req.body;
+    const created_by = req.user?.member_id;
+
+    const { DepartmentMeeting } = require('../models');
+
+    if (!department_id || !title) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department ID and title are required'
+      });
+    }
+
+    const meeting = await DepartmentMeeting.create({
+      department_id,
+      title,
+      meeting_date: meeting_date || new Date(),
+      location,
+      attendees: attendees || [],
+      minutes,
+      created_by
+    });
+
+    res.status(201).json({
+      success: true,
+      data: { meeting }
+    });
+  } catch (error) {
+    console.error('Error creating meeting:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create meeting',
+      error: error.message
+    });
+  }
+};
+
+// Update a meeting
+exports.updateMeeting = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const { DepartmentMeeting } = require('../models');
+
+    const meeting = await DepartmentMeeting.findByPk(id);
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meeting not found'
+      });
+    }
+
+    await meeting.update(updateData);
+
+    res.json({
+      success: true,
+      data: { meeting }
+    });
+  } catch (error) {
+    console.error('Error updating meeting:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update meeting',
+      error: error.message
+    });
+  }
+};
+
+// ========== TASK ENDPOINTS ==========
+
+// Get tasks for a department
+exports.getDepartmentTasks = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, assigned_to } = req.query;
+
+    const { DepartmentTask, DepartmentMeeting } = require('../models');
+
+    const whereClause = { department_id: id };
+    if (status) whereClause.status = status;
+    if (assigned_to) whereClause.assigned_to = assigned_to;
+
+    const tasks = await DepartmentTask.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: Member,
+          as: 'assignee',
+          attributes: ['id', 'first_name', 'last_name']
+        },
+        {
+          model: Member,
+          as: 'creator',
+          attributes: ['id', 'first_name', 'last_name']
+        },
+        {
+          model: DepartmentMeeting,
+          as: 'meeting',
+          attributes: ['id', 'title', 'meeting_date'],
+          required: false
+        }
+      ],
+      order: [
+        ['status', 'ASC'],
+        ['priority', 'DESC'],
+        ['due_date', 'ASC']
+      ]
+    });
+
+    res.json({
+      success: true,
+      data: { tasks }
+    });
+  } catch (error) {
+    console.error('Error fetching department tasks:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch tasks',
+      error: error.message
+    });
+  }
+};
+
+// Create a new task
+exports.createTask = async (req, res) => {
+  try {
+    const {
+      department_id,
+      meeting_id,
+      title,
+      description,
+      assigned_to,
+      status,
+      priority,
+      due_date
+    } = req.body;
+    const created_by = req.user?.member_id;
+
+    const { DepartmentTask } = require('../models');
+
+    if (!department_id || !title) {
+      return res.status(400).json({
+        success: false,
+        message: 'Department ID and title are required'
+      });
+    }
+
+    const task = await DepartmentTask.create({
+      department_id,
+      meeting_id,
+      title,
+      description,
+      assigned_to,
+      status: status || 'pending',
+      priority: priority || 'medium',
+      due_date,
+      created_by
+    });
+
+    res.status(201).json({
+      success: true,
+      data: { task }
+    });
+  } catch (error) {
+    console.error('Error creating task:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create task',
+      error: error.message
+    });
+  }
+};
+
+// Update a task
+exports.updateTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const { DepartmentTask } = require('../models');
+
+    const task = await DepartmentTask.findByPk(id);
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found'
+      });
+    }
+
+    await task.update(updateData);
+
+    res.json({
+      success: true,
+      data: { task }
+    });
+  } catch (error) {
+    console.error('Error updating task:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update task',
+      error: error.message
+    });
+  }
+};
+
+// Get departments for a specific member
+exports.getMemberDepartments = async (req, res) => {
+  try {
+    const { member_id } = req.params;
+
+    const memberships = await DepartmentMember.findAll({
+      where: { member_id, status: 'active' },
+      include: [
+        {
+          model: Department,
+          as: 'department',
+          include: [
+            {
+              model: Member,
+              as: 'leader',
+              attributes: ['id', 'first_name', 'last_name']
+            }
+          ]
+        }
+      ]
+    });
+
+    const departments = memberships.map(m => ({
+      ...m.department.toJSON(),
+      role: m.role_in_department,
+      joined_at: m.joined_at
+    }));
+
+    res.json({
+      success: true,
+      data: { departments }
+    });
+  } catch (error) {
+    console.error('Error fetching member departments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch member departments',
       error: error.message
     });
   }

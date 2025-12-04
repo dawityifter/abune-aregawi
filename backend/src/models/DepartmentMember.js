@@ -40,9 +40,6 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(50),
       allowNull: false,
       defaultValue: 'member',
-      validate: {
-        isIn: [['member', 'leader', 'co-leader', 'coordinator', 'assistant']]
-      },
       field: 'role_in_department'
     },
     joined_at: {

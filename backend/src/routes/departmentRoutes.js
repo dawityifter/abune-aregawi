@@ -31,6 +31,18 @@ router.put('/:departmentId/members/:memberId', roleMiddleware(manageRoles), depa
 router.delete('/:departmentId/members/:memberId', roleMiddleware(manageRoles), departmentMemberController.removeMemberFromDepartment);
 
 // Member's Departments (any authenticated user can view their own departments)
-router.get('/members/:memberId/departments', departmentMemberController.getMemberDepartments);
+router.get('/members/:member_id/departments', departmentController.getMemberDepartments);
+
+// ========== MEETING ROUTES ==========
+// Department meetings (leaders can manage, all members can view)
+router.get('/:id/meetings', roleMiddleware(viewRoles), departmentController.getDepartmentMeetings);
+router.post('/:id/meetings', roleMiddleware(manageRoles), departmentController.createMeeting);
+router.put('/meetings/:id', roleMiddleware(manageRoles), departmentController.updateMeeting);
+
+// ========== TASK ROUTES ==========
+// Department tasks (leaders can manage, all members can view)
+router.get('/:id/tasks', roleMiddleware(viewRoles), departmentController.getDepartmentTasks);
+router.post('/:id/tasks', roleMiddleware(manageRoles), departmentController.createTask);
+router.put('/tasks/:id', roleMiddleware(manageRoles), departmentController.updateTask);
 
 module.exports = router;

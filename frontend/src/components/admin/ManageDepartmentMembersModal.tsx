@@ -212,9 +212,22 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'leader': return 'bg-purple-100 text-purple-800';
-      case 'co-leader': return 'bg-blue-100 text-blue-800';
-      case 'coordinator': return 'bg-green-100 text-green-800';
+      case 'leader':
+      case 'chairperson':
+      case 'chairman':
+        return 'bg-purple-100 text-purple-800';
+      case 'co-leader':
+      case 'vice chairperson':
+      case 'vice chairman':
+        return 'bg-blue-100 text-blue-800';
+      case 'coordinator':
+      case 'secretary':
+        return 'bg-green-100 text-green-800';
+      case 'treasurer':
+      case 'financial guardian':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'auditor':
+        return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -332,6 +345,9 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                   const lastName = member.lastName || member.last_name || '';
                   const memberId = member.memberId || member.member_id || member.id;
                   const phoneNumber = member.phoneNumber || member.phone_number || '';
+                  const familyId = member.familyId || member.family_id;
+                  // Head of household: family_id is null or equals their own id
+                  const isHeadOfHousehold = !familyId || familyId === member.id;
 
                   return (
                     <label
@@ -344,7 +360,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                         onChange={() => toggleMemberSelection(member.id)}
                         className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                       />
-                      <span className="ml-3 text-sm text-gray-700">
+                      <span className={`ml-3 text-sm text-gray-700 ${isHeadOfHousehold ? 'font-bold' : ''}`}>
                         {firstName} {lastName} [{memberId}] ({phoneNumber})
                       </span>
                     </label>
@@ -412,17 +428,36 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <select
-                          value={membership.role_in_department}
-                          onChange={(e) => handleUpdateMemberRole(membership.member_id, e.target.value)}
-                          className={`text-xs font-semibold rounded-full px-2 py-1 ${getRoleBadgeColor(membership.role_in_department)}`}
-                        >
-                          <option value="member">Member</option>
-                          <option value="leader">Leader</option>
-                          <option value="co-leader">Co-Leader</option>
-                          <option value="coordinator">Coordinator</option>
-                          <option value="assistant">Assistant</option>
-                        </select>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            list={`roles-${membership.id}`}
+                            defaultValue={membership.role_in_department}
+                            onBlur={(e) => {
+                              if (e.target.value !== membership.role_in_department) {
+                                handleUpdateMemberRole(membership.member_id, e.target.value);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.currentTarget.blur();
+                              }
+                            }}
+                            className={`text-xs font-semibold rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-primary-500 w-32 ${getRoleBadgeColor(membership.role_in_department)}`}
+                          />
+                          <datalist id={`roles-${membership.id}`}>
+                            <option value="Member" />
+                            <option value="Leader" />
+                            <option value="Co-Leader" />
+                            <option value="Coordinator" />
+                            <option value="Assistant" />
+                            <option value="Chairperson" />
+                            <option value="Vice Chairperson" />
+                            <option value="Secretary" />
+                            <option value="Treasurer" />
+                            <option value="Auditor" />
+                          </datalist>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDateForDisplay(membership.joined_at)}
