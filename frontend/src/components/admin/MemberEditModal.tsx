@@ -35,6 +35,8 @@ interface Member {
   titheParticipation?: boolean;
   children?: any[];
   yearlyPledge?: number | string;
+  familyId?: string | number;
+  family_id?: string | number;
 }
 
 interface MemberEditModalProps {
@@ -315,11 +317,10 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 <i className={`${tab.icon} mr-2`}></i>
                 {tab.label}
@@ -558,9 +559,9 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                     if (value.length > 10) value = value.slice(0, 10);
                     let formatted = value;
                     if (value.length > 6) {
-                      formatted = `${value.slice(0,3)}-${value.slice(3,6)}-${value.slice(6,10)}`;
+                      formatted = `${value.slice(0, 3)}-${value.slice(3, 6)}-${value.slice(6, 10)}`;
                     } else if (value.length > 3) {
-                      formatted = `${value.slice(0,3)}-${value.slice(3,6)}`;
+                      formatted = `${value.slice(0, 3)}-${value.slice(3, 6)}`;
                     }
                     // Create a synthetic event for handleInputChange
                     handleInputChange({
@@ -729,6 +730,31 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
           {/* Family Information Tab */}
           {activeTab === 'family' && (
             <div className="space-y-6">
+              {/* Household Linkage Alert */}
+              {(() => {
+                const familyId = formData.familyId || formData.family_id;
+                const isLinked = familyId && String(familyId) !== String(formData.id);
+
+                if (isLinked) {
+                  return (
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <i className="fas fa-info-circle text-blue-400"></i>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-blue-700">
+                            {t('member.linked.to.household') || 'This member is part of a household'} (Family ID: {familyId}).
+                            {t('payments.aggregated') || ' Payments and dues are aggregated at the household level.'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -808,6 +834,52 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                             >
                               {t('edit') || 'Edit'}
                             </button>
+                            {/* Promote button - show if has phone and either not linked OR linked to parent */}
+                            {d.phone && (!d.linkedMemberId || d.linkedMemberId === member.id) && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const action = d.linkedMemberId ? 'promote' : 'promote';
+                                  if (!window.confirm(`Promote ${d.firstName} ${d.lastName} to have their own member account? This will allow them to login independently and join departments.`)) return;
+                                  try {
+                                    const idToken = await firebaseUser?.getIdToken();
+                                    const res = await fetch(`${process.env.REACT_APP_API_URL}/api/members/dependents/${d.id}/promote`, {
+                                      method: 'POST',
+                                      headers: {
+                                        'Authorization': `Bearer ${idToken}`,
+                                        'Content-Type': 'application/json'
+                                      }
+                                    });
+                                    if (res.ok) {
+                                      alert(`${d.firstName} now has their own member account!`);
+                                      await refreshDependents();
+                                      onMemberUpdated();
+                                    } else {
+                                      const data = await res.json();
+                                      alert(data.message || 'Failed to promote dependent');
+                                    }
+                                  } catch (e: any) {
+                                    alert(e?.message || 'Failed to promote dependent');
+                                  }
+                                }}
+                                className="text-green-600 hover:text-green-900"
+                                title="Promote to Member"
+                              >
+                                <i className="fas fa-user-plus"></i> Promote
+                              </button>
+                            )}
+                            {/* Show status if already linked to a DIFFERENT member */}
+                            {d.linkedMemberId && d.linkedMemberId !== member.id && (
+                              <span className="text-xs text-gray-500 italic">
+                                (Has Own Account)
+                              </span>
+                            )}
+                            {/* Show warning if no phone */}
+                            {!d.phone && (
+                              <span className="text-xs text-yellow-600 italic" title="Phone number required for promotion">
+                                (No Phone)
+                              </span>
+                            )}
                             <button
                               type="button"
                               onClick={() => d.id && handleDeleteDependent(d.id)}
