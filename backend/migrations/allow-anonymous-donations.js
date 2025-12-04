@@ -1,36 +1,35 @@
-/**
- * Migration: Allow Anonymous Donations
- * 
- * Purpose: Make donor name and email fields nullable in donations table
- * to support anonymous donations on the public donate page
- */
+'use strict';
 
-const { sequelize } = require('../src/models');
+module.exports = {
+  up: async (queryInterface, Sequelize) => {
+    await queryInterface.changeColumn('donations', 'donor_first_name', {
+      type: Sequelize.STRING,
+      allowNull: true
+    });
+    await queryInterface.changeColumn('donations', 'donor_last_name', {
+      type: Sequelize.STRING,
+      allowNull: true
+    });
+    await queryInterface.changeColumn('donations', 'donor_email', {
+      type: Sequelize.STRING,
+      allowNull: true
+    });
+  },
 
-async function allowAnonymousDonations() {
-  console.log('🔄 Starting migration: Allow anonymous donations\n');
-
-  try {
-    // Alter columns to allow NULL
-    await sequelize.query(`
-      ALTER TABLE donations 
-      ALTER COLUMN donor_first_name DROP NOT NULL,
-      ALTER COLUMN donor_last_name DROP NOT NULL,
-      ALTER COLUMN donor_email DROP NOT NULL;
-    `);
-
-    console.log('✅ Successfully updated donations table:');
-    console.log('   - donor_first_name: now nullable');
-    console.log('   - donor_last_name: now nullable');
-    console.log('   - donor_email: now nullable');
-    console.log('\n✅ Anonymous donations are now supported!');
-    
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Migration failed:', error);
-    process.exit(1);
+  down: async (queryInterface, Sequelize) => {
+    // Revert changes - make fields required again
+    // Note: This might fail if there are existing null values
+    await queryInterface.changeColumn('donations', 'donor_first_name', {
+      type: Sequelize.STRING,
+      allowNull: false
+    });
+    await queryInterface.changeColumn('donations', 'donor_last_name', {
+      type: Sequelize.STRING,
+      allowNull: false
+    });
+    await queryInterface.changeColumn('donations', 'donor_email', {
+      type: Sequelize.STRING,
+      allowNull: false
+    });
   }
-}
-
-// Run the migration
-allowAnonymousDonations();
+};

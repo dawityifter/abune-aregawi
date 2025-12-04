@@ -101,9 +101,9 @@ const addMemberPayment = async (req, res) => {
 
     // Validate required fields
     if (!memberId || !month || !amount || !paymentMethod) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Member ID, month, amount, and payment method are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Member ID, month, amount, and payment method are required'
       });
     }
 
@@ -116,7 +116,7 @@ const addMemberPayment = async (req, res) => {
     // Validate and update the specific month's payment
     const monthField = String(month).toLowerCase();
     const validMonths = [
-      'january','february','march','april','may','june','july','august','september','october','november','december'
+      'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'
     ];
     if (!validMonths.includes(monthField)) {
       return res.status(400).json({ success: false, message: `Invalid month: ${month}` });
@@ -135,10 +135,10 @@ const addMemberPayment = async (req, res) => {
 
     await payment.save();
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Payment updated successfully',
-      data: payment 
+      data: payment
     });
   } catch (error) {
     console.error('Error adding member payment:', error);
@@ -217,103 +217,7 @@ const getMyDues = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Member not found' });
     }
 
-    const months = [
-      'january','february','march','april','may','june','july','august','september','october','november','december'
-    ];
-    const now = new Date();
-    const currentMonthIndex = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    // Build from transactions only
-    let monthlyPayment = 0;
-    let monthStatuses = [];
-    let totalCollected = 0;
-    let totalAmountDue = 0;
-    let balanceDue = 0;
-    let futureDues = 0;
-
-    const memberTransactions = await Transaction.findAll({
-      where: {
-        member_id: member.id,
-        payment_date: { [Op.gte]: new Date(currentYear, 0, 1), [Op.lte]: new Date(currentYear, 11, 31, 23, 59, 59, 999) }
-      },
-      order: [['payment_date', 'ASC']]
-    });
-    // Separate membership due vs all other payments
-    const duesTransactions = memberTransactions.filter(t => String(t.payment_type) === 'membership_due');
-    const totalsByCalendarMonth = new Array(12).fill(0);
-    for (const t of duesTransactions) {
-      const d = new Date(t.payment_date);
-      if (d.getFullYear() === currentYear) totalsByCalendarMonth[d.getMonth()] += Number(t.amount || 0);
-    }
-
-    // If member has yearly_pledge, allocate dues across months sequentially starting January
-    const yearlyPledge = Number(member.yearly_pledge || 0);
-    if (yearlyPledge > 0) {
-      monthlyPayment = Math.round((yearlyPledge / 12) * 100) / 100;
-      const totalDuesCollected = duesTransactions.reduce((s, t) => s + Number(t.amount || 0), 0);
-      totalAmountDue = yearlyPledge;
-      balanceDue = Math.max(yearlyPledge - totalDuesCollected, 0);
-
-      let remaining = totalDuesCollected;
-      monthStatuses = months.map((m, idx) => {
-        const isFutureMonth = idx > currentMonthIndex;
-        const paidForMonth = Math.min(monthlyPayment, Math.max(remaining, 0));
-        remaining = Math.max(remaining - monthlyPayment, 0);
-        const dueForMonth = Math.max(monthlyPayment - paidForMonth, 0);
-        const status = paidForMonth >= monthlyPayment ? 'paid' : (idx <= currentMonthIndex ? 'due' : 'upcoming');
-        return { month: m, paid: Number(paidForMonth.toFixed(2)), due: Number(dueForMonth.toFixed(2)), status, isFutureMonth };
-      });
-      totalCollected = totalDuesCollected;
-      futureDues = monthStatuses.filter(ms => ms.isFutureMonth).reduce((s, m) => s + m.due, 0);
-    } else {
-      // No pledge set: show what was paid per calendar month for membership dues; dues remain 0
-      monthStatuses = months.map((m, idx) => {
-        const paid = totalsByCalendarMonth[idx] || 0;
-        const isFutureMonth = idx > currentMonthIndex;
-        return { month: m, paid, due: 0, status: paid > 0 ? 'paid' : (idx <= currentMonthIndex ? 'due' : 'upcoming'), isFutureMonth };
-      });
-      totalCollected = totalsByCalendarMonth.reduce((a, b) => a + b, 0);
-      totalAmountDue = 0;
-      balanceDue = 0;
-      futureDues = 0;
-    }
-
-    // Build transaction history for display (all payment types for the year)
-    const transactions = memberTransactions
-      .map(t => ({
-        id: t.id,
-        payment_date: t.payment_date,
-        amount: Number(t.amount || 0),
-        payment_type: t.payment_type,
-        payment_method: t.payment_method,
-        receipt_number: t.receipt_number,
-        note: t.note,
-      }))
-      .sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date));
-
-    return res.json({
-      success: true,
-      data: {
-        member: {
-          id: member.id,
-          firstName: member.first_name || member.firstName || '',
-          lastName: member.last_name || member.lastName || '',
-          email: member.email || '',
-          phoneNumber: member.phone_number || member.phoneNumber || ''
-        },
-        payment: {
-          year: currentYear,
-          monthlyPayment,
-          totalAmountDue,
-          totalCollected,
-          balanceDue,
-          monthStatuses,
-          futureDues
-        },
-        transactions
-      }
-    });
+    return computeAndReturnDues(res, member);
   } catch (error) {
     console.error('Error fetching my dues:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch dues' });
@@ -349,7 +253,7 @@ const getPaymentStats = async (req, res) => {
         }
       });
       const otherPayments = Number(otherPaymentsResult || 0);
-      
+
       return res.json({
         success: true,
         data: {
@@ -477,7 +381,7 @@ const getPaymentStats = async (req, res) => {
 const getWeeklyReport = async (req, res) => {
   try {
     const { week_start } = req.query;
-    
+
     // Calculate week start (Monday) and end (Sunday)
     let weekStart;
     if (week_start) {
@@ -492,7 +396,7 @@ const getWeeklyReport = async (req, res) => {
       weekStart = new Date(today);
       weekStart.setDate(today.getDate() + diff);
     }
-    
+
     // Ensure it's a Monday
     if (weekStart.getDay() !== 1) {
       // Calculate the nearest Monday (before the provided date)
@@ -501,23 +405,23 @@ const getWeeklyReport = async (req, res) => {
       const nearestMonday = new Date(weekStart);
       nearestMonday.setDate(weekStart.getDate() - daysToSubtract);
       const formattedMonday = nearestMonday.toISOString().split('T')[0];
-      
+
       return res.status(400).json({
         success: false,
         message: `week_start must be a Monday. You provided ${week_start} (${weekStart.toDateString()}), which is a ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek]}. Try using ${formattedMonday} instead.`
       });
     }
-    
+
     // Calculate week end (Sunday)
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
-    
+
     // Format dates for query
     const startDate = weekStart.toISOString().split('T')[0];
     const endDate = weekEnd.toISOString().split('T')[0];
-    
+
     console.log('📅 Fetching weekly report from', startDate, 'to', endDate);
-    
+
     // Query all transactions (income and expenses) for the week
     const transactions = await LedgerEntry.findAll({
       where: {
@@ -542,13 +446,13 @@ const getWeeklyReport = async (req, res) => {
       ],
       order: [['payment_method', 'ASC'], ['type', 'ASC'], ['amount', 'DESC']]
     });
-    
+
     // Group transactions by payment method
     const byPaymentMethod = {};
-    
+
     transactions.forEach(transaction => {
       const paymentMethod = transaction.payment_method || 'other';
-      
+
       if (!byPaymentMethod[paymentMethod]) {
         byPaymentMethod[paymentMethod] = {
           income: [],
@@ -558,15 +462,15 @@ const getWeeklyReport = async (req, res) => {
           netToDeposit: 0
         };
       }
-      
+
       const amount = parseFloat(transaction.amount) || 0;
-      const collectorName = transaction.collector 
+      const collectorName = transaction.collector
         ? `${transaction.collector.first_name} ${transaction.collector.last_name}`
         : 'System';
       const memberName = transaction.member
         ? `${transaction.member.first_name} ${transaction.member.last_name}`
         : null;
-      
+
       const item = {
         id: transaction.id,
         type: transaction.type,
@@ -580,7 +484,7 @@ const getWeeklyReport = async (req, res) => {
         receipt_number: transaction.receipt_number,
         memo: transaction.memo
       };
-      
+
       if (transaction.type === 'expense') {
         byPaymentMethod[paymentMethod].expenses.push(item);
         byPaymentMethod[paymentMethod].totalExpenses += amount;
@@ -590,27 +494,27 @@ const getWeeklyReport = async (req, res) => {
         byPaymentMethod[paymentMethod].totalIncome += amount;
       }
     });
-    
+
     // Calculate net to deposit for each payment method
     Object.keys(byPaymentMethod).forEach(method => {
-      byPaymentMethod[method].netToDeposit = 
+      byPaymentMethod[method].netToDeposit =
         byPaymentMethod[method].totalIncome - byPaymentMethod[method].totalExpenses;
     });
-    
+
     // Calculate summary
     let totalIncome = 0;
     let totalExpenses = 0;
     let totalTransactions = transactions.length;
     const depositBreakdown = {};
-    
+
     Object.keys(byPaymentMethod).forEach(method => {
       totalIncome += byPaymentMethod[method].totalIncome;
       totalExpenses += byPaymentMethod[method].totalExpenses;
       depositBreakdown[method] = byPaymentMethod[method].netToDeposit;
     });
-    
+
     const netTotal = totalIncome - totalExpenses;
-    
+
     // Format response
     const response = {
       weekStart: startDate,
@@ -624,7 +528,7 @@ const getWeeklyReport = async (req, res) => {
         depositBreakdown
       }
     };
-    
+
     res.json({ success: true, data: response });
   } catch (error) {
     console.error('Error fetching weekly report:', error);
@@ -701,7 +605,7 @@ async function getDuesByMemberIdWithAuth(req, res) {
 // Helper to compute and return dues for a given Member instance (reuses getMyDues logic)
 async function computeAndReturnDues(res, member) {
   const months = [
-    'january','february','march','april','may','june','july','august','september','october','november','december'
+    'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'
   ];
   const now = new Date();
   const currentMonthIndex = now.getMonth();
@@ -714,11 +618,61 @@ async function computeAndReturnDues(res, member) {
   let balanceDue = 0;
   let futureDues = 0;
 
+  // 1. Identify Family Members
+  let familyMemberIds = [member.id];
+
+  // Determine the effective family ID (either the assigned family_id or the member's own ID)
+  const effectiveFamilyId = member.family_id || member.id;
+
+  // Find all members who belong to this family (including the HoH if they have family_id set, and any dependents)
+  const familyMembers = await Member.findAll({
+    where: {
+      [Op.or]: [
+        { family_id: effectiveFamilyId },
+        { id: effectiveFamilyId }
+      ]
+    },
+    attributes: ['id', 'first_name', 'last_name', 'yearly_pledge', 'family_id']
+  });
+
+  familyMemberIds = familyMembers.map(m => m.id);
+
+  // 2. Identify Head of Household
+  // Head of Household is either:
+  // - The member with family_id = null or family_id = their own id
+  // - The member with the highest yearly_pledge
+  // - The member with id = effectiveFamilyId
+  let headOfHousehold = familyMembers.find(m =>
+    !m.family_id || String(m.family_id) === String(m.id) || String(m.id) === String(effectiveFamilyId)
+  );
+
+  // If not found by family_id logic, use the one with the highest pledge
+  if (!headOfHousehold) {
+    headOfHousehold = familyMembers.reduce((prev, current) =>
+      (Number(current.yearly_pledge || 0) > Number(prev.yearly_pledge || 0)) ? current : prev
+    );
+  }
+
+  // Determine if this is a household view (multiple family members)
+  const isHouseholdView = familyMembers.length > 1;
+  const householdMemberNames = familyMembers
+    .filter(m => String(m.id) !== String(headOfHousehold.id))
+    .map(m => m.first_name)
+    .join(', ');
+
+  // 2. Fetch Transactions for ALL family members
   const memberTransactions = await Transaction.findAll({
     where: {
-      member_id: member.id,
+      member_id: { [Op.in]: familyMemberIds },
       payment_date: { [Op.gte]: new Date(currentYear, 0, 1), [Op.lte]: new Date(currentYear, 11, 31, 23, 59, 59, 999) }
     },
+    include: [
+      {
+        model: Member,
+        as: 'member',
+        attributes: ['first_name']
+      }
+    ],
     order: [['payment_date', 'ASC']]
   });
   const duesTransactions = memberTransactions.filter(t => String(t.payment_type) === 'membership_due');
@@ -728,7 +682,8 @@ async function computeAndReturnDues(res, member) {
     if (d.getFullYear() === currentYear) totalsByCalendarMonth[d.getMonth()] += Number(t.amount || 0);
   }
 
-  const yearlyPledge = Number(member.yearly_pledge || 0);
+  // Use the head of household's yearly pledge for calculations
+  const yearlyPledge = Number(headOfHousehold.yearly_pledge || 0);
   if (yearlyPledge > 0) {
     monthlyPayment = Math.round((yearlyPledge / 12) * 100) / 100;
     const totalDuesCollected = duesTransactions.reduce((s, t) => s + Number(t.amount || 0), 0);
@@ -767,8 +722,33 @@ async function computeAndReturnDues(res, member) {
       payment_method: t.payment_method,
       receipt_number: t.receipt_number,
       note: t.note,
+      paid_by: t.member ? t.member.first_name : 'Unknown'
     }))
     .sort((a, b) => new Date(b.payment_date) - new Date(a.payment_date));
+
+  // Calculate other contributions breakdown
+  const otherTransactions = memberTransactions.filter(t => String(t.payment_type) !== 'membership_due');
+  const contributionsByType = {
+    donation: 0,
+    pledge_payment: 0,
+    tithe: 0,
+    offering: 0,
+    other: 0
+  };
+
+  otherTransactions.forEach(t => {
+    const amount = Number(t.amount || 0);
+    const type = String(t.payment_type);
+
+    if (contributionsByType.hasOwnProperty(type)) {
+      contributionsByType[type] += amount;
+    } else {
+      contributionsByType.other += amount;
+    }
+  });
+
+  const totalOtherContributions = Object.values(contributionsByType).reduce((sum, val) => sum + val, 0);
+  const grandTotal = totalCollected + totalOtherContributions;
 
   return res.json({
     success: true,
@@ -780,14 +760,32 @@ async function computeAndReturnDues(res, member) {
         email: member.email || '',
         phoneNumber: member.phone_number || member.phoneNumber || ''
       },
+      household: {
+        isHouseholdView,
+        headOfHousehold: {
+          id: headOfHousehold.id,
+          firstName: headOfHousehold.first_name,
+          lastName: headOfHousehold.last_name
+        },
+        memberNames: householdMemberNames,
+        totalMembers: familyMembers.length
+      },
       payment: {
         year: currentYear,
+        // Membership Dues Section
+        annualPledge: yearlyPledge,
         monthlyPayment,
-        totalAmountDue,
-        totalCollected,
-        balanceDue,
+        duesCollected: totalCollected,
+        outstandingDues: balanceDue,
+        duesProgress: yearlyPledge > 0 ? Math.round((totalCollected / yearlyPledge) * 100) : 0,
         monthStatuses,
-        futureDues
+
+        // Other Contributions Section
+        otherContributions: contributionsByType,
+        totalOtherContributions,
+
+        // Grand Total
+        grandTotal
       },
       transactions
     }

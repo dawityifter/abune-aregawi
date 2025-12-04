@@ -15,7 +15,8 @@ const getAllTransactions = async (req, res) => {
       end_date,
       min_amount,
       max_amount,
-      search
+      search,
+      receipt_number
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -25,6 +26,9 @@ const getAllTransactions = async (req, res) => {
     if (member_id) whereClause.member_id = member_id;
     if (payment_type) whereClause.payment_type = payment_type;
     if (payment_method) whereClause.payment_method = payment_method;
+    if (receipt_number) {
+      whereClause.receipt_number = { [Op.iLike]: `%${receipt_number}%` };
+    }
     if (start_date || end_date) {
       whereClause.payment_date = {};
       if (start_date) whereClause.payment_date[Op.gte] = start_date;
@@ -48,7 +52,7 @@ const getAllTransactions = async (req, res) => {
     if (search && String(search).trim()) {
       const term = String(search).trim();
       const tokens = term.split(/\s+/).filter(Boolean);
-      
+
       // Build an AND of token-matchers, where each token can match any of the name/email/phone fields
       const tokenClauses = tokens.map(t => ({
         [Op.or]: [
@@ -156,7 +160,7 @@ const getTransactionById = async (req, res) => {
 // Create a new transaction with dual-write to ledger_entries
 const createTransaction = async (req, res) => {
   const t = await sequelize.transaction();
-  
+
   try {
     const {
       member_id,
@@ -214,7 +218,7 @@ const createTransaction = async (req, res) => {
     // Determine GL code from income_category_id or auto-assign from payment_type
     let glCode = payment_type; // Fallback to payment_type for backward compatibility
     let finalIncomeCategoryId = income_category_id;
-    
+
     if (income_category_id) {
       // User explicitly selected an income category
       const incomeCategory = await IncomeCategory.findByPk(income_category_id);
@@ -231,14 +235,14 @@ const createTransaction = async (req, res) => {
       let incomeCategory = await IncomeCategory.findOne({
         where: { payment_type_mapping: payment_type }
       });
-      
+
       // Fallback mappings for payment types without direct mapping
       if (!incomeCategory) {
         const fallbackMappings = {
           'tithe': 'offering',        // tithe → INC002 (Weekly Offering)
           'building_fund': 'event'    // building_fund → INC003 (Fundraising)
         };
-        
+
         const fallbackType = fallbackMappings[payment_type];
         if (fallbackType) {
           incomeCategory = await IncomeCategory.findOne({
@@ -246,7 +250,7 @@ const createTransaction = async (req, res) => {
           });
         }
       }
-      
+
       if (incomeCategory) {
         finalIncomeCategoryId = incomeCategory.id;
         glCode = incomeCategory.gl_code;
@@ -262,7 +266,7 @@ const createTransaction = async (req, res) => {
       if (donor_email) donorInfo.push(`Email: ${donor_email}`);
       if (donor_phone) donorInfo.push(`Phone: ${donor_phone}`);
       if (donor_memo) donorInfo.push(`Memo: ${donor_memo}`);
-      
+
       const donorSection = `[Anonymous Donor]\n${donorInfo.join('\n')}`;
       finalNote = finalNote ? `${donorSection}\n\n${finalNote}` : donorSection;
     }
@@ -299,11 +303,11 @@ const createTransaction = async (req, res) => {
     // If external_id provided, check for existing transaction
     let transaction = null;
     if (external_id) {
-      transaction = await Transaction.findOne({ 
+      transaction = await Transaction.findOne({
         where: { external_id },
         transaction: t
       });
-      
+
       if (transaction) {
         // Update existing transaction and its ledger entries
         await Promise.all([
@@ -320,11 +324,11 @@ const createTransaction = async (req, res) => {
             donation_id: donation_id || transaction.donation_id,
             income_category_id: finalIncomeCategoryId
           }, { transaction: t }),
-          
+
           // Update corresponding ledger entries
-          LedgerEntry.destroy({ 
+          LedgerEntry.destroy({
             where: { transaction_id: transaction.id },
-            transaction: t 
+            transaction: t
           })
         ]);
       }
@@ -347,13 +351,13 @@ const createTransaction = async (req, res) => {
         income_category_id: finalIncomeCategoryId
       }, { transaction: t });
     }
-    
+
     // Create corresponding ledger entry using Sequelize (avoids enum issues)
     // Wrapped in try-catch to make ledger entries optional (for gradual migration)
     try {
       const entryDate = payment_date ? tz.parseDate(payment_date) : tz.now();
       const memo = `${glCode} - ${finalNote || 'No description'}`;
-      
+
       await LedgerEntry.create({
         type: payment_type, // Keep payment_type for backward compatibility
         category: glCode, // Use GL code for categorization (INC001, INC002, etc.)
@@ -406,20 +410,20 @@ const createTransaction = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Transaction created successfully with ledger entries',
-      data: { 
+      data: {
         transaction: createdTransaction
       }
     });
   } catch (error) {
     // Rollback the transaction in case of error
     await t.rollback();
-    
+
     console.error('❌ Error creating transaction:', error);
     console.error('Error details:', error.message);
     if (process.env.NODE_ENV === 'development') {
       console.error('Error stack:', error.stack);
     }
-    
+
     res.status(500).json({
       success: false,
       message: 'Failed to create transaction',
@@ -431,7 +435,7 @@ const createTransaction = async (req, res) => {
 // Update a transaction and its associated ledger entries
 const updateTransaction = async (req, res) => {
   const t = await sequelize.transaction();
-  
+
   try {
     const { id } = req.params;
     const updateData = req.body;
@@ -489,11 +493,11 @@ const updateTransaction = async (req, res) => {
 
     // Update the transaction
     await transaction.update(updateData, { transaction: t });
-    
+
     // Delete existing ledger entries for this transaction
-    await LedgerEntry.destroy({ 
+    await LedgerEntry.destroy({
       where: { transaction_id: id },
-      transaction: t 
+      transaction: t
     });
 
     // Recreate a single income ledger entry aligned with current schema
@@ -553,7 +557,7 @@ const updateTransaction = async (req, res) => {
     res.json({
       success: true,
       message: 'Transaction and ledger entries updated successfully',
-      data: { 
+      data: {
         transaction: updatedTransaction
       }
     });
@@ -562,7 +566,7 @@ const updateTransaction = async (req, res) => {
     if (t && !t.finished) {
       await t.rollback();
     }
-    
+
     console.error('Error updating transaction:', error);
     res.status(500).json({
       success: false,
@@ -575,12 +579,12 @@ const updateTransaction = async (req, res) => {
 // Delete a transaction and its associated ledger entries
 const deleteTransaction = async (req, res) => {
   const t = await sequelize.transaction();
-  
+
   try {
     const { id } = req.params;
 
     // Find the transaction within the transaction
-    const transaction = await Transaction.findByPk(id, { 
+    const transaction = await Transaction.findByPk(id, {
       include: [
         {
           model: LedgerEntry,
@@ -588,9 +592,9 @@ const deleteTransaction = async (req, res) => {
           attributes: ['id']
         }
       ],
-      transaction: t 
+      transaction: t
     });
-    
+
     if (!transaction) {
       await t.rollback();
       return res.status(404).json({
@@ -609,7 +613,7 @@ const deleteTransaction = async (req, res) => {
 
     // Delete the transaction
     await transaction.destroy({ transaction: t });
-    
+
     // Commit the transaction
     await t.commit();
 
@@ -626,7 +630,7 @@ const deleteTransaction = async (req, res) => {
     if (t && !t.finished) {
       await t.rollback();
     }
-    
+
     console.error('Error deleting transaction:', error);
     res.status(500).json({
       success: false,
@@ -769,7 +773,7 @@ const getMemberPaymentSummaries = async (req, res) => {
       const summary = summaryMap[member.id] || { totalCollected: 0, transactionCount: 0 };
       const totalCollected = summary.totalCollected;
       const transactionCount = summary.transactionCount;
-      
+
       // For the new system, we'll use a simplified approach
       // You might want to implement proper due calculation based on your business logic
       const monthlyPayment = parseFloat(member.monthly_payment || 0);
@@ -804,7 +808,7 @@ const getMemberPaymentSummaries = async (req, res) => {
       filteredMembers = transformedMembers.filter(member => {
         const collected = member.totalCollected;
         const due = member.totalAmountDue;
-        
+
         if (status === 'up_to_date') return collected >= due;
         if (status === 'behind') return collected < due && collected > 0;
         if (status === 'partial') return collected > 0 && collected < due;
@@ -980,7 +984,7 @@ const generateTransactionReport = async (req, res) => {
         december: 0
       };
 
-      const monthKeys = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+      const monthKeys = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
       for (const t of txs) {
         const d = new Date(t.payment_date);
         const idx = d.getMonth();

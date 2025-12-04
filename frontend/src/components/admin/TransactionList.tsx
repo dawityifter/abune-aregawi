@@ -48,9 +48,12 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [receiptNumberFilter, setReceiptNumberFilter] = useState('');
   const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
   const [dateRangeFilter, setDateRangeFilter] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -65,7 +68,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   useEffect(() => {
     fetchTransactions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentTypeFilter, paymentMethodFilter, dateRangeFilter, currentPage]);
+  }, [paymentTypeFilter, paymentMethodFilter, dateRangeFilter, customStartDate, customEndDate, receiptNumberFilter, currentPage]);
 
   // Fetch only when search is cleared or has at least 3 characters
   useEffect(() => {
@@ -113,7 +116,18 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
         params.append('payment_method', paymentMethodFilter);
       }
 
-      if (dateRangeFilter !== 'all') {
+      if (receiptNumberFilter.trim()) {
+        params.append('receipt_number', receiptNumberFilter.trim());
+      }
+
+      if (dateRangeFilter === 'custom') {
+        if (customStartDate) {
+          params.append('start_date', customStartDate);
+        }
+        if (customEndDate) {
+          params.append('end_date', customEndDate);
+        }
+      } else if (dateRangeFilter !== 'all') {
         const today = new Date();
         let startDate = new Date();
 
@@ -241,21 +255,33 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     <div className="space-y-6">
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Search
+              Member Search
             </label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by member (min 3 characters)..."
+              placeholder="Search member (min 3 chars)..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {searchTerm && searchTerm.trim().length < 3 && (
-              <p className="mt-1 text-xs text-gray-500">Type at least 3 characters to search</p>
+              <p className="mt-1 text-xs text-gray-500">Type at least 3 characters</p>
             )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Receipt Number
+            </label>
+            <input
+              type="text"
+              value={receiptNumberFilter}
+              onChange={(e) => setReceiptNumberFilter(e.target.value)}
+              placeholder="Search receipt #..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -293,13 +319,19 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
               <option value="other">Other</option>
             </select>
           </div>
-          <div>
+          <div className="col-span-1 md:col-span-2 lg:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Date Range
             </label>
             <select
               value={dateRangeFilter}
-              onChange={(e) => setDateRangeFilter(e.target.value)}
+              onChange={(e) => {
+                setDateRangeFilter(e.target.value);
+                if (e.target.value !== 'custom') {
+                  setCustomStartDate('');
+                  setCustomEndDate('');
+                }
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Time</option>
@@ -307,16 +339,48 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
               <option value="week">Last 7 Days</option>
               <option value="month">Last 30 Days</option>
               <option value="year">Last Year</option>
+              <option value="custom">Custom Range</option>
             </select>
           </div>
-          <div className="flex items-end">
-            <button
-              onClick={fetchTransactions}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
-            >
-              Apply Filters
-            </button>
+        </div>
+
+        {/* Custom Date Range Inputs */}
+        {dateRangeFilter === 'custom' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                min={customStartDate}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
+        )}
+
+        {/* Apply Filters Button */}
+        <div className="mt-4">
+          <button
+            onClick={fetchTransactions}
+            className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium"
+          >
+            Apply Filters
+          </button>
         </div>
       </div>
 
