@@ -58,7 +58,7 @@ const Dashboard: React.FC = () => {
   const isTempUser = user?._temp || false;
   // Treat backend-returned 'dependent' as a restricted role for UI visibility
   const isDependent = (user?.data?.member?.role || user?.role) === 'dependent';
-  
+
   // Debug logging for role and permissions
   useEffect(() => {
     console.log('Dashboard - User state:', {
@@ -69,7 +69,7 @@ const Dashboard: React.FC = () => {
       userData: user
     });
   }, [user, isTempUser, userRole, permissions]);
-  
+
   // Update user profile when auth state changes
   useEffect(() => {
     // Wait until initial Firebase auth state is resolved
@@ -96,7 +96,7 @@ const Dashboard: React.FC = () => {
       setLoading(false);
     }
   }, [user, firebaseUser, authLoading, authReady, navigate]);
-  
+
   // Show loading state while auth is initializing or loading
   if (!authReady || loading || authLoading) {
     return (
@@ -235,8 +235,8 @@ const Dashboard: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
         <div className="text-center">
           <div className="text-red-600 text-lg mb-4">{error}</div>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
           >
             Retry
@@ -271,7 +271,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <button 
+                  <button
                     onClick={handleViewProfile}
                     className="w-full bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
                   >
@@ -300,7 +300,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <button 
+                  <button
                     onClick={handleViewBylaw}
                     className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
                   >
@@ -329,7 +329,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <button 
+                  <button
                     onClick={handleViewDues}
                     className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
                   >
@@ -358,7 +358,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <button 
+                  <button
                     onClick={handleViewEvents}
                     className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
                   >
@@ -368,30 +368,34 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Volunteer Card */}
+            {/* Department Card */}
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-hands-helping text-purple-800"></i>
+                      <i className="fas fa-users text-purple-800"></i>
                     </div>
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-medium text-gray-900">
-                      {t('volunteer')}
+                      My Service
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {t('serve.community')}
+                      Department & Volunteer Work
                     </p>
                   </div>
                 </div>
                 <div className="mt-4">
-                  <button 
-                    onClick={handleVolunteerSignUp}
+                  <button
+                    onClick={() => {
+                      // TODO: Fetch user departments and implement smart routing
+                      // For now, just navigate to a departments page
+                      navigate('/departments');
+                    }}
                     className="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors"
                   >
-                    {t('volunteer.sign.up')}
+                    View Departments
                   </button>
                 </div>
               </div>
@@ -416,7 +420,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <button 
+                  <button
                     onClick={handleDonate}
                     className="w-full bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors"
                   >
@@ -446,7 +450,7 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-4">
-                    <button 
+                    <button
                       onClick={() => navigate('/dependents')}
                       className="w-full bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 transition-colors"
                     >
@@ -477,7 +481,7 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-4">
-                    <button 
+                    <button
                       onClick={() => navigate('/sms')}
                       className="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
                     >
@@ -508,7 +512,7 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-4">
-                    <button 
+                    <button
                       onClick={() => navigate('/outreach')}
                       className="w-full bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700 transition-colors"
                     >
@@ -539,7 +543,7 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-4">
-                    <button 
+                    <button
                       onClick={() => navigate('/treasurer')}
                       className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
                     >
@@ -571,7 +575,7 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-4">
-                    <button 
+                    <button
                       onClick={() => navigate('/admin')}
                       className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
                     >
