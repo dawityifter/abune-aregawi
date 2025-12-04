@@ -5,6 +5,7 @@ import { getRoleDisplayName, UserRole } from '../../utils/roles';
 import { getDisplayEmail } from '../../utils/email';
 import AddMemberModal from './AddMemberModal';
 import AddDependentModal from './AddDependentModal';
+import MemberDuesViewer from './MemberDuesViewer';
 
 interface Member {
   id: string;
@@ -32,9 +33,9 @@ interface MemberListProps {
   refreshToken?: number;
 }
 
-const MemberList: React.FC<MemberListProps> = ({ 
-  onEditMember, 
-  canEditMembers, 
+const MemberList: React.FC<MemberListProps> = ({
+  onEditMember,
+  canEditMembers,
   canDeleteMembers,
   canRegisterMembers,
   refreshToken,
@@ -52,6 +53,7 @@ const MemberList: React.FC<MemberListProps> = ({
   const [itemsPerPage] = useState(10);
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAddDependentFor, setShowAddDependentFor] = useState<Member | null>(null);
+  const [showPaymentHistoryFor, setShowPaymentHistoryFor] = useState<Member | null>(null);
 
   // Client-side filtering and pagination
   const filteredMembers = useMemo(() => {
@@ -59,16 +61,16 @@ const MemberList: React.FC<MemberListProps> = ({
       const searchLower = searchTerm.toLowerCase();
       const memberNumberRaw = (member as any).memberId ?? (member as any).member_id ?? member.id ?? '';
       const memberNumber = String(memberNumberRaw).toLowerCase();
-      const matchesSearch = !searchTerm || 
+      const matchesSearch = !searchTerm ||
         (member.firstName?.toLowerCase() || '').includes(searchLower) ||
         (member.lastName?.toLowerCase() || '').includes(searchLower) ||
         (member.email?.toLowerCase() || '').includes(searchLower) ||
         (member.phoneNumber?.toLowerCase() || '').includes(searchLower) ||
         memberNumber.includes(searchLower);
-      
+
       const matchesRole = !roleFilter || member.role === roleFilter;
       const matchesStatus = !statusFilter || member.isActive.toString() === statusFilter;
-      
+
       return matchesSearch && matchesRole && matchesStatus;
     });
   }, [allMembers, searchTerm, roleFilter, statusFilter]);
@@ -83,14 +85,14 @@ const MemberList: React.FC<MemberListProps> = ({
   const fetchAllMembers = async () => {
     try {
       setLoading(true);
-      
+
       if (!firebaseUser) {
         throw new Error('Firebase user not authenticated');
       }
 
       // Get a fresh ID token
       const idToken = await firebaseUser.getIdToken(true);
-      
+
       // Debug logging for authentication
       console.log('🔍 MemberList Debug Info:');
       console.log('Current User:', currentUser);
@@ -100,7 +102,7 @@ const MemberList: React.FC<MemberListProps> = ({
       // Fetch all members at once (no pagination on backend)
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/all/firebase?limit=1000`;
       console.log('API URL:', apiUrl);
-      
+
       const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${idToken}`,
@@ -108,7 +110,7 @@ const MemberList: React.FC<MemberListProps> = ({
         },
         credentials: 'include'
       });
-      
+
       console.log('Response Status:', response.status);
       console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
 
@@ -209,8 +211,8 @@ const MemberList: React.FC<MemberListProps> = ({
     return (
       <div className="text-center py-12">
         <div className="text-red-600 text-lg mb-4">{error}</div>
-        <button 
-          onClick={() => fetchAllMembers()} 
+        <button
+          onClick={() => fetchAllMembers()}
           className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
         >
           {t('retry')}
@@ -295,7 +297,7 @@ const MemberList: React.FC<MemberListProps> = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('role')}
@@ -314,7 +316,7 @@ const MemberList: React.FC<MemberListProps> = ({
               <option value="guest">Guest</option>
             </select>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('status')}
@@ -375,7 +377,7 @@ const MemberList: React.FC<MemberListProps> = ({
                           {member.firstName} {member.middleName} {member.lastName} {' '}
                           <span className="text-gray-500">(
                             {String((member as any).memberId ?? (member as any).member_id ?? member.id)}
-                          )</span>
+                            )</span>
                         </div>
                         <div className="text-sm text-gray-500">
                           {member.dependentsCount ?? member.dependents?.length ?? 0} {t('dependents')}
@@ -387,13 +389,12 @@ const MemberList: React.FC<MemberListProps> = ({
                     {getDisplayEmail(member.email) || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      member.role === 'admin' ? 'bg-red-100 text-red-800' :
-                      member.role === 'church_leadership' ? 'bg-purple-100 text-purple-800' :
-                      member.role === 'treasurer' ? 'bg-green-100 text-green-800' :
-                      member.role === 'secretary' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${member.role === 'admin' ? 'bg-red-100 text-red-800' :
+                        member.role === 'church_leadership' ? 'bg-purple-100 text-purple-800' :
+                          member.role === 'treasurer' ? 'bg-green-100 text-green-800' :
+                            member.role === 'secretary' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                      }`}>
                       {getRoleDisplayName(member.role)}
                     </span>
                   </td>
@@ -401,11 +402,10 @@ const MemberList: React.FC<MemberListProps> = ({
                     {member.phoneNumber || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      member.isActive 
-                        ? 'bg-green-100 text-green-800' 
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${member.isActive
+                        ? 'bg-green-100 text-green-800'
                         : 'bg-red-100 text-red-800'
-                    }`}>
+                      }`}>
                       {member.isActive ? t('active') : t('inactive')}
                     </span>
                   </td>
@@ -439,6 +439,15 @@ const MemberList: React.FC<MemberListProps> = ({
                           }
                         >
                           <i className="fas fa-user-friends"></i>
+                        </button>
+                      )}
+                      {canEditMembers && (
+                        <button
+                          onClick={() => setShowPaymentHistoryFor(member)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="View Payment History"
+                        >
+                          <i className="fas fa-dollar-sign"></i>
                         </button>
                       )}
                       {canDeleteMembers && (
@@ -497,11 +506,10 @@ const MemberList: React.FC<MemberListProps> = ({
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        page === currentPage
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${page === currentPage
                           ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
                           : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       {page}
                     </button>
@@ -539,6 +547,12 @@ const MemberList: React.FC<MemberListProps> = ({
             setShowAddDependentFor(null);
             fetchAllMembers();
           }}
+        />
+      )}
+      {showPaymentHistoryFor && (
+        <MemberDuesViewer
+          memberId={showPaymentHistoryFor.id}
+          onClose={() => setShowPaymentHistoryFor(null)}
         />
       )}
     </div>

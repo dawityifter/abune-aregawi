@@ -333,7 +333,7 @@ exports.register = async (req, res) => {
       lastName,
       gender,
       maritalStatus,
-      
+
       // Contact & Address
       phoneNumber,
       email: providedEmail,
@@ -343,31 +343,31 @@ exports.register = async (req, res) => {
       state,
       postalCode,
       country,
-      
+
       // Family Information
       isHeadOfHousehold,
       spouseName,
       spouseEmail,
       emergencyContactName,
       emergencyContactPhone,
-      
+
       // Spiritual Information
       dateJoinedParish,
       baptismName,
       interestedInServing,
       ministries,
       languagePreference,
-      
+
       // Contribution
       preferredGivingMethod,
       titheParticipation,
       yearlyPledge,
-      
+
       // Account
       firebase_uid: firebaseUid,
       password,
       role,
-      
+
       // Dependents (legacy field name 'dependants' from client)
       dependants
     } = req.body;
@@ -431,12 +431,12 @@ exports.register = async (req, res) => {
           message: 'A member with this Firebase UID already exists'
         });
       }
-      
+
       // For Firebase-authenticated users, allow phone number "duplicates" 
       // since they're completing their profile after authentication
       // We'll check if the phone number belongs to a different Firebase user
       const existingMemberByPhone = await Member.findOne({
-        where: { 
+        where: {
           phone_number: phoneNumber,
           firebase_uid: { [require('sequelize').Op.ne]: firebaseUid } // Different Firebase UID
         }
@@ -463,7 +463,7 @@ exports.register = async (req, res) => {
     // --- FAMILY LOGIC ---
     let familyId = null;
     let finalSpouseEmail = spouseEmail || null;
-    
+
     if (isHeadOfHousehold) {
       // Will set familyId to member.id after creation
     } else {
@@ -475,35 +475,35 @@ exports.register = async (req, res) => {
           message: 'Head of household phone number is required when you are not the head of household'
         });
       }
-      
+
       // Normalize the phone number
       const normalizedPhone = normalizePhoneNumber(headOfHouseholdPhone);
-      
+
       // Look up head of household by phone number
-      const headOfHousehold = await Member.findOne({ 
-        where: { 
+      const headOfHousehold = await Member.findOne({
+        where: {
           phone_number: normalizedPhone,
           is_active: true
-        } 
+        }
       });
-      
+
       if (!headOfHousehold) {
         return res.status(400).json({
           success: false,
           message: 'No active head of household found with this phone number. Please register as head of household or provide a valid head of household phone number.'
         });
       }
-      
+
       // Check if this member is a head of household (has family_id = their own id or is null)
       const isHeadOfHousehold = !headOfHousehold.family_id || headOfHousehold.family_id === headOfHousehold.id;
-      
+
       if (!isHeadOfHousehold) {
         return res.status(400).json({
           success: false,
           message: 'This phone number belongs to a member who is not a head of household. Please provide a valid head of household phone number.'
         });
       }
-      
+
       // Use the head of household's family ID
       familyId = headOfHousehold.family_id || headOfHousehold.id;
     }
@@ -603,10 +603,10 @@ exports.register = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { 
-        id: member.id, 
-        email: member.email, 
-        role: member.role 
+      {
+        id: member.id,
+        email: member.email,
+        role: member.role
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -745,10 +745,10 @@ exports.login = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { 
-        id: member.id, 
-        email: member.email, 
-        role: member.role 
+      {
+        id: member.id,
+        email: member.email,
+        role: member.role
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -818,7 +818,7 @@ exports.updateProfile = async (req, res) => {
     }
 
     const member = await Member.findByPk(req.user.id);
-    
+
     if (!member) {
       return res.status(404).json({
         success: false,
@@ -835,7 +835,7 @@ exports.updateProfile = async (req, res) => {
     if (req.body.dependants && Array.isArray(req.body.dependants)) {
       // Remove existing dependents
       await Dependent.destroy({ where: { memberId: member.id } });
-      
+
       // Add new dependents
       if (req.body.dependants.length > 0) {
         const dependentsData = req.body.dependants.map(dependent => {
@@ -881,7 +881,7 @@ exports.getAllMembers = async (req, res) => {
     const offset = (page - 1) * limit;
 
     const whereClause = {};
-    
+
     if (search) {
       whereClause[Op.or] = [
         { firstName: { [Op.iLike]: `%${search}%` } },
@@ -941,14 +941,14 @@ exports.getAllMembersFirebase = async (req, res) => {
       firebaseUid: req.firebaseUid,
       queryParams: { page: req.query.page, limit: req.query.limit, search: !!req.query.search }
     });
-    
+
     const { page = 1, limit = 20, search, role, isActive } = req.query;
     const offset = (page - 1) * limit;
 
     logger.debug('Query params parsed', { page, limit, hasSearch: !!search, role, isActive });
 
     const whereClause = {};
-    
+
     if (search) {
       whereClause[Op.or] = [
         { first_name: { [Op.iLike]: `%${search}%` } },
@@ -965,10 +965,10 @@ exports.getAllMembersFirebase = async (req, res) => {
       whereClause.is_active = isActive === 'true';
     }
 
-    logger.debug('Query filters applied', { 
+    logger.debug('Query filters applied', {
       filtersCount: Object.keys(whereClause).length,
-      limit: parseInt(limit), 
-      offset: parseInt(offset) 
+      limit: parseInt(limit),
+      offset: parseInt(offset)
     });
 
     const { count, rows: members } = await Member.findAndCountAll({
@@ -1020,6 +1020,7 @@ exports.getAllMembersFirebase = async (req, res) => {
       spouseEmail: member.spouse_email,
       // Other
       yearlyPledge: member.yearly_pledge,
+      familyId: member.family_id, // For head of household detection
       // Expose member number for frontend table
       memberId: member.member_id,
       member_id: member.member_id,
@@ -1044,7 +1045,7 @@ exports.getAllMembersFirebase = async (req, res) => {
     };
 
     // Response sent without logging full member data
-    
+
     res.json(response);
 
   } catch (error) {
@@ -1086,7 +1087,7 @@ exports.getMemberById = async (req, res) => {
 exports.updateMember = async (req, res) => {
   try {
     const member = await Member.findByPk(req.params.id);
-    
+
     if (!member) {
       return res.status(404).json({
         success: false,
@@ -1100,7 +1101,7 @@ exports.updateMember = async (req, res) => {
     if (req.body.dependants && Array.isArray(req.body.dependants)) {
       // Remove existing dependents
       await Dependent.destroy({ where: { memberId: member.id } });
-      
+
       // Add new dependents
       if (req.body.dependants.length > 0) {
         const dependentsData = req.body.dependants.map(dependent => ({
@@ -1139,7 +1140,7 @@ exports.updateMember = async (req, res) => {
 exports.deleteMember = async (req, res) => {
   try {
     const member = await Member.findByPk(req.params.id);
-    
+
     if (!member) {
       return res.status(404).json({
         success: false,
@@ -1170,7 +1171,7 @@ exports.deleteMember = async (req, res) => {
 exports.getMemberContributions = async (req, res) => {
   try {
     const member = await Member.findByPk(req.params.id);
-    
+
     if (!member) {
       return res.status(404).json({
         success: false,
@@ -1208,12 +1209,12 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     const { uid } = req.params;
     const userEmail = req.query.email;
     const userPhone = req.query.phone;
-    logger.debug('getProfileByFirebaseUid called', { 
-      uid, 
-      hasEmail: !!userEmail, 
-      hasPhone: !!userPhone 
+    logger.debug('getProfileByFirebaseUid called', {
+      uid,
+      hasEmail: !!userEmail,
+      hasPhone: !!userPhone
     });
-    
+
     // Set cache control headers to prevent 304 responses
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -1230,7 +1231,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         as: 'dependents'
       }]
     });
-    
+
     if (memberByUid) {
       logger.info('Found member by Firebase UID', logger.safeSummary({
         id: memberByUid.id,
@@ -1238,7 +1239,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         phoneNumber: memberByUid.phone_number,
         firebaseUid: memberByUid.firebase_uid
       }));
-      
+
       // Transform snake_case to camelCase for frontend compatibility
       const transformedMember = {
         id: memberByUid.id,
@@ -1273,7 +1274,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         emergencyContactPhone: memberByUid.emergency_contact_phone,
         dependents: memberByUid.dependents || []
       };
-      
+
       const responseData = {
         success: true,
         data: { member: transformedMember }
@@ -1323,10 +1324,10 @@ exports.getProfileByFirebaseUid = async (req, res) => {
 
     logger.debug('Member search result', { found: !!member });
     if (member) {
-      logger.debug('Found member', logger.safeSummary({ 
-        id: member.id, 
-        email: member.email, 
-        phoneNumber: member.phone_number 
+      logger.debug('Found member', logger.safeSummary({
+        id: member.id,
+        email: member.email,
+        phoneNumber: member.phone_number
       }));
     }
 
@@ -1390,20 +1391,20 @@ exports.getProfileByFirebaseUid = async (req, res) => {
           isActive: linkedMember ? linkedMember.is_active : true,
           linkedMember: linkedMember
             ? {
-                id: linkedMember.id,
-                firstName: linkedMember.first_name,
-                lastName: linkedMember.last_name,
-                email: linkedMember.email,
-                phoneNumber: linkedMember.phone_number,
-                role: linkedMember.role,
-                // Map address fields to camelCase for frontend
-                streetLine1: linkedMember.street_line1,
-                apartmentNo: linkedMember.apartment_no,
-                city: linkedMember.city,
-                state: linkedMember.state,
-                postalCode: linkedMember.postal_code,
-                country: linkedMember.country
-              }
+              id: linkedMember.id,
+              firstName: linkedMember.first_name,
+              lastName: linkedMember.last_name,
+              email: linkedMember.email,
+              phoneNumber: linkedMember.phone_number,
+              role: linkedMember.role,
+              // Map address fields to camelCase for frontend
+              streetLine1: linkedMember.street_line1,
+              apartmentNo: linkedMember.apartment_no,
+              city: linkedMember.city,
+              state: linkedMember.state,
+              postalCode: linkedMember.postal_code,
+              country: linkedMember.country
+            }
             : { id: dependent.linkedMemberId },
           // Provide minimal fields expected by frontend; dependents array not applicable
           dependents: []
@@ -1433,7 +1434,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
     }
 
     console.log('✅ Returning member profile');
-    
+
     // Transform snake_case to camelCase for frontend compatibility
     const transformedMember = {
       id: member.id,
@@ -1468,7 +1469,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       emergencyContactPhone: member.emergency_contact_phone,
       dependents: member.dependents || []
     };
-    
+
     const responseData = {
       success: true,
       data: { member: transformedMember }
@@ -1959,10 +1960,10 @@ exports.updateDependent = async (req, res) => {
   }
 };
 
-  // Delete a dependent
-  exports.deleteDependent = async (req, res) => {
-    try {
-      const { dependentId } = req.params;
+// Delete a dependent
+exports.deleteDependent = async (req, res) => {
+  try {
+    const { dependentId } = req.params;
 
     const dependent = await Dependent.findByPk(dependentId);
     if (!dependent) {
@@ -1986,7 +1987,7 @@ exports.updateDependent = async (req, res) => {
       message: 'Internal server error'
     });
   }
-}; 
+};
 
 // Cleanup orphaned Firebase users (admin only)
 exports.cleanupOrphanedUsers = async (req, res) => {
@@ -2064,7 +2065,7 @@ exports.checkRegistrationStatus = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: 'Registration complete',
-        data: { 
+        data: {
           member,
           status: 'complete',
           hasFirebaseUid: !!member.firebase_uid
@@ -2074,7 +2075,7 @@ exports.checkRegistrationStatus = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Registration incomplete',
-        data: { 
+        data: {
           status: 'incomplete',
           suggestion: 'User needs to complete registration in PostgreSQL'
         }
@@ -2088,13 +2089,13 @@ exports.checkRegistrationStatus = async (req, res) => {
       message: 'Internal server error'
     });
   }
-}; 
+};
 
 // Validate head of household phone number
 exports.validateHeadOfHouseholdPhone = async (req, res) => {
   try {
     const { phoneNumber } = req.params;
-    
+
     if (!phoneNumber) {
       return res.status(400).json({
         success: false,
@@ -2104,10 +2105,10 @@ exports.validateHeadOfHouseholdPhone = async (req, res) => {
 
     // Normalize the phone number
     const normalizedPhone = normalizePhoneNumber(phoneNumber);
-    
+
     // Find member by phone number
     const member = await Member.findOne({
-      where: { 
+      where: {
         phone_number: normalizedPhone,
         is_active: true
       },
@@ -2123,7 +2124,7 @@ exports.validateHeadOfHouseholdPhone = async (req, res) => {
 
     // Check if this member is a head of household (has family_id = their own id or is null)
     const isHeadOfHousehold = !member.family_id || member.family_id === member.id;
-    
+
     if (!isHeadOfHousehold) {
       return res.status(400).json({
         success: false,
@@ -2147,6 +2148,114 @@ exports.validateHeadOfHouseholdPhone = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Internal server error'
+    });
+  }
+};
+
+// Promote Dependent to Member (Admin only)
+exports.promoteDependent = async (req, res) => {
+  try {
+    const { dependentId } = req.params;
+    const { email, phone } = req.body; // Optional overrides
+
+    // 1. Find the Dependent
+    const dependent = await Dependent.findByPk(dependentId);
+    if (!dependent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Dependent not found'
+      });
+    }
+
+    if (dependent.linkedMemberId) {
+      // Check if linked to parent (self-claim) vs linked to a separate member (already promoted)
+      if (dependent.linkedMemberId !== dependent.memberId) {
+        return res.status(400).json({
+          success: false,
+          message: `Dependent already has their own member account (ID ${dependent.linkedMemberId})`
+        });
+      }
+      // If linkedMemberId === memberId, it means they're using parent's account via self-claim
+      // We can proceed to create a separate account for them
+    }
+
+    // CRITICAL: Only dependents with phone numbers can be promoted
+    if (!dependent.phone || dependent.phone.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Dependent does not have a phone number. Phone is required for login and promotion.'
+      });
+    }
+
+    // 2. Find the Parent/Member
+    const parent = await Member.findByPk(dependent.memberId);
+    if (!parent) {
+      return res.status(404).json({
+        success: false,
+        message: `Parent member with ID ${dependent.memberId} not found`
+      });
+    }
+
+    // Determine Family ID
+    const familyId = parent.family_id || parent.id;
+
+    // 3. Create New Member
+    const memberEmail = email || dependent.email || `dependent_${dependent.id}@placeholder.local`;
+    const memberPhone = phone || dependent.phone;
+
+    const newMember = await Member.create({
+      first_name: dependent.firstName,
+      middle_name: dependent.middleName,
+      last_name: dependent.lastName,
+      email: memberEmail,
+      phone_number: memberPhone,
+      gender: dependent.gender,
+      date_of_birth: dependent.dateOfBirth,
+      family_id: familyId,
+      yearly_pledge: 0, // CRITICAL: Zero pledge so they don't get billed separately
+      role: 'member',
+      is_active: true,
+      registration_status: 'complete',
+      household_size: 1,
+      street_line1: parent.street_line1,
+      apartment_no: parent.apartment_no,
+      city: parent.city,
+      state: parent.state,
+      postal_code: parent.postal_code,
+      country: parent.country
+    });
+
+    // 4. Link Dependent to New Member (not parent)
+    await dependent.update({ linkedMemberId: newMember.id });
+
+    logger.info('Dependent promoted to member', {
+      dependentId: dependent.id,
+      newMemberId: newMember.id,
+      familyId,
+      promotedBy: req.user.id
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Dependent promoted to member successfully',
+      data: {
+        member: {
+          id: newMember.id,
+          firstName: newMember.first_name,
+          lastName: newMember.last_name,
+          email: memberEmail,
+          phone: memberPhone,
+          familyId
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error promoting dependent:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to promote dependent',
+      error: error.message
     });
   }
 }; 

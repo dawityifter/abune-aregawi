@@ -10,23 +10,23 @@ module.exports = (sequelize) => {
         foreignKey: 'member_id',
         as: 'dependents'
       });
-      
+
       Member.hasMany(models.Transaction, {
         foreignKey: 'member_id',
         as: 'transactions'
       });
-      
+
       Member.hasMany(models.Transaction, {
         foreignKey: 'collected_by',
         as: 'collected_transactions'
       });
-      
+
       // Self-referencing association for family relationships
       Member.belongsTo(Member, {
         foreignKey: 'family_id',
         as: 'family_head'
       });
-      
+
       Member.hasMany(Member, {
         foreignKey: 'family_id',
         as: 'family_members'
@@ -37,6 +37,14 @@ module.exports = (sequelize) => {
         Member.hasMany(models.Outreach, {
           foreignKey: 'member_id',
           as: 'outreach_notes'
+        });
+      }
+
+      // Tasks assigned to this member
+      if (models.DepartmentTask) {
+        Member.hasMany(models.DepartmentTask, {
+          foreignKey: 'assigned_to',
+          as: 'assigned_tasks'
         });
       }
     }

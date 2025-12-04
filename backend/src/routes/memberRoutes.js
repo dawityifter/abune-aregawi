@@ -2,9 +2,9 @@ const express = require('express');
 const router = express.Router();
 const memberController = require('../controllers/memberController');
 const memberPaymentController = require('../controllers/memberPaymentController');
-const { 
-  validateMemberRegistration, 
-  validateLogin, 
+const {
+  validateMemberRegistration,
+  validateLogin,
   validateProfileUpdate,
   validateMemberId,
   validateMemberQuery,
@@ -57,8 +57,8 @@ router.post('/complete-registration/:firebaseUid', memberController.completeRegi
 router.get('/registration-status', memberController.checkRegistrationStatus);
 
 // Cleanup orphaned users (admin only)
-router.get('/cleanup-orphaned', 
-  roleMiddleware(['admin']), 
+router.get('/cleanup-orphaned',
+  roleMiddleware(['admin']),
   memberController.cleanupOrphanedUsers
 );
 router.post('/login', validateLogin, memberController.login);
@@ -79,8 +79,8 @@ router.get('/test-auth', firebaseAuthMiddleware, (req, res) => {
   console.log('🔍 Test auth endpoint hit');
   console.log('🔍 req.user:', req.user);
   console.log('🔍 req.firebaseUid:', req.firebaseUid);
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: 'Authentication working',
     user: req.user,
     firebaseUid: req.firebaseUid
@@ -110,8 +110,8 @@ router.get('/profile', memberController.getProfile);
 router.put('/profile', validateProfileUpdate, memberController.updateProfile);
 
 // Member search (treasurer/admin)
-router.get('/search', 
-  roleMiddleware(['admin', 'treasurer']), 
+router.get('/search',
+  roleMiddleware(['admin', 'treasurer']),
   memberController.searchMembers
 );
 
@@ -121,8 +121,8 @@ router.post('/dependents/self-claim/verify', validateSelfClaimVerify, memberCont
 router.post('/dependents/self-claim/link', validateSelfClaimLink, memberController.selfClaimLink);
 
 // Onboarding / Outreach routes
-router.get('/onboarding/pending', 
-  roleMiddleware(['admin', 'relationship']), 
+router.get('/onboarding/pending',
+  roleMiddleware(['admin', 'relationship']),
   memberController.getPendingWelcomes
 );
 
@@ -139,48 +139,55 @@ router.get('/:id/outreach',
   outreachController.listOutreach
 );
 
-router.post('/:id/mark-welcomed', 
-  roleMiddleware(['admin', 'relationship']), 
-  validateMemberId, 
+router.post('/:id/mark-welcomed',
+  roleMiddleware(['admin', 'relationship']),
+  validateMemberId,
   memberController.markWelcomed
 );
 
 // Admin routes (require admin role)
-router.get('/all', 
-  roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), 
-  validateMemberQuery, 
+router.get('/all',
+  roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']),
+  validateMemberQuery,
   memberController.getAllMembers
 );
 
-router.get('/:id', 
-  roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship']), 
-  validateMemberId, 
+router.get('/:id',
+  roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship']),
+  validateMemberId,
   memberController.getMemberById
 );
 
-router.put('/:id', 
-  roleMiddleware(['admin', 'church_leadership', 'secretary']), 
-  validateMemberId, 
+router.put('/:id',
+  roleMiddleware(['admin', 'church_leadership', 'secretary']),
+  validateMemberId,
   memberController.updateMember
 );
 
 // Update member role (admin only)
-router.patch('/:id/role', 
-  roleMiddleware(['admin']), 
-  validateMemberId, 
+router.patch('/:id/role',
+  roleMiddleware(['admin']),
+  validateMemberId,
   memberController.updateMemberRole
 );
 
-router.delete('/:id', 
-  roleMiddleware(['admin']), 
-  validateMemberId, 
+router.delete('/:id',
+  roleMiddleware(['admin']),
+  validateMemberId,
   memberController.deleteMember
 );
 
+// Promote dependent to member (admin only)
+router.post('/dependents/:dependentId/promote',
+  roleMiddleware(['admin', 'church_leadership']),
+  memberController.promoteDependent
+);
+
+
 // Financial routes (require treasurer/admin role)
-router.get('/:id/contributions', 
-  roleMiddleware(['admin', 'treasurer']), 
-  validateMemberId, 
+router.get('/:id/contributions',
+  roleMiddleware(['admin', 'treasurer']),
+  validateMemberId,
   memberController.getMemberContributions
 );
 
