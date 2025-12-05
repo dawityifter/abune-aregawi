@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import AddMeetingModal from './admin/AddMeetingModal';
+import AddTaskModal from './admin/AddTaskModal';
 
 interface Department {
     id: number;
@@ -31,7 +33,10 @@ interface Meeting {
     title: string;
     meeting_date: string;
     location?: string;
+    purpose?: string;
+    agenda?: string;
     minutes?: string;
+    attendees?: number[];
     creator?: {
         first_name: string;
         last_name: string;
@@ -54,7 +59,7 @@ interface Task {
 const DepartmentDashboard: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { firebaseUser } = useAuth();
+    const { firebaseUser, user } = useAuth();
 
     const [department, setDepartment] = useState<Department | null>(null);
     const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -62,6 +67,12 @@ const DepartmentDashboard: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'members' | 'meetings' | 'tasks'>('members');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // Modal states
+    const [showAddMeetingModal, setShowAddMeetingModal] = useState(false);
+    const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+    const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
     useEffect(() => {
         let isMounted = true;
@@ -232,7 +243,7 @@ const DepartmentDashboard: React.FC = () => {
 
                 {/* Tabs */}
                 <div className="bg-white shadow rounded-lg">
-                    <div className="border-b border-gray-200">
+                    <div className="border-b border-gray-200 flex justify-between items-center pr-6">
                         <nav className="-mb-px flex">
                             <button
                                 onClick={() => setActiveTab('members')}
@@ -265,6 +276,34 @@ const DepartmentDashboard: React.FC = () => {
                                 Tasks ({tasks.filter(t => t.status !== 'completed').length})
                             </button>
                         </nav>
+
+                        {/* Action Buttons */}
+                        <div>
+                            {activeTab === 'meetings' && (['admin', 'church_leadership'].includes(user?.role || '') || ['leader', 'chairperson', 'secretary'].includes(department.role || '')) && (
+                                <button
+                                    onClick={() => {
+                                        setSelectedMeeting(null);
+                                        setShowAddMeetingModal(true);
+                                    }}
+                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                                >
+                                    <i className="fas fa-plus mr-1"></i>
+                                    Add Meeting
+                                </button>
+                            )}
+                            {activeTab === 'tasks' && (
+                                <button
+                                    onClick={() => {
+                                        setSelectedTask(null);
+                                        setShowAddTaskModal(true);
+                                    }}
+                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                                >
+                                    <i className="fas fa-plus mr-1"></i>
+                                    Add Task
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="p-6">
@@ -304,9 +343,18 @@ const DepartmentDashboard: React.FC = () => {
                             <div className="space-y-4">
                                 {meetings.length > 0 ? (
                                     meetings.map((meeting) => (
-                                        <div key={meeting.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                                        <div
+                                            key={meeting.id}
+                                            className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                                            onClick={() => navigate(`/departments/${id}/meetings/${meeting.id}`)}
+                                        >
                                             <div className="flex justify-between items-start mb-2">
-                                                <h3 className="font-medium text-gray-900">{meeting.title}</h3>
+                                                <div className="flex-1">
+                                                    <h3 className="font-medium text-gray-900">{meeting.title}</h3>
+                                                    {meeting.purpose && (
+                                                        <p className="text-sm text-gray-600 mt-1">{meeting.purpose}</p>
+                                                    )}
+                                                </div>
                                                 <span className="text-sm text-gray-500">
                                                     {new Date(meeting.meeting_date).toLocaleDateString()}
                                                 </span>
@@ -317,11 +365,18 @@ const DepartmentDashboard: React.FC = () => {
                                                     {meeting.location}
                                                 </p>
                                             )}
-                                            {meeting.minutes && (
-                                                <div className="mt-2 text-sm text-gray-700 line-clamp-3">
-                                                    {meeting.minutes}
-                                                </div>
-                                            )}
+                                            <div className="flex items-center gap-4 text-sm text-gray-500 mt-2">
+                                                <span>
+                                                    <i className="fas fa-users mr-1"></i>
+                                                    {meeting.attendees?.length || 0} attendees
+                                                </span>
+                                                {meeting.creator && (
+                                                    <span>
+                                                        <i className="fas fa-user mr-1"></i>
+                                                        {meeting.creator.first_name} {meeting.creator.last_name}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     ))
                                 ) : (
@@ -375,6 +430,71 @@ const DepartmentDashboard: React.FC = () => {
                         )}
                     </div>
                 </div>
+
+                {/* Modals */}
+                {showAddMeetingModal && department && (
+                    <AddMeetingModal
+                        departmentId={department.id}
+                        departmentMembers={department.memberships?.map(m => m.member) || []}
+                        meeting={selectedMeeting}
+                        onClose={() => {
+                            setShowAddMeetingModal(false);
+                            setSelectedMeeting(null);
+                        }}
+                        onSuccess={() => {
+                            // Refresh meetings list
+                            const fetchMeetings = async () => {
+                                const token = await firebaseUser?.getIdToken();
+                                const response = await fetch(
+                                    `${process.env.REACT_APP_API_URL}/api/departments/${id}/meetings`,
+                                    {
+                                        headers: {
+                                            'Authorization': `Bearer ${token}`,
+                                            'Content-Type': 'application/json'
+                                        }
+                                    }
+                                );
+                                if (response.ok) {
+                                    const data = await response.json();
+                                    setMeetings(data.data.meetings);
+                                }
+                            };
+                            fetchMeetings();
+                        }}
+                    />
+                )}
+
+                {showAddTaskModal && department && (
+                    <AddTaskModal
+                        departmentId={department.id}
+                        departmentMembers={department.memberships?.map(m => m.member) || []}
+                        task={selectedTask}
+                        onClose={() => {
+                            setShowAddTaskModal(false);
+                            setSelectedTask(null);
+                        }}
+                        onSuccess={() => {
+                            // Refresh tasks list
+                            const fetchTasks = async () => {
+                                const token = await firebaseUser?.getIdToken();
+                                const response = await fetch(
+                                    `${process.env.REACT_APP_API_URL}/api/departments/${id}/tasks`,
+                                    {
+                                        headers: {
+                                            'Authorization': `Bearer ${token}`,
+                                            'Content-Type': 'application/json'
+                                        }
+                                    }
+                                );
+                                if (response.ok) {
+                                    const data = await response.json();
+                                    setTasks(data.data.tasks);
+                                }
+                            };
+                            fetchTasks();
+                        }}
+                    />
+                )}
             </main>
         </div>
     );

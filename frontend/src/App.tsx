@@ -26,6 +26,7 @@ import ThankYouPage from './pages/ThankYouPage';
 import PrivacyPage from './pages/PrivacyPage';
 import DepartmentsPage from './components/DepartmentsPage';
 import DepartmentDashboard from './components/DepartmentDashboard';
+import MeetingDetailsPage from './components/admin/MeetingDetailsPage';
 import './index.css';
 import DevBanner from './components/DevBanner';
 import { isFeatureEnabled } from './config/featureFlags';
@@ -105,6 +106,7 @@ function App() {
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/departments" element={<ProtectedRoute><DepartmentsPage /></ProtectedRoute>} />
               <Route path="/departments/:id" element={<ProtectedRoute><DepartmentDashboard /></ProtectedRoute>} />
+              <Route path="/departments/:departmentId/meetings/:meetingId" element={<ProtectedRoute><MeetingDetailsPage /></ProtectedRoute>} />
               {/* Add more routes here as we build them */}
             </Routes>
           </div>

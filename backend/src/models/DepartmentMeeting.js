@@ -56,6 +56,16 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING,
             allowNull: true
         },
+        purpose: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            comment: 'Short description of the meeting purpose'
+        },
+        agenda: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            comment: 'Detailed agenda for the meeting'
+        },
         attendees: {
             type: DataTypes.JSONB,
             allowNull: true,

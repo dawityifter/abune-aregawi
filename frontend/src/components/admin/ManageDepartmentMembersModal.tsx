@@ -428,47 +428,42 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="relative">
-                          <input
-                            type="text"
-                            list={`roles-${membership.id}`}
-                            defaultValue={membership.role_in_department}
-                            onBlur={(e) => {
-                              if (e.target.value !== membership.role_in_department) {
-                                handleUpdateMemberRole(membership.member_id, e.target.value);
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.currentTarget.blur();
-                              }
-                            }}
-                            className={`text-xs font-semibold rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-primary-500 w-32 ${getRoleBadgeColor(membership.role_in_department)}`}
-                          />
-                          <datalist id={`roles-${membership.id}`}>
-                            <option value="Member" />
-                            <option value="Leader" />
-                            <option value="Co-Leader" />
-                            <option value="Coordinator" />
-                            <option value="Assistant" />
-                            <option value="Chairperson" />
-                            <option value="Vice Chairperson" />
-                            <option value="Secretary" />
-                            <option value="Treasurer" />
-                            <option value="Auditor" />
-                          </datalist>
-                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(membership.role_in_department)}`}>
+                          {membership.role_in_department}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDateForDisplay(membership.joined_at)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleRemoveMember(membership.member_id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {['admin', 'church_leadership', 'secretary'].includes((firebaseUser as any)?.role || '') && (
+                            <select
+                              value={membership.role_in_department}
+                              onChange={(e) => handleUpdateMemberRole(membership.member_id, e.target.value)}
+                              className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              title="Change role"
+                            >
+                              <option value="member">Member</option>
+                              <option value="leader">Leader</option>
+                              <option value="co-leader">Co-Leader</option>
+                              <option value="coordinator">Coordinator</option>
+                              <option value="assistant">Assistant</option>
+                              <option value="chairperson">Chairperson</option>
+                              <option value="vice chairperson">Vice Chairperson</option>
+                              <option value="secretary">Secretary</option>
+                              <option value="treasurer">Treasurer</option>
+                              <option value="auditor">Auditor</option>
+                            </select>
+                          )}
+                          <button
+                            onClick={() => handleRemoveMember(membership.member_id)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Remove member"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

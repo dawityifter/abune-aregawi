@@ -33,16 +33,21 @@ router.delete('/:departmentId/members/:memberId', roleMiddleware(manageRoles), d
 // Member's Departments (any authenticated user can view their own departments)
 router.get('/members/:member_id/departments', departmentController.getMemberDepartments);
 
+const { requireDepartmentRole, requireDepartmentMembership } = require('../middleware/departmentAuth');
+
 // ========== MEETING ROUTES ==========
 // Department meetings (leaders can manage, all members can view)
-router.get('/:id/meetings', roleMiddleware(viewRoles), departmentController.getDepartmentMeetings);
-router.post('/:id/meetings', roleMiddleware(manageRoles), departmentController.createMeeting);
-router.put('/meetings/:id', roleMiddleware(manageRoles), departmentController.updateMeeting);
+router.get('/:id/meetings', requireDepartmentMembership(), departmentController.getDepartmentMeetings);
+router.get('/meetings/:id', requireDepartmentMembership(), departmentController.getMeetingById);
+router.post('/:id/meetings', requireDepartmentRole(['leader', 'chairperson', 'secretary']), departmentController.createMeeting);
+router.put('/meetings/:id', requireDepartmentRole(['leader', 'chairperson', 'secretary']), departmentController.updateMeeting);
+router.delete('/meetings/:id', requireDepartmentRole(['leader', 'chairperson', 'secretary']), departmentController.deleteMeeting);
 
 // ========== TASK ROUTES ==========
 // Department tasks (leaders can manage, all members can view)
-router.get('/:id/tasks', roleMiddleware(viewRoles), departmentController.getDepartmentTasks);
-router.post('/:id/tasks', roleMiddleware(manageRoles), departmentController.createTask);
-router.put('/tasks/:id', roleMiddleware(manageRoles), departmentController.updateTask);
+router.get('/:id/tasks', requireDepartmentMembership(), departmentController.getDepartmentTasks);
+router.post('/:id/tasks', requireDepartmentMembership(), departmentController.createTask);
+router.put('/tasks/:id', requireDepartmentMembership(), departmentController.updateTask);
+router.delete('/tasks/:id', requireDepartmentMembership(), departmentController.deleteTask);
 
 module.exports = router;
