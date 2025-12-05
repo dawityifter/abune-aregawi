@@ -519,7 +519,7 @@ exports.getDepartmentMeetings = async (req, res) => {
 // Create a new meeting
 exports.createMeeting = async (req, res) => {
   try {
-    const { department_id, title, meeting_date, location, attendees, minutes } = req.body;
+    const { department_id, title, meeting_date, location, purpose, agenda, attendees, minutes } = req.body;
     const created_by = req.user?.member_id;
 
     const { DepartmentMeeting } = require('../models');
@@ -536,6 +536,8 @@ exports.createMeeting = async (req, res) => {
       title,
       meeting_date: meeting_date || new Date(),
       location,
+      purpose,
+      agenda,
       attendees: attendees || [],
       minutes,
       created_by
@@ -582,6 +584,121 @@ exports.updateMeeting = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update meeting',
+      error: error.message
+    });
+  }
+};
+
+// Get single meeting by ID with tasks and previous meeting
+exports.getMeetingById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { DepartmentMeeting, DepartmentTask } = require('../models');
+
+    // Fetch the meeting with tasks
+    const meeting = await DepartmentMeeting.findByPk(id, {
+      include: [
+        {
+          model: Member,
+          as: 'creator',
+          attributes: ['id', 'first_name', 'last_name']
+        },
+        {
+          model: DepartmentTask,
+          as: 'tasks',
+          include: [
+            {
+              model: Member,
+              as: 'assignee',
+              attributes: ['id', 'first_name', 'last_name']
+            },
+            {
+              model: Member,
+              as: 'creator',
+              attributes: ['id', 'first_name', 'last_name']
+            }
+          ],
+          order: [['created_at', 'DESC']]
+        }
+      ]
+    });
+
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meeting not found'
+      });
+    }
+
+    // Find previous meeting (by date, same department)
+    const previousMeeting = await DepartmentMeeting.findOne({
+      where: {
+        department_id: meeting.department_id,
+        meeting_date: {
+          [Op.lt]: meeting.meeting_date
+        }
+      },
+      include: [
+        {
+          model: DepartmentTask,
+          as: 'tasks',
+          include: [
+            {
+              model: Member,
+              as: 'assignee',
+              attributes: ['id', 'first_name', 'last_name']
+            }
+          ]
+        }
+      ],
+      order: [['meeting_date', 'DESC']],
+      limit: 1
+    });
+
+    res.json({
+      success: true,
+      data: {
+        meeting,
+        previousMeeting: previousMeeting || null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching meeting:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch meeting',
+      error: error.message
+    });
+  }
+};
+
+// Delete a meeting
+exports.deleteMeeting = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { DepartmentMeeting } = require('../models');
+
+    const meeting = await DepartmentMeeting.findByPk(id);
+    if (!meeting) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meeting not found'
+      });
+    }
+
+    await meeting.destroy();
+
+    res.json({
+      success: true,
+      message: 'Meeting deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting meeting:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete meeting',
       error: error.message
     });
   }
@@ -653,7 +770,11 @@ exports.createTask = async (req, res) => {
       assigned_to,
       status,
       priority,
-      due_date
+      due_date,
+      start_date,
+      end_date,
+      rejected_date,
+      notes
     } = req.body;
     const created_by = req.user?.member_id;
 
@@ -666,6 +787,14 @@ exports.createTask = async (req, res) => {
       });
     }
 
+    // Validate rejected_date is provided when status is 'rejected'
+    if (status === 'rejected' && !rejected_date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rejected date is required when status is rejected'
+      });
+    }
+
     const task = await DepartmentTask.create({
       department_id,
       meeting_id,
@@ -675,6 +804,10 @@ exports.createTask = async (req, res) => {
       status: status || 'pending',
       priority: priority || 'medium',
       due_date,
+      start_date,
+      end_date,
+      rejected_date,
+      notes,
       created_by
     });
 
@@ -708,6 +841,14 @@ exports.updateTask = async (req, res) => {
       });
     }
 
+    // Validate rejected_date is provided when status is being changed to 'rejected'
+    if (updateData.status === 'rejected' && !updateData.rejected_date && !task.rejected_date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rejected date is required when status is rejected'
+      });
+    }
+
     await task.update(updateData);
 
     res.json({
@@ -719,6 +860,37 @@ exports.updateTask = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update task',
+      error: error.message
+    });
+  }
+};
+
+// Delete a task
+exports.deleteTask = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { DepartmentTask } = require('../models');
+
+    const task = await DepartmentTask.findByPk(id);
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found'
+      });
+    }
+
+    await task.destroy();
+
+    res.json({
+      success: true,
+      message: 'Task deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting task:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete task',
       error: error.message
     });
   }

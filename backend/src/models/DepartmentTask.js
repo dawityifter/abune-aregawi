@@ -75,7 +75,7 @@ module.exports = (sequelize) => {
             }
         },
         status: {
-            type: DataTypes.ENUM('pending', 'in_progress', 'completed', 'cancelled'),
+            type: DataTypes.ENUM('pending', 'in_progress', 'completed', 'cancelled', 'rejected'),
             allowNull: false,
             defaultValue: 'pending'
         },
@@ -87,6 +87,26 @@ module.exports = (sequelize) => {
         due_date: {
             type: DataTypes.DATEONLY,
             allowNull: true
+        },
+        start_date: {
+            type: DataTypes.DATEONLY,
+            allowNull: true,
+            comment: 'Task start date'
+        },
+        end_date: {
+            type: DataTypes.DATEONLY,
+            allowNull: true,
+            comment: 'Task end date'
+        },
+        rejected_date: {
+            type: DataTypes.DATEONLY,
+            allowNull: true,
+            comment: 'Date when task was rejected (required when status=rejected)'
+        },
+        notes: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            comment: 'Additional notes about the task'
         },
         created_by: {
             type: DataTypes.BIGINT,
