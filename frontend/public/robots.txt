@@ -9,4 +9,4 @@ Disallow: /api/
 Disallow: /*.json$
 
 # Sitemap location
-Sitemap: https://abune-aregawi-church-dallas.web.app/sitemap.xml
+Sitemap: https://abunearegawi.church/sitemap.xml
