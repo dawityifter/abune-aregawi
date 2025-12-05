@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <!-- Homepage - Primary landing page for Ethiopian Orthodox Tigray Church -->
+  <url>
+    <loc>https://abune-aregawi-church-dallas.web.app/</loc>
+    <lastmod>2025-12-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://abune-aregawi-church-dallas.web.app/" />
+    <xhtml:link rel="alternate" hreflang="ti" href="https://abune-aregawi-church-dallas.web.app/" />
+  </url>
+
+  <!-- About/Bylaws - Church information and Orthodox traditions -->
+  <url>
+    <loc>https://abune-aregawi-church-dallas.web.app/bylaws</loc>
+    <lastmod>2025-12-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Donate Page - Support Ethiopian Orthodox Church -->
+  <url>
+    <loc>https://abune-aregawi-church-dallas.web.app/donate</loc>
+    <lastmod>2025-12-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Member Portal - Church community access -->
+  <url>
+    <loc>https://abune-aregawi-church-dallas.web.app/login</loc>
+    <lastmod>2025-12-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Registration - Join Tigray Orthodox Church community -->
+  <url>
+    <loc>https://abune-aregawi-church-dallas.web.app/register</loc>
+    <lastmod>2025-12-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Dashboard - Member services -->
+  <url>
+    <loc>https://abune-aregawi-church-dallas.web.app/dashboard</loc>
+    <lastmod>2025-12-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+</urlset>
