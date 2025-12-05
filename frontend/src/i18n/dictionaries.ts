@@ -35,6 +35,7 @@ export interface Dictionaries {
       give: string;
       times: string;
       watch: string;
+      viewChannel: string;
     };
   };
   actions: {
@@ -80,6 +81,7 @@ export const en: Dictionaries = {
       give: "Give Online",
       times: "Worship Times",
       watch: "Watch Live",
+      viewChannel: "View Our Youtube Channel",
     },
   },
   actions: {
@@ -139,6 +141,7 @@ export const ti: Dictionaries = {
       give: "ልገሳ ኣንታዊ",
       times: "ሰዓታት ስግደ",
       watch: "ቀጥታ ርእይ",
+      viewChannel: "ቻነል ዩቲዩብና ርኣይ",
     },
   },
   actions: {

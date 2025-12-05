@@ -27,6 +27,7 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const incomeCategoryRoutes = require('./routes/incomeCategoryRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const vendorRoutes = require('./routes/vendorRoutes');
+const youtubeRoutes = require('./routes/youtubeRoutes');
 const donationController = require('./controllers/donationController');
 
 // Import database
@@ -230,6 +231,7 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/income-categories', incomeCategoryRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/vendors', vendorRoutes);
+app.use('/api/youtube', youtubeRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
