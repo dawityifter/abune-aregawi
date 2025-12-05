@@ -18,7 +18,7 @@ const translations = {
     'church.name': 'Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church',
     'welcome.headline': 'Welcome to Our Spiritual Home',
     'welcome.subtitle': 'Welcome to Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church',
-    
+
     // Service Times
     'service.times': 'Service Times',
     'sunday': 'Sunday',
@@ -26,14 +26,15 @@ const translations = {
     'friday': 'Friday',
     'location': 'Location',
     'get.directions': 'Get Directions',
-    
+
     // CTA Buttons
     'plan.visit': 'Plan a Visit',
     'church.bylaw': 'Church Bylaw',
     'watch.live': 'Watch Live',
     'register.member': 'Register Member',
     'view.dues': 'View Dues / Login',
-    
+    'view.youtube.channel': 'View Our Youtube Channel',
+
     // Section Headers
     'whats.happening': "What's Happening",
     'watch.listen': 'Watch or Listen',
@@ -41,7 +42,7 @@ const translations = {
     'stay.connected': 'Stay Connected',
     'newcomer': 'New to Our Church?',
     'grow.spiritually': 'Grow Spiritually',
-    
+
     // Participation Cards
     'volunteer': 'Volunteer',
     'volunteer.desc': 'Join our ministry teams and serve our community',
@@ -51,12 +52,12 @@ const translations = {
     'member.portal': 'Member Portal',
     'member.portal.desc': 'Access your dues and member information',
     'member.login': 'Login',
-    
+
     // Media Links
     'watch.live.stream': 'Watch Live Stream',
     'sermon.archive': 'Sermon Archive',
     'join.zoom.prayer': 'Join Zoom Prayer',
-    
+
     // Auth
     'sign.in': 'Sign In',
     'sign.in.subtitle': 'Sign in to your account',
@@ -80,7 +81,7 @@ const translations = {
     'firstLoginModal.body': 'Welcome! Please complete your registration to join our church community, or continue browsing as a guest.',
     'firstLoginModal.ok': 'Continue to registration',
     'firstLoginModal.cancel': 'Cancel',
-    
+
     // Dashboard
     'member.dashboard': 'Member Dashboard',
     'welcome': 'Welcome',
@@ -94,7 +95,7 @@ const translations = {
     'settings': 'Settings',
     'account.settings': 'Account settings',
     'manage.account': 'Manage Account',
-    
+
     // Admin Panel
     'admin.panel': 'Admin Panel',
     'admin.dashboard': 'Admin Dashboard',
@@ -175,7 +176,7 @@ const translations = {
     'amharic': 'Amharic',
     'no.children.registered': 'No children registered',
     'save.changes': 'Save Changes',
-    
+
     // Profile
     'edit.profile': 'Edit Profile',
     'profile.information': 'Profile Information',
@@ -239,10 +240,10 @@ const translations = {
     'state': 'State',
     'zip.code': 'Zip Code',
     'select.option': 'Select option',
-    
+
     // Children and Dependents Section
     'children.and.dependents': 'Children & Dependents',
-    
+
     // Member Status
     'member.status': 'Member Status',
     'search.placeholder': 'Search by name or phone...',
@@ -269,7 +270,7 @@ const translations = {
     'members': 'members',
     'previous': 'Previous',
     'next': 'Next',
-    
+
     // Registration Form (legacy keys - kept for compatibility)
     'title': 'Member Registration',
     'spiritualInfo': 'Spiritual Information',
@@ -277,7 +278,7 @@ const translations = {
     'submit': 'Submit Registration',
     'required': 'Required',
     'optional': 'Optional',
-    
+
     // Form Fields
     'first.name': 'First Name',
     'middle.name': 'Middle Name',
@@ -296,14 +297,14 @@ const translations = {
     'password.required': 'Password is required',
     'passwords.dont.match': 'Passwords do not match',
     'password.too.short': 'Password must be at least 8 characters long',
-    
+
     // Additional Form Fields
     'email.address': 'Email Address',
     'apartment.suite.number': 'Apartment/Suite Number',
     'state.province': 'State/Province',
     'spouse.contact.phone': 'Spouse Contact Phone',
     'login.email': 'Login Email',
-    
+
     // Head of Household
     'head.of.household': 'Are you the head of your household?',
     'head.of.household.help': 'If your spouse has not registered yet, please select Yes to register as the head of household. Only the head of household should add children/dependents.',
@@ -316,24 +317,24 @@ const translations = {
     'has.dependents': 'I have children or dependents to register',
     'has.dependents.help': 'Check this box if you want to add children or dependents during registration. You can also add them later from your dashboard.',
     'is.baptized': 'Baptized in this Church?',
-    
+
     // Sign In Page
     'welcome.back': 'Welcome Back',
     'sign.in.to.access.community': 'Sign in to access your church community',
-    
+
     // Processing
     'processing': 'Processing...',
-    
+
     // Missing Translation Keys - Registration & Authentication
     'member.registration': 'Member Registration',
     'complete.registration.to.join': 'Complete your registration to join our church community',
     'complete.registration': 'Complete Registration',
     'submitting': 'Submitting...',
     'participate.in.tithe': 'I would like to participate in tithing',
-    
+
     // Registration Steps (updated format)
     'personal.information': 'Personal Information',
-    'contact.information': 'Contact Information', 
+    'contact.information': 'Contact Information',
     'family.information': 'Family Information',
     'ministry.interests': 'Ministry Interests',
     'contribution.information': 'Contribution Information',
@@ -344,7 +345,7 @@ const translations = {
     'contribution.giving': 'Contribution & Giving',
     'account.info': 'Account Information',
     'dependents': 'Dependents',
-    
+
     // Navigation & Actions
     'continue': 'Continue',
     'back': 'Back',
@@ -355,14 +356,14 @@ const translations = {
     'warning': 'Warning',
     'info': 'Info',
     'edit': 'Edit',
-    
+
     // Phone Authentication
     'send.code': 'Send Code',
     'enter.verification.code': 'Enter Verification Code',
     'verify.code': 'Verify Code',
     'email.password': 'Email/Password',
     'try.again': 'Try Again',
-    
+
     // Error Messages
     'invalid.verification.code': 'Invalid verification code. Please try again.',
     'code.expired': 'Verification code has expired. Please request a new one.',
@@ -371,14 +372,14 @@ const translations = {
     'network.error': 'Network error. Please check your connection.',
     'something.went.wrong': 'Something went wrong. Please try again.',
     'registration.successful': 'Registration completed successfully!',
-    
+
     // Step Navigation
     'step.1': 'Step 1',
-    'step.2': 'Step 2', 
+    'step.2': 'Step 2',
     'step.3': 'Step 3',
     'step.4': 'Step 4',
     'step.5': 'Step 5',
-    
+
     // Additional Form Validation
     'spouse.name.required': 'Spouse name is required',
     'emergency.contact.name.required': 'Emergency contact name is required',
@@ -389,7 +390,7 @@ const translations = {
     'church.name': 'ደብረ ጸሓይ አቡነ አረጋዊ ትግራይ ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን',
     'welcome.headline': 'ናብ መንበረ ስፍሓትና ብደሓን መጻእኩም',
     'welcome.subtitle': 'እንኳዕ ናብ ቤተ ክርስትያን ኦርቶዶክስ ትግራይ ኣቡነ ኣረጋዊ ብደሓን መጻእኩም!',
-    
+
     // Service Times
     'service.times': 'ግዜ ኣገልግሎት',
     'sunday': 'ሰንበት',
@@ -397,14 +398,15 @@ const translations = {
     'friday': 'ዓርቢ',
     'location': 'ኩነታት',
     'get.directions': 'ኣዛምድ',
-    
+
     // CTA Buttons
     'plan.visit': 'ምብጻሕ ኣዘዝምድ',
     'church.bylaw': 'ሕጊ ቤተ ክርስቲያን',
     'watch.live': 'ብቀጥታ ርኣይ',
     'register.member': 'ደምድም ኣኽትም',
     'view.dues': 'ክፍሊት ርኣይ / እተኻ',
-    
+    'view.youtube.channel': 'ቻነል ዩቲዩብና ርኣይ',
+
     // Section Headers
     'whats.happening': 'ምን እዩ ዘጋጥም',
     'watch.listen': 'ርኣይ ወይ ሰምዕ',
@@ -412,7 +414,7 @@ const translations = {
     'stay.connected': 'ተራኺልካ ክትነብር',
     'newcomer': 'ሓድሽ እኹም ኣብ ቤተ ክርስቲያንና?',
     'grow.spiritually': 'ብመንፈስ ክትሰፍሕ',
-    
+
     // Participation Cards
     'volunteer': 'ተጋሩ',
     'volunteer.desc': 'ኣብ ጕጅለ ኣገልግሎትና ተጸምብር እሞ ንማሕበረሰብና ኣገልግል',
@@ -422,12 +424,12 @@ const translations = {
     'member.portal': 'ደገ ኣባል',
     'member.portal.desc': 'ክፍሊትካን ሓበሬታ ኣባልካን ኣብርር',
     'member.login': 'እተኻ',
-    
+
     // Media Links
     'watch.live.stream': 'ብቀጥታ ርኣይ',
     'sermon.archive': 'ናይ ስብከት መዝገብ',
     'join.zoom.prayer': 'ብዙም ጸሎት ተጸምብር',
-    
+
     // Auth
     'sign.in': 'እተኻ',
     'sign.in.subtitle': 'ናብ ኣካውንትካ እተኻ',
@@ -451,7 +453,7 @@ const translations = {
     'firstLoginModal.body': 'Welcome! Please complete your registration to join our church community, or continue browsing as a guest.',
     'firstLoginModal.ok': 'Continue to registration',
     'firstLoginModal.cancel': 'Cancel',
-    
+
     // Sign In Page - New translations
     'welcome.back': 'እንቋዕ ብሰላም መጻእኩም',
     'sign.in.to.access.community': 'ናብ ማሕበረሰብ ቤተ ክርስቲያንኩም ንምእታው ተመዝገቡ',
@@ -472,7 +474,7 @@ const translations = {
     'try.again': 'ዳግማይ ፈትን',
     'no.auth.methods.available': 'ዝኾነ ናይ እተኻ ኣገባብ ኣይተረኽበን።',
     'contact.administrator.assistance': 'ሓገዝ ንምርካብ ንኣመሓዳሪ ተወከሱ።',
-    
+
     // Dashboard
     'member.dashboard': 'ደገ ኣባላት',
     'welcome': 'እንቋዕ ብደሓን መጻእኩም',
@@ -486,7 +488,7 @@ const translations = {
     'settings': 'ቅንጡፍቲ',
     'account.settings': 'ቅንጡፍቲ ኣካውንት',
     'manage.account': 'ኣካውንት ምምሕዳር',
-    
+
     // Profile
     'edit.profile': 'ፕሮፋይል ኣምልስ',
     'profile.information': 'ሓበሬታ ፕሮፋይል',
@@ -535,7 +537,7 @@ const translations = {
     'apartment.no': 'ቤት ቁጽሪ (ኣማራጺ)',
     'zip.code': 'ዚፕ ኮድ',
     'select.option': 'ምረጽ ኣምረጽ',
-    
+
     // Children/Dependents
     'children.dependents': 'ውልዲ እንተሃልዩ ተራኺል',
     'children.dependents.help': 'ውልዲ ወይ ተራኺል እቶም ምስ ቤተሰብካ ክውስኽ ዘለዎም ኣኽትም።',
@@ -547,7 +549,7 @@ const translations = {
     'remove': 'ሰርዝ',
     'no.children.added': 'ገና ውልዲ ኣይተኣከቡን።',
     'add.children.now': 'ሕጂ ውልዲ ኣኽትም ወይ ድሕሪ ካብ ዳሽቦርድካ ኣኽትም።',
-    
+
     // Member Status
     'member.status': 'ሓበሬታ ኣባላት',
     'search.placeholder': 'ብስም ወይ ብስልኪ ድለ...',
@@ -573,7 +575,7 @@ const translations = {
     'members': 'ኣባላት',
     'previous': 'ቀዳማይ',
     'next': 'ቀጻማይ',
-    
+
     // Registration Form (legacy keys - kept for compatibility)
     'title': 'ምዝገባ ኣባል',
     'spiritualInfo': 'መንፈሳዊ ሓፈሻዊ',
@@ -581,7 +583,7 @@ const translations = {
     'submit': 'ምዝገባ ስደድ',
     'required': 'የድለ',
     'optional': 'ኣማራጺ',
-    
+
     // Form Fields
     'first.name': 'ስም ቀዳማይ',
     'middle.name': 'ስም ማእከላይ',
@@ -600,7 +602,7 @@ const translations = {
     'password.required': 'መሕለፊ ቃል የድለ',
     'passwords.dont.match': 'መሕለፊ ቃላት ኣይሰማምዑን',
     'password.too.short': 'መሕለፊ ቃል ካብ 8 ፊደላት ክልቲኦም የድለ',
-    
+
     // Additional Form Fields
     'apartment.suite.number': 'ቤት/ሱይት ቁጽሪ',
     'state.province': 'ግዛት/ግዝኣት',
@@ -610,7 +612,7 @@ const translations = {
     'emergency.contact.phone': 'ስልኪ ተራኺል ሓጋዚ',
     'interested.in.serving': 'ኣብ ኣገልግሎት ተሻጋሪ',
     'tithe.participation': 'ክፍሊት ኣስማሚ',
-    
+
     // Head of Household
     'head.of.household': 'ንስኻ መራሒ ቤተሰብካ እኹም ዲኻ?',
     'head.of.household.help': 'መርዓኻ እንተዘይተመዝገበ እዩ፣ እቶም እንተሃልዩ እሞ መራሒ ቤተሰብ ክትኮን እተኻ እሞ ኣኽትም። መራሒ ቤተሰብ ጥራይ እዩ ውልዲ/ተራኺል ክውስኽ ዘለዎ።',
@@ -619,24 +621,24 @@ const translations = {
     'head.of.household.email.not.found': 'ብዚዝክር ኢመይል ኣባል ኣይተረኽበን። መራሒ ቤተሰብ ክትኮን እተኻ እሞ ኣኽትም ወይ ትኽክለኛ ኢመይል መራሒ ቤተሰብ ሃብ።',
     'has.dependents': 'ውልዲ ወይ ተራኺል ክኣኽትም እየ ዘለኹ',
     'has.dependents.help': 'እዚ ሳጹን እንተተሓትት ውልዲ ወይ ተራኺል ክትውስኽ እትደሊ እንተኾንካ። ካብ ዳሽቦርድካ ድማ ክትውስኾም ትኽእል እኹም።',
-    
+
     // Processing
     'processing': 'Processing...',
-    
+
     // Missing Translation Keys - Registration & Authentication
     'member.registration': 'ምዝገባ ኣባል',
     'complete.registration.to.join': 'ናብ ቤተ ክርስቲያንና ክትጽንበር ምዝገባኻ ዛዝም',
     'complete.registration': 'ምዝገባ ዛዝም',
     'submitting': 'ይስደድ ኣሎ...',
     'participate.in.tithe': 'ኣብ ዓስራይ ክሳተፍ እየ ዘለኹ',
-    
+
     // Registration Steps
     'personal.information': 'ውልቃዊ ሓፈሻዊ',
-    'contact.information': 'ተራኺብ ሓፈሻዊ', 
+    'contact.information': 'ተራኺብ ሓፈሻዊ',
     'family.information': 'ቤተሰብ ሓፈሻዊ',
     'ministry.interests': 'ኣገልግሎት ድሌታት',
     'contribution.information': 'ወፈራ ሓፈሻዊ',
-    
+
     // Navigation & Actions
     'continue': 'ቀጽል',
     'back': 'ተመለስ',
@@ -645,14 +647,14 @@ const translations = {
     'success': 'ዓወት',
     'warning': 'ጠንቂ',
     'info': 'ሓፈሻዊ',
-    
+
     // Phone Authentication
     'send.code': 'ኮድ ስደድ',
     'enter.verification.code': 'ናይ ምርግጋጽ ኮድ ኣእትው',
     'verify.code': 'ኮድ ኣረጋግጽ',
     'phone.number': 'ቁጽሪ ስልኪ',
     'email.password': 'ኢመይል/መሕለፊ ቃል',
-    
+
     // Error Messages
     'invalid.verification.code': 'ዘይትኽክል ናይ ምርግጋጽ ኮድ። ዳግማይ ፈትን።',
     'code.expired': 'ናይ ምርግጋጽ ኮድ ጊዜኡ ሓሊፉ። ሓድሽ ሕተት።',
@@ -661,14 +663,14 @@ const translations = {
     'network.error': 'ናይ መርበብ ጌጋ። ምትእስሳርካ ኣረጋግጽ።',
     'something.went.wrong': 'ሓደ ነገር ጌጋ ኮይኑ። ዳግማይ ፈትን።',
     'registration.successful': 'ምዝገባ ብዓወት ተዛዚሙ!',
-    
+
     // Step Navigation
     'step.1': 'ደረጃ 1',
-    'step.2': 'ደረጃ 2', 
+    'step.2': 'ደረጃ 2',
     'step.3': 'ደረጃ 3',
     'step.4': 'ደረጃ 4',
     'step.5': 'ደረጃ 5',
-    
+
     // Additional Form Validation
     'spouse.name.required': 'ስም መርዓ የድለ',
     'emergency.contact.name.required': 'ስም ተራኺል ሓጋዚ የድለ',
@@ -693,7 +695,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     if (currentTranslation) {
       return currentTranslation;
     }
-    
+
     // If not found and current language is not English, fallback to English
     if (language !== 'en') {
       const englishTranslation = translations.en[key as keyof typeof translations.en];
@@ -701,7 +703,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
         return englishTranslation;
       }
     }
-    
+
     // If still not found, convert dotted key to readable text
     return key
       .split('.')

@@ -32,23 +32,22 @@ const Hero: React.FC = () => {
 
   return (
     <header
-      className={`relative overflow-hidden hero-gradient text-white ${
-        hasBg ? 'bg-cover bg-center' : 'bg-cross-lattice'
-      }`}
+      className={`relative overflow-hidden hero-gradient text-white ${hasBg ? 'bg-cover bg-center' : 'bg-cross-lattice'
+        }`}
       style={hasBg ? { backgroundImage: `url(${bgUrl})`, backgroundPosition: bgPosition } : undefined}
-    > 
+    >
       {/* Dark overlay to improve text readability */}
       <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
       <div className="relative max-w-7xl mx-auto px-4 pt-24 pb-16 sm:pt-28 sm:pb-20">
         {/* Title temporarily removed per request */}
-        
+
         {/* Mission Statement */}
         <div className="mb-8 text-center">
           <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight max-w-5xl mx-auto px-4 drop-shadow-lg">
             We want everyone, everywhere to have an everyday relationship with the lord. By uniting through the Eucharist.
           </p>
         </div>
-        
+
         <p className={`mt-4 max-w-2xl text-base sm:text-lg md:text-xl text-white/90 ${lang === 'ti' ? 'text-tigrigna' : ''}`}>
           {t('hero.subtitle')}
         </p>
@@ -57,15 +56,13 @@ const Hero: React.FC = () => {
             <i className="fas fa-heart mr-2" />
             {t('hero.cta.give')}
           </Link>
-          <a
-            href="https://www.youtube.com/@debretsehayeotcdallastexas7715/live"
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-outline"
+          <button
+            className="btn btn-secondary"
+            onClick={() => window.open('https://www.youtube.com/channel/UCvK6pJUKU2pvoX7bQ3PN2aA', '_blank')}
           >
-            <i className="fas fa-video mr-2" />
-            {t('hero.cta.watch')}
-          </a>
+            <i className="fab fa-youtube mr-2" />
+            {t('hero.cta.viewChannel')}
+          </button>
         </div>
       </div>
 

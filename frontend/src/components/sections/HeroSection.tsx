@@ -21,10 +21,10 @@ const HeroSection: React.FC = () => {
 
         {/* Church Logo */}
         <div className="flex items-center justify-center gap-4 mb-12">
-          <img 
-            src="/cross.png" 
-            alt="Orthodox Cross" 
-            className="h-16 w-auto" 
+          <img
+            src="/cross.png"
+            alt="Orthodox Cross"
+            className="h-16 w-auto"
             style={{ filter: 'brightness(0) invert(1)' }}
           />
         </div>
@@ -82,12 +82,12 @@ const HeroSection: React.FC = () => {
 
         {/* CTA Buttons (Member Status and Church Bylaw removed) */}
         <div className="flex justify-center gap-4 max-w-3xl mx-auto">
-          <button 
+          <button
             className="btn btn-secondary"
-            onClick={() => window.open('https://www.youtube.com/@debretsehayeotcdallastexas7715/live', '_blank')}
+            onClick={() => window.open('https://www.youtube.com/channel/UCvK6pJUKU2pvoX7bQ3PN2aA', '_blank')}
           >
-            <i className="fas fa-video mr-2"></i>
-            {t('watch.live')}
+            <i className="fab fa-youtube mr-2"></i>
+            {t('view.youtube.channel')}
           </button>
         </div>
       </div>

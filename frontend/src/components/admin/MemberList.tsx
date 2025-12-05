@@ -240,7 +240,7 @@ const MemberList: React.FC<MemberListProps> = ({
       </div>
 
       {/* Eye-catching Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Total Members (Households) Card */}
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
           <div className="flex items-center justify-between">
@@ -277,6 +277,31 @@ const MemberList: React.FC<MemberListProps> = ({
             </div>
             <div className="bg-purple-400 bg-opacity-30 rounded-full p-4">
               <i className="fas fa-users text-4xl"></i>
+            </div>
+          </div>
+        </div>
+
+        {/* Total Congregation Card */}
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-100 text-sm font-medium uppercase tracking-wide">
+                {t('total.congregation') || 'Total Congregation'}
+              </p>
+              <p className="text-5xl font-bold mt-2">
+                {allMembers.length + totalDependents}
+              </p>
+              <div className="mt-2">
+                <p className="text-green-100 text-sm">
+                  (Households + Dependents)
+                </p>
+                <p className="text-green-200 text-xs mt-1 italic">
+                  Total individuals connected to the church community
+                </p>
+              </div>
+            </div>
+            <div className="bg-green-400 bg-opacity-30 rounded-full p-4">
+              <i className="fas fa-church text-4xl"></i>
             </div>
           </div>
         </div>
@@ -390,10 +415,10 @@ const MemberList: React.FC<MemberListProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${member.role === 'admin' ? 'bg-red-100 text-red-800' :
-                        member.role === 'church_leadership' ? 'bg-purple-100 text-purple-800' :
-                          member.role === 'treasurer' ? 'bg-green-100 text-green-800' :
-                            member.role === 'secretary' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
+                      member.role === 'church_leadership' ? 'bg-purple-100 text-purple-800' :
+                        member.role === 'treasurer' ? 'bg-green-100 text-green-800' :
+                          member.role === 'secretary' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
                       }`}>
                       {getRoleDisplayName(member.role)}
                     </span>
@@ -403,8 +428,8 @@ const MemberList: React.FC<MemberListProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${member.isActive
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
                       }`}>
                       {member.isActive ? t('active') : t('inactive')}
                     </span>
@@ -507,8 +532,8 @@ const MemberList: React.FC<MemberListProps> = ({
                       key={page}
                       onClick={() => setCurrentPage(page)}
                       className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${page === currentPage
-                          ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                        ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
+                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
                         }`}
                     >
                       {page}

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import Hero from './Hero';
+import LiveStreamBanner from './LiveStreamBanner';
 import QuickLinks from './QuickLinks';
 import WhatsHappeningSection from './sections/WhatsHappeningSection';
 import StayConnectedSection from './sections/StayConnectedSection';
@@ -13,7 +14,7 @@ import useServerWarmup from '../hooks/useServerWarmup';
 
 const HomePage: React.FC = () => {
   const { lang } = useI18n();
-  
+
   // Trigger server warmup when component mounts
   useServerWarmup();
 
@@ -28,6 +29,7 @@ const HomePage: React.FC = () => {
       }}
     >
       <Hero />
+      <LiveStreamBanner />
       <QuickLinks />
       <WhatsHappeningSection />
       <StayConnectedSection />
