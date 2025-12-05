@@ -5,6 +5,22 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
+// Override console.log and console.error to include timestamps
+const originalLog = console.log;
+const originalError = console.error;
+
+function getTimestamp() {
+  return new Date().toISOString();
+}
+
+console.log = function (...args) {
+  originalLog(`[${getTimestamp()}]`, ...args);
+};
+
+console.error = function (...args) {
+  originalError(`[${getTimestamp()}]`, ...args);
+};
+
 // Debug logging for server startup
 console.log('🚀 Starting server...');
 console.log('🔍 Server Environment Debug:');
