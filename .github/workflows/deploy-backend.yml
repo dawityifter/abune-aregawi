@@ -68,6 +68,11 @@ jobs:
             echo "YOUTUBE_CHANNEL_ID=$YOUTUBE_CHANNEL_ID" | sudo tee -a .env > /dev/null
             echo "OVERRIDE_YOUTUBE_LIVE_FLAG=$OVERRIDE_YOUTUBE_LIVE_FLAG" | sudo tee -a .env > /dev/null
             
+            # Fix permissions so the app user can read the file
+            # Assuming current user is the one running the app
+            sudo chown $USER:$USER .env
+            sudo chmod 600 .env
+            
             sudo npm ci --production
             
             # Clean up duplicate process if it exists
