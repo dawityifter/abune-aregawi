@@ -1,7 +1,9 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import { useI18n } from '../../i18n/I18nProvider';
 
 const Footer: React.FC = () => {
+  const { t } = useI18n();
   const location = useLocation();
   const isHome = location.pathname === '/';
 
@@ -16,7 +18,7 @@ const Footer: React.FC = () => {
           <div className="info-block w-full flex-1">
             <h3 className="clergy-info mb-4">
               <i className="fas fa-map-marker mr-2"></i>
-              Location
+              {t('quicklinks.location') || "Location"}
             </h3>
             <p className="contact-info">
               1621 S Jupiter Rd, Garland, TX 75042
@@ -26,7 +28,7 @@ const Footer: React.FC = () => {
           <div className="info-block w-full flex-1">
             <h3 className="clergy-info mb-4">
               <i className="fas fa-phone mr-2"></i>
-              Contact
+              {t('common.cta.contact')}
             </h3>
             <p className="contact-info">
               (469) XXX-XXXX
@@ -34,8 +36,8 @@ const Footer: React.FC = () => {
           </div>
         </div>
         <div className="text-center mt-8 pt-8 border-t border-accent-400">
-            <p className="text-white/90">&copy; 2025 Tigray Orthodox Church. All rights reserved.</p>
-            <p className="mt-4 flex items-center justify-center gap-4">
+          <p className="text-white/90">&copy; 2025 Tigray Orthodox Church. All rights reserved.</p>
+          <p className="mt-4 flex items-center justify-center gap-4">
             <a href="/credits" className="text-secondary-200 hover:text-secondary-100 transition-colors">
               <i className="fas fa-code mr-2"></i>
               Tech Team / Credits

@@ -44,7 +44,7 @@ const Hero: React.FC = () => {
         {/* Mission Statement */}
         <div className="mb-8 text-center">
           <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight max-w-5xl mx-auto px-4 drop-shadow-lg">
-            We want everyone, everywhere to have an everyday relationship with the lord. By uniting through the Eucharist.
+            {t('hero.mission')}
           </p>
         </div>
 

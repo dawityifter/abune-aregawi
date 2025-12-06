@@ -4,6 +4,11 @@ import { useLanguage } from '../../contexts/LanguageContext';
 const GrowSpirituallySection: React.FC = () => {
   const { t } = useLanguage();
 
+  // Get channel ID from env or fallback
+  const channelId = process.env.REACT_APP_YOUTUBE_SPIRITUAL_CHANNEL_ID || 'UCQXFCGSNdQ1y8GOmqbvRefg';
+  // Derive uploads playlist ID (replace 2nd char 'C' with 'U')
+  const playlistId = channelId.substring(0, 1) + 'U' + channelId.substring(2);
+
   const [imgError, setImgError] = React.useState(false);
 
   return (
@@ -15,14 +20,19 @@ const GrowSpirituallySection: React.FC = () => {
             <p>Spiritual resources and devotionals coming soon...</p>
           </div>
         ) : (
-          <div className="mt-6 flex justify-center">
-            <img
-              src="/images/teachings/memher-seyfu-082925.jpeg"
-              alt="Teachings by Memher Seyfu"
-              className="w-full max-w-4xl h-auto max-h-[60vh] md:max-h-[70vh] object-contain rounded-xl shadow-md"
-              loading="lazy"
-              onError={() => setImgError(true)}
-            />
+          <div className="mt-6 flex justify-center w-full">
+            <div className="w-full max-w-4xl aspect-video rounded-xl shadow-md overflow-hidden bg-black">
+              <h3 className="text-xl font-serif text-center text-white bg-primary-800 py-2 mb-0">
+                {t('common.cta.latestTeaching')}
+              </h3>
+              <iframe
+                src={`https://www.youtube.com/embed?listType=playlist&list=${playlistId}`}
+                title="Latest Teaching"
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
           </div>
         )}
       </div>

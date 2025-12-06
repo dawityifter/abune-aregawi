@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useI18n } from '../i18n/I18nProvider';
 
 type Language = 'en' | 'ti';
 
@@ -678,45 +679,50 @@ const translations = {
   }
 };
 
-export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem('preferredLanguage');
-    return (saved as Language) || 'en'; // Default to English
-  });
 
-  const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-    localStorage.setItem('preferredLanguage', lang);
+
+export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Use the source of truth from I18nProvider (which envelops this provider in App.tsx/index.tsx)
+  const { lang, setLang, t: i18nT } = useI18n();
+
+  // Redirect setLanguage to update the central state
+  const setLanguage = (newLang: Language) => {
+    setLang(newLang);
   };
 
   const t = (key: string): string => {
-    // First try to get translation in current language
-    const currentTranslation = translations[language][key as keyof typeof translations[typeof language]];
+    // 1. Try global dictionary (dictionaries.ts) via i18n provider
+    // The i18nT function returns the key if not found.
+    const globalMatch = i18nT(key);
+    if (globalMatch !== key) {
+      return globalMatch;
+    }
+
+    // 2. Try local translations (legacy)
+    const currentTranslation = translations[lang][key as keyof typeof translations[typeof lang]];
     if (currentTranslation) {
       return currentTranslation;
     }
 
-    // If not found and current language is not English, fallback to English
-    if (language !== 'en') {
+    // 3. Fallback: try English in local translations if missing
+    if (lang !== 'en') {
       const englishTranslation = translations.en[key as keyof typeof translations.en];
       if (englishTranslation) {
         return englishTranslation;
       }
     }
 
-    // If still not found, convert dotted key to readable text
+    // 4. Last resort: convert dotted key to readable text
     return key
       .split('.')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   };
 
-  useEffect(() => {
-    localStorage.setItem('preferredLanguage', language);
-  }, [language]);
+  // We rely on I18nProvider to handle localStorage persistence
 
   return (
-    <LanguageContext.Provider value={{ language, currentLanguage: language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ language: lang, currentLanguage: lang, setLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );
