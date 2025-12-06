@@ -24,7 +24,7 @@ graph TB
         A --> C[API Calls]
     end
     
-    subgraph "Backend (Render)"
+    subgraph "Backend (OCI Compute)"
         D[Node.js/Express] --> E[Sequelize ORM]
         E --> F[PostgreSQL Database]
     end
@@ -41,19 +41,21 @@ graph TB
     style F fill:#336791
     style G fill:#ffca28
     style H fill:#3ecf8e
-    style ex fill:#000;
+    style ex fill:#f9f9f9,stroke:#333,stroke-width:2px;
+```
+
 ## 🚀 Deployment Status
 
  | Service | Platform | Status | URL |
  |---------|----------|--------|-----|
  | **Frontend** | Firebase Hosting | ✅ Deployed | [Live Site](https://abune-aregawi-church-app.web.app) |
- | **Backend API** | Render | 🔄 Deploying | [API Endpoint](https://abune-aregawi-backend.onrender.com) |
+ | **Backend API** | OCI Compute | 🔄 Deploying | [API Endpoint](https://api.abunearegawi.church) |
  | **Database** | Supabase | ✅ Connected | PostgreSQL Cloud (Free Tier) |
  | **Authentication** | Firebase | ✅ Active | Phone + Email Auth |
 
 ### 📊 Current Status
 - ✅ **Frontend**: Successfully deployed to Firebase Hosting with asset fixes
-- 🔄 **Backend**: Deploying to Render with enhanced SSL configuration for Supabase
+- 🔄 **Backend**: Deploying to OCI with enhanced SSL configuration for Supabase
 - ✅ **Database**: Supabase PostgreSQL connected and tested locally
 - ✅ **Authentication**: Firebase Auth with feature flags for email/phone methods
 - 🔄 **Integration**: Pending backend deployment completion
@@ -197,7 +199,7 @@ Notes:
 - **Authentication**: Dual JWT + Firebase Auth
 - **Security**: Helmet, CORS, Rate limiting
 - **Testing**: Jest with integration and unit tests
-- **Deployment**: Render (with automatic GitHub CI/CD)
+- **Deployment**: OCI Compute (with automated GitHub CI/CD)
 
 ### Database
 - **Provider**: Supabase (PostgreSQL 17.4)
@@ -208,7 +210,7 @@ Notes:
 
 ### External Services
 - **Authentication**: Firebase Authentication (Phone/Email)
-- **Hosting**: Firebase Hosting (Frontend) + Render (Backend)
+- **Hosting**: Firebase Hosting (Frontend) + OCI Compute (Backend)
 - **Database**: Supabase PostgreSQL (Free tier)
 - **Version Control**: GitHub with automated deployments
 - **reCAPTCHA**: Google reCAPTCHA Enterprise for phone auth
@@ -232,7 +234,7 @@ Notes:
 - **API Security**: Dual JWT + Firebase authentication with comprehensive validation
 - **Feature Flags**: Environment-based authentication method toggles
 - **Error Handling**: User-friendly error messages and retry mechanisms
-- **Deployment**: Production-ready Firebase Hosting + Render deployment
+- **Deployment**: Production-ready Firebase Hosting + OCI deployment
 - **Department Management**: Complete system for church organization structure
   - **Department CRUD**: Create, edit, delete departments (ministries, committees, services)
   - **Member Assignment**: Add/remove members to departments with role management
@@ -247,7 +249,7 @@ Notes:
   - **Payment Validation**: Minimum $1.00 payment amounts enforced
 
 ### 🚧 In Progress
-- **Backend Deployment**: Final Render deployment with Supabase connection
+- **Backend Deployment**: Final OCI deployment with Supabase connection
 - **API Integration**: Connecting deployed frontend to deployed backend
 - **Payment Gateway**: Stripe integration for online giving
 - **Email Notifications**: Member communication system
@@ -273,7 +275,7 @@ REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 REACT_APP_FIREBASE_APP_ID=your_app_id
 
 # API Configuration
-REACT_APP_API_URL=https://abune-aregawi-backend.onrender.com
+REACT_APP_API_URL=https://api.abunearegawi.church
 
 # Feature Flags
 REACT_APP_ENABLE_EMAIL_AUTH=true
@@ -281,7 +283,7 @@ REACT_APP_ENABLE_PHONE_AUTH=true
 REACT_APP_DEFAULT_AUTH_METHOD=phone
 ```
 
-### Backend Environment Variables (Render)
+### Backend Environment Variables (OCI)
 ```env
 # Environment
 NODE_ENV=production
@@ -347,12 +349,12 @@ graph LR
     subgraph "CI/CD Pipeline"
         B --> C[GitHub Actions]
         C --> D[Firebase Hosting Build]
-        C --> E[Render Build]
+        C --> E[OCI Build]
     end
     
     subgraph "Production"
         D --> F[Firebase Hosting Frontend]
-        E --> G[Render Backend]
+        E --> G[OCI Backend]
         F --> H[Supabase Database]
         G --> H
         F --> I[Firebase Auth]
@@ -809,16 +811,16 @@ npm run db:test
 - **Deploy**: Automatic via Firebase Hosting GitHub Action, or `firebase deploy --only hosting`
 - **Domain**: `*.web.app` and `*.firebaseapp.com` with automatic SSL
 
-### Render (Backend)
-- **Trigger**: Push to main branch
-- **Build**: `npm install && npm run build`
-- **Deploy**: Automatic deployment to Render
+### OCI Compute (Backend)
+- **Trigger**: Push to main branch (via GitHub Actions)
+- **Build**: `npm ci --production` on OCI instance
+- **Deploy**: Manual or Auto deployment to OCI via GitHub Actions
 - **Health Check**: `/health` endpoint
 
 ## 📊 Monitoring & Analytics
 
 - **Firebase Hosting Logs**: Frontend hosting logs and deployment status
-- **Render Logs**: Backend application logs
+- **OCI Logs**: Backend application logs (`/var/log/abune-aregawi`)
 - **Supabase Metrics**: Database performance monitoring
 - **Firebase Analytics**: User behavior tracking
 
@@ -849,14 +851,14 @@ npm run db:test
 - Ensure all dependencies are installed
 
 **Backend Deployment Issues**
-- Verify DATABASE_URL in Render environment variables
+- Verify DATABASE_URL in OCI `.env` file
 - Check JWT_SECRET is set
-- Review Render build logs
+- Review GitHub Actions logs and OCI server logs
 
 **Database Connection Issues**
 - Verify Supabase connection string
 - Check SSL configuration
-- Ensure database is accessible from Render
+- Ensure database is accessible from OCI
 
 ## 📄 License
 
@@ -866,7 +868,7 @@ This project is created for the Debre Tsehay Abune Aregawi Tigray Orthodox Tewah
 
 - **Supabase** for providing the PostgreSQL database
 - **Firebase Hosting** for frontend hosting and CI/CD
-- **Render** for backend hosting and deployment
+- **OCI Compute** for backend hosting and deployment
 - **Firebase** for authentication services
 - **TailwindCSS** for the beautiful UI framework
 
