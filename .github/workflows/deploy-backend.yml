@@ -1,0 +1,72 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to OCI
+        uses: appleboy/ssh-action@master
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FIREBASE_SERVICE_ACCOUNT_BASE64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BASE64 }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NODE_ENV: ${{ secrets.NODE_ENV }}
+          PORT: ${{ secrets.PORT }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_DRY_RUN: ${{ secrets.TWILIO_DRY_RUN }}
+          TWILIO_PHONE_NUMBER: ${{ secrets.TWILIO_PHONE_NUMBER }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+          OVERRIDE_YOUTUBE_LIVE_FLAG: ${{ secrets.OVERRIDE_YOUTUBE_LIVE_FLAG }}
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_USERNAME }}
+          key: ${{ secrets.OCI_SSH_KEY }}
+          envs: DATABASE_URL,FIREBASE_SERVICE_ACCOUNT_BASE64,FRONTEND_URL,GMAIL_CLIENT_ID,GMAIL_CLIENT_SECRET,GMAIL_REFRESH_TOKEN,JWT_SECRET,NODE_ENV,PORT,TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_DRY_RUN,TWILIO_PHONE_NUMBER,STRIPE_WEBHOOK_SECRET,STRIPE_SECRET_KEY,YOUTUBE_API_KEY,YOUTUBE_CHANNEL_ID,OVERRIDE_YOUTUBE_LIVE_FLAG
+          script: |
+            # Navigate to project directory
+            cd /var/www/repo
+            
+            # Pull latest changes
+            sudo git pull origin main
+            
+            # Install backend dependencies
+            cd backend
+            
+            # Create .env file from secrets
+            echo "DATABASE_URL=$DATABASE_URL" > .env
+            echo "FIREBASE_SERVICE_ACCOUNT_BASE64=$FIREBASE_SERVICE_ACCOUNT_BASE64" >> .env
+            echo "FRONTEND_URL=$FRONTEND_URL" >> .env
+            echo "GMAIL_CLIENT_ID=$GMAIL_CLIENT_ID" >> .env
+            echo "GMAIL_CLIENT_SECRET=$GMAIL_CLIENT_SECRET" >> .env
+            echo "GMAIL_REFRESH_TOKEN=$GMAIL_REFRESH_TOKEN" >> .env
+            echo "JWT_SECRET=$JWT_SECRET" >> .env
+            echo "NODE_ENV=$NODE_ENV" >> .env
+            echo "PORT=$PORT" >> .env
+            echo "TWILIO_ACCOUNT_SID=$TWILIO_ACCOUNT_SID" >> .env
+            echo "TWILIO_AUTH_TOKEN=$TWILIO_AUTH_TOKEN" >> .env
+            echo "TWILIO_DRY_RUN=$TWILIO_DRY_RUN" >> .env
+            echo "TWILIO_PHONE_NUMBER=$TWILIO_PHONE_NUMBER" >> .env
+            echo "STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET" >> .env
+            echo "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY" >> .env
+            echo "YOUTUBE_API_KEY=$YOUTUBE_API_KEY" >> .env
+            echo "YOUTUBE_CHANNEL_ID=$YOUTUBE_CHANNEL_ID" >> .env
+            echo "OVERRIDE_YOUTUBE_LIVE_FLAG=$OVERRIDE_YOUTUBE_LIVE_FLAG" >> .env
+            
+            sudo npm ci --production
+            
+            # Restart backend service
+            pm2 restart backend || pm2 start src/server.js --name backend
