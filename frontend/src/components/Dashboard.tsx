@@ -134,7 +134,7 @@ const Dashboard: React.FC = () => {
                     onClick={() => window.location.reload()}
                     className="px-4 py-2 border rounded hover:bg-gray-50"
                   >
-                    Retry
+                    {t('dashboard.retry')}
                   </button>
                 </div>
               </div>
@@ -150,9 +150,9 @@ const Dashboard: React.FC = () => {
       <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8" style={bgStyle}>
         <div className="max-w-3xl mx-auto">
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Welcome!</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">{t('dashboard.welcome')}</h2>
             <p className="text-gray-600 mb-6">
-              We're setting up your account. This will just take a moment...
+              {t('dashboard.settingUp')}
             </p>
             <div className="flex justify-center mb-6">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
@@ -163,13 +163,13 @@ const Dashboard: React.FC = () => {
                   onClick={() => navigate('/register')}
                   className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
                 >
-                  Complete Registration
+                  {t('dashboard.complete')}
                 </button>
                 <button
                   onClick={() => window.location.reload()}
                   className="px-4 py-2 border rounded hover:bg-gray-50"
                 >
-                  Retry
+                  {t('dashboard.retry')}
                 </button>
               </div>
             )}
@@ -211,19 +211,17 @@ const Dashboard: React.FC = () => {
     navigate('/church-bylaw');
   };
 
-  // Removed unused handleRefreshProfile function
-
   if (!userProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Profile Incomplete</h2>
-          <p className="text-gray-600 mb-6">Please complete your registration to access the dashboard.</p>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('dashboard.incomplete.title')}</h2>
+          <p className="text-gray-600 mb-6">{t('dashboard.incomplete.desc')}</p>
           <button
             onClick={() => navigate('/register')}
             className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
           >
-            Complete Registration
+            {t('dashboard.complete')}
           </button>
         </div>
       </div>
@@ -263,7 +261,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-medium text-gray-900">
-                      {t('profile')}
+                      {t('dashboard.profile.title')}
                     </h3>
                     <p className="text-sm text-gray-500">
                       {userProfile?.data?.member?.firstName || getDisplayEmail(firebaseUser?.email) || 'User'}
@@ -275,7 +273,7 @@ const Dashboard: React.FC = () => {
                     onClick={handleViewProfile}
                     className="w-full bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
                   >
-                    {t('view.profile')}
+                    {t('dashboard.profile.view')}
                   </button>
                 </div>
               </div>
@@ -292,10 +290,10 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-medium text-gray-900">
-                      Church Bylaw
+                      {t('dashboard.bylaw.title')}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      View church bylaws (EN/ትግ)
+                      {t('dashboard.bylaw.desc')}
                     </p>
                   </div>
                 </div>
@@ -304,7 +302,7 @@ const Dashboard: React.FC = () => {
                     onClick={handleViewBylaw}
                     className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
                   >
-                    View Bylaw
+                    {t('dashboard.bylaw.view')}
                   </button>
                 </div>
               </div>
@@ -321,10 +319,10 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-medium text-gray-900">
-                      {t('dues')}
+                      {t('dashboard.dues.title')}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {isDependent ? 'View Dues/Login' : t('view.and.pay')}
+                      {isDependent ? t('dashboard.dues.dependentView') : t('dashboard.dues.viewAndPay')}
                     </p>
                   </div>
                 </div>
@@ -333,7 +331,7 @@ const Dashboard: React.FC = () => {
                     onClick={handleViewDues}
                     className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
                   >
-                    {t('view.dues')}
+                    {t('dashboard.dues.view')}
                   </button>
                 </div>
               </div>
@@ -350,10 +348,10 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-medium text-gray-900">
-                      {t('events')}
+                      {t('dashboard.events.title')}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {t('upcoming.events')}
+                      {t('dashboard.events.upcoming')}
                     </p>
                   </div>
                 </div>
@@ -362,7 +360,7 @@ const Dashboard: React.FC = () => {
                     onClick={handleViewEvents}
                     className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
                   >
-                    {t('view.events')}
+                    {t('dashboard.events.view')}
                   </button>
                 </div>
               </div>
@@ -379,10 +377,10 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-medium text-gray-900">
-                      My Service
+                      {t('dashboard.service.title')}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      Department & Volunteer Work
+                      {t('dashboard.service.desc')}
                     </p>
                   </div>
                 </div>
@@ -395,7 +393,7 @@ const Dashboard: React.FC = () => {
                     }}
                     className="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors"
                   >
-                    View Departments
+                    {t('dashboard.service.view')}
                   </button>
                 </div>
               </div>
@@ -412,10 +410,10 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-medium text-gray-900">
-                      {t('give')}
+                      {t('dashboard.give.title')}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {t('support.church')}
+                      {t('dashboard.give.desc')}
                     </p>
                   </div>
                 </div>
@@ -424,7 +422,7 @@ const Dashboard: React.FC = () => {
                     onClick={handleDonate}
                     className="w-full bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors"
                   >
-                    {t('donate')}
+                    {t('dashboard.give.action')}
                   </button>
                 </div>
               </div>
@@ -442,10 +440,10 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="ml-4">
                       <h3 className="text-lg font-medium text-gray-900">
-                        Children & Dependents
+                        {t('dashboard.family.title')}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        Manage family members
+                        {t('dashboard.family.desc')}
                       </p>
                     </div>
                   </div>
@@ -454,7 +452,7 @@ const Dashboard: React.FC = () => {
                       onClick={() => navigate('/dependents')}
                       className="w-full bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 transition-colors"
                     >
-                      Manage Children
+                      {t('dashboard.family.manage')}
                     </button>
                   </div>
                 </div>
@@ -473,10 +471,10 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="ml-4">
                       <h3 className="text-lg font-medium text-gray-900">
-                        Communications
+                        {t('dashboard.communications.title')}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        Send SMS to members and groups
+                        {t('dashboard.communications.desc')}
                       </p>
                     </div>
                   </div>
@@ -485,7 +483,7 @@ const Dashboard: React.FC = () => {
                       onClick={() => navigate('/sms')}
                       className="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
                     >
-                      Open SMS
+                      {t('dashboard.communications.open')}
                     </button>
                   </div>
                 </div>
@@ -504,10 +502,10 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="ml-4">
                       <h3 className="text-lg font-medium text-gray-900">
-                        Relationship Department
+                        {t('dashboard.relationships.title')}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        Outreach, onboarding, and engagement tools
+                        {t('dashboard.relationships.desc')}
                       </p>
                     </div>
                   </div>
@@ -516,7 +514,7 @@ const Dashboard: React.FC = () => {
                       onClick={() => navigate('/outreach')}
                       className="w-full bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700 transition-colors"
                     >
-                      Open Relationship Dashboard
+                      {t('dashboard.relationships.open')}
                     </button>
                   </div>
                 </div>
@@ -535,10 +533,10 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="ml-4">
                       <h3 className="text-lg font-medium text-gray-900">
-                        Treasurer
+                        {t('dashboard.treasurer.title')}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        Manage member payments and financial records
+                        {t('dashboard.treasurer.desc')}
                       </p>
                     </div>
                   </div>
@@ -548,7 +546,7 @@ const Dashboard: React.FC = () => {
                       className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
                     >
                       <i className="fas fa-coins mr-2"></i>
-                      View Payments
+                      {t('dashboard.treasurer.view')}
                     </button>
                   </div>
                 </div>
@@ -567,10 +565,10 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="ml-4">
                       <h3 className="text-lg font-medium text-gray-900">
-                        {t('admin.panel')}
+                        {t('dashboard.admin.title')}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        {t('manage.members.and.roles')}
+                        {t('dashboard.admin.desc')}
                       </p>
                     </div>
                   </div>
@@ -580,7 +578,7 @@ const Dashboard: React.FC = () => {
                       className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
                     >
                       <i className="fas fa-shield-alt mr-2"></i>
-                      {t('access.admin.panel')}
+                      {t('dashboard.admin.access')}
                     </button>
                   </div>
                 </div>

@@ -51,21 +51,21 @@ const Navigation: React.FC = () => {
           console.log('🔄 Skipping profile fetch for temporary user');
           return;
         }
-        
+
         try {
           setLoading(true);
           console.log('🔍 Navigation - currentUser:', currentUser);
-          
+
           // Handle different user object structures
           const uid = currentUser.uid || currentUser.id;
           const email = currentUser.email;
           const phone = currentUser.phoneNumber;
-          
+
           if (!uid) {
             console.error('❌ No UID found in currentUser:', currentUser);
             return;
           }
-          
+
           const profile = await getUserProfile(uid, email, phone);
           console.log('🔍 Navigation - userProfile:', profile);
           console.log('🔍 Navigation - userRole from profile:', profile?.data?.member?.role || profile?.role);
@@ -123,20 +123,20 @@ const Navigation: React.FC = () => {
           <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
             {currentUser && (
               <>
-                <Link 
-                  to="/dashboard" 
+                <Link
+                  to="/dashboard"
                   className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
                 >
                   {t('navigation.dashboard')}
                 </Link>
-                
-                <Link 
-                  to="/pledge" 
+
+                <Link
+                  to="/pledge"
                   className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
                 >
-                  Make a Pledge
+                  {t('nav.makePledge')}
                 </Link>
-                
+
                 {/* Admin link removed from desktop header */}
                 {/* Outreach link removed; access via Dashboard Relationship Department card */}
                 {/* SMS link removed; access via Dashboard Communications card */}
@@ -150,22 +150,20 @@ const Navigation: React.FC = () => {
             {/* Language Switcher */}
             <div className="flex rounded-md overflow-hidden border border-white/20">
               <button
-                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                  lang === 'en' 
-                    ? 'bg-secondary-600 text-white' 
-                    : 'bg-transparent text-white hover:bg-white/10'
-                }`}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors ${lang === 'en'
+                  ? 'bg-secondary-600 text-white'
+                  : 'bg-transparent text-white hover:bg-white/10'
+                  }`}
                 onClick={() => setLang('en')}
               >
                 EN
               </button>
               <div className="h-6 w-px bg-white/30"></div>
               <button
-                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                  lang === 'ti' 
-                    ? 'bg-secondary-600 text-white' 
-                    : 'bg-transparent text-white hover:bg-white/10'
-                }`}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors ${lang === 'ti'
+                  ? 'bg-secondary-600 text-white'
+                  : 'bg-transparent text-white hover:bg-white/10'
+                  }`}
                 onClick={() => setLang('ti')}
               >
                 ትግ
@@ -254,7 +252,7 @@ const Navigation: React.FC = () => {
               </div>
             </div>
           )}
-          
+
           <div className="px-2 pt-2 pb-3 space-y-1">
             {currentUser && (
               <>
@@ -266,24 +264,24 @@ const Navigation: React.FC = () => {
                   <i className="fas fa-tachometer-alt mr-3 w-5 text-center"></i>
                   {t('navigation.dashboard')}
                 </Link>
-                
+
                 <Link
                   to="/pledge"
                   className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   <i className="fas fa-hand-holding-heart mr-3 w-5 text-center"></i>
-                  Make a Pledge
+                  {t('nav.makePledge')}
                 </Link>
-                
+
                 {/* Admin link removed from mobile header */}
                 {/* Outreach link removed from mobile; access via Dashboard Relationship Department card */}
                 {/* SMS link removed from mobile menu; access via Dashboard Communications card */}
-                
+
                 {/* Profile link removed from mobile menu as requested */}
-                
+
                 <div className="border-t border-gray-200 my-2"></div>
-                
+
                 <button
                   onClick={() => {
                     handleLogout();
@@ -296,7 +294,7 @@ const Navigation: React.FC = () => {
                 </button>
               </>
             )}
-            
+
             {!currentUser && (
               <div className="px-2 pt-2 space-y-2">
                 <Link
@@ -331,7 +329,7 @@ const Navigation: React.FC = () => {
                 )}
               </div>
             )}
-            
+
             {/* Mobile Language Switcher */}
             <div className="px-4 pt-4 pb-3 border-t border-gray-200 mt-2">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
@@ -339,11 +337,10 @@ const Navigation: React.FC = () => {
               </p>
               <div className="flex rounded-lg overflow-hidden border border-gray-300">
                 <button
-                  className={`flex-1 px-4 py-2.5 text-sm font-medium flex items-center justify-center space-x-2 ${
-                    lang === 'en' 
-                      ? 'bg-primary-600 text-white' 
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
+                  className={`flex-1 px-4 py-2.5 text-sm font-medium flex items-center justify-center space-x-2 ${lang === 'en'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
                   onClick={() => {
                     setLang('en');
                     setIsMenuOpen(false);
@@ -353,11 +350,10 @@ const Navigation: React.FC = () => {
                 </button>
                 <div className="h-10 w-px bg-gray-300"></div>
                 <button
-                  className={`flex-1 px-4 py-2.5 text-sm font-medium flex items-center justify-center space-x-2 ${
-                    lang === 'ti' 
-                      ? 'bg-primary-600 text-white' 
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
+                  className={`flex-1 px-4 py-2.5 text-sm font-medium flex items-center justify-center space-x-2 ${lang === 'ti'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
                   onClick={() => {
                     setLang('ti');
                     setIsMenuOpen(false);

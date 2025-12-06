@@ -14,37 +14,37 @@ const WhatsHappeningSection: React.FC = () => {
             <div className="content-card">
               <h3 className="text-h4 font-serif text-primary-700 mb-4">
                 <i className="fas fa-bullhorn mr-2"></i>
-                Community Support Initiatives
+                {t('sections.announcements.community.title')}
               </h3>
               <p className="text-accent-700 mb-4">
-                Join us in supporting our community through outreach and charity programs.
+                {t('sections.announcements.community.desc')}
               </p>
               <button className="btn btn-primary btn-small">
-                Learn More
+                {t('common.cta.learnMore')}
               </button>
             </div>
             <div className="content-card">
               <h3 className="text-h4 font-serif text-primary-700 mb-4">
                 <i className="fas fa-book-open mr-2"></i>
-                Tigray Orthodox Faith Teachings
+                {t('sections.announcements.teachings.title')}
               </h3>
               <p className="text-accent-700 mb-4">
-                Explore the rich traditions and teachings of the Tigray Orthodox faith.
+                {t('sections.announcements.teachings.desc')}
               </p>
               <button className="btn btn-primary btn-small">
-                Read More
+                {t('common.cta.readMore')}
               </button>
             </div>
             <div className="content-card">
               <h3 className="text-h4 font-serif text-primary-700 mb-4">
                 <i className="fas fa-festival mr-2"></i>
-                Cultural Celebrations
+                {t('sections.announcements.culture.title')}
               </h3>
               <p className="text-accent-700 mb-4">
-                Experience our heritage through festivals and community gatherings.
+                {t('sections.announcements.culture.desc')}
               </p>
               <button className="btn btn-primary btn-small">
-                Get Details
+                {t('common.cta.getDetails')}
               </button>
             </div>
           </div>
