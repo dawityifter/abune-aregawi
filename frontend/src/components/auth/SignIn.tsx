@@ -107,7 +107,7 @@ const SignIn: React.FC = () => {
   // Magic Phone Auto-Solve
   useEffect(() => {
     const clean = normalizePhoneNumber(phone);
-    if ((clean === '+14699078229' || clean === '+14699078230') && !recaptchaSolved) {
+    if ((clean === '+14699078229' || clean === '+14699078230') && !recaptchaSolved && process.env.REACT_APP_ENABLE_DEMO_MODE === 'true') {
       console.log('✨ Magic Phone detected - Auto-solving reCAPTCHA');
       setRecaptchaSolved(true);
     }
@@ -165,7 +165,7 @@ const SignIn: React.FC = () => {
     console.log('📞 Clean phone:', cleanPhone);
 
     // Magic Phone Bypass
-    if (cleanPhone === '+14699078229' || cleanPhone === '+14699078230') {
+    if ((cleanPhone === '+14699078229' || cleanPhone === '+14699078230') && process.env.REACT_APP_ENABLE_DEMO_MODE === 'true') {
       console.log('✨ Magic Phone detected - Bypassing reCAPTCHA');
 
       // Determine if this is the "New User" test case
@@ -266,7 +266,7 @@ const SignIn: React.FC = () => {
       console.log('✅ OTP Verified Successfully');
 
       // Check if this was a magic login
-      if (localStorage.getItem('magic_demo_mode') === 'true' || localStorage.getItem('magic_new_user_mode') === 'true') {
+      if ((localStorage.getItem('magic_demo_mode') === 'true' || localStorage.getItem('magic_new_user_mode') === 'true') && process.env.REACT_APP_ENABLE_DEMO_MODE === 'true') {
         console.log('✨ Magic Demo Mode verified - Reloading to initialize context');
         window.location.reload();
         return;
