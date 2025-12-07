@@ -22,12 +22,17 @@ function getInitialLang(): Lang {
   try {
     const stored = localStorage.getItem(LS_KEY) as Lang | null;
     if (stored === 'en' || stored === 'ti') return stored;
-  } catch {}
+  } catch { }
   return getBrowserLang();
 }
 
 function getByPath(obj: any, path: string): any {
-  return path.split('.').reduce((acc: any, part: string) => (acc && part in acc ? acc[part] : undefined), obj);
+  return path.split('.').reduce((acc: any, part: string) => {
+    if (acc && typeof acc === 'object' && part in acc) {
+      return acc[part];
+    }
+    return undefined;
+  }, obj);
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
@@ -36,7 +41,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       localStorage.setItem(LS_KEY, lang);
-    } catch {}
+    } catch { }
   }, [lang]);
 
   const dict = useMemo(() => dictionaries[lang], [lang]);
