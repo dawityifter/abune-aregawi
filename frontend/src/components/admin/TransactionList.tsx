@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
 
 interface Transaction {
@@ -45,6 +46,7 @@ interface TransactionListProps {
 
 const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, refreshToken }) => {
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -188,24 +190,24 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
 
   const getPaymentTypeLabel = (type: string) => {
     const labels = {
-      membership_due: 'Membership Due',
-      tithe: 'Tithe',
-      donation: 'Donation',
-      event: 'Event',
-      other: 'Other'
+      membership_due: t('treasurerDashboard.transactionList.types.membership_due'),
+      tithe: t('treasurerDashboard.transactionList.types.tithe'),
+      donation: t('treasurerDashboard.transactionList.types.donation'),
+      event: t('treasurerDashboard.transactionList.types.event'),
+      other: t('treasurerDashboard.transactionList.types.other')
     };
     return labels[type as keyof typeof labels] || type;
   };
 
   const getPaymentMethodLabel = (method: string) => {
     const labels = {
-      cash: 'Cash',
-      check: 'Check',
-      zelle: 'Zelle',
-      credit_card: 'Credit Card',
-      debit_card: 'Debit Card',
-      ach: 'ACH',
-      other: 'Other'
+      cash: t('treasurerDashboard.transactionList.methods.cash'),
+      check: t('treasurerDashboard.transactionList.methods.check'),
+      zelle: t('treasurerDashboard.transactionList.methods.zelle'),
+      credit_card: t('treasurerDashboard.transactionList.methods.credit_card'),
+      debit_card: t('treasurerDashboard.transactionList.methods.debit_card'),
+      ach: t('treasurerDashboard.transactionList.methods.ach'),
+      other: t('treasurerDashboard.transactionList.methods.other')
     };
     return labels[method as keyof typeof labels] || method;
   };
@@ -213,10 +215,10 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   const renderStatusBadge = (status?: string) => {
     if (!status) return null;
     const map: Record<string, { text: string; classes: string }> = {
-      pending: { text: 'Pending', classes: 'bg-yellow-100 text-yellow-800' },
-      succeeded: { text: 'Succeeded', classes: 'bg-green-100 text-green-800' },
-      failed: { text: 'Failed', classes: 'bg-red-100 text-red-800' },
-      canceled: { text: 'Canceled', classes: 'bg-gray-100 text-gray-800' }
+      pending: { text: t('treasurerDashboard.transactionList.status.pending'), classes: 'bg-yellow-100 text-yellow-800' },
+      succeeded: { text: t('treasurerDashboard.transactionList.status.succeeded'), classes: 'bg-green-100 text-green-800' },
+      failed: { text: t('treasurerDashboard.transactionList.status.failed'), classes: 'bg-red-100 text-red-800' },
+      canceled: { text: t('treasurerDashboard.transactionList.status.canceled'), classes: 'bg-gray-100 text-gray-800' }
     };
     const cfg = map[status] || { text: status || '', classes: 'bg-gray-100 text-gray-800' };
     return (
@@ -258,13 +260,13 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Member Search
+              {t('treasurerDashboard.transactionList.filters.memberSearch')}
             </label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search member (min 3 chars)..."
+              placeholder={t('treasurerDashboard.transactionList.filters.placeholder.search')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {searchTerm && searchTerm.trim().length < 3 && (
@@ -273,55 +275,55 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Receipt Number
+              {t('treasurerDashboard.transactionList.filters.receiptNumber')}
             </label>
             <input
               type="text"
               value={receiptNumberFilter}
               onChange={(e) => setReceiptNumberFilter(e.target.value)}
-              placeholder="Search receipt #..."
+              placeholder={t('treasurerDashboard.transactionList.filters.placeholder.receipt')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Type
+              {t('treasurerDashboard.transactionList.filters.paymentType')}
             </label>
             <select
               value={paymentTypeFilter}
               onChange={(e) => setPaymentTypeFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="all">All Types</option>
-              <option value="membership_due">Membership Due</option>
-              <option value="tithe">Tithe</option>
-              <option value="donation">Donation</option>
-              <option value="event">Event</option>
-              <option value="other">Other</option>
+              <option value="all">{t('treasurerDashboard.transactionList.filters.options.allTypes')}</option>
+              <option value="membership_due">{t('treasurerDashboard.transactionList.types.membership_due')}</option>
+              <option value="tithe">{t('treasurerDashboard.transactionList.types.tithe')}</option>
+              <option value="donation">{t('treasurerDashboard.transactionList.types.donation')}</option>
+              <option value="event">{t('treasurerDashboard.transactionList.types.event')}</option>
+              <option value="other">{t('treasurerDashboard.transactionList.types.other')}</option>
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Method
+              {t('treasurerDashboard.transactionList.filters.paymentMethod')}
             </label>
             <select
               value={paymentMethodFilter}
               onChange={(e) => setPaymentMethodFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="all">All Methods</option>
-              <option value="cash">Cash</option>
-              <option value="check">Check</option>
-              <option value="zelle">Zelle</option>
-              <option value="credit_card">Credit Card</option>
-              <option value="debit_card">Debit Card</option>
-              <option value="ach">ACH</option>
-              <option value="other">Other</option>
+              <option value="all">{t('treasurerDashboard.transactionList.filters.options.allMethods')}</option>
+              <option value="cash">{t('treasurerDashboard.transactionList.methods.cash')}</option>
+              <option value="check">{t('treasurerDashboard.transactionList.methods.check')}</option>
+              <option value="zelle">{t('treasurerDashboard.transactionList.methods.zelle')}</option>
+              <option value="credit_card">{t('treasurerDashboard.transactionList.methods.credit_card')}</option>
+              <option value="debit_card">{t('treasurerDashboard.transactionList.methods.debit_card')}</option>
+              <option value="ach">{t('treasurerDashboard.transactionList.methods.ach')}</option>
+              <option value="other">{t('treasurerDashboard.transactionList.methods.other')}</option>
             </select>
           </div>
           <div className="col-span-1 md:col-span-2 lg:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Date Range
+              {t('treasurerDashboard.transactionList.filters.dateRange')}
             </label>
             <select
               value={dateRangeFilter}
@@ -334,12 +336,12 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="week">Last 7 Days</option>
-              <option value="month">Last 30 Days</option>
-              <option value="year">Last Year</option>
-              <option value="custom">Custom Range</option>
+              <option value="all">{t('treasurerDashboard.transactionList.filters.options.allTime')}</option>
+              <option value="today">{t('treasurerDashboard.transactionList.filters.options.today')}</option>
+              <option value="week">{t('treasurerDashboard.transactionList.filters.options.week')}</option>
+              <option value="month">{t('treasurerDashboard.transactionList.filters.options.month')}</option>
+              <option value="year">{t('treasurerDashboard.transactionList.filters.options.year')}</option>
+              <option value="custom">{t('treasurerDashboard.transactionList.filters.options.custom')}</option>
             </select>
           </div>
         </div>
@@ -349,7 +351,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Start Date
+                {t('treasurerDashboard.transactionList.filters.startDate')}
               </label>
               <input
                 type="date"
@@ -360,7 +362,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                End Date
+                {t('treasurerDashboard.transactionList.filters.endDate')}
               </label>
               <input
                 type="date"
@@ -379,7 +381,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
             onClick={fetchTransactions}
             className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium"
           >
-            Apply Filters
+            {t('treasurerDashboard.transactionList.filters.apply')}
           </button>
         </div>
       </div>
@@ -391,37 +393,37 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
+                  {t('treasurerDashboard.transactionList.table.date')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Member ID
+                  {t('treasurerDashboard.transactionList.table.memberId')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Member
+                  {t('treasurerDashboard.transactionList.table.member')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
+                  {t('treasurerDashboard.transactionList.table.amount')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
+                  {t('treasurerDashboard.transactionList.table.type')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  GL Code
+                  {t('treasurerDashboard.transactionList.table.glCode')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Method
+                  {t('treasurerDashboard.transactionList.table.method')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  {t('treasurerDashboard.transactionList.table.status')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Collected By
+                  {t('treasurerDashboard.transactionList.table.collectedBy')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Receipt
+                  {t('treasurerDashboard.transactionList.table.receipt')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Notes
+                  {t('treasurerDashboard.transactionList.table.notes')}
                 </th>
               </tr>
             </thead>
@@ -520,7 +522,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
         <div className="bg-white rounded-lg shadow-md px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-700">
-              Page {currentPage} of {totalPages}
+              {t('treasurerDashboard.transactionList.pagination.page')} {currentPage} {t('treasurerDashboard.transactionList.pagination.of')} {totalPages}
             </div>
             <div className="flex space-x-2">
               <button
@@ -528,14 +530,14 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                 disabled={currentPage === 1}
                 className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Previous
+                {t('treasurerDashboard.transactionList.pagination.previous')}
               </button>
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
                 className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Next
+                {t('treasurerDashboard.transactionList.pagination.next')}
               </button>
             </div>
           </div>
@@ -545,10 +547,10 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
       {transactions.length === 0 && !loading && (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
           <div className="text-gray-500 text-lg font-medium">
-            No transactions found
+            {t('treasurerDashboard.transactionList.empty.title')}
           </div>
           <div className="text-gray-400 text-sm mt-2">
-            Try adjusting your filters or add a new transaction.
+            {t('treasurerDashboard.transactionList.empty.desc')}
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
 
 interface Expense {
@@ -42,6 +43,7 @@ interface ExpenseCategory {
 
 const ExpenseList: React.FC = () => {
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,7 +151,7 @@ const ExpenseList: React.FC = () => {
           <div className="text-sm font-medium text-gray-900">
             {expense.employee.first_name} {expense.employee.last_name}
           </div>
-          <div className="text-xs text-gray-500">Employee</div>
+          <div className="text-xs text-gray-500">{t('treasurerDashboard.expenses.table.employee')}</div>
         </div>
       );
     }
@@ -159,7 +161,7 @@ const ExpenseList: React.FC = () => {
           <div className="text-sm font-medium text-gray-900">
             {expense.vendor.name}
           </div>
-          <div className="text-xs text-gray-500">Vendor</div>
+          <div className="text-xs text-gray-500">{t('treasurerDashboard.expenses.table.vendor')}</div>
         </div>
       );
     }
@@ -185,12 +187,12 @@ const ExpenseList: React.FC = () => {
     <div className="space-y-6">
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Filters</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('treasurerDashboard.expenses.filters.title')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Start Date */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Start Date
+              {t('treasurerDashboard.expenses.filters.startDate')}
             </label>
             <input
               type="date"
@@ -206,7 +208,7 @@ const ExpenseList: React.FC = () => {
           {/* End Date */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              End Date
+              {t('treasurerDashboard.expenses.filters.endDate')}
             </label>
             <input
               type="date"
@@ -222,7 +224,7 @@ const ExpenseList: React.FC = () => {
           {/* GL Code */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category
+              {t('treasurerDashboard.expenses.filters.category')}
             </label>
             <select
               value={glCodeFilter}
@@ -232,7 +234,7 @@ const ExpenseList: React.FC = () => {
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Categories</option>
+              <option value="">{t('treasurerDashboard.expenses.filters.allCategories')}</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.gl_code}>
                   {cat.gl_code} - {cat.name}
@@ -244,7 +246,7 @@ const ExpenseList: React.FC = () => {
           {/* Payment Method */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Payment Method
+              {t('treasurerDashboard.expenses.filters.paymentMethod')}
             </label>
             <select
               value={paymentMethodFilter}
@@ -254,9 +256,9 @@ const ExpenseList: React.FC = () => {
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Methods</option>
-              <option value="cash">Cash</option>
-              <option value="check">Check</option>
+              <option value="">{t('treasurerDashboard.expenses.filters.allMethods')}</option>
+              <option value="cash">{t('treasurerDashboard.transactionList.methods.cash')}</option>
+              <option value="check">{t('treasurerDashboard.transactionList.methods.check')}</option>
             </select>
           </div>
         </div>
@@ -268,7 +270,7 @@ const ExpenseList: React.FC = () => {
               onClick={clearFilters}
               className="text-sm text-blue-600 hover:text-blue-700 underline"
             >
-              Clear all filters
+              {t('treasurerDashboard.expenses.filters.clear')}
             </button>
           </div>
         )}
@@ -278,18 +280,18 @@ const ExpenseList: React.FC = () => {
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">
-            Expenses ({totalItems} total)
+            {t('treasurerDashboard.expenses.table.title')} ({totalItems})
           </h3>
         </div>
 
         {loading ? (
           <div className="p-8 text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-2 text-gray-600">Loading expenses...</p>
+            <p className="mt-2 text-gray-600">{t('treasurerDashboard.expenses.table.loading')}</p>
           </div>
         ) : expenses.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            No expenses found. {(startDate || endDate || glCodeFilter || paymentMethodFilter) && 'Try adjusting your filters.'}
+            {t('treasurerDashboard.expenses.table.empty')}
           </div>
         ) : (
           <>
@@ -298,28 +300,28 @@ const ExpenseList: React.FC = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
+                      {t('treasurerDashboard.expenses.table.date')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
+                      {t('treasurerDashboard.expenses.table.category')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Payee
+                      {t('treasurerDashboard.expenses.table.payee')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
+                      {t('treasurerDashboard.expenses.table.amount')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Method
+                      {t('treasurerDashboard.expenses.table.method')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Check #
+                      {t('treasurerDashboard.expenses.table.checkNumber')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Recorded By
+                      {t('treasurerDashboard.expenses.table.recordedBy')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Memo
+                      {t('treasurerDashboard.expenses.table.memo')}
                     </th>
                   </tr>
                 </thead>
@@ -372,7 +374,7 @@ const ExpenseList: React.FC = () => {
             {totalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
                 <div className="text-sm text-gray-700">
-                  Page {page} of {totalPages}
+                  {t('treasurerDashboard.transactionList.pagination.page')} {page} {t('treasurerDashboard.transactionList.pagination.of')} {totalPages}
                 </div>
                 <div className="flex space-x-2">
                   <button
@@ -380,14 +382,14 @@ const ExpenseList: React.FC = () => {
                     disabled={page === 1}
                     className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                   >
-                    Previous
+                    {t('treasurerDashboard.transactionList.pagination.previous')}
                   </button>
                   <button
                     onClick={() => setPage(page + 1)}
                     disabled={page === totalPages}
                     className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                   >
-                    Next
+                    {t('treasurerDashboard.transactionList.pagination.next')}
                   </button>
                 </div>
               </div>

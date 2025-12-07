@@ -43,18 +43,18 @@ const DepartmentList: React.FC = () => {
   const fetchDepartments = async () => {
     try {
       setLoading(true);
-      
+
       if (!firebaseUser) {
         throw new Error('User not authenticated');
       }
 
       const idToken = await firebaseUser.getIdToken();
-      
+
       const params = new URLSearchParams({
         include_members: 'true',
         limit: '100'
       });
-      
+
       if (typeFilter) {
         params.append('type', typeFilter);
       }
@@ -119,7 +119,7 @@ const DepartmentList: React.FC = () => {
   };
 
   const filteredDepartments = departments.filter(dept => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (dept.description && dept.description.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesSearch;
@@ -167,8 +167,8 @@ const DepartmentList: React.FC = () => {
     return (
       <div className="text-center py-12">
         <div className="text-red-600 text-lg mb-4">{error}</div>
-        <button 
-          onClick={fetchDepartments} 
+        <button
+          onClick={fetchDepartments}
           className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
         >
           {t('retry')}
@@ -180,13 +180,13 @@ const DepartmentList: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start mb-8">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            {t('departments.and.ministries') || 'Departments & Ministries'}
+            {t('admin.departmentSection.title')}
           </h2>
           <p className="text-gray-600 mt-1">
-            {t('manage.church.departments') || 'Manage church departments and ministry groups'}
+            {t('admin.departmentSection.description')}
           </p>
         </div>
         <button
@@ -194,55 +194,67 @@ const DepartmentList: React.FC = () => {
           className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
         >
           <i className="fas fa-plus mr-2"></i>
-          {t('create.department') || 'Create Department'}
+          {t('admin.departmentSection.create')}
         </button>
       </div>
 
       {/* Statistics */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
+          <div className="bg-primary-50 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium uppercase tracking-wide">
-                  {t('total.departments') || 'Total Departments'}
+                <p className="text-primary-600 text-sm font-medium uppercase tracking-wide">
+                  {t('admin.departmentSection.stats.total')}
                 </p>
-                <p className="text-4xl font-bold mt-2">{stats.total_departments || 0}</p>
+                <p className="text-3xl font-bold text-primary-900 mt-1">
+                  {departments.length}
+                </p>
               </div>
-              <div className="bg-blue-400 bg-opacity-30 rounded-full p-4">
-                <i className="fas fa-building text-3xl"></i>
+              <div className="text-primary-200">
+                <i className="fas fa-building text-4xl"></i>
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
+          <div className="bg-green-50 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm font-medium uppercase tracking-wide">
-                  {t('total.members.enrolled') || 'Members Enrolled'}
+                <p className="text-green-600 text-sm font-medium uppercase tracking-wide">
+                  {t('admin.departmentSection.stats.enrolled')}
                 </p>
-                <p className="text-4xl font-bold mt-2">{stats.total_unique_members || 0}</p>
+                <p className="text-3xl font-bold text-green-900 mt-1">
+                  {departments.reduce((acc, dep) => acc + (dep.member_count || 0), 0)}
+                </p>
               </div>
-              <div className="bg-green-400 bg-opacity-30 rounded-full p-4">
-                <i className="fas fa-users text-3xl"></i>
+              <div className="text-green-200">
+                <i className="fas fa-users text-4xl"></i>
               </div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
+          <div className="bg-purple-50 p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm font-medium uppercase tracking-wide">
-                  {t('by.type') || 'By Type'}
+                <p className="text-purple-600 text-sm font-medium uppercase tracking-wide">
+                  {t('admin.departmentSection.stats.byType')}
                 </p>
-                <div className="mt-2 text-sm space-y-1">
-                  {Object.entries(stats.by_type || {}).map(([type, count]) => (
-                    <div key={type} className="flex justify-between">
-                      <span className="capitalize">{type}:</span>
-                      <span className="font-semibold">{count as number}</span>
-                    </div>
+                <p className="text-sm font-medium text-purple-900 mt-1">
+                  {/* Simple breakdown by type */}
+                  {Object.entries(
+                    departments.reduce((acc, dep) => {
+                      acc[dep.type] = (acc[dep.type] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>)
+                  ).map(([type, count]) => (
+                    <span key={type} className="mr-2">
+                      {t(`admin.departmentSection.types.${type}`) || type}: {count}
+                    </span>
                   ))}
-                </div>
+                </p>
+              </div>
+              <div className="text-purple-200">
+                <i className="fas fa-layer-group text-4xl"></i>
               </div>
             </div>
           </div>
@@ -253,33 +265,28 @@ const DepartmentList: React.FC = () => {
       <div className="bg-white p-4 rounded-lg shadow">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('search') || 'Search'}
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.common.search')}</label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={t('search.departments') || 'Search departments...'}
+              placeholder={t('admin.common.search') + '...'}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
-          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('type') || 'Type'}
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.common.filter')}</label>
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="">{t('all.types') || 'All Types'}</option>
-              <option value="ministry">Ministry</option>
-              <option value="committee">Committee</option>
-              <option value="service">Service</option>
-              <option value="social">Social</option>
-              <option value="administrative">Administrative</option>
+              <option value="">{t('admin.common.all')}</option>
+              <option value="ministry">{t('admin.departmentSection.types.ministry')}</option>
+              <option value="committee">{t('admin.departmentSection.types.committee')}</option>
+              <option value="service">{t('admin.departmentSection.types.service')}</option>
+              <option value="social">{t('admin.departmentSection.types.social')}</option>
+              <option value="administrative">{t('admin.departmentSection.types.administrative')}</option>
             </select>
           </div>
         </div>
@@ -308,7 +315,7 @@ const DepartmentList: React.FC = () => {
                 {type.replace('_', ' ')} ({depts.length})
               </h3>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {depts.map((dept) => (
                 <DepartmentCard

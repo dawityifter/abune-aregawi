@@ -56,10 +56,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('📞 Found phone number in main property:', firebaseUser.phoneNumber);
       return firebaseUser.phoneNumber;
     }
-    
+
     // Fallback: try to get phone from provider data
     if (firebaseUser.providerData) {
-      const phoneProvider = firebaseUser.providerData.find(provider => 
+      const phoneProvider = firebaseUser.providerData.find(provider =>
         provider.providerId === 'phone' && provider.phoneNumber
       );
       if (phoneProvider) {
@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return phoneProvider.phoneNumber;
       }
     }
-    
+
     console.log('⚠️ No phone number found in Firebase user data');
     return null;
   };
@@ -77,9 +77,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const uid = firebaseUser.uid;
     const phone = getPhoneNumber(firebaseUser);
     const email = firebaseUser.email || null;
-    
-    console.log('🔍 Checking user profile:', { 
-      uid, 
+
+    console.log('🔍 Checking user profile:', {
+      uid,
       email,
       phone,
       phoneType: typeof phone,
@@ -91,7 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🔄 User already known to be new, skipping backend check');
       return null;
     }
-    
+
     try {
       // If we have neither email nor phone, assume new user and skip backend 400s
       if (!phone && !email) {
@@ -114,10 +114,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('⚠️ Could not normalize phone number:', phone);
         }
       }
-      
+
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
       console.log('🔍 Backend check URL:', apiUrl);
-      
+
       // Retry/backoff for transient errors (kept low to avoid long waits)
       const maxAttempts = 2;
       let lastError: any = null;
@@ -127,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), PROFILE_FETCH_TIMEOUT_MS);
           const response = await fetch(apiUrl, { signal: controller.signal });
-          
+
           // Always clear timeout even if parsing/logic throws later
           clearTimeout(timeoutId);
           console.log(`🔍 Backend response status (attempt ${attempt}):`, response.status);
@@ -142,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             let body: any = null;
             try {
               body = await response.json();
-            } catch {}
+            } catch { }
             const code = body?.code;
             console.log('❌ Backend user not found (status: 404)', code ? `code=${code}` : '');
             if (body) {
@@ -205,7 +205,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Note: timeoutId is in scope; clearTimeout is idempotent
             // @ts-ignore - ignore if not defined due to earlier exceptions
             clearTimeout(timeoutId);
-          } catch {}
+          } catch { }
         }
       }
       // If we exhausted retries and it's a timeout or network issue, treat as transient
@@ -258,20 +258,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithPhone = useCallback(async (phone: string, appVerifier: any, otp?: string, confirmationResult?: any) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       if (confirmationResult && otp) {
         // Second step: verify OTP
         console.log('Verifying OTP...');
         const result = await confirmationResult.confirm(otp);
         const user = result.user;
-        
+
         // Get the ID token
         const idToken = await user.getIdToken();
-        
+
         // Set Firebase user - onAuthStateChanged will handle the rest
         setFirebaseUser(user);
-        
+
         return { user, idToken };
       } else {
         // First step: send OTP
@@ -281,7 +281,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error: any) {
       console.error('Phone login error:', error);
-      
+
       // Handle specific error types
       if (error.code === 'auth/invalid-phone-number') {
         setError('The phone number is not valid.');
@@ -294,7 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setError(error.message || 'An error occurred during phone authentication.');
       }
-      
+
       throw error;
     } finally {
       setLoading(false);
@@ -307,6 +307,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await signOut(auth);
       setUser(null);
       setFirebaseUser(null);
+      localStorage.removeItem('magic_demo_mode'); // Clear magic mode on logout
+      localStorage.removeItem('magic_new_user_mode');
       navigate("/");
       clearNewUserCache(); // Clear cache on logout
     } catch (err) {
@@ -336,7 +338,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('❌ getUserProfile called with undefined uid');
       return null;
     }
-    
+
     try {
       const params = new URLSearchParams();
       if (email) {
@@ -346,10 +348,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const normalizedPhone = normalizePhoneNumber(phoneNumber);
         if (normalizedPhone) params.append("phone", normalizedPhone);
       }
-      
+
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
       const res = await fetch(apiUrl);
-      
+
       if (res.status === 200) {
         return await res.json();
       } else {
@@ -370,7 +372,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const normalizedPhone = normalizePhoneNumber(user.phoneNumber);
         if (normalizedPhone) params.append("phone", normalizedPhone);
       }
-      
+
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
       const res = await fetch(apiUrl, {
         method: 'PUT',
@@ -379,7 +381,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
         body: JSON.stringify(updates)
       });
-      
+
       if (res.status === 200) {
         const updatedProfile = await res.json();
         setUser({ ...user, ...updatedProfile });
@@ -410,9 +412,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('🔌 Setting up auth state listener');
 
     const handleAuthStateChange = async (firebaseUser: User | null) => {
+      // Magic Demo Mode Bypass
+      if (localStorage.getItem('magic_demo_mode') === 'true' || localStorage.getItem('magic_new_user_mode') === 'true') {
+        console.log('✨ Magic Demo Mode Active');
+        const isNewUser = localStorage.getItem('magic_new_user_mode') === 'true';
+        const magicPhone = isNewUser ? '+14699078230' : '+14699078229';
+
+        const magicUser: any = {
+          uid: isNewUser ? 'magic-new-user-uid' : 'magic-demo-uid',
+          phoneNumber: magicPhone,
+          email: isNewUser ? 'newuser@example.com' : 'demo@admin.com',
+          getIdToken: async () => 'MAGIC_DEMO_TOKEN',
+          providerData: [{ providerId: 'phone', phoneNumber: magicPhone }]
+        };
+        handlePostSignIn(magicUser); // Set internal firebaseUser state
+
+        // If it's the "New User" mode, we skip the backend check and force "new user" state
+        if (isNewUser) {
+          console.log('✨ Magic NEW USER Mode - Forcing 404/New User state');
+          setFirebaseUser(magicUser);
+          // Force "New User" state
+          setUser({
+            uid: magicUser.uid,
+            email: '',
+            phoneNumber: magicPhone,
+            _temp: true,
+            role: 'member'
+          });
+          navigate('/register', { state: { phone: magicPhone } });
+          setAuthReady(true);
+          return;
+        }
+
+        // Otherwise proceed to load profile as normal (will hit backend with magic token)
+        firebaseUser = magicUser;
+      }
+
       console.log('🔥 Firebase auth state changed:', firebaseUser ? 'User signed in' : 'User signed out');
       setFirebaseUser(firebaseUser);
-      
+
       if (!firebaseUser) {
         setUser(null);
         clearNewUserCache();
@@ -422,7 +460,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const phoneNumber = getPhoneNumber(firebaseUser);
-      
+
       console.log('🔍 onAuthStateChanged - Firebase user data:', {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
@@ -519,7 +557,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('ℹ️ Detected unlinked dependent login. Setting tailored state.');
           setUser((prev: any) => ({
             ...(prev || {}),
-            uid: firebaseUser.uid,
+            uid: firebaseUser?.uid,
             email: '',
             phoneNumber,
             role: 'dependent',
@@ -581,7 +619,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .catch(() => { /* ignore network errors; purely best-effort */ })
           .finally(() => {
             clearTimeout(to);
-            try { sessionStorage.setItem(KEY, String(Date.now())); } catch {}
+            try { sessionStorage.setItem(KEY, String(Date.now())); } catch { }
           });
       };
 

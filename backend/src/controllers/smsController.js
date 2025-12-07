@@ -1,7 +1,7 @@
 'use strict';
 
 const { Member, Group, MemberGroup, SmsLog, Department, DepartmentMember, Pledge } = require('../models');
-const { sendSms, sendSmsBatch } = require('../services/twilioService');
+const { sendSms, sendSmsBatch, getSmsPricing } = require('../services/twilioService');
 const tz = require('../config/timezone');
 
 // Normalize phone numbers to E.164 if possible (basic handling)
@@ -18,9 +18,9 @@ function normalizePhone(phone) {
 // Template variable substitution for personalized messages
 function substituteTemplateVariables(template, data) {
   if (!template) return template;
-  
+
   let message = template;
-  
+
   // Replace {firstName}, {lastName}, {fullName}
   if (data.firstName) {
     message = message.replace(/{firstName}/gi, data.firstName);
@@ -31,30 +31,30 @@ function substituteTemplateVariables(template, data) {
   if (data.firstName && data.lastName) {
     message = message.replace(/{fullName}/gi, `${data.firstName} ${data.lastName}`);
   }
-  
+
   // Replace {amount} - format as currency
   if (data.amount !== undefined && data.amount !== null) {
     const formattedAmount = `$${parseFloat(data.amount).toFixed(2)}`;
     message = message.replace(/{amount}/gi, formattedAmount);
   }
-  
+
   // Replace {totalAmount} - for multiple pledges
   if (data.totalAmount !== undefined && data.totalAmount !== null) {
     const formattedTotal = `$${parseFloat(data.totalAmount).toFixed(2)}`;
     message = message.replace(/{totalAmount}/gi, formattedTotal);
   }
-  
+
   // Replace {pledgeCount}
   if (data.pledgeCount !== undefined && data.pledgeCount !== null) {
     message = message.replace(/{pledgeCount}/gi, data.pledgeCount.toString());
   }
-  
+
   // Replace {dueDate} - format date nicely in CST
   if (data.dueDate) {
     const formatted = tz.formatForDisplay(data.dueDate, 'MMM DD, YYYY');
     message = message.replace(/{dueDate}/gi, formatted);
   }
-  
+
   return message;
 }
 
@@ -199,7 +199,7 @@ exports.sendDepartment = async (req, res) => {
 
     // Get all department members
     const memberships = await DepartmentMember.findAll({
-      where: { 
+      where: {
         department_id: departmentId,
         status: 'active'
       },
@@ -285,14 +285,14 @@ exports.sendPendingPledges = async (req, res) => {
     const recipients = Array.from(memberMap.values());
 
     if (recipients.length === 0) {
-      await logSms({ 
-        sender_id: senderId, 
-        role, 
-        recipient_type: 'pending_pledges', 
-        recipient_count: 0, 
-        message, 
-        status: 'failed', 
-        error: 'No members with pending pledges found' 
+      await logSms({
+        sender_id: senderId,
+        role,
+        recipient_type: 'pending_pledges',
+        recipient_count: 0,
+        message,
+        status: 'failed',
+        error: 'No members with pending pledges found'
       });
       return res.status(404).json({ success: false, message: 'No members with pending pledges found' });
     }
@@ -300,7 +300,7 @@ exports.sendPendingPledges = async (req, res) => {
     // Send personalized SMS to all recipients with template substitution
     const batch = recipients.map(recipientData => {
       const { member, pledges, totalAmount } = recipientData;
-      
+
       // Prepare template data
       const templateData = {
         firstName: member.first_name,
@@ -310,16 +310,16 @@ exports.sendPendingPledges = async (req, res) => {
         pledgeCount: pledges.length,
         dueDate: pledges.length === 1 ? pledges[0].dueDate : null
       };
-      
+
       // Substitute template variables
       const personalizedMessage = substituteTemplateVariables(message, templateData);
-      
+
       return {
         to: normalizePhone(member.phone_number),
         body: personalizedMessage,
-        metadata: { 
-          memberId: member.id, 
-          firstName: member.first_name, 
+        metadata: {
+          memberId: member.id,
+          firstName: member.first_name,
           lastName: member.last_name,
           pledgeCount: pledges.length,
           totalAmount: totalAmount
@@ -335,20 +335,20 @@ exports.sendPendingPledges = async (req, res) => {
     if (successCount === 0) { status = 'failed'; error = 'All messages failed'; }
     else if (successCount < results.length) { status = 'partial'; error = `${results.length - successCount} failed`; }
 
-    await logSms({ 
-      sender_id: senderId, 
-      role, 
-      recipient_type: 'pending_pledges', 
-      recipient_count: recipients.length, 
-      message, 
-      status, 
-      error 
+    await logSms({
+      sender_id: senderId,
+      role,
+      recipient_type: 'pending_pledges',
+      recipient_count: recipients.length,
+      message,
+      status,
+      error
     });
 
-    return res.json({ 
-      success: successCount > 0, 
-      results, 
-      successCount, 
+    return res.json({
+      success: successCount > 0,
+      results,
+      successCount,
       total: results.length,
       pledgeStatus: 'pending'
     });
@@ -405,14 +405,14 @@ exports.sendFulfilledPledges = async (req, res) => {
     const recipients = Array.from(memberMap.values());
 
     if (recipients.length === 0) {
-      await logSms({ 
-        sender_id: senderId, 
-        role, 
-        recipient_type: 'fulfilled_pledges', 
-        recipient_count: 0, 
-        message, 
-        status: 'failed', 
-        error: 'No members with fulfilled pledges found' 
+      await logSms({
+        sender_id: senderId,
+        role,
+        recipient_type: 'fulfilled_pledges',
+        recipient_count: 0,
+        message,
+        status: 'failed',
+        error: 'No members with fulfilled pledges found'
       });
       return res.status(404).json({ success: false, message: 'No members with fulfilled pledges found' });
     }
@@ -420,7 +420,7 @@ exports.sendFulfilledPledges = async (req, res) => {
     // Send personalized SMS to all recipients with template substitution
     const batch = recipients.map(recipientData => {
       const { member, pledges, totalAmount } = recipientData;
-      
+
       // Prepare template data
       const templateData = {
         firstName: member.first_name,
@@ -429,16 +429,16 @@ exports.sendFulfilledPledges = async (req, res) => {
         totalAmount: totalAmount,
         pledgeCount: pledges.length
       };
-      
+
       // Substitute template variables
       const personalizedMessage = substituteTemplateVariables(message, templateData);
-      
+
       return {
         to: normalizePhone(member.phone_number),
         body: personalizedMessage,
-        metadata: { 
-          memberId: member.id, 
-          firstName: member.first_name, 
+        metadata: {
+          memberId: member.id,
+          firstName: member.first_name,
           lastName: member.last_name,
           pledgeCount: pledges.length,
           totalAmount: totalAmount
@@ -454,20 +454,20 @@ exports.sendFulfilledPledges = async (req, res) => {
     if (successCount === 0) { status = 'failed'; error = 'All messages failed'; }
     else if (successCount < results.length) { status = 'partial'; error = `${results.length - successCount} failed`; }
 
-    await logSms({ 
-      sender_id: senderId, 
-      role, 
-      recipient_type: 'fulfilled_pledges', 
-      recipient_count: recipients.length, 
-      message, 
-      status, 
-      error 
+    await logSms({
+      sender_id: senderId,
+      role,
+      recipient_type: 'fulfilled_pledges',
+      recipient_count: recipients.length,
+      message,
+      status,
+      error
     });
 
-    return res.json({ 
-      success: successCount > 0, 
-      results, 
-      successCount, 
+    return res.json({
+      success: successCount > 0,
+      results,
+      successCount,
       total: results.length,
       pledgeStatus: 'fulfilled'
     });
@@ -639,6 +639,36 @@ exports.getFulfilledPledgesRecipients = async (req, res) => {
     });
   } catch (error) {
     console.error('getFulfilledPledgesRecipients error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+// Get count of all active members with phone numbers
+exports.getAllRecipients = async (req, res) => {
+  try {
+    const members = await Member.findAll({ where: { is_active: true } });
+    const recipients = members.filter(m => !!m.phone_number);
+
+    return res.json({
+      success: true,
+      data: {
+        totalCount: recipients.length
+      }
+    });
+  } catch (error) {
+    console.error('getAllRecipients error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+// Get current SMS pricing
+exports.getPricing = async (req, res) => {
+  try {
+    const pricing = await getSmsPricing('US');
+    return res.json({
+      success: true,
+      data: pricing
+    });
+  } catch (error) {
+    console.error('getPricing error:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

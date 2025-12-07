@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ReportData {
   summary?: {
@@ -46,6 +47,7 @@ interface PaymentReportsProps {
 
 const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
   const { currentUser, firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [reportType, setReportType] = useState<'summary' | 'behind_payments' | 'monthly_breakdown'>('summary');
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -88,12 +90,12 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
 
     const { summary } = reportData;
     const stats = [
-      { label: 'Total Members', value: summary.totalMembers, color: 'bg-blue-500' },
-      { label: 'Up to Date', value: summary.upToDateMembers, color: 'bg-green-500' },
-      { label: 'Behind on Payments', value: summary.behindMembers, color: 'bg-red-500' },
-      { label: 'Collection Rate', value: `${summary.collectionRate}%`, color: 'bg-purple-500' },
-      { label: 'Total Amount Due', value: formatCurrency(summary.totalAmountDue), color: 'bg-orange-500' },
-      { label: 'Total Collected', value: formatCurrency(summary.totalCollected), color: 'bg-green-600' }
+      { label: t('treasurerDashboard.reportTabs.paymentReports.summary.totalMembers'), value: summary.totalMembers, color: 'bg-blue-500' },
+      { label: t('treasurerDashboard.reportTabs.paymentReports.summary.upToDate'), value: summary.upToDateMembers, color: 'bg-green-500' },
+      { label: t('treasurerDashboard.reportTabs.paymentReports.summary.behind'), value: summary.behindMembers, color: 'bg-red-500' },
+      { label: t('treasurerDashboard.reportTabs.paymentReports.summary.collectionRate'), value: `${summary.collectionRate}%`, color: 'bg-purple-500' },
+      { label: t('treasurerDashboard.reportTabs.paymentReports.summary.totalDue'), value: formatCurrency(summary.totalAmountDue), color: 'bg-orange-500' },
+      { label: t('treasurerDashboard.reportTabs.paymentReports.summary.totalCollected'), value: formatCurrency(summary.totalCollected), color: 'bg-green-600' }
     ];
 
     return (
@@ -104,11 +106,11 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
               <div className="flex items-center">
                 <div className={`${stat.color} rounded-lg p-3 mr-4`}>
                   <span className="text-white text-lg font-bold">
-                    {stat.label === 'Collection Rate' ? '📊' : 
-                     stat.label === 'Total Members' ? '👥' :
-                     stat.label === 'Up to Date' ? '✅' :
-                     stat.label === 'Behind on Payments' ? '⚠️' :
-                     stat.label.includes('Due') ? '💸' : '💰'}
+                    {stat.label === t('treasurerDashboard.reportTabs.paymentReports.summary.collectionRate') ? '📊' :
+                      stat.label === t('treasurerDashboard.reportTabs.paymentReports.summary.totalMembers') ? '👥' :
+                        stat.label === t('treasurerDashboard.reportTabs.paymentReports.summary.upToDate') ? '✅' :
+                          stat.label === t('treasurerDashboard.reportTabs.paymentReports.summary.behind') ? '⚠️' :
+                            stat.label.includes(t('treasurerDashboard.reportTabs.paymentReports.summary.totalDue')) ? '💸' : '💰'}
                   </span>
                 </div>
                 <div>
@@ -131,7 +133,7 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">
-              Members Behind on Payments ({reportData.behindPayments.length})
+              {t('treasurerDashboard.reportTabs.paymentReports.behind.title')} ({reportData.behindPayments.length})
             </h3>
           </div>
           <div className="overflow-x-auto">
@@ -139,19 +141,19 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Member
+                    {t('treasurerDashboard.reportTabs.paymentReports.behind.member')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contact
+                    {t('treasurerDashboard.reportTabs.paymentReports.behind.contact')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Due
+                    {t('treasurerDashboard.reportTabs.paymentReports.behind.totalDue')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Collected
+                    {t('treasurerDashboard.reportTabs.paymentReports.behind.collected')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Balance Due
+                    {t('treasurerDashboard.reportTabs.paymentReports.behind.balance')}
                   </th>
                 </tr>
               </thead>
@@ -214,7 +216,7 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Collection Breakdown</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('treasurerDashboard.reportTabs.paymentReports.monthly.title')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {months.map((month) => (
               <div key={month.key} className="bg-gray-50 rounded-lg p-4">
@@ -239,7 +241,7 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
           </div>
           <div className="mt-6 pt-4 border-t border-gray-200">
             <div className="flex justify-between items-center">
-              <span className="text-lg font-semibold text-gray-900">Total Collected</span>
+              <span className="text-lg font-semibold text-gray-900">{t('treasurerDashboard.reportTabs.paymentReports.monthly.totalCollected')}</span>
               <span className="text-lg font-bold text-green-600">{formatCurrency(totalCollected)}</span>
             </div>
           </div>
@@ -253,22 +255,22 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
       {/* Report Type Selector */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium text-gray-700">Report Type:</label>
+          <label className="text-sm font-medium text-gray-700">{t('treasurerDashboard.reportTabs.paymentReports.type')}</label>
           <select
             value={reportType}
             onChange={(e) => setReportType(e.target.value as any)}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="summary">Summary Report</option>
-            <option value="behind_payments">Behind on Payments</option>
-            <option value="monthly_breakdown">Monthly Breakdown</option>
+            <option value="summary">{t('treasurerDashboard.reportTabs.paymentReports.types.summary')}</option>
+            <option value="behind_payments">{t('treasurerDashboard.reportTabs.paymentReports.types.behind')}</option>
+            <option value="monthly_breakdown">{t('treasurerDashboard.reportTabs.paymentReports.types.monthly')}</option>
           </select>
           <button
             onClick={fetchReport}
             disabled={loading}
             className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-md font-medium"
           >
-            {loading ? 'Loading...' : 'Generate Report'}
+            {loading ? t('treasurerDashboard.reportTabs.paymentReports.loading') : t('treasurerDashboard.reportTabs.paymentReports.generate')}
           </button>
         </div>
       </div>

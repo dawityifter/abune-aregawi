@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { getCurrentDateCST } from '../../utils/dateUtils';
 
 interface ExpenseCategory {
@@ -34,6 +35,7 @@ interface AddExpenseModalProps {
 
 const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -320,8 +322,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="bg-blue-600 text-white px-6 py-4 rounded-t-lg">
-          <h2 className="text-2xl font-bold">Record Expense</h2>
-          <p className="text-blue-100 text-sm mt-1">Add a new expense transaction</p>
+          <h2 className="text-2xl font-bold">{t('treasurerDashboard.expenses.addModal.title')}</h2>
         </div>
 
         {/* Body */}
@@ -335,7 +336,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
           {/* Expense Category */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Expense Category <span className="text-red-500">*</span>
+              {t('treasurerDashboard.expenses.addModal.category')} <span className="text-red-500">*</span>
             </label>
             {loadingCategories ? (
               <div className="text-gray-500">Loading categories...</div>
@@ -346,7 +347,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">-- Select Category --</option>
+                <option value="">{t('treasurerDashboard.expenses.addModal.select')}</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.gl_code}>
                     {category.gl_code} - {category.name}
@@ -363,7 +364,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
           {shouldShowEmployeeField() && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Employee <span className="text-red-500">*</span>
+                {t('treasurerDashboard.expenses.addModal.types.employee')} <span className="text-red-500">*</span>
               </label>
               {loadingEmployees ? (
                 <div className="text-gray-500 text-sm">Loading employees...</div>
@@ -378,7 +379,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">-- Select Employee --</option>
+                  <option value="">{t('treasurerDashboard.expenses.addModal.select')}</option>
                   {employees.map((employee) => (
                     <option key={employee.id} value={employee.id}>
                       {employee.first_name} {employee.last_name}
@@ -399,7 +400,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
           {shouldShowVendorField() && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Vendor <span className="text-red-500">*</span>
+                {t('treasurerDashboard.expenses.addModal.types.vendor')} <span className="text-red-500">*</span>
               </label>
               {loadingVendors ? (
                 <div className="text-gray-500 text-sm">Loading vendors...</div>
@@ -414,7 +415,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">-- Select Vendor --</option>
+                  <option value="">{t('treasurerDashboard.expenses.addModal.select')}</option>
                   {vendors.map((vendor) => (
                     <option key={vendor.id} value={vendor.id}>
                       {vendor.name} ({vendor.vendor_type})
@@ -434,7 +435,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
           {shouldShowPayeeNameField() && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Payee Name <span className="text-red-500">*</span>
+                {t('treasurerDashboard.expenses.addModal.payeeType')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -457,7 +458,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
           {/* Amount */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Amount <span className="text-red-500">*</span>
+              {t('treasurerDashboard.expenses.addModal.amount')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <span className="absolute left-3 top-2 text-gray-500">$</span>
@@ -479,7 +480,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
           {/* Expense Date */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Expense Date <span className="text-red-500">*</span>
+              {t('treasurerDashboard.expenses.addModal.date')} <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -494,7 +495,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
           {/* Payment Method */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Method <span className="text-red-500">*</span>
+              {t('treasurerDashboard.expenses.addModal.paymentMethod')} <span className="text-red-500">*</span>
             </label>
             <div className="flex flex-col space-y-2">
               <div className="flex space-x-4">
@@ -507,7 +508,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
                     className="mr-2"
                     disabled
                   />
-                  Cash
+                  {t('treasurerDashboard.transactionList.methods.cash')}
                 </label>
                 <label className="flex items-center">
                   <input
@@ -517,7 +518,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
                     onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'check')}
                     className="mr-2"
                   />
-                  Check
+                  {t('treasurerDashboard.transactionList.methods.check')}
                 </label>
               </div>
               <p className="text-xs text-amber-600 italic">
@@ -530,7 +531,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
           {paymentMethod === 'check' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Check Number
+                {t('treasurerDashboard.expenses.addModal.checkNumber')}
               </label>
               <input
                 type="text"
@@ -545,7 +546,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
           {/* Receipt Number */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Receipt Number
+              {t('treasurerDashboard.expenses.addModal.receiptNumber')}
             </label>
             <input
               type="text"
@@ -580,7 +581,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
           {/* Memo */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Memo/Description
+              {t('treasurerDashboard.expenses.addModal.memo')}
             </label>
             <textarea
               value={memo}
@@ -601,14 +602,14 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
               disabled={loading}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
-              Cancel
+              {t('treasurerDashboard.expenses.addModal.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading || loadingCategories}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Recording...' : 'Record Expense'}
+              {loading ? t('treasurerDashboard.expenses.addModal.saving') : t('treasurerDashboard.expenses.addModal.save')}
             </button>
           </div>
         </form>

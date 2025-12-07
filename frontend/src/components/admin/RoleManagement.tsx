@@ -44,7 +44,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
       let allMembers: any[] = [];
 
       while (true) {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?page=${page}&limit=${pageSize}` , {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?page=${page}&limit=${pageSize}`, {
           headers: {
             'Authorization': `Bearer ${idToken}`,
             'Content-Type': 'application/json'
@@ -116,8 +116,8 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
       }
 
       // Update local state
-      setMembers(prev => prev.map(member => 
-        member.id === selectedMember.id 
+      setMembers(prev => prev.map(member =>
+        member.id === selectedMember.id
           ? { ...member, role: newRole }
           : member
       ));
@@ -203,11 +203,11 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
     return (
       <div className="text-center py-12">
         <div className="text-red-600 text-lg mb-4">{error}</div>
-        <button 
-          onClick={fetchMembers} 
+        <button
+          onClick={fetchMembers}
           className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
         >
-          {t('retry')}
+          {t('admin.common.retry')}
         </button>
       </div>
     );
@@ -218,10 +218,10 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">
-          {t('role.management')}
+          {t('admin.roles.title')}
         </h2>
         <p className="text-gray-600">
-          {t('manage.member.roles.and.permissions')}
+          {t('admin.roles.description')}
         </p>
       </div>
 
@@ -236,7 +236,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
               {roleStats[role] || 0}
             </div>
             <div className="text-sm text-gray-500">
-              {t('members')}
+              {t('admin.roles.stats.members')}
             </div>
           </div>
         ))}
@@ -247,10 +247,10 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-medium text-gray-900">
-              {t('total.dependents') || 'Total Dependents'}
+              {t('admin.members.stats.totalDependents')}
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              {t('registered.dependents.across.all.members') || 'Registered dependents across all members'}
+              {t('admin.members.stats.description')}
             </p>
           </div>
           <div className="text-4xl font-bold text-blue-600">
@@ -262,28 +262,28 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
       {/* Member Role Management */}
       <div className="bg-white p-6 rounded-lg shadow">
         <h3 className="text-lg font-medium text-gray-900 mb-4">
-          {t('update.member.roles')}
+          {t('admin.roles.updateRole')}
         </h3>
         {/* Filters */}
         <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('search')}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.common.search')}</label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              placeholder={t('search.members')}
+              placeholder={t('admin.common.search') + '...'}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('role')}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.common.role')}</label>
             <select
               value={roleFilter}
               onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="">{t('all.roles')}</option>
+              <option value="">{t('admin.common.all')}</option>
               <option value="admin">Admin</option>
               <option value="church_leadership">Church Leadership</option>
               <option value="treasurer">Treasurer</option>
@@ -293,21 +293,21 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
             </select>
           </div>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => toggleSort('member')}>
-                  {t('member')}
+                  {t('admin.members.table.name')}
                   <span className="ml-1 text-gray-400">{sortBy === 'member' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => toggleSort('role')}>
-                  {t('current.role')}
+                  {t('admin.roles.currentRole')}
                   <span className="ml-1 text-gray-400">{sortBy === 'role' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('actions')}
+                  {t('admin.common.actions')}
                 </th>
               </tr>
             </thead>
@@ -347,7 +347,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
                       className="text-primary-600 hover:text-primary-900"
                     >
                       <i className="fas fa-edit mr-1"></i>
-                      {t('change.role')}
+                      {t('admin.roles.changeRole')}
                     </button>
                   </td>
                 </tr>
@@ -360,8 +360,8 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
         <div className="mt-4 flex items-center justify-between">
           <div className="text-sm text-gray-600">
             {totalMembers > 0
-              ? `${startIndex + 1}-${endIndex} ${t('of')} ${totalMembers}`
-              : `${t('members')}: 0`}
+              ? `${startIndex + 1}-${endIndex} ${t('admin.common.of')} ${totalMembers}`
+              : `${t('admin.roles.stats.members')}: 0`}
           </div>
           <div className="space-x-2">
             <button
@@ -369,17 +369,17 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               className={`px-3 py-1 rounded border ${safePage <= 1 ? 'text-gray-400 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
             >
-              {t('previous')}
+              {t('admin.common.previous')}
             </button>
             <span className="text-sm text-gray-700">
-              {t('page')} {safePage} {t('of')} {totalPages}
+              {t('admin.common.page')} {safePage} {t('admin.common.of')} {totalPages}
             </span>
             <button
               disabled={safePage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               className={`px-3 py-1 rounded border ${safePage >= totalPages ? 'text-gray-400 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
             >
-              {t('next')}
+              {t('admin.common.next')}
             </button>
           </div>
         </div>
@@ -391,7 +391,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">
-                {t('update.role')}
+                {t('admin.roles.updateRole')}
               </h3>
               <button
                 onClick={() => setSelectedMember(null)}
@@ -403,10 +403,10 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
 
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-2">
-                {t('updating.role.for')}: <strong>{selectedMember.firstName} {selectedMember.lastName}</strong>
+                {t('admin.roles.updatingFor')}: <strong>{selectedMember.firstName} {selectedMember.lastName}</strong>
               </p>
               <p className="text-sm text-gray-600 mb-4">
-                {t('current.role')}: <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(selectedMember.role)}`}>
+                {t('admin.roles.currentRole')}: <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(selectedMember.role)}`}>
                   {getRoleDisplayName(selectedMember.role)}
                 </span>
               </p>
@@ -414,7 +414,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('new.role')}
+                {t('admin.roles.newRole')}
               </label>
               <select
                 value={newRole}
@@ -441,14 +441,14 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
                 onClick={() => setSelectedMember(null)}
                 className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                {t('cancel')}
+                {t('admin.common.cancel')}
               </button>
               <button
                 onClick={handleRoleUpdate}
                 disabled={updating || newRole === selectedMember.role}
                 className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
               >
-                {updating ? t('updating') : t('update.role')}
+                {updating ? t('admin.roles.updating') : t('admin.roles.updateRole')}
               </button>
             </div>
           </div>
