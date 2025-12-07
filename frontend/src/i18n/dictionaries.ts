@@ -392,6 +392,127 @@ export interface Dictionaries {
         action: string;
       };
     };
+    memberModal: {
+      editTitle: string;
+      tabs: {
+        basic: string;
+        contact: string;
+        spiritual: string;
+        family: string;
+      };
+      sections: {
+        personal: string;
+        address: string;
+        church: string;
+      };
+      fields: {
+        firstName: string;
+        middleName: string;
+        lastName: string;
+        email: string;
+        phone: string;
+        gender: string;
+        dob: string;
+        maritalStatus: string;
+        yearlyPledge: string;
+        baptismName: string;
+        role: string;
+        status: string;
+        street: string;
+        city: string;
+        state: string;
+        zip: string;
+        country: string;
+        joinedParish: string;
+        givingMethod: string;
+        interestedServing: string;
+        spouseName: string;
+        spouseEmail: string;
+        emergencyName: string;
+        emergencyPhone: string;
+        language: string;
+      };
+      placeholders: {
+        selectGender: string;
+        selectMaritalStatus: string;
+        selectRole: string;
+        selectStatus: string;
+        selectLanguage: string;
+        selectGivingMethod: string;
+        selectOption: string;
+      };
+      options: {
+        male: string;
+        female: string;
+        other: string;
+        single: string;
+        married: string;
+        divorced: string;
+        widowed: string;
+        yes: string;
+        no: string;
+        maybe: string;
+        cash: string;
+        check: string;
+        online: string;
+        bank_transfer: string;
+        active: string;
+        inactive: string;
+      };
+      family: {
+        linked: string;
+        addDependent: string;
+        noDependents: string;
+        promote: string;
+      };
+      actions: {
+        save: string;
+        saving: string;
+        cancel: string;
+        delete: string;
+        edit: string;
+      };
+    };
+    departmentModal: {
+      create: string;
+      edit: string;
+      manageMembers: string;
+      fields: {
+        name: string;
+        description: string;
+        type: string;
+        parent: string;
+        leader: string;
+        meetingSchedule: string;
+        maxMembers: string;
+        public: string;
+        active: string;
+        contactEmail: string;
+        contactPhone: string;
+      };
+      placeholders: {
+        searchLeader: string;
+        selectLeader: string;
+        searchMembers: string;
+        none: string;
+      };
+      types: {
+        ministry: string;
+        committee: string;
+        service: string;
+        social: string;
+        administrative: string;
+      };
+      members: {
+        add: string;
+        selectToAdd: string;
+        current: string;
+        noMembers: string;
+        allAdded: string;
+        noResults: string;
+        addSelected: string;
+      };
+    };
   };
 }
 
@@ -846,8 +967,130 @@ export const en: Dictionaries = {
         title: "No departments found",
         action: "Create your first department"
       }
+    },
+    memberModal: {
+      editTitle: "Edit Member",
+      tabs: {
+        basic: "Basic Info",
+        contact: "Contact Info",
+        spiritual: "Spiritual Info",
+        family: "Family Info"
+      },
+      sections: {
+        personal: "Personal Details",
+        address: "Address",
+        church: "Church Details"
+      },
+      fields: {
+        firstName: "First Name",
+        middleName: "Middle Name",
+        lastName: "Last Name",
+        email: "Email",
+        phone: "Phone Number",
+        gender: "Gender",
+        dob: "Date of Birth",
+        maritalStatus: "Marital Status",
+        yearlyPledge: "Yearly Pledge",
+        baptismName: "Baptism Name",
+        role: "Role",
+        status: "Status",
+        street: "Street Address",
+        city: "City",
+        state: "State",
+        zip: "Postal Code",
+        country: "Country",
+        joinedParish: "Date Joined Parish",
+        givingMethod: "Preferred Giving Method",
+        interestedServing: "Interested in Serving",
+        spouseName: "Spouse Name",
+        spouseEmail: "Spouse Email",
+        emergencyName: "Emergency Contact",
+        emergencyPhone: "Emergency Phone",
+        language: "Language Preference"
+      },
+      placeholders: {
+        selectGender: "Select Gender",
+        selectMaritalStatus: "Select Marital Status",
+        selectRole: "Select Role",
+        selectStatus: "Select Status",
+        selectLanguage: "Select Language",
+        selectGivingMethod: "Select Giving Method",
+        selectOption: "Select Option"
+      },
+      options: {
+        male: "Male",
+        female: "Female",
+        other: "Other",
+        single: "Single",
+        married: "Married",
+        divorced: "Divorced",
+        widowed: "Widowed",
+        yes: "Yes",
+        no: "No",
+        maybe: "Maybe",
+        cash: "Cash",
+        check: "Check",
+        online: "Online",
+        bank_transfer: "Bank Transfer",
+        active: "Active",
+        inactive: "Inactive"
+      },
+      family: {
+        linked: "This member is part of a household (Family ID: {id}). Payments are aggregated.",
+        addDependent: "Add Dependent",
+        noDependents: "No dependents added yet.",
+        promote: "Promote to Member"
+      },
+      actions: {
+        save: "Save Changes",
+        saving: "Saving...",
+        cancel: "Cancel",
+        delete: "Delete",
+        edit: "Edit"
+      }
+    },
+    departmentModal: {
+      create: "Create Department",
+      edit: "Edit Department",
+      manageMembers: "Manage Members",
+      fields: {
+        name: "Department Name",
+        description: "Description",
+        type: "Type",
+        parent: "Parent Department",
+        leader: "Leader",
+        meetingSchedule: "Meeting Schedule",
+        maxMembers: "Max Members",
+        public: "Public Department",
+        active: "Active",
+        contactEmail: "Contact Email",
+        contactPhone: "Contact Phone"
+      },
+      placeholders: {
+        searchLeader: "Search by name, ID, or phone...",
+        selectLeader: "Select Leader",
+        searchMembers: "Search by name, ID, or phone...",
+        none: "None (Top Level)"
+      },
+      types: {
+        ministry: "Ministry",
+        committee: "Committee",
+        service: "Service",
+        social: "Social",
+        administrative: "Administrative"
+      },
+      members: {
+        add: "Add Members",
+        selectToAdd: "Select Members to Add",
+        current: "Current Members",
+        noMembers: "No members in this department yet",
+        allAdded: "All members have been added",
+        noResults: "No members found matching your search",
+        addSelected: "Add Selected"
+      }
     }
-  }
+  },
+
 };
 
 export const ti: Dictionaries = {
@@ -1306,6 +1549,128 @@ export const ti: Dictionaries = {
         title: "ዝተረኽበ ክፍሊ ስራሕ የለን",
         action: "ናይ መጀመርታ ክፍሊ ስራሕ ፍጠሩ"
       }
+    },
+    memberModal: {
+      editTitle: "ኣባል ኣስተኻኽል",
+      tabs: {
+        basic: "መባእታዊ ሓበሬታ",
+        contact: "ኣድራሻ",
+        spiritual: "መንፈሳዊ ሓበሬታ",
+        family: "ሓበሬታ ስድራቤት"
+      },
+      sections: {
+        personal: "ውልቃዊ ዝርዝር",
+        address: "ኣድራሻ",
+        church: "ዝርዝር ቤተ ክርስቲያን"
+      },
+      fields: {
+        firstName: "ሽም",
+        middleName: "ሽም ኣቦ",
+        lastName: "ሽም ኣቦሓጎ",
+        email: "ኢሜይል",
+        phone: "ቁጽሪ ቴሌፎን",
+        gender: "ጾታ",
+        dob: "ዕለት ልደት",
+        maritalStatus: "ኩነታት ሓዳር",
+        yearlyPledge: "ዓመታዊ መብጽዓ",
+        baptismName: "ሽም ክርስትና",
+        role: "ሓላፍነት",
+        status: "ኩነታት",
+        street: "መንገዲ ኣድራሻ",
+        city: "ከተማ",
+        state: "ምምሕዳር/State",
+        zip: "ፖስታ ቁጽሪ",
+        country: "ሃገር",
+        joinedParish: "ቤተ ክርስቲያን ዝተጸንበሩሉ ዕለት",
+        givingMethod: "ዝመረጽዎ ኣገባብ ወፊ",
+        interestedServing: "ንምግልጋል ድሌት ኣለዎም",
+        spouseName: "ሽም በዓል/ቲ ቤት",
+        spouseEmail: "ኢሜይል በዓል/ቲ ቤት",
+        emergencyName: "ተወከስቲ ሓደጋ",
+        emergencyPhone: "ቴሌፎን ተወከስቲ ሓደጋ",
+        language: "ዝምረጽ ቋንቋ"
+      },
+      placeholders: {
+        selectGender: "ጾታ ይምረጹ",
+        selectMaritalStatus: "ኩነታት ሓዳር ይምረጹ",
+        selectRole: "ሓላፍነት ይምረጹ",
+        selectStatus: "ኩነታት ይምረጹ",
+        selectLanguage: "ቋንቋ ይምረጹ",
+        selectGivingMethod: "ኣገባብ ወፊ ይምረጹ",
+        selectOption: "ይምረጹ"
+      },
+      options: {
+        male: "ወዲ ተባዕታይ",
+        female: "ጓል ኣንስተይቲ",
+        other: "ካልእ",
+        single: "ዘይተመርዓወ/ት",
+        married: "ዝተመርዓወ/ት",
+        divorced: "ዝተፋትሐ/ት",
+        widowed: "በዓል/ቲ ቤቱ/ታ ዝሞቶ/ታ",
+        yes: "እወ",
+        no: "ኣይኮነን",
+        maybe: "ምናልባት",
+        cash: "ጥረ ገንዘብ",
+        check: "ቼክ",
+        online: "ኦንላይን",
+        bank_transfer: "ባንክ ምስግጋር",
+        active: "ንጡፍ",
+        inactive: "ዘይንጡፍ"
+      },
+      family: {
+        linked: "እዚ ኣባል ኣካል ስድራቤት እዩ (መለለዪ ስድራ: {id})። ክፍሊት ብደረጃ ስድራቤት ይተኣኻኸብ።",
+        addDependent: "ተደገፍቲ ወስኽ",
+        noDependents: "ዛጊድ ዝተወሰኹ ተደገፍቲ የለዉን",
+        promote: "ናብ ብቁዕ ኣባልነት ኣሰጋግር"
+      },
+      actions: {
+        save: "ለውጢ ኣቀምጥ",
+        saving: "ይቅመጥ ኣሎ...",
+        cancel: "ሰርዝ",
+        delete: "ሰርዝ",
+        edit: "ኣስተኻኽል"
+      }
+    },
+    departmentModal: {
+      create: "ክፍሊ ስራሕ ፍጠር",
+      edit: "ክፍሊ ስራሕ ኣስተኻኽል",
+      manageMembers: "ኣባላት ኣስተኻኽል",
+      fields: {
+        name: "ሽም ክፍሊ ስራሕ",
+        description: "መግለጺ",
+        type: "ዓይነት",
+        parent: "ላዕለዋይ ክፍሊ ስራሕ",
+        leader: "መርሓ/ሒት",
+        meetingSchedule: "መደብ ኣኼባ",
+        maxMembers: "ዝለዓለ ቁጽሪ ኣባላት",
+        public: "ህዝባዊ ክፍሊ ስራሕ",
+        active: "ንጡፍ",
+        contactEmail: "ናይ ክፍሊ ስራሕ ኢሜይል",
+        contactPhone: "ናይ ክፍሊ ስራሕ ቴሌፎን"
+      },
+      placeholders: {
+        searchLeader: "ብሽም፣ መለለዪ ወይ ቴሌፎን ድለ...",
+        selectLeader: "መርሓ/ሒት ምረጽ",
+        searchMembers: "ብሽም፣ መለለዪ ወይ ቴሌፎን ድለ...",
+        none: "የለን (ላዕለዋይ ደረጃ)"
+      },
+      types: {
+        ministry: "ስበካ",
+        committee: "ኮሚቴ",
+        service: "ኣገልግሎት",
+        social: "ማሕበራዊ",
+        administrative: "ምምሕዳራዊ"
+      },
+      members: {
+        add: "ኣባላት ወስኽ",
+        selectToAdd: "ብምምራጽ ኣባላት ወስኽ",
+        current: "ናይ ሕዚ ኣባላት",
+        noMembers: "ኣብዚ ክፍሊ ስራሕ ዛጊድ ኣባላት የለዉን",
+        allAdded: "ኩሎም ኣባላት ተወሰኹ እዮም",
+        noResults: "ዝድለ ኣባል ኣይተረኽበን",
+        addSelected: "ዝተመረጹ ወስኽ"
+      }
+
     }
   }
 };

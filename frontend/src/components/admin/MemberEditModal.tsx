@@ -289,10 +289,10 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
   };
 
   const tabs = [
-    { id: 'basic', label: t('basic.info'), icon: 'fas fa-user' },
-    { id: 'contact', label: t('contact.info'), icon: 'fas fa-address-book' },
-    { id: 'spiritual', label: t('spiritual.info'), icon: 'fas fa-pray' },
-    { id: 'family', label: t('family.info'), icon: 'fas fa-users' }
+    { id: 'basic', label: t('admin.memberModal.tabs.basic'), icon: 'fas fa-user' },
+    { id: 'contact', label: t('admin.memberModal.tabs.contact'), icon: 'fas fa-address-book' },
+    { id: 'spiritual', label: t('admin.memberModal.tabs.spiritual'), icon: 'fas fa-pray' },
+    { id: 'family', label: t('admin.memberModal.tabs.family'), icon: 'fas fa-users' }
   ];
 
   return (
@@ -300,7 +300,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
       <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-medium text-gray-900">
-            {t('edit.member')}: {member.firstName} {member.lastName}
+            {t('admin.memberModal.editTitle')}: {member.firstName} {member.lastName}
           </h3>
           <button
             onClick={onClose}
@@ -341,7 +341,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('first.name')} *
+                  {t('admin.memberModal.fields.firstName')} *
                 </label>
                 <input
                   type="text"
@@ -355,7 +355,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('middle.name')}
+                  {t('admin.memberModal.fields.middleName')}
                 </label>
                 <input
                   type="text"
@@ -368,7 +368,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('last.name')} *
+                  {t('admin.memberModal.fields.lastName')} *
                 </label>
                 <input
                   type="text"
@@ -382,7 +382,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('email')}
+                  {t('admin.memberModal.fields.email')}
                 </label>
                 <input
                   type="email"
@@ -395,7 +395,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('role')} *
+                  {t('admin.memberModal.fields.role')} *
                 </label>
                 <select
                   name="role"
@@ -426,8 +426,8 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.value === 'true' }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="true">{t('active')}</option>
-                  <option value="false">{t('inactive')}</option>
+                  <option value="true">{t('admin.memberModal.options.active')}</option>
+                  <option value="false">{t('admin.memberModal.options.inactive')}</option>
                 </select>
               </div>
 
@@ -442,16 +442,16 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   onFocus={() => console.log('🔍 Gender dropdown focused. Current value:', formData.gender)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">{t('select.gender')}</option>
-                  <option value="male">{t('male')}</option>
-                  <option value="female">{t('female')}</option>
-                  <option value="other">{t('other')}</option>
+                  <option value="">{t('admin.memberModal.placeholders.selectGender')}</option>
+                  <option value="male">{t('admin.memberModal.options.male')}</option>
+                  <option value="female">{t('admin.memberModal.options.female')}</option>
+                  <option value="other">{t('admin.memberModal.options.other')}</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('date.of.birth')}
+                  {t('admin.memberModal.fields.dob')}
                 </label>
                 <input
                   type="date"
@@ -473,16 +473,16 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   onFocus={() => console.log('🔍 Marital Status dropdown focused. Current value:', formData.maritalStatus)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">{t('select.marital.status')}</option>
-                  <option value="single">{t('single')}</option>
-                  <option value="married">{t('married')}</option>
-                  <option value="divorced">{t('divorced')}</option>
-                  <option value="widowed">{t('widowed')}</option>
+                  <option value="">{t('admin.memberModal.placeholders.selectMaritalStatus')}</option>
+                  <option value="single">{t('admin.memberModal.options.single')}</option>
+                  <option value="married">{t('admin.memberModal.options.married')}</option>
+                  <option value="divorced">{t('admin.memberModal.options.divorced')}</option>
+                  <option value="widowed">{t('admin.memberModal.options.widowed')}</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('yearly.pledge') || 'Yearly Pledge'}
+                  {t('admin.memberModal.fields.yearlyPledge')}
                 </label>
                 {(() => {
                   const amountPattern = /^[0-9]*([.][0-9]{0,2})?$/;
@@ -521,7 +521,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('phone.number')}
+                  {t('admin.memberModal.fields.phone')}
                 </label>
                 <input
                   type="tel"
@@ -535,7 +535,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('emergency.contact.name')}
+                  {t('admin.memberModal.fields.emergencyName')}
                 </label>
                 <input
                   type="text"
@@ -548,7 +548,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('emergency.contact.phone')}
+                  {t('admin.memberModal.fields.emergencyPhone')}
                 </label>
                 <input
                   type="tel"
@@ -579,7 +579,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('street.address')}
+                  {t('admin.memberModal.fields.street')}
                 </label>
                 <input
                   type="text"
@@ -592,7 +592,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('city')}
+                  {t('admin.memberModal.fields.city')}
                 </label>
                 <input
                   type="text"
@@ -605,7 +605,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('state')}
+                  {t('admin.memberModal.fields.state')}
                 </label>
                 <input
                   type="text"
@@ -618,7 +618,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('postal.code')}
+                  {t('admin.memberModal.fields.zip')}
                 </label>
                 <input
                   type="text"
@@ -631,7 +631,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('country')}
+                  {t('admin.memberModal.fields.country')}
                 </label>
                 <input
                   type="text"
@@ -649,7 +649,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('date.joined.parish')}
+                  {t('admin.memberModal.fields.joinedParish')}
                 </label>
                 <input
                   type="date"
@@ -662,7 +662,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('baptism.name')}
+                  {t('admin.memberModal.fields.baptismName')}
                 </label>
                 <input
                   type="text"
@@ -675,7 +675,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('language.preference')}
+                  {t('admin.memberModal.fields.language')}
                 </label>
                 <select
                   name="languagePreference"
@@ -692,7 +692,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('preferred.giving.method')}
+                  {t('admin.memberModal.fields.givingMethod')}
                 </label>
                 <select
                   name="preferredGivingMethod"
@@ -700,17 +700,17 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">{t('select.giving.method')}</option>
-                  <option value="cash">Cash</option>
-                  <option value="check">Check</option>
-                  <option value="online">Online</option>
-                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="">{t('admin.memberModal.placeholders.selectGivingMethod')}</option>
+                  <option value="cash">{t('admin.memberModal.options.cash')}</option>
+                  <option value="check">{t('admin.memberModal.options.check')}</option>
+                  <option value="online">{t('admin.memberModal.options.online')}</option>
+                  <option value="bank_transfer">{t('admin.memberModal.options.bank_transfer')}</option>
                 </select>
               </div>
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('interested.in.serving')}
+                  {t('admin.memberModal.fields.interestedServing')}
                 </label>
                 <select
                   name="interestedInServing"
@@ -718,10 +718,10 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">{t('select.option')}</option>
-                  <option value="yes">{t('yes')}</option>
-                  <option value="no">{t('no')}</option>
-                  <option value="maybe">{t('maybe')}</option>
+                  <option value="">{t('admin.memberModal.placeholders.selectOption')}</option>
+                  <option value="yes">{t('admin.memberModal.options.yes')}</option>
+                  <option value="no">{t('admin.memberModal.options.no')}</option>
+                  <option value="maybe">{t('admin.memberModal.options.maybe')}</option>
                 </select>
               </div>
             </div>
@@ -744,8 +744,8 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                         </div>
                         <div className="ml-3">
                           <p className="text-sm text-blue-700">
-                            {t('member.linked.to.household') || 'This member is part of a household'} (Family ID: {familyId}).
-                            {t('payments.aggregated') || ' Payments and dues are aggregated at the household level.'}
+                            {t('admin.memberModal.family.linked').replace('{id}', String(familyId))}
+                            {t('admin.memberModal.family.linked').includes('aggregated') ? '' : ' Payments and dues are aggregated at the household level.'}
                           </p>
                         </div>
                       </div>
@@ -758,7 +758,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('spouse.name')}
+                    {t('admin.memberModal.fields.spouseName')}
                   </label>
                   <input
                     type="text"
@@ -771,7 +771,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('spouse.email')}
+                    {t('admin.memberModal.fields.spouseEmail')}
                   </label>
                   <input
                     type="email"
@@ -792,7 +792,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                   onClick={() => setShowAddDependent(true)}
                   className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md"
                 >
-                  {t('add.dependent') || 'Add Dependent'}
+                  {t('admin.memberModal.family.addDependent')}
                 </button>
               </div>
 
@@ -885,7 +885,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                               onClick={() => d.id && handleDeleteDependent(d.id)}
                               className="text-red-600 hover:text-red-900"
                             >
-                              {t('delete') || 'Delete'}
+                              {t('admin.memberModal.actions.delete')}
                             </button>
                           </td>
                         </tr>
