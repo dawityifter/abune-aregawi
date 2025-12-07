@@ -413,7 +413,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const handleAuthStateChange = async (firebaseUser: User | null) => {
       // Magic Demo Mode Bypass
-      if (localStorage.getItem('magic_demo_mode') === 'true' || localStorage.getItem('magic_new_user_mode') === 'true') {
+      if ((localStorage.getItem('magic_demo_mode') === 'true' || localStorage.getItem('magic_new_user_mode') === 'true') && process.env.REACT_APP_ENABLE_DEMO_MODE === 'true') {
         console.log('✨ Magic Demo Mode Active');
         const isNewUser = localStorage.getItem('magic_new_user_mode') === 'true';
         const magicPhone = isNewUser ? '+14699078230' : '+14699078229';
