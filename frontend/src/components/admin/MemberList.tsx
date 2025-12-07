@@ -166,7 +166,7 @@ const MemberList: React.FC<MemberListProps> = ({
   }, [searchTerm, roleFilter, statusFilter]);
 
   const handleDeleteMember = async (memberId: string) => {
-    if (!window.confirm(t('confirm.delete.member'))) {
+    if (!window.confirm(t('admin.common.confirmDelete'))) {
       return;
     }
 
@@ -215,7 +215,7 @@ const MemberList: React.FC<MemberListProps> = ({
           onClick={() => fetchAllMembers()}
           className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
         >
-          {t('retry')}
+          {t('admin.common.retry')}
         </button>
       </div>
     );
@@ -226,7 +226,7 @@ const MemberList: React.FC<MemberListProps> = ({
       {/* Header with Stats */}
       <div className="flex justify-between items-start">
         <h2 className="text-2xl font-bold text-gray-900">
-          {t('manage.members')}
+          {t('admin.members.title')}
         </h2>
         {canRegisterMembers && (
           <button
@@ -234,7 +234,7 @@ const MemberList: React.FC<MemberListProps> = ({
             className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
           >
             <i className="fas fa-user-plus mr-2"></i>
-            {t('add.member') || 'Add Member'}
+            {t('admin.members.addMember')}
           </button>
         )}
       </div>
@@ -246,13 +246,13 @@ const MemberList: React.FC<MemberListProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm font-medium uppercase tracking-wide">
-                {t('total.households') || 'Total Households'}
+                {t('admin.members.stats.totalHouseholds')}
               </p>
               <p className="text-5xl font-bold mt-2">
                 {allMembers.length}
               </p>
               <p className="text-blue-100 text-sm mt-2">
-                {t('registered.members') || 'Registered Members'}
+                {t('admin.members.stats.registeredMembers')}
               </p>
             </div>
             <div className="bg-blue-400 bg-opacity-30 rounded-full p-4">
@@ -266,13 +266,13 @@ const MemberList: React.FC<MemberListProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-100 text-sm font-medium uppercase tracking-wide">
-                {t('total.dependents') || 'Total Dependents'}
+                {t('admin.members.stats.totalDependents')}
               </p>
               <p className="text-5xl font-bold mt-2">
                 {totalDependents}
               </p>
               <p className="text-purple-100 text-sm mt-2">
-                {t('family.members') || 'Family Members'}
+                {t('admin.members.stats.familyMembers')}
               </p>
             </div>
             <div className="bg-purple-400 bg-opacity-30 rounded-full p-4">
@@ -286,17 +286,17 @@ const MemberList: React.FC<MemberListProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-100 text-sm font-medium uppercase tracking-wide">
-                {t('total.congregation') || 'Total Congregation'}
+                {t('admin.members.stats.totalCongregation')}
               </p>
               <p className="text-5xl font-bold mt-2">
                 {allMembers.length + totalDependents}
               </p>
               <div className="mt-2">
                 <p className="text-green-100 text-sm">
-                  (Households + Dependents)
+                  ({t('admin.members.stats.householdsAndDependents')})
                 </p>
                 <p className="text-green-200 text-xs mt-1 italic">
-                  Total individuals connected to the church community
+                  {t('admin.members.stats.description')}
                 </p>
               </div>
             </div>
@@ -307,32 +307,31 @@ const MemberList: React.FC<MemberListProps> = ({
         </div>
       </div>
 
-      {/* Filters */}
       <div className="bg-white p-6 rounded-lg shadow">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('search')}
+              {t('admin.common.search')}
             </label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={t('search.members')}
+              placeholder={t('admin.common.search') + '...'}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('role')}
+              {t('admin.common.role')}
             </label>
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="">{t('all.roles')}</option>
+              <option value="">{t('admin.common.all')}</option>
               <option value="admin">Admin</option>
               <option value="church_leadership">Church Leadership</option>
               <option value="treasurer">Treasurer</option>
@@ -344,16 +343,16 @@ const MemberList: React.FC<MemberListProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('status')}
+              {t('admin.common.status')}
             </label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="">{t('all.statuses')}</option>
-              <option value="true">{t('active')}</option>
-              <option value="false">{t('inactive')}</option>
+              <option value="">{t('admin.common.all')}</option>
+              <option value="true">{t('admin.common.active')}</option>
+              <option value="false">{t('admin.common.inactive')}</option>
             </select>
           </div>
         </div>
@@ -366,22 +365,22 @@ const MemberList: React.FC<MemberListProps> = ({
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('name')}
+                  {t('admin.members.table.name')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('email')}
+                  {t('admin.members.table.email')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('role')}
+                  {t('admin.members.table.role')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('phone')}
+                  {t('admin.members.table.phone')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('status')}
+                  {t('admin.members.table.status')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('actions')}
+                  {t('admin.common.actions')}
                 </th>
               </tr>
             </thead>
@@ -405,7 +404,7 @@ const MemberList: React.FC<MemberListProps> = ({
                             )</span>
                         </div>
                         <div className="text-sm text-gray-500">
-                          {member.dependentsCount ?? member.dependents?.length ?? 0} {t('dependents')}
+                          {member.dependentsCount ?? member.dependents?.length ?? 0} {t('admin.members.table.dependents')}
                         </div>
                       </div>
                     </div>
@@ -431,7 +430,7 @@ const MemberList: React.FC<MemberListProps> = ({
                       ? 'bg-green-100 text-green-800'
                       : 'bg-red-100 text-red-800'
                       }`}>
-                      {member.isActive ? t('active') : t('inactive')}
+                      {member.isActive ? t('admin.common.active') : t('admin.common.inactive')}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -459,8 +458,8 @@ const MemberList: React.FC<MemberListProps> = ({
                           className="text-green-600 hover:text-green-900"
                           title={
                             (member.dependentsCount ?? 0) > 0
-                              ? t('manage.dependents') || 'Manage Dependents'
-                              : t('add.dependent') || 'Add Dependent'
+                              ? t('admin.members.manageDependents')
+                              : t('admin.members.addDependent')
                           }
                         >
                           <i className="fas fa-user-friends"></i>
@@ -500,22 +499,22 @@ const MemberList: React.FC<MemberListProps> = ({
                 disabled={currentPage === 1}
                 className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
-                {t('previous')}
+                {t('admin.common.previous')}
               </button>
               <button
                 onClick={() => setCurrentPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
-                {t('next')}
+                {t('admin.common.next')}
               </button>
             </div>
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-gray-700">
-                  {t('showing')} <span className="font-medium">{(currentPage - 1) * 10 + 1}</span> {t('to')}{' '}
-                  <span className="font-medium">{Math.min(currentPage * 10, totalMembers)}</span> {t('of')}{' '}
-                  <span className="font-medium">{totalMembers}</span> {t('results')}
+                  {t('admin.common.showing')} <span className="font-medium">{(currentPage - 1) * 10 + 1}</span> {t('admin.common.to')}{' '}
+                  <span className="font-medium">{Math.min(currentPage * 10, totalMembers)}</span> {t('admin.common.of')}{' '}
+                  <span className="font-medium">{totalMembers}</span> {t('admin.common.results')}
                 </p>
               </div>
               <div>

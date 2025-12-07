@@ -51,7 +51,39 @@ async function sendSmsBatch(recipients, body, options = {}) {
   return results;
 }
 
+// Fetch current SMS pricing for a country (defaults to US)
+async function getSmsPricing(countryCode = 'US') {
+  ensureConfigured();
+  try {
+    const pricing = await client.pricing.v1.messaging
+      .countries(countryCode)
+      .fetch();
+
+    // Twilio returns inbound/outbound prices. We care about outbound.
+    // Simplifying: grab the first outbound price (usually per carrier, but often similar)
+    // For US, it's typically flat per segment + carrier fees.
+    // This API returns base price. Carrier fees are separate but we can estimate.
+
+    const outbound = pricing.outboundSmsPrices[0];
+    const basePrice = outbound ? parseFloat(outbound.prices[0].current_price) : 0.0079;
+
+    return {
+      basePrice,
+      currency: pricing.priceUnit || 'USD',
+      carrierFeeEstimate: 0.0025 // Average US carrier fee estimate
+    };
+  } catch (error) {
+    console.warn('Failed to fetch Twilio pricing, using defaults:', error.message);
+    return {
+      basePrice: 0.0079,
+      currency: 'USD',
+      carrierFeeEstimate: 0.0025
+    };
+  }
+}
+
 module.exports = {
   sendSms,
   sendSmsBatch,
+  getSmsPricing
 };

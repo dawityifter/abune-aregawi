@@ -21,5 +21,7 @@ router.post('/sendFulfilledPledges', firebaseAuthMiddleware, role(ALLOWED), smsC
 router.get('/pendingPledgesRecipients', firebaseAuthMiddleware, role(ALLOWED), smsController.getPendingPledgesRecipients);
 router.get('/fulfilledPledgesRecipients', firebaseAuthMiddleware, role(ALLOWED), smsController.getFulfilledPledgesRecipients);
 router.get('/departmentRecipients/:departmentId', firebaseAuthMiddleware, role(ALLOWED), smsController.getDepartmentRecipients);
+router.get('/allRecipients', firebaseAuthMiddleware, role(ALLOWED), smsController.getAllRecipients);
+router.get('/pricing', firebaseAuthMiddleware, role(ALLOWED), smsController.getPricing);
 
 module.exports = router;

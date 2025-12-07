@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { getRolePermissions, hasPermission, UserRole } from '../../utils/roles';
+import { getRolePermissions, UserRole } from '../../utils/roles';
 import MemberList from './MemberList';
 import MemberEditModal from './MemberEditModal';
 import RoleManagement from './RoleManagement';
-import AdminStats from './AdminStats';
 import DepartmentList from './DepartmentList';
 
-interface AdminDashboardProps {}
-
-const AdminDashboard: React.FC<AdminDashboardProps> = () => {
+const AdminDashboard: React.FC = () => {
   const { currentUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
+  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'departments'>('members');
+  const [canAccess, setCanAccess] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'stats' | 'departments'>('members');
-  const [selectedMember, setSelectedMember] = useState<any>(null);
+
+  // Member Edit Modal State
   const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<any>(null);
   const [editModalInitialTab, setEditModalInitialTab] = useState<'basic' | 'contact' | 'spiritual' | 'family'>('basic');
   const [refreshToken, setRefreshToken] = useState(0);
 
@@ -25,20 +25,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     const fetchUserProfile = async () => {
       if (currentUser) {
         try {
-          console.log('🔍 AdminDashboard - currentUser:', currentUser);
-          
           // Handle different user object structures
-          const uid = currentUser.uid || currentUser.id;
+          const uid = currentUser.uid || (currentUser as any).id;
           const email = currentUser.email;
           const phone = currentUser.phoneNumber;
-          
-          if (!uid) {
-            console.error('❌ No UID found in currentUser:', currentUser);
-            return;
+
+          if (uid) {
+            const profile = await getUserProfile(uid, email, phone);
+            setUserProfile(profile);
           }
-          
-          const profile = await getUserProfile(uid, email, phone);
-          setUserProfile(profile);
         } catch (error) {
           console.error('Error fetching user profile:', error);
         } finally {
@@ -51,6 +46,32 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
     fetchUserProfile();
   }, [currentUser, getUserProfile]);
+
+  const authUserRole = userProfile?.data?.member?.role || 'member';
+  const permissions = getRolePermissions(authUserRole as UserRole);
+
+  useEffect(() => {
+    // Only admins, leadership, and secretary can access the dashboard generally, 
+    // but we can refine access per tab via permissions.
+    if (permissions.canAccessAdminPanel || authUserRole === 'admin' || authUserRole === 'church_leadership' || authUserRole === 'secretary') {
+      setCanAccess(true);
+    } else {
+      setCanAccess(false);
+    }
+  }, [authUserRole, permissions]);
+
+  // Handle URL hash for tab navigation
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash === 'members' || hash === 'roles' || hash === 'departments') {
+      setActiveTab(hash as any);
+    }
+  }, []);
+
+  // Update URL hash when tab changes
+  useEffect(() => {
+    window.location.hash = activeTab;
+  }, [activeTab]);
 
   const handleEditMember = (member: any, initialTab: 'basic' | 'contact' | 'spiritual' | 'family' = 'basic') => {
     setSelectedMember(member);
@@ -66,153 +87,100 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const handleMemberUpdated = () => {
     setShowEditModal(false);
     setSelectedMember(null);
-    // Refresh member list without navigating away
-    setActiveTab('members');
-    setRefreshToken((t) => t + 1);
+    setRefreshToken((prev) => prev + 1);
   };
 
-  if (loading) {
+  if (!canAccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-800"></div>
-      </div>
-    );
-  }
-
-  // Determine role and permissions
-  const userRole = userProfile?.data?.member?.role || 'member';
-  const permissions = getRolePermissions(userRole as UserRole);
-
-  // Broaden access: allow roles with member-management capabilities to access this page
-  const canAccessThisPage =
-    permissions.canAccessAdminPanel ||
-    permissions.canViewAllMembers ||
-    permissions.canEditAllMembers ||
-    permissions.canRegisterMembers;
-
-  // Debug logging for admin dashboard
-  console.log('🔍 AdminDashboard Debug Info:');
-  console.log('  User Profile:', userProfile);
-  console.log('  User Role:', userRole);
-  console.log('  Permissions:', permissions);
-  console.log('  Access Gate -> canAccessThisPage:', canAccessThisPage);
-
-  if (!canAccessThisPage) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 text-lg mb-4">
-            Access Denied
-          </div>
-          <p className="text-gray-600 mb-4">
-            You don't have permission to view this page.
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="bg-white shadow rounded-lg p-6 text-center">
+          <i className="fas fa-lock text-red-500 text-5xl mb-4"></i>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('treasurerDashboard.access.denied')}</h2>
+          <p className="text-gray-600">
+            {t('treasurerDashboard.access.deniedDesc')}
           </p>
-          <button 
-            onClick={() => window.history.back()} 
-            className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
-          >
-            Go Back
-          </button>
         </div>
       </div>
     );
   }
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'members':
+        return (
+          <MemberList
+            onEditMember={handleEditMember}
+            canEditMembers={permissions.canEditAllMembers}
+            canDeleteMembers={permissions.canDeleteMembers}
+            canRegisterMembers={permissions.canRegisterMembers}
+            refreshToken={refreshToken}
+          />
+        );
+      case 'roles':
+        return permissions.canManageRoles ? <RoleManagement /> : <div className="p-4 text-center text-gray-500">Access Denied</div>;
+      case 'departments':
+        return <DepartmentList />;
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <i className="fas fa-shield-alt text-2xl text-primary-800 mr-3"></i>
-              <h1 className="text-xl font-semibold text-gray-900">
-                {t('admin.dashboard')}
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                {t('welcome')}, {userProfile?.data?.member?.firstName || currentUser?.displayName || 'Admin'}
-              </span>
-              <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded-full">
-                {userRole}
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">{t('admin.dashboard')}</h1>
+        <p className="mt-2 text-gray-600">
+          {t('admin.welcome')}, <span className="font-semibold">{currentUser?.displayName || currentUser?.email}</span> ({authUserRole})
+        </p>
+      </div>
 
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200 mb-8">
+        <div className="-mb-px flex items-center justify-between overflow-x-auto">
           <nav className="flex space-x-8">
             <button
               onClick={() => setActiveTab('members')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'members'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'members'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               <i className="fas fa-users mr-2"></i>
-              {t('manage.members')}
+              {t('admin.manageMembers')}
             </button>
-            
+
             {permissions.canManageRoles && (
               <button
                 onClick={() => setActiveTab('roles')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'roles'
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <i className="fas fa-user-tag mr-2"></i>
-                {t('role.management')}
-              </button>
-            )}
-            
-            <button
-              onClick={() => setActiveTab('departments')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'departments'
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'roles'
                   ? 'border-primary-500 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                  }`}
+              >
+                <i className="fas fa-user-tag mr-2"></i>
+                {t('admin.roleManagement')}
+              </button>
+            )}
+
+            <button
+              onClick={() => setActiveTab('departments')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'departments'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
             >
               <i className="fas fa-building mr-2"></i>
-              {t('departments') || 'Departments'}
+              {t('admin.departments')}
             </button>
           </nav>
         </div>
       </div>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {activeTab === 'members' && (
-            <MemberList 
-              onEditMember={handleEditMember}
-              canEditMembers={permissions.canEditAllMembers}
-              canDeleteMembers={permissions.canDeleteMembers}
-              canRegisterMembers={permissions.canRegisterMembers}
-              refreshToken={refreshToken}
-            />
-          )}
-          
-          {activeTab === 'roles' && permissions.canManageRoles && (
-            <RoleManagement />
-          )}
-          
-          {activeTab === 'stats' && permissions.canViewFinancialRecords && (
-            <AdminStats />
-          )}
-          
-          {activeTab === 'departments' && (
-            <DepartmentList />
-          )}
-        </div>
-      </main>
+      {/* Content Area */}
+      <div className="transition-opacity duration-200">
+        {renderContent()}
+      </div>
 
       {/* Edit Member Modal */}
       {showEditModal && selectedMember && (
@@ -229,4 +197,4 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   );
 };
 
-export default AdminDashboard; 
+export default AdminDashboard;

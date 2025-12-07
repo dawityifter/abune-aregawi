@@ -113,10 +113,10 @@ const SmsBroadcast: React.FC = () => {
             credentials: 'include',
           }
         );
-        
+
         const data = await resp.json().catch(() => ({} as any));
         if (!resp.ok) throw new Error(data?.message || 'Failed to load department members');
-        
+
         setDepartmentRecipients(data?.data?.recipients || []);
         setDepartmentRecipientsCount(data?.data?.totalCount || 0);
       } catch (e: any) {
@@ -143,18 +143,18 @@ const SmsBroadcast: React.FC = () => {
       setPledgeRecipientsLoading(true);
       try {
         const idToken = await firebaseUser.getIdToken(true);
-        const endpoint = recipientType === 'pending_pledges' 
+        const endpoint = recipientType === 'pending_pledges'
           ? `${process.env.REACT_APP_API_URL}/api/sms/pendingPledgesRecipients`
           : `${process.env.REACT_APP_API_URL}/api/sms/fulfilledPledgesRecipients`;
-        
+
         const resp = await fetch(endpoint, {
           headers: { Authorization: `Bearer ${idToken}` },
           credentials: 'include',
         });
-        
+
         const data = await resp.json().catch(() => ({} as any));
         if (!resp.ok) throw new Error(data?.message || 'Failed to load recipients');
-        
+
         setPledgeRecipients(data?.data?.recipients || []);
         setPledgeRecipientsCount(data?.data?.totalCount || 0);
       } catch (e: any) {
@@ -166,6 +166,55 @@ const SmsBroadcast: React.FC = () => {
       }
     };
     fetchPledgeRecipients();
+  }, [firebaseUser, canSend, recipientType]);
+
+  const [allRecipientsCount, setAllRecipientsCount] = useState(0);
+  const [pricing, setPricing] = useState<{ basePrice: number; carrierFeeEstimate: number; currency: string } | null>(null);
+
+  // Load pricing on mount
+  useEffect(() => {
+    const fetchPricing = async () => {
+      if (!firebaseUser) return;
+      try {
+        const idToken = await firebaseUser.getIdToken(true);
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/sms/pricing`, {
+          headers: { Authorization: `Bearer ${idToken}` },
+          credentials: 'include',
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok && data.success) {
+          setPricing(data.data);
+        }
+      } catch (e) {
+        console.error('Failed to load pricing:', e);
+      }
+    };
+    fetchPricing();
+  }, [firebaseUser]);
+
+  // Load all recipients count when 'all' is selected
+  useEffect(() => {
+    const fetchAllRecipients = async () => {
+      if (!firebaseUser || !canSend || recipientType !== 'all') {
+        if (recipientType !== 'all') setAllRecipientsCount(0);
+        return;
+      }
+
+      try {
+        const idToken = await firebaseUser.getIdToken(true);
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/sms/allRecipients`, {
+          headers: { Authorization: `Bearer ${idToken}` },
+          credentials: 'include',
+        });
+        const data = await resp.json().catch(() => ({} as any));
+        if (resp.ok) {
+          setAllRecipientsCount(data?.data?.totalCount || 0);
+        }
+      } catch (e) {
+        console.error('Failed to load all recipients count', e);
+      }
+    };
+    fetchAllRecipients();
   }, [firebaseUser, canSend, recipientType]);
 
   // Debounced members search
@@ -208,6 +257,15 @@ const SmsBroadcast: React.FC = () => {
 
   const fullName = (m: MemberOption) => `${m.firstName || ''} ${m.middleName ? m.middleName + ' ' : ''}${m.lastName || ''}`.trim();
 
+  // Mandatory footer to be appended to all SMS messages
+  const SMS_FOOTER = "\n\nYou are receiving this because you are a member of Abune Aregawi Church. Learn more at https://abunearegawi.church. Reply STOP to unsubscribe.";
+
+  // Standard US Carrier Limit for concatenated SMS is typically 1600 characters
+  // We subtract the footer length to get the user's available space
+  const MAX_TOTAL_CHARS = 1600;
+  const FOOTER_LENGTH = SMS_FOOTER.length; // ~144 chars
+  const MAX_USER_CHARS = MAX_TOTAL_CHARS - FOOTER_LENGTH;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -217,6 +275,10 @@ const SmsBroadcast: React.FC = () => {
     try {
       if (!firebaseUser) throw new Error('Not authenticated');
       if (!message || !message.trim()) throw new Error('Message is required');
+      if (message.length > MAX_USER_CHARS) throw new Error(`Message is too long. Please reduce by ${message.length - MAX_USER_CHARS} characters.`);
+
+      // Append footer to the message
+      const finalMessage = message.trim() + SMS_FOOTER;
 
       const idToken = await firebaseUser.getIdToken(true);
       let endpoint = '';
@@ -241,7 +303,7 @@ const SmsBroadcast: React.FC = () => {
           Authorization: `Bearer ${idToken}`,
         },
         credentials: 'include',
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message: finalMessage }),
       });
 
       const data = await resp.json().catch(() => ({} as any));
@@ -266,6 +328,36 @@ const SmsBroadcast: React.FC = () => {
       setSubmitting(false);
     }
   };
+
+  // Helper to calculate segments based on encoding (GSM-7 vs UCS-2)
+  const calculateSegments = (text: string) => {
+    // Basic GSM-7 character set regex (approximate)
+    // Checking if string contains any non-GSM7 compatible chars
+    // Double-byte chars (Tigrinya/Amharic) will trigger UCS-2
+    // eslint-disable-next-line
+    const isGsm7 = /^[\x00-\x7F]*$/.test(text);
+
+    const maxPerSegment = isGsm7 ? 160 : 70;
+    const maxMultipart = isGsm7 ? 153 : 67;
+
+    const length = text.length;
+
+    if (length === 0) return 0;
+    if (length <= maxPerSegment) return 1;
+
+    return Math.ceil(length / maxMultipart);
+  };
+
+  const getCharCountColor = () => {
+    const remaining = MAX_USER_CHARS - message.length;
+    if (remaining < 0) return 'text-red-600 font-bold';
+    if (remaining < 50) return 'text-orange-600 font-bold';
+    return 'text-gray-500';
+  };
+
+  const totalMessage = message + SMS_FOOTER;
+  const totalSegments = calculateSegments(totalMessage);
+  const isGsm7 = /^[\x00-\x7F]*$/.test(totalMessage);
 
   if (loadingProfile) {
     return (
@@ -305,9 +397,9 @@ const SmsBroadcast: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">Select Recipient Type</label>
             <div className="flex flex-wrap gap-3">
-              {(['individual','department','pending_pledges','fulfilled_pledges','all'] as RecipientType[]).map((t) => {
+              {(['individual', 'department', 'pending_pledges', 'fulfilled_pledges', 'all'] as RecipientType[]).map((t) => {
                 const isActive = recipientType === t;
-                
+
                 // Define colors and icons for each type
                 const typeStyles = {
                   individual: {
@@ -338,7 +430,7 @@ const SmsBroadcast: React.FC = () => {
                 };
 
                 const style = typeStyles[t as keyof typeof typeStyles];
-                
+
                 return (
                   <button
                     type="button"
@@ -354,11 +446,11 @@ const SmsBroadcast: React.FC = () => {
                   >
                     <i className={`fas ${style.icon} ${isActive ? 'text-white' : ''}`}></i>
                     <span>
-                      {t === 'individual' ? 'Individual' 
-                       : t === 'department' ? 'Department' 
-                       : t === 'pending_pledges' ? 'Pending Pledges'
-                       : t === 'fulfilled_pledges' ? 'Fulfilled Pledges'
-                       : 'All Members'}
+                      {t === 'individual' ? 'Individual'
+                        : t === 'department' ? 'Department'
+                          : t === 'pending_pledges' ? 'Pending Pledges'
+                            : t === 'fulfilled_pledges' ? 'Fulfilled Pledges'
+                              : 'All Members'}
                     </span>
                   </button>
                 );
@@ -415,7 +507,7 @@ const SmsBroadcast: React.FC = () => {
                 </select>
               )}
               <p className="text-xs text-gray-500 mt-1">Only active departments with members are listed.</p>
-              
+
               {/* Department Members Preview */}
               {departmentId && (
                 <div className="mt-3 bg-purple-50 border border-purple-200 rounded p-3">
@@ -425,13 +517,13 @@ const SmsBroadcast: React.FC = () => {
                     </h4>
                     {departmentRecipientsLoading && <span className="text-xs text-purple-600">Loading...</span>}
                   </div>
-                  
+
                   {!departmentRecipientsLoading && (
                     <>
                       <p className="text-sm text-purple-800 mb-2">
                         <strong>{departmentRecipientsCount}</strong> member{departmentRecipientsCount !== 1 ? 's' : ''} will receive this message
                       </p>
-                      
+
                       {departmentRecipientsCount > 0 && (
                         <button
                           type="button"
@@ -441,7 +533,7 @@ const SmsBroadcast: React.FC = () => {
                           {showDepartmentRecipientsList ? 'Hide' : 'Show'} member list
                         </button>
                       )}
-                      
+
                       {showDepartmentRecipientsList && departmentRecipients.length > 0 && (
                         <div className="mt-3 max-h-48 overflow-y-auto bg-white border border-purple-200 rounded p-2">
                           <ul className="text-xs space-y-1">
@@ -461,7 +553,7 @@ const SmsBroadcast: React.FC = () => {
                           </ul>
                         </div>
                       )}
-                      
+
                       {departmentRecipientsCount === 0 && (
                         <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">
                           No active members with phone numbers found in this department.
@@ -482,13 +574,13 @@ const SmsBroadcast: React.FC = () => {
                 </h4>
                 {pledgeRecipientsLoading && <span className="text-xs text-blue-600">Loading...</span>}
               </div>
-              
+
               {!pledgeRecipientsLoading && (
                 <>
                   <p className="text-sm text-blue-800 mb-2">
                     <strong>{pledgeRecipientsCount}</strong> member{pledgeRecipientsCount !== 1 ? 's' : ''} will receive this message
                   </p>
-                  
+
                   {pledgeRecipientsCount > 0 && (
                     <button
                       type="button"
@@ -498,7 +590,7 @@ const SmsBroadcast: React.FC = () => {
                       {showPledgeRecipientsList ? 'Hide' : 'Show'} recipient list
                     </button>
                   )}
-                  
+
                   {showPledgeRecipientsList && pledgeRecipients.length > 0 && (
                     <div className="mt-3 max-h-48 overflow-y-auto bg-white border border-blue-200 rounded p-2">
                       <ul className="text-xs space-y-1">
@@ -512,13 +604,13 @@ const SmsBroadcast: React.FC = () => {
                             </div>
                             {recipientType === 'pending_pledges' && recipient.pendingPledges && (
                               <div className="text-blue-600 mt-0.5">
-                                {recipient.pendingPledges.length} pending pledge{recipient.pendingPledges.length !== 1 ? 's' : ''} 
+                                {recipient.pendingPledges.length} pending pledge{recipient.pendingPledges.length !== 1 ? 's' : ''}
                                 (Total: ${recipient.pendingPledges.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0).toFixed(2)})
                               </div>
                             )}
                             {recipientType === 'fulfilled_pledges' && recipient.fulfilledPledges && (
                               <div className="text-green-600 mt-0.5">
-                                {recipient.fulfilledPledges.length} fulfilled pledge{recipient.fulfilledPledges.length !== 1 ? 's' : ''} 
+                                {recipient.fulfilledPledges.length} fulfilled pledge{recipient.fulfilledPledges.length !== 1 ? 's' : ''}
                                 (Total: ${recipient.fulfilledPledges.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0).toFixed(2)})
                               </div>
                             )}
@@ -527,7 +619,7 @@ const SmsBroadcast: React.FC = () => {
                       </ul>
                     </div>
                   )}
-                  
+
                   {pledgeRecipientsCount === 0 && (
                     <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">
                       No members found with {recipientType === 'pending_pledges' ? 'pending' : 'fulfilled'} pledges.
@@ -539,8 +631,10 @@ const SmsBroadcast: React.FC = () => {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-            
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Message <span className={getCharCountColor()}>({message.length} / {MAX_USER_CHARS})</span>
+            </label>
+
             {(recipientType === 'pending_pledges' || recipientType === 'fulfilled_pledges') && (
               <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
                 <p className="font-medium text-green-800 mb-1">💡 Available Template Variables:</p>
@@ -558,22 +652,71 @@ const SmsBroadcast: React.FC = () => {
                 <p className="text-green-600 mt-1 italic">Each member will receive a personalized message!</p>
               </div>
             )}
-            
+
             <textarea
               rows={5}
               placeholder={
-                recipientType === 'pending_pledges' 
+                recipientType === 'pending_pledges'
                   ? "Example: Hi {firstName}, reminder about your pending pledge of {amount}. Due: {dueDate}. Thank you!"
                   : recipientType === 'fulfilled_pledges'
-                  ? "Example: Thank you {firstName} for fulfilling your pledge of {amount}! God bless you."
-                  : "Type your SMS message…"
+                    ? "Example: Thank you {firstName} for fulfilling your pledge of {amount}! God bless you."
+                    : "Type your SMS message…"
               }
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              maxLength={800}
+              className={`w-full border rounded px-3 py-2 ${message.length > MAX_USER_CHARS ? 'border-red-500 focus:ring-red-500' : ''}`}
+              maxLength={MAX_USER_CHARS}
             />
-            <div className="text-xs text-gray-500 mt-1">Max ~800 chars. Avoid sensitive info. Phone numbers are pulled from the database automatically.</div>
+            <div className={`text-xs mt-1 flex justify-between ${getCharCountColor()}`}>
+              <span>
+                {message.length > MAX_USER_CHARS
+                  ? `Message is too long by ${message.length - MAX_USER_CHARS} characters`
+                  : `${MAX_USER_CHARS - message.length} characters remaining`
+                }
+              </span>
+              <span className="flex flex-col items-end">
+                <span>Total SMS: {totalMessage.length} / {MAX_TOTAL_CHARS} chars</span>
+                <span className={`font-semibold ${totalSegments > 1 ? 'text-orange-600' : 'text-blue-600'}`}>
+                  Est. Cost: {totalSegments} segment{totalSegments !== 1 ? 's' : ''} × {
+                    recipientType === 'individual' ? 1 :
+                      recipientType === 'department' ? departmentRecipientsCount :
+                        recipientType === 'pending_pledges' ? pledgeRecipientsCount :
+                          recipientType === 'fulfilled_pledges' ? pledgeRecipientsCount :
+                            recipientType === 'all' ? allRecipientsCount : 0
+                  } recipients = <strong>{(totalSegments * (
+                    recipientType === 'individual' ? 1 :
+                      recipientType === 'department' ? departmentRecipientsCount :
+                        recipientType === 'pending_pledges' ? pledgeRecipientsCount :
+                          recipientType === 'fulfilled_pledges' ? pledgeRecipientsCount :
+                            recipientType === 'all' ? allRecipientsCount : 0
+                  )).toLocaleString()} segs</strong>
+                  {pricing && (
+                    <span className="ml-1 text-green-700">
+                      (Approx. ${((
+                        (pricing.basePrice + pricing.carrierFeeEstimate) *
+                        totalSegments *
+                        (recipientType === 'individual' ? 1 :
+                          recipientType === 'department' ? departmentRecipientsCount :
+                            recipientType === 'pending_pledges' ? pledgeRecipientsCount :
+                              recipientType === 'fulfilled_pledges' ? pledgeRecipientsCount :
+                                recipientType === 'all' ? allRecipientsCount : 0)
+                      )).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                    </span>
+                  )}
+                </span>
+                <div className="text-xs text-gray-500 mt-0.5 text-right">
+                  {isGsm7 ? 'Standard Encoding' : 'Unicode Encoding'}
+                  {pricing && ` • $${pricing.basePrice} base + $${pricing.carrierFeeEstimate} carrier / seg`}
+                </div>
+              </span>
+            </div>
+
+            <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded text-sm text-gray-600">
+              <span className="font-semibold text-gray-700">Footer to be appended automatically ({FOOTER_LENGTH} chars):</span>
+              <p className="mt-1 italic border-l-2 border-gray-300 pl-2 whitespace-pre-wrap">
+                {SMS_FOOTER.trim()}
+              </p>
+            </div>
           </div>
 
           {errorMsg && (
@@ -586,8 +729,8 @@ const SmsBroadcast: React.FC = () => {
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={submitting}
-              className={`px-4 py-2 rounded text-white ${submitting ? 'bg-gray-400' : 'bg-primary-600 hover:bg-primary-700'}`}
+              disabled={submitting || message.length > MAX_USER_CHARS}
+              className={`px-4 py-2 rounded text-white ${submitting || message.length > MAX_USER_CHARS ? 'bg-gray-400' : 'bg-primary-600 hover:bg-primary-700'}`}
             >
               {submitting ? 'Sending…' : 'Send SMS'}
             </button>

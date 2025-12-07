@@ -46,7 +46,7 @@ const authMiddleware = async (req, res, next) => {
   try {
     // Get token from header
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
@@ -58,10 +58,10 @@ const authMiddleware = async (req, res, next) => {
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // Check if member exists and is active
     const member = await Member.findByPk(decoded.id);
-    
+
     if (!member) {
       return res.status(401).json({
         success: false,
@@ -92,7 +92,7 @@ const authMiddleware = async (req, res, next) => {
         message: 'Invalid token.'
       });
     }
-    
+
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
@@ -112,10 +112,10 @@ const authMiddleware = async (req, res, next) => {
 const firebaseAuthMiddleware = async (req, res, next) => {
   console.log('\n🔵 ====== START firebaseAuthMiddleware ======');
   console.log(`🔵 Request URL: ${req.method} ${req.originalUrl}`);
-  
+
   try {
     console.log('🔵 Request Headers:', JSON.stringify(req.headers, null, 2));
-    
+
     // Check if Firebase Admin is initialized
     if (!firebaseInitialized) {
       console.error('❌ Firebase Admin SDK not initialized');
@@ -128,7 +128,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     // Get Firebase token from header
     const authHeader = req.headers.authorization;
     console.log('🔵 Authorization header:', authHeader ? 'Present' : 'Missing');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.error('❌ No Bearer token found in Authorization header');
       return res.status(401).json({
@@ -140,12 +140,23 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     console.log('🔵 Firebase token (first 20 chars):', firebaseToken.substring(0, 20) + '...');
 
     console.log('🔵 Verifying Firebase token...');
-    
+
     // Verify Firebase token and extract user info
     let decodedToken;
     try {
-      decodedToken = await admin.auth().verifyIdToken(firebaseToken);
-      console.log('✅ Firebase token verified successfully');
+      if (process.env.ENABLE_DEMO_MODE === 'true' && firebaseToken === 'MAGIC_DEMO_TOKEN') {
+        console.log('✨ Magic Demo Token detected - Bypassing verification');
+        console.warn('⚠️  WARNING: Demo mode is enabled. This should NOT be active in production!');
+        decodedToken = {
+          uid: 'magic-demo-uid',
+          phone_number: '+14699078229', // Matches user request
+          email: 'demo@admin.com',
+          firebase: { sign_in_provider: 'phone' }
+        };
+      } else {
+        decodedToken = await admin.auth().verifyIdToken(firebaseToken);
+        console.log('✅ Firebase token verified successfully');
+      }
       console.log('🔵 Decoded token data:', JSON.stringify({
         uid: decodedToken.uid,
         email: decodedToken.email,
@@ -160,7 +171,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
         message: 'Invalid or expired authentication token.'
       });
     }
-    
+
     const userEmail = decodedToken.email;
     // Check for phone number in different possible fields
     let userPhone = decodedToken.phone_number || decodedToken.phoneNumber || decodedToken.phone;
@@ -213,7 +224,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
         });
       }
     }
-    
+
     if (!member && userPhone) {
       // Normalize phone number for search
       const normalizedPhone = userPhone.startsWith('+') ? userPhone : `+${userPhone}`;
@@ -233,8 +244,8 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     }
 
     if (!member) {
-      logger.warn('Member not found during authentication', { 
-        hasEmail: !!userEmail, 
+      logger.warn('Member not found during authentication', {
+        hasEmail: !!userEmail,
         hasPhone: !!userPhone,
         uid: decodedToken.uid
       });
@@ -243,7 +254,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
         message: 'Member not found. Please complete your registration first.'
       });
     }
-    
+
     if (!member.is_active) {
       return res.status(401).json({
         success: false,
@@ -291,7 +302,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       code: error.code,
       stack: error.stack
     });
-    
+
     res.status(401).json({
       success: false,
       message: 'Invalid or expired Firebase token.'

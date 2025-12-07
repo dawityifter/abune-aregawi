@@ -12,6 +12,7 @@ import ZelleReview from './ZelleReview';
 import MemberSearch from './MemberSearch';
 import EmployeeList from './EmployeeList';
 import VendorList from './VendorList';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PaymentStatsData {
   totalMembers: number;
@@ -30,6 +31,7 @@ interface PaymentStatsData {
 
 const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle' | 'member-dues' | 'employees' | 'vendors'>('overview');
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
@@ -46,7 +48,7 @@ const TreasurerDashboard: React.FC = () => {
   // Check user permissions
   const userRole = userProfile?.data?.member?.role || currentUser?.role || 'member';
   const permissions = getRolePermissions(userRole);
-  
+
   // Check if user has financial permissions
   const hasFinancialAccess = permissions.canViewFinancialRecords || permissions.canEditFinancialRecords;
 
@@ -56,17 +58,17 @@ const TreasurerDashboard: React.FC = () => {
       if (currentUser) {
         try {
           console.log('🔍 TreasurerDashboard - currentUser:', currentUser);
-          
+
           // Handle different user object structures
           const uid = currentUser.uid || currentUser.id;
           const email = currentUser.email;
           const phone = currentUser.phoneNumber;
-          
+
           if (!uid) {
             console.error('❌ No UID found in currentUser:', currentUser);
             return;
           }
-          
+
           const profile = await getUserProfile(uid, email, phone);
           setUserProfile(profile);
         } catch (error) {
@@ -98,25 +100,25 @@ const TreasurerDashboard: React.FC = () => {
       console.log('🔍 Fetching payment stats...');
       console.log('🔍 Current user:', currentUser);
       console.log('🔍 Firebase user:', firebaseUser);
-      
+
       // Clear existing stats
       setStats(null);
       setLoading(true);
-      
+
       // Fetch pledge/ledger-based stats
       const endpoint = '/api/payments/stats';
-      
+
       console.log('🔍 Using endpoint:', endpoint);
-      
+
       const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
       });
-      
+
       console.log('🔍 Response status:', response.status);
       console.log('🔍 Response ok:', response.ok);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('🔍 Payment stats data:', data);
@@ -148,9 +150,9 @@ const TreasurerDashboard: React.FC = () => {
         <div className="text-center">
           <div className="text-red-600 text-lg mb-4">
             <i className="fas fa-lock text-2xl mb-2"></i>
-            <p>Access Denied</p>
+            <p>{t('treasurerDashboard.access.denied')}</p>
             <p className="text-sm text-gray-600 mt-2">
-              You don't have permission to access the Treasurer Dashboard.
+              {t('treasurerDashboard.access.deniedDesc')}
             </p>
           </div>
         </div>
@@ -163,8 +165,8 @@ const TreasurerDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Treasurer Dashboard</h1>
-          <p className="mt-2 text-gray-600">Manage member payments and generate reports</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('treasurerDashboard.title')}</h1>
+          <p className="mt-2 text-gray-600">{t('treasurerDashboard.subtitle')}</p>
         </div>
 
         {/* Tab Navigation */}
@@ -173,83 +175,75 @@ const TreasurerDashboard: React.FC = () => {
             <nav className="flex space-x-8">
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'overview'
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                  }`}
               >
-                Overview
+                {t('treasurerDashboard.tabs.overview')}
               </button>
               <button
                 onClick={() => setActiveTab('payments')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'payments'
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'payments'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                  }`}
               >
-                Member Payments
+                {t('treasurerDashboard.tabs.payments')}
               </button>
               <button
                 onClick={() => setActiveTab('expenses')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'expenses'
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'expenses'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                  }`}
               >
-                Expenses
+                {t('treasurerDashboard.tabs.expenses')}
               </button>
               <button
                 onClick={() => setActiveTab('reports')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'reports'
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'reports'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                  }`}
               >
-                Reports
+                {t('treasurerDashboard.tabs.reports')}
               </button>
               <button
                 onClick={() => setActiveTab('zelle')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'zelle'
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'zelle'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                  }`}
               >
-                Zelle Review
+                {t('treasurerDashboard.tabs.zelle')}
               </button>
               <button
                 onClick={() => setActiveTab('member-dues')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'member-dues'
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'member-dues'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                  }`}
               >
-                Member Dues
+                {t('treasurerDashboard.tabs.memberDues')}
               </button>
               <button
                 onClick={() => setActiveTab('employees')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'employees'
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'employees'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                  }`}
               >
-                Employees
+                {t('treasurerDashboard.tabs.employees')}
               </button>
               <button
                 onClick={() => setActiveTab('vendors')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'vendors'
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'vendors'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                  }`}
               >
-                Vendors
+                {t('treasurerDashboard.tabs.vendors')}
               </button>
             </nav>
           </div>
@@ -260,20 +254,20 @@ const TreasurerDashboard: React.FC = () => {
           {activeTab === 'overview' && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-semibold text-gray-900">Payment Overview</h2>
+                <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.overview.title')}</h2>
                 <div className="flex space-x-3">
                   <button
                     onClick={() => setShowAddPaymentModal(true)}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
                   >
-                    Add Payment
+                    {t('treasurerDashboard.actions.addPayment')}
                   </button>
                   {permissions.canAddExpenses && (
                     <button
                       onClick={() => setShowAddExpenseModal(true)}
                       className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
                     >
-                      Add Expense
+                      {t('treasurerDashboard.actions.addExpense')}
                     </button>
                   )}
                 </div>
@@ -285,16 +279,16 @@ const TreasurerDashboard: React.FC = () => {
           {activeTab === 'payments' && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-semibold text-gray-900">Member Payments</h2>
+                <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.tabs.payments')}</h2>
                 <button
                   onClick={() => setShowAddPaymentModal(true)}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
                 >
-                  Add Payment
+                  {t('treasurerDashboard.actions.addPayment')}
                 </button>
               </div>
-              <TransactionList 
-                onTransactionAdded={fetchPaymentStats} 
+              <TransactionList
+                onTransactionAdded={fetchPaymentStats}
               />
             </div>
           )}
@@ -302,13 +296,13 @@ const TreasurerDashboard: React.FC = () => {
           {activeTab === 'expenses' && permissions.canViewExpenses && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-semibold text-gray-900">Expenses</h2>
+                <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.tabs.expenses')}</h2>
                 {permissions.canAddExpenses && (
                   <button
                     onClick={() => setShowAddExpenseModal(true)}
                     className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
                   >
-                    Add Expense
+                    {t('treasurerDashboard.actions.addExpense')}
                   </button>
                 )}
               </div>
@@ -319,12 +313,12 @@ const TreasurerDashboard: React.FC = () => {
           {activeTab === 'reports' && (
             <div className="space-y-8">
               <div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-6">📅 Weekly Collection Report</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">{t('treasurerDashboard.reports.weeklyCollection')}</h2>
                 <WeeklyCollectionReport />
               </div>
-              
+
               <div className="border-t pt-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Payment Reports</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">{t('treasurerDashboard.reports.paymentReports')}</h2>
                 <PaymentReports paymentView="new" />
               </div>
             </div>
@@ -340,8 +334,8 @@ const TreasurerDashboard: React.FC = () => {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">Member Dues Viewer</h2>
-                  <p className="text-gray-600 mt-1">View any member's dues and payment history</p>
+                  <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.memberDues.title')}</h2>
+                  <p className="text-gray-600 mt-1">{t('treasurerDashboard.memberDues.subtitle')}</p>
                 </div>
                 <button
                   onClick={() => setShowMemberSearch(true)}
@@ -350,19 +344,19 @@ const TreasurerDashboard: React.FC = () => {
                   <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
-                  Search Member
+                  {t('treasurerDashboard.actions.searchMember')}
                 </button>
               </div>
               <div className="bg-white rounded-lg shadow p-8 text-center">
                 <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Search for a Member</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('treasurerDashboard.memberDues.searchTitle')}</h3>
                 <p className="text-gray-600 mb-4">
-                  Click the "Search Member" button above to find a member and view their dues and payment history.
+                  {t('treasurerDashboard.memberDues.searchDesc')}
                 </p>
                 <p className="text-sm text-gray-500">
-                  You'll see the same information that members see on their /dues page.
+                  {t('treasurerDashboard.memberDues.searchNote')}
                 </p>
               </div>
             </div>

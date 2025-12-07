@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
 
 interface Transaction {
@@ -39,6 +40,7 @@ interface WeeklyReportData {
 
 const WeeklyCollectionReport: React.FC = () => {
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [reportData, setReportData] = useState<WeeklyReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [weekStart, setWeekStart] = useState<string>('');
@@ -144,7 +146,16 @@ const WeeklyCollectionReport: React.FC = () => {
   };
 
   const getPaymentMethodLabel = (method: string) => {
-    return method.charAt(0).toUpperCase() + method.slice(1);
+    const labels = {
+      cash: t('treasurerDashboard.transactionList.methods.cash'),
+      check: t('treasurerDashboard.transactionList.methods.check'),
+      zelle: t('treasurerDashboard.transactionList.methods.zelle'),
+      credit_card: t('treasurerDashboard.transactionList.methods.credit_card'),
+      debit_card: t('treasurerDashboard.transactionList.methods.debit_card'),
+      ach: t('treasurerDashboard.transactionList.methods.ach'),
+      other: t('treasurerDashboard.transactionList.methods.other')
+    };
+    return labels[method as keyof typeof labels] || method;
   };
 
   const toggleSection = (method: string) => {
@@ -195,7 +206,7 @@ const WeeklyCollectionReport: React.FC = () => {
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gray-900">
-            📅 Weekly Collection & Expense Report
+            {t('treasurerDashboard.reportTabs.weekly.title')}
           </h2>
         </div>
 
@@ -205,7 +216,7 @@ const WeeklyCollectionReport: React.FC = () => {
               onClick={goToPreviousWeek}
               className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
             >
-              ← Previous Week
+              ← {t('treasurerDashboard.reportTabs.weekly.previous')}
             </button>
 
             <div className="flex flex-col">
@@ -225,7 +236,7 @@ const WeeklyCollectionReport: React.FC = () => {
               onClick={goToNextWeek}
               className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
             >
-              Next Week →
+              {t('treasurerDashboard.reportTabs.weekly.next')} →
             </button>
 
             <div className="flex-1 text-right">
@@ -239,21 +250,21 @@ const WeeklyCollectionReport: React.FC = () => {
 
       {/* Net Deposit Summary Card */}
       <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
-        <h3 className="text-xl font-semibold mb-4">💰 Total Net to Deposit</h3>
+        <h3 className="text-xl font-semibold mb-4">{t('treasurerDashboard.reportTabs.weekly.netDeposit')}</h3>
         <div className="text-4xl font-bold mb-4">
           {formatCurrency(reportData.summary.netTotal)}
         </div>
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div>
-            <div className="opacity-90">Total Income</div>
+            <div className="opacity-90">{t('treasurerDashboard.reportTabs.weekly.income')}</div>
             <div className="text-2xl font-semibold">{formatCurrency(reportData.summary.totalIncome)}</div>
           </div>
           <div>
-            <div className="opacity-90">Total Expenses</div>
+            <div className="opacity-90">{t('treasurerDashboard.transactionList.types.event')}s</div>
             <div className="text-2xl font-semibold">-{formatCurrency(reportData.summary.totalExpenses)}</div>
           </div>
           <div>
-            <div className="opacity-90">Transactions</div>
+            <div className="opacity-90">{t('treasurerDashboard.reportTabs.weekly.transactions')}</div>
             <div className="text-2xl font-semibold">{reportData.summary.totalTransactions}</div>
           </div>
         </div>
@@ -276,21 +287,21 @@ const WeeklyCollectionReport: React.FC = () => {
                   <span className="text-3xl">{getPaymentMethodIcon(method)}</span>
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">
-                      {getPaymentMethodLabel(method)} Transactions
+                      {getPaymentMethodLabel(method)} {t('treasurerDashboard.reportTabs.weekly.transactions')}
                     </h3>
                     <p className="text-sm text-gray-600">
-                      Income: {formatCurrency(data.totalIncome)} |
-                      Expenses: {formatCurrency(data.totalExpenses)}
+                      {t('treasurerDashboard.paymentStats.netIncome')}: {formatCurrency(data.totalIncome)} |
+                      {t('treasurerDashboard.paymentStats.totalExpenses')}: {formatCurrency(data.totalExpenses)}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-gray-600 mb-1">Net to Deposit</div>
+                  <div className="text-sm text-gray-600 mb-1">{t('treasurerDashboard.reportTabs.weekly.netToDeposit')}</div>
                   <div className={`text-2xl font-bold ${netColor}`}>
                     {formatCurrency(data.netToDeposit)}
                   </div>
                   <div className="text-sm text-gray-500">
-                    {isExpanded ? '▲ Hide' : '▼ Show'} Details
+                    {isExpanded ? `▲ ${t('treasurerDashboard.reportTabs.weekly.hide')}` : `▼ ${t('treasurerDashboard.reportTabs.weekly.show')}`} {t('treasurerDashboard.reportTabs.weekly.details')}
                   </div>
                 </div>
               </div>
@@ -303,16 +314,16 @@ const WeeklyCollectionReport: React.FC = () => {
                 {data.income.length > 0 && (
                   <div>
                     <h4 className="text-lg font-semibold text-green-700 mb-3">
-                      ⬆️ Income ({data.income.length} transactions)
+                      ⬆️ {t('treasurerDashboard.reportTabs.weekly.income')} ({data.income.length} {t('treasurerDashboard.reportTabs.weekly.transactions')})
                     </h4>
                     <div className="bg-green-50 rounded-lg overflow-hidden">
                       <table className="min-w-full">
                         <thead className="bg-green-100">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-green-800">Date</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-green-800">Type</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-green-800">Member Name</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-green-800">Amount</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-green-800">{t('treasurerDashboard.transactionList.table.date')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-green-800">{t('treasurerDashboard.transactionList.table.type')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-green-800">{t('treasurerDashboard.transactionList.table.member')}</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-green-800">{t('treasurerDashboard.transactionList.table.amount')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-green-200">
@@ -342,16 +353,16 @@ const WeeklyCollectionReport: React.FC = () => {
                 {data.expenses.length > 0 && (
                   <div>
                     <h4 className="text-lg font-semibold text-red-700 mb-3">
-                      ⬇️ Expenses ({data.expenses.length} transactions)
+                      ⬇️ {t('treasurerDashboard.paymentStats.totalExpenses')} ({data.expenses.length} {t('treasurerDashboard.reportTabs.weekly.transactions')})
                     </h4>
                     <div className="bg-red-50 rounded-lg overflow-hidden">
                       <table className="min-w-full">
                         <thead className="bg-red-100">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-red-800">Date</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-red-800">Category</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-red-800">Recorded By</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-red-800">Amount</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-red-800">{t('treasurerDashboard.expenses.table.date')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-red-800">{t('treasurerDashboard.expenses.table.category')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-red-800">{t('treasurerDashboard.expenses.table.recordedBy')}</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-red-800">{t('treasurerDashboard.expenses.table.amount')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-red-200">
@@ -382,7 +393,7 @@ const WeeklyCollectionReport: React.FC = () => {
 
                 {data.income.length === 0 && data.expenses.length === 0 && (
                   <div className="text-center py-4 text-gray-500">
-                    No transactions for this payment method
+                    {t('treasurerDashboard.reportTabs.weekly.empty')}
                   </div>
                 )}
               </div>
@@ -393,7 +404,7 @@ const WeeklyCollectionReport: React.FC = () => {
 
       {Object.keys(reportData.byPaymentMethod).length === 0 && (
         <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
-          No transactions found for this week
+          {t('treasurerDashboard.reportTabs.weekly.empty')}
         </div>
       )}
     </div>
