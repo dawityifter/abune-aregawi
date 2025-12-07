@@ -239,7 +239,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
         <div className="flex justify-between items-center mb-4">
           <div>
             <h3 className="text-lg font-medium text-gray-900">
-              {t('manage.members') || 'Manage Members'}
+              {t('admin.departmentModal.manageMembers')}
             </h3>
             <p className="text-sm text-gray-500">{department.name}</p>
           </div>
@@ -265,14 +265,14 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
               className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
             >
               <i className="fas fa-plus mr-2"></i>
-              {t('add.members') || 'Add Members'}
+              {t('admin.departmentModal.members.add')}
             </button>
           </div>
         ) : (
           <div className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
             <div className="flex justify-between items-center mb-3">
               <h4 className="font-medium text-gray-900">
-                {t('select.members.to.add') || 'Select Members to Add'}
+                {t('admin.departmentModal.members.add')}
               </h4>
               <button
                 onClick={() => {
@@ -281,7 +281,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                 }}
                 className="text-sm text-gray-600 hover:text-gray-800"
               >
-                {t('cancel') || 'Cancel'}
+                {t('admin.common.cancel')}
               </button>
             </div>
 
@@ -292,7 +292,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                   type="text"
                   value={memberSearchTerm}
                   onChange={(e) => setMemberSearchTerm(e.target.value)}
-                  placeholder={t('search.members') || 'Search by name, ID, phone, or email...'}
+                  placeholder={t('admin.departmentModal.placeholders.searchMembers')}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
@@ -327,7 +327,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                 if (availableMembers.length === 0) {
                   return (
                     <p className="text-sm text-gray-500 text-center py-4">
-                      {t('all.members.already.added') || 'All members have been added to this department'}
+                      {t('admin.departmentModal.members.alreadyAdded')}
                     </p>
                   );
                 }
@@ -335,7 +335,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                 if (filteredMembers.length === 0) {
                   return (
                     <p className="text-sm text-gray-500 text-center py-4">
-                      {t('no.members.found') || 'No members found matching your search'}
+                      {t('admin.departmentModal.members.noResults')}
                     </p>
                   );
                 }
@@ -374,7 +374,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                 onClick={handleAddMembers}
                 className="w-full px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
               >
-                {t('add.selected') || `Add ${selectedMembers.length} Selected Member(s)`}
+                {t('admin.departmentModal.members.addSelected')}
               </button>
             )}
           </div>
@@ -383,7 +383,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
         {/* Current Members List */}
         <div>
           <h4 className="font-medium text-gray-900 mb-3">
-            {t('current.members') || 'Current Members'} ({members.length})
+            {t('admin.departmentModal.members.current')} ({members.length})
           </h4>
 
           {loading ? (
@@ -394,7 +394,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
             <div className="text-center py-8 bg-gray-50 rounded-lg">
               <i className="fas fa-users text-4xl text-gray-300 mb-2"></i>
               <p className="text-gray-500">
-                {t('no.members.yet') || 'No members in this department yet'}
+                {t('admin.departmentModal.members.noMembers')}
               </p>
             </div>
           ) : (
@@ -403,16 +403,16 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('member') || 'Member'}
+                      {t('admin.transactionList.table.member')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('role') || 'Role'}
+                      {t('admin.memberModal.fields.role')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('joined') || 'Joined'}
+                      {t('admin.memberModal.fields.joinedParish')}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('actions') || 'Actions'}
+                      {t('admin.common.actions')}
                     </th>
                   </tr>
                 </thead>
@@ -479,7 +479,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            {t('close') || 'Close'}
+            {t('admin.common.cancel')}
           </button>
         </div>
       </div>

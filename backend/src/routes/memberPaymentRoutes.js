@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { 
-  getAllMemberPayments, 
-  getMemberPaymentDetails, 
-  addMemberPayment, 
-  generatePaymentReport, 
+const {
+  getAllMemberPayments,
+  getMemberPaymentDetails,
+  addMemberPayment,
+  generatePaymentReport,
   getPaymentStats,
   getWeeklyReport,
   getMemberDuesForTreasurer
@@ -16,7 +16,7 @@ const roleMiddleware = require('../middleware/role');
 router.use(firebaseAuthMiddleware);
 
 // Read-only routes - allow church_leadership to view financial data
-const viewRoles = ['treasurer', 'admin', 'church_leadership'];
+const viewRoles = ['treasurer', 'admin', 'church_leadership', 'secretary'];
 const editRoles = ['treasurer', 'admin'];
 
 // Get payment statistics for dashboard (READ-ONLY)

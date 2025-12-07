@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
+import { getRolePermissions } from '../../utils/roles';
 import AddPaymentModal from './AddPaymentModal';
 
 interface MemberDuesData {
@@ -63,7 +64,9 @@ interface MemberDuesViewerProps {
 }
 
 const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }) => {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, currentUser: authUser } = useAuth();
+  const userRole = (authUser as any)?.role || 'member';
+  const permissions = getRolePermissions(userRole);
   const [duesData, setDuesData] = useState<MemberDuesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -197,13 +200,15 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
             )}
           </div>
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setShowAddPaymentModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium flex items-center"
-            >
-              <i className="fas fa-plus mr-2"></i>
-              Make a Payment
-            </button>
+            {permissions.canEditFinancialRecords && (
+              <button
+                onClick={() => setShowAddPaymentModal(true)}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium flex items-center"
+              >
+                <i className="fas fa-plus mr-2"></i>
+                Make a Payment
+              </button>
+            )}
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"

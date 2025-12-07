@@ -176,8 +176,8 @@ const TreasurerDashboard: React.FC = () => {
               <button
                 onClick={() => setActiveTab('overview')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
                 {t('treasurerDashboard.tabs.overview')}
@@ -185,8 +185,8 @@ const TreasurerDashboard: React.FC = () => {
               <button
                 onClick={() => setActiveTab('payments')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'payments'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
                 {t('treasurerDashboard.tabs.payments')}
@@ -194,8 +194,8 @@ const TreasurerDashboard: React.FC = () => {
               <button
                 onClick={() => setActiveTab('expenses')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'expenses'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
                 {t('treasurerDashboard.tabs.expenses')}
@@ -203,8 +203,8 @@ const TreasurerDashboard: React.FC = () => {
               <button
                 onClick={() => setActiveTab('reports')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'reports'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
                 {t('treasurerDashboard.tabs.reports')}
@@ -212,8 +212,8 @@ const TreasurerDashboard: React.FC = () => {
               <button
                 onClick={() => setActiveTab('zelle')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'zelle'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
                 {t('treasurerDashboard.tabs.zelle')}
@@ -221,8 +221,8 @@ const TreasurerDashboard: React.FC = () => {
               <button
                 onClick={() => setActiveTab('member-dues')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'member-dues'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
                 {t('treasurerDashboard.tabs.memberDues')}
@@ -230,8 +230,8 @@ const TreasurerDashboard: React.FC = () => {
               <button
                 onClick={() => setActiveTab('employees')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'employees'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
                 {t('treasurerDashboard.tabs.employees')}
@@ -239,8 +239,8 @@ const TreasurerDashboard: React.FC = () => {
               <button
                 onClick={() => setActiveTab('vendors')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'vendors'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
                 {t('treasurerDashboard.tabs.vendors')}
@@ -256,12 +256,14 @@ const TreasurerDashboard: React.FC = () => {
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.overview.title')}</h2>
                 <div className="flex space-x-3">
-                  <button
-                    onClick={() => setShowAddPaymentModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
-                  >
-                    {t('treasurerDashboard.actions.addPayment')}
-                  </button>
+                  {permissions.canEditFinancialRecords && (
+                    <button
+                      onClick={() => setShowAddPaymentModal(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                    >
+                      {t('treasurerDashboard.actions.addPayment')}
+                    </button>
+                  )}
                   {permissions.canAddExpenses && (
                     <button
                       onClick={() => setShowAddExpenseModal(true)}
@@ -280,12 +282,14 @@ const TreasurerDashboard: React.FC = () => {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.tabs.payments')}</h2>
-                <button
-                  onClick={() => setShowAddPaymentModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
-                >
-                  {t('treasurerDashboard.actions.addPayment')}
-                </button>
+                {permissions.canEditFinancialRecords && (
+                  <button
+                    onClick={() => setShowAddPaymentModal(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                  >
+                    {t('treasurerDashboard.actions.addPayment')}
+                  </button>
+                )}
               </div>
               <TransactionList
                 onTransactionAdded={fetchPaymentStats}

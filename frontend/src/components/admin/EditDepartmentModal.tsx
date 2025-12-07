@@ -106,7 +106,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
 
     try {
       const idToken = await firebaseUser?.getIdToken();
-      
+
       const payload = {
         ...formData,
         parent_department_id: formData.parent_department_id || null,
@@ -153,7 +153,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-gray-900">
-            {t('edit.department') || 'Edit Department'}
+            {t('admin.departmentModal.edit')}
           </h3>
           <button
             onClick={onClose}
@@ -174,7 +174,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('name') || 'Name'} *
+              {t('admin.departmentModal.fields.name')} *
             </label>
             <input
               type="text"
@@ -189,7 +189,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('description') || 'Description'}
+              {t('admin.departmentModal.fields.description')}
             </label>
             <textarea
               name="description"
@@ -204,7 +204,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('type') || 'Type'} *
+                {t('admin.departmentModal.fields.type')} *
               </label>
               <select
                 name="type"
@@ -213,17 +213,17 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="ministry">Ministry</option>
-                <option value="committee">Committee</option>
-                <option value="service">Service</option>
-                <option value="social">Social</option>
-                <option value="administrative">Administrative</option>
+                <option value="ministry">{t('admin.departmentModal.types.ministry')}</option>
+                <option value="committee">{t('admin.departmentModal.types.committee')}</option>
+                <option value="service">{t('admin.departmentModal.types.service')}</option>
+                <option value="social">{t('admin.departmentModal.types.social')}</option>
+                <option value="administrative">{t('admin.departmentModal.types.administrative')}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('parent.department') || 'Parent Department'}
+                {t('admin.departmentModal.fields.parent')}
               </label>
               <select
                 name="parent_department_id"
@@ -231,7 +231,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="">{t('none') || 'None (Top Level)'}</option>
+                <option value="">{t('admin.departmentModal.placeholders.none')}</option>
                 {departments.map(dept => (
                   <option key={dept.id} value={dept.id}>
                     {dept.name}
@@ -244,16 +244,16 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
           {/* Leader */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('leader') || 'Leader'}
+              {t('admin.departmentModal.fields.leader')}
             </label>
-            
+
             {/* Search input for filtering leaders */}
             <div className="relative mb-2">
               <input
                 type="text"
                 value={leaderSearchTerm}
                 onChange={(e) => setLeaderSearchTerm(e.target.value)}
-                placeholder={t('search.leader') || 'Search by name, ID, or phone...'}
+                placeholder={t('admin.departmentModal.placeholders.searchLeader')}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
               />
               <i className="fas fa-search absolute left-3 top-3 text-gray-400 text-sm"></i>
@@ -267,14 +267,14 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
                 </button>
               )}
             </div>
-            
+
             <select
               name="leader_id"
               value={formData.leader_id}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="">{t('select.leader') || 'Select Leader'}</option>
+              <option value="">{t('admin.departmentModal.placeholders.selectLeader')}</option>
               {(() => {
                 const filteredMembers = members.filter(member => {
                   if (!leaderSearchTerm) return true;
@@ -283,18 +283,18 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
                   const lastName = (member.lastName || member.last_name || '').toLowerCase();
                   const memberId = String(member.memberId || member.member_id || member.id).toLowerCase();
                   const phoneNumber = (member.phoneNumber || member.phone_number || '').toLowerCase();
-                  return firstName.includes(searchLower) || 
-                         lastName.includes(searchLower) || 
-                         memberId.includes(searchLower) || 
-                         phoneNumber.includes(searchLower);
+                  return firstName.includes(searchLower) ||
+                    lastName.includes(searchLower) ||
+                    memberId.includes(searchLower) ||
+                    phoneNumber.includes(searchLower);
                 });
-                
+
                 return filteredMembers.map(member => {
                   const firstName = member.firstName || member.first_name || '';
                   const lastName = member.lastName || member.last_name || '';
                   const memberId = member.memberId || member.member_id || member.id;
                   const phoneNumber = member.phoneNumber || member.phone_number || '';
-                  
+
                   return (
                     <option key={member.id} value={member.id}>
                       {firstName} {lastName} [{memberId}] ({phoneNumber})
@@ -319,7 +319,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
           {/* Meeting Schedule */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('meeting.schedule') || 'Meeting Schedule'}
+              {t('admin.departmentModal.fields.meetingSchedule')}
             </label>
             <input
               type="text"
@@ -335,7 +335,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-medium text-gray-700">
-                {t('department.contact.info') || 'Department Contact Info'}
+                {t('admin.memberModal.tabs.contact')}
               </label>
               <span className="text-xs text-gray-500 italic">
                 (Optional - for public/ministry inquiries)
@@ -372,7 +372,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('max.members') || 'Max Members'}
+                {t('admin.departmentModal.fields.maxMembers')}
               </label>
               <input
                 type="number"
@@ -394,7 +394,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
                 className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
               />
               <label htmlFor="is_public_edit" className="ml-2 block text-sm text-gray-700">
-                {t('public') || 'Public'}
+                {t('admin.departmentModal.fields.public')}
               </label>
             </div>
 
@@ -408,7 +408,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
                 className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
               />
               <label htmlFor="is_active_edit" className="ml-2 block text-sm text-gray-700">
-                {t('active') || 'Active'}
+                {t('admin.departmentModal.fields.active')}
               </label>
             </div>
           </div>
@@ -420,14 +420,14 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              {t('cancel') || 'Cancel'}
+              {t('admin.common.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
             >
-              {loading ? (t('saving') || 'Saving...') : (t('save') || 'Save Changes')}
+              {loading ? (t('admin.memberModal.actions.saving')) : (t('admin.common.save'))}
             </button>
           </div>
         </form>

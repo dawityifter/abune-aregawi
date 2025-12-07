@@ -10,7 +10,7 @@ export interface RolePermissions {
   canEditAllMembers: boolean;
   canDeleteMembers: boolean;
   canRegisterMembers: boolean;
-  
+
   // Financial Management
   canSubmitDonation: boolean;
   canViewFinancialRecords: boolean;
@@ -19,27 +19,27 @@ export interface RolePermissions {
   canTrackContributions: boolean;
   canManagePledges: boolean;
   canViewPledgeReports: boolean;
-  
+
   // Expense Management
   canViewExpenses: boolean;
   canAddExpenses: boolean;
   canEditExpenses: boolean;
   canDeleteExpenses: boolean;
-  
+
   // Event & Communication
   canManageEvents: boolean;
   canSendCommunications: boolean;
   canViewEventPlanning: boolean;
-  
+
   // System Administration
   canAccessAdminPanel: boolean;
   canManageRoles: boolean;
   canViewSystemLogs: boolean;
-  
+
   // Documentation
   canManageDocumentation: boolean;
   canViewLeadershipActivities: boolean;
-  
+
   // Outreach & Relations
   canAccessOnboardingNotifications: boolean; // Access new member registration notifications
   canManageOnboarding: boolean; // Contact/manage onboarding, mark welcomed
@@ -61,7 +61,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditAllMembers: true,
     canDeleteMembers: true,
     canRegisterMembers: true,
-    
+
     // Financial Management
     canSubmitDonation: true,
     canViewFinancialRecords: true,
@@ -70,27 +70,27 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canTrackContributions: true,
     canManagePledges: true,
     canViewPledgeReports: true,
-    
+
     // Expense Management
     canViewExpenses: true,
     canAddExpenses: true,
     canEditExpenses: true,
     canDeleteExpenses: true,
-    
+
     // Event & Communication
     canManageEvents: true,
     canSendCommunications: true,
     canViewEventPlanning: true,
-    
+
     // System Administration
     canAccessAdminPanel: true,
     canManageRoles: true,
     canViewSystemLogs: true,
-    
+
     // Documentation
     canManageDocumentation: true,
     canViewLeadershipActivities: true,
-    
+
     // Outreach & Relations
     canAccessOnboardingNotifications: true,
     canManageOnboarding: true,
@@ -98,7 +98,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: true,
     canManageExternalPartners: true,
     canGenerateOutreachReports: true,
-    
+
     // Public Access
     canViewPublicInfo: true,
   },
@@ -110,7 +110,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditAllMembers: true,
     canDeleteMembers: false,
     canRegisterMembers: true,
-    
+
     // Financial Management
     canSubmitDonation: true,
     canViewFinancialRecords: true,
@@ -119,27 +119,27 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canTrackContributions: false,
     canManagePledges: true,
     canViewPledgeReports: true,
-    
+
     // Expense Management
     canViewExpenses: true,
     canAddExpenses: false,
     canEditExpenses: false,
     canDeleteExpenses: false,
-    
+
     // Event & Communication
     canManageEvents: true,
     canSendCommunications: true,
     canViewEventPlanning: true,
-    
+
     // System Administration
     canAccessAdminPanel: true,
     canManageRoles: false,
     canViewSystemLogs: false,
-    
+
     // Documentation
     canManageDocumentation: true,
     canViewLeadershipActivities: true,
-    
+
     // Outreach & Relations
     canAccessOnboardingNotifications: false,
     canManageOnboarding: false,
@@ -147,7 +147,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
-    
+
     // Public Access
     canViewPublicInfo: true,
   },
@@ -159,7 +159,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditAllMembers: false,
     canDeleteMembers: false,
     canRegisterMembers: false,
-    
+
     // Financial Management
     canSubmitDonation: true,
     canViewFinancialRecords: true,
@@ -168,27 +168,27 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canTrackContributions: true,
     canManagePledges: true,
     canViewPledgeReports: true,
-    
+
     // Expense Management
     canViewExpenses: true,
     canAddExpenses: true,
     canEditExpenses: true,
     canDeleteExpenses: false,
-    
+
     // Event & Communication
     canManageEvents: false,
     canSendCommunications: false,
     canViewEventPlanning: false,
-    
+
     // System Administration
     canAccessAdminPanel: true,
     canManageRoles: false,
     canViewSystemLogs: false,
-    
+
     // Documentation
     canManageDocumentation: false,
     canViewLeadershipActivities: false,
-    
+
     // Outreach & Relations
     canAccessOnboardingNotifications: false,
     canManageOnboarding: false,
@@ -196,7 +196,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
-    
+
     // Public Access
     canViewPublicInfo: true,
   },
@@ -257,36 +257,36 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditAllMembers: true,
     canDeleteMembers: false,
     canRegisterMembers: true,
-    
+
     // Financial Management
     canSubmitDonation: true,
-    canViewFinancialRecords: false,
+    canViewFinancialRecords: true,
     canEditFinancialRecords: false,
     canGenerateFinancialReports: false,
     canTrackContributions: false,
     canManagePledges: false,
     canViewPledgeReports: false,
-    
+
     // Expense Management
-    canViewExpenses: false,
+    canViewExpenses: true,
     canAddExpenses: false,
     canEditExpenses: false,
     canDeleteExpenses: false,
-    
+
     // Event & Communication
     canManageEvents: true,
     canSendCommunications: true,
     canViewEventPlanning: true,
-    
+
     // System Administration
     canAccessAdminPanel: false,
     canManageRoles: false,
     canViewSystemLogs: false,
-    
+
     // Documentation
     canManageDocumentation: true,
     canViewLeadershipActivities: true,
-    
+
     // Outreach & Relations
     canAccessOnboardingNotifications: false,
     canManageOnboarding: false,
@@ -294,7 +294,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
-    
+
     // Public Access
     canViewPublicInfo: true,
   },
@@ -306,7 +306,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditAllMembers: false,
     canDeleteMembers: false,
     canRegisterMembers: false,
-    
+
     // Financial Management
     canSubmitDonation: true,
     canViewFinancialRecords: false,
@@ -315,27 +315,27 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canTrackContributions: false,
     canManagePledges: false,
     canViewPledgeReports: false,
-    
+
     // Expense Management
     canViewExpenses: false,
     canAddExpenses: false,
     canEditExpenses: false,
     canDeleteExpenses: false,
-    
+
     // Event & Communication
     canManageEvents: false,
     canSendCommunications: false,
     canViewEventPlanning: false,
-    
+
     // System Administration
     canAccessAdminPanel: false,
     canManageRoles: false,
     canViewSystemLogs: false,
-    
+
     // Documentation
     canManageDocumentation: false,
     canViewLeadershipActivities: false,
-    
+
     // Outreach & Relations
     canAccessOnboardingNotifications: false,
     canManageOnboarding: false,
@@ -343,7 +343,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
-    
+
     // Public Access
     canViewPublicInfo: true,
   },
@@ -355,7 +355,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canEditAllMembers: false,
     canDeleteMembers: false,
     canRegisterMembers: false,
-    
+
     // Financial Management
     canSubmitDonation: false,
     canViewFinancialRecords: false,
@@ -364,27 +364,27 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canTrackContributions: false,
     canManagePledges: false,
     canViewPledgeReports: false,
-    
+
     // Expense Management
     canViewExpenses: false,
     canAddExpenses: false,
     canEditExpenses: false,
     canDeleteExpenses: false,
-    
+
     // Event & Communication
     canManageEvents: false,
     canSendCommunications: false,
     canViewEventPlanning: false,
-    
+
     // System Administration
     canAccessAdminPanel: false,
     canManageRoles: false,
     canViewSystemLogs: false,
-    
+
     // Documentation
     canManageDocumentation: false,
     canViewLeadershipActivities: false,
-    
+
     // Outreach & Relations
     canAccessOnboardingNotifications: false,
     canManageOnboarding: false,
@@ -392,7 +392,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
-    
+
     // Public Access
     canViewPublicInfo: true,
   },
