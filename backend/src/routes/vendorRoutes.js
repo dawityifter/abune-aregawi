@@ -15,11 +15,11 @@ router.use(firebaseAuthMiddleware);
  */
 router.get(
   '/',
-  roleMiddleware(['treasurer', 'admin']),
+  roleMiddleware(['treasurer', 'admin', 'church_leadership']),
   async (req, res) => {
     try {
       const { is_active, vendor_type } = req.query;
-      
+
       const whereClause = {};
       if (is_active !== undefined) {
         whereClause.is_active = is_active === 'true';
@@ -55,7 +55,7 @@ router.get(
  */
 router.get(
   '/:id',
-  roleMiddleware(['treasurer', 'admin']),
+  roleMiddleware(['treasurer', 'admin', 'church_leadership']),
   async (req, res) => {
     try {
       const vendor = await Vendor.findByPk(req.params.id);
