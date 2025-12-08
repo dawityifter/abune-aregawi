@@ -18,6 +18,7 @@ const {
 } = require('../middleware/validation');
 const { authMiddleware, firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
+const activityLoggerMiddleware = require('../middleware/activityLog');
 const admin = require('firebase-admin');
 const outreachController = require('../controllers/outreachController');
 
@@ -42,7 +43,7 @@ const verifyFirebaseTokenOnly = async (req, res, next) => {
 };
 
 // Public routes
-router.post('/register', validateMemberRegistration, memberController.register);
+router.post('/register', activityLoggerMiddleware('Member'), validateMemberRegistration, memberController.register);
 
 // Validate head of household phone number
 router.get('/validate-head-of-household/:phoneNumber', memberController.validateHeadOfHouseholdPhone);
@@ -158,8 +159,11 @@ router.get('/:id',
   memberController.getMemberById
 );
 
+
+
 router.put('/:id',
-  roleMiddleware(['admin', 'church_leadership', 'secretary']),
+  roleMiddleware(['admin', 'secretary']),
+  activityLoggerMiddleware('Member'),
   validateMemberId,
   memberController.updateMember
 );
