@@ -1851,7 +1851,7 @@ exports.updateMemberRole = async (req, res) => {
     const { role } = req.body;
 
     // Validate role
-    const validRoles = ['admin', 'church_leadership', 'treasurer', 'secretary', 'member', 'guest'];
+    const validRoles = ['admin', 'church_leadership', 'treasurer', 'secretary', 'member', 'guest', 'relationship', 'deacon', 'priest'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({
         success: false,
