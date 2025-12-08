@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { Member, Dependent } = require('../models');
+const { Member, Dependent, ActivityLog } = require('../models');
 const { sanitizeInput } = require('../utils/sanitize');
 const { newMemberRegistered } = require('../utils/notifications');
 const logger = require('../utils/logger');
@@ -1264,6 +1264,37 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         phoneNumber: memberByUid.phone_number,
         firebaseUid: memberByUid.firebase_uid
       }));
+
+      // Daily Visit Tracking
+      // Check if we already logged a VISIT in the last 24 hours to avoid spam
+      try {
+        const twentyFourHoursAgo = new Date(new Date() - 24 * 60 * 60 * 1000);
+        const recentVisit = await ActivityLog.findOne({
+          where: {
+            user_id: memberByUid.id,
+            action: 'VISIT',
+            created_at: {
+              [Op.gte]: twentyFourHoursAgo
+            }
+          }
+        });
+
+        if (!recentVisit) {
+          await ActivityLog.create({
+            user_id: memberByUid.id,
+            action: 'VISIT',
+            entity_type: 'Member',
+            entity_id: memberByUid.id.toString(),
+            details: { source: 'getProfileByFirebaseUid', type: 'daily_visit' },
+            ip_address: req.ip || req.connection.remoteAddress,
+            user_agent: req.get('User-Agent')
+          });
+          logger.info(`Logged daily visit for member ${memberByUid.id}`);
+        }
+      } catch (logErr) {
+        // Non-blocking: don't fail the profile fetch if logging fails
+        logger.error('Failed to log daily visit activity', logErr);
+      }
 
       // Transform snake_case to camelCase for frontend compatibility
       const transformedMember = {

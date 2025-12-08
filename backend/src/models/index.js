@@ -105,6 +105,7 @@ try {
   const IncomeCategory = require('./IncomeCategory')(sequelize);
   const Employee = require('./Employee')(sequelize);
   const Vendor = require('./Vendor')(sequelize);
+  const ActivityLog = require('./ActivityLog')(sequelize);
 
   const DepartmentMeeting = require('./DepartmentMeeting')(sequelize);
   const DepartmentTask = require('./DepartmentTask')(sequelize);
@@ -130,7 +131,8 @@ try {
     ExpenseCategory,
     IncomeCategory,
     Employee,
-    Vendor
+    Vendor,
+    ActivityLog
   };
 
   // Call associate on each model
