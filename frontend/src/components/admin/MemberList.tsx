@@ -23,6 +23,7 @@ interface Member {
   createdAt: string;
   dependents?: any[];
   dependentsCount?: number;
+  familyId?: string | number;
 }
 
 interface MemberListProps {
@@ -54,6 +55,18 @@ const MemberList: React.FC<MemberListProps> = ({
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAddDependentFor, setShowAddDependentFor] = useState<Member | null>(null);
   const [showPaymentHistoryFor, setShowPaymentHistoryFor] = useState<Member | null>(null);
+
+  // Calculate total unique households
+  const totalHouseholds = useMemo(() => {
+    const uniqueFamilies = new Set();
+    allMembers.forEach(member => {
+      // If member shares a familyId, they belong to that household
+      // If not, their own ID defines their household
+      const householdId = member.familyId || member.id;
+      uniqueFamilies.add(householdId);
+    });
+    return uniqueFamilies.size;
+  }, [allMembers]);
 
   // Client-side filtering and pagination
   const filteredMembers = useMemo(() => {
@@ -249,7 +262,7 @@ const MemberList: React.FC<MemberListProps> = ({
                 {t('admin.members.stats.totalHouseholds')}
               </p>
               <p className="text-5xl font-bold mt-2">
-                {allMembers.length}
+                {totalHouseholds}
               </p>
               <p className="text-blue-100 text-sm mt-2">
                 {t('admin.members.stats.registeredMembers')}
