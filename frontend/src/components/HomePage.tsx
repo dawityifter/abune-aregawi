@@ -4,8 +4,6 @@ import Hero from './Hero';
 import LiveStreamBanner from './LiveStreamBanner';
 import QuickLinks from './QuickLinks';
 import WhatsHappeningSection from './sections/WhatsHappeningSection';
-import StayConnectedSection from './sections/StayConnectedSection';
-import NewcomerSection from './sections/NewcomerSection';
 import GrowSpirituallySection from './sections/GrowSpirituallySection';
 // import DashboardPreviewSection from './sections/DashboardPreviewSection';
 import Footer from './sections/Footer';
@@ -32,8 +30,6 @@ const HomePage: React.FC = () => {
       <LiveStreamBanner />
       <QuickLinks />
       <WhatsHappeningSection />
-      <StayConnectedSection />
-      <NewcomerSection />
       <GrowSpirituallySection />
       <Footer />
     </div>

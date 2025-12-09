@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getVoicemails } from '../../utils/voicemailApi';
+import { getVoicemails, archiveVoicemail } from '../../utils/voicemailApi';
 
 interface Voicemail {
     id: number;
@@ -84,6 +84,19 @@ const VoicemailInbox: React.FC = () => {
         fetchVoicemails();
     }, [firebaseUser, page]);
 
+    const handleArchive = async (id: number) => {
+        if (!firebaseUser) return;
+        if (!window.confirm('Delete this voicemail?')) return;
+        try {
+            const token = await firebaseUser.getIdToken();
+            await archiveVoicemail(token, id);
+            // Remove from local state
+            setVoicemails(prev => prev.filter(vm => vm.id !== id));
+        } catch (err: any) {
+            alert('Failed to delete voicemail: ' + err.message);
+        }
+    };
+
     if (loading && voicemails.length === 0) {
         return <div className="p-4 text-center">Loading inbox...</div>;
     }
@@ -113,6 +126,7 @@ const VoicemailInbox: React.FC = () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recording</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transcription</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -135,11 +149,20 @@ const VoicemailInbox: React.FC = () => {
                                         {vm.transcriptionText || <em className="text-gray-400">Pending...</em>}
                                     </span>
                                 </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button
+                                        onClick={() => handleArchive(vm.id)}
+                                        className="text-red-600 hover:text-red-900"
+                                        title="Delete voicemail"
+                                    >
+                                        <i className="fas fa-trash mr-1"></i> Delete
+                                    </button>
+                                </td>
                             </tr>
                         ))}
                         {voicemails.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                                     No voicemails found.
                                 </td>
                             </tr>

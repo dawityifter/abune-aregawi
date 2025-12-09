@@ -22,4 +22,10 @@ router.get('/admin/voicemails/:id/stream',
     voicemailController.streamRecording
 );
 
+router.put('/admin/voicemails/:id/archive',
+    firebaseAuthMiddleware,
+    roleMiddleware(['admin', 'church_leadership', 'secretary']),
+    voicemailController.archiveVoicemail
+);
+
 module.exports = router;
