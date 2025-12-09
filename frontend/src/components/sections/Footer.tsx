@@ -31,7 +31,7 @@ const Footer: React.FC = () => {
               {t('common.cta.contact')}
             </h3>
             <p className="contact-info">
-              (469) XXX-XXXX
+              (469) 436-3356
             </p>
           </div>
         </div>

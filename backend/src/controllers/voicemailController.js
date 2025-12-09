@@ -105,6 +105,9 @@ exports.getVoicemails = async (req, res) => {
         const { count, rows } = await Voicemail.findAndCountAll({
             limit: parseInt(limit),
             offset: parseInt(offset),
+            where: {
+                isArchived: false // Only show non-archived by default
+            },
             order: [['created_at', 'DESC']]
         });
 
@@ -209,5 +212,25 @@ exports.streamRecording = async (req, res) => {
     } catch (error) {
         logger.error('Error in streamRecording', error);
         res.status(500).send('Internal Server Error');
+    }
+};
+
+// Archive a voicemail (Soft Delete)
+exports.archiveVoicemail = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const voicemail = await Voicemail.findByPk(id);
+
+        if (!voicemail) {
+            return res.status(404).json({ success: false, message: 'Voicemail not found' });
+        }
+
+        voicemail.isArchived = true;
+        await voicemail.save();
+
+        res.json({ success: true, message: 'Voicemail archived' });
+    } catch (error) {
+        logger.error('Error archiving voicemail', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };

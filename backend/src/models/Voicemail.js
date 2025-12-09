@@ -36,6 +36,12 @@ module.exports = (sequelize) => {
             allowNull: true,
             field: 'transcription_text'
         },
+        isArchived: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+            allowNull: false,
+            field: 'is_archived'
+        },
         createdAt: {
             type: DataTypes.DATE,
             allowNull: false,

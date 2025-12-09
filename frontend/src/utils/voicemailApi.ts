@@ -16,3 +16,19 @@ export const getVoicemails = async (idToken: string, page = 1, limit = 10) => {
 
     return response.json();
 };
+
+export const archiveVoicemail = async (idToken: string, id: number) => {
+    const response = await fetch(`${API_URL}/api/twilio/admin/voicemails/${id}/archive`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to archive voicemail');
+    }
+
+    return response.json();
+};
