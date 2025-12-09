@@ -109,6 +109,7 @@ try {
 
   const DepartmentMeeting = require('./DepartmentMeeting')(sequelize);
   const DepartmentTask = require('./DepartmentTask')(sequelize);
+  const Voicemail = require('./Voicemail')(sequelize);
 
   // Define models object
   const models = {
@@ -132,7 +133,8 @@ try {
     IncomeCategory,
     Employee,
     Vendor,
-    ActivityLog
+    ActivityLog,
+    Voicemail
   };
 
   // Call associate on each model

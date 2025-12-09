@@ -7,11 +7,12 @@ import MemberEditModal from './MemberEditModal';
 import RoleManagement from './RoleManagement';
 import DepartmentList from './DepartmentList';
 import ActivityLogViewer from './ActivityLogViewer';
+import VoicemailInbox from './VoicemailInbox';
 
 const AdminDashboard: React.FC = () => {
   const { currentUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'departments' | 'activity-logs'>('members');
+  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'departments' | 'activity-logs' | 'voicemails'>('members');
   const [canAccess, setCanAccess] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +65,7 @@ const AdminDashboard: React.FC = () => {
   // Handle URL hash for tab navigation
   useEffect(() => {
     const hash = window.location.hash.replace('#', '');
-    if (hash === 'members' || hash === 'roles' || hash === 'departments' || hash === 'activity-logs') {
+    if (hash === 'members' || hash === 'roles' || hash === 'departments' || hash === 'activity-logs' || hash === 'voicemails') {
       setActiveTab(hash as any);
     }
   }, []);
@@ -107,7 +108,15 @@ const AdminDashboard: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'members':
+      case 'roles':
+        return permissions.canManageRoles ? <RoleManagement /> : <div className="p-4 text-center text-gray-500">Access Denied</div>;
+      case 'departments':
+        return <DepartmentList />;
+      case 'activity-logs':
+        return <ActivityLogViewer />;
+      case 'voicemails':
+        return <VoicemailInbox />;
+      default: // 'members' is the default tab
         return (
           <MemberList
             onEditMember={handleEditMember}
@@ -117,14 +126,6 @@ const AdminDashboard: React.FC = () => {
             refreshToken={refreshToken}
           />
         );
-      case 'roles':
-        return permissions.canManageRoles ? <RoleManagement /> : <div className="p-4 text-center text-gray-500">Access Denied</div>;
-      case 'departments':
-        return <DepartmentList />;
-      case 'activity-logs':
-        return <ActivityLogViewer />;
-      default:
-        return null;
     }
   };
 
@@ -186,6 +187,16 @@ const AdminDashboard: React.FC = () => {
             >
               <i className="fas fa-history mr-2"></i>
               Activity Logs
+            </button>
+            <button
+              onClick={() => setActiveTab('voicemails')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'voicemails'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+            >
+              <i className="fas fa-voicemail mr-2"></i>
+              Voicemails
             </button>
           </nav>
         </div>
