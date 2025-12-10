@@ -5,7 +5,7 @@ const { checkYouTubeLiveStatus } = require('../services/youtubeService');
  */
 exports.getLiveStatus = async (req, res) => {
     try {
-        const channelId = process.env.YOUTUBE_CHANNEL_ID || 'UCvK6pJUKU2pvoX7bQ3PN2aA';
+        const channelId = req.query.channelId || process.env.YOUTUBE_CHANNEL_ID || 'UCvK6pJUKU2pvoX7bQ3PN2aA';
 
         // Check for override flag
         if (process.env.OVERRIDE_YOUTUBE_LIVE_FLAG === 'true') {

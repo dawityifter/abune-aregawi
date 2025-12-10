@@ -516,7 +516,7 @@ const translations = {
     'deacon': 'ዲያቆን',
     'priest': 'ካህን',
     'priest.name': 'ቀሲስ ታደሰ',
-    'priest.title': 'ባህላዊ ትግራይ ኦርቶዶክስ ካህን',
+    'priest.title': 'ናይ ቤተክርሰትያን ኣቦና',
     'morning.prayers': 'ቀዳማይ ጸሎት',
     'morning.prayers.time': '6:00 ሰዓት',
     'divine.liturgy': 'ቅዳሴ',
