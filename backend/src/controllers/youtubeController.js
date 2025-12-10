@@ -27,3 +27,13 @@ exports.getLiveStatus = async (req, res) => {
         });
     }
 };
+
+/**
+ * Get YouTube configuration (Channel IDs)
+ */
+exports.getConfig = (req, res) => {
+    res.json({
+        mainChannelId: process.env.YOUTUBE_CHANNEL_ID || 'UCvK6pJUKU2pvoX7bQ3PN2aA',
+        spiritualChannelId: process.env.YOUTUBE_SPIRITUAL_CHANNEL_ID || 'UCQXFCGSNdQ1y8GOmqbvRefg'
+    });
+};
