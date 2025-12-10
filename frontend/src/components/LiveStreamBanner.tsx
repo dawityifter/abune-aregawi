@@ -15,19 +15,35 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
     const [liveVideoId, setLiveVideoId] = useState<string | null>(null);
     const [showPlayer, setShowPlayer] = useState(false);
 
-    const youtubeChannelUrl = `https://www.youtube.com/channel/${channelId}`;
-    const youtubeLiveUrl = `https://www.youtube.com/channel/${channelId}/live`;
+    const [currentChannelId, setCurrentChannelId] = useState(channelId);
+
+    const youtubeChannelUrl = `https://www.youtube.com/channel/${currentChannelId}`;
+    const youtubeLiveUrl = `https://www.youtube.com/channel/${currentChannelId}/live`;
 
     useEffect(() => {
-        // Check if channel is live by attempting to load the /live page
-        // This is a simple approach that doesn't require API keys
-        checkIfLive();
+        const init = async () => {
+            await fetchConfig();
+            checkIfLive();
+        };
+        init();
 
         // Check every 5 minutes
         const interval = setInterval(checkIfLive, 5 * 60 * 1000);
-
         return () => clearInterval(interval);
     }, [channelHandle]);
+
+    const fetchConfig = async () => {
+        try {
+            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${apiUrl}/api/youtube/config`);
+            const data = await res.json();
+            if (data.mainChannelId) {
+                setCurrentChannelId(data.mainChannelId);
+            }
+        } catch (e) {
+            console.error('Failed to fetch YouTube config', e);
+        }
+    };
 
     const checkIfLive = async () => {
         try {

@@ -9,4 +9,11 @@ const youtubeController = require('../controllers/youtubeController');
  */
 router.get('/live-status', youtubeController.getLiveStatus);
 
+/**
+ * @route   GET /api/youtube/config
+ * @desc    Get YouTube Channel IDs configuration
+ * @access  Public
+ */
+router.get('/config', youtubeController.getConfig);
+
 module.exports = router;

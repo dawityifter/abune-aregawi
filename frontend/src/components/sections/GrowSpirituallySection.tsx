@@ -5,36 +5,44 @@ const GrowSpirituallySection: React.FC = () => {
   const { t } = useLanguage();
 
   // Get channel ID from env or fallback
-  const channelId = process.env.REACT_APP_YOUTUBE_SPIRITUAL_CHANNEL_ID || 'UCQXFCGSNdQ1y8GOmqbvRefg';
-  // Derive uploads playlist ID (replace 2nd char 'C' with 'U')
-  const playlistId = channelId.substring(0, 1) + 'U' + channelId.substring(2);
-
+  const [channelId, setChannelId] = React.useState<string>('UCQXFCGSNdQ1y8GOmqbvRefg');
+  const [playlistId, setPlaylistId] = React.useState<string>('UUQXFCGSNdQ1y8GOmqbvRefg');
   const [imgError, setImgError] = React.useState(false);
   const [isLive, setIsLive] = React.useState(false);
   const [liveVideoId, setLiveVideoId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    const checkLiveStatus = async () => {
+    const fetchConfigAndStatus = async () => {
       try {
         const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-        // Pass the spiritual channel ID to the backend
-        const response = await fetch(`${apiUrl}/api/youtube/live-status?channelId=${channelId}`);
-        const data = await response.json();
 
-        if (data.isLive) {
+        // 1. Get Config
+        const configRes = await fetch(`${apiUrl}/api/youtube/config`);
+        const config = await configRes.json();
+        const spiritualId = config.spiritualChannelId || 'UCQXFCGSNdQ1y8GOmqbvRefg';
+
+        setChannelId(spiritualId);
+        setPlaylistId(spiritualId.substring(0, 1) + 'U' + spiritualId.substring(2));
+
+        // 2. Check Status
+        // Pass the spiritual channel ID to the backend
+        const statusRes = await fetch(`${apiUrl}/api/youtube/live-status?channelId=${spiritualId}`);
+        const statusData = await statusRes.json();
+
+        if (statusData.isLive) {
           setIsLive(true);
-          setLiveVideoId(data.videoId);
+          setLiveVideoId(statusData.videoId);
         }
       } catch (error) {
         console.error('Failed to check spiritual channel live status', error);
       }
     };
 
-    checkLiveStatus();
+    fetchConfigAndStatus();
     // Check every 5 minutes
-    const interval = setInterval(checkLiveStatus, 5 * 60 * 1000);
+    const interval = setInterval(fetchConfigAndStatus, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [channelId]);
+  }, []);
 
   return (
     <section className="py-16">
