@@ -1,49 +1,80 @@
-const axios = require('axios');
+```javascript
+const { google } = require('googleapis');
+
+const youtube = google.youtube('v3');
+
+// Cache configuration
+let cache = {
+    data: null,
+    lastComputed: 0
+};
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Check if a YouTube channel is currently live streaming
- * @param {string} channelId - YouTube channel ID
- * @returns {Promise<{isLive: boolean, videoId?: string}>}
+ * Check if a channel is currently live
+ * Uses caching to avoid YouTube API quota limits
+ * @param {string} channelId 
+ * @returns {Promise<Object>} Status object { isLive: boolean, videoId: string | null }
  */
-async function checkYouTubeLiveStatus(channelId) {
-    const apiKey = process.env.YOUTUBE_API_KEY;
-
-    if (!apiKey) {
-        console.error('YOUTUBE_API_KEY not found in environment variables');
-        return { isLive: false };
+const checkYouTubeLiveStatus = async (channelId) => {
+    // Return cached data if valid
+    const now = Date.now();
+    if (cache.data && (now - cache.lastComputed < CACHE_TTL)) {
+        return cache.data;
     }
 
     try {
-        // Search for live broadcasts on the channel
-        const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-            params: {
-                part: 'snippet',
-                channelId: channelId,
-                eventType: 'live',
-                type: 'video',
-                key: apiKey,
-            },
-            headers: {
-                'Referer': process.env.CLIENT_URL || 'http://localhost:3000'
-            }
-        });
-
-        const liveVideos = response.data.items || [];
-
-        if (liveVideos.length > 0) {
-            return {
-                isLive: true,
-                videoId: liveVideos[0].id.videoId,
-                title: liveVideos[0].snippet.title,
-                thumbnail: liveVideos[0].snippet.thumbnails.medium.url,
-            };
+        const apiKey = process.env.YOUTUBE_API_KEY;
+        
+        if (!apiKey) {
+            console.warn('YOUTUBE_API_KEY is not set. Skipping live check.');
+            return { isLive: false };
         }
 
-        return { isLive: false };
-    } catch (error) {
-        console.error('Error checking YouTube live status:', error.response?.data || error.message);
-        return { isLive: false };
-    }
-}
+        const response = await youtube.search.list({
+            key: apiKey,
+            channelId: channelId,
+            part: 'snippet',
+            type: 'video',
+            eventType: 'live',
+            maxResults: 1
+        });
 
-module.exports = { checkYouTubeLiveStatus };
+        const items = response.data.items || [];
+        const isLive = items.length > 0;
+        
+        const result = {
+            isLive,
+            videoId: isLive ? items[0].id.videoId : null,
+            title: isLive ? items[0].snippet.title : null,
+            thumbnail: isLive ? items[0].snippet.thumbnails.high.url : null
+        };
+
+        // Update cache
+        cache = {
+            data: result,
+            lastComputed: now
+        };
+
+        return result;
+    } catch (error) {
+        // If we have stale cache, return it rather than failing
+        if (cache.data) {
+            console.warn('YouTube API error, serving stale cache:', error.message);
+            return cache.data;
+        }
+        
+        // Log detailed error for debugging but don't crash
+        console.error('Error checking YouTube live status:', error.message);
+        if (error.response) {
+             console.error('YouTube API Error Details:', error.response.data);
+        }
+        
+        throw error;
+    }
+};
+
+module.exports = {
+    checkYouTubeLiveStatus
+};
+```
