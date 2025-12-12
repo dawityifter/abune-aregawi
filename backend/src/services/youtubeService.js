@@ -1,4 +1,3 @@
-```javascript
 const { google } = require('googleapis');
 
 const youtube = google.youtube('v3');
@@ -25,7 +24,7 @@ const checkYouTubeLiveStatus = async (channelId) => {
 
     try {
         const apiKey = process.env.YOUTUBE_API_KEY;
-        
+
         if (!apiKey) {
             console.warn('YOUTUBE_API_KEY is not set. Skipping live check.');
             return { isLive: false };
@@ -42,7 +41,7 @@ const checkYouTubeLiveStatus = async (channelId) => {
 
         const items = response.data.items || [];
         const isLive = items.length > 0;
-        
+
         const result = {
             isLive,
             videoId: isLive ? items[0].id.videoId : null,
@@ -63,13 +62,13 @@ const checkYouTubeLiveStatus = async (channelId) => {
             console.warn('YouTube API error, serving stale cache:', error.message);
             return cache.data;
         }
-        
+
         // Log detailed error for debugging but don't crash
         console.error('Error checking YouTube live status:', error.message);
         if (error.response) {
-             console.error('YouTube API Error Details:', error.response.data);
+            console.error('YouTube API Error Details:', error.response.data);
         }
-        
+
         throw error;
     }
 };
@@ -77,4 +76,3 @@ const checkYouTubeLiveStatus = async (channelId) => {
 module.exports = {
     checkYouTubeLiveStatus
 };
-```
