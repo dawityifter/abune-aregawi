@@ -8,6 +8,9 @@ const roleMiddleware = require('../middleware/role');
 const departmentController = require('../controllers/departmentController');
 const departmentMemberController = require('../controllers/departmentMemberController');
 
+// Public Routes
+router.get('/board-members', departmentController.getBoardMembers);
+
 // All routes require authentication
 router.use(firebaseAuthMiddleware);
 

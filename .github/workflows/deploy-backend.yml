@@ -42,8 +42,9 @@ jobs:
             # Navigate to project directory
             cd /var/www/repo
             
-            # Pull latest changes
-            sudo git pull origin main
+            # Force update contents
+            sudo git fetch --all
+            sudo git reset --hard origin/main
             
             # Install backend dependencies
             cd backend

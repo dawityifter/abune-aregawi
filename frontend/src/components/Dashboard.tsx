@@ -399,6 +399,35 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* Board Members Card */}
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                      <i className="fas fa-church text-amber-800"></i>
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      {t('board.title') || "Board Members"}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {t('board.card.desc') || "View our church leadership and board members"}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <button
+                    onClick={() => navigate('/board-members')}
+                    className="w-full bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 transition-colors"
+                  >
+                    {t('board.view') || "View Leadership"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Giving Card */}
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-6">
