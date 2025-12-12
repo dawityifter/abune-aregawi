@@ -29,6 +29,7 @@ import DepartmentDashboard from './components/DepartmentDashboard';
 import MeetingDetailsPage from './components/admin/MeetingDetailsPage';
 import ActivityLogViewer from './components/admin/ActivityLogViewer';
 import VoicemailInbox from './components/admin/VoicemailInbox';
+import BoardMembers from './components/board/BoardMembers';
 import './index.css';
 import DevBanner from './components/DevBanner';
 import { isFeatureEnabled } from './config/featureFlags';
@@ -109,8 +110,14 @@ function App() {
               <Route path="/departments" element={<ProtectedRoute><DepartmentsPage /></ProtectedRoute>} />
               <Route path="/departments/:id" element={<ProtectedRoute><DepartmentDashboard /></ProtectedRoute>} />
               <Route path="/departments/:departmentId/meetings/:meetingId" element={<ProtectedRoute><MeetingDetailsPage /></ProtectedRoute>} />
-              <Route path="/admin/activity-logs" element={<ProtectedRoute><ActivityLogViewer /></ProtectedRoute>} />
               <Route path="/admin/voicemails" element={<ProtectedRoute><VoicemailInbox /></ProtectedRoute>} />
+              <Route path="/board-members" element={
+                <ProtectedRoute>
+                  <ErrorBoundary>
+                    <BoardMembers />
+                  </ErrorBoundary>
+                </ProtectedRoute>
+              } />
               {/* Add more routes here as we build them */}
             </Routes>
           </div>

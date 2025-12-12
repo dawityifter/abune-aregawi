@@ -4,6 +4,33 @@ const { Department, DepartmentMember, Member, sequelize } = require('../models')
 const { Op } = require('sequelize');
 const logger = require('../utils/logger');
 
+// Get board members (Department ID 2)
+exports.getBoardMembers = async (req, res) => {
+  try {
+    const query = `
+      SELECT member_id, first_name, last_name, email, phone_number, role_in_department 
+      FROM public.department_members d, public.members m 
+      WHERE d.department_id = 2 AND m.id = d.member_id;
+    `;
+
+    const members = await sequelize.query(query, {
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    res.json({
+      success: true,
+      data: members
+    });
+  } catch (error) {
+    logger.error('Get board members error', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch board members',
+      error: error.message
+    });
+  }
+};
+
 // Get all departments with optional filters
 exports.getAllDepartments = async (req, res) => {
   try {

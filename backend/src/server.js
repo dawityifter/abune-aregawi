@@ -46,6 +46,7 @@ const vendorRoutes = require('./routes/vendorRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
 const youtubeRoutes = require('./routes/youtubeRoutes');
 const voicemailRoutes = require('./routes/voicemailRoutes');
+const volunteerRoutes = require('./routes/volunteerRoutes');
 const donationController = require('./controllers/donationController');
 
 // Import database
@@ -252,6 +253,7 @@ app.use('/api/vendors', vendorRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api/twilio', voicemailRoutes);
+app.use('/api/volunteers', volunteerRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

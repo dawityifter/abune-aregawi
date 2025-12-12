@@ -4,283 +4,262 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 
+// Helper interface for TOC items
+interface TocItem {
+  id: string;
+  text: string;
+  level: number;
+}
+
 const ChurchBylaw: React.FC = () => {
-  const { currentLanguage } = useLanguage();
-  const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'ti'>(currentLanguage);
+  const { currentLanguage, setLanguage } = useLanguage();
 
-  // Load English bylaws from public markdown
-  const [englishMd, setEnglishMd] = useState<string>('');
-  const [tigrinyaMd, setTigrinyaMd] = useState<string>('');
-  const [loadingMd, setLoadingMd] = useState<boolean>(false);
-  const [mdError, setMdError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [hasPdf, setHasPdf] = useState<boolean>(false);
+  // Local state for fetching and UI
+  const [markdownContent, setMarkdownContent] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toc, setToc] = useState<TocItem[]>([]);
+  const [activeId, setActiveId] = useState<string>('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar toggle
 
+  // Use global language state
+  const selectedLanguage = currentLanguage;
+  const setSelectedLanguage = setLanguage;
+
+  // Load Bylaws
   useEffect(() => {
-    setLoadingMd(true);
-    setMdError(null);
+    setLoading(true);
+    setError(null);
     const file = selectedLanguage === 'en' ? 'bylaws/Bylaws-en.md' : 'bylaws/Bylaws-ti.md';
+
     fetch(`${process.env.PUBLIC_URL || ''}/${file}`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`Failed to load bylaws (status ${res.status})`);
-        const lm = res.headers.get('last-modified');
-        if (lm) {
-          try {
-            const dt = new Date(lm);
-            setLastUpdated(dt.toLocaleString());
-          } catch {}
-        } else {
-          setLastUpdated(null);
-        }
         return res.text();
       })
-      .then((txt) => {
-        if (selectedLanguage === 'en') setEnglishMd(txt);
-        else setTigrinyaMd(txt);
+      .then((text) => {
+        setMarkdownContent(text);
+        // Generate TOC from text content (rough regex approach is faster than parsing AST client-side for this scale)
+        const lines = text.split('\n');
+        const extractedToc: TocItem[] = [];
+        const slugCounts: Record<string, number> = {};
+
+        lines.forEach(line => {
+          // Match H1 (# ) and H2 (## )
+          const h1Match = line.match(/^#\s+(.+)$/);
+          const h2Match = line.match(/^##\s+(.+)$/);
+
+          if (h1Match || h2Match) {
+            const text = h1Match ? h1Match[1].trim() : h2Match![1].trim();
+            const level = h1Match ? 1 : 2;
+
+            // Generate ID
+            let baseSlug = text.toLowerCase()
+              .replace(/[`~!@#$%^&*()+=|{}\[\]:;"'<>?,./\\]/g, '')
+              .replace(/\s+/g, '-')
+              .replace(/-+/g, '-');
+
+            // Handle Duplicate IDs
+            slugCounts[baseSlug] = (slugCounts[baseSlug] || 0) + 1;
+            if (slugCounts[baseSlug] > 1) {
+              baseSlug = `${baseSlug}-${slugCounts[baseSlug] - 1}`;
+            }
+
+            extractedToc.push({ id: baseSlug, text, level });
+          }
+        });
+        setToc(extractedToc);
       })
-      .catch((err) => setMdError(err.message || 'Failed to load bylaws'))
-      .finally(() => setLoadingMd(false));
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }, [selectedLanguage]);
 
-  // Shared slugify and child-text extractor so heading IDs match TOC
-  const slugCountsRef = useRef<Record<string, number>>({});
-  const slugify = (s: string) => {
-    const base = s
-      .trim()
-      .toLowerCase()
-      .replace(/[`~!@#$%^&*()+=|{}\[\]:;"'<>?,./\\]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-');
-    const count = (slugCountsRef.current[base] = (slugCountsRef.current[base] || 0) + 1);
-    return count > 1 ? `${base}-${count - 1}` : base;
-  };
-  const textFromChildren = (children: React.ReactNode): string => {
-    let out = '';
-    React.Children.forEach(children as any, (child: any) => {
-      if (typeof child === 'string') out += child;
-      else if (typeof child === 'number') out += String(child);
-      else if (child && child.props && child.props.children) out += textFromChildren(child.props.children);
-    });
-    return out;
-  };
-
-  // English content loaded from markdown; Tigrinya stays inline for now
-
-  const tigrinyaBylaws = {
-    title: "ሕጊ ቤተ ክርስቲያን",
-    subtitle: "ኣቡነ ኣረጋዊ ኦርቶዶክስ ተዋህዶ ቤተ ክርስቲያን - ስርዓተ ምድማርን መምርሒታትን",
-    sections: [
-      {
-        title: "1. ርእሰ ጉባኤ (ፕረዚደንት)",
-        items: [
-          "1.1 ተግባር ርእሰ ጉባኤ እቲ ኮሚተ ብወግዓዊ ሕጊ እዚ ብዝተወሰነ መምርሒታት ምእራም እዩ።",
-          "1.2 ርእሰ ጉባኤ ንኹሎም ኣኼባታት ብመሰረት እዚ ሕጊ እዚ ይመርሖም።",
-          "1.3 ንኹሎም ኣኼባታት ኣጀንዳ ይዳሎ ከምኡውን ኣባላት ናብ ልሙድ ከምኡውን ፍሉይ ኣኼባታት እዚ ዕላ ይጽውዖም።",
-          "1.4 ኣብ ውዕል ምስ ካልኦት ተቋማት ንዘበና እታ ቤተ ክርስቲያን ኣብ ዝሓለፈሉ ውዕላት ወሳኒ እዚ ዕላ ካብ ሓበሻት ኣባላት ኮሚተ ፀብጻ ከምኡውን ፍቓድ ክረኽብ ኣለዎ።",
-          "1.5 ኣብ ስብሰባ ማእከላይ ጉባኤ ኣብ ናይ እዚ ኮሚተ ኣቀማምጣ ወይ ጸብጻታት ክገልጽ ይኽእል እዩ።",
-          "1.6 ከም ኵሉ ኣባል ኮሚተ እዚ ኸልኦ ሓደ ድምጺ ጥራይ ኣለዎ።",
-          "1.7 ኵሎም ዝተዋህበ ምክራት ከምኡውን ዝተወሰኑ ተግባራት ክትፍጸሙ ይጠብቅ።"
-        ]
-      },
-      {
-        title: "2. ምክትል ርእሰ ጉባኤ (ቪስ ፕረዚደንት)",
-        items: [
-          "2.1 ኣብ ኣልቦነት ርእሰ ጉባኤ ን ተግባራቱ ይሰርሕ።",
-          "2.2 ከም ኵሉ ኣባል ኮሚተ ሓደ ድምጺ ጥራይ ኣለዎ።",
-          "2.3 ብግዜ ብግዜ ከም ዘሎዎ ዝኾነ ፍሉይ እዚ ረጋጅነት እዚ ይምደብ።"
-        ]
-      },
-      {
-        title: "3. ሓበሻይ ጸሓፊ (ጄነራል እዚ ከከረተሪ)",
-        items: [
-          "3.1 ኣብ ኵሎም ኣኼባታት ኮሚተ ከምኡውን ማእከላይ ጉባኤ ጸሓፊ ኮይኑ ይሰርሕ።",
-          "3.2 ንዝተወሰኑ ውሳነታት ናይ ምፍጻም ምዕባለታት ክክትል ከምኡውን ጸብጻት ክገብር ይወሃቦ።",
-          "3.3 ኵሎም ዝምልከቱ ዜናታት ናብ ኣባላት ቤተ ክርስቲያን ከምኡውን ኣባላት ኮሚተ ብቕልጡፍ ይሰዲዶም።",
-          "3.4 ኣጀንዳ ኣኼባታት ይዳሎ ከምኡውን መዝገብ ኣኼባታት ኮሚተ ከምኡውን ማእከላይ ጉባኤ ይካየድ።",
-          "3.5 ኣብ ኣልቦነት ርእሰ ጉባኤ ከምኡውን ምክትል ርእሰ ጉባኤ ንኣኼባታት ኮሚተ ይመርሕ።"
-        ]
-      },
-      {
-        title: "4. ሓለዋይ ኣካውንታንት (ቻይፍ ኣካውንታንት)",
-        items: [
-          "4.1 ብሕሱምነት: እዚ ሓለዋይ ኣካውንታንት ቀዳምነት ናይ ኣካውንቲን ፋይናንስን ብሕሱም ክህልዎ ኣለዎ። እንተዘይኮነ ግን፡ እቲ ኮሚተ ካብ ኣባላት ቤተ ክርስቲያን ኣብዚ መዳይ ዝሰለጠነ ተጋዳላይ ክሕግዞ ኣለዎ።",
-          "4.2 እቲ ሓለዋይ ኣካውንታንት ኵሎም ንብረት ከምኡውን ዕዳታት ቤተ ክርስቲያን ብመሰረት ናይ ተቀባልነት ዘለዎም ኣካውንቲን ሕጋዊ መምርሒታት ይካየድ።",
-          "4.3 ኣብ ክፍሊ ፋይናንስ ቤተ ክርስቲያን ግቡእ ናይ ውሽጣዊ ቁጠጣ ስርዓት ከም ዘሎ ይጠብቅ።",
-          "4.4 ኵሎም ፋይናንሳዊ እዚ ሰነዳት ብኣጽቦትን ብተራ ኣብ ዝተወሰነ መዕቀኒ ንዝተፈላለዩ ሰበ ስልጣን ቤተ ክርስቲያን ከምኡውን ኣውዳውላት ንምርኣይ ይካየድ።",
-          "4.5 ኵሎም ክፍሊታት ብግዜኡን ኣብ ዝተፈላለየ በጃት ከም ዝኽፈሉ ይረጋግጽ።",
-          "4.6 ኵሎም ዝምልከቱ ክፍሊታት ከም ዝበጽሑ ከምኡውን ረሲት ከም እዚ ይሃቦም ይረጋግጽ።",
-          "4.7 ኣብ ውሽጢ ዓመት ከምኡውን ዓመታዊ ፋይናንሳዊ ጸብጻታት ንማእከላይ ጉባኤ ንምቕራብ እዚ ይዳሎ።",
-          "4.8 ኵሎም ዝምልከቱ ፋይናንሳዊ ሰነዳት ንኣውዳውላት ይዳሎ ከምኡውን ይህቦም።",
-          "4.9 ናይ ኣውዳውላት ምክራት ብዛዕባ መጻሕፍቲ ኣካውንቲን ይፍጸም።",
-          "4.10 ኵሎም ካራት ክፍሊት ከምኡውን ፋይናንሳዊ ውልታት ብዝተወሰኑ ምልክት ኣቕራብቲ ከም ዝፈረሙ ይረጋግጽ።",
-          "4.11 ወርሓዊ ምልካእ ባንክ ይዳሎ ከምኡውን ንኮሚተ ንምግላጽ ከምኡውን ንምግባር ይህቦ።",
-          "4.12 ምስ ርእሰ ኮሚተ ኣስተዳድርን ኣገልግሎትን ብምምኽናይ ዓመታዊ በጃት ንማእከላይ ጉባኤ ንምቕራብ ይዳሎ።",
-          "4.13 ናይ ቤተ ክርስቲያን ኣበው ከምኡውን ገንዘብ ይዳሎ ከምኡውን ይቆጻጸር።"
-        ]
-      },
-      {
-        title: "5. ገንዘብ ሓላፊ (ትረዘረር)",
-        items: [
-          "5.1 እቲ ገንዘብ ሓላፊ ንመጻሕፍትን እዚ ሰነዳትን ቤተ ክርስቲያን ንምሕላውን ንምዕቃብን ይወሃቦ።",
-          "5.2 ገንዘብ ከምኡውን ካራት ኣብ ባንክ ቤተ ክርስቲያን ኣብ ውሽጢ ሰሙን ይውድኦም።",
-          "5.3 እቲ ብኣካውንታንት ዝተመደበ ንኣሽቱ ወጻምታት ይዳሎ።"
-        ]
-      }
-    ]
-  };
-
-  const title = selectedLanguage === 'en' ? 'Church Bylaws' : tigrinyaBylaws.title;
-  const subtitle = selectedLanguage === 'en'
-    ? 'Abune Aregawi Orthodox Tewahedo Church - Organizational Structure and Guidelines'
-    : tigrinyaBylaws.subtitle;
-
-  // TOC is hardcoded in Markdown; no auto-generated TOC needed
-
-  // Assign IDs to headings in rendered content so TOC anchors work
-  const contentRef = useRef<HTMLDivElement | null>(null);
+  // Scroll Spy to highlight active section
   useEffect(() => {
-    if (!contentRef.current) return;
-    slugCountsRef.current = {};
-    const headings = contentRef.current.querySelectorAll('h1, h2, h3');
-    headings.forEach((el) => {
-      const text = (el.textContent || '').trim();
-      const base = text
-        .toLowerCase()
-        .replace(/[`~!@#$%^&*()+=|{}\[\]:;"'<>?,./\\]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-');
-      const n = (slugCountsRef.current[base] = (slugCountsRef.current[base] || 0) + 1);
-      const id = n > 1 ? `${base}-${n - 1}` : base;
-      if (id) el.id = id;
-    });
-  }, [englishMd, tigrinyaMd, selectedLanguage, loadingMd, mdError]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveId(entry.target.id);
+          }
+        });
+      },
+      { rootMargin: '-10% 0px -80% 0px' }
+    );
+
+    const headings = document.querySelectorAll('h1[id], h2[id]');
+    headings.forEach((h) => observer.observe(h));
+
+    return () => observer.disconnect();
+  }, [markdownContent]);
+
+  // Handle Hash Navigation
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      setActiveId(id);
+      setIsSidebarOpen(false); // Close mobile sidebar on selection
+    }
+  };
+
+  const title = selectedLanguage === 'en' ? 'Church Bylaws' : 'ሕጊ ቤተ ክርስቲያን';
+  const subtitle = selectedLanguage === 'en' ? 'Administrative Guidelines & Structure' : 'ስርዓተ ምልክን መምርሒታትን';
 
   return (
-    <div
-      className="min-h-screen py-12 px-4 sm:px-6 lg:px-8"
-      style={{
-        backgroundImage: `url(${process.env.PUBLIC_URL || ''}/bylaws/TigrayOrthodox-background.png)`,
-        backgroundRepeat: 'repeat',
-        backgroundPosition: 'top left',
-        backgroundSize: 'auto',
-      }}
-    >
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">{title}</h1>
-          <p className="text-lg text-gray-600 mb-6">{subtitle}</p>
-          {/* Share/Download */}
-          <div className="flex justify-center gap-3 mb-4">
-            <a
-              href={`${process.env.PUBLIC_URL || ''}/${selectedLanguage === 'en' ? 'bylaws/Bylaws-en.md' : 'bylaws/Bylaws-ti.md'}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline text-sm"
-            >
-              View Markdown
-            </a>
-            {selectedLanguage === 'en' && hasPdf && (
-              <a
-                href={`${process.env.PUBLIC_URL || ''}/bylaws/Bylaws-en.pdf`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline text-sm"
-              >
-                Download PDF
-              </a>
-            )}
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="text-blue-600 hover:underline text-sm"
-            >
-              Print
-            </button>
-          </div>
-          
-          {/* Language Toggle */}
-          <div className="flex justify-center mb-6">
-            <div className="bg-white rounded-lg shadow-sm border p-1">
-              <button
-                onClick={() => setSelectedLanguage('en')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  selectedLanguage === 'en'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                English
-              </button>
-              <button
-                onClick={() => setSelectedLanguage('ti')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  selectedLanguage === 'ti'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                ትግርኛ
-              </button>
-            </div>
-          </div>
-          {lastUpdated && (
-            <div className="mt-6 text-right">
-              <span className="text-xs text-gray-500">Last updated: {lastUpdated}</span>
-            </div>
-          )}
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header Bar */}
+      <div className="bg-white shadow-sm border-b sticky top-0 z-30 h-16 flex items-center px-4 md:px-8 justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="md:hidden text-gray-600 hover:text-gray-900 focus:outline-none"
+          >
+            <i className={`fas ${isSidebarOpen ? 'fa-times' : 'fa-bars'} text-xl`}></i>
+          </button>
+          <h1 className="text-xl font-bold text-gray-800 hidden sm:block">{title}</h1>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-8">
-          {/* Auto-generated TOC removed in favor of hardcoded Markdown TOC */}
-          <div ref={contentRef} className="prose prose-lg max-w-none">
-            {loadingMd ? (
-              <p className="text-gray-500">Loading bylaws…</p>
-            ) : mdError ? (
-              // Fallback to inline content for Tigrinya if fetch fails
-              selectedLanguage === 'ti' ? (
-                tigrinyaBylaws.sections.map((section, index) => (
-                  <section key={index} className="mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4 border-b border-gray-200 pb-2">
-                      {section.title}
-                    </h2>
-                    <div className="space-y-3">
-                      {section.items.map((item, itemIndex) => (
-                        <p key={itemIndex} className="text-gray-700 leading-relaxed">
-                          {item}
-                        </p>
-                      ))}
-                    </div>
-                  </section>
-                ))
+        <div className="flex items-center gap-3">
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setSelectedLanguage('en')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${selectedLanguage === 'en' ? 'bg-white shadow-sm text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setSelectedLanguage('ti')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${selectedLanguage === 'ti' ? 'bg-white shadow-sm text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              TI
+            </button>
+          </div>
+          {/* Print Button */}
+          <button onClick={() => window.print()} className="p-2 text-gray-500 hover:text-primary-700 transition" title="Print">
+            <i className="fas fa-print"></i>
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 max-w-7xl w-full mx-auto md:flex relative">
+
+        {/* Sidebar (Desktop: Sticky, Mobile: Fixed Overlay) */}
+        <aside
+          className={`
+                    fixed md:sticky top-16 left-0 h-[calc(100vh-4rem)] w-72 bg-white border-r border-gray-200 overflow-y-auto z-20 transition-transform duration-300 ease-in-out
+                    ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+                 `}
+        >
+          <div className="p-6">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Table of Contents</h3>
+            <nav className="space-y-1">
+              {toc.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  className={`
+                                    w-full text-left block px-3 py-2 rounded-md text-sm transition-colors duration-200
+                                    ${item.level === 1 ? 'font-semibold mt-4' : 'ml-3 font-normal'}
+                                    ${activeId === item.id
+                      ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
+                                `}
+                >
+                  {item.text}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </aside>
+
+        {/* Overlay for mobile sidebar */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/20 z-10 md:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          ></div>
+        )}
+
+        {/* Main Content */}
+        <main className="flex-1 p-4 md:p-12 lg:p-16 min-h-screen bg-white md:ml-0">
+          <div className="max-w-4xl mx-auto">
+            {/* Document Header */}
+            <div className="mb-10 text-center border-b pb-8">
+              <div className="w-20 h-20 mx-auto mb-6">
+                <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="Logo" className="w-full h-full object-contain opacity-80" onError={(e) => e.currentTarget.style.display = 'none'} />
+              </div>
+              <h1 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-4">{title}</h1>
+              <p className="text-lg text-gray-600 font-serif italic">{subtitle}</p>
+            </div>
+
+            {/* Content Body */}
+            <article className="prose md:prose-lg lg:prose-xl prose-primary max-w-none text-gray-700 leading-relaxed font-serif">
+              {loading ? (
+                <div className="space-y-4 animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+                </div>
+              ) : error ? (
+                <div className="p-4 bg-red-50 text-red-700 rounded-lg">
+                  Error loading document. Please try refreshing.
+                </div>
               ) : (
-                <p className="text-red-600">{mdError}</p>
-              )
-            ) : (
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeRaw]}
-                components={{
-                  img: ({node, ...props}) => {
-                    const src = (props.src || '').toString();
-                    const isAbsolute = /^(?:[a-z]+:)?\/\//i.test(src) || src.startsWith('/');
-                    const resolved = isAbsolute ? src : `${process.env.PUBLIC_URL || ''}/bylaws/${src}`;
-                    const style = {
-                      display: 'block',
-                      marginLeft: 'auto',
-                      marginRight: 'auto',
-                      maxWidth: '100%'
-                    } as React.CSSProperties;
-                    // Preserve any existing props.style while enforcing centering
-                    const mergedStyle = { ...(props as any).style, ...style };
-                    return <img {...props} src={resolved} alt={props.alt || ''} style={mergedStyle} />;
-                  },
-                }}
-              >
-                {selectedLanguage === 'en' ? englishMd : tigrinyaMd}
-              </ReactMarkdown>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeRaw]}
+                  components={{
+                    h1: ({ node, ...props }) => {
+                      // Generate ID for auto-linking
+                      const text = props.children?.toString() || '';
+                      const id = text.toLowerCase()
+                        .replace(/[`~!@#$%^&*()+=|{}\[\]:;"'<>?,./\\]/g, '')
+                        .replace(/\s+/g, '-')
+                        .replace(/-+/g, '-');
+                      return <h1 id={id} className="scroll-mt-24 text-primary-800 border-b-2 border-primary-100 pb-4 mb-8 mt-12" {...props} />;
+                    },
+                    h2: ({ node, ...props }) => {
+                      const text = props.children?.toString() || '';
+                      const id = text.toLowerCase()
+                        .replace(/[`~!@#$%^&*()+=|{}\[\]:;"'<>?,./\\]/g, '')
+                        .replace(/\s+/g, '-')
+                        .replace(/-+/g, '-');
+                      return <h2 id={id} className="scroll-mt-24 text-primary-700 mt-10 mb-6" {...props} />;
+                    },
+                    h3: ({ node, ...props }) => <h3 className="text-gray-800 font-bold mt-8 mb-4" {...props} />,
+                    ul: ({ node, ...props }) => <ul className="list-disc pl-6 space-y-2 mb-6" {...props} />,
+                    ol: ({ node, ...props }) => <ol className="list-decimal pl-6 space-y-2 mb-6" {...props} />,
+                    li: ({ node, ...props }) => <li className="pl-2" {...props} />,
+                    p: ({ node, ...props }) => <p className="mb-6 text-gray-700" {...props} />,
+                    blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-amber-400 bg-amber-50 p-4 italic my-6 rounded-r-lg" {...props} />,
+                    // Handle images (like signatures or logos embedded in md)
+                    img: ({ node, ...props }) => (
+                      <div className="flex justify-center my-8">
+                        <img {...props} className="max-h-96 rounded shadow-lg border" alt={props.alt || 'Bylaw illustration'} />
+                      </div>
+                    ),
+                    a: ({ node, ...props }) => <a {...props} className="text-primary-600 hover:text-primary-800 hover:underline" />
+                  }}
+                >
+                  {markdownContent}
+                </ReactMarkdown>
+              )}
+            </article>
+
+            {/* Footer Signature Area (Static Placeholder) */}
+            {!loading && !error && (
+              <div className="mt-20 pt-10 border-t border-gray-200 text-center">
+                <div className="flex justify-center mb-6">
+                  <i className="fas fa-church text-4xl text-gray-300"></i>
+                </div>
+                <p className="text-sm text-gray-500 uppercase tracking-widest">Official Document of Abune Aregawi Orthodox Tewahedo Church</p>
+                <p className="text-xs text-gray-400 mt-2">Garland, Texas</p>
+              </div>
             )}
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
