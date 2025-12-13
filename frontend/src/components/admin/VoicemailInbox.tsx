@@ -153,7 +153,7 @@ const VoicemailInbox: React.FC = () => {
     }, [firebaseUser, volPage]);
 
     if (loading && voicemails.length === 0) {
-        return <div className="p-4 text-center">Loading inbox...</div>;
+        return <div className="p-4 text-center">{t('admin.loading.inbox')}</div>;
     }
 
     if (error) {
@@ -166,12 +166,12 @@ const VoicemailInbox: React.FC = () => {
         <div className="space-y-8">
             <div className="bg-white shadow rounded-lg p-6">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">Voicemail Inbox</h2>
+                    <h2 className="text-xl font-bold text-gray-900">{t('admin.voicemail.inbox')}</h2>
                     <button
                         onClick={fetchVoicemails}
                         className="text-primary-600 hover:text-primary-800"
                     >
-                        <i className="fas fa-sync-alt mr-1"></i> Refresh
+                        <i className="fas fa-sync-alt mr-1"></i> {t('admin.refresh')}
                     </button>
                 </div>
 
@@ -179,12 +179,12 @@ const VoicemailInbox: React.FC = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">From</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recording</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transcription</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('admin.date')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('admin.from')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('admin.duration')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('admin.recording')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('admin.transcription')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -213,7 +213,7 @@ const VoicemailInbox: React.FC = () => {
                                             className="text-red-600 hover:text-red-900"
                                             title="Delete voicemail"
                                         >
-                                            <i className="fas fa-trash mr-1"></i> Delete
+                                            <i className="fas fa-trash mr-1"></i> {t('admin.delete')}
                                         </button>
                                     </td>
                                 </tr>
@@ -221,7 +221,7 @@ const VoicemailInbox: React.FC = () => {
                             {voicemails.length === 0 && (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                                        No voicemails found.
+                                        {t('admin.no.voicemails')}
                                     </td>
                                 </tr>
                             )}
@@ -236,15 +236,15 @@ const VoicemailInbox: React.FC = () => {
                             disabled={page === 1}
                             className="px-3 py-1 border rounded disabled:opacity-50"
                         >
-                            Previous
+                            {t('previous')}
                         </button>
-                        <span className="px-3 py-1">Page {page} of {totalPages}</span>
+                        <span className="px-3 py-1">{t('admin.page')} {page} {t('of')} {totalPages}</span>
                         <button
                             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                             disabled={page === totalPages}
                             className="px-3 py-1 border rounded disabled:opacity-50"
                         >
-                            Next
+                            {t('next')}
                         </button>
                     </div>
                 )}
@@ -261,7 +261,7 @@ const VoicemailInbox: React.FC = () => {
                         onClick={fetchVolunteerRequests}
                         className="text-primary-600 hover:text-primary-800"
                     >
-                        <i className="fas fa-sync-alt mr-1"></i> Refresh
+                        <i className="fas fa-sync-alt mr-1"></i> {t('admin.refresh')}
                     </button>
                 </div>
 
@@ -269,9 +269,9 @@ const VoicemailInbox: React.FC = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('admin.date')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('name')}</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('admin.messages')}</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('actions')}</th>
                             </tr>
                         </thead>
@@ -282,7 +282,7 @@ const VoicemailInbox: React.FC = () => {
                                         {new Date(req.createdAt).toLocaleDateString()}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {req.member ? `${req.member.first_name} ${req.member.last_name}` : 'Unknown'}
+                                        {req.member ? `${req.member.first_name} ${req.member.last_name}` : t('admin.unknown')}
                                         <div className="text-xs text-gray-500">{req.member?.phone_number}</div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-500 max-w-md">
@@ -321,15 +321,15 @@ const VoicemailInbox: React.FC = () => {
                             disabled={volPage === 1}
                             className="px-3 py-1 border rounded disabled:opacity-50"
                         >
-                            Previous
+                            {t('previous')}
                         </button>
-                        <span className="px-3 py-1">Page {volPage} of {volTotalPages}</span>
+                        <span className="px-3 py-1">{t('admin.page')} {volPage} {t('of')} {volTotalPages}</span>
                         <button
                             onClick={() => setVolPage(p => Math.min(volTotalPages, p + 1))}
                             disabled={volPage === volTotalPages}
                             className="px-3 py-1 border rounded disabled:opacity-50"
                         >
-                            Next
+                            {t('next')}
                         </button>
                     </div>
                 )}

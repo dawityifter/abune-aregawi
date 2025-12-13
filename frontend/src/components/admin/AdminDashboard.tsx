@@ -186,7 +186,7 @@ const AdminDashboard: React.FC = () => {
                 }`}
             >
               <i className="fas fa-history mr-2"></i>
-              Activity Logs
+              {t('admin.activity.logs')}
             </button>
             <button
               onClick={() => setActiveTab('voicemails')}
