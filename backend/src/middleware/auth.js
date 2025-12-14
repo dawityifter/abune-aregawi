@@ -8,6 +8,11 @@ const path = require('path');
 // Initialize Firebase Admin with better error handling
 let firebaseInitialized = false;
 try {
+  // Force emulator in test environment to avoid initialization errors
+  if (process.env.NODE_ENV === 'test') {
+    process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
+  }
+
   if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
     console.log('🔧 Initializing Firebase Admin SDK with service account...');
     const serviceAccount = JSON.parse(

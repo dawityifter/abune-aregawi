@@ -171,7 +171,7 @@ describe('Promoted Member Payments Integration', () => {
         expect(responseData.success).toBe(true);
 
         // Total collected should be 200 (100 from HoH + 100 from Promoted)
-        expect(responseData.data.payment.totalCollected).toBe(200);
+        expect(responseData.data.payment.duesCollected).toBe(200);
 
         // Check that transactions list includes both
         expect(responseData.data.transactions).toHaveLength(2);
@@ -257,7 +257,7 @@ describe('Promoted Member Payments Integration', () => {
         expect(responseData.success).toBe(true);
 
         // Total collected should be 100 (50 + 50)
-        expect(responseData.data.payment.totalCollected).toBe(100);
+        expect(responseData.data.payment.duesCollected).toBe(100);
         expect(responseData.data.transactions).toHaveLength(2);
     });
 });
