@@ -16,6 +16,7 @@ const { sequelize } = require('../src/models');
 // Mock Firebase Admin
 jest.mock('firebase-admin', () => ({
   initializeApp: jest.fn(),
+  apps: [],
   credential: {
     cert: jest.fn()
   },
