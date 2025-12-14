@@ -21,24 +21,67 @@ exports.uploadBankCSV = asyncHandler(async (req, res) => {
             errors: []
         };
 
-        // Upsert transactions (skip duplicates based on hash, but update metadata like balance)
-        for (const txn of parsedTransactions) {
-            const [record, created] = await BankTransaction.findOrCreate({
-                where: { transaction_hash: txn.transaction_hash },
-                defaults: txn
+        if (parsedTransactions.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: 'No transactions found in CSV',
+                data: results
             });
+        }
 
-            if (created) {
-                results.imported++;
+        // 1. Fetch existing transactions by hash
+        const hashes = parsedTransactions.map(t => t.transaction_hash);
+        const existingRecords = await BankTransaction.findAll({
+            where: { transaction_hash: hashes },
+            attributes: ['id', 'transaction_hash', 'balance']
+        });
+
+        const existingMap = new Map();
+        existingRecords.forEach(r => existingMap.set(r.transaction_hash, r));
+
+        // 2. Separate into "To Create" and "To Update"
+        const toCreate = [];
+        const toUpdate = [];
+
+        for (const txn of parsedTransactions) {
+            const existing = existingMap.get(txn.transaction_hash);
+
+            if (!existing) {
+                toCreate.push(txn);
             } else {
-                // If it exists but has no balance, and the new one does, update it!
-                if (record.balance === null && txn.balance !== null) {
-                    record.balance = txn.balance;
-                    // Also update raw_data if we want to keep the latest snapshot
-                    record.raw_data = txn.raw_data;
-                    await record.save();
+                // Check if we need to update balance (existing is null, new is not)
+                if (existing.balance === null && txn.balance !== null) {
+                    toUpdate.push({
+                        id: existing.id,
+                        balance: txn.balance,
+                        raw_data: txn.raw_data
+                    });
                 }
                 results.skipped++;
+            }
+        }
+
+        // 3. Bulk Create New Transactions
+        if (toCreate.length > 0) {
+            // Use chunks to avoid too large SQL queries if necessary, though 1000s is usually fine.
+            // SQLite/Postgres can handle moderate batch sizes.
+            await BankTransaction.bulkCreate(toCreate);
+            results.imported += toCreate.length;
+        }
+
+        // 4. Update Existing (Parallel Promises)
+        // Since we only update balance/raw_data, we can run these in parallel
+        if (toUpdate.length > 0) {
+            const updatePromises = toUpdate.map(update =>
+                BankTransaction.update(
+                    { balance: update.balance, raw_data: update.raw_data },
+                    { where: { id: update.id } }
+                )
+            );
+            // Process in batches of 50 to avoid connection pool exhaustion
+            const batchSize = 50;
+            for (let i = 0; i < updatePromises.length; i += batchSize) {
+                await Promise.all(updatePromises.slice(i, i + batchSize));
             }
         }
 
@@ -49,6 +92,7 @@ exports.uploadBankCSV = asyncHandler(async (req, res) => {
         });
 
     } catch (error) {
+        console.error('CSV Upload Error:', error);
         res.status(500);
         throw new Error('Error processing CSV: ' + error.message);
     }
