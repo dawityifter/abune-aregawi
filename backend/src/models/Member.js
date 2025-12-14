@@ -21,6 +21,11 @@ module.exports = (sequelize) => {
         as: 'collected_transactions'
       });
 
+      Member.hasMany(models.BankTransaction, {
+        foreignKey: 'member_id',
+        as: 'bank_transactions'
+      });
+
       // Self-referencing association for family relationships
       Member.belongsTo(Member, {
         foreignKey: 'family_id',

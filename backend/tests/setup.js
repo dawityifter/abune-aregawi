@@ -8,6 +8,7 @@ process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-jwt-secret';
 process.env.FIREBASE_PROJECT_ID = 'test-project';
 process.env.DATABASE_URL = 'sqlite::memory:';
+process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
 
 // NOW require models after environment is set
 const { sequelize } = require('../src/models');
@@ -41,7 +42,7 @@ beforeAll(async () => {
     // Initialize database connection
     await sequelize.authenticate();
     console.log('✅ Test database connection established');
-    
+
     // Sync database models for testing
     await sequelize.sync({ force: true });
     console.log('✅ Test database synchronized');
@@ -60,7 +61,7 @@ afterAll(async () => {
   } catch (error) {
     console.error('❌ Error closing test database:', error);
   }
-  
+
   // Clean up any remaining connections
   jest.clearAllMocks();
 });

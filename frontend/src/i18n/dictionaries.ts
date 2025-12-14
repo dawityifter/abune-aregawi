@@ -1190,8 +1190,8 @@ export const ti: Dictionaries = {
       desc: "ዳሽቦርድ ንምርኣይ በይዘኦም ምዝገባ ይወድኡ።"
     },
     profile: {
-      title: "ፕሮፋይል",
-      view: "ፕሮፋይል ርኣይ"
+      title: "መግለፂ",
+      view: "መግለፂ ርኣይ"
     },
     bylaw: {
       title: "ሕጊ ቤተ ክርስቲያን",

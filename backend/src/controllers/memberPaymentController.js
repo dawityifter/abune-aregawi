@@ -648,9 +648,13 @@ async function computeAndReturnDues(res, member) {
 
   // If not found by family_id logic, use the one with the highest pledge
   if (!headOfHousehold) {
-    headOfHousehold = familyMembers.reduce((prev, current) =>
-      (Number(current.yearly_pledge || 0) > Number(prev.yearly_pledge || 0)) ? current : prev
-    );
+    if (familyMembers.length > 0) {
+      headOfHousehold = familyMembers.reduce((prev, current) =>
+        (Number(current.yearly_pledge || 0) > Number(prev.yearly_pledge || 0)) ? current : prev
+      );
+    } else {
+      headOfHousehold = member;
+    }
   }
 
   // Determine if this is a household view (multiple family members)

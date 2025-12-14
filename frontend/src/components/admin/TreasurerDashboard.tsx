@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import BankUpload from '../finance/BankUpload';
+import BankTransactionList from '../finance/BankTransactionList';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRolePermissions } from '../../utils/roles';
 import TransactionList from './TransactionList';
@@ -32,7 +34,7 @@ interface PaymentStatsData {
 const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle' | 'member-dues' | 'employees' | 'vendors'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle' | 'member-dues' | 'employees' | 'vendors' | 'bank'>('overview');
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
@@ -181,6 +183,15 @@ const TreasurerDashboard: React.FC = () => {
                   }`}
               >
                 {t('treasurerDashboard.tabs.overview')}
+              </button>
+              <button
+                onClick={() => setActiveTab('bank')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'bank'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                Bank Integration
               </button>
               <button
                 onClick={() => setActiveTab('payments')}
@@ -362,6 +373,21 @@ const TreasurerDashboard: React.FC = () => {
                 <p className="text-sm text-gray-500">
                   {t('treasurerDashboard.memberDues.searchNote')}
                 </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'bank' && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900">Bank Reconciliation</h2>
+                  <p className="text-gray-600 mt-1">Upload Chase CSVs and match transactions to members.</p>
+                </div>
+              </div>
+              <BankUpload onUploadSuccess={() => window.dispatchEvent(new CustomEvent('bank:refresh'))} />
+              <div className="mt-8">
+                <BankTransactionList refreshTrigger={0} />
               </div>
             </div>
           )}
