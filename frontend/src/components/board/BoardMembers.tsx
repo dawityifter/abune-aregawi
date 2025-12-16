@@ -30,17 +30,27 @@ const BoardMembers: React.FC = () => {
 
                 const data = await response.json();
                 if (data.success && Array.isArray(data.data)) {
-                    const mappedMembers = data.data.map((m: any) => ({
-                        id: Number(m.member_id),
-                        name: Number(m.member_id) === 331
-                            ? "መልኣከ ፀሃይ Mel’Ake Tsehay keshi Tadesse"
-                            : `${m.first_name} ${m.last_name}`,
-                        role: m.role_in_department,
-                        email: m.email,
-                        phone: m.phone_number,
-                        // Generate avatar based on actual name
-                        image: `https://ui-avatars.com/api/?name=${m.first_name}+${m.last_name}&background=fef3c7&color=92400e`
-                    }));
+                    const mappedMembers = data.data.map((m: any) => {
+                        const firstNameLower = m.first_name.toLowerCase();
+                        const knownImages = ['afework', 'dawit', 'fetsum', 'seifu', 'teshager'];
+
+                        let imageUrl = `https://ui-avatars.com/api/?name=${m.first_name}+${m.last_name}&background=fef3c7&color=92400e`;
+
+                        if (knownImages.includes(firstNameLower)) {
+                            imageUrl = `${process.env.PUBLIC_URL || ''}/images/leadership/${firstNameLower}_256x256.png`;
+                        }
+
+                        return {
+                            id: Number(m.member_id),
+                            name: Number(m.member_id) === 331
+                                ? "መልኣከ ፀሃይ Mel’Ake Tsehay keshi Tadesse"
+                                : `${m.first_name} ${m.last_name}`,
+                            role: m.role_in_department,
+                            email: m.email,
+                            phone: m.phone_number,
+                            image: imageUrl
+                        };
+                    });
 
                     // Custom Sort Order
                     const rolePriority: { [key: string]: number } = {
@@ -226,12 +236,12 @@ const BoardMembers: React.FC = () => {
                                     className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden group"
                                 >
                                     <div className="p-6 flex flex-col items-center text-center">
-                                        <div className="relative w-32 h-32 mb-4">
+                                        <div className="relative w-32 h-32 mb-4 shrink-0">
                                             <div className="absolute inset-0 bg-primary-100 rounded-full transform rotate-6 group-hover:rotate-12 transition-transform duration-300"></div>
                                             <img
                                                 src={member.image}
                                                 alt={member.name}
-                                                className="relative w-full h-full rounded-full object-cover border-4 border-white shadow-md group-hover:scale-105 transition-transform duration-300"
+                                                className="relative w-full h-full rounded-full object-cover border-4 border-white shadow-md group-hover:scale-105 transition-transform duration-300 bg-gray-50"
                                             />
                                         </div>
 
