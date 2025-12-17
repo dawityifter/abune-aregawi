@@ -196,17 +196,15 @@ const MeetingDetailsPage: React.FC = () => {
                                     <p className="text-gray-700 mt-2">{meeting.purpose}</p>
                                 )}
                             </div>
-                            {isLeader && (
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setShowEditMeetingModal(true)}
-                                        className="text-primary-600 hover:text-primary-700"
-                                        title="Edit meeting"
-                                    >
-                                        <i className="fas fa-edit text-lg"></i>
-                                    </button>
-                                </div>
-                            )}
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowEditMeetingModal(true)}
+                                    className="text-primary-600 hover:text-primary-700"
+                                    title="Edit meeting"
+                                >
+                                    <i className="fas fa-edit text-lg"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
