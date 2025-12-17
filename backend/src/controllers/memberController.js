@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { Member, Dependent, ActivityLog } = require('../models');
+const { Member, Dependent, ActivityLog, Title } = require('../models');
 const { sanitizeInput } = require('../utils/sanitize');
 const { newMemberRegistered } = require('../utils/notifications');
 const logger = require('../utils/logger');
@@ -333,6 +333,8 @@ exports.register = async (req, res) => {
       lastName,
       gender,
       maritalStatus,
+      titleId,
+      title_id,
 
       // Contact & Address
       phoneNumber,
@@ -369,7 +371,7 @@ exports.register = async (req, res) => {
       role,
 
       // Dependents (legacy field name 'dependants' from client)
-      dependants
+      dependants: dependentsLegacy
     } = req.body;
 
     // Normalize primary phone number to match DB format
@@ -399,7 +401,9 @@ exports.register = async (req, res) => {
     // Normalize incoming dependents array: prefer 'dependents', fallback to legacy 'dependants'
     const dependents = Array.isArray(req.body.dependents)
       ? req.body.dependents
-      : dependants;
+      : (Array.isArray(dependentsLegacy) ? dependentsLegacy : []);
+
+    const finalTitleId = titleId || title_id || null;
 
     // Use provided email or null (do not generate fake emails)
     const email = providedEmail || null;
@@ -431,7 +435,7 @@ exports.register = async (req, res) => {
         });
       }
 
-      // For Firebase-authenticated users, allow phone number "duplicates" 
+      // For Firebase-authenticated users, allow phone number "duplicates"
       // since they're completing their profile after authentication
       // We'll check if the phone number belongs to a different Firebase user
       const existingMemberByPhone = await Member.findOne({
@@ -538,7 +542,8 @@ exports.register = async (req, res) => {
       firebase_uid: firebaseUid,
       password: password || null, // Password is optional since Firebase handles auth
       role: role || 'member',
-      family_id: familyId // may be null, will update if HoH
+      family_id: familyId, // may be null, will update if HoH
+      title_id: finalTitleId
     });
 
     // If head of household, set family_id to own id
@@ -709,10 +714,11 @@ exports.login = async (req, res) => {
     // Find member by login email
     const member = await Member.findOne({
       where: { email },
-      include: [{
-        model: Dependent,
-        as: 'dependents'
-      }]
+      attributes: { exclude: ['password'] },
+      include: [
+        { model: Dependent, as: 'dependents' },
+        { model: Title, as: 'title' }
+      ]
     });
 
     if (!member) {
@@ -828,7 +834,16 @@ exports.updateProfile = async (req, res) => {
     // Remove sensitive fields that shouldn't be updated via this endpoint
     const { password, role, isActive, memberId, ...updateData } = sanitizeInput(req.body);
 
-    await member.update(updateData);
+    // Handle title_id separately as it might come as titleId or title_id
+    const { titleId, title_id, ...restUpdateData } = updateData;
+    const finalUpdateData = { ...restUpdateData };
+    if (titleId !== undefined) {
+      finalUpdateData.title_id = titleId;
+    } else if (title_id !== undefined) {
+      finalUpdateData.title_id = title_id;
+    }
+
+    await member.update(finalUpdateData);
 
     // Update dependents if provided (legacy field name 'dependants')
     if (req.body.dependants && Array.isArray(req.body.dependants)) {
@@ -941,10 +956,10 @@ exports.getAllMembersFirebase = async (req, res) => {
       queryParams: { page: req.query.page, limit: req.query.limit, search: !!req.query.search }
     });
 
-    const { page = 1, limit = 20, search, role, isActive } = req.query;
+    const { page = 1, limit = 20, search, role, isActive, title_id: queryTitleId } = req.query;
     const offset = (page - 1) * limit;
 
-    logger.debug('Query params parsed', { page, limit, hasSearch: !!search, role, isActive });
+    logger.debug('Query params parsed', { page, limit, hasSearch: !!search, role, isActive, queryTitleId });
 
     const whereClause = {};
 
@@ -964,6 +979,10 @@ exports.getAllMembersFirebase = async (req, res) => {
       whereClause.is_active = isActive === 'true';
     }
 
+    if (queryTitleId) {
+      whereClause.title_id = queryTitleId;
+    }
+
     logger.debug('Query filters applied', {
       filtersCount: Object.keys(whereClause).length,
       limit: parseInt(limit),
@@ -975,11 +994,13 @@ exports.getAllMembersFirebase = async (req, res) => {
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['created_at', 'DESC']],
-      include: [{
-        model: Dependent,
-        as: 'dependents',
-        attributes: ['id'] // Only get the count, not full data
-      }]
+      include: [
+        { model: Title, as: 'title' },
+        {
+          model: Dependent,
+          as: 'dependents',
+          attributes: ['id'] // Only get the count, not full data
+        }]
     });
 
     logger.info('Members query executed', { totalCount: count, returnedCount: members.length });
@@ -995,6 +1016,8 @@ exports.getAllMembersFirebase = async (req, res) => {
       phoneNumber: member.phone_number,
       role: member.role,
       isActive: member.is_active,
+      titleId: member.title_id,
+      title: member.title, // Pass full title object for display
       // Personal info for Edit Member modal
       gender: member.gender,
       maritalStatus: member.marital_status,
@@ -1094,7 +1117,18 @@ exports.updateMember = async (req, res) => {
       });
     }
 
-    await member.update(sanitizeInput(req.body));
+    const updates = sanitizeInput(req.body);
+
+    // Handle title_id separately as it might come as titleId or title_id
+    const { titleId, title_id, ...restUpdates } = updates;
+    const finalUpdates = { ...restUpdates };
+    if (titleId !== undefined) {
+      finalUpdates.title_id = titleId;
+    } else if (title_id !== undefined) {
+      finalUpdates.title_id = title_id;
+    }
+
+    await member.update(finalUpdates);
 
     // Update dependents if provided
     if (req.body.dependants && Array.isArray(req.body.dependants)) {
@@ -1328,6 +1362,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         apartmentNo: memberByUid.apartment_no,
         emergencyContactName: memberByUid.emergency_contact_name,
         emergencyContactPhone: memberByUid.emergency_contact_phone,
+        titleId: memberByUid.title_id, // Add titleId here
         dependents: memberByUid.dependents || []
       };
 
@@ -1373,7 +1408,12 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       if (orConds.length > 0) {
         member = await Member.findOne({
           where: { [Op.or]: orConds },
-          include: [{ model: Dependent, as: 'dependents' }]
+          include: [
+            { model: Dependent, as: 'dependents' },
+            { model: Member, as: 'family_head' },
+            { model: Member, as: 'family_members' },
+            { model: Title, as: 'title' }
+          ]
         });
       }
     }
@@ -1419,6 +1459,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
             'phone_number',
             'role',
             'is_active',
+            'title_id', // Add title_id here
             // Address fields for household address display
             'street_line1',
             'apartment_no',
@@ -2208,7 +2249,19 @@ exports.validateHeadOfHouseholdPhone = async (req, res) => {
   }
 };
 
-// Promote Dependent to Member (Admin only)
+// Get all available titles
+exports.getTitles = async (req, res) => {
+  try {
+    const titles = await Title.findAll({
+      order: [['priority', 'ASC'], ['name', 'ASC']]
+    });
+    return res.json({ success: true, data: titles });
+  } catch (error) {
+    console.error('getTitles error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 exports.promoteDependent = async (req, res) => {
   try {
     const { dependentId } = req.params;

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getRolePermissions, UserRole } from '../utils/roles';
 import { getDisplayEmail } from '../utils/email';
+import { formatMemberName } from '../utils/formatName';
 
 interface UserProfile {
   success: boolean;
@@ -19,6 +20,10 @@ interface UserProfile {
       isActive: boolean;
       createdAt: string;
       updatedAt: string;
+      title?: {
+        name: string;
+        abbreviation?: string;
+      };
       // Add other member fields as needed
     };
   };
@@ -264,7 +269,7 @@ const Dashboard: React.FC = () => {
                       {t('dashboard.profile.title')}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {userProfile?.data?.member?.firstName || getDisplayEmail(firebaseUser?.email) || 'User'}
+                      {(userProfile?.data?.member ? formatMemberName(userProfile.data.member) : getDisplayEmail(firebaseUser?.email)) || 'User'}
                     </p>
                   </div>
                 </div>

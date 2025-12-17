@@ -58,6 +58,8 @@ router.post('/complete-registration/:firebaseUid', memberController.completeRegi
 router.get('/registration-status', memberController.checkRegistrationStatus);
 
 // Cleanup orphaned users (admin only)
+router.get('/titles', memberController.getTitles);
+
 router.get('/cleanup-orphaned',
   roleMiddleware(['admin']),
   memberController.cleanupOrphanedUsers
@@ -158,6 +160,8 @@ router.get('/:id',
   validateMemberId,
   memberController.getMemberById
 );
+
+// Public routes (or authenticated, depending on preference. Making authenticated for safety)
 
 
 

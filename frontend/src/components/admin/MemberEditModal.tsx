@@ -4,6 +4,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
 import AddDependentModal from './AddDependentModal';
 import EditDependentModal from './EditDependentModal';
+import { useTitles } from '../../hooks/useTitles';
+import { formatMemberName } from '../../utils/formatName';
 
 interface Member {
   id: string;
@@ -37,6 +39,8 @@ interface Member {
   yearlyPledge?: number | string;
   familyId?: string | number;
   family_id?: string | number;
+  title_id?: number | string;
+  titleId?: number | string;
 }
 
 interface MemberEditModalProps {
@@ -67,20 +71,25 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
   const [editingDependent, setEditingDependent] = useState<any | null>(null);
   const [showEditDependent, setShowEditDependent] = useState(false);
 
+  const { titles, loading: titlesLoading } = useTitles();
+
   useEffect(() => {
     console.log('🔍 MemberEditModal - Received member data:', {
       gender: member.gender,
-      maritalStatus: member.maritalStatus
+      maritalStatus: member.maritalStatus,
+      titleId: member.title_id || member.titleId
     });
     // Normalize gender and maritalStatus to lowercase to match dropdown options
     const normalized = {
       ...member,
       gender: member.gender ? member.gender.toLowerCase() : member.gender,
-      maritalStatus: member.maritalStatus ? member.maritalStatus.toLowerCase() : member.maritalStatus
+      maritalStatus: member.maritalStatus ? member.maritalStatus.toLowerCase() : member.maritalStatus,
+      titleId: member.title_id || member.titleId
     };
     console.log('🔍 MemberEditModal - After normalization:', {
       gender: normalized.gender,
-      maritalStatus: normalized.maritalStatus
+      maritalStatus: normalized.maritalStatus,
+      titleId: normalized.titleId
     });
     setFormData(normalized);
   }, [member]);
@@ -257,6 +266,15 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
         delete payload.yearlyPledge;
       }
 
+      // Map titleId to title_id (backend supports both but good to be explicit)
+      if (payload.titleId !== undefined && payload.titleId !== '') {
+        const num = Number(payload.titleId);
+        if (Number.isFinite(num)) {
+          payload.title_id = num;
+        }
+        delete payload.titleId;
+      }
+
       // If the user cannot manage roles, do not send role changes
       if (!canManageRoles) {
         delete payload.role;
@@ -300,7 +318,13 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
       <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-medium text-gray-900">
-            {t('admin.memberModal.editTitle')}: {member.firstName} {member.lastName}
+            {t('admin.memberModal.editTitle')}: {formatMemberName({
+              ...member,
+              title: (() => {
+                const t = titles.find(t => t.id === (member.titleId || member.title_id));
+                return t ? { name: t.name, abbreviation: t.abbreviation || undefined } : undefined;
+              })()
+            })}
           </h3>
           <button
             onClick={onClose}
@@ -339,18 +363,37 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
           {/* Basic Information Tab */}
           {activeTab === 'basic' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('admin.memberModal.fields.firstName')} *
-                </label>
-                <input
-                  type="text"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <select
+                    name="titleId"
+                    value={formData.titleId || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    disabled={titlesLoading}
+                  >
+                    <option value="">--</option>
+                    {titles.map(title => (
+                      <option key={title.id} value={title.id}>
+                        {title.abbreviation || title.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('admin.memberModal.fields.firstName')} *
+                  </label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName || ''}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
               </div>
 
               <div>
@@ -373,7 +416,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                 <input
                   type="text"
                   name="lastName"
-                  value={formData.lastName}
+                  value={formData.lastName || ''}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -387,7 +430,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                 <input
                   type="email"
                   name="email"
-                  value={formData.email}
+                  value={formData.email || ''}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
@@ -399,7 +442,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                 </label>
                 <select
                   name="role"
-                  value={formData.role}
+                  value={formData.role || 'member'}
                   onChange={handleInputChange}
                   required
                   disabled={!canManageRoles}

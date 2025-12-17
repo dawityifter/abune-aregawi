@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
 import { getRolePermissions } from '../../utils/roles';
 import AddPaymentModal from './AddPaymentModal';
+import { formatMemberName } from '../../utils/formatName';
 
 interface MemberDuesData {
   member: {
@@ -11,6 +12,10 @@ interface MemberDuesData {
     lastName: string;
     email: string;
     phoneNumber: string;
+    title?: {
+      name: string;
+      abbreviation?: string;
+    };
   };
   household: {
     isHouseholdView: boolean;
@@ -18,6 +23,10 @@ interface MemberDuesData {
       id: number;
       firstName: string;
       lastName: string;
+      title?: {
+        name: string;
+        abbreviation?: string;
+      };
     };
     memberNames: string;
     totalMembers: number;
@@ -177,7 +186,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
                   </h2>
                 </div>
                 <p className="text-gray-700 font-medium">
-                  {duesData.household.headOfHousehold.firstName} {duesData.household.headOfHousehold.lastName}'s Household
+                  {formatMemberName(duesData.household.headOfHousehold)}'s Household
                 </p>
                 <p className="text-sm text-gray-600">
                   Family Members: {duesData.household.headOfHousehold.firstName}
@@ -191,7 +200,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
                   Member Dues & Payment History
                 </h2>
                 <p className="text-gray-600">
-                  {member.firstName} {member.lastName} • {member.email}
+                  {formatMemberName(member)} • {member.email}
                 </p>
                 {member.phoneNumber && (
                   <p className="text-sm text-gray-500">{member.phoneNumber}</p>

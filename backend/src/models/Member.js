@@ -52,6 +52,14 @@ module.exports = (sequelize) => {
           as: 'assigned_tasks'
         });
       }
+
+      // Title association
+      if (models.Title) {
+        Member.belongsTo(models.Title, {
+          foreignKey: 'title_id',
+          as: 'title'
+        });
+      }
     }
   }
 
@@ -203,6 +211,17 @@ module.exports = (sequelize) => {
       onUpdate: 'CASCADE',
       onDelete: 'SET NULL',
       field: 'family_id'
+    },
+    title_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'titles',
+        key: 'id'
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
+      field: 'title_id'
     },
     role: {
       type: DataTypes.ENUM('member', 'admin', 'treasurer', 'secretary', 'church_leadership', 'relationship', 'guest', 'deacon', 'priest'),

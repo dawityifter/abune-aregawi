@@ -24,6 +24,11 @@ interface Member {
   dependents?: any[];
   dependentsCount?: number;
   familyId?: string | number;
+  title?: {
+    id: number;
+    name: string;
+    abbreviation: string | null;
+  };
 }
 
 interface MemberListProps {
@@ -411,6 +416,7 @@ const MemberList: React.FC<MemberListProps> = ({
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
+                          {member.title ? `${member.title.abbreviation || member.title.name} ` : ''}
                           {member.firstName} {member.middleName} {member.lastName} {' '}
                           <span className="text-gray-500">(
                             {String((member as any).memberId ?? (member as any).member_id ?? member.id)}
