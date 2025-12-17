@@ -80,6 +80,10 @@ jobs:
 
             # Run database migrations
             sudo npx sequelize-cli db:migrate
+            
+            # Run database seeders (populated static data like Titles)
+            # Safe to run repeatedly as seeders should use ignoreDuplicates or upsert
+            sudo npx sequelize-cli db:seed:all
                         
             # Clean up duplicate process if it exists
             pm2 delete backend || true
