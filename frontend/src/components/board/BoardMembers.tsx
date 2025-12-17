@@ -39,12 +39,12 @@ const BoardMembers: React.FC = () => {
                 if (data.success && Array.isArray(data.data)) {
                     const mappedMembers = data.data.map((m: any) => {
                         const firstNameLower = m.first_name.toLowerCase();
-                        const knownImages = ['afework', 'dawit', 'fetsum', 'seifu', 'teshager'];
+                        const knownImages = ['afework', 'dawit', 'fetsum', 'seifu', 'merafe', 'teshager'];
 
                         let imageUrl = `https://ui-avatars.com/api/?name=${m.first_name}+${m.last_name}&background=fef3c7&color=92400e`;
 
                         if (knownImages.includes(firstNameLower)) {
-                            imageUrl = `${process.env.PUBLIC_URL || ''}/images/leadership/${firstNameLower}_256x256.png`;
+                            imageUrl = `${process.env.PUBLIC_URL || ''}/images/leadership/${firstNameLower}.png`;
                         }
 
                         // Construct member object for formatName utility
@@ -260,7 +260,7 @@ const BoardMembers: React.FC = () => {
                                             <img
                                                 src={member.image}
                                                 alt={member.name}
-                                                className="relative w-full h-full rounded-full object-cover border-4 border-white shadow-md group-hover:scale-105 transition-transform duration-300 bg-gray-50"
+                                                className={`relative w-full h-full rounded-full object-cover border-4 border-white shadow-md group-hover:scale-105 transition-transform duration-300 bg-gray-50 ${member.firstName?.toLowerCase() === 'merafe' ? 'object-top' : ''}`}
                                             />
                                         </div>
 
