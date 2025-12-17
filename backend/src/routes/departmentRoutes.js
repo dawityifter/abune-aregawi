@@ -8,6 +8,8 @@ const roleMiddleware = require('../middleware/role');
 const departmentController = require('../controllers/departmentController');
 const departmentMemberController = require('../controllers/departmentMemberController');
 
+const { requireDepartmentRole, requireDepartmentMembership } = require('../middleware/departmentAuth');
+
 // Public Routes
 router.get('/board-members', departmentController.getBoardMembers);
 
@@ -36,7 +38,6 @@ router.delete('/:departmentId/members/:memberId', roleMiddleware(manageRoles), d
 // Member's Departments (any authenticated user can view their own departments)
 router.get('/members/:member_id/departments', departmentController.getMemberDepartments);
 
-const { requireDepartmentRole, requireDepartmentMembership } = require('../middleware/departmentAuth');
 
 // ========== MEETING ROUTES ==========
 // Department meetings (leaders can manage, all members can view)
