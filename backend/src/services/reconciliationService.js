@@ -127,3 +127,53 @@ exports.suggestMatch = async (transaction) => {
 
     return null;
 };
+
+/**
+ * Find potential existing system transactions that match a bank transaction.
+ * Criteria: Same amount, Date +/- 5 days, Not already linked.
+ */
+exports.findPotentialMatches = async (bankTxn) => {
+    const { amount, date, transaction_hash } = bankTxn;
+
+    // Date range: +/- 5 days
+    const txnDate = new Date(date);
+    const startDate = new Date(txnDate);
+    startDate.setDate(startDate.getDate() - 5);
+    const endDate = new Date(txnDate);
+    endDate.setDate(endDate.getDate() + 5);
+
+    // Search for transactions
+    const potentials = await Transaction.findAll({
+        where: {
+            amount: amount, // Exact amount match
+            payment_date: {
+                [Op.between]: [startDate, endDate]
+            },
+            status: { [Op.ne]: 'failed' },
+            // Exclude already linked transactions (heuristic: external_id is a 32-char hex hash)
+            // Or better: external_id does not equal THIS bank transaction hash (obviously)
+            // And potentially check if external_id looks like a bank hash.
+            // For now, let's just return anything that isn't confirmed as linked to another bank txn?
+            // Actually, if a transaction was manually entered, external_id is usually null or 'stripe_xxxx'.
+            // If it was created from bank reconciliation, external_id IS the hash.
+            // So we want transactions where external_id IS NULL or DOES NOT look like a bank hash.
+            // Let's filter in code or just return them and let frontend decide?
+            // Safer: Returns ones where external_id is NULL or length != 32 (md5 hash length).
+            [Op.or]: [
+                { external_id: null },
+                { external_id: { [Op.notRegexp]: '^[a-f0-9]{32}$' } } // Postgres/Sqlite dependent?
+                // Sqlite doesn't support notRegexp easily without plugin.
+                // Let's keep it simple: Just get them and filter in JS if needed.
+                // Or just don't filter external_id extensively yet.
+            ]
+        },
+        include: [{
+            model: Member,
+            as: 'member',
+            attributes: ['first_name', 'last_name'] // Use member to help identifying
+        }]
+    });
+
+    // Filter out the one that is ALREADY linked to this hash (if we are re-processing)
+    return potentials.filter(t => t.external_id !== transaction_hash);
+};

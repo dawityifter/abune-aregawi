@@ -112,6 +112,7 @@ try {
   const Voicemail = require('./Voicemail')(sequelize);
   const VolunteerRequest = require('./VolunteerRequest')(sequelize);
   const BankTransaction = require('./BankTransaction')(sequelize);
+  const Title = require('./Title')(sequelize);
 
   // Define models object
   const models = {
@@ -138,7 +139,8 @@ try {
     ActivityLog,
     Voicemail,
     VolunteerRequest,
-    BankTransaction
+    BankTransaction,
+    Title
   };
 
   // Call associate on each model

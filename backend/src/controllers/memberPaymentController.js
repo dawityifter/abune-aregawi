@@ -1,4 +1,4 @@
-const { MemberPayment, Member, Transaction, Dependent, LedgerEntry } = require('../models');
+const { MemberPayment, Member, Transaction, Dependent, LedgerEntry, Title } = require('../models');
 const { Op, literal } = require('sequelize');
 
 // Get all member payments with pagination and filtering
@@ -549,7 +549,10 @@ const getMemberDuesForTreasurer = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Member ID is required' });
     }
 
-    const member = await Member.findOne({ where: { id: memberId } });
+    const member = await Member.findOne({
+      where: { id: memberId },
+      include: [{ model: Title, as: 'title' }]
+    });
     if (!member) {
       return res.status(404).json({ success: false, message: 'Member not found' });
     }
@@ -575,7 +578,10 @@ async function getDuesByMemberIdWithAuth(req, res) {
     }
 
     // 1) Caller is a Member?
-    const callerMember = await Member.findOne({ where: { firebase_uid: firebaseUid } });
+    const callerMember = await Member.findOne({
+      where: { firebase_uid: firebaseUid },
+      include: [{ model: Title, as: 'title' }]
+    });
     if (callerMember && String(callerMember.id) === String(memberId)) {
       return computeAndReturnDues(res, callerMember);
     }
@@ -587,7 +593,10 @@ async function getDuesByMemberIdWithAuth(req, res) {
       if (callerDependent && String(callerDependent.linkedMemberId || callerDependent.memberId) === String(memberId)) {
         // If linkedMemberId exists, we treat that as head-of-household. Otherwise fallback to memberId field.
         const targetMemberId = callerDependent.linkedMemberId || callerDependent.memberId;
-        const member = await Member.findOne({ where: { id: targetMemberId } });
+        const member = await Member.findOne({
+          where: { id: targetMemberId },
+          include: [{ model: Title, as: 'title' }]
+        });
         if (!member) {
           return res.status(404).json({ success: false, message: 'Member not found for dependent link' });
         }
@@ -632,7 +641,8 @@ async function computeAndReturnDues(res, member) {
         { id: effectiveFamilyId }
       ]
     },
-    attributes: ['id', 'first_name', 'last_name', 'yearly_pledge', 'family_id']
+    attributes: ['id', 'first_name', 'last_name', 'yearly_pledge', 'family_id'],
+    include: [{ model: Title, as: 'title' }]
   });
 
   familyMemberIds = familyMembers.map(m => m.id);
@@ -762,14 +772,16 @@ async function computeAndReturnDues(res, member) {
         firstName: member.first_name || member.firstName || '',
         lastName: member.last_name || member.lastName || '',
         email: member.email || '',
-        phoneNumber: member.phone_number || member.phoneNumber || ''
+        phoneNumber: member.phone_number || member.phoneNumber || '',
+        title: member.title
       },
       household: {
         isHouseholdView,
         headOfHousehold: {
           id: headOfHousehold.id,
           firstName: headOfHousehold.first_name,
-          lastName: headOfHousehold.last_name
+          lastName: headOfHousehold.last_name,
+          title: headOfHousehold.title
         },
         memberNames: householdMemberNames,
         totalMembers: familyMembers.length

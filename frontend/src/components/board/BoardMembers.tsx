@@ -1,10 +1,18 @@
 import React from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatMemberName } from '../../utils/formatName';
 
-interface BoardMember {
+interface Member {
     id: number;
     name: string;
+    firstName?: string;
+    lastName?: string;
+    middleName?: string;
+    title?: {
+        name: string;
+        abbreviation?: string;
+    };
     role: string;
     image?: string;
     email?: string;
@@ -13,7 +21,7 @@ interface BoardMember {
 
 const BoardMembers: React.FC = () => {
     const { t } = useLanguage();
-    const [members, setMembers] = React.useState<BoardMember[]>([]);
+    const [members, setMembers] = React.useState<Member[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
 
@@ -21,7 +29,6 @@ const BoardMembers: React.FC = () => {
         const fetchMembers = async () => {
             try {
                 const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-                // Note: Ensure the backend route is /api/departments/board-members
                 const response = await fetch(`${apiUrl}/api/departments/board-members`);
 
                 if (!response.ok) {
@@ -40,11 +47,23 @@ const BoardMembers: React.FC = () => {
                             imageUrl = `${process.env.PUBLIC_URL || ''}/images/leadership/${firstNameLower}_256x256.png`;
                         }
 
+                        // Construct member object for formatName utility
+                        const memberData = {
+                            firstName: m.first_name,
+                            lastName: m.last_name,
+                            middleName: m.middle_name,
+                            title: m.title
+                        };
+
                         return {
                             id: Number(m.member_id),
+                            // ID 331 is Father Tadesse, handle specially
                             name: Number(m.member_id) === 331
                                 ? "መልኣከ ፀሃይ Mel’Ake Tsehay keshi Tadesse"
-                                : `${m.first_name} ${m.last_name}`,
+                                : formatMemberName(memberData),
+                            firstName: m.first_name,
+                            lastName: m.last_name,
+                            title: m.title,
                             role: m.role_in_department,
                             email: m.email,
                             phone: m.phone_number,
@@ -75,7 +94,7 @@ const BoardMembers: React.FC = () => {
                         return 99; // Default for unknown roles
                     };
 
-                    mappedMembers.sort((a: BoardMember, b: BoardMember) => {
+                    mappedMembers.sort((a: Member, b: Member) => {
                         return getPriority(a.role) - getPriority(b.role);
                     });
 
@@ -245,8 +264,10 @@ const BoardMembers: React.FC = () => {
                                             />
                                         </div>
 
-                                        <h4 className="text-xl font-bold text-gray-900 mb-1">{member.name}</h4>
-                                        <p className="text-amber-600 font-medium mb-3">{member.role}</p>
+                                        <h3 className="mt-4 text-xl font-medium text-gray-900">
+                                            {member.name}
+                                        </h3>
+                                        <p className="text-primary-600 font-medium">{member.role}</p>
 
                                         <div className="w-12 h-0.5 bg-gray-200 mb-4 group-hover:bg-primary-400 transition-colors"></div>
 

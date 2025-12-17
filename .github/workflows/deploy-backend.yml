@@ -77,7 +77,10 @@ jobs:
             sudo chmod 600 .env
             
             sudo npm ci --production
-            
+
+            # Run database migrations
+            sudo npx sequelize-cli db:migrate
+                        
             # Clean up duplicate process if it exists
             pm2 delete backend || true
 

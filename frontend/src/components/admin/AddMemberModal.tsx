@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatPhoneNumber, normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
+import { useTitles } from '../../hooks/useTitles';
 
 interface AddMemberModalProps {
   onClose: () => void;
@@ -11,8 +12,10 @@ interface AddMemberModalProps {
 const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) => {
   const { t } = useLanguage();
   const { firebaseUser } = useAuth();
+  const { titles, loading: titlesLoading } = useTitles();
 
   const [form, setForm] = useState({
+    titleId: '',
     firstName: '',
     middleName: '',
     lastName: '',
@@ -80,6 +83,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
       const idToken = firebaseUser ? await firebaseUser.getIdToken() : undefined;
 
       const payload: any = {
+        titleId: form.titleId ? Number(form.titleId) : undefined,
         firstName: form.firstName,
         middleName: form.middleName || undefined,
         lastName: form.lastName,
@@ -192,8 +196,25 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
           </div>
 
           {/* Names and basic info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="md:col-span-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <select
+                name="titleId"
+                value={form.titleId}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border rounded"
+                disabled={titlesLoading}
+              >
+                <option value="">--</option>
+                {titles.map(title => (
+                  <option key={title.id} value={title.id}>
+                    {title.abbreviation || title.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
               <input name="firstName" value={form.firstName} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
             </div>
@@ -205,6 +226,9 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
               <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
               <input name="lastName" value={form.lastName} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input type="email" name="email" value={form.email} onChange={handleChange} className="w-full px-3 py-2 border rounded" />

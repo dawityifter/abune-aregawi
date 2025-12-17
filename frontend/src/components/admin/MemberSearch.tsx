@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import MemberDuesViewer from './MemberDuesViewer';
+import { formatMemberName } from '../../utils/formatName';
 
 interface Member {
   id: number;
@@ -10,6 +11,10 @@ interface Member {
   phoneNumber: string;
   memberId?: string;
   yearlyPledge?: number | null;
+  title?: {
+    name: string;
+    abbreviation?: string;
+  };
 }
 
 interface MemberSearchProps {
@@ -197,7 +202,7 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2">
                             <p className={`text-sm font-medium truncate ${getMemberTextColor(member)}`}>
-                              {member.firstName} {member.lastName}
+                              {formatMemberName(member)}
                               {member.memberId && (
                                 <span className="ml-2 text-xs text-gray-500">#{member.memberId}</span>
                               )}

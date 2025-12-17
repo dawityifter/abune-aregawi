@@ -23,6 +23,15 @@ interface BankTransaction {
             last_name: string;
         }
     };
+    potential_matches?: {
+        id: number;
+        amount: number;
+        payment_date: string;
+        member?: {
+            first_name: string;
+            last_name: string;
+        };
+    }[];
 }
 
 const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrigger }) => {
@@ -103,12 +112,24 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
     };
 
-    const handleReconcile = async (txn: BankTransaction, memberId?: number, paymentType: string = 'donation') => {
-        if (!memberId) return;
+    const handleReconcile = async (txn: BankTransaction, memberId?: number, paymentType: string = 'donation', existingTransactionId?: number) => {
+        if (!memberId && !existingTransactionId) return;
 
         try {
             const token = await firebaseUser?.getIdToken();
             const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
+            const payload: any = {
+                transaction_id: txn.id,
+                action: 'MATCH'
+            };
+
+            if (existingTransactionId) {
+                payload.existing_transaction_id = existingTransactionId;
+            } else {
+                payload.member_id = memberId;
+                payload.payment_type = paymentType;
+            }
 
             const res = await fetch(`${apiUrl}/api/bank/reconcile`, {
                 method: 'POST',
@@ -116,12 +137,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    transaction_id: txn.id,
-                    member_id: memberId,
-                    action: 'MATCH',
-                    payment_type: paymentType
-                })
+                body: JSON.stringify(payload)
             });
 
             if (res.ok) {
@@ -297,6 +313,11 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         </td>
                                         <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${txn.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                             {formatCurrency(txn.amount)}
+                                            {txn.status === 'PENDING' && txn.potential_matches && txn.potential_matches.length > 0 && (
+                                                <div className="text-xs text-orange-600 font-bold mt-1">
+                                                    ⚠️ Potential Duplicate
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
@@ -425,6 +446,38 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                             <p className="text-sm text-gray-500 text-center py-2">No members found.</p>
                                         )}
                                     </div>
+
+                                    {/* Potential Matches Section */}
+                                    {txnToLink.potential_matches && txnToLink.potential_matches.length > 0 && (
+                                        <div className="mt-6 border-t pt-4">
+                                            <h4 className="text-sm font-medium text-orange-700 mb-2">Potential System Matches (Prevent Duplicates)</h4>
+                                            <div className="bg-orange-50 rounded-md p-2">
+                                                {txnToLink.potential_matches.map(pm => (
+                                                    <div key={pm.id} className="flex justify-between items-center text-sm py-2 border-b border-orange-200 last:border-0">
+                                                        <div>
+                                                            <span className="font-bold">{formatCurrency(pm.amount)}</span>
+                                                            <span className="mx-2">-</span>
+                                                            <span>{pm.payment_date}</span>
+                                                            <span className="mx-2">-</span>
+                                                            <span className="text-gray-600">{pm.member?.first_name} {pm.member?.last_name}</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (window.confirm('Link this bank transaction to the existing system record?')) {
+                                                                    await handleReconcile(txnToLink, undefined, undefined, pm.id);
+                                                                    setShowLinkModal(false);
+                                                                    setTxnToLink(null);
+                                                                }
+                                                            }}
+                                                            className="text-xs bg-white border border-orange-300 text-orange-700 px-2 py-1 rounded hover:bg-orange-100"
+                                                        >
+                                                            Link to Existing
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="mt-5 sm:mt-6">
