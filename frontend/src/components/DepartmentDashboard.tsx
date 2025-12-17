@@ -279,7 +279,7 @@ const DepartmentDashboard: React.FC = () => {
 
                         {/* Action Buttons */}
                         <div>
-                            {activeTab === 'meetings' && (['admin', 'church_leadership'].includes(user?.role || '') || ['leader', 'chairperson', 'secretary'].includes(department.role || '')) && (
+                            {activeTab === 'meetings' && (
                                 <button
                                     onClick={() => {
                                         setSelectedMeeting(null);
@@ -420,6 +420,17 @@ const DepartmentDashboard: React.FC = () => {
                                                         Due: {new Date(task.due_date).toLocaleDateString()}
                                                     </span>
                                                 )}
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedTask(task);
+                                                        setShowAddTaskModal(true);
+                                                    }}
+                                                    className="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium ml-4"
+                                                    title="Edit Task"
+                                                >
+                                                    <i className="fas fa-edit mr-1"></i>
+                                                    Edit
+                                                </button>
                                             </div>
                                         </div>
                                     ))

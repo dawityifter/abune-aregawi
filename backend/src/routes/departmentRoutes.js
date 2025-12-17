@@ -22,7 +22,7 @@ const deleteRoles = ['admin']; // Can delete departments
 // Department CRUD
 router.get('/stats', roleMiddleware(viewRoles), departmentController.getDepartmentStats);
 router.get('/', roleMiddleware(viewRoles), departmentController.getAllDepartments);
-router.get('/:id', roleMiddleware(viewRoles), departmentController.getDepartmentById);
+router.get('/:id', requireDepartmentMembership(), departmentController.getDepartmentById);
 router.post('/', roleMiddleware(manageRoles), departmentController.createDepartment);
 router.put('/:id', roleMiddleware(manageRoles), departmentController.updateDepartment);
 router.delete('/:id', roleMiddleware(deleteRoles), departmentController.deleteDepartment);
@@ -42,9 +42,9 @@ const { requireDepartmentRole, requireDepartmentMembership } = require('../middl
 // Department meetings (leaders can manage, all members can view)
 router.get('/:id/meetings', requireDepartmentMembership(), departmentController.getDepartmentMeetings);
 router.get('/meetings/:id', requireDepartmentMembership(), departmentController.getMeetingById);
-router.post('/:id/meetings', requireDepartmentRole(['leader', 'chairperson', 'secretary']), departmentController.createMeeting);
-router.put('/meetings/:id', requireDepartmentRole(['leader', 'chairperson', 'secretary']), departmentController.updateMeeting);
-router.delete('/meetings/:id', requireDepartmentRole(['leader', 'chairperson', 'secretary']), departmentController.deleteMeeting);
+router.post('/:id/meetings', requireDepartmentMembership(), departmentController.createMeeting);
+router.put('/meetings/:id', requireDepartmentMembership(), departmentController.updateMeeting);
+router.delete('/meetings/:id', requireDepartmentMembership(), departmentController.deleteMeeting);
 
 // ========== TASK ROUTES ==========
 // Department tasks (leaders can manage, all members can view)
