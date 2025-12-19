@@ -5,20 +5,43 @@ const { checkYouTubeLiveStatus } = require('../services/youtubeService');
  */
 exports.getLiveStatus = async (req, res) => {
     try {
-        const channelId = req.query.channelId || process.env.YOUTUBE_CHANNEL_ID || 'UCvK6pJUKU2pvoX7bQ3PN2aA';
-
-        // Check for override flag
-        if (process.env.OVERRIDE_YOUTUBE_LIVE_FLAG === 'true') {
+        const override = process.env.OVERRIDE_YOUTUBE_LIVE_FLAG === 'true';
+        if (override) {
             return res.json({
                 isLive: true,
                 videoId: 'test_video_id',
-                title: 'Test Live Stream (Override)'
+                title: 'Test Live Stream (Override)',
+                channelId: process.env.YOUTUBE_CHANNEL_ID || 'UCvK6pJUKU2pvoX7bQ3PN2aA'
             });
         }
 
-        const liveStatus = await checkYouTubeLiveStatus(channelId);
+        // If specific channel requested, check only that
+        if (req.query.channelId) {
+            const liveStatus = await checkYouTubeLiveStatus(req.query.channelId);
+            return res.json({ ...liveStatus, channelId: req.query.channelId });
+        }
 
-        res.json(liveStatus);
+        // Otherwise check Main, then Spiritual
+        const mainChannelId = process.env.YOUTUBE_CHANNEL_ID || 'UCvK6pJUKU2pvoX7bQ3PN2aA';
+        const spiritualChannelId = process.env.YOUTUBE_SPIRITUAL_CHANNEL_ID || 'UCQXFCGSNdQ1y8GOmqbvRefg';
+
+        // Check Main
+        const mainStatus = await checkYouTubeLiveStatus(mainChannelId);
+
+        if (mainStatus.isLive) {
+            return res.json({ ...mainStatus, channelId: mainChannelId });
+        }
+
+        // Check Spiritual
+        const spiritualStatus = await checkYouTubeLiveStatus(spiritualChannelId);
+
+        if (spiritualStatus.isLive) {
+            return res.json({ ...spiritualStatus, channelId: spiritualChannelId });
+        }
+
+        // Neither is live
+        res.json({ isLive: false, channelId: mainChannelId });
+
     } catch (error) {
         console.error('Error in getLiveStatus:', error);
         res.status(500).json({

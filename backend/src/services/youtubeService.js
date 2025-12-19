@@ -3,10 +3,7 @@ const { google } = require('googleapis');
 const youtube = google.youtube('v3');
 
 // Cache configuration
-let cache = {
-    data: null,
-    lastComputed: 0
-};
+const cache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
@@ -18,8 +15,10 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const checkYouTubeLiveStatus = async (channelId) => {
     // Return cached data if valid
     const now = Date.now();
-    if (cache.data && (now - cache.lastComputed < CACHE_TTL)) {
-        return cache.data;
+    const cachedItem = cache.get(channelId);
+
+    if (cachedItem && (now - cachedItem.lastComputed < CACHE_TTL)) {
+        return cachedItem.data;
     }
 
     try {
@@ -36,7 +35,10 @@ const checkYouTubeLiveStatus = async (channelId) => {
             part: 'snippet',
             type: 'video',
             eventType: 'live',
-            maxResults: 1
+            maxResults: 1,
+            headers: {
+                Referer: process.env.FRONTEND_URL || 'https://abunearegawi.church'
+            }
         });
 
         const items = response.data.items || [];
@@ -50,17 +52,18 @@ const checkYouTubeLiveStatus = async (channelId) => {
         };
 
         // Update cache
-        cache = {
+        cache.set(channelId, {
             data: result,
             lastComputed: now
-        };
+        });
 
         return result;
     } catch (error) {
         // If we have stale cache, return it rather than failing
-        if (cache.data) {
+        const staleItem = cache.get(channelId);
+        if (staleItem) {
             console.warn('YouTube API error, serving stale cache:', error.message);
-            return cache.data;
+            return staleItem.data;
         }
 
         // Log detailed error for debugging but don't crash

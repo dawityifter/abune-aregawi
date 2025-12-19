@@ -21,39 +21,22 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
     const youtubeLiveUrl = `https://www.youtube.com/channel/${currentChannelId}/live`;
 
     useEffect(() => {
-        const init = async () => {
-            await fetchConfig();
-            checkIfLive();
-        };
-        init();
+        checkIfLive();
 
         // Check every 5 minutes
         const interval = setInterval(checkIfLive, 5 * 60 * 1000);
         return () => clearInterval(interval);
     }, [channelHandle]);
 
-    const fetchConfig = async () => {
-        try {
-            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-            const res = await fetch(`${apiUrl}/api/youtube/config`);
-            const data = await res.json();
-            if (data.mainChannelId) {
-                setCurrentChannelId(data.mainChannelId);
-            }
-        } catch (e) {
-            console.error('Failed to fetch YouTube config', e);
-        }
-    };
-
     const checkIfLive = async () => {
         try {
             const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-            const response = await fetch(`${apiUrl}/api/youtube/live-status`);
+            const response = await fetch(`${apiUrl}/api/youtube/live-status?channelId=${channelId}`);
             const data = await response.json();
 
             setIsLive(data.isLive);
-            if (data.videoId) {
-                setLiveVideoId(data.videoId);
+            if (data.channelId) {
+                setCurrentChannelId(data.channelId);
             }
         } catch (error) {
             console.error('Error checking live status:', error);
@@ -111,7 +94,7 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
                         <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                             <iframe
                                 className="absolute top-0 left-0 w-full h-full rounded-lg"
-                                src={`https://www.youtube.com/embed/live_stream?channel=${channelId}`}
+                                src={`https://www.youtube.com/embed/live_stream?channel=${currentChannelId}`}
                                 title="Live Stream"
                                 frameBorder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
