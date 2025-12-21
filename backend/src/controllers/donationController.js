@@ -48,12 +48,34 @@ const createPaymentIntent = async (req, res) => {
       donor_first_name,
       donor_last_name,
       donor_full_name, // New: full name from "Name on Card" or "Account Holder Name"
-      donor_email = 'abunearegawitx@gmail.com',
+      donor_email, // Don't default here yet
       donor_phone,
       donor_address,
       donor_zip_code,
       metadata = {}
     } = req.body;
+
+    // Determine final email to use
+    let finalEmail = donor_email;
+
+    // If no email provided and we have a memberId, look up member's email
+    if (!finalEmail && metadata.memberId) {
+      try {
+        const member = await Member.findByPk(metadata.memberId);
+        if (member && member.email && member.email !== '' && member.email !== 'abunearegawitx@gmail.com') {
+          finalEmail = member.email;
+          console.log(`📧 Using member's email from database: ${finalEmail} for member ID: ${metadata.memberId}`);
+        }
+      } catch (err) {
+        console.warn('⚠️ Failed to lookup member email:', err.message);
+      }
+    }
+
+    // If still no email, use default church email
+    if (!finalEmail || finalEmail === '') {
+      finalEmail = 'abunearegawitx@gmail.com';
+      console.log('📧 Using default church email (no member email available or no memberId)');
+    }
 
     // Parse full name if provided (from Name on Card/Account Holder Name)
     // Otherwise fall back to separate first/last names for backward compatibility
@@ -82,8 +104,8 @@ const createPaymentIntent = async (req, res) => {
     // Attempt to find a member by email or phone for metadata linking
     let linkedMember = null;
     try {
-      if (donor_email) {
-        linkedMember = await Member.findOne({ where: { email: donor_email } });
+      if (finalEmail && finalEmail !== 'abunearegawitx@gmail.com') {
+        linkedMember = await Member.findOne({ where: { email: finalEmail } });
       }
       if (!linkedMember && donor_phone) {
         // Ensure phone starts with + for E.164
@@ -107,7 +129,7 @@ const createPaymentIntent = async (req, res) => {
         donor_last_name: finalLastName || '',
         donor_middle_name: finalMiddleName || '',
         donor_full_name: donor_full_name || '',
-        donor_email: donor_email || '',
+        donor_email: finalEmail || '',
         donor_phone: donor_phone || '',
         donor_address: donor_address || '',
         donor_zip_code: donor_zip_code || '',
@@ -131,7 +153,7 @@ const createPaymentIntent = async (req, res) => {
       status: 'pending',
       donor_first_name: finalFirstName,
       donor_last_name: finalLastName,
-      donor_email,
+      donor_email: finalEmail,
       donor_phone,
       donor_address,
       donor_zip_code,

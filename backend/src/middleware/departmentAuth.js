@@ -23,7 +23,7 @@ const requireDepartmentRole = (roles = [], allowGlobalAdmins = true) => {
 
             // Check global roles first (if allowed)
             if (allowGlobalAdmins) {
-                const globalAdminRoles = ['admin', 'church_leadership'];
+                const globalAdminRoles = ['admin', 'church_leadership', 'secretary', 'treasurer'];
                 if (globalAdminRoles.includes(user.role)) {
                     return next();
                 }
@@ -40,7 +40,7 @@ const requireDepartmentRole = (roles = [], allowGlobalAdmins = true) => {
             const membership = await DepartmentMember.findOne({
                 where: {
                     department_id: departmentId,
-                    member_id: user.member_id,
+                    member_id: user.member_id || user.id,
                     status: 'active'
                 }
             });
@@ -61,6 +61,14 @@ const requireDepartmentRole = (roles = [], allowGlobalAdmins = true) => {
             if (roles.includes(membership.role_in_department)) {
                 return next();
             }
+
+            logger.warn('Insufficient department permissions:', {
+                memberId: user.member_id || user.id,
+                role: user.role,
+                departmentId,
+                requiredRoles: roles,
+                departmentRole: membership.role_in_department
+            });
 
             return res.status(403).json({
                 success: false,
