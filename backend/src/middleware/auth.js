@@ -84,8 +84,9 @@ const authMiddleware = async (req, res, next) => {
     // Add member info to request - always use fresh role from database
     req.user = {
       id: member.id,
+      member_id: member.id,
       email: member.email,
-      role: member.role, // This is now the fresh role from database
+      role: member.role,
       memberId: member.memberId
     };
 
@@ -292,6 +293,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
 
     req.user = {
       id: member.id,
+      member_id: member.id,
       email: member.email,
       role: member.role,
       memberId: member.memberId
