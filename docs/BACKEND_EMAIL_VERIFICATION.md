@@ -2,7 +2,7 @@
 
 ## Current Backend Implementation
 
-### Location: `/backend/src/controllers/donationController.js`
+### Location: `../backend/src/controllers/donationController.js`
 
 The backend **already has** default email logic at line 48:
 ```javascript
@@ -42,7 +42,7 @@ You need to add logic to look up the member's email when:
 
 ### Recommended Code Changes
 
-**File:** `/backend/src/controllers/donationController.js`
+**File:** `../backend/src/controllers/donationController.js`
 
 **Current code (line 40-53):**
 ```javascript
@@ -416,7 +416,7 @@ Before testing frontend changes:
 
 1. **Update Backend First**
    ```bash
-   cd backend/src/controllers
+   cd ../backend/src/controllers
    # Edit donationController.js with changes above
    ```
 

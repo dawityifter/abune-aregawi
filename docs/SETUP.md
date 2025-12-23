@@ -13,8 +13,8 @@ This guide will help you set up the complete web application for Abune Aregawi C
 
 ```
 abune-aregawi/
-├── frontend/          # React + TypeScript frontend
-├── backend/           # Node.js + Express API
+├── ../frontend/          # React + TypeScript frontend
+├── ../backend/           # Node.js + Express API
 ├── .gitignore         # Root gitignore
 └── SETUP.md          # This file
 ```
@@ -23,7 +23,7 @@ abune-aregawi/
 
 ### Frontend Environment Variables
 
-Create a `.env` file in the `frontend/` directory:
+Create a `.env` file in the `../frontend/` directory:
 
 ```env
 # Firebase Configuration
@@ -41,7 +41,7 @@ REACT_APP_API_URL=http://localhost:5000
 
 ### Backend Environment Variables
 
-Create a `.env` file in the `backend/` directory:
+Create a `.env` file in the `../backend/` directory:
 
 ```env
 # Server Configuration

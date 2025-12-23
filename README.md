@@ -4,7 +4,7 @@ A modern, bilingual church management system built with React, Node.js, and Fire
 
 ## 🎯 Project Objectives
 
-This application is designed to address the comprehensive needs of church management. For a detailed overview of what this system intends to accomplish, see our **[Project Objectives](Objective.md)** document.
+This application is designed to address the comprehensive needs of church management. For a detailed overview of what this system intends to accomplish, see our **[Project Objectives](docs/Objective.md)** document.
 
 The system aims to:
 - Centralize leadership activities and documentation

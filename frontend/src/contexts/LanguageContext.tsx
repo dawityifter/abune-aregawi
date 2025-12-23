@@ -43,6 +43,12 @@ const translations = {
     'stay.connected': 'Stay Connected',
     'newcomer': 'New to Our Church?',
     'grow.spiritually': 'Grow Spiritually',
+    'calendar.title': 'Orthodox Calendar 2025',
+    'calendar.subtitle': 'Fasts & Feasts of the Year',
+    'calendar.description': 'Our church observes the ancient liturgical calendar of the Ethiopian Orthodox Tewahedo Church. Stay updated with upcoming fasts, major feasts, and spiritual celebrations throughout the year.',
+    'calendar.feasts': '9 Major Feasts',
+    'calendar.fasts': '7 Major Fasts',
+    'calendar.dailyBible': 'Daily Bible Readings & Commemorations',
 
     // Participation Cards
     'volunteer': 'Volunteer',
@@ -451,6 +457,12 @@ const translations = {
     'stay.connected': 'ተራኺልካ ክትነብር',
     'newcomer': 'ሓድሽ እኹም ኣብ ቤተ ክርስቲያንና?',
     'grow.spiritually': 'ብመንፈስ ክትሰፍሕ',
+    'calendar.title': 'ናይ 2025 ዓውደ ኣዋርሕ ኦርቶዶክስ',
+    'calendar.subtitle': 'ናይ ዓመቱ ጾምን በዓላትን',
+    'calendar.description': 'ቤተ ክርስቲያንና ጥንታዊ ስነ-ስርዓት ዓውደ ኣዋርሕ ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን ትኽተል። ብዛዕባ ዝመጽኡ ጾማት፣ ዓበይቲ በዓላት ከምኡ’ውን መንፈሳዊ ጽምብላት ንቐጻሊ ሓበሬታ ርኸቡ።',
+    'calendar.feasts': '9 ዓበይቲ በዓላት',
+    'calendar.fasts': '7 ዓበይቲ ጾማት',
+    'calendar.dailyBible': 'ናይ መዓልቲ ንባብ ቅዱስ መጽሓፍን ዝኽርን',
 
     // Participation Cards
     'volunteer': 'ተጋሩ',

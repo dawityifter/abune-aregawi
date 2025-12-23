@@ -14,7 +14,7 @@ country code instead, such as 'US', 'EG', or 'GB'.
 ## Solution Implemented
 
 ### Added Country Code Normalization Function
-**File:** `frontend/src/components/StripePayment.tsx`
+**File:** `../frontend/src/components/StripePayment.tsx`
 
 ```typescript
 const normalizeCountryCode = (country?: string): string => {
@@ -223,7 +223,7 @@ WHERE country IS NOT NULL;
 
 ## Files Modified
 
-✅ `frontend/src/components/StripePayment.tsx`
+✅ `../frontend/src/components/StripePayment.tsx`
 - Added normalizeCountryCode function
 - Applied normalization in 3 places
 - All Stripe API calls now use correct codes

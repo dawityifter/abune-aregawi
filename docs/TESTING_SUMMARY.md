@@ -22,7 +22,7 @@ This document provides a complete overview of the testing infrastructure and tes
 ### Backend Tests (Node.js/Express)
 
 #### 1. Unit Tests
-**Location**: `backend/tests/unit/`
+**Location**: `../backend/tests/unit/`
 
 ##### Authentication Middleware (`auth.test.js`)
 - ✅ JWT token validation with valid tokens
@@ -43,7 +43,7 @@ This document provides a complete overview of the testing infrastructure and tes
 - ✅ Custom validation rules
 
 #### 2. Integration Tests
-**Location**: `backend/tests/integration/`
+**Location**: `../backend/tests/integration/`
 
 ##### Health Endpoint (`health.test.js`)
 - ✅ Server status endpoint
@@ -68,7 +68,7 @@ This document provides a complete overview of the testing infrastructure and tes
 ### Frontend Tests (React/TypeScript)
 
 #### 1. Component Unit Tests
-**Location**: `frontend/src/components/auth/__tests__/`
+**Location**: `../frontend/src/components/auth/__tests__/`
 
 ##### SignIn Component (`SignIn.test.tsx`)
 - ✅ Email/password form rendering
@@ -92,7 +92,7 @@ This document provides a complete overview of the testing infrastructure and tes
 - ✅ Firebase confirmation result handling
 
 #### 2. Context Unit Tests
-**Location**: `frontend/src/contexts/__tests__/`
+**Location**: `../frontend/src/contexts/__tests__/`
 
 ##### AuthContext (`AuthContext.test.tsx`)
 - ✅ Initial state management
@@ -111,7 +111,7 @@ This document provides a complete overview of the testing infrastructure and tes
 - ✅ Post sign-in profile handling
 
 #### 3. Integration Tests
-**Location**: `frontend/src/__tests__/integration/`
+**Location**: `../frontend/src/__tests__/integration/`
 
 ##### Authentication Flow (`AuthenticationFlow.test.tsx`)
 - ✅ Complete email authentication flow

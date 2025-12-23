@@ -176,7 +176,7 @@ Should return:
 
 ## 📝 Migration Script Location
 
-**File:** `backend/src/database/runDepartmentMigrations.js`
+**File:** `../backend/src/database/runDepartmentMigrations.js`
 
 **Usage:**
 ```bash

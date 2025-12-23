@@ -15,7 +15,7 @@
 ## 🔧 Setup Before Testing
 
 ### 1. Update Backend Code
-📁 File: `/backend/src/controllers/donationController.js`
+📁 File: `../backend/src/controllers/donationController.js`
 
 Add member email lookup (see BACKEND_EMAIL_VERIFICATION.md for full code)
 

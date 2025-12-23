@@ -14,7 +14,7 @@ Implemented a comprehensive expense management system following common church ac
 
 #### 1. New Models Created
 
-**Employee Model** (`/backend/src/models/Employee.js`)
+**Employee Model** (`../backend/src/models/Employee.js`)
 - Tracks church staff, priests, deacons, and other employees
 - Fields include:
   - Personal info: first_name, last_name, email, phone_number, address
@@ -25,7 +25,7 @@ Implemented a comprehensive expense management system following common church ac
   - Notes field for additional information
 - Supports soft delete (paranoid: true)
 
-**Vendor Model** (`/backend/src/models/Vendor.js`)
+**Vendor Model** (`../backend/src/models/Vendor.js`)
 - Tracks vendors, suppliers, and service providers
 - Fields include:
   - Basic info: name, contact_person, email, phone_number, address, website
@@ -37,7 +37,7 @@ Implemented a comprehensive expense management system following common church ac
 
 #### 2. Updated Models
 
-**LedgerEntry Model** (`/backend/src/models/LedgerEntry.js`)
+**LedgerEntry Model** (`../backend/src/models/LedgerEntry.js`)
 - Added new fields for payee tracking:
   - `employee_id` (UUID) - Links to Employee for salary/allowance expenses
   - `vendor_id` (UUID) - Links to Vendor for vendor payments
@@ -49,7 +49,7 @@ Implemented a comprehensive expense management system following common church ac
 
 #### 3. New API Routes
 
-**Employee Routes** (`/backend/src/routes/employeeRoutes.js`)
+**Employee Routes** (`../backend/src/routes/employeeRoutes.js`)
 - `GET /api/employees` - List all employees (with filtering)
 - `GET /api/employees/:id` - Get employee by ID
 - `POST /api/employees` - Create new employee (admin only)
@@ -57,7 +57,7 @@ Implemented a comprehensive expense management system following common church ac
 - `DELETE /api/employees/:id` - Soft delete employee (admin only)
 - All routes require authentication (treasurer/admin access)
 
-**Vendor Routes** (`/backend/src/routes/vendorRoutes.js`)
+**Vendor Routes** (`../backend/src/routes/vendorRoutes.js`)
 - `GET /api/vendors` - List all vendors (with filtering)
 - `GET /api/vendors/:id` - Get vendor by ID
 - `POST /api/vendors` - Create new vendor (admin only)
@@ -67,7 +67,7 @@ Implemented a comprehensive expense management system following common church ac
 
 #### 4. Updated Controllers
 
-**Expense Controller** (`/backend/src/controllers/expenseController.js`)
+**Expense Controller** (`../backend/src/controllers/expenseController.js`)
 - Updated `createExpense` to accept payee-related fields:
   - employee_id
   - vendor_id
@@ -79,7 +79,7 @@ Implemented a comprehensive expense management system following common church ac
 
 #### 5. Database Migration
 
-**Migration Script** (`/backend/src/database/migrations/addEmployeeVendorSupport.js`)
+**Migration Script** (`../backend/src/database/migrations/addEmployeeVendorSupport.js`)
 - Creates `employees` table with all fields and indexes
 - Creates `vendors` table with all fields and indexes
 - Adds payee-related columns to `ledger_entries` table
@@ -88,7 +88,7 @@ Implemented a comprehensive expense management system following common church ac
 
 #### 6. Server Configuration
 
-**Updated** `/backend/src/server.js`
+**Updated** `../backend/src/server.js`
 - Imported and mounted employee and vendor routes
 - Routes available at `/api/employees` and `/api/vendors`
 
@@ -309,15 +309,15 @@ POST /api/expenses
 ## Files Modified/Created
 
 ### Backend (15 files)
-1. `/backend/src/models/Employee.js` (NEW)
-2. `/backend/src/models/Vendor.js` (NEW)
-3. `/backend/src/models/LedgerEntry.js` (UPDATED)
-4. `/backend/src/models/index.js` (UPDATED)
-5. `/backend/src/routes/employeeRoutes.js` (NEW)
-6. `/backend/src/routes/vendorRoutes.js` (NEW)
-7. `/backend/src/controllers/expenseController.js` (UPDATED)
-8. `/backend/src/server.js` (UPDATED)
-9. `/backend/src/database/migrations/addEmployeeVendorSupport.js` (NEW)
+1. `../backend/src/models/Employee.js` (NEW)
+2. `../backend/src/models/Vendor.js` (NEW)
+3. `../backend/src/models/LedgerEntry.js` (UPDATED)
+4. `../backend/src/models/index.js` (UPDATED)
+5. `../backend/src/routes/employeeRoutes.js` (NEW)
+6. `../backend/src/routes/vendorRoutes.js` (NEW)
+7. `../backend/src/controllers/expenseController.js` (UPDATED)
+8. `../backend/src/server.js` (UPDATED)
+9. `../backend/src/database/migrations/addEmployeeVendorSupport.js` (NEW)
 
 ### Frontend (To be implemented)
 - Employee management components

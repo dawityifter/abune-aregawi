@@ -86,7 +86,7 @@ If a component needs detailed member info (including address, spouse, etc.), it 
 ## Implementation
 
 ### Changed File
-**File**: `/backend/src/controllers/memberController.js`
+**File**: `../backend/src/controllers/memberController.js`
 **Function**: `getAllMembersFirebase` (lines 983-999)
 
 ### What Changed

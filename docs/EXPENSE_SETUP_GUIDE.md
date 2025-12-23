@@ -162,4 +162,4 @@ Authorization: Bearer <token>
 
 ---
 
-**Questions?** Check `/Users/dawit/development/church/abune-aregawi/backend/EXPENSE_TRACKING_RUNBOOK.md` for full documentation.
+**Questions?** Check `/Users/dawit/development/church/abune-aregawi../backend/EXPENSE_TRACKING_RUNBOOK.md` for full documentation.

@@ -13,7 +13,7 @@ When user is on a specific page like `/admin`, `/treasurer`, `/outreach`, etc. a
 
 ### 1. Updated SignIn Component
 
-**File**: `/frontend/src/components/auth/SignIn.tsx`
+**File**: `../frontend/src/components/auth/SignIn.tsx`
 
 **Changes**:
 - Added `useLocation` hook to access route state
@@ -31,7 +31,7 @@ navigate(intendedRoute, { replace: true });
 
 ### 2. Updated AuthContext
 
-**File**: `/frontend/src/contexts/AuthContext.tsx`
+**File**: `../frontend/src/contexts/AuthContext.tsx`
 
 **Changes**:
 - Changed redirect logic to only redirect FROM specific pages TO dashboard

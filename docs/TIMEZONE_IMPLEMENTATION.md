@@ -8,7 +8,7 @@ Implemented comprehensive CST (Central Standard Time - America/Chicago) timezone
 ### Backend Changes
 
 #### 1. New Timezone Configuration Module
-**File:** `/backend/src/config/timezone.js`
+**File:** `../backend/src/config/timezone.js`
 - Created a centralized timezone configuration module
 - Set default timezone to `America/Chicago` using `moment-timezone`
 - Provides utility functions:
@@ -25,40 +25,40 @@ Implemented comprehensive CST (Central Standard Time - America/Chicago) timezone
   - `getMoment(date)` - Get moment instance in CST
 
 #### 2. Database Configuration Updates
-**File:** `/backend/src/models/index.js`
+**File:** `../backend/src/models/index.js`
 - Added `timezone: '-06:00'` to Sequelize configuration
 - Added `timezone: '-06:00'` to PostgreSQL dialectOptions
 - Ensures all database operations use CST timezone
 
 #### 3. Controller Updates
 **Files Updated:**
-- `/backend/src/controllers/transactionController.js`
+- `../backend/src/controllers/transactionController.js`
   - Imported timezone module
   - Updated transaction creation to use `tz.parseDate()` and `tz.now()`
   - Updated ledger entry creation to use timezone-aware dates
 
-- `/backend/src/controllers/expenseController.js`
+- `../backend/src/controllers/expenseController.js`
   - Imported timezone module
   - Updated expense date validation to use `tz.parseDate()` and `tz.endOfDay()`
 
-- `/backend/src/controllers/smsController.js`
+- `../backend/src/controllers/smsController.js`
   - Imported timezone module
   - Updated SMS template date formatting to use `tz.formatForDisplay()`
 
 #### 4. Service Updates
-**File:** `/backend/src/services/gmailZelleIngest.js`
+**File:** `../backend/src/services/gmailZelleIngest.js`
 - Updated to use `moment-timezone` instead of plain `moment`
 - Ensured all Zelle payment dates are parsed in CST timezone
 - Fixed date parsing to consistently use `tz.TIMEZONE`
 
 #### 5. Dependencies
-**File:** `/backend/package.json`
+**File:** `../backend/package.json`
 - Installed `moment-timezone` package (was using `moment` before)
 
 ### Frontend Changes
 
 #### 1. Date Utilities Enhancement
-**File:** `/frontend/src/utils/dateUtils.ts`
+**File:** `../frontend/src/utils/dateUtils.ts`
 - Added CST timezone constant: `America/Chicago`
 - Updated `formatDateForDisplay()` to use CST timezone with Intl.DateTimeFormat
 - Updated `formatDateForInput()` to handle CST timezone correctly
@@ -68,13 +68,13 @@ Implemented comprehensive CST (Central Standard Time - America/Chicago) timezone
 
 #### 2. Component Updates
 **Files Updated:**
-- `/frontend/src/components/admin/AddExpenseModal.tsx`
+- `../frontend/src/components/admin/AddExpenseModal.tsx`
   - Imported `getCurrentDateCST` utility
   - Updated initial expense date to use `getCurrentDateCST()`
   - Updated date validation to use CST timezone
   - Updated form reset to use `getCurrentDateCST()`
 
-- `/frontend/src/components/admin/WeeklyCollectionReport.tsx`
+- `../frontend/src/components/admin/WeeklyCollectionReport.tsx`
   - Updated `getMondayOfWeek()` function to use CST timezone
   - Ensures weekly reports are calculated in CST
 
@@ -115,18 +115,18 @@ Implemented comprehensive CST (Central Standard Time - America/Chicago) timezone
 ## Files Modified
 
 ### Backend (8 files)
-1. `/backend/src/config/timezone.js` (NEW)
-2. `/backend/src/models/index.js`
-3. `/backend/src/controllers/transactionController.js`
-4. `/backend/src/controllers/expenseController.js`
-5. `/backend/src/controllers/smsController.js`
-6. `/backend/src/services/gmailZelleIngest.js`
-7. `/backend/package.json`
+1. `../backend/src/config/timezone.js` (NEW)
+2. `../backend/src/models/index.js`
+3. `../backend/src/controllers/transactionController.js`
+4. `../backend/src/controllers/expenseController.js`
+5. `../backend/src/controllers/smsController.js`
+6. `../backend/src/services/gmailZelleIngest.js`
+7. `../backend/package.json`
 
 ### Frontend (3 files)
-1. `/frontend/src/utils/dateUtils.ts`
-2. `/frontend/src/components/admin/AddExpenseModal.tsx`
-3. `/frontend/src/components/admin/WeeklyCollectionReport.tsx`
+1. `../frontend/src/utils/dateUtils.ts`
+2. `../frontend/src/components/admin/AddExpenseModal.tsx`
+3. `../frontend/src/components/admin/WeeklyCollectionReport.tsx`
 
 ## Next Steps
 

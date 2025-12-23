@@ -10,7 +10,7 @@ Added ability to send SMS reminders to members based on their pledge status:
 
 ## 🎯 What Was Implemented
 
-### **1. Backend - SMS Controller** (`backend/src/controllers/smsController.js`)
+### **1. Backend - SMS Controller** (`../backend/src/controllers/smsController.js`)
 
 #### **Added Two New Functions:**
 
@@ -34,7 +34,7 @@ Added ability to send SMS reminders to members based on their pledge status:
 
 ---
 
-### **2. Backend - Routes** (`backend/src/routes/smsRoutes.js`)
+### **2. Backend - Routes** (`../backend/src/routes/smsRoutes.js`)
 
 **Added Routes:**
 ```javascript
@@ -46,7 +46,7 @@ POST /api/sms/sendFulfilledPledges
 
 ---
 
-### **3. Frontend - SMS Broadcast UI** (`frontend/src/components/admin/SmsBroadcast.tsx`)
+### **3. Frontend - SMS Broadcast UI** (`../frontend/src/components/admin/SmsBroadcast.tsx`)
 
 #### **Updated Recipient Types:**
 - Individual
@@ -139,12 +139,12 @@ WHERE p.status = 'fulfilled'
 ## 📝 Files Modified
 
 ### **Backend:**
-1. `backend/src/controllers/smsController.js` - Added 2 new functions (~170 lines)
-2. `backend/src/routes/smsRoutes.js` - Added 2 new routes
-3. `backend/src/controllers/departmentController.js` - Added secure logging
+1. `../backend/src/controllers/smsController.js` - Added 2 new functions (~170 lines)
+2. `../backend/src/routes/smsRoutes.js` - Added 2 new routes
+3. `../backend/src/controllers/departmentController.js` - Added secure logging
 
 ### **Frontend:**
-1. `frontend/src/components/admin/SmsBroadcast.tsx` - Updated UI and logic
+1. `../frontend/src/components/admin/SmsBroadcast.tsx` - Updated UI and logic
 
 ---
 

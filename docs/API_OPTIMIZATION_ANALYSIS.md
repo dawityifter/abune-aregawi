@@ -125,7 +125,7 @@ Return only these 10 fields:
 
 ### Step 1: Update Backend Controller
 
-**File**: `/backend/src/controllers/memberController.js`
+**File**: `../backend/src/controllers/memberController.js`
 **Function**: `getAllMembersFirebase` (line 984-1022)
 
 **Change**: Replace the large `transformedMembers` mapping with minimal fields.

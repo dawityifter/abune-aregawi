@@ -6,7 +6,7 @@ Added an editable email field to the treasurer payment form with an encouraging 
 ## What Changed
 
 ### 1. New Email Field in Payment Form
-**Location:** `frontend/src/components/StripePayment.tsx`
+**Location:** `../frontend/src/components/StripePayment.tsx`
 
 **Features:**
 - ✅ Auto-populates from member profile (if available)
@@ -267,7 +267,7 @@ After implementation, track:
 
 ## Files Modified
 
-✅ `frontend/src/components/StripePayment.tsx`
+✅ `../frontend/src/components/StripePayment.tsx`
 - Added donorEmail state
 - Added email input field UI
 - Added encouraging message

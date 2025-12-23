@@ -11,8 +11,47 @@ const GrowSpirituallySection: React.FC = () => {
   const [isLive, setIsLive] = React.useState(false);
   const [liveVideoId, setLiveVideoId] = React.useState<string | null>(null);
 
+  const isProduction = () => {
+    return window.location.hostname === 'abunearegawi.church' ||
+      window.location.hostname === 'www.abunearegawi.church';
+  };
+
+  /**
+   * Thursday: 7PM - 10PM (19 - 22)
+   * Friday: 7PM - 10PM (19 - 22)
+   * Sunday: 4AM - 12PM (4 - 12)
+   */
+  const isCoreHour = () => {
+    try {
+      const now = new Date();
+      const options: Intl.DateTimeFormatOptions = {
+        timeZone: 'America/Chicago',
+        hour12: false,
+        weekday: 'long',
+        hour: 'numeric'
+      };
+      const formatter = new Intl.DateTimeFormat('en-US', options);
+      const parts = formatter.formatToParts(now);
+
+      const day = parts.find(p => p.type === 'weekday')?.value;
+      const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+
+      if (day === 'Thursday' && hour >= 19 && hour < 22) return true;
+      if (day === 'Friday' && hour >= 19 && hour < 22) return true;
+      if (day === 'Sunday' && hour >= 4 && hour < 12) return true;
+
+      return false;
+    } catch (e) {
+      return true;
+    }
+  };
+
   React.useEffect(() => {
     const fetchConfigAndStatus = async () => {
+      if (!isProduction() || !isCoreHour()) {
+        setIsLive(false);
+        return;
+      }
       try {
         const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -39,9 +78,15 @@ const GrowSpirituallySection: React.FC = () => {
     };
 
     fetchConfigAndStatus();
-    // Check every 5 minutes
-    const interval = setInterval(fetchConfigAndStatus, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    // Check every 15 minutes if in core hours
+    let interval: NodeJS.Timeout;
+    if (isProduction() && isCoreHour()) {
+      interval = setInterval(fetchConfigAndStatus, 15 * 60 * 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   return (

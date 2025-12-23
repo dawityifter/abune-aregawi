@@ -142,7 +142,7 @@ payment_type: 'offering'  // ✅ Valid UI option
 1. **No migration discipline:** Model changes weren't accompanied by database migrations
 2. **Dev-prod drift:** Changes worked in dev if dev DB was recreated from models, but production DB was never updated
 3. **Missing enum validation:** No pre-insert validation checked if payment_type was valid
-4. **Split ownership:** Frontend team added payment types without coordinating with backend/DB team
+4. **Split ownership:** Frontend team added payment types without coordinating with ../backend/DB team
 5. **No schema validation tests:** No automated tests verified model definitions matched actual database schema
 
 ### Impact
@@ -428,8 +428,8 @@ To prevent this from happening again:
 - Git commit `e67e597` - Initial transactions table creation
 - Git commit `2ee9174` - Model updated for anonymous payments (no migration)
 - Git commit `a529205` - Income categories with duplicate mapping bug
-- `backend/src/models/Transaction.js` - Model definition
-- `backend/src/database/seedIncomeCategories.js` - Seed data with bug
+- `../backend/src/models/Transaction.js` - Model definition
+- `../backend/src/database/seedIncomeCategories.js` - Seed data with bug
 
 ---
 

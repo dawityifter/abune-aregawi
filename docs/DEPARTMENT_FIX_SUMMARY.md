@@ -29,7 +29,7 @@ However, when using `.attributes` in Sequelize queries, we must use the actual d
 
 ### Backend Controllers
 
-1. **`/backend/src/controllers/departmentController.js`**
+1. **`../backend/src/controllers/departmentController.js`**
    - Fixed 6 occurrences across multiple functions
    - Changed: `firstName`, `lastName`, `phoneNumber` → `first_name`, `last_name`, `phone_number`
    - Functions affected:
@@ -38,7 +38,7 @@ However, when using `.attributes` in Sequelize queries, we must use the actual d
      - `createDepartment()`
      - `updateDepartment()`
 
-2. **`/backend/src/controllers/departmentMemberController.js`**
+2. **`../backend/src/controllers/departmentMemberController.js`**
    - Fixed 4 occurrences
    - Changed: `firstName`, `lastName`, `phoneNumber`, `dateJoinedParish` → `first_name`, `last_name`, `phone_number`, `date_joined_parish`
    - Functions affected:
@@ -50,23 +50,23 @@ However, when using `.attributes` in Sequelize queries, we must use the actual d
 
 Updated to match backend snake_case response:
 
-3. **`/frontend/src/components/admin/DepartmentCard.tsx`**
+3. **`../frontend/src/components/admin/DepartmentCard.tsx`**
    - Updated TypeScript interface for `leader` object
    - Changed display: `leader.firstName` → `leader.first_name`
 
-4. **`/frontend/src/components/admin/CreateDepartmentModal.tsx`**
+4. **`../frontend/src/components/admin/CreateDepartmentModal.tsx`**
    - Updated member dropdown: `member.firstName` → `member.first_name`
 
-5. **`/frontend/src/components/admin/EditDepartmentModal.tsx`**
+5. **`../frontend/src/components/admin/EditDepartmentModal.tsx`**
    - Updated member dropdown: `member.firstName` → `member.first_name`
 
-6. **`/frontend/src/components/admin/ManageDepartmentMembersModal.tsx`**
+6. **`../frontend/src/components/admin/ManageDepartmentMembersModal.tsx`**
    - Updated TypeScript interface for `member` object
    - Changed all member name displays to use snake_case
 
 ### Infrastructure
 
-7. **`/backend/src/server.js`**
+7. **`../backend/src/server.js`**
    - Added `/api/departments` to the root endpoint's list of available endpoints
 
 ## Example Fix

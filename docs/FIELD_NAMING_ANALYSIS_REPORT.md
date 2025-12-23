@@ -16,7 +16,7 @@ This report identifies field naming inconsistencies between frontend (TypeScript
 ### **1. Firebase UID Field Mapping**
 **Issue**: Database column `firebase_uid` vs Sequelize queries using `firebaseUid`
 
-**Location**: `backend/src/controllers/memberController.js`
+**Location**: `../backend/src/controllers/memberController.js`
 - Line 104: `where: { firebaseUid }` → `where: { firebase_uid: firebaseUid }`
 - Line 119: `firebaseUid: { [Op.ne]: firebaseUid }` → `firebase_uid: { [Op.ne]: firebaseUid }`
 - Line 1054: `{ firebaseUid: firebaseUid }` → `{ firebase_uid: firebaseUid }`
@@ -27,7 +27,7 @@ This report identifies field naming inconsistencies between frontend (TypeScript
 ### **2. Transaction Fields in Frontend**
 **Issue**: Frontend using snake_case for transaction fields while backend expects camelCase
 
-**Location**: `frontend/src/components/admin/TransactionList.tsx`
+**Location**: `../frontend/src/components/admin/TransactionList.tsx`
 - Line 5-11: Using `member_id`, `collected_by`, `payment_date`, etc.
 - Line 17-20: Using `first_name`, `last_name`, `phone_number`
 
@@ -42,7 +42,7 @@ This report identifies field naming inconsistencies between frontend (TypeScript
 
 #### **Backend Model (snake_case)**:
 ```javascript
-// backend/src/models/Member.js
+// ../backend/src/models/Member.js
 {
   first_name: DataTypes.STRING(100),
   last_name: DataTypes.STRING(100),
@@ -65,7 +65,7 @@ This report identifies field naming inconsistencies between frontend (TypeScript
 
 #### **Frontend Interfaces (camelCase)**:
 ```typescript
-// frontend/src/components/Profile.tsx:8-33
+// ../frontend/src/components/Profile.tsx:8-33
 interface ProfileData {
   firstName?: string;
   lastName?: string;
@@ -90,7 +90,7 @@ interface ProfileData {
 
 #### **Backend Model (mixed)**:
 ```javascript
-// backend/src/models/Dependent.js
+// ../backend/src/models/Dependent.js
 {
   memberId: DataTypes.BIGINT,        // camelCase
   firstName: DataTypes.STRING(100),   // camelCase
@@ -109,7 +109,7 @@ interface ProfileData {
 
 #### **Frontend Interfaces (camelCase)**:
 ```typescript
-// frontend/src/utils/relationshipTypes.ts:14-32
+// ../frontend/src/utils/relationshipTypes.ts:14-32
 export interface Dependent {
   firstName: string;
   lastName: string;
@@ -131,7 +131,7 @@ export interface Dependent {
 
 #### **Backend Model (snake_case)**:
 ```javascript
-// backend/src/models/Transaction.js
+// ../backend/src/models/Transaction.js
 {
   member_id: DataTypes.BIGINT,
   collected_by: DataTypes.BIGINT,
@@ -146,7 +146,7 @@ export interface Dependent {
 
 #### **Frontend Interface (snake_case)**:
 ```typescript
-// frontend/src/components/admin/TransactionList.tsx:3-30
+// ../frontend/src/components/admin/TransactionList.tsx:3-30
 interface Transaction {
   member_id: number;
   collected_by: number;
@@ -225,7 +225,7 @@ interface Transaction {
 Create utility functions to handle field transformations:
 
 ```typescript
-// frontend/src/utils/dataTransformers.ts
+// ../frontend/src/utils/dataTransformers.ts
 export const transformMemberFromBackend = (backendMember: any) => ({
   id: backendMember.id,
   firstName: backendMember.first_name,
@@ -250,7 +250,7 @@ export const transformMemberToBackend = (frontendMember: any) => ({
 Create middleware to automatically transform responses:
 
 ```javascript
-// backend/src/middleware/serialization.js
+// ../backend/src/middleware/serialization.js
 const serializeMember = (member) => ({
   id: member.id,
   firstName: member.first_name,
@@ -287,26 +287,26 @@ const serializeTransaction = (transaction) => ({
 ## **📁 FILES WITH DISCREPANCIES**
 
 ### **Frontend Files**
-1. `frontend/src/components/Profile.tsx` - Member interface
-2. `frontend/src/components/admin/MemberList.tsx` - Member interface
-3. `frontend/src/components/admin/TransactionList.tsx` - Transaction interface
-4. `frontend/src/components/admin/AddPaymentModal.tsx` - Member interface
-5. `frontend/src/components/admin/MemberEditModal.tsx` - Member interface
-6. `frontend/src/components/DependantsManagement.tsx` - Dependent interface
-7. `frontend/src/utils/relationshipTypes.ts` - Dependent interface
-8. `frontend/src/utils/registrationUtils.ts` - Registration interface
-9. `frontend/src/components/auth/RegistrationSteps.tsx` - Form data
-10. `frontend/src/components/auth/MemberRegistration.tsx` - Registration data
+1. `../frontend/src/components/Profile.tsx` - Member interface
+2. `../frontend/src/components/admin/MemberList.tsx` - Member interface
+3. `../frontend/src/components/admin/TransactionList.tsx` - Transaction interface
+4. `../frontend/src/components/admin/AddPaymentModal.tsx` - Member interface
+5. `../frontend/src/components/admin/MemberEditModal.tsx` - Member interface
+6. `../frontend/src/components/DependantsManagement.tsx` - Dependent interface
+7. `../frontend/src/utils/relationshipTypes.ts` - Dependent interface
+8. `../frontend/src/utils/registrationUtils.ts` - Registration interface
+9. `../frontend/src/components/auth/RegistrationSteps.tsx` - Form data
+10. `../frontend/src/components/auth/MemberRegistration.tsx` - Registration data
 
 ### **Backend Files**
-1. `backend/src/models/Member.js` - Database model
-2. `backend/src/models/Dependent.js` - Database model
-3. `backend/src/models/Transaction.js` - Database model
-4. `backend/src/controllers/memberController.js` - Data transformation
-5. `backend/src/controllers/transactionController.js` - Data transformation
-6. `backend/src/middleware/validation.js` - Validation rules
-7. `backend/src/routes/memberRoutes.js` - Route definitions
-8. `backend/src/routes/transactionRoutes.js` - Route definitions
+1. `../backend/src/models/Member.js` - Database model
+2. `../backend/src/models/Dependent.js` - Database model
+3. `../backend/src/models/Transaction.js` - Database model
+4. `../backend/src/controllers/memberController.js` - Data transformation
+5. `../backend/src/controllers/transactionController.js` - Data transformation
+6. `../backend/src/middleware/validation.js` - Validation rules
+7. `../backend/src/routes/memberRoutes.js` - Route definitions
+8. `../backend/src/routes/transactionRoutes.js` - Route definitions
 
 ---
 

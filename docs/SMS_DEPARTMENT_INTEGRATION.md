@@ -10,7 +10,7 @@ Added the ability to send SMS messages to all members of a department, enhancing
 
 ### 1. **Backend: Department SMS Endpoint**
 
-**Location**: `/backend/src/controllers/smsController.js`
+**Location**: `../backend/src/controllers/smsController.js`
 
 **New Function**: `exports.sendDepartment`
 
@@ -46,7 +46,7 @@ Added the ability to send SMS messages to all members of a department, enhancing
 
 ### 2. **Backend: Updated SmsLog Model**
 
-**Location**: `/backend/src/models/SmsLog.js`
+**Location**: `../backend/src/models/SmsLog.js`
 
 **Changes**:
 - Added `department_id` field (BIGINT, nullable)
@@ -74,7 +74,7 @@ Added the ability to send SMS messages to all members of a department, enhancing
 
 ### 3. **Backend: Database Migration**
 
-**Location**: `/backend/src/database/migrations/20250109-add-department-to-sms-logs.js`
+**Location**: `../backend/src/database/migrations/20250109-add-department-to-sms-logs.js`
 
 **Changes**:
 - Adds `department_id` column to `sms_logs` table
@@ -90,7 +90,7 @@ node scripts/run-migration.js 20250109-add-department-to-sms-logs
 
 ### 4. **Frontend: Department Selection in SMS Broadcast**
 
-**Location**: `/frontend/src/components/admin/SmsBroadcast.tsx`
+**Location**: `../frontend/src/components/admin/SmsBroadcast.tsx`
 
 **UI Changes**:
 - Added "Department" button to recipient type selection
@@ -124,7 +124,7 @@ Select Department:
 
 ### Backend Route
 
-**File**: `/backend/src/routes/smsRoutes.js`
+**File**: `../backend/src/routes/smsRoutes.js`
 
 ```javascript
 router.post('/sendDepartment/:departmentId', 
