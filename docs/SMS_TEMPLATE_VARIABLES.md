@@ -193,13 +193,13 @@ Thank you for your incredible generosity!
 ## 📝 Files Modified
 
 **Backend:**
-- `backend/src/controllers/smsController.js`
+- `../backend/src/controllers/smsController.js`
   - Added `substituteTemplateVariables()` function
   - Updated `sendPendingPledges()` with template support
   - Updated `sendFulfilledPledges()` with template support
 
 **Frontend:**
-- `frontend/src/components/admin/SmsBroadcast.tsx`
+- `../frontend/src/components/admin/SmsBroadcast.tsx`
   - Added template variables helper box
   - Added smart placeholders
   - Added visual guidance for users

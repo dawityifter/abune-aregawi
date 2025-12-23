@@ -4,37 +4,37 @@
 
 ### Backend Components
 
-1. **YouTube Service** (`backend/src/services/youtubeService.js`)
+1. **YouTube Service** (`../backend/src/services/youtubeService.js`)
    - Calls YouTube Data API v3 to check if channel is live
    - Returns live status, video ID, title, and thumbnail
    - Handles API errors gracefully
 
-2. **YouTube Controller** (`backend/src/controllers/youtubeController.js`)
+2. **YouTube Controller** (`../backend/src/controllers/youtubeController.js`)
    - Endpoint handler for `/api/youtube/live-status`
    - Uses channel ID from environment variable or defaults to your channel
 
-3. **YouTube Routes** (`backend/src/routes/youtubeRoutes.js`)
+3. **YouTube Routes** (`../backend/src/routes/youtubeRoutes.js`)
    - Defines GET `/api/youtube/live-status` endpoint
    - Public access (no authentication required)
 
-4. **Server Integration** (`backend/src/server.js`)
+4. **Server Integration** (`../backend/src/server.js`)
    - Registered YouTube routes
    - Added route import
 
 ### Frontend Components
 
-1. **LiveStreamBanner** (`frontend/src/components/LiveStreamBanner.tsx`)
+1. **LiveStreamBanner** (`../frontend/src/components/LiveStreamBanner.tsx`)
    - Automatically checks backend API every 5 minutes
    - Shows animated "LIVE NOW" banner when streaming
    - "Watch Live" button toggles embedded YouTube player
    - "Visit Channel" button opens YouTube channel in new tab
    - Hidden by default when not live
 
-2. **HomePage Integration** (`frontend/src/components/HomePage.tsx`)
+2. **HomePage Integration** (`../frontend/src/components/HomePage.tsx`)
    - Banner appears after Hero section
    - Removed old "Watch Live" button from Hero
 
-3. **Hero Component** (`frontend/src/components/Hero.tsx`)
+3. **Hero Component** (`../frontend/src/components/Hero.tsx`)
    - Removed duplicate "Watch Live" button
    - Kept only "Give Online" button
 
@@ -44,7 +44,7 @@
 
 ### Backend `.env` File
 
-Make sure your `/backend/.env` has:
+Make sure your `../backend/.env` has:
 
 ```env
 YOUTUBE_API_KEY=your_api_key_here
@@ -67,7 +67,7 @@ For local development, it defaults to `http://localhost:5000`
 
 ### 1. Start Backend
 ```bash
-cd backend
+cd ../backend
 npm start
 ```
 
@@ -95,7 +95,7 @@ Expected response when **live**:
 
 ### 3. Start Frontend
 ```bash
-cd frontend
+cd ../frontend
 npm start
 ```
 
@@ -129,7 +129,7 @@ You have plenty of quota headroom!
 ## 🚀 Next Steps
 
 1. **Test locally** - Start both backend and frontend
-2. **Verify API key** - Make sure it's in `/backend/.env`
+2. **Verify API key** - Make sure it's in `../backend/.env`
 3. **Test when live** - Start a live stream on YouTube and wait up to 5 minutes
 4. **Deploy** - When ready, deploy both backend and frontend
 
@@ -147,14 +147,14 @@ You have plenty of quota headroom!
 ## Files Modified
 
 **Backend:**
-- ✅ `backend/src/services/youtubeService.js` (new)
-- ✅ `backend/src/controllers/youtubeController.js` (new)
-- ✅ `backend/src/routes/youtubeRoutes.js` (new)
-- ✅ `backend/src/server.js` (modified)
+- ✅ `../backend/src/services/youtubeService.js` (new)
+- ✅ `../backend/src/controllers/youtubeController.js` (new)
+- ✅ `../backend/src/routes/youtubeRoutes.js` (new)
+- ✅ `../backend/src/server.js` (modified)
 
 **Frontend:**
-- ✅ `frontend/src/components/LiveStreamBanner.tsx` (new)
-- ✅ `frontend/src/components/HomePage.tsx` (modified)
-- ✅ `frontend/src/components/Hero.tsx` (modified)
+- ✅ `../frontend/src/components/LiveStreamBanner.tsx` (new)
+- ✅ `../frontend/src/components/HomePage.tsx` (modified)
+- ✅ `../frontend/src/components/Hero.tsx` (modified)
 
 All changes are ready to test locally!

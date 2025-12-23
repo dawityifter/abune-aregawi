@@ -2,7 +2,7 @@
 
 ## ✅ What Was Implemented
 
-### **1. Secure Logger Utility** (`backend/src/utils/logger.js`)
+### **1. Secure Logger Utility** (`../backend/src/utils/logger.js`)
 
 Created a comprehensive logging utility with automatic PII redaction:
 
@@ -177,9 +177,9 @@ console.log('Response:', JSON.stringify(response)); // Logs everything
 ## 📊 Impact Summary
 
 **Files Modified:** 3
-- `backend/src/utils/logger.js` (new)
-- `backend/src/middleware/auth.js` (updated)
-- `backend/src/controllers/memberController.js` (updated)
+- `../backend/src/utils/logger.js` (new)
+- `../backend/src/middleware/auth.js` (updated)
+- `../backend/src/controllers/memberController.js` (updated)
 
 **Lines Changed:** ~150
 **Sensitive Logs Removed:** ~30

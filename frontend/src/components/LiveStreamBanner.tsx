@@ -17,18 +17,63 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
 
     const [currentChannelId, setCurrentChannelId] = useState(channelId);
 
+    const isProduction = () => {
+        return window.location.hostname === 'abunearegawi.church' ||
+            window.location.hostname === 'www.abunearegawi.church';
+    };
+
+    /**
+     * Thursday: 7PM - 10PM (19 - 22)
+     * Friday: 7PM - 10PM (19 - 22)
+     * Sunday: 4AM - 12PM (4 - 12)
+     */
+    const isCoreHour = () => {
+        try {
+            const now = new Date();
+            const options: Intl.DateTimeFormatOptions = {
+                timeZone: 'America/Chicago',
+                hour12: false,
+                weekday: 'long',
+                hour: 'numeric'
+            };
+            const formatter = new Intl.DateTimeFormat('en-US', options);
+            const parts = formatter.formatToParts(now);
+
+            const day = parts.find(p => p.type === 'weekday')?.value;
+            const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+
+            if (day === 'Thursday' && hour >= 19 && hour < 22) return true;
+            if (day === 'Friday' && hour >= 19 && hour < 22) return true;
+            if (day === 'Sunday' && hour >= 4 && hour < 12) return true;
+
+            return false;
+        } catch (e) {
+            // Fallback to true if timezone formatting fails, to be safe
+            return true;
+        }
+    };
+
     const youtubeChannelUrl = `https://www.youtube.com/channel/${currentChannelId}`;
     const youtubeLiveUrl = `https://www.youtube.com/channel/${currentChannelId}/live`;
 
     useEffect(() => {
+        if (!isProduction() || !isCoreHour()) {
+            return;
+        }
+
         checkIfLive();
 
-        // Check every 5 minutes
-        const interval = setInterval(checkIfLive, 5 * 60 * 1000);
+        // Check every 15 minutes
+        const interval = setInterval(checkIfLive, 15 * 60 * 1000);
         return () => clearInterval(interval);
     }, [channelHandle]);
 
     const checkIfLive = async () => {
+        if (!isProduction() || !isCoreHour()) {
+            setIsLive(false);
+            return;
+        }
+
         try {
             const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
             const response = await fetch(`${apiUrl}/api/youtube/live-status?channelId=${channelId}`);

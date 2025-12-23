@@ -11,7 +11,7 @@ A comprehensive weekly collection and expense report has been successfully imple
 ### Backend Components
 
 #### 1. **getWeeklyReport Controller Method**
-**File**: `/backend/src/controllers/memberPaymentController.js`
+**File**: `../backend/src/controllers/memberPaymentController.js`
 
 **Features**:
 - Accepts `week_start` parameter (defaults to current week's Monday)
@@ -63,7 +63,7 @@ A comprehensive weekly collection and expense report has been successfully imple
 ### Frontend Components
 
 #### 1. **WeeklyCollectionReport Component**
-**File**: `/frontend/src/components/admin/WeeklyCollectionReport.tsx`
+**File**: `../frontend/src/components/admin/WeeklyCollectionReport.tsx`
 
 **Features**:
 - **Week Selector**: 
@@ -184,19 +184,19 @@ A comprehensive weekly collection and expense report has been successfully imple
 ## 📁 Files Created/Modified
 
 ### Backend
-- ✅ `/backend/src/controllers/memberPaymentController.js`
+- ✅ `../backend/src/controllers/memberPaymentController.js`
   - Added `getWeeklyReport()` method
   - Added to module exports
 
-- ✅ `/backend/src/routes/memberPaymentRoutes.js`
+- ✅ `../backend/src/routes/memberPaymentRoutes.js`
   - Added `GET /api/payments/weekly-report` route
   - Positioned before `/:memberId` to avoid conflicts
 
 ### Frontend
-- ✅ `/frontend/src/components/admin/WeeklyCollectionReport.tsx` (NEW)
+- ✅ `../frontend/src/components/admin/WeeklyCollectionReport.tsx` (NEW)
   - Complete report UI with all features
   
-- ✅ `/frontend/src/components/admin/TreasurerDashboard.tsx`
+- ✅ `../frontend/src/components/admin/TreasurerDashboard.tsx`
   - Imported `WeeklyCollectionReport`
   - Added to Reports tab (top section)
 

@@ -258,7 +258,7 @@ curl -X POST http://localhost:5000/api/members/login \
 ### **Issue 3: Database Connection Error**
 **Error**: "Connection refused" or database errors
 **Solution**:
-1. Check if SQLite file is created: `ls backend/database.sqlite`
+1. Check if SQLite file is created: `ls ../backend/database.sqlite`
 2. Verify database permissions
 3. Restart backend server
 
@@ -312,7 +312,7 @@ ________________________________
 
 ## 🚀 Next Steps After Testing
 
-1. **Set up real Firebase project** (see `FIREBASE_SETUP.md`)
+1. **Set up real Firebase project** (see `../frontend/FIREBASE_SETUP.md`)
 2. **Configure production environment variables**
 3. **Set up PostgreSQL database for production**
 4. **Deploy to hosting platform**
@@ -322,16 +322,16 @@ ________________________________
 
 ```bash
 # Start backend
-cd backend && npm run dev
+cd ../backend && npm run dev
 
 # Start frontend
-cd frontend && npm start
+cd ../frontend && npm start
 
 # Test backend health
 curl http://localhost:5000/health
 
 # Check database
-ls backend/database.sqlite
+ls ../backend/database.sqlite
 ```
 
 ---

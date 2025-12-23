@@ -60,3 +60,29 @@ exports.getConfig = (req, res) => {
         spiritualChannelId: process.env.YOUTUBE_SPIRITUAL_CHANNEL_ID || 'UCQXFCGSNdQ1y8GOmqbvRefg'
     });
 };
+
+/**
+ * Get combined status for multiple channels
+ */
+exports.getMultiLiveStatus = async (req, res) => {
+    try {
+        const mainChannelId = process.env.YOUTUBE_CHANNEL_ID || 'UCvK6pJUKU2pvoX7bQ3PN2aA';
+        const spiritualChannelId = process.env.YOUTUBE_SPIRITUAL_CHANNEL_ID || 'UCQXFCGSNdQ1y8GOmqbvRefg';
+
+        const [mainStatus, spiritualStatus] = await Promise.all([
+            checkYouTubeLiveStatus(mainChannelId),
+            checkYouTubeLiveStatus(spiritualChannelId)
+        ]);
+
+        res.json({
+            main: { ...mainStatus, channelId: mainChannelId },
+            spiritual: { ...spiritualStatus, channelId: spiritualChannelId }
+        });
+    } catch (error) {
+        console.error('Error in getMultiLiveStatus:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch multi-channel live status'
+        });
+    }
+};

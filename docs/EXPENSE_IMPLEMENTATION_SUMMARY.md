@@ -10,14 +10,14 @@ The expense tracking system has been fully implemented with the following featur
 
 ### Backend Components
 
-#### 1. **ExpenseCategory Model** (`/backend/src/models/ExpenseCategory.js`)
+#### 1. **ExpenseCategory Model** (`../backend/src/models/ExpenseCategory.js`)
 - GL code system (EXP001-EXP009)
 - Category name and description
 - Active/inactive status
 - Fixed expense flag
 - Validation for GL code format
 
-#### 2. **Expense Controller** (`/backend/src/controllers/expenseController.js`)
+#### 2. **Expense Controller** (`../backend/src/controllers/expenseController.js`)
 - ✅ `getExpenseCategories()` - Fetch all expense categories
 - ✅ `createExpense()` - Record new expense
 - ✅ `getExpenses()` - List expenses with filters & pagination
@@ -26,7 +26,7 @@ The expense tracking system has been fully implemented with the following featur
 - ✅ `deleteExpense()` - Delete expense (admin only)
 - ✅ `getExpenseStats()` - Get expense statistics by year
 
-#### 3. **Expense Routes** (`/backend/src/routes/expenseRoutes.js`)
+#### 3. **Expense Routes** (`../backend/src/routes/expenseRoutes.js`)
 - `GET /api/expenses/categories` - List categories
 - `POST /api/expenses` - Create expense
 - `GET /api/expenses` - List expenses (with filters)
@@ -35,16 +35,16 @@ The expense tracking system has been fully implemented with the following featur
 - `PUT /api/expenses/:id` - Update expense
 - `DELETE /api/expenses/:id` - Delete expense
 
-#### 4. **Database Migration** (`/backend/src/database/migrations/createExpenseCategories.js`)
+#### 4. **Database Migration** (`../backend/src/database/migrations/createExpenseCategories.js`)
 - Creates `expense_categories` table
 - Adds indexes for performance
 - Run with: `npm run db:migrate:expenses`
 
-#### 5. **Seed Data** (`/backend/src/database/seedExpenseCategories.js`)
+#### 5. **Seed Data** (`../backend/src/database/seedExpenseCategories.js`)
 - Seeds 9 fixed expense categories
 - Run with: `npm run db:seed:expenses`
 
-#### 6. **Updated Payment Stats** (`/backend/src/controllers/memberPaymentController.js`)
+#### 6. **Updated Payment Stats** (`../backend/src/controllers/memberPaymentController.js`)
 - Added `totalExpenses` field
 - Added `netIncome` field (totalCollected - totalExpenses)
 - Expenses calculated from `ledger_entries` where `type='expense'`
@@ -53,7 +53,7 @@ The expense tracking system has been fully implemented with the following featur
 
 ### Frontend Components
 
-#### 1. **AddExpenseModal** (`/frontend/src/components/admin/AddExpenseModal.tsx`)
+#### 1. **AddExpenseModal** (`../frontend/src/components/admin/AddExpenseModal.tsx`)
 - Category selection dropdown
 - Amount input with validation
 - Date picker (prevents future dates)
@@ -63,7 +63,7 @@ The expense tracking system has been fully implemented with the following featur
 - Form validation
 - Error handling
 
-#### 2. **ExpenseList** (`/frontend/src/components/admin/ExpenseList.tsx`)
+#### 2. **ExpenseList** (`../frontend/src/components/admin/ExpenseList.tsx`)
 - Filterable expense list
 - Date range filter
 - Category filter
@@ -72,19 +72,19 @@ The expense tracking system has been fully implemented with the following featur
 - Shows: date, category, amount, method, receipt #, recorded by, memo
 - Real-time refresh on expense events
 
-#### 3. **Updated TreasurerDashboard** (`/frontend/src/components/admin/TreasurerDashboard.tsx`)
+#### 3. **Updated TreasurerDashboard** (`../frontend/src/components/admin/TreasurerDashboard.tsx`)
 - Added "Expenses" tab
 - "Add Expense" button on Overview tab
 - "Add Expense" button on Expenses tab
 - Integrated ExpenseList component
 - Permission-based UI visibility
 
-#### 4. **Updated PaymentStats** (`/frontend/src/components/admin/PaymentStats.tsx`)
+#### 4. **Updated PaymentStats** (`../frontend/src/components/admin/PaymentStats.tsx`)
 - Added "Total Expenses" card
 - Added "Net Income" card with dynamic color (green/red)
 - Shows net income = total collected - total expenses
 
-#### 5. **Role Permissions** (`/frontend/src/utils/roles.ts`)
+#### 5. **Role Permissions** (`../frontend/src/utils/roles.ts`)
 - Added 4 new permissions:
   - `canViewExpenses`
   - `canAddExpenses`

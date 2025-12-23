@@ -274,18 +274,18 @@ AVS Result: Y
 
 ## Files Modified
 
-1. ✅ `frontend/src/components/admin/AddPaymentModal.tsx`
+1. ✅ `../frontend/src/components/admin/AddPaymentModal.tsx`
    - Updated Member interface
    - Added city, state, country to card payments
    - Added city, state, country to ACH payments
 
-2. ✅ `frontend/src/components/StripePayment.tsx`
+2. ✅ `../frontend/src/components/StripePayment.tsx`
    - Updated donationData interface
    - Added state for city, state, country
    - Updated billing_details sent to Stripe
    - Added UI fields for city and state
 
-3. ✅ `frontend/src/components/DonatePage.tsx`
+3. ✅ `../frontend/src/components/DonatePage.tsx`
    - Updated donorInfo state
    - Added city, state, country to all setDonorInfo calls
    - Updated donationData to include new fields

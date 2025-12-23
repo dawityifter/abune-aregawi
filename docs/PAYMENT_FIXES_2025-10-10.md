@@ -20,21 +20,21 @@ When treasurers selected a payment type in the Add Payment modal, the Income Cat
 
 **Backend Changes:**
 
-1. **Updated seed data** (`backend/src/database/seedIncomeCategories.js`)
+1. **Updated seed data** (`../backend/src/database/seedIncomeCategories.js`)
    - Changed INC007 `payment_type_mapping` from `'event'` to `null`
    - INC007 now requires manual selection (as originally intended)
 
-2. **Created migration** (`backend/src/database/migrations/fixINC007Mapping.js`)
+2. **Created migration** (`../backend/src/database/migrations/fixINC007Mapping.js`)
    - Updated existing database records to remove the duplicate mapping
    - Ran successfully and verified with database query
 
-3. **Updated documentation** (`backend/PAYMENT_TYPE_MAPPINGS.md`)
+3. **Updated documentation** (`../backend/PAYMENT_TYPE_MAPPINGS.md`)
    - Documented the issue and fix
    - Added database fix section
 
 **Frontend Changes:**
 
-4. **Cleaned up debug logging** (`frontend/src/components/admin/AddPaymentModal.tsx`)
+4. **Cleaned up debug logging** (`../frontend/src/components/admin/AddPaymentModal.tsx`)
    - Removed temporary diagnostic console logs
    - Kept clean, production-ready code
 
@@ -75,17 +75,17 @@ When treasurers tried to add anonymous payments, the system returned a 500 error
 
 **Backend Changes:**
 
-1. **Made member_id nullable** (`backend/src/database/migrations/makeTransactionMemberIdNullable.js`)
+1. **Made member_id nullable** (`../backend/src/database/migrations/makeTransactionMemberIdNullable.js`)
    - Dropped existing foreign key constraint
    - Altered `member_id` column to allow NULL values
    - Re-added foreign key with SET NULL behavior
    - Verified change in database
 
-2. **Added missing payment types** (`backend/src/database/migrations/addMissingPaymentTypes.js`)
+2. **Added missing payment types** (`../backend/src/database/migrations/addMissingPaymentTypes.js`)
    - Added `'offering'`, `'vow'`, `'building_fund'` to enum
    - Verified all 8 payment types now exist in enum
 
-3. **Updated Transaction model** (`backend/src/models/Transaction.js`)
+3. **Updated Transaction model** (`../backend/src/models/Transaction.js`)
    - Updated payment_type ENUM to include all 8 types
    - Model now matches database schema exactly
 
@@ -106,15 +106,15 @@ After fix, the following payment types are supported:
 ## Files Modified
 
 ### Backend
-1. `backend/src/database/seedIncomeCategories.js` - Fixed INC007 mapping
-2. `backend/src/database/migrations/fixINC007Mapping.js` - New migration
-3. `backend/src/database/migrations/makeTransactionMemberIdNullable.js` - New migration
-4. `backend/src/database/migrations/addMissingPaymentTypes.js` - New migration
-5. `backend/src/models/Transaction.js` - Updated payment_type enum
-6. `backend/PAYMENT_TYPE_MAPPINGS.md` - Updated documentation
+1. `../backend/src/database/seedIncomeCategories.js` - Fixed INC007 mapping
+2. `../backend/src/database/migrations/fixINC007Mapping.js` - New migration
+3. `../backend/src/database/migrations/makeTransactionMemberIdNullable.js` - New migration
+4. `../backend/src/database/migrations/addMissingPaymentTypes.js` - New migration
+5. `../backend/src/models/Transaction.js` - Updated payment_type enum
+6. `../backend/PAYMENT_TYPE_MAPPINGS.md` - Updated documentation
 
 ### Frontend
-1. `frontend/src/components/admin/AddPaymentModal.tsx` - Cleaned up debug logging
+1. `../frontend/src/components/admin/AddPaymentModal.tsx` - Cleaned up debug logging
 
 ---
 
@@ -221,9 +221,9 @@ Note: Payment type enum changes cannot be easily rolled back. Test thoroughly be
 
 ## Related Documentation
 
-- `backend/PAYMENT_TYPE_MAPPINGS.md` - Complete mapping reference
-- `backend/INCOME_GL_CODES_PHASE3_COMPLETE.md` - GL code implementation details
-- `backend/INCOME_GL_CODES_QUICK_REFERENCE.md` - Quick GL code reference
+- `../backend/PAYMENT_TYPE_MAPPINGS.md` - Complete mapping reference
+- `../backend/INCOME_GL_CODES_PHASE3_COMPLETE.md` - GL code implementation details
+- `../backend/INCOME_GL_CODES_QUICK_REFERENCE.md` - Quick GL code reference
 
 ---
 

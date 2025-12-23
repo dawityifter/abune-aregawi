@@ -15,7 +15,7 @@ The income category is not being auto-selected, which means either:
 ## What I Fixed
 
 ### 1. Improved Display Logic
-**File:** `frontend/src/components/admin/AddPaymentModal.tsx`
+**File:** `../frontend/src/components/admin/AddPaymentModal.tsx`
 
 **Before:**
 ```
@@ -142,7 +142,7 @@ The payment types in the dropdown:
 
 ## Mapping Logic
 
-**File:** `frontend/src/utils/incomeCategoryApi.ts`
+**File:** `../frontend/src/utils/incomeCategoryApi.ts`
 
 ```typescript
 export function getIncomeCategoryByPaymentType(
@@ -309,7 +309,7 @@ Will be assigned when you select payment type
 
 ## Files Modified
 
-✅ `frontend/src/components/admin/AddPaymentModal.tsx`
+✅ `../frontend/src/components/admin/AddPaymentModal.tsx`
 - Improved GL code display
 - Added 3 states (assigned, warning, empty)
 - Added debug logging
