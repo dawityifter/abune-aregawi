@@ -228,6 +228,12 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 'member'
     },
+    roles: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: [],
+      comment: 'Array of roles assigned to the member'
+    },
     is_active: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

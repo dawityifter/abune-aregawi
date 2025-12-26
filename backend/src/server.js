@@ -60,7 +60,10 @@ const PORT = process.env.PORT || 5001;
 app.set('trust proxy', 1);
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+}));
 
 // CORS configuration - Simplified for development
 console.log('🔧 CORS Configuration:');

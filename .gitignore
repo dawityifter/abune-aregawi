@@ -294,3 +294,8 @@ contact-list*.csv
 # Documentation files that may contain sensitive info
 *ROLE_PERMISSIONS*.md
 *PERMISSIONS_SUMMARY*.md
+
+# Database Restore scripts and documentation
+RESTORE_DATABASE.md
+backend/restore-database.sh
+backend/restore-db-simple.sh

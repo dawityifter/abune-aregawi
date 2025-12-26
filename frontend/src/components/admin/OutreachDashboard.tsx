@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ModalWelcomeNote from './ModalWelcomeNote';
 import { useAuth } from '../../contexts/AuthContext';
-import { getRolePermissions, UserRole } from '../../utils/roles';
+import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
 import { formatE164ToDisplay } from '../../utils/formatPhoneNumber';
 
 const OutreachDashboard: React.FC = () => {
@@ -93,8 +93,9 @@ const OutreachDashboard: React.FC = () => {
     );
   }
 
-  const userRole: UserRole = (userProfile?.data?.member?.role || 'member') as UserRole;
-  const permissions = getRolePermissions(userRole);
+  const member = userProfile?.data?.member || userProfile;
+  const roles: UserRole[] = member?.roles || [member?.role || 'member'];
+  const permissions = getMergedPermissions(roles);
 
   const canAccess = permissions.canAccessOutreachDashboard || permissions.canManageOnboarding;
 
@@ -119,7 +120,7 @@ const OutreachDashboard: React.FC = () => {
               <h1 className="text-xl font-semibold text-gray-900">Outreach & Member Relations</h1>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded-full">{userRole}</span>
+              <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded-full">{roles.join(', ')}</span>
             </div>
           </div>
         </div>
@@ -284,6 +285,6 @@ const OutreachDashboard: React.FC = () => {
     </div>
   );
 }
-;
+  ;
 
 export default OutreachDashboard;

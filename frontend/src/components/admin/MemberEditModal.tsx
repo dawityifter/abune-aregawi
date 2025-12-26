@@ -14,6 +14,7 @@ interface Member {
   lastName: string;
   email: string;
   role: UserRole;
+  roles?: UserRole[];
   isActive: boolean;
   phoneNumber?: string;
   dateJoinedParish?: string;
@@ -84,7 +85,8 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
       ...member,
       gender: member.gender ? member.gender.toLowerCase() : member.gender,
       maritalStatus: member.maritalStatus ? member.maritalStatus.toLowerCase() : member.maritalStatus,
-      titleId: member.title_id || member.titleId
+      titleId: member.title_id || member.titleId,
+      roles: member.roles || [member.role]
     };
     console.log('🔍 MemberEditModal - After normalization:', {
       gender: normalized.gender,
@@ -278,6 +280,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
       // If the user cannot manage roles, do not send role changes
       if (!canManageRoles) {
         delete payload.role;
+        delete payload.roles;
       }
 
       // Include either email or phone for backend auth requirement
@@ -440,23 +443,40 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t('admin.memberModal.fields.role')} *
                 </label>
-                <select
-                  name="role"
-                  value={formData.role || 'member'}
-                  onChange={handleInputChange}
-                  required
-                  disabled={!canManageRoles}
-                  title={!canManageRoles ? t('no.permission.to.change.role') : ''}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${!canManageRoles ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                >
-                  <option value="member">Member</option>
-                  <option value="secretary">Secretary</option>
-                  <option value="treasurer">Treasurer</option>
-                  <option value="church_leadership">Church Leadership</option>
-                  <option value="relationship">Relationship</option>
-                  <option value="admin">Admin</option>
-                  <option value="guest">Guest</option>
-                </select>
+                <div className="space-y-2 border border-gray-200 rounded-md p-3 max-h-40 overflow-y-auto">
+                  {(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship', 'member'] as UserRole[]).map((role) => (
+                    <label key={role} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={(formData.roles || [formData.role]).includes(role)}
+                        disabled={!canManageRoles}
+                        onChange={(e) => {
+                          if (!canManageRoles) return;
+                          const currentRoles = formData.roles || [formData.role];
+                          let nextRoles: UserRole[];
+                          if (e.target.checked) {
+                            nextRoles = [...currentRoles, role];
+                          } else {
+                            if (currentRoles.length > 1) {
+                              nextRoles = currentRoles.filter(r => r !== role);
+                            } else {
+                              return; // Prevent removing last role
+                            }
+                          }
+                          setFormData(prev => ({
+                            ...prev,
+                            roles: nextRoles,
+                            role: nextRoles[0] // Set primary role for compatibility
+                          }));
+                        }}
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
+                      />
+                      <span className={`text-sm ${!canManageRoles ? 'text-gray-400' : 'text-gray-700'}`}>
+                        {getRoleDisplayName(role)}
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div>

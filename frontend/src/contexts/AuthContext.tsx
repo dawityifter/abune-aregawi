@@ -437,7 +437,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: '',
             phoneNumber: magicPhone,
             _temp: true,
-            role: 'member'
+            role: 'member',
+            roles: ['member']
           });
           navigate('/register', { state: { phone: magicPhone } });
           setAuthReady(true);
@@ -482,7 +483,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Prefer backend profile email if present (email not used for login)
             email: (profile as any).email || '',
             phoneNumber,
-            role: profile.role, // Explicitly set the role
+            role: profile.role,
+            roles: profile.roles || [profile.role],
             _temp: false
           });
 
@@ -523,6 +525,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               email: (profile as any).email || '',
               phoneNumber,
               role: profile.role,
+              roles: profile.roles || [profile.role],
               _temp: false
             });
             // Only navigate to dashboard if on login page or public pages
@@ -543,7 +546,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               email: '',
               phoneNumber,
               _temp: true,
-              role: 'member'
+              role: 'member',
+              roles: ['member']
             });
             if (window.location.pathname !== '/register') {
               navigate('/register', { state: { phone: phoneNumber } });
@@ -561,6 +565,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: '',
             phoneNumber,
             role: 'dependent',
+            roles: ['member'], // Dependents don't have special roles yet, default to member
             _temp: true,
             unlinkedDependent: true
           }));
