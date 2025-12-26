@@ -542,6 +542,7 @@ exports.register = async (req, res) => {
       firebase_uid: firebaseUid,
       password: password || null, // Password is optional since Firebase handles auth
       role: role || 'member',
+      roles: Array.isArray(req.body.roles) ? req.body.roles : [role || 'member'],
       family_id: familyId, // may be null, will update if HoH
       title_id: finalTitleId
     });
@@ -610,7 +611,8 @@ exports.register = async (req, res) => {
       {
         id: member.id,
         email: member.email,
-        role: member.role
+        role: member.role,
+        roles: member.roles || [member.role]
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -753,7 +755,8 @@ exports.login = async (req, res) => {
       {
         id: member.id,
         email: member.email,
-        role: member.role
+        role: member.role,
+        roles: member.roles || [member.role]
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -1015,6 +1018,7 @@ exports.getAllMembersFirebase = async (req, res) => {
       email: member.email,
       phoneNumber: member.phone_number,
       role: member.role,
+      roles: member.roles || [member.role],
       isActive: member.is_active,
       titleId: member.title_id,
       title: member.title, // Pass full title object for display
@@ -1843,10 +1847,12 @@ exports.completeRegistration = async (req, res) => {
     }
 
     // Create member in PostgreSQL with Firebase UID
+    const initialRole = memberData.role || 'member';
     const member = await Member.create({
       ...memberData,
       firebase_uid: firebaseUid,
-      role: memberData.role || 'member'
+      role: initialRole,
+      roles: Array.isArray(memberData.roles) ? memberData.roles : [initialRole]
     });
 
     // Handle dependents if provided (prefer 'dependents', fallback to legacy 'dependants')
@@ -1889,14 +1895,22 @@ exports.completeRegistration = async (req, res) => {
 exports.updateMemberRole = async (req, res) => {
   try {
     const { id } = req.params;
-    const { role } = req.body;
+    const { role, roles } = req.body;
 
-    // Validate role
+    // Validate roles
     const validRoles = ['admin', 'church_leadership', 'treasurer', 'secretary', 'member', 'guest', 'relationship', 'deacon', 'priest'];
-    if (!validRoles.includes(role)) {
+
+    let rolesToSet = [];
+    if (Array.isArray(roles)) {
+      rolesToSet = roles.filter(r => validRoles.includes(r));
+    } else if (role && validRoles.includes(role)) {
+      rolesToSet = [role];
+    }
+
+    if (rolesToSet.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid role. Must be one of: ' + validRoles.join(', ')
+        message: 'Invalid roles. Must be one or more of: ' + validRoles.join(', ')
       });
     }
 
@@ -1909,8 +1923,12 @@ exports.updateMemberRole = async (req, res) => {
       });
     }
 
-    // Update role in PostgreSQL
-    await member.update({ role });
+    // Update both singular (primary) and plural roles
+    // We'll set the singular 'role' to the first one in the array for legacy support
+    await member.update({
+      role: rolesToSet[0],
+      roles: rolesToSet
+    });
 
     // Fetch updated member
     const updatedMember = await Member.findByPk(id, {

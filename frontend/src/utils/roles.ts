@@ -402,16 +402,39 @@ export const getRolePermissions = (role: UserRole): RolePermissions => {
   return ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.guest;
 };
 
-export const hasPermission = (
-  userRole: UserRole,
-  permission: keyof RolePermissions
-): boolean => {
-  const permissions = getRolePermissions(userRole);
-  return permissions[permission] || false;
+/**
+ * Merges permissions from multiple roles.
+ * A permission is granted if ANY of the roles grant it.
+ */
+export const getMergedPermissions = (roles: UserRole[]): RolePermissions => {
+  // Start with guest permissions as base
+  const merged = { ...ROLE_PERMISSIONS.guest };
+
+  roles.forEach(role => {
+    const permissions = getRolePermissions(role);
+    (Object.keys(permissions) as Array<keyof RolePermissions>).forEach(key => {
+      if (permissions[key] === true) {
+        (merged[key] as boolean) = true;
+      }
+    });
+  });
+
+  return merged;
 };
 
-export const canAccessRoute = (userRole: UserRole, requiredPermissions: (keyof RolePermissions)[]): boolean => {
-  return requiredPermissions.every(permission => hasPermission(userRole, permission));
+export const hasPermission = (
+  userRoles: UserRole | UserRole[],
+  permission: keyof RolePermissions
+): boolean => {
+  const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
+  return roles.some(role => {
+    const permissions = getRolePermissions(role);
+    return permissions[permission] === true;
+  });
+};
+
+export const canAccessRoute = (userRoles: UserRole | UserRole[], requiredPermissions: (keyof RolePermissions)[]): boolean => {
+  return requiredPermissions.every(permission => hasPermission(userRoles, permission));
 };
 
 export const getRoleDisplayName = (role: UserRole): string => {
@@ -441,22 +464,22 @@ export const getRoleDescription = (role: UserRole): string => {
 };
 
 // Helper functions for common permission checks
-export const canManageMembers = (role: UserRole): boolean => {
+export const canManageMembers = (role: UserRole | UserRole[]): boolean => {
   return hasPermission(role, 'canViewAllMembers') && hasPermission(role, 'canEditAllMembers');
 };
 
-export const canManageFinances = (role: UserRole): boolean => {
+export const canManageFinances = (role: UserRole | UserRole[]): boolean => {
   return hasPermission(role, 'canViewFinancialRecords') && hasPermission(role, 'canEditFinancialRecords');
 };
 
-export const canViewFinances = (role: UserRole): boolean => {
+export const canViewFinances = (role: UserRole | UserRole[]): boolean => {
   return hasPermission(role, 'canViewFinancialRecords');
 };
 
-export const canManageEvents = (role: UserRole): boolean => {
+export const canManageEvents = (role: UserRole | UserRole[]): boolean => {
   return hasPermission(role, 'canManageEvents');
 };
 
-export const canManageDocumentation = (role: UserRole): boolean => {
+export const canManageDocumentation = (role: UserRole | UserRole[]): boolean => {
   return hasPermission(role, 'canManageDocumentation');
 }; 

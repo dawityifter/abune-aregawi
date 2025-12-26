@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, Fragment } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n/I18nProvider';
 import { useAuth } from '../contexts/AuthContext';
-import { getRolePermissions } from '../utils/roles';
+import { getRolePermissions, getMergedPermissions, UserRole } from '../utils/roles';
 import { isFeatureEnabled, featureFlags } from '../config/featureFlags';
 // import { Transition } from '@headlessui/react'; // Removed due to React 19 compatibility
 
@@ -80,8 +80,9 @@ const Navigation: React.FC = () => {
     fetchUserProfile();
   }, [currentUser, getUserProfile]);
 
-  const userRole = userProfile?.data?.member?.role || userProfile?.role || 'member';
-  const permissions = getRolePermissions(userRole);
+  const member = userProfile?.data?.member || userProfile;
+  const userRoles: UserRole[] = member?.roles || [member?.role || 'member'];
+  const permissions = getMergedPermissions(userRoles);
 
   // Show navigation on all pages including home page
 
@@ -178,7 +179,7 @@ const Navigation: React.FC = () => {
                     {userProfile?.data?.member?.firstName || userProfile?.firstName || currentUser.displayName?.split(' ')[0] || currentUser.email?.split('@')[0]}
                   </span>
                   <span className="text-xs text-white/70">
-                    {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                    {userRoles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ')}
                   </span>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -246,7 +247,7 @@ const Navigation: React.FC = () => {
                     {userProfile?.data?.member?.firstName || currentUser.displayName || currentUser.email}
                   </div>
                   <div className="text-sm text-gray-500">
-                    {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+                    {userRoles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ')}
                   </div>
                 </div>
               </div>

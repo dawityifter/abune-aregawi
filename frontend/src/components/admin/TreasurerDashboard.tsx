@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import BankUpload from '../finance/BankUpload';
 import BankTransactionList from '../finance/BankTransactionList';
 import { useAuth } from '../../contexts/AuthContext';
-import { getRolePermissions } from '../../utils/roles';
+import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
 import TransactionList from './TransactionList';
 import PaymentStats from './PaymentStats';
 import PaymentReports from './PaymentReports';
@@ -48,8 +48,9 @@ const TreasurerDashboard: React.FC = () => {
   console.log('🏦 Firebase user:', firebaseUser);
 
   // Check user permissions
-  const userRole = userProfile?.data?.member?.role || currentUser?.role || 'member';
-  const permissions = getRolePermissions(userRole);
+  const memberData = userProfile?.data?.member || userProfile || currentUser;
+  const userRoles: UserRole[] = memberData?.roles || [(memberData?.role || 'member') as UserRole];
+  const permissions = getMergedPermissions(userRoles);
 
   // Check if user has financial permissions
   const hasFinancialAccess = permissions.canViewFinancialRecords || permissions.canEditFinancialRecords;

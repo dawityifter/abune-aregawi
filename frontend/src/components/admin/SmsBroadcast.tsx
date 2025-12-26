@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getRolePermissions, UserRole } from '../../utils/roles';
+import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
 
 type RecipientType = 'individual' | 'department' | 'all' | 'pending_pledges' | 'fulfilled_pledges';
 
@@ -64,9 +64,10 @@ const SmsBroadcast: React.FC = () => {
     run();
   }, [currentUser, getUserProfile]);
 
-  const userRole: UserRole = (userProfile?.data?.member?.role || 'member') as UserRole;
-  const permissions = useMemo(() => getRolePermissions(userRole), [userRole]);
-  const canSend = permissions.canSendCommunications || userRole === 'admin' || userRole === 'church_leadership' || userRole === 'secretary';
+  const memberData = userProfile?.data?.member || userProfile || currentUser;
+  const userRoles: UserRole[] = (memberData?.roles || [(memberData?.role || 'member') as UserRole]) as UserRole[];
+  const permissions = useMemo(() => getMergedPermissions(userRoles), [userRoles]);
+  const canSend = permissions.canSendCommunications || userRoles.some(r => ['admin', 'church_leadership', 'secretary'].includes(r));
 
   // Load active departments for authorized users
   useEffect(() => {
@@ -387,7 +388,7 @@ const SmsBroadcast: React.FC = () => {
               <i className="fas fa-sms text-2xl text-primary-800 mr-3" />
               <h1 className="text-xl font-semibold text-gray-900">SMS Communications</h1>
             </div>
-            <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded-full">{userRole}</span>
+            <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded-full">{userRoles.join(', ')}</span>
           </div>
         </div>
       </header>

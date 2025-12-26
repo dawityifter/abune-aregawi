@@ -15,7 +15,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<any>(null);
-  const [newRole, setNewRole] = useState<UserRole>('member');
+  const [newRoles, setNewRoles] = useState<UserRole[]>([]);
   const [updating, setUpdating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
@@ -107,7 +107,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
           'Authorization': idToken ? `Bearer ${idToken}` : '',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ role: newRole })
+        body: JSON.stringify({ roles: newRoles })
       });
 
       if (!response.ok) {
@@ -118,12 +118,12 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
       // Update local state
       setMembers(prev => prev.map(member =>
         member.id === selectedMember.id
-          ? { ...member, role: newRole }
+          ? { ...member, role: newRoles[0], roles: newRoles }
           : member
       ));
 
       setSelectedMember(null);
-      setNewRole('member');
+      setNewRoles([]);
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -334,15 +334,19 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(member.role)}`}>
-                      {getRoleDisplayName(member.role)}
-                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {(member.roles || [member.role]).map((r: UserRole) => (
+                        <span key={r} className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(r)}`}>
+                          {getRoleDisplayName(r)}
+                        </span>
+                      ))}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
                       onClick={() => {
                         setSelectedMember(member);
-                        setNewRole(member.role);
+                        setNewRoles(member.roles || [member.role]);
                       }}
                       className="text-primary-600 hover:text-primary-900"
                     >
@@ -416,18 +420,28 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t('admin.roles.newRole')}
               </label>
-              <select
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value as UserRole)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="member">Member</option>
-                <option value="secretary">Secretary</option>
-                <option value="treasurer">Treasurer</option>
-                <option value="church_leadership">Church Leadership</option>
-                <option value="admin">Admin</option>
-                <option value="relationship">Relationship</option>
-              </select>
+              <div className="space-y-2 border border-gray-200 rounded-md p-3 max-h-48 overflow-y-auto">
+                {(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship', 'member'] as UserRole[]).map((role) => (
+                  <label key={role} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                    <input
+                      type="checkbox"
+                      checked={newRoles.includes(role)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setNewRoles([...newRoles, role]);
+                        } else {
+                          // Prevent removing all roles
+                          if (newRoles.length > 1) {
+                            setNewRoles(newRoles.filter(r => r !== role));
+                          }
+                        }
+                      }}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-gray-700">{getRoleDisplayName(role)}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div className="mb-4">
@@ -445,7 +459,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
               </button>
               <button
                 onClick={handleRoleUpdate}
-                disabled={updating || newRole === selectedMember.role}
+                disabled={updating || JSON.stringify(newRoles.sort()) === JSON.stringify((selectedMember.roles || [selectedMember.role]).sort())}
                 className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
               >
                 {updating ? t('admin.roles.updating') : t('admin.roles.updateRole')}

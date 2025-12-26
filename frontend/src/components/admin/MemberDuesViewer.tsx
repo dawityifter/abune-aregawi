@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
-import { getRolePermissions } from '../../utils/roles';
+import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
 import AddPaymentModal from './AddPaymentModal';
 import { formatMemberName } from '../../utils/formatName';
 
@@ -74,8 +74,8 @@ interface MemberDuesViewerProps {
 
 const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }) => {
   const { firebaseUser, currentUser: authUser } = useAuth();
-  const userRole = (authUser as any)?.role || 'member';
-  const permissions = getRolePermissions(userRole);
+  const userRoles: UserRole[] = (authUser as any)?.roles || [(authUser as any)?.role || 'member'];
+  const permissions = getMergedPermissions(userRoles);
   const [duesData, setDuesData] = useState<MemberDuesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

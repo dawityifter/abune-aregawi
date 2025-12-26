@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getRolePermissions, UserRole } from '../utils/roles';
+import { getRolePermissions, getMergedPermissions, UserRole } from '../utils/roles';
 import { getDisplayEmail } from '../utils/email';
 import { formatMemberName } from '../utils/formatName';
 
@@ -58,8 +58,9 @@ const Dashboard: React.FC = () => {
   const userName = user?.first_name || user?.data?.member?.firstName || firebaseUser?.displayName || 'User';
 
   // Check if user has admin permissions
-  const userRole = (user?.data?.member?.role || user?.role || 'member') as UserRole;
-  const permissions = getRolePermissions(userRole);
+  const memberData = user?.data?.member || user;
+  const userRoles: UserRole[] = memberData?.roles || [memberData?.role || 'member'];
+  const permissions = getMergedPermissions(userRoles);
   const isTempUser = user?._temp || false;
   // Treat backend-returned 'dependent' as a restricted role for UI visibility
   const isDependent = (user?.data?.member?.role || user?.role) === 'dependent';
@@ -68,12 +69,12 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     console.log('Dashboard - User state:', {
       isTempUser,
-      userRole,
+      userRoles,
       permissions,
       hasUserProfile: !!user,
       userData: user
     });
-  }, [user, isTempUser, userRole, permissions]);
+  }, [user, isTempUser, userRoles, permissions]);
 
   // Update user profile when auth state changes
   useEffect(() => {

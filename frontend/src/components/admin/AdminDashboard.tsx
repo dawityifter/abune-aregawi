@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { getRolePermissions, UserRole } from '../../utils/roles';
+import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
 import MemberList from './MemberList';
 import MemberEditModal from './MemberEditModal';
 import RoleManagement from './RoleManagement';
@@ -49,18 +49,19 @@ const AdminDashboard: React.FC = () => {
     fetchUserProfile();
   }, [currentUser, getUserProfile]);
 
-  const authUserRole = userProfile?.data?.member?.role || 'member';
-  const permissions = getRolePermissions(authUserRole as UserRole);
+  const memberData = userProfile?.data?.member || userProfile;
+  const userRoles: UserRole[] = memberData?.roles || [(memberData?.role || 'member') as UserRole];
+  const permissions = getMergedPermissions(userRoles);
 
   useEffect(() => {
     // Only admins, leadership, and secretary can access the dashboard generally, 
     // but we can refine access per tab via permissions.
-    if (permissions.canAccessAdminPanel || authUserRole === 'admin' || authUserRole === 'church_leadership' || authUserRole === 'secretary') {
+    if (permissions.canAccessAdminPanel || userRoles.some(r => ['admin', 'church_leadership', 'secretary'].includes(r))) {
       setCanAccess(true);
     } else {
       setCanAccess(false);
     }
-  }, [authUserRole, permissions]);
+  }, [userRoles, permissions]);
 
   // Handle URL hash for tab navigation
   useEffect(() => {
@@ -135,7 +136,7 @@ const AdminDashboard: React.FC = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">{t('admin.dashboard')}</h1>
         <p className="mt-2 text-gray-600">
-          {t('admin.welcome')}, <span className="font-semibold">{currentUser?.displayName || currentUser?.email}</span> ({authUserRole})
+          {t('admin.welcome')}, <span className="font-semibold">{currentUser?.displayName || currentUser?.email}</span> ({userRoles.join(', ')})
         </p>
       </div>
 

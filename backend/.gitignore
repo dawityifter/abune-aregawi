@@ -119,3 +119,7 @@ dist/
 **/Member-full-list*.csv
 # Backend backup folder
 backup/
+
+# Database Restore scripts
+restore-database.sh
+restore-db-simple.sh

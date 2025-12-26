@@ -16,9 +16,14 @@ const roleMiddleware = (allowedRoles) => {
       });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
-      console.log('❌ Access denied - user role not in allowed roles:', {
-        userRole: req.user.role,
+    const userRole = req.user.role;
+    const userRoles = Array.isArray(req.user.roles) ? req.user.roles : [userRole];
+
+    const hasAccess = userRoles.some(role => allowedRoles.includes(role));
+
+    if (!hasAccess) {
+      console.log('❌ Access denied - none of user roles in allowed roles:', {
+        userRoles,
         allowedRoles
       });
       return res.status(403).json({
