@@ -34,6 +34,7 @@ import './index.css';
 import DevBanner from './components/DevBanner';
 import { isFeatureEnabled } from './config/featureFlags';
 import FirstLoginModal from './components/auth/FirstLoginModal';
+import ChatWidget from './components/ChatWidget';
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
           <div className="App">
             {isFeatureEnabled('enableDevBanner') && <DevBanner />}
             <Navigation />
+            <ChatWidget />
             {/* Global first-time sign-in modal (shows once per session) */}
             <FirstLoginModal />
             <Routes>

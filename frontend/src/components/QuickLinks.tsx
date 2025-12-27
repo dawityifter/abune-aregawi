@@ -47,7 +47,7 @@ const QuickLinks: React.FC = () => {
               <div className="flex flex-col h-full">
                 <div className="relative w-full aspect-[3/4] overflow-hidden rounded-md shadow mt-3">
                   <img
-                    src={`${process.env.PUBLIC_URL || ''}/keshi-Tadesse.png`}
+                    src={`${process.env.PUBLIC_URL || ''}/meleakeTsehay-Tadesse.png`}
                     alt="Keshi Tadesse"
                     className="absolute inset-0 w-full h-full object-cover object-top"
                     loading="lazy"

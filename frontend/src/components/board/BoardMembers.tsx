@@ -39,7 +39,7 @@ const BoardMembers: React.FC = () => {
                 if (data.success && Array.isArray(data.data)) {
                     const mappedMembers = data.data.map((m: any) => {
                         const firstNameLower = m.first_name.toLowerCase();
-                        const knownImages = ['afework', 'dawit', 'fetsum', 'seifu', 'merafe', 'teshager'];
+                        const knownImages = ['afework', 'dawit', 'fetsum', 'seifu', 'solomon', 'merafe', 'teshager'];
 
                         let imageUrl = `https://ui-avatars.com/api/?name=${m.first_name}+${m.last_name}&background=fef3c7&color=92400e`;
 
@@ -198,7 +198,7 @@ const BoardMembers: React.FC = () => {
                     <div className="md:flex">
                         <div className="md:w-2/5 bg-neutral-100 relative min-h-[300px]">
                             <img
-                                src={`${process.env.PUBLIC_URL || ''}/keshi-Tadesse.png`}
+                                src={`${process.env.PUBLIC_URL || ''}/meleakeTsehay-Tadesse.png`}
                                 alt="Keshi Tadesse"
                                 className="absolute inset-0 w-full h-full object-cover object-top"
                             />
