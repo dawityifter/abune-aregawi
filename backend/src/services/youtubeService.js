@@ -4,13 +4,13 @@ const youtube = google.youtube('v3');
 
 // Cache configuration
 const cache = new Map();
-const CACHE_TTL = 35 * 60 * 1000; // 35 minutes (Strictly safe for 2 channels)
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes (More responsive)
 
 /**
  * Check if the current time is within core broadcasting hours (CST)
  * Thursday: 7PM - 10PM (19 - 22)
  * Friday: 7PM - 10PM (19 - 22)
- * Sunday: 4AM - 12PM (4 - 12)
+ * Sunday: 4AM - 2PM (4 - 14) // Extended until 2PM
  */
 const isCoreHour = () => {
     const now = new Date();
@@ -24,7 +24,7 @@ const isCoreHour = () => {
 
     if (day === 'Thursday' && hour >= 19 && hour < 22) return true;
     if (day === 'Friday' && hour >= 19 && hour < 22) return true;
-    if (day === 'Sunday' && hour >= 4 && hour < 12) return true;
+    if (day === 'Sunday' && hour >= 4 && hour < 14) return true;
 
     return false;
 };
@@ -36,15 +36,14 @@ const isCoreHour = () => {
  * @returns {Promise<Object>} Status object { isLive: boolean, videoId: string | null }
  */
 const checkYouTubeLiveStatus = async (channelId) => {
-    // Only check in production and during core hours
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.FORCE_YOUTUBE_CHECK === 'true';
+    // Check if check is forced or if we have an API key (regardless of NODE_ENV)
+    const canCheck = !!process.env.YOUTUBE_API_KEY || process.env.FORCE_YOUTUBE_CHECK === 'true';
 
-    if (!isProduction) {
-        // Skip in development unless forced
-        return { isLive: false, skipped: 'development' };
+    if (!canCheck) {
+        return { isLive: false, skipped: 'configuration_missing' };
     }
 
-    if (!isCoreHour()) {
+    if (!isCoreHour() && process.env.FORCE_YOUTUBE_CHECK !== 'true') {
         console.log(`[YouTube] Skipping live check for ${channelId}: outside core hours`);
         return { isLive: false, skipped: 'outside_hours' };
     }
