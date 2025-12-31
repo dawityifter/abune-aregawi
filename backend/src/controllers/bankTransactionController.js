@@ -47,7 +47,12 @@ exports.uploadBankCSV = asyncHandler(async (req, res) => {
             const existing = existingMap.get(txn.transaction_hash);
 
             if (!existing) {
-                toCreate.push(txn);
+                // Ensure we don't add the same hash twice if it appears multiple times in the CSV
+                if (!toCreate.some(t => t.transaction_hash === txn.transaction_hash)) {
+                    toCreate.push(txn);
+                } else {
+                    results.skipped++;
+                }
             } else {
                 // Check if we need to update balance (existing is null, new is not)
                 if (existing.balance === null && txn.balance !== null) {
@@ -93,8 +98,18 @@ exports.uploadBankCSV = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error('CSV Upload Error:', error);
+
+        // Detailed logging for Sequelize validation errors
+        if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+            console.error('Validation Error Details:', error.errors.map(e => ({
+                message: e.message,
+                path: e.path,
+                value: e.value
+            })));
+        }
+
         res.status(500);
-        throw new Error('Error processing CSV: ' + error.message);
+        throw new Error('Error processing CSV: ' + (error.errors ? error.errors[0].message : error.message));
     }
 });
 

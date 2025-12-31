@@ -79,13 +79,34 @@ const parseChaseCSV = (fileBuffer) => {
             }
         }
 
+        // 4. Robust Amount Parsing (Remove commas and $ if present)
+        const amountStr = (row['Amount'] || '0').replace(/[$,]/g, '');
+        let amount = parseFloat(amountStr);
+        if (isNaN(amount)) amount = 0;
+
+        // Apply debit sign if applicable
+        if (row['Details'] === 'DEBIT' || row['Details'] === 'CHKS P' || amountStr.startsWith('-')) {
+            amount = -Math.abs(amount);
+        }
+
+        // 5. Robust Balance Parsing
+        const balanceStr = (row['Balance'] || '').replace(/[$,]/g, '');
+        let balance = balanceStr ? parseFloat(balanceStr) : null;
+        if (isNaN(balance)) balance = null;
+
+        // 6. Robust Date Parsing
+        const postingDate = row['Posting Date'];
+        const date = new Date(postingDate);
+        if (isNaN(date.getTime())) {
+            console.warn(`Skipping row with invalid date: "${postingDate}"`);
+            return null;
+        }
+
         return {
             transaction_hash: generateTransactionHash(row),
-            date: new Date(row['Posting Date']), // Ensure correct date format
-            amount: (row['Details'] === 'DEBIT' || row['Details'] === 'CHKS P' || row['Amount'].startsWith('-'))
-                ? -Math.abs(parseFloat(row['Amount']))
-                : parseFloat(row['Amount']),
-            balance: row['Balance'] ? parseFloat(row['Balance']) : null,
+            date: date,
+            amount: amount,
+            balance: balance,
             description: rawDesc,
             type: type,
             status: 'PENDING',
@@ -94,7 +115,7 @@ const parseChaseCSV = (fileBuffer) => {
             check_number: checkNumber,
             raw_data: row
         };
-    });
+    }).filter(t => t !== null); // Remove skipped rows
 };
 
 module.exports = {
