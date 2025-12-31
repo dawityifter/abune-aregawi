@@ -9,7 +9,7 @@ interface Transaction {
   collected_by: number;
   payment_date: string;
   amount: number;
-  payment_type: 'membership_due' | 'tithe' | 'donation' | 'event' | 'other';
+  payment_type: 'membership_due' | 'tithe' | 'donation' | 'event' | 'tigray_hunger_fundraiser' | 'other';
   payment_method: 'cash' | 'check' | 'zelle' | 'credit_card' | 'debit_card' | 'ach' | 'other';
   status?: 'pending' | 'succeeded' | 'failed' | 'canceled';
   receipt_number?: string;
@@ -194,6 +194,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
       tithe: t('treasurerDashboard.transactionList.types.tithe'),
       donation: t('treasurerDashboard.transactionList.types.donation'),
       event: t('treasurerDashboard.transactionList.types.event'),
+      tigray_hunger_fundraiser: t('treasurerDashboard.transactionList.types.tigray_hunger_fundraiser'),
       other: t('treasurerDashboard.transactionList.types.other')
     };
     return labels[type as keyof typeof labels] || type;
@@ -299,6 +300,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
               <option value="tithe">{t('treasurerDashboard.transactionList.types.tithe')}</option>
               <option value="donation">{t('treasurerDashboard.transactionList.types.donation')}</option>
               <option value="event">{t('treasurerDashboard.transactionList.types.event')}</option>
+              <option value="tigray_hunger_fundraiser">{t('treasurerDashboard.transactionList.types.tigray_hunger_fundraiser')}</option>
               <option value="other">{t('treasurerDashboard.transactionList.types.other')}</option>
             </select>
           </div>

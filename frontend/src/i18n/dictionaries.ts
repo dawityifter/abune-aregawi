@@ -179,6 +179,7 @@ export interface Dictionaries {
         tithe: string;
         donation: string;
         event: string;
+        tigray_hunger_fundraiser: string;
         other: string;
       };
       methods: {
@@ -276,6 +277,7 @@ export interface Dictionaries {
           summary: string;
           behind: string;
           monthly: string;
+          fundraiser: string;
         };
         summary: {
           totalMembers: string;
@@ -756,6 +758,7 @@ export const en: Dictionaries = {
         tithe: "Tithe",
         donation: "Donation",
         event: "Event",
+        tigray_hunger_fundraiser: "Tigray Hunger Fundraiser",
         other: "Other"
       },
       methods: {
@@ -852,7 +855,8 @@ export const en: Dictionaries = {
         types: {
           summary: "Summary Report",
           behind: "Behind on Payments",
-          monthly: "Monthly Breakdown"
+          monthly: "Monthly Breakdown",
+          fundraiser: "Tigray Hunger Fundraiser"
         },
         summary: {
           totalMembers: "Total Members",
@@ -1338,6 +1342,7 @@ export const ti: Dictionaries = {
         tithe: "asserat (ዓስራት)",
         donation: "ልገሳ",
         event: "በዓል/መረሃ ግብሪ",
+        tigray_hunger_fundraiser: "ረድኤት ንጥሙያት ትግራይ",
         other: "ካልእ"
       },
       methods: {
@@ -1434,7 +1439,8 @@ export const ti: Dictionaries = {
         types: {
           summary: "ሓፈሻዊ ጸብጻብ",
           behind: "ክፍሊት ዝተረፎም",
-          monthly: "ወርሓዊ ጸብጻብ"
+          monthly: "ወርሓዊ ጸብጻብ",
+          fundraiser: "ረድኤት ንጥሙያት ትግራይ"
         },
         summary: {
           totalMembers: "ጠቕላላ ኣባላት",

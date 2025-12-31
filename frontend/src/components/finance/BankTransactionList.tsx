@@ -65,6 +65,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         { value: 'offering', label: 'Offering (መባእ)' },
         { value: 'building_fund', label: 'Building Fund (ንሕንጻ)' },
         { value: 'event', label: 'Event / Fundraising (ንበዓል)' },
+        { value: 'tigray_hunger_fundraiser', label: 'Tigray Hunger Fundraiser (ረድኤት ንትግራይ)' },
         { value: 'vow', label: 'Vow / Selet (ስለት)' },
         { value: 'religious_item_sales', label: 'Religious Item Sales (ንዋየ ቅድሳት)' },
         { value: 'other', label: 'Other (ሌላ)' },

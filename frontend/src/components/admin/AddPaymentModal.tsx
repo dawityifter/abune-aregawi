@@ -405,6 +405,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
       { value: 'building_fund', label: 'Building Fund (ንሕንጻ ቤተክርስቲያን)' },
       { value: 'offering', label: 'Offering (መባእ)' },
       { value: 'vow', label: 'Vow (ስእለት)' },
+      { value: 'tigray_hunger_fundraiser', label: 'Tigray Hunger Fundraiser (ረድኤት ንጥሙያት ትግራይ)' },
       { value: 'religious_item_sales', label: 'Religious Item Sales (Bibles, candles, etc.)' },
       // Removed explicit 'event' and 'other' options from dropdown per request
     ];

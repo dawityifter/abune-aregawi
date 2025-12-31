@@ -39,6 +39,21 @@ interface ReportData {
     november: number;
     december: number;
   };
+  fundraiser?: {
+    transactions: Array<{
+      id: number;
+      member_id: number | null;
+      amount: number;
+      payment_date: string;
+      payment_method: string;
+      member?: {
+        id: number;
+        first_name: string;
+        last_name: string;
+      };
+    }>;
+    totalCollected: number;
+  };
 }
 
 interface PaymentReportsProps {
@@ -48,7 +63,7 @@ interface PaymentReportsProps {
 const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
   const { currentUser, firebaseUser } = useAuth();
   const { t } = useLanguage();
-  const [reportType, setReportType] = useState<'summary' | 'behind_payments' | 'monthly_breakdown'>('summary');
+  const [reportType, setReportType] = useState<'summary' | 'behind_payments' | 'monthly_breakdown' | 'fundraiser'>('summary');
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -250,6 +265,63 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
     );
   };
 
+  const renderFundraiserReport = () => {
+    if (!reportData?.fundraiser) return null;
+
+    const { transactions, totalCollected } = reportData.fundraiser;
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {t('treasurerDashboard.reportTabs.paymentReports.types.fundraiser')} ({transactions.length})
+            </h3>
+            <div className="text-lg font-bold text-green-600">
+              {t('treasurerDashboard.reportTabs.paymentReports.summary.totalCollected')}: {formatCurrency(totalCollected)}
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {transactions.map((tx) => (
+                  <tr key={tx.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {tx.member_id || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {tx.member ? `${tx.member.first_name} ${tx.member.last_name}` : 'Anonymous'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                      {formatCurrency(tx.amount)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(tx.payment_date).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">
+                      {tx.payment_method.replace('_', ' ')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Report Type Selector */}
@@ -264,6 +336,7 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
             <option value="summary">{t('treasurerDashboard.reportTabs.paymentReports.types.summary')}</option>
             <option value="behind_payments">{t('treasurerDashboard.reportTabs.paymentReports.types.behind')}</option>
             <option value="monthly_breakdown">{t('treasurerDashboard.reportTabs.paymentReports.types.monthly')}</option>
+            <option value="fundraiser">{t('treasurerDashboard.reportTabs.paymentReports.types.fundraiser')}</option>
           </select>
           <button
             onClick={fetchReport}
@@ -285,6 +358,7 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
           {reportType === 'summary' && renderSummaryReport()}
           {reportType === 'behind_payments' && renderBehindPaymentsReport()}
           {reportType === 'monthly_breakdown' && renderMonthlyBreakdownReport()}
+          {reportType === 'fundraiser' && renderFundraiserReport()}
         </div>
       )}
     </div>
