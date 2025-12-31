@@ -108,6 +108,16 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         fetchTransactions();
     }, [firebaseUser, page, filterStatus, filterType, startDate, endDate, searchDescription, refreshTrigger]);
 
+    // Global refresh listener
+    useEffect(() => {
+        const handleRefresh = () => {
+            setPage(1); // Reset to first page on refresh
+            fetchTransactions();
+        };
+        window.addEventListener('bank:refresh', handleRefresh);
+        return () => window.removeEventListener('bank:refresh', handleRefresh);
+    }, [firebaseUser, filterStatus, filterType, startDate, endDate, searchDescription]);
+
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
     };
@@ -142,6 +152,8 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
 
             if (res.ok) {
                 fetchTransactions();
+                // Trigger general payments stats refresh in dashboard
+                window.dispatchEvent(new CustomEvent('payments:refresh'));
             } else {
                 alert('Failed to reconcile');
             }
