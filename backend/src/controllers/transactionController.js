@@ -995,6 +995,32 @@ const generateTransactionReport = async (req, res) => {
       return res.json({ success: true, data: { monthlyTotals } });
     }
 
+    if (reportType === 'fundraiser') {
+      const fundraiserTransactions = await Transaction.findAll({
+        where: { payment_type: 'tigray_hunger_fundraiser' },
+        include: [
+          {
+            model: Member,
+            as: 'member',
+            attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
+          }
+        ],
+        order: [['payment_date', 'DESC']]
+      });
+
+      const totalCollected = fundraiserTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+
+      return res.json({
+        success: true,
+        data: {
+          fundraiser: {
+            transactions: fundraiserTransactions,
+            totalCollected
+          }
+        }
+      });
+    }
+
     return res.status(400).json({ success: false, message: `Unsupported report type: ${reportType}` });
   } catch (error) {
     console.error('Error generating transaction report:', error);

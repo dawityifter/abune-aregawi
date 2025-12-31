@@ -10,12 +10,12 @@ module.exports = (sequelize) => {
         foreignKey: 'member_id',
         as: 'member'
       });
-      
+
       Transaction.belongsTo(models.Member, {
         foreignKey: 'collected_by',
         as: 'collector'
       });
-      
+
       // Add association with LedgerEntry
       Transaction.hasMany(models.LedgerEntry, {
         foreignKey: 'transaction_id',
@@ -23,7 +23,7 @@ module.exports = (sequelize) => {
         onDelete: 'CASCADE',
         hooks: true
       });
-      
+
       // Add association with IncomeCategory
       Transaction.belongsTo(models.IncomeCategory, {
         foreignKey: 'income_category_id',
@@ -80,9 +80,9 @@ module.exports = (sequelize) => {
       comment: 'Payment amount in dollars and cents (minimum $1.00)'
     },
     payment_type: {
-      type: DataTypes.ENUM('membership_due', 'tithe', 'offering', 'donation', 'vow', 'building_fund', 'event', 'religious_item_sales', 'other'),
+      type: DataTypes.ENUM('membership_due', 'tithe', 'offering', 'donation', 'vow', 'building_fund', 'event', 'religious_item_sales', 'tigray_hunger_fundraiser', 'other'),
       allowNull: false,
-      comment: 'Type of payment (membership dues, tithes, offerings, donations, vows, building fund, events, religious item sales, etc.)'
+      comment: 'Type of payment (membership dues, tithes, offerings, donations, vows, building fund, events, religious item sales, fundraiser, etc.)'
     },
     payment_method: {
       type: DataTypes.ENUM('cash', 'check', 'zelle', 'credit_card', 'debit_card', 'ach', 'other'),

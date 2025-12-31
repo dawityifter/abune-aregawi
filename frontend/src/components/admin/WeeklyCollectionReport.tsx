@@ -158,6 +158,18 @@ const WeeklyCollectionReport: React.FC = () => {
     return labels[method as keyof typeof labels] || method;
   };
 
+  const getPaymentTypeLabel = (type: string) => {
+    const labels = {
+      membership_due: t('treasurerDashboard.transactionList.types.membership_due'),
+      tithe: t('treasurerDashboard.transactionList.types.tithe'),
+      donation: t('treasurerDashboard.transactionList.types.donation'),
+      event: t('treasurerDashboard.transactionList.types.event'),
+      tigray_hunger_fundraiser: t('treasurerDashboard.transactionList.types.tigray_hunger_fundraiser'),
+      other: t('treasurerDashboard.transactionList.types.other')
+    };
+    return labels[type as keyof typeof labels] || type.split('_').join(' ');
+  };
+
   const toggleSection = (method: string) => {
     const newExpanded = new Set(expandedSections);
     if (newExpanded.has(method)) {
@@ -332,8 +344,8 @@ const WeeklyCollectionReport: React.FC = () => {
                               <td className="px-4 py-2 text-sm text-gray-700">
                                 {formatDate(transaction.entry_date)}
                               </td>
-                              <td className="px-4 py-2 text-sm text-gray-700 capitalize">
-                                {transaction.type.replace('_', ' ')}
+                              <td className="px-4 py-2 text-sm text-gray-700">
+                                {getPaymentTypeLabel(transaction.type)}
                               </td>
                               <td className="px-4 py-2 text-sm text-gray-700">
                                 {transaction.member_name || 'Anonymous'}

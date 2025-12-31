@@ -74,6 +74,14 @@ const INCOME_CATEGORIES = [
     display_order: 9
   },
   {
+    gl_code: 'INC010',
+    name: 'Tigray Hunger Fundraiser',
+    description: 'Fundraising for hunger victims in Tigray',
+    payment_type_mapping: 'tigray_hunger_fundraiser',
+    is_active: true,
+    display_order: 10
+  },
+  {
     gl_code: 'INC999',
     name: 'Other Income',
     description: 'Miscellaneous income not covered by other categories',
