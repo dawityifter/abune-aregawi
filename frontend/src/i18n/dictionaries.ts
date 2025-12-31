@@ -162,6 +162,7 @@ export interface Dictionaries {
         };
       };
       table: {
+        transactionId: string;
         date: string;
         memberId: string;
         member: string;
@@ -741,6 +742,7 @@ export const en: Dictionaries = {
         }
       },
       table: {
+        transactionId: "Transaction ID",
         date: "Date",
         memberId: "Member ID",
         member: "Member",
@@ -1325,6 +1327,7 @@ export const ti: Dictionaries = {
         }
       },
       table: {
+        transactionId: "መፍለይ ክፍሊት (ID)",
         date: "ዕለት",
         memberId: "መፍለይ ኣባል (ID)",
         member: "ኣባል",
