@@ -268,11 +268,14 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
         delete payload.yearlyPledge;
       }
 
-      // Map titleId to title_id (backend supports both but good to be explicit)
-      if (payload.titleId !== undefined && payload.titleId !== '') {
-        const num = Number(payload.titleId);
-        if (Number.isFinite(num)) {
-          payload.title_id = num;
+      // Map titleId to title_id (ensure '0' from Number(null) or empty string is null)
+      if (payload.titleId !== undefined) {
+        const val = payload.titleId;
+        if (val === '' || val === null || val === undefined) {
+          payload.title_id = null;
+        } else {
+          const num = Number(val);
+          payload.title_id = (num > 0) ? num : null;
         }
         delete payload.titleId;
       }
