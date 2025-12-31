@@ -1002,7 +1002,14 @@ const generateTransactionReport = async (req, res) => {
           {
             model: Member,
             as: 'member',
-            attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number']
+            attributes: ['id', 'first_name', 'last_name', 'email', 'phone_number', 'spouse_name'],
+            include: [
+              {
+                model: Member,
+                as: 'family_head',
+                attributes: ['first_name', 'last_name']
+              }
+            ]
           }
         ],
         order: [['payment_date', 'DESC']]
