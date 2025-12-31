@@ -465,6 +465,7 @@ const ZelleReview: React.FC = () => {
                         <option value="tithe">Tithe</option>
                         <option value="donation">Donation</option>
                         <option value="event">Event</option>
+                        <option value="tigray_hunger_fundraiser">Tigray Hunger Fundraiser</option>
                         <option value="other">Other</option>
                       </select>
                       {!it.already_exists ? (
