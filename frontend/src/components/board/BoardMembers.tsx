@@ -39,7 +39,7 @@ const BoardMembers: React.FC = () => {
                 if (data.success && Array.isArray(data.data)) {
                     const mappedMembers = data.data.map((m: any) => {
                         const firstNameLower = m.first_name.toLowerCase();
-                        const knownImages = ['afework', 'dawit', 'fetsum', 'alemseged', 'desta', 'tafese', 'seifu', 'solomon', 'merafe', 'teshager'];
+                        const knownImages = ['afework', 'dawit', 'fetsum', 'alemseged','hamelmal', 'desta', 'tafese', 'seifu', 'solomon', 'merafe', 'teshager'];
 
                         let imageUrl = `https://ui-avatars.com/api/?name=${m.first_name}+${m.last_name}&background=fef3c7&color=92400e`;
 
