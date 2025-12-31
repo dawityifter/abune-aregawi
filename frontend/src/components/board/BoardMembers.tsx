@@ -260,9 +260,7 @@ const BoardMembers: React.FC = () => {
                                             <img
                                                 src={member.image}
                                                 alt={member.name}
-                                                className={`relative w-full h-full rounded-full border-4 border-white shadow-md group-hover:scale-105 transition-transform duration-300 bg-gray-50 ${member.firstName?.toLowerCase() === 'tafese'
-                                                        ? 'object-contain p-2'
-                                                        : 'object-cover ' + (['merafe', 'alemseged', 'desta'].includes(member.firstName?.toLowerCase() || '') ? 'object-top' : '')
+                                                className={`relative w-full h-full rounded-full border-4 border-white shadow-md group-hover:scale-105 transition-transform duration-300 bg-gray-50 object-cover ${['tafese', 'merafe', 'alemseged', 'desta'].includes(member.firstName?.toLowerCase() || '') ? 'object-top' : ''
                                                     }`}
                                             />
                                         </div>
