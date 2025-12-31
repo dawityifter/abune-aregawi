@@ -46,6 +46,7 @@ interface ReportData {
       amount: number;
       payment_date: string;
       payment_method: string;
+      note?: string;
       member?: {
         id: number;
         first_name: string;
@@ -96,6 +97,19 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const parseDonorInfo = (note?: string) => {
+    if (!note || !note.includes('[Anonymous Donor]')) return null;
+    const lines = note.split('\n');
+    const donorInfo: { name?: string; type?: string; email?: string; phone?: string } = {};
+    for (const line of lines) {
+      if (line.startsWith('Name:')) donorInfo.name = line.replace('Name:', '').trim();
+      if (line.startsWith('Type:')) donorInfo.type = line.replace('Type:', '').trim();
+      if (line.startsWith('Email:')) donorInfo.email = line.replace('Email:', '').trim();
+      if (line.startsWith('Phone:')) donorInfo.phone = line.replace('Phone:', '').trim();
+    }
+    return donorInfo;
   };
 
   const formatCurrency = (amount: number) => {
@@ -318,7 +332,9 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
                               return '';
                             })()}
                           </>
-                        ) : 'Anonymous'}
+                        ) : (
+                          parseDonorInfo(tx.note)?.name || 'Anonymous'
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
