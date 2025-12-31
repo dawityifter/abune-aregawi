@@ -840,10 +840,12 @@ exports.updateProfile = async (req, res) => {
     // Handle title_id separately as it might come as titleId or title_id
     const { titleId, title_id, ...restUpdateData } = updateData;
     const finalUpdateData = { ...restUpdateData };
-    if (titleId !== undefined) {
-      finalUpdateData.title_id = titleId;
-    } else if (title_id !== undefined) {
-      finalUpdateData.title_id = title_id;
+
+    // Sanitize titleId: convert empty string or '0' to null
+    const sanitizedTitleId = (titleId || title_id);
+    if (sanitizedTitleId !== undefined) {
+      const numTitleId = Number(sanitizedTitleId);
+      finalUpdateData.title_id = (numTitleId > 0) ? numTitleId : null;
     }
 
     await member.update(finalUpdateData);
@@ -1126,10 +1128,12 @@ exports.updateMember = async (req, res) => {
     // Handle title_id separately as it might come as titleId or title_id
     const { titleId, title_id, ...restUpdates } = updates;
     const finalUpdates = { ...restUpdates };
-    if (titleId !== undefined) {
-      finalUpdates.title_id = titleId;
-    } else if (title_id !== undefined) {
-      finalUpdates.title_id = title_id;
+
+    // Sanitize titleId: convert empty string or '0' to null
+    const sanitizedTitleId = (titleId || title_id);
+    if (sanitizedTitleId !== undefined) {
+      const numTitleId = Number(sanitizedTitleId);
+      finalUpdates.title_id = (numTitleId > 0) ? numTitleId : null;
     }
 
     await member.update(finalUpdates);
