@@ -50,6 +50,11 @@ interface ReportData {
         id: number;
         first_name: string;
         last_name: string;
+        spouse_name?: string;
+        family_head?: {
+          first_name: string;
+          last_name: string;
+        };
       };
     }>;
     totalCollected: number;
@@ -300,7 +305,20 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {tx.member ? `${tx.member.first_name} ${tx.member.last_name}` : 'Anonymous'}
+                        {tx.member ? (
+                          <>
+                            {tx.member.first_name} {tx.member.last_name}
+                            {(() => {
+                              if (tx.member.spouse_name) return `/${tx.member.spouse_name}`;
+                              if (tx.member.family_head &&
+                                (tx.member.family_head.first_name !== tx.member.first_name ||
+                                  tx.member.family_head.last_name !== tx.member.last_name)) {
+                                return `/${tx.member.family_head.first_name} ${tx.member.family_head.last_name}`;
+                              }
+                              return '';
+                            })()}
+                          </>
+                        ) : 'Anonymous'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
