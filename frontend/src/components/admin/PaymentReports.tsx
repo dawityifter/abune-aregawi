@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { formatDateForDisplay } from '../../utils/dateUtils';
 
 interface ReportData {
   summary?: {
@@ -341,7 +342,7 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
                       {formatCurrency(tx.amount)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(tx.payment_date).toLocaleDateString()}
+                      {formatDateForDisplay(tx.payment_date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">
                       {tx.payment_method.replace('_', ' ')}
