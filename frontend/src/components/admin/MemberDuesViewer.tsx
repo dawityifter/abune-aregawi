@@ -82,7 +82,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
   const [error, setError] = useState<string | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const yearOptions = [2026, 2025, 2024];
+  const yearOptions = [2026, 2025];
 
   const fetchMemberDues = useCallback(async () => {
     if (!firebaseUser || !memberId) return;

@@ -52,7 +52,7 @@ const DuesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [dues, setDues] = useState<DuesResponse['data'] | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const yearOptions = [2026, 2025, 2024];
+  const yearOptions = [2026, 2025];
 
   const apiUrl = process.env.REACT_APP_API_URL;
 
