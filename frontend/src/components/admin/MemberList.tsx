@@ -60,6 +60,7 @@ const MemberList: React.FC<MemberListProps> = ({
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAddDependentFor, setShowAddDependentFor] = useState<Member | null>(null);
   const [showPaymentHistoryFor, setShowPaymentHistoryFor] = useState<Member | null>(null);
+  const fetchedRef = React.useRef(false);
 
   // Calculate total unique households
   const totalHouseholds = useMemo(() => {
@@ -167,8 +168,11 @@ const MemberList: React.FC<MemberListProps> = ({
   };
 
   useEffect(() => {
-    fetchAllMembers();
-    fetchDependentsCount();
+    if (!fetchedRef.current) {
+      fetchAllMembers();
+      fetchDependentsCount();
+      fetchedRef.current = true;
+    }
   }, []);
 
   // Refetch when parent signals a refresh (e.g., after save)

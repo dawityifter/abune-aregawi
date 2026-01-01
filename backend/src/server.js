@@ -105,7 +105,7 @@ app.options('*', cors(corsOptions));
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 1000 : 100, // Higher limit in development
+  max: process.env.NODE_ENV === 'development' ? 1000 : 5000, // Higher limit in production to avoid 429s during admin usage
   // Send standard RateLimit-* headers and disable legacy X-RateLimit-* headers
   standardHeaders: true,
   legacyHeaders: false,
