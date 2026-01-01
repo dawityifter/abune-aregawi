@@ -39,7 +39,7 @@ const BoardMembers: React.FC = () => {
                 if (data.success && Array.isArray(data.data)) {
                     const mappedMembers = data.data.map((m: any) => {
                         const firstNameLower = m.first_name.toLowerCase();
-                        const knownImages = ['afework', 'dawit', 'fetsum', 'alemseged','hamelmal', 'desta', 'tafese', 'seifu', 'solomon', 'merafe', 'teshager'];
+                        const knownImages = ['afework', 'dawit', 'fetsum', 'alemseged', 'hamelmal', 'desta', 'tafese', 'seifu', 'solomon', 'merafe', 'teshager'];
 
                         let imageUrl = `https://ui-avatars.com/api/?name=${m.first_name}+${m.last_name}&background=fef3c7&color=92400e`;
 
@@ -260,7 +260,7 @@ const BoardMembers: React.FC = () => {
                                             <img
                                                 src={member.image}
                                                 alt={member.name}
-                                                className={`relative w-full h-full rounded-full border-4 border-white shadow-md group-hover:scale-105 transition-transform duration-300 bg-gray-50 object-cover ${['tafese', 'merafe', 'alemseged', 'desta'].includes(member.firstName?.toLowerCase() || '') ? 'object-top' : ''
+                                                className={`relative w-full h-full rounded-full border-4 border-white shadow-md group-hover:scale-105 transition-transform duration-300 bg-gray-50 object-cover ${member.firstName?.toLowerCase() === 'desta' ? 'object-[0%-20%]' : ['tafese', 'merafe', 'alemseged'].includes(member.firstName?.toLowerCase() || '') ? 'object-top' : ''
                                                     }`}
                                             />
                                         </div>
