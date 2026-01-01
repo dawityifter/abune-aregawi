@@ -60,7 +60,7 @@ function parseCandidatesFromMessage(msg) {
     if (!parts) return;
     for (const p of parts) {
       if (p.mimeType === 'text/plain' && p.body?.data) {
-        try { bodyText += '\n' + Buffer.from(p.body.data, 'base64').toString('utf8'); } catch (_) {}
+        try { bodyText += '\n' + Buffer.from(p.body.data, 'base64').toString('utf8'); } catch (_) { }
       }
       if (p.parts) extractParts(p.parts);
     }
@@ -224,8 +224,8 @@ async function syncZelleFromGmail({ dryRun = false } = {}) {
   // Treat labels as optional.
   let processedLabelId = null;
   let needsReviewLabelId = null;
-  try { processedLabelId = await ensureLabel(gmail, userId, LABEL_PROCESSED); } catch (_) {}
-  try { needsReviewLabelId = await ensureLabel(gmail, userId, LABEL_NEEDS_REVIEW); } catch (_) {}
+  try { processedLabelId = await ensureLabel(gmail, userId, LABEL_PROCESSED); } catch (_) { }
+  try { needsReviewLabelId = await ensureLabel(gmail, userId, LABEL_NEEDS_REVIEW); } catch (_) { }
 
   const qParts = [
     '(subject:"zelle" OR subject:"payment received" OR subject:"you received")',
@@ -251,13 +251,13 @@ async function syncZelleFromGmail({ dryRun = false } = {}) {
       if (res.created || res.dryRun) {
         // Mark processed
         if (processedLabelId) {
-          try { await gmail.users.messages.modify({ userId, id: m.id, requestBody: { addLabelIds: [processedLabelId] } }); } catch (_) {}
+          try { await gmail.users.messages.modify({ userId, id: m.id, requestBody: { addLabelIds: [processedLabelId] } }); } catch (_) { }
         }
         stats.created += res.created ? 1 : 0;
         stats.scanned += 1;
       } else if (res.reason === 'no_member_match') {
         if (needsReviewLabelId) {
-          try { await gmail.users.messages.modify({ userId, id: m.id, requestBody: { addLabelIds: [needsReviewLabelId] } }); } catch (_) {}
+          try { await gmail.users.messages.modify({ userId, id: m.id, requestBody: { addLabelIds: [needsReviewLabelId] } }); } catch (_) { }
         }
         stats.needsReview += 1;
         stats.scanned += 1;
@@ -268,7 +268,7 @@ async function syncZelleFromGmail({ dryRun = false } = {}) {
     } catch (e) {
       // Label needs review on any failure
       if (needsReviewLabelId) {
-        try { await gmail.users.messages.modify({ userId, id: m.id, requestBody: { addLabelIds: [needsReviewLabelId] } }); } catch (_) {}
+        try { await gmail.users.messages.modify({ userId, id: m.id, requestBody: { addLabelIds: [needsReviewLabelId] } }); } catch (_) { }
       }
       stats.errors += 1;
     }
@@ -321,6 +321,7 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
           if (existing.payment_type) {
             payment_type = existing.payment_type;
           }
+          var existing_note = existing.note;
         }
       }
       const would_create = !!(parsed.amount && external_id && member_id) && !already_exists;
@@ -339,6 +340,7 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
         would_create,
         already_exists,
         existing_transaction_id,
+        existing_note: existing_note || null,
         payment_method: 'zelle',
         payment_type,
         status: 'succeeded'

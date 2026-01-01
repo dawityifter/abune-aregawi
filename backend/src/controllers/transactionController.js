@@ -845,7 +845,7 @@ const updateTransactionPaymentType = async (req, res) => {
     const { id } = req.params;
     const { payment_type } = req.body || {};
 
-    const allowed = ['membership_due', 'tithe', 'donation', 'event', 'offering', 'vow', 'building_fund', 'religious_item_sales', 'other'];
+    const allowed = ['membership_due', 'tithe', 'donation', 'event', 'offering', 'vow', 'building_fund', 'religious_item_sales', 'tigray_hunger_fundraiser', 'other'];
     if (!payment_type || !allowed.includes(payment_type)) {
       return res.status(400).json({ success: false, message: `Invalid payment_type. Allowed: ${allowed.join(', ')}` });
     }
@@ -861,6 +861,26 @@ const updateTransactionPaymentType = async (req, res) => {
     }
 
     await tx.update({ payment_type });
+
+    // Sync corresponding LedgerEntry
+    try {
+      const le = await LedgerEntry.findOne({ where: { transaction_id: tx.id } });
+      if (le) {
+        // Find new GL code mapping
+        const freshCat = await IncomeCategory.findOne({ where: { payment_type_mapping: payment_type } });
+        const glCode = freshCat?.gl_code || 'INC999';
+
+        await le.update({
+          type: payment_type,
+          category: glCode,
+          memo: `${glCode} - Zelle payment ${tx.external_id || tx.id}`
+        });
+        console.log(`✅ Synced ledger entry for transaction ${tx.id} to new type ${payment_type}`);
+      }
+    } catch (syncErr) {
+      console.warn(`⚠️ Failed to sync ledger entry for transaction ${tx.id}:`, syncErr.message);
+    }
+
     return res.json({ success: true, data: { id: tx.id, payment_type: tx.payment_type } });
   } catch (error) {
     console.error('Error updating transaction payment_type:', error);

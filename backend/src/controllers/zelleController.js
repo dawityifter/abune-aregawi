@@ -1,5 +1,5 @@
 const { syncZelleFromGmail, previewZelleFromGmail } = require('../services/gmailZelleIngest');
-const { Transaction, ZelleMemoMatch, Member, IncomeCategory } = require('../models');
+const { Transaction, ZelleMemoMatch, Member, IncomeCategory, LedgerEntry } = require('../models');
 
 // Keep memo normalization consistent with the ingest service
 function sanitizeNote(input) {
@@ -39,8 +39,8 @@ module.exports.previewFromGmail = previewFromGmail;
 
 // Helper to process a single transaction creation
 async function processTransactionCreation({ external_id, amount, payment_date, note, member_id, payment_type }, user) {
-  if (!external_id || !member_id || !amount || !payment_date) {
-    throw new Error('external_id, member_id, amount, and payment_date are required');
+  if (!external_id || !amount || !payment_date) {
+    throw new Error('external_id, amount, and payment_date are required');
   }
 
   // Ensure insert-only semantics
@@ -95,10 +95,10 @@ async function processTransactionCreation({ external_id, amount, payment_date, n
     income_category_id
   });
 
-  // Persist memo -> member mapping to enable future automatic matches
+  // Persist memo -> member mapping if a member is matched
   try {
     const memo = sanitizeNote(note || '');
-    if (memo) {
+    if (memo && member_id) {
       const existingMemo = await ZelleMemoMatch.findOne({ where: { memo } });
       let first_name = null;
       let last_name = null;
@@ -119,6 +119,26 @@ async function processTransactionCreation({ external_id, amount, payment_date, n
   } catch (memoErr) {
     console.warn('Zelle memo match upsert warning:', memoErr.message || memoErr);
     // Do not fail the transaction creation if memo upsert fails
+  }
+
+  // Create corresponding ledger entry
+  try {
+    const glCode = incomeCategory?.gl_code || 'INC999';
+    const memo = `${glCode} - Zelle payment ${external_id}`;
+
+    await LedgerEntry.create({
+      type: finalPaymentType,
+      category: glCode,
+      amount: parseFloat(amount),
+      entry_date: payment_date,
+      member_id: member_id || null,
+      payment_method: 'zelle',
+      memo: memo,
+      transaction_id: tx.id
+    });
+    console.log(`✅ Created ledger entry for Zelle transaction ${tx.id} with GL code ${glCode}`);
+  } catch (ledgerErr) {
+    console.error('⚠️ Failed to create ledger entry for Zelle reconciliation:', ledgerErr.message);
   }
 
   return { success: true, id: tx.id, data: tx };
@@ -170,5 +190,6 @@ module.exports = {
   syncFromGmail,
   previewFromGmail,
   createTransactionFromPreview,
-  createBatchTransactions
+  createBatchTransactions,
+  processTransactionCreation
 };

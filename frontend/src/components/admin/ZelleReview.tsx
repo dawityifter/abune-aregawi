@@ -16,6 +16,7 @@ interface ZellePreviewItem {
   would_create?: boolean;
   already_exists?: boolean;
   existing_transaction_id?: number | null;
+  existing_note?: string | null;
   payment_method?: 'zelle';
   payment_type?: string;
   status?: string;
@@ -39,6 +40,15 @@ const ZelleReview: React.FC = () => {
   type RowSearchState = { query: string; results: SearchResult[]; loading: boolean; selectedId?: number };
   const [rowSearch, setRowSearch] = useState<Record<string, RowSearchState>>({});
 
+  // Manual Donor state
+  type RowMode = 'match' | 'manual';
+  interface ManualDonor {
+    name: string;
+    type: 'Individual' | 'Organization';
+  }
+  const [rowModes, setRowModes] = useState<Record<string, RowMode>>({});
+  const [manualDonors, setManualDonors] = useState<Record<string, ManualDonor>>({});
+
   const getKey = (it: ZellePreviewItem, idx: number) => it.gmail_id || it.external_id || String(idx);
 
   const fetchPreview = useCallback(async () => {
@@ -57,7 +67,34 @@ const ZelleReview: React.FC = () => {
         throw new Error(data.message || `Preview failed with status ${resp.status}`);
       }
       const data = await resp.json();
-      setItems(data.items || []);
+      if (data.success) {
+        setItems(data.items);
+
+        // Prepopulate manual donor info and row modes from existing notes
+        const newRowModes: Record<string, RowMode> = {};
+        const newManualDonors: Record<string, ManualDonor> = {};
+
+        data.items.forEach((it: ZellePreviewItem, idx: number) => {
+          const key = getKey(it, idx);
+          if (it.already_exists && it.existing_note) {
+            const donorMatch = it.existing_note.match(/\[Anonymous Donor\]\nName: (.*)\nType: (Individual|Organization)/);
+            if (donorMatch) {
+              newRowModes[key] = 'manual';
+              newManualDonors[key] = {
+                name: donorMatch[1],
+                type: donorMatch[2] as 'Individual' | 'Organization'
+              };
+            }
+          }
+        });
+
+        if (Object.keys(newRowModes).length > 0) {
+          setRowModes(prev => ({ ...prev, ...newRowModes }));
+        }
+        if (Object.keys(newManualDonors).length > 0) {
+          setManualDonors(prev => ({ ...prev, ...newManualDonors }));
+        }
+      }
     } catch (e: any) {
       setError(e.message || 'Failed to load Zelle preview');
     } finally {
@@ -86,7 +123,7 @@ const ZelleReview: React.FC = () => {
   const toggleSelectAll = () => {
     const selectable = filteredItems
       .filter(it => !it.already_exists && (it.matched_member_id || rowSearch[getKey(it, items.indexOf(it))]?.selectedId))
-      .map((it, idx) => getKey(it, idx));
+      .map((it, idx) => getKey(it, items.indexOf(it)));
 
     if (selectedIds.size === selectable.length && selectable.length > 0) {
       setSelectedIds(new Set());
@@ -101,11 +138,22 @@ const ZelleReview: React.FC = () => {
     setError('');
     try {
       const payloadItems = items
-        .map((it, idx) => ({ item: it, key: getKey(it, idx) }))
+        .map((it, idx) => ({ item: it, key: getKey(it, items.indexOf(it)) }))
         .filter(({ key }) => selectedIds.has(key))
         .map(({ item, key }) => {
           const selected = rowSearch[key]?.selectedId;
-          const member_id = item.matched_member_id || selected;
+          const isManual = rowModes[key] === 'manual';
+          const manual = manualDonors[key];
+
+          let member_id = item.matched_member_id || selected;
+          let note = item.note_preview || item.subject || undefined;
+
+          if (isManual && manual?.name) {
+            member_id = undefined; // Send as undefined/null for manual
+            const donorPrefix = `[Anonymous Donor]\nName: ${manual.name}\nType: ${manual.type}`;
+            note = note ? `${donorPrefix}\n\n${note}` : donorPrefix;
+          }
+
           const paymentTypeSelect = (document.getElementById(`paymentType-${key}`) as HTMLSelectElement | null);
           const payment_type = paymentTypeSelect?.value || 'donation';
           const numericAmount = typeof item.amount === 'number' ? item.amount : Number(item.amount);
@@ -114,7 +162,7 @@ const ZelleReview: React.FC = () => {
             external_id: item.external_id,
             amount: numericAmount,
             payment_date: item.payment_date,
-            note: item.note_preview || item.subject || undefined,
+            note,
             member_id,
             payment_type
           };
@@ -152,9 +200,20 @@ const ZelleReview: React.FC = () => {
       setError('');
 
       const selected = rowSearch[key]?.selectedId;
-      const member_id = item.matched_member_id || selected;
-      if (!member_id) {
-        throw new Error('Please provide a member ID to reconcile.');
+      const isManual = rowModes[key] === 'manual';
+      const manual = manualDonors[key];
+
+      let member_id = item.matched_member_id || selected;
+      let note = item.note_preview || item.subject || undefined;
+
+      if (isManual && manual?.name) {
+        member_id = undefined;
+        const donorPrefix = `[Anonymous Donor]\nName: ${manual.name}\nType: ${manual.type}`;
+        note = note ? `${donorPrefix}\n\n${note}` : donorPrefix;
+      }
+
+      if (!member_id && (!isManual || !manual?.name)) {
+        throw new Error('Please provide a member ID or manual donor name to reconcile.');
       }
 
       const paymentTypeSelect = (document.getElementById(`paymentType-${key}`) as HTMLSelectElement | null);
@@ -178,7 +237,7 @@ const ZelleReview: React.FC = () => {
           external_id: item.external_id,
           amount: numericAmount,
           payment_date: item.payment_date,
-          note: item.note_preview || item.subject || undefined,
+          note,
           member_id,
           payment_type,
         })
@@ -194,7 +253,7 @@ const ZelleReview: React.FC = () => {
     } finally {
       setBusyIds((m) => ({ ...m, [key]: false }));
     }
-  }, [firebaseUser, fetchPreview, rowSearch]);
+  }, [firebaseUser, fetchPreview, rowSearch, rowModes, manualDonors]);
 
   const handleUpdatePaymentType = useCallback(async (item: ZellePreviewItem, idx?: number) => {
     if (!firebaseUser) return;
@@ -348,7 +407,7 @@ const ZelleReview: React.FC = () => {
                   <input
                     type="checkbox"
                     onChange={toggleSelectAll}
-                    checked={filteredItems.length > 0 && selectedIds.size === filteredItems.filter(it => !it.already_exists && (it.matched_member_id || rowSearch[getKey(it, items.indexOf(it))]?.selectedId)).length && selectedIds.size > 0}
+                    checked={filteredItems.length > 0 && selectedIds.size === filteredItems.filter(it => !it.already_exists && (it.matched_member_id || rowSearch[getKey(it, items.indexOf(it))]?.selectedId || (rowModes[getKey(it, items.indexOf(it))] === 'manual' && manualDonors[getKey(it, items.indexOf(it))]?.name))).length && selectedIds.size > 0}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                 </th>
@@ -362,13 +421,13 @@ const ZelleReview: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredItems.map((it, idx) => (
-                <tr key={getKey(it, idx)}>
+                <tr key={getKey(it, items.indexOf(it))}>
                   <td className="px-3 py-2 whitespace-nowrap text-sm">
                     <input
                       type="checkbox"
-                      checked={selectedIds.has(getKey(it, idx))}
-                      onChange={() => toggleSelection(getKey(it, idx))}
-                      disabled={!!it.already_exists || (!it.matched_member_id && !rowSearch[getKey(it, idx)]?.selectedId)}
+                      checked={selectedIds.has(getKey(it, items.indexOf(it)))}
+                      onChange={() => toggleSelection(getKey(it, items.indexOf(it)))}
+                      disabled={!!it.already_exists || (!it.matched_member_id && !rowSearch[getKey(it, items.indexOf(it))]?.selectedId && (rowModes[getKey(it, items.indexOf(it))] !== 'manual' || !manualDonors[getKey(it, items.indexOf(it))]?.name))}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
                     />
                   </td>
@@ -395,7 +454,7 @@ const ZelleReview: React.FC = () => {
                             {it.matched_candidates.map(c => (
                               <button
                                 key={c.id}
-                                onClick={() => handleSelectMember(getKey(it, idx), { id: c.id, name: c.name, isActive: true })}
+                                onClick={() => handleSelectMember(getKey(it, items.indexOf(it)), { id: c.id, name: c.name, isActive: true })}
                                 className="text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded px-1.5 py-0.5 text-gray-700"
                                 title={`Select ${c.name}`}
                               >
@@ -412,7 +471,7 @@ const ZelleReview: React.FC = () => {
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title={it.existing_transaction_id ? `TX #${it.existing_transaction_id}` : 'Already saved'}>
                         Saved
                       </span>
-                    ) : (it.matched_member_id || rowSearch[getKey(it, idx)]?.selectedId) ? (
+                    ) : (it.matched_member_id || rowSearch[getKey(it, items.indexOf(it))]?.selectedId || (rowModes[getKey(it, items.indexOf(it))] === 'manual' && manualDonors[getKey(it, items.indexOf(it))]?.name)) ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Ready</span>
                     ) : (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">Needs Match</span>
@@ -421,44 +480,87 @@ const ZelleReview: React.FC = () => {
                   <td className="px-3 py-2 whitespace-nowrap text-sm">
                     <div className="flex items-center space-x-2">
                       {!it.matched_member_id && (
-                        <div className="relative">
-                          <input
-                            type="text"
-                            placeholder="Type name or phone (3+ chars)"
-                            className="w-64 px-2 py-1 border border-gray-300 rounded"
-                            value={rowSearch[getKey(it, idx)]?.query || ''}
-                            onChange={(e) => handleSearchChange(getKey(it, idx), e.target.value)}
-                          />
-                          <div className="mt-1 text-xs text-gray-400">Type 3+ characters</div>
-                          {(rowSearch[getKey(it, idx)]?.loading) && (
-                            <div className="absolute right-2 top-1.5 text-xs text-gray-400">Searching…</div>
-                          )}
-                          {(rowSearch[getKey(it, idx)]?.results?.length || 0) > 0 && (
-                            <div className="absolute z-10 mt-1 w-72 max-h-56 overflow-auto bg-white border border-gray-200 rounded shadow">
-                              {rowSearch[getKey(it, idx)]!.results!.map((r) => (
-                                <button
-                                  key={r.id}
-                                  type="button"
-                                  onMouseDown={() => handleSelectMember(getKey(it, idx), r)}
-                                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50"
-                                  title={r.phoneNumber ? `${r.name} • ${r.phoneNumber}` : r.name}
-                                >
-                                  {r.name} {r.phoneNumber ? `• ${r.phoneNumber}` : ''} {!r.isActive ? '(inactive)' : ''}
-                                </button>
-                              ))}
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex items-center space-x-2 border-b border-gray-100 pb-2 mb-2">
+                            <button
+                              onClick={() => setRowModes(m => ({ ...m, [getKey(it, items.indexOf(it))]: 'match' }))}
+                              className={`px-2 py-1 text-xs rounded ${rowModes[getKey(it, items.indexOf(it))] !== 'manual' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                            >
+                              Member Match
+                            </button>
+                            <button
+                              onClick={() => setRowModes(m => ({ ...m, [getKey(it, items.indexOf(it))]: 'manual' }))}
+                              className={`px-2 py-1 text-xs rounded ${rowModes[getKey(it, items.indexOf(it))] === 'manual' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                            >
+                              Manual Entry
+                            </button>
+                          </div>
+
+                          {rowModes[getKey(it, items.indexOf(it))] === 'manual' ? (
+                            <div className="flex flex-col space-y-2">
+                              <input
+                                type="text"
+                                placeholder="Individual or Org Name"
+                                className="w-64 px-2 py-1 border border-gray-300 rounded text-sm"
+                                value={manualDonors[getKey(it, items.indexOf(it))]?.name || ''}
+                                onChange={(e) => setManualDonors(m => ({
+                                  ...m,
+                                  [getKey(it, items.indexOf(it))]: { ...(m[getKey(it, items.indexOf(it))] || { type: 'Individual' }), name: e.target.value }
+                                }))}
+                              />
+                              <select
+                                className="w-64 px-2 py-1 border border-gray-300 rounded text-sm bg-white"
+                                value={manualDonors[getKey(it, items.indexOf(it))]?.type || 'Individual'}
+                                onChange={(e) => setManualDonors(m => ({
+                                  ...m,
+                                  [getKey(it, items.indexOf(it))]: { ...(m[getKey(it, items.indexOf(it))] || { name: '' }), type: e.target.value as any }
+                                }))}
+                              >
+                                <option value="Individual">Individual</option>
+                                <option value="Organization">Organization</option>
+                              </select>
                             </div>
-                          )}
-                          {rowSearch[getKey(it, idx)]?.selectedId && (
-                            <div className="mt-1 text-xs text-gray-600">Selected: #{rowSearch[getKey(it, idx)]?.selectedId}</div>
+                          ) : (
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="Type name or phone (3+ chars)"
+                                className="w-64 px-2 py-1 border border-gray-300 rounded"
+                                value={rowSearch[getKey(it, items.indexOf(it))]?.query || ''}
+                                onChange={(e) => handleSearchChange(getKey(it, items.indexOf(it)), e.target.value)}
+                              />
+                              <div className="mt-1 text-xs text-gray-400">Type 3+ characters</div>
+                              {(rowSearch[getKey(it, items.indexOf(it))]?.loading) && (
+                                <div className="absolute right-2 top-1.5 text-xs text-gray-400">Searching…</div>
+                              )}
+                              {(rowSearch[getKey(it, items.indexOf(it))]?.results?.length || 0) > 0 && (
+                                <div className="absolute z-10 mt-1 w-72 max-h-56 overflow-auto bg-white border border-gray-200 rounded shadow">
+                                  {rowSearch[getKey(it, items.indexOf(it))]!.results!.map((r) => (
+                                    <button
+                                      key={r.id}
+                                      type="button"
+                                      onMouseDown={() => handleSelectMember(getKey(it, items.indexOf(it)), r)}
+                                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50"
+                                      title={r.phoneNumber ? `${r.name} • ${r.phoneNumber}` : r.name}
+                                    >
+                                      {r.name} {r.phoneNumber ? `• ${r.phoneNumber}` : ''} {!r.isActive ? '(inactive)' : ''}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              {rowSearch[getKey(it, items.indexOf(it))]?.selectedId && (
+                                <div className="mt-1 text-xs text-gray-600">Selected: #{rowSearch[getKey(it, items.indexOf(it))]?.selectedId}</div>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
                       <select
-                        key={`pt-${getKey(it, idx)}-${it.payment_type || 'donation'}`}
-                        id={`paymentType-${getKey(it, idx)}`}
+                        key={`pt-${getKey(it, items.indexOf(it))}-${it.payment_type || 'donation'}`}
+                        id={`paymentType-${getKey(it, items.indexOf(it))}`}
                         className="px-2 py-1 border border-gray-300 rounded"
                         defaultValue={it.payment_type || 'donation'}
-                        disabled={!!busyIds[getKey(it, idx)]}
+                        disabled={!!busyIds[getKey(it, items.indexOf(it))]}
                         title="Payment Type"
                       >
                         <option value="membership_due">Membership Due</option>
@@ -471,12 +573,12 @@ const ZelleReview: React.FC = () => {
                       {!it.already_exists ? (
                         <button
                           type="button"
-                          onClick={() => handleCreate(it, idx)}
-                          disabled={!!busyIds[getKey(it, idx)]}
+                          onClick={() => handleCreate(it, items.indexOf(it))}
+                          disabled={!!busyIds[getKey(it, items.indexOf(it))]}
                           className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-1.5 rounded"
                           title="Create transaction"
                         >
-                          {busyIds[getKey(it, idx)] ? 'Creating…' : 'Create'}
+                          {busyIds[getKey(it, items.indexOf(it))] ? 'Creating…' : 'Create'}
                         </button>
                       ) : (
                         <div className="flex items-center space-x-2">
@@ -485,12 +587,12 @@ const ZelleReview: React.FC = () => {
                           </span>
                           <button
                             type="button"
-                            onClick={() => handleUpdatePaymentType(it, idx)}
-                            disabled={!!busyIds[getKey(it, idx)]}
+                            onClick={() => handleUpdatePaymentType(it, items.indexOf(it))}
+                            disabled={!!busyIds[getKey(it, items.indexOf(it))]}
                             className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1.5 rounded"
                             title="Update payment type"
                           >
-                            {busyIds[getKey(it, idx)] ? 'Saving…' : 'Save'}
+                            {busyIds[getKey(it, items.indexOf(it))] ? 'Saving…' : 'Save'}
                           </button>
                         </div>
                       )}
