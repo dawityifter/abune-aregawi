@@ -431,7 +431,7 @@ const handlePaymentSucceeded = async (paymentIntent) => {
     }
 
     // Map purpose to allowed enum
-    const allowedTypes = ['membership_due', 'tithe', 'donation', 'event', 'other'];
+    const allowedTypes = ['membership_due', 'tithe', 'donation', 'event', 'tigray_hunger_fundraiser', 'other'];
     const purpose = (md.purpose || 'donation').toLowerCase();
     const payment_type = allowedTypes.includes(purpose) ? purpose : 'donation';
 
