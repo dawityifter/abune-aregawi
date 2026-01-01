@@ -217,7 +217,8 @@ const getMyDues = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Member not found' });
     }
 
-    return computeAndReturnDues(res, member);
+    const { year } = req.query;
+    return computeAndReturnDues(res, member, year);
   } catch (error) {
     console.error('Error fetching my dues:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch dues' });
@@ -557,8 +558,9 @@ const getMemberDuesForTreasurer = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Member not found' });
     }
 
+    const { year } = req.query;
     // Reuse the same logic as getMyDues but for any member
-    return computeAndReturnDues(res, member);
+    return computeAndReturnDues(res, member, year);
   } catch (error) {
     console.error('Error fetching member dues for treasurer:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch member dues' });
@@ -577,13 +579,14 @@ async function getDuesByMemberIdWithAuth(req, res) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
+    const { year } = req.query;
     // 1) Caller is a Member?
     const callerMember = await Member.findOne({
       where: { firebase_uid: firebaseUid },
       include: [{ model: Title, as: 'title' }]
     });
     if (callerMember && String(callerMember.id) === String(memberId)) {
-      return computeAndReturnDues(res, callerMember);
+      return computeAndReturnDues(res, callerMember, year);
     }
 
     // 2) Caller is a Dependent linked to this member?
@@ -600,7 +603,7 @@ async function getDuesByMemberIdWithAuth(req, res) {
         if (!member) {
           return res.status(404).json({ success: false, message: 'Member not found for dependent link' });
         }
-        return computeAndReturnDues(res, member);
+        return computeAndReturnDues(res, member, year);
       }
     }
 
@@ -612,13 +615,26 @@ async function getDuesByMemberIdWithAuth(req, res) {
 }
 
 // Helper to compute and return dues for a given Member instance (reuses getMyDues logic)
-async function computeAndReturnDues(res, member) {
+async function computeAndReturnDues(res, member, requestedYear) {
   const months = [
     'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'
   ];
   const now = new Date();
-  const currentMonthIndex = now.getMonth();
   const currentYear = now.getFullYear();
+  const year = requestedYear ? parseInt(requestedYear) : currentYear;
+
+  // currentMonthIndex logic:
+  // - If year < currentYear: all months are in the past (11)
+  // - If year > currentYear: all months are in the future (-1)
+  // - If year === currentYear: use current month index
+  let currentMonthIndex;
+  if (year < currentYear) {
+    currentMonthIndex = 11;
+  } else if (year > currentYear) {
+    currentMonthIndex = -1;
+  } else {
+    currentMonthIndex = now.getMonth();
+  }
 
   let monthlyPayment = 0;
   let monthStatuses = [];
@@ -641,7 +657,7 @@ async function computeAndReturnDues(res, member) {
         { id: effectiveFamilyId }
       ]
     },
-    attributes: ['id', 'first_name', 'last_name', 'yearly_pledge', 'family_id'],
+    attributes: ['id', 'first_name', 'last_name', 'yearly_pledge', 'family_id', 'date_joined_parish'],
     include: [{ model: Title, as: 'title' }]
   });
 
@@ -662,9 +678,17 @@ async function computeAndReturnDues(res, member) {
       headOfHousehold = familyMembers.reduce((prev, current) =>
         (Number(current.yearly_pledge || 0) > Number(prev.yearly_pledge || 0)) ? current : prev
       );
-    } else {
-      headOfHousehold = member;
     }
+  }
+
+  // Determine join date from head of household
+  const joinDateStr = headOfHousehold.date_joined_parish;
+  let joinYear = 0;
+  let joinMonth = 0;
+  if (joinDateStr) {
+    const jd = new Date(joinDateStr);
+    joinYear = jd.getUTCFullYear();
+    joinMonth = jd.getUTCMonth();
   }
 
   // Determine if this is a household view (multiple family members)
@@ -674,11 +698,11 @@ async function computeAndReturnDues(res, member) {
     .map(m => m.first_name)
     .join(', ');
 
-  // 2. Fetch Transactions for ALL family members
+  // 2. Fetch Transactions for ALL family members in the requested year
   const memberTransactions = await Transaction.findAll({
     where: {
       member_id: { [Op.in]: familyMemberIds },
-      payment_date: { [Op.gte]: new Date(currentYear, 0, 1), [Op.lte]: new Date(currentYear, 11, 31, 23, 59, 59, 999) }
+      payment_date: { [Op.gte]: new Date(year, 0, 1), [Op.lte]: new Date(year, 11, 31, 23, 59, 59, 999) }
     },
     include: [
       {
@@ -693,7 +717,7 @@ async function computeAndReturnDues(res, member) {
   const totalsByCalendarMonth = new Array(12).fill(0);
   for (const t of duesTransactions) {
     const d = new Date(t.payment_date);
-    if (d.getFullYear() === currentYear) totalsByCalendarMonth[d.getMonth()] += Number(t.amount || 0);
+    if (d.getFullYear() === year) totalsByCalendarMonth[d.getMonth()] += Number(t.amount || 0);
   }
 
   // Use the head of household's yearly pledge for calculations
@@ -701,11 +725,27 @@ async function computeAndReturnDues(res, member) {
   if (yearlyPledge > 0) {
     monthlyPayment = Math.round((yearlyPledge / 12) * 100) / 100;
     const totalDuesCollected = duesTransactions.reduce((s, t) => s + Number(t.amount || 0), 0);
-    totalAmountDue = yearlyPledge;
-    balanceDue = Math.max(yearlyPledge - totalDuesCollected, 0);
+
+    // Membership requirement logic:
+    let monthsRequired = 12;
+    if (joinDateStr) {
+      if (year < joinYear) {
+        monthsRequired = 0;
+      } else if (year === joinYear) {
+        monthsRequired = 12 - joinMonth;
+      }
+    }
+
+    totalAmountDue = Number((monthlyPayment * monthsRequired).toFixed(2));
+    balanceDue = Math.max(totalAmountDue - totalDuesCollected, 0);
 
     let remaining = totalDuesCollected;
     monthStatuses = months.map((m, idx) => {
+      const isPreMembership = joinDateStr && (year < joinYear || (year === joinYear && idx < joinMonth));
+      if (isPreMembership) {
+        return { month: m, paid: 0, due: 0, status: 'pre-membership', isFutureMonth: false };
+      }
+
       const isFutureMonth = idx > currentMonthIndex;
       const paidForMonth = Math.min(monthlyPayment, Math.max(remaining, 0));
       remaining = Math.max(remaining - monthlyPayment, 0);
@@ -714,9 +754,13 @@ async function computeAndReturnDues(res, member) {
       return { month: m, paid: Number(paidForMonth.toFixed(2)), due: Number(dueForMonth.toFixed(2)), status, isFutureMonth };
     });
     totalCollected = totalDuesCollected;
-    futureDues = monthStatuses.filter(ms => ms.isFutureMonth).reduce((s, m) => s + m.due, 0);
+    futureDues = monthStatuses.filter(ms => ms.isFutureMonth && ms.status !== 'pre-membership').reduce((s, m) => s + m.due, 0);
   } else {
     monthStatuses = months.map((m, idx) => {
+      const isPreMembership = joinDateStr && (year < joinYear || (year === joinYear && idx < joinMonth));
+      if (isPreMembership) {
+        return { month: m, paid: 0, due: 0, status: 'pre-membership', isFutureMonth: false };
+      }
       const paid = totalsByCalendarMonth[idx] || 0;
       const isFutureMonth = idx > currentMonthIndex;
       return { month: m, paid, due: 0, status: paid > 0 ? 'paid' : (idx <= currentMonthIndex ? 'due' : 'upcoming'), isFutureMonth };
@@ -787,13 +831,14 @@ async function computeAndReturnDues(res, member) {
         totalMembers: familyMembers.length
       },
       payment: {
-        year: currentYear,
+        year: year,
         // Membership Dues Section
         annualPledge: yearlyPledge,
         monthlyPayment,
         duesCollected: totalCollected,
         outstandingDues: balanceDue,
-        duesProgress: yearlyPledge > 0 ? Math.round((totalCollected / yearlyPledge) * 100) : 0,
+        totalAmountDue: totalAmountDue,
+        duesProgress: totalAmountDue > 0 ? Math.round((totalCollected / totalAmountDue) * 100) : 0,
         monthStatuses,
 
         // Other Contributions Section

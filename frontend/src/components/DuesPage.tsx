@@ -5,7 +5,7 @@ interface MonthStatus {
   month: string;
   paid: number;
   due: number;
-  status: 'paid' | 'due' | 'upcoming';
+  status: 'paid' | 'due' | 'upcoming' | 'pre-membership';
   isFutureMonth: boolean;
 }
 
@@ -51,6 +51,8 @@ const DuesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dues, setDues] = useState<DuesResponse['data'] | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const yearOptions = [2026, 2025, 2024];
 
   const apiUrl = process.env.REACT_APP_API_URL;
 
@@ -82,8 +84,8 @@ const DuesPage: React.FC = () => {
         return;
       }
       const endpoint = isDependent
-        ? `${apiUrl}/api/members/dues/by-member/${linkedHeadId}`
-        : `${apiUrl}/api/members/dues/my`;
+        ? `${apiUrl}/api/members/dues/by-member/${linkedHeadId}?year=${selectedYear}`
+        : `${apiUrl}/api/members/dues/my?year=${selectedYear}`;
       const res = await fetch(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -104,7 +106,7 @@ const DuesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [firebaseUser, apiUrl]);
+  }, [firebaseUser, apiUrl, user, selectedYear]);
 
   useEffect(() => {
     // Wait for auth to be ready before attempting fetch
@@ -140,16 +142,42 @@ const DuesPage: React.FC = () => {
   const otherPaymentsTotal = (transactions || []).filter(t => t.payment_type !== 'membership_due')
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
   const getStatus = (t: MemberTransaction) => t.payment_method === 'ach' ? 'Pending' : 'Succeeded';
-  const yearlyPledge = (payment.monthlyPayment || 0) * 12;
+
+  const monthsInYear = payment.monthStatuses.filter(ms => ms.status !== 'pre-membership').length;
+  const yearlyPledge = (payment.monthlyPayment || 0) * (monthsInYear || 12);
 
   return (
     <div className="min-h-screen pt-16" style={bgStyle}>
       <main className="max-w-5xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
           <div className="bg-white shadow rounded-lg p-6">
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900">Member Dues and Payment History</h2>
-              <p className="text-gray-600 mt-1">{member.firstName} {member.lastName} • Year {payment.year || new Date().getFullYear()}</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-gray-100 pb-4">
+              <div className="mb-4 md:mb-0">
+                <h2 className="text-2xl font-semibold text-gray-900">Member Dues and Payment History</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-gray-600 mt-1">
+                  <span>{member.firstName} {member.lastName}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span>Year {payment.year}</span>
+                  <span className="text-xs italic bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                    Calculated from parish join date
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 bg-gray-100 p-1.5 rounded-xl border border-gray-200 shadow-inner">
+                {yearOptions.map(y => (
+                  <button
+                    key={y}
+                    onClick={() => { setSelectedYear(y); setLoading(true); }}
+                    className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-all duration-200 ${selectedYear === y
+                      ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                      : 'text-gray-500 hover:text-gray-800'
+                      }`}
+                  >
+                    {y}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -183,11 +211,17 @@ const DuesPage: React.FC = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {payment.monthStatuses.map((ms) => (
-                    <tr key={ms.month} className={ms.status === 'paid' ? 'bg-green-50' : ms.status === 'due' ? 'bg-yellow-50' : ''}>
+                    <tr key={ms.month} className={
+                      ms.status === 'paid' ? 'bg-green-50' :
+                        ms.status === 'due' ? 'bg-yellow-50' :
+                          ms.status === 'pre-membership' ? 'bg-gray-50 opacity-50' : ''
+                    }>
                       <td className="px-4 py-2 whitespace-nowrap">{monthLabel(ms.month)}</td>
-                      <td className="px-4 py-2 whitespace-nowrap">{currency(ms.paid || 0)}</td>
-                      <td className="px-4 py-2 whitespace-nowrap">{currency(ms.due || 0)}</td>
-                      <td className="px-4 py-2 whitespace-nowrap capitalize">{ms.status}</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-gray-600">{ms.status === 'pre-membership' ? '-' : currency(ms.paid || 0)}</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-gray-600">{ms.status === 'pre-membership' ? '-' : currency(ms.due || 0)}</td>
+                      <td className="px-4 py-2 whitespace-nowrap capitalize text-gray-500 italic">
+                        {ms.status === 'pre-membership' ? 'Not Required' : ms.status}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
