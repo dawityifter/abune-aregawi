@@ -33,8 +33,8 @@ interface DuesResponse {
       year: number;
       monthlyPayment: number;
       totalAmountDue: number;
-      totalCollected: number;
-      balanceDue: number;
+      duesCollected: number;
+      outstandingDues: number;
       monthStatuses: MonthStatus[];
       futureDues: number;
     };
@@ -183,11 +183,11 @@ const DuesPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="p-4 rounded bg-green-50 border border-green-100">
                 <div className="text-sm text-gray-600">Total Collected</div>
-                <div className="text-xl font-semibold text-green-700">{currency(payment.totalCollected || 0)}</div>
+                <div className="text-xl font-semibold text-green-700">{currency(payment.duesCollected || 0)}</div>
               </div>
               <div className="p-4 rounded bg-yellow-50 border border-yellow-100">
                 <div className="text-sm text-gray-600">Balance Due</div>
-                <div className="text-xl font-semibold text-yellow-700">{currency(payment.balanceDue || 0)}</div>
+                <div className="text-xl font-semibold text-yellow-700">{currency(payment.outstandingDues || 0)}</div>
               </div>
               <div className="p-4 rounded bg-blue-50 border border-blue-100">
                 <div className="text-sm text-gray-600">Other Payments</div>

@@ -686,9 +686,9 @@ async function computeAndReturnDues(res, member, requestedYear) {
   let joinYear = 0;
   let joinMonth = 0;
   if (joinDateStr) {
-    const jd = new Date(joinDateStr);
-    joinYear = jd.getUTCFullYear();
-    joinMonth = jd.getUTCMonth();
+    const parts = joinDateStr.split('-');
+    joinYear = parseInt(parts[0]);
+    joinMonth = parseInt(parts[1]) - 1; // 0-indexed month
   }
 
   // Determine if this is a household view (multiple family members)
@@ -702,7 +702,7 @@ async function computeAndReturnDues(res, member, requestedYear) {
   const memberTransactions = await Transaction.findAll({
     where: {
       member_id: { [Op.in]: familyMemberIds },
-      payment_date: { [Op.gte]: new Date(year, 0, 1), [Op.lte]: new Date(year, 11, 31, 23, 59, 59, 999) }
+      payment_date: { [Op.gte]: `${year}-01-01`, [Op.lte]: `${year}-12-31` }
     },
     include: [
       {
@@ -716,8 +716,11 @@ async function computeAndReturnDues(res, member, requestedYear) {
   const duesTransactions = memberTransactions.filter(t => String(t.payment_type) === 'membership_due');
   const totalsByCalendarMonth = new Array(12).fill(0);
   for (const t of duesTransactions) {
-    const d = new Date(t.payment_date);
-    if (d.getFullYear() === year) totalsByCalendarMonth[d.getMonth()] += Number(t.amount || 0);
+    // Robust date parsing using string split to avoid timezone shift
+    const parts = String(t.payment_date).split('-');
+    const transYear = parseInt(parts[0]);
+    const transMonth = parseInt(parts[1]) - 1; // 0-indexed month
+    if (transYear === year) totalsByCalendarMonth[transMonth] += Number(t.amount || 0);
   }
 
   // Use the head of household's yearly pledge for calculations
