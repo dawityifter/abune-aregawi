@@ -4,7 +4,8 @@ const youtube = google.youtube('v3');
 
 // Cache configuration
 const cache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes (More responsive)
+const CACHE_TTL = 2 * 60 * 1000; // 2 minutes (Very responsive during active hours)
+const LONG_CACHE_TTL = 60 * 60 * 1000; // 1 hour (Low frequency check outside core hours)
 
 /**
  * Check if the current time is within core broadcasting hours (CST)
@@ -23,9 +24,10 @@ const isCoreHour = () => {
     const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
 
     let result = false;
-    if (day === 'Thursday' && hour >= 19 && hour < 22) result = true;
-    if (day === 'Friday' && hour >= 19 && hour < 22) result = true;
-    if (day === 'Sunday' && hour >= 4 && hour < 14) result = true;
+    if (day === 'Thursday' && hour >= 18 && hour < 22) result = true; // Start an hour earlier
+    if (day === 'Friday' && hour >= 18 && hour < 22) result = true;   // Start an hour earlier
+    if (day === 'Saturday' && hour >= 17 && hour < 21) result = true; // Added Saturday
+    if (day === 'Sunday' && hour >= 4 && hour < 16) result = true;    // Extended until 4PM
 
     console.log(`[YouTube] Core Hour Check: ${day} at ${hour}:00 CST/CDT -> ${result ? 'YES' : 'NO'}`);
     return result;
@@ -46,20 +48,26 @@ const checkYouTubeLiveStatus = async (channelId, forceCheck = false) => {
         return { isLive: false, skipped: 'configuration_missing' };
     }
 
-    const bypassCoreHours = process.env.FORCE_YOUTUBE_CHECK === 'true' || process.env.NODE_ENV === 'development' || forceCheck;
-
-    if (!isCoreHour() && !bypassCoreHours) {
-        console.log(`[YouTube] Skipping live check for ${channelId}: outside core hours`);
-        return { isLive: false, skipped: 'outside_hours' };
-    }
+    const isCore = isCoreHour();
+    const bypassCore = process.env.FORCE_YOUTUBE_CHECK === 'true' || process.env.NODE_ENV === 'development' || forceCheck;
 
     // Return cached data if valid
     const now = Date.now();
     const cachedItem = cache.get(channelId);
 
-    if (cachedItem && (now - cachedItem.lastComputed < CACHE_TTL)) {
-        console.log(`[YouTube] Serving cached live status for ${channelId}`);
-        return cachedItem.data;
+    // If outside core hours AND not bypassing, only check if cache is older than LONG_CACHE_TTL
+    if (!isCore && !bypassCore) {
+        if (cachedItem && (now - cachedItem.lastComputed < LONG_CACHE_TTL)) {
+            console.log(`[YouTube] Outside core hours: Serving cached status for ${channelId} (Last checked ${Math.round((now - cachedItem.lastComputed) / 60000)}m ago)`);
+            return cachedItem.data;
+        }
+        console.log(`[YouTube] Outside core hours, but cache is stale. Fetching fresh status for ${channelId}...`);
+    } else {
+        // Within core hours or bypassing: use standard CACHE_TTL
+        if (cachedItem && (now - cachedItem.lastComputed < CACHE_TTL)) {
+            console.log(`[YouTube] Within core/bypass hours: Serving cached status for ${channelId}`);
+            return cachedItem.data;
+        }
     }
 
     try {

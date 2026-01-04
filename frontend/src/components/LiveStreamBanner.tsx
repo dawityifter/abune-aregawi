@@ -26,8 +26,8 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
     useEffect(() => {
         checkIfLive();
 
-        // Check every 5 minutes (more frequent for better detection)
-        const interval = setInterval(checkIfLive, 5 * 60 * 1000);
+        // Check every 2 minutes (more frequent for better detection)
+        const interval = setInterval(checkIfLive, 2 * 60 * 1000);
         return () => clearInterval(interval);
     }, []);
 
