@@ -37,7 +37,7 @@ const ChatWidget: React.FC = () => {
             const script = document.createElement("script");
             script.src = "https://www.chatbase.co/embed.min.js";
             script.id = scriptId;
-            script.setAttribute('chatbotId', 'FPgDK6qHe2vpf8Gi7UBaC');
+            script.setAttribute('chatbotId', 'Tk-sJVWamI6RB5fUi12Kw');
             script.setAttribute('domain', 'www.chatbase.co');
             script.defer = true;
             document.body.appendChild(script);

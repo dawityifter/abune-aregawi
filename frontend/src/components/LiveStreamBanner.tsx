@@ -12,33 +12,47 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
 }) => {
     const { t } = useI18n();
     const [isLive, setIsLive] = useState(false);
-    const [liveVideoId, setLiveVideoId] = useState<string | null>(null);
+    const [mainLive, setMainLive] = useState(false);
+    const [spiritualLive, setSpiritualLive] = useState(false);
+    const [activeChannelId, setActiveChannelId] = useState(channelId);
+    const [streamTitle, setStreamTitle] = useState<string | null>(null);
     const [showPlayer, setShowPlayer] = useState(false);
 
-    const [currentChannelId, setCurrentChannelId] = useState(channelId);
+    const spiritualChannelId = 'UCQXFCGSNdQ1y8GOmqbvRefg';
 
-
-    const youtubeChannelUrl = `https://www.youtube.com/channel/${currentChannelId}`;
-    const youtubeLiveUrl = `https://www.youtube.com/channel/${currentChannelId}/live`;
+    const youtubeChannelUrl = `https://www.youtube.com/channel/${activeChannelId}`;
+    const youtubeLiveUrl = `https://www.youtube.com/channel/${activeChannelId}/live`;
 
     useEffect(() => {
         checkIfLive();
 
-        // Check every 10 minutes (slightly more frequent)
-        const interval = setInterval(checkIfLive, 10 * 60 * 1000);
+        // Check every 5 minutes (more frequent for better detection)
+        const interval = setInterval(checkIfLive, 5 * 60 * 1000);
         return () => clearInterval(interval);
-    }, [channelHandle]);
+    }, []);
 
     const checkIfLive = async () => {
         try {
             const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-            const response = await fetch(`${apiUrl}/api/youtube/live-status?channelId=${channelId}`);
+            const response = await fetch(`${apiUrl}/api/youtube/multi-live-status`);
             const data = await response.json();
 
-            setIsLive(data.isLive);
-            if (data.channelId) {
-                setCurrentChannelId(data.channelId);
+            const isMainLive = data.main?.isLive || false;
+            const isSpiritualLive = data.spiritual?.isLive || false;
+
+            setMainLive(isMainLive);
+            setSpiritualLive(isSpiritualLive);
+
+            // Prioritize Main Channel if both are live (rare)
+            if (isMainLive) {
+                setActiveChannelId(data.main.channelId);
+                setStreamTitle(data.main.title || 'Main Service');
+            } else if (isSpiritualLive) {
+                setActiveChannelId(data.spiritual.channelId);
+                setStreamTitle(data.spiritual.title || 'Spiritual Service');
             }
+
+            setIsLive(isMainLive || isSpiritualLive);
         } catch (error) {
             console.error('Error checking live status:', error);
             setIsLive(false);
@@ -63,7 +77,7 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
                             <span className="font-bold text-lg">LIVE NOW</span>
                         </div>
                         <span className="hidden sm:inline text-white/90">
-                            Join us for our live service
+                            {streamTitle ? `${streamTitle} ${t('common.liveNow') || 'is live now'}` : 'Join us for our live service'}
                         </span>
                     </div>
 
@@ -95,7 +109,7 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
                         <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                             <iframe
                                 className="absolute top-0 left-0 w-full h-full rounded-lg"
-                                src={`https://www.youtube.com/embed/live_stream?channel=${currentChannelId}`}
+                                src={`https://www.youtube.com/embed/live_stream?channel=${activeChannelId}`}
                                 title="Live Stream"
                                 frameBorder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

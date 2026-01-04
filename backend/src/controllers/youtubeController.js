@@ -15,9 +15,11 @@ exports.getLiveStatus = async (req, res) => {
             });
         }
 
+        const force = req.query.force === 'true';
+
         // If specific channel requested, check only that
         if (req.query.channelId) {
-            const liveStatus = await checkYouTubeLiveStatus(req.query.channelId);
+            const liveStatus = await checkYouTubeLiveStatus(req.query.channelId, force);
             return res.json({ ...liveStatus, channelId: req.query.channelId });
         }
 
@@ -69,9 +71,11 @@ exports.getMultiLiveStatus = async (req, res) => {
         const mainChannelId = process.env.YOUTUBE_CHANNEL_ID || 'UCvK6pJUKU2pvoX7bQ3PN2aA';
         const spiritualChannelId = process.env.YOUTUBE_SPIRITUAL_CHANNEL_ID || 'UCQXFCGSNdQ1y8GOmqbvRefg';
 
+        const force = req.query.force === 'true';
+
         const [mainStatus, spiritualStatus] = await Promise.all([
-            checkYouTubeLiveStatus(mainChannelId),
-            checkYouTubeLiveStatus(spiritualChannelId)
+            checkYouTubeLiveStatus(mainChannelId, force),
+            checkYouTubeLiveStatus(spiritualChannelId, force)
         ]);
 
         res.json({

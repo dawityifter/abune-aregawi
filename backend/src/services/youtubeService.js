@@ -22,20 +22,23 @@ const isCoreHour = () => {
     const day = parts.find(p => p.type === 'weekday').value;
     const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
 
-    if (day === 'Thursday' && hour >= 19 && hour < 22) return true;
-    if (day === 'Friday' && hour >= 19 && hour < 22) return true;
-    if (day === 'Sunday' && hour >= 4 && hour < 14) return true;
+    let result = false;
+    if (day === 'Thursday' && hour >= 19 && hour < 22) result = true;
+    if (day === 'Friday' && hour >= 19 && hour < 22) result = true;
+    if (day === 'Sunday' && hour >= 4 && hour < 14) result = true;
 
-    return false;
+    console.log(`[YouTube] Core Hour Check: ${day} at ${hour}:00 CST/CDT -> ${result ? 'YES' : 'NO'}`);
+    return result;
 };
 
 /**
  * Check if a channel is currently live
  * Uses caching to avoid YouTube API quota limits
  * @param {string} channelId 
+ * @param {boolean} forceCheck
  * @returns {Promise<Object>} Status object { isLive: boolean, videoId: string | null }
  */
-const checkYouTubeLiveStatus = async (channelId) => {
+const checkYouTubeLiveStatus = async (channelId, forceCheck = false) => {
     // Check if check is forced or if we have an API key (regardless of NODE_ENV)
     const canCheck = !!process.env.YOUTUBE_API_KEY || process.env.FORCE_YOUTUBE_CHECK === 'true';
 
@@ -43,7 +46,9 @@ const checkYouTubeLiveStatus = async (channelId) => {
         return { isLive: false, skipped: 'configuration_missing' };
     }
 
-    if (!isCoreHour() && process.env.FORCE_YOUTUBE_CHECK !== 'true') {
+    const bypassCoreHours = process.env.FORCE_YOUTUBE_CHECK === 'true' || process.env.NODE_ENV === 'development' || forceCheck;
+
+    if (!isCoreHour() && !bypassCoreHours) {
         console.log(`[YouTube] Skipping live check for ${channelId}: outside core hours`);
         return { isLive: false, skipped: 'outside_hours' };
     }
