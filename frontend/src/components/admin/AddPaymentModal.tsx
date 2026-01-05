@@ -58,6 +58,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   const [paymentType, setPaymentType] = useState(initialPaymentType || '');
   const [receiptNumber, setReceiptNumber] = useState('');
   const [loading, setLoading] = useState(false);
+  const [submissionId, setSubmissionId] = useState('');
   const [error, setError] = useState('');
   const [processStripePayment, setProcessStripePayment] = useState<null | (() => Promise<void>)>(null);
 
@@ -213,7 +214,12 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
       const dd = String(today.getDate()).padStart(2, '0');
       setPaymentDate(`${yyyy}-${mm}-${dd}`);
     }
-  }, [paymentDate]);
+
+    // Initialize a unique submission ID for idempotency protection
+    if (!submissionId) {
+      setSubmissionId(`man_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`);
+    }
+  }, [paymentDate, submissionId]);
 
   // Calculate collector ID from user (database ID, not Firebase UID)
   // In production, user.id might be database ID (BIGINT) or Firebase UID (UUID string)
@@ -314,7 +320,8 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           payment_type: paymentType,
           payment_method: paymentMethod,
           receipt_number: receiptNumber,
-          note: notes
+          note: notes,
+          external_id: submissionId
         };
 
         // Add income category if selected
