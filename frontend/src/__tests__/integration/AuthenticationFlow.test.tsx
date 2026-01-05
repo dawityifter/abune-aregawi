@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { LanguageProvider } from '../../contexts/LanguageContext';
+import { I18nProvider } from '../../i18n/I18nProvider';
 import SignIn from '../../components/auth/SignIn';
 import { User } from 'firebase/auth';
 import * as firebaseAuth from 'firebase/auth';
@@ -48,7 +49,7 @@ const mockAuth = {
 // Set up the mock implementations
 beforeEach(() => {
   jest.clearAllMocks();
-  
+
   // Mock the Firebase auth module
   (firebaseAuth as any).getAuth.mockReturnValue(mockAuth);
   (firebaseAuth as any).signInWithEmailAndPassword = mockSignInWithEmailAndPassword;
@@ -64,7 +65,7 @@ beforeEach(() => {
     // Return the unsubscribe function
     return jest.fn();
   });
-  
+
   // Mock successful API responses
   (global.fetch as jest.Mock).mockResolvedValue({
     ok: true,
@@ -76,20 +77,22 @@ beforeEach(() => {
 });
 
 const renderWithProviders = async (component: React.ReactElement) => {
-  let utils;
-  
+  let utils: any;
+
   await act(async () => {
     utils = render(
       <BrowserRouter>
-        <LanguageProvider>
-          <AuthProvider>
-            {component}
-          </AuthProvider>
-        </LanguageProvider>
+        <I18nProvider>
+          <LanguageProvider>
+            <AuthProvider>
+              {component}
+            </AuthProvider>
+          </LanguageProvider>
+        </I18nProvider>
       </BrowserRouter>
     );
   });
-  
+
   return utils!;
 };
 
@@ -105,20 +108,20 @@ const simulateAuthStateChange = (user: any = null) => {
 describe('Authentication Flow Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock document.getElementById for reCAPTCHA
     document.getElementById = jest.fn().mockReturnValue({
       innerHTML: '',
       firstChild: null,
       removeChild: jest.fn()
     });
-    
+
     // Reset all mocks to their initial state
     mockSignInWithEmailAndPassword.mockReset();
     mockSignInWithPhoneNumber.mockReset();
     mockSignOut.mockReset();
     mockOnAuthStateChanged.mockReset();
-    
+
     // Set up the default mock implementation for onAuthStateChanged
     mockOnAuthStateChanged.mockImplementation((callback) => {
       // Call the callback with null user initially
@@ -126,7 +129,7 @@ describe('Authentication Flow Integration', () => {
       // Return the unsubscribe function
       return jest.fn();
     });
-    
+
     // Mock successful API responses
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
@@ -158,10 +161,10 @@ describe('Authentication Flow Integration', () => {
           }
         })
       };
-      
+
       // Mock the signInWithPhoneNumber to return the confirmation result
       mockSignInWithPhoneNumber.mockResolvedValueOnce(mockConfirmationResult);
-      
+
       // Mock the fetch response for profile data
       const mockProfileData = {
         id: 'test-member-id',
@@ -169,7 +172,7 @@ describe('Authentication Flow Integration', () => {
         firstName: 'Test',
         lastName: 'User'
       };
-      
+
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
@@ -290,7 +293,7 @@ describe('Authentication Flow Integration', () => {
       const mockSignInWithPhoneNumber = jest.fn().mockResolvedValue({
         confirm: jest.fn()
       });
-      
+
       signInWithPhoneNumber.mockImplementation(mockSignInWithPhoneNumber);
 
       await renderWithProviders(<SignIn />);

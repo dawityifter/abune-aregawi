@@ -28,6 +28,12 @@ jest.mock('../models', () => {
         sum: jest.fn(),
         findAll: jest.fn(),
     };
+    const Title = {
+        findOne: jest.fn(),
+    };
+    const IncomeCategory = {
+        findOne: jest.fn(),
+    };
 
     const sequelize = {
         authenticate: jest.fn().mockResolvedValue(undefined),
@@ -43,6 +49,8 @@ jest.mock('../models', () => {
         Transaction,
         MemberPayment,
         LedgerEntry,
+        Title,
+        IncomeCategory,
         sequelize
     };
 });
@@ -104,12 +112,7 @@ describe('Promoted Member Payments Integration', () => {
         });
 
         // Mock Member.findAll to return family members
-        Member.findAll.mockImplementation(({ where }) => {
-            if (where.family_id === familyId) {
-                return Promise.resolve([hoh, promotedMember]);
-            }
-            return Promise.resolve([]);
-        });
+        Member.findAll.mockResolvedValue([hoh, promotedMember]);
 
         // Mock Transactions
         const transactions = [
@@ -140,6 +143,7 @@ describe('Promoted Member Payments Integration', () => {
 
         const req = {
             firebaseUid: 'test-uid',
+            query: {}
         };
         const res = {
             json: jest.fn(),
@@ -239,6 +243,7 @@ describe('Promoted Member Payments Integration', () => {
 
         const req = {
             firebaseUid: 'test-uid-hoh',
+            query: {}
         };
         const res = {
             json: jest.fn(),

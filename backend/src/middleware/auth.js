@@ -253,8 +253,11 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       logger.warn('Member not found during authentication', {
         hasEmail: !!userEmail,
         hasPhone: !!userPhone,
-        uid: decodedToken.uid
+        uid: decodedToken.uid,
+        userEmail,
+        userPhone
       });
+
       return res.status(401).json({
         success: false,
         message: 'Member not found. Please complete your registration first.'

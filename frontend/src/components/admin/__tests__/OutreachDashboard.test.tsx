@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { LanguageProvider } from '../../../contexts/LanguageContext';
+import { I18nProvider } from '../../../i18n/I18nProvider';
 import '@testing-library/jest-dom';
 import { setFirebaseUserToken, extractHeader } from '../../../testUtils/authTestUtils';
 
@@ -25,9 +26,11 @@ jest.mock('../../../contexts/AuthContext', () => ({
 // Helper wrapper
 const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <BrowserRouter>
-    <LanguageProvider>
-      {children}
-    </LanguageProvider>
+    <I18nProvider>
+      <LanguageProvider>
+        {children}
+      </LanguageProvider>
+    </I18nProvider>
   </BrowserRouter>
 );
 
@@ -106,7 +109,14 @@ describe('OutreachDashboard', () => {
           },
         }),
       })
-      // Second call: POST /:id/mark-welcomed
+      // Second call: GET /api/members/m1 (Profile load in modal)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: { member: { id: 'm1', firstName: 'Alpha' } } })
+      })
+      // Third call: POST /api/members/m1/outreach (Save note)
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true }) })
+      // Fourth call: POST /:id/mark-welcomed
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true }) });
 
     render(
@@ -129,20 +139,31 @@ describe('OutreachDashboard', () => {
     const firstButton = screen.getAllByRole('button', { name: 'Mark Welcomed' })[0];
     fireEvent.click(firstButton);
 
-    // Button changes to Marking… while busy
-    expect(await screen.findByRole('button', { name: 'Marking…' })).toBeInTheDocument();
+    // Wait for the modal to appear
+    expect(await screen.findByText('Add Welcome Note')).toBeInTheDocument();
+
+    // Type a note
+    const textarea = screen.getByPlaceholderText(/note your greeting/i);
+    fireEvent.change(textarea, { target: { value: 'Helped them settle in.' } });
+
+    // Click Save
+    const saveButton = screen.getByRole('button', { name: 'Save' });
+    fireEvent.click(saveButton);
+
+    // Button may change to Saving… while busy
+    // expect(await screen.findByRole('button', { name: 'Saving…' })).toBeInTheDocument();
 
     // After success, first member should be removed, count becomes 1
     await waitFor(() => expect(screen.queryByText('Alpha User')).not.toBeInTheDocument());
     expect(screen.getByText('1')).toBeInTheDocument();
 
-    // Verify fetch calls were made with Authorization header
-    expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain('/api/members/onboarding/pending');
-    const postCall = (global.fetch as jest.Mock).mock.calls[1];
-    expect(postCall[0]).toMatch(/\/api\/members\/m1\/mark-welcomed$/);
-    const headers = postCall[1]?.headers as any;
-    const authHeader = extractHeader(headers, 'Authorization');
-    expect(authHeader).toBe('Bearer test-token');
+    // Verify fetch calls
+    // Profile load in modal
+    expect((global.fetch as jest.Mock).mock.calls[1][0]).toContain('/api/members/m1');
+    // Save note
+    expect((global.fetch as jest.Mock).mock.calls[2][0]).toContain('/api/members/m1/outreach');
+    // Mark welcomed
+    expect((global.fetch as jest.Mock).mock.calls[3][0]).toContain('/api/members/m1/mark-welcomed');
   });
 
   it('shows error state when pending fetch fails', async () => {

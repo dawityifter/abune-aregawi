@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { I18nProvider } from './i18n/I18nProvider';
 import App from './App';
 import HomePage from './components/HomePage';
 import SignIn from './components/auth/SignIn';
@@ -41,15 +42,17 @@ jest.mock('./contexts/LanguageContext', () => ({
 const renderApp = (initialEntries = ['/']) => {
   // Create a test version of App that doesn't include the Router
   const TestApp = () => (
-    <LanguageProvider>
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<SignIn />} />
-          {/* Add other routes as needed for testing */}
-        </Routes>
-      </AuthProvider>
-    </LanguageProvider>
+    <I18nProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<SignIn />} />
+            {/* Add other routes as needed for testing */}
+          </Routes>
+        </AuthProvider>
+      </LanguageProvider>
+    </I18nProvider>
   );
 
   return render(
