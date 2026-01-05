@@ -300,7 +300,7 @@ const createTransaction = async (req, res) => {
       }
     }
 
-    // If external_id provided, check for existing transaction
+    // 1. If external_id provided, check for existing transaction
     let transaction = null;
     if (external_id) {
       transaction = await Transaction.findOne({
@@ -331,6 +331,35 @@ const createTransaction = async (req, res) => {
             transaction: t
           })
         ]);
+      }
+    }
+
+    // 2. If no external_id provided, check for recent logical duplicates (prevent rapid double-clicks without keys)
+    if (!transaction && !external_id) {
+      const recentDuplicate = await Transaction.findOne({
+        where: {
+          member_id: member_id || null,
+          amount: parseFloat(amount),
+          payment_date: payment_date ? tz.parseDate(payment_date) : tz.now(),
+          payment_type,
+          receipt_number: receipt_number || null,
+          // Only check manual payments for logical duplicates
+          payment_method: { [Op.notIn]: ['credit_card', 'ach'] },
+          created_at: {
+            [Op.gt]: new Date(Date.now() - 5 * 60 * 1000) // 5 minute window
+          }
+        },
+        transaction: t
+      });
+
+      if (recentDuplicate) {
+        console.warn(`[Transaction] Suppressing potential duplicate for member ${member_id} - amount ${amount}`);
+        await t.rollback();
+        return res.status(200).json({
+          success: true,
+          message: 'Transaction recently recorded. Duplicate suppressed.',
+          data: { transaction: recentDuplicate, isDuplicate: true }
+        });
       }
     }
 
