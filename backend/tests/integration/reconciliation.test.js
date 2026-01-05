@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/server');
-const { Member, BankTransaction, Transaction } = require('../../src/models');
+const { Member, BankTransaction, Transaction, LedgerEntry, ZelleMemoMatch } = require('../../src/models');
 
 describe('Bank Reconciliation API', () => {
     let adminUser;
@@ -8,7 +8,11 @@ describe('Bank Reconciliation API', () => {
     let bankTxn;
 
     beforeAll(async () => {
-        // Cleanup first
+        // Cleanup first - clear dependent tables
+        await ZelleMemoMatch.destroy({ where: {} });
+        await LedgerEntry.destroy({ where: {} });
+        await Transaction.destroy({ where: {} });
+        await BankTransaction.destroy({ where: {} });
         await Member.destroy({ where: {} });
 
         // 1. Create Admin User (matches mocked Firebase token in setup.js)
@@ -16,8 +20,9 @@ describe('Bank Reconciliation API', () => {
             first_name: 'Test',
             last_name: 'Admin',
             email: 'test@example.com', // Matches setup.js mock
+            firebase_uid: 'test-firebase-uid', // Matches setup.js mock
             phone_number: '+1234567890',
-            role: 'church_admin', // Authorized role (assuming admin access required)
+            role: 'admin', // Authorized role
             is_active: true
         });
 
@@ -55,8 +60,13 @@ describe('Bank Reconciliation API', () => {
                 member_id: memberToLink.id,
                 action: 'MATCH',
                 payment_type: 'tithe'
-            })
-            .expect(200);
+            });
+
+        if (response.status !== 200) {
+            console.error('DEBUG: response.status:', response.status);
+            console.error('DEBUG: response.body:', JSON.stringify(response.body, null, 2));
+        }
+        expect(response.status).toBe(200);
 
         // Verify Response
         expect(response.body.success).toBe(true);

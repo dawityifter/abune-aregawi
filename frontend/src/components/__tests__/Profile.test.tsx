@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { LanguageProvider } from '../../contexts/LanguageContext';
+import { I18nProvider } from '../../i18n/I18nProvider';
 import Profile from '../Profile';
 import '@testing-library/jest-dom';
 
@@ -156,7 +157,7 @@ global.fetch = jest.fn().mockImplementation((url, options) => {
       json: () => Promise.resolve(mockUserProfile)
     });
   }
-  
+
   // Mock successful update
   if (url.includes('/api/members/update') && options?.method === 'PUT') {
     return Promise.resolve({
@@ -165,7 +166,7 @@ global.fetch = jest.fn().mockImplementation((url, options) => {
       json: () => Promise.resolve({ success: true })
     });
   }
-  
+
   // Default response for any other requests
   return Promise.resolve({
     ok: true,
@@ -176,11 +177,13 @@ global.fetch = jest.fn().mockImplementation((url, options) => {
 // Create a test wrapper component that includes all necessary providers
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <BrowserRouter>
-    <LanguageProvider>
-      <AuthProvider>
-        {children}
-      </AuthProvider>
-    </LanguageProvider>
+    <I18nProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </LanguageProvider>
+    </I18nProvider>
   </BrowserRouter>
 );
 

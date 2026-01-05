@@ -1,3 +1,23 @@
+// Mock Firebase Admin - MUST BE AT TOP
+jest.mock('firebase-admin', () => {
+  return {
+    initializeApp: jest.fn(),
+    apps: [],
+    credential: { cert: jest.fn() },
+    auth: () => ({
+      verifyIdToken: async () => ({
+        uid: 'test-firebase-uid',
+        email: 'test@example.com'
+      }),
+      getUser: async () => ({
+        uid: 'test-firebase-uid',
+        email: 'test@example.com',
+        phoneNumber: '+1234567890'
+      })
+    })
+  };
+});
+
 const dotenv = require('dotenv');
 
 // Load test environment variables FIRST
@@ -12,21 +32,6 @@ process.env.FIREBASE_AUTH_EMULATOR_HOST = 'localhost:9099';
 
 // NOW require models after environment is set
 const { sequelize } = require('../src/models');
-
-// Mock Firebase Admin
-jest.mock('firebase-admin', () => ({
-  initializeApp: jest.fn(),
-  apps: [],
-  credential: {
-    cert: jest.fn()
-  },
-  auth: jest.fn(() => ({
-    verifyIdToken: jest.fn().mockResolvedValue({
-      uid: 'test-firebase-uid',
-      email: 'test@example.com'
-    })
-  }))
-}));
 
 // Mock nodemailer
 jest.mock('nodemailer', () => ({
@@ -73,4 +78,4 @@ global.console = {
   log: jest.fn(),
   warn: jest.fn(),
   error: jest.fn()
-}; 
+};

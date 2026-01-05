@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/server');
-const { Member, Transaction, IncomeCategory, sequelize } = require('../../src/models');
+const { Member, Transaction, IncomeCategory, LedgerEntry, Dependent, MemberPayment, Donation, Pledge, ActivityLog, Outreach, ZelleMemoMatch, sequelize } = require('../../src/models');
 const admin = require('firebase-admin');
 
 // Mock Firebase auth
@@ -24,7 +24,16 @@ describe('Zelle Batch Ingestion', () => {
     });
 
     beforeEach(async () => {
+        // Clear dependent tables first due to foreign key constraints
+        await ZelleMemoMatch.destroy({ where: {} });
+        await ActivityLog.destroy({ where: {} });
+        await Outreach.destroy({ where: {} });
+        await LedgerEntry.destroy({ where: {} });
         await Transaction.destroy({ where: {} });
+        await Pledge.destroy({ where: {} });
+        await Donation.destroy({ where: {} });
+        await MemberPayment.destroy({ where: {} });
+        await Dependent.destroy({ where: {} });
         await Member.destroy({ where: {} });
 
         adminMember = await Member.create({
@@ -137,6 +146,9 @@ describe('Zelle Batch Ingestion', () => {
         expect(res.body.results[1].success).toBe(true);
 
         const txs = await Transaction.findAll();
+        if (txs.length !== 2) {
+            console.error('DEBUG: res.body:', JSON.stringify(res.body, null, 2));
+        }
         expect(txs).toHaveLength(2);
     });
 });

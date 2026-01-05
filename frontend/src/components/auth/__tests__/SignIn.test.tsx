@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider, useAuth } from '../../../contexts/AuthContext';
 import { LanguageProvider } from '../../../contexts/LanguageContext';
+import { I18nProvider } from '../../../i18n/I18nProvider';
 import '@testing-library/jest-dom';
 
 // Mock translations for testing
@@ -86,7 +87,7 @@ jest.mock('firebase/auth', () => {
     RecaptchaVerifier: jest.fn().mockImplementation((authArg: any, container: any, options: any) => {
       // Immediately invoke callback to set recaptchaSolved=true in component
       if (options && typeof options.callback === 'function') {
-        try { options.callback(); } catch {}
+        try { options.callback(); } catch { }
       }
       return mockRecaptchaVerifier;
     }),
@@ -125,11 +126,13 @@ jest.mock('../../../contexts/AuthContext', () => ({
 const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <MemoryRouter>
-      <LanguageProvider>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-      </LanguageProvider>
+      <I18nProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </LanguageProvider>
+      </I18nProvider>
     </MemoryRouter>
   );
 };
@@ -143,7 +146,7 @@ const renderSignIn = (props = {}) => {
     loading: false,
     error: null,
   }));
-  
+
   // Mock the useLanguage hook
   jest.mock('../../../contexts/LanguageContext', () => ({
     ...jest.requireActual('../../../contexts/LanguageContext'),
@@ -155,7 +158,7 @@ const renderSignIn = (props = {}) => {
       changeLanguage: jest.fn()
     })
   }));
-  
+
   return render(
     <TestWrapper>
       <SignIn {...props} />
@@ -166,13 +169,13 @@ const renderSignIn = (props = {}) => {
 describe('SignIn Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Reset mock implementations
     mockAuth.loginWithPhone.mockClear().mockResolvedValue({});
     mockAuth.clearError.mockImplementation(() => {
       mockAuth.error = null;
     });
-    
+
     // Reset the mock implementation for useAuth
     mockUseAuth.mockImplementation(() => ({
       ...mockAuth,
