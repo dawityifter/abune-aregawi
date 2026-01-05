@@ -2334,14 +2334,36 @@ exports.promoteDependent = async (req, res) => {
     const memberEmail = email || dependent.email || `dependent_${dependent.id}@placeholder.local`;
     const memberPhone = phone || dependent.phone;
 
+    // Check if phone number already exists in members table
+    const existingMemberByPhone = await Member.findOne({
+      where: { phone_number: memberPhone }
+    });
+    if (existingMemberByPhone) {
+      return res.status(400).json({
+        success: false,
+        message: `A member with phone number ${memberPhone} already exists. Each member must have a unique phone number for login access.`
+      });
+    }
+
+    // Normalize gender for Member ENUM (lowercase)
+    let memberGender = dependent.gender;
+    if (typeof memberGender === 'string') {
+      memberGender = memberGender.toLowerCase();
+      // Ensure it matches one of the allowed ENUM values
+      if (!['male', 'female', 'other'].includes(memberGender)) {
+        memberGender = null;
+      }
+    }
+
     const newMember = await Member.create({
       first_name: dependent.firstName,
       middle_name: dependent.middleName,
       last_name: dependent.lastName,
       email: memberEmail,
       phone_number: memberPhone,
-      gender: dependent.gender,
+      gender: memberGender,
       date_of_birth: dependent.dateOfBirth,
+      baptism_name: dependent.baptismName,
       family_id: familyId,
       yearly_pledge: 0, // CRITICAL: Zero pledge so they don't get billed separately
       role: 'member',
