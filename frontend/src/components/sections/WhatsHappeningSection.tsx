@@ -5,7 +5,7 @@ const WhatsHappeningSection: React.FC = () => {
   const { t } = useI18n();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  const christmasFlyer = `${process.env.PUBLIC_URL || ''}/images/TigrayChristmas-2025.jpeg`;
+  const announcementImage = `${process.env.PUBLIC_URL || ''}/images/sunday_school/sundayschool1.png`;
 
   return (
     <section className="py-16">
@@ -13,14 +13,14 @@ const WhatsHappeningSection: React.FC = () => {
         <h2 className="section-title">{t('sections.announcements.title')}</h2>
         <div className="max-w-4xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Christmas Flyer Card - Temporary replacement for Community Support Initiatives */}
+            {/* Announcement Card - Temporary replacement for Community Support Initiatives */}
             <div
               className="content-card flex flex-col items-center justify-center p-0 overflow-hidden cursor-pointer group relative h-full"
-              onClick={() => setSelectedImage(christmasFlyer)}
+              onClick={() => setSelectedImage(announcementImage)}
             >
               <img
-                src={christmasFlyer}
-                alt="Tigray Christmas 2025"
+                src={announcementImage}
+                alt="Sunday School Announcement"
                 className="w-full h-full object-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
