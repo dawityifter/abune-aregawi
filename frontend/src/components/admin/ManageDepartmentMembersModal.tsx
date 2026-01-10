@@ -91,7 +91,10 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
 
       if (response.ok) {
         const data = await response.json();
-        setAllMembers(data.data.members || []);
+        // Backend returns: { success: true, data: [array of members] }
+        // So data.data is the array directly, not data.data.members
+        const membersArray = Array.isArray(data.data) ? data.data : (data.data?.members || []);
+        setAllMembers(membersArray);
       }
     } catch (error) {
       console.error('Error fetching all members:', error);

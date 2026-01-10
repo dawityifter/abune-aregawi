@@ -93,7 +93,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
     try {
       const token = await firebaseUser.getIdToken();
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/payments/${memberId}/dues?year=${selectedYear}`,
+        `${process.env.REACT_APP_API_URL}/api/members/dues/by-member/${memberId}?year=${selectedYear}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,

@@ -1,0 +1,72 @@
+plugins {
+    id 'java'
+    id 'groovy'
+    id 'org.springframework.boot' version '4.0.1'
+    id 'io.spring.dependency-management' version '1.1.6'
+}
+
+group = 'church.abunearegawi'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    
+    // Firebase Admin SDK
+    implementation 'com.google.firebase:firebase-admin:9.4.2'
+    
+    // Stripe SDK
+    implementation 'com.stripe:stripe-java:25.10.0'
+    
+    // Twilio SDK
+    implementation 'com.twilio.sdk:twilio:10.6.1'
+    
+    // Google API Client for YouTube
+    implementation 'com.google.api-client:google-api-client:2.7.0'
+    implementation 'com.google.apis:google-api-services-youtube:v3-rev20240514-2.0.0'
+    
+    // PostgreSQL
+    runtimeOnly 'org.postgresql:postgresql'
+    
+    // .env file support
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+    
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    
+    // MapStruct for DTO mapping
+    implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+    
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Spock and Groovy
+    testImplementation 'org.spockframework:spock-core:2.4-M7-groovy-5.0'
+    testImplementation 'org.spockframework:spock-spring:2.4-M7-groovy-5.0'
+    testImplementation 'org.apache.groovy:groovy-all:5.0.3'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.named('bootRun') {
+    systemProperty 'java.net.preferIPv4Stack', 'true'
+}

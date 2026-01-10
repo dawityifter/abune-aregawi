@@ -96,7 +96,9 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
           console.log('📊 Full API Response data:', JSON.stringify(data, null, 2));
           
           if (data.success) {
-            const memberList = data.data?.members || [];
+            // Backend returns: { success: true, data: [array of members] }
+            // So data.data is the array directly, not data.data.members
+            const memberList = Array.isArray(data.data) ? data.data : (data.data?.members || []);
             console.log('👥 Member list from response:', memberList);
             console.log('👥 Members loaded:', memberList.length);
             setMembers(memberList);

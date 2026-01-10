@@ -1,0 +1,36 @@
+spring:
+  application:
+     name: abune-aregawi-backend-java
+  profiles:
+     active: local
+  datasource:
+     # Database Config - will use environment variables if available
+     # Prepended jdbc: prefix to ensure compatibility
+     url: jdbc:postgresql://localhost:5432/abune_aregawi_db
+     username: dawit
+     password:
+     driver-class-name: org.postgresql.Driver
+  jpa:
+     hibernate:
+        ddl-auto: update
+     show-sql: false
+     properties:
+        hibernate:
+           format_sql: true
+           dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: 8080
+
+app:
+  # Demo mode (for testing without real Firebase tokens)
+  enable-demo-mode: false
+  demo-token: MAGIC_DEMO_TOKEN
+
+logging:
+  level:
+     church:
+        abunearegawi: DEBUG
+     org:
+        springframework:
+           security: DEBUG

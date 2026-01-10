@@ -126,7 +126,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Timeout per attempt to avoid indefinite hangs
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), PROFILE_FETCH_TIMEOUT_MS);
-          const response = await fetch(apiUrl, { signal: controller.signal });
+          const token = await firebaseUser.getIdToken();
+          const headers: any = { 'Authorization': `Bearer ${token}` };
+          if (token === 'MAGIC_DEMO_TOKEN' && email) {
+            headers['X-Demo-Email'] = email;
+          }
+
+          const response = await fetch(apiUrl, {
+            headers,
+            signal: controller.signal
+          });
 
           // Always clear timeout even if parsing/logic throws later
           clearTimeout(timeoutId);
@@ -135,7 +144,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (response.status === 200) {
             const responseData = await response.json();
             console.log('✅ Backend user found:', responseData);
-            return responseData.data?.member || responseData;
+            // Handle both structure formats:
+            // 1. { data: { member: { ... } } } - Node.js style
+            // 2. { data: { ... } } - Java style (MemberDTO directly in data)
+            // 3. { ... } - Fallback
+            return responseData.data?.member || responseData.data || responseData;
           }
 
           if (response.status === 404) {
@@ -350,10 +363,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
-      const res = await fetch(apiUrl);
+      const currentUser = auth.currentUser;
+      const token = currentUser ? await currentUser.getIdToken() : '';
+      const headers: any = { 'Authorization': `Bearer ${token}` };
+      if (token === 'MAGIC_DEMO_TOKEN' && (email || currentUser?.email)) {
+        headers['X-Demo-Email'] = email || currentUser?.email;
+      }
+
+      const res = await fetch(apiUrl, {
+        headers
+      });
 
       if (res.status === 200) {
-        return await res.json();
+        const responseData = await res.json();
+        // Handle both structure formats:
+        // 1. { data: { member: { ... } } } - Node.js style
+        // 2. { data: { ... } } - Java style (MemberDTO directly in data)
+        // 3. { ... } - Fallback
+        return responseData.data?.member || responseData.data || responseData;
       } else {
         console.error('Failed to fetch user profile:', res.status);
         return null;
@@ -374,11 +401,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
+      const currentUser = auth.currentUser;
+      const token = currentUser ? await currentUser.getIdToken() : '';
+      const headers: any = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+      if (token === 'MAGIC_DEMO_TOKEN' && currentUser?.email) {
+        headers['X-Demo-Email'] = currentUser.email;
+      }
+
       const res = await fetch(apiUrl, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(updates)
       });
 

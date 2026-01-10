@@ -65,7 +65,8 @@ const MemberList: React.FC<MemberListProps> = ({
   // Calculate total unique households
   const totalHouseholds = useMemo(() => {
     const uniqueFamilies = new Set();
-    allMembers.forEach(member => {
+    // Guard against undefined allMembers
+    (allMembers || []).forEach(member => {
       // If member shares a familyId, they belong to that household
       // If not, their own ID defines their household
       const householdId = member.familyId || member.id;
@@ -76,7 +77,7 @@ const MemberList: React.FC<MemberListProps> = ({
 
   // Client-side filtering and pagination
   const filteredMembers = useMemo(() => {
-    return allMembers.filter(member => {
+    return (allMembers || []).filter(member => {
       const searchLower = searchTerm.toLowerCase();
       const memberNumberRaw = (member as any).memberId ?? (member as any).member_id ?? member.id ?? '';
       const memberNumber = String(memberNumberRaw).toLowerCase();
@@ -122,13 +123,20 @@ const MemberList: React.FC<MemberListProps> = ({
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/all/firebase?limit=1000`;
       console.log('API URL:', apiUrl);
 
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
       const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json'
         },
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       console.log('Response Status:', response.status);
       console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
@@ -138,9 +146,25 @@ const MemberList: React.FC<MemberListProps> = ({
       }
 
       const data = await response.json();
-      setAllMembers(data.data.members);
+      console.log('📊 MemberList API Response:', data);
+      // Backend returns: { success: true, data: [array of members] }
+      // So data.data is the array directly, not data.data.members
+      const membersArray = Array.isArray(data.data) ? data.data : (data.data?.members || []);
+      // Normalize isActive field - handle both "active" and "isActive" from backend
+      const normalizedMembers = membersArray.map((member: any) => ({
+        ...member,
+        isActive: member.isActive !== undefined ? member.isActive : (member.active !== undefined ? member.active : true)
+      }));
+      console.log('👥 Members loaded:', normalizedMembers.length);
+      console.log('📊 Sample member:', normalizedMembers[0]);
+      setAllMembers(normalizedMembers);
     } catch (error: any) {
-      setError(error.message);
+      console.error('❌ Error fetching members:', error);
+      if (error.name === 'AbortError') {
+        setError('Request timed out. Please try again.');
+      } else {
+        setError(error.message || 'Failed to fetch members');
+      }
     } finally {
       setLoading(false);
     }
@@ -158,12 +182,24 @@ const MemberList: React.FC<MemberListProps> = ({
         }
       });
 
+      console.log('📊 Dependents count response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
-        setTotalDependents(data?.data?.count || 0);
+        console.log('📊 Dependents count API response:', JSON.stringify(data, null, 2));
+        // Backend returns: { success: true, data: { count: number } }
+        // Handle both possible structures
+        const count = data?.data?.count ?? data?.count ?? 0;
+        console.log('👥 Total dependents count:', count);
+        setTotalDependents(Number(count));
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Failed to fetch dependents count:', response.status, errorText);
+        setTotalDependents(0);
       }
     } catch (error) {
-      console.error('Failed to fetch dependents count:', error);
+      console.error('❌ Error fetching dependents count:', error);
+      setTotalDependents(0);
     }
   };
 
