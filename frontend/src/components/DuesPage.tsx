@@ -11,12 +11,17 @@ interface MonthStatus {
 
 interface MemberTransaction {
   id: number | string;
-  payment_date: string;
+  date: string;
   amount: number;
-  payment_type: string;
-  payment_method: string;
-  receipt_number?: string | null;
-  note?: string | null;
+  type: string;
+  paymentMethod: string;
+  receipt_number?: string | null; // Backend sends snake_case for these? No, backend sends camelCase `receiptNumber`, `notes` (lines 17, 25 of DTO).
+  // Wait, let's look at TransactionDTO again.
+  // TransactionDTO: checkNumber, notes.
+  // Frontend: receipt_number, note.
+  // I should update these too.
+  checkNumber?: string | null;
+  notes?: string | null;
 }
 
 interface DuesResponse {
@@ -139,9 +144,9 @@ const DuesPage: React.FC = () => {
 
   const { member, payment, transactions } = dues;
   // Compute Other Payments (non-membership payments)
-  const otherPaymentsTotal = (transactions || []).filter(t => t.payment_type !== 'membership_due')
+  const otherPaymentsTotal = (transactions || []).filter(t => t.type !== 'membership_due')
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-  const getStatus = (t: MemberTransaction) => t.payment_method === 'ach' ? 'Pending' : 'Succeeded';
+  const getStatus = (t: MemberTransaction) => (t.paymentMethod || '').toLowerCase() === 'ach' ? 'Pending' : 'Succeeded';
 
   const monthsInYear = payment.monthStatuses.filter(ms => ms.status !== 'pre-membership').length;
   const yearlyPledge = (payment.monthlyPayment || 0) * (monthsInYear || 12);
@@ -255,12 +260,12 @@ const DuesPage: React.FC = () => {
                     )}
                     {transactions.map(t => (
                       <tr key={String(t.id)}>
-                        <td className="px-4 py-2 whitespace-nowrap">{new Date(t.payment_date).toLocaleDateString()}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">{new Date(t.date).toLocaleDateString()}</td>
                         <td className="px-4 py-2 whitespace-nowrap">{currency(t.amount)}</td>
-                        <td className="px-4 py-2 whitespace-nowrap capitalize">{t.payment_type.replace(/_/g, ' ')}</td>
-                        <td className="px-4 py-2 whitespace-nowrap capitalize">{t.payment_method.replace(/_/g, ' ')}</td>
-                        <td className="px-4 py-2 whitespace-nowrap">{t.receipt_number || '-'}</td>
-                        <td className="px-4 py-2 whitespace-nowrap">{t.note || '-'}</td>
+                        <td className="px-4 py-2 whitespace-nowrap capitalize">{(t.type || '').replace(/_/g, ' ')}</td>
+                        <td className="px-4 py-2 whitespace-nowrap capitalize">{(t.paymentMethod || '').replace(/_/g, ' ')}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">{t.checkNumber || '-'}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">{t.notes || '-'}</td>
                         <td className="px-4 py-2 whitespace-nowrap">{getStatus(t)}</td>
                       </tr>
                     ))}

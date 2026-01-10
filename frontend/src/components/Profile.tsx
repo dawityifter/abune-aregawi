@@ -111,11 +111,11 @@ const Profile: React.FC = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       console.log('🔍 Profile component - currentUser:', currentUser);
-      
+
       if (currentUser && currentUser.uid) {
         try {
           console.log('🔍 Fetching profile for UID:', currentUser.uid);
-          
+
           // Fetch Firebase profile
           const userProfile = await getUserProfile(currentUser.uid, currentUser.email, currentUser.phoneNumber);
           setProfile(userProfile);
@@ -153,7 +153,7 @@ const Profile: React.FC = () => {
             console.log('🔍 currentUser object:', currentUser);
             console.log('🔍 currentUser.email:', currentUser.email);
             console.log('🔍 currentUser.phoneNumber:', currentUser.phoneNumber);
-            
+
             if (currentUser.email) {
               params.append('email', currentUser.email);
               console.log('✅ Added email parameter:', currentUser.email);
@@ -162,10 +162,10 @@ const Profile: React.FC = () => {
               params.append('phone', currentUser.phoneNumber);
               console.log('✅ Added phone parameter:', currentUser.phoneNumber);
             }
-            
+
             const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?${params.toString()}`;
             console.log('🔍 Making backend API call to:', apiUrl);
-            
+
             const response = await fetch(apiUrl, {
               method: 'GET',
               headers: {
@@ -175,43 +175,43 @@ const Profile: React.FC = () => {
 
             if (response.ok) {
               const result = await response.json();
-              
+
               // Merge backend data with Firebase data
-              const linked = result?.data?.member?.linkedMember || null;
+              const linked = result?.data?.linkedMember || null;
               const hohName = linked
                 ? `${(linked.firstName || '').trim()} ${(linked.lastName || '').trim()}`.trim()
-                : (result?.data?.member?.headOfHouseholdName || '');
-              const isDep = result?.data?.member?.role === 'dependent';
+                : (result?.data?.headOfHouseholdName || '');
+              const isDep = result?.data?.role === 'dependent';
               const mergedData = {
                 ...userProfile,
-                firstName: result.data.member.firstName,
-                middleName: result.data.member.middleName,
-                lastName: result.data.member.lastName,
-                email: result.data.member.email,
-                role: result.data.member.role,
-                createdAt: result.data.member.createdAt,
-                phoneNumber: result.data.member.phoneNumber,
-                dateOfBirth: result.data.member.dateOfBirth,
-                gender: result.data.member.gender,
-                maritalStatus: result.data.member.maritalStatus,
-                emergencyContact: result.data.member.emergencyContactName,
-                emergencyPhone: result.data.member.emergencyContactPhone,
-                ministries: result.data.member.ministries ? JSON.parse(result.data.member.ministries) : [],
-                languagePreference: result.data.member.languagePreference,
-                dateJoinedParish: result.data.member.dateJoinedParish,
-                baptismName: result.data.member.baptismName,
-                interestedInServing: result.data.member.interestedInServing,
+                firstName: result.data.firstName,
+                middleName: result.data.middleName,
+                lastName: result.data.lastName,
+                email: result.data.email,
+                role: result.data.role,
+                createdAt: result.data.createdAt,
+                phoneNumber: result.data.phoneNumber,
+                dateOfBirth: result.data.dateOfBirth,
+                gender: result.data.gender,
+                maritalStatus: result.data.maritalStatus,
+                emergencyContact: result.data.emergencyContactName,
+                emergencyPhone: result.data.emergencyContactPhone,
+                ministries: result.data.ministries ? JSON.parse(result.data.ministries) : [],
+                languagePreference: result.data.languagePreference,
+                dateJoinedParish: result.data.dateJoinedParish,
+                baptismName: result.data.baptismName,
+                interestedInServing: result.data.interestedInServing,
                 // For dependents, show address from head of household when available
-                streetLine1: isDep ? (linked?.streetLine1 ?? result.data.member.streetLine1) : result.data.member.streetLine1,
-                apartmentNo: isDep ? (linked?.apartmentNo ?? result.data.member.apartmentNo) : result.data.member.apartmentNo,
-                city: isDep ? (linked?.city ?? result.data.member.city) : result.data.member.city,
-                state: isDep ? (linked?.state ?? result.data.member.state) : result.data.member.state,
-                postalCode: isDep ? (linked?.postalCode ?? result.data.member.postalCode) : result.data.member.postalCode,
-                dependents: result.data.member.dependents || [],
+                streetLine1: isDep ? (linked?.streetLine1 ?? result.data.streetLine1) : result.data.streetLine1,
+                apartmentNo: isDep ? (linked?.apartmentNo ?? result.data.apartmentNo) : result.data.apartmentNo,
+                city: isDep ? (linked?.city ?? result.data.city) : result.data.city,
+                state: isDep ? (linked?.state ?? result.data.state) : result.data.state,
+                postalCode: isDep ? (linked?.postalCode ?? result.data.postalCode) : result.data.postalCode,
+                dependents: result.data.dependents || [],
                 headOfHouseholdName: hohName || undefined,
                 isDependent: isDep
               };
-              
+
               setProfile(mergedData);
               setFormData(mergedData);
             } else {
@@ -273,9 +273,9 @@ const Profile: React.FC = () => {
       let digits = value.replace(/[^\d]/g, '');
       if (digits.length > 10) digits = digits.slice(0, 10);
       if (digits.length > 6) {
-        newValue = `${digits.slice(0,3)}-${digits.slice(3,6)}-${digits.slice(6,10)}`;
+        newValue = `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
       } else if (digits.length > 3) {
-        newValue = `${digits.slice(0,3)}-${digits.slice(3,6)}`;
+        newValue = `${digits.slice(0, 3)}-${digits.slice(3, 6)}`;
       } else {
         newValue = digits;
       }
@@ -299,7 +299,7 @@ const Profile: React.FC = () => {
     try {
       // Create display name from separate name fields
       const displayName = `${formData.firstName || ''} ${formData.middleName || ''} ${formData.lastName || ''}`.replace(/\s+/g, ' ').trim();
-      
+
       // Update display name in Firebase Auth if it changed
       if (displayName && displayName !== currentUser.displayName) {
         await updateUserProfile({ displayName });
@@ -336,12 +336,12 @@ const Profile: React.FC = () => {
         ...(profile?.isDependent
           ? {}
           : {
-              streetLine1: formData.streetLine1,
-              apartmentNo: formData.apartmentNo,
-              city: formData.city,
-              state: formData.state,
-              postalCode: formData.postalCode,
-            }),
+            streetLine1: formData.streetLine1,
+            apartmentNo: formData.apartmentNo,
+            city: formData.city,
+            state: formData.state,
+            postalCode: formData.postalCode,
+          }),
         dependents: formData.dependents || null
       };
 
@@ -354,7 +354,7 @@ const Profile: React.FC = () => {
       if (currentUser.phoneNumber) {
         params.append('phone', currentUser.phoneNumber);
       }
-      
+
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?${params.toString()}`, {
         method: 'PUT',
         headers: {
@@ -374,7 +374,7 @@ const Profile: React.FC = () => {
       setProfile(prev => prev ? { ...prev, ...formData } as ProfileData : null);
       setEditing(false);
       setSuccess('Profile updated successfully!');
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
     } catch (error: any) {
@@ -433,14 +433,14 @@ const Profile: React.FC = () => {
             You are logged in with Firebase but haven't completed your member registration yet.
           </p>
           <div className="space-x-4">
-            <button 
-              onClick={() => window.location.reload()} 
+            <button
+              onClick={() => window.location.reload()}
               className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
             >
               Retry
             </button>
-            <button 
-              onClick={() => window.location.href = '/register'} 
+            <button
+              onClick={() => window.location.href = '/register'}
               className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
             >
               Complete Registration
@@ -925,17 +925,17 @@ const Profile: React.FC = () => {
                   </h3>
                   <div className="flex flex-col gap-4">
                     {profile.dependents.map((dependent: BackendDependentData) => (
-                                              <div key={dependent.id} className="bg-gray-50 p-4 rounded-lg w-full">
-                          <h4 className="font-medium text-gray-900 mb-3">
-                            {dependent.firstName} {dependent.middleName} {dependent.lastName}
-                          </h4>
-                          <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('date.of.birth')}</label>
-                                <p className="text-gray-900">{formatDateForDisplay(dependent.dateOfBirth)}</p>
-                              </div>
-                                                          <div>
+                      <div key={dependent.id} className="bg-gray-50 p-4 rounded-lg w-full">
+                        <h4 className="font-medium text-gray-900 mb-3">
+                          {dependent.firstName} {dependent.middleName} {dependent.lastName}
+                        </h4>
+                        <div className="grid grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('date.of.birth')}</label>
+                              <p className="text-gray-900">{formatDateForDisplay(dependent.dateOfBirth)}</p>
+                            </div>
+                            <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">{t('gender')}</label>
                               <p className="text-gray-900">{dependent.gender}</p>
                             </div>
@@ -945,7 +945,7 @@ const Profile: React.FC = () => {
                                 <p className="text-gray-900">{dependent.relationship}</p>
                               </div>
                             )}
-                                                      </div>
+                          </div>
                           <div className="space-y-4">
                             {dependent.phone && (
                               <div>
@@ -987,9 +987,9 @@ const Profile: React.FC = () => {
                                 <p className="text-gray-900">{dependent.notes}</p>
                               </div>
                             )}
-                            </div>
                           </div>
                         </div>
+                      </div>
                     ))}
                   </div>
                 </div>

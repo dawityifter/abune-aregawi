@@ -1,0 +1,2 @@
+Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #
+DEBIT,01/01/2026,"This is a very long description that previously would have caused the hash to be enormous because base64 makes things larger and the description itself is already quite long so adding the date and amount and base64 encoding it would definitively exceed 255 characters easily especially if I make this string even longer to be absolutely sure that we are testing the boundary condition of the database column size limitation properly.",-100.00,Sale,1000.00,

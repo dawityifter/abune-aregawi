@@ -1,0 +1,46 @@
+package church.abunearegawi.backend.repository;
+
+import church.abunearegawi.backend.model.Transaction;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
+@Repository
+public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+
+        List<Transaction> findByMemberId(Long memberId);
+
+        List<Transaction> findByPaymentDateBetween(LocalDate startDate, LocalDate endDate);
+
+        Page<Transaction> findByPaymentType(Transaction.PaymentType paymentType, Pageable pageable);
+
+        List<Transaction> findByPaymentType(Transaction.PaymentType paymentType);
+
+        Page<Transaction> findByMemberId(Long memberId, Pageable pageable);
+
+        @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.paymentType = :paymentType AND t.paymentDate BETWEEN :startDate AND :endDate")
+        BigDecimal sumByPaymentTypeAndDateRange(
+                        @Param("paymentType") Transaction.PaymentType paymentType,
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate);
+
+        @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.member.id = :memberId AND t.paymentDate BETWEEN :startDate AND :endDate")
+        BigDecimal sumByMemberAndDateRange(
+                        @Param("memberId") Long memberId,
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate);
+
+        @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.paymentDate BETWEEN :startDate AND :endDate")
+        BigDecimal sumTotalByDateRange(
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate);
+
+        boolean existsByExternalId(String externalId);
+}

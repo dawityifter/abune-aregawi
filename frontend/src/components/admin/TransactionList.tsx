@@ -102,8 +102,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   const fetchTransactions = async () => {
     try {
       const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: '20'
+        page: (currentPage - 1).toString(), // Spring is 0-indexed
+        size: '20' // Spring uses 'size' instead of 'limit'
       });
 
       if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
@@ -163,8 +163,11 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
 
       if (response.ok) {
         const data = await response.json();
-        setTransactions(data.data.transactions || []);
-        setTotalPages(data.data.pagination?.total_pages || 1);
+        // Handle Spring Page<T> structure which puts list in 'content'
+        // Fallback to 'transactions' for legacy support if needed, but primary is 'content'
+        const txs = data.data.content || data.data.transactions || [];
+        setTransactions(txs);
+        setTotalPages(data.data.totalPages || data.data.pagination?.total_pages || 1);
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);

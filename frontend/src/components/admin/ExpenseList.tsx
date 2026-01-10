@@ -98,29 +98,27 @@ const ExpenseList: React.FC = () => {
       const token = await firebaseUser?.getIdToken();
 
       const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '20'
+        page: (page - 1).toString(), // Spring is 0-indexed
+        size: '10'
       });
 
-      if (startDate) params.append('start_date', startDate);
-      if (endDate) params.append('end_date', endDate);
-      if (glCodeFilter) params.append('gl_code', glCodeFilter);
-      if (paymentMethodFilter) params.append('payment_method', paymentMethodFilter);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      if (glCodeFilter) params.append('glCode', glCodeFilter);
+      if (paymentMethodFilter) params.append('paymentMethod', paymentMethodFilter);
 
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/expenses?${params.toString()}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/expenses?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
-      );
+      });
 
       if (response.ok) {
         const data = await response.json();
-        setExpenses(data.data || []);
-        setTotalPages(data.pagination?.totalPages || 1);
-        setTotalItems(data.pagination?.totalItems || 0);
+        const expenseList = data.data.content || data.data.expenses || [];
+        setExpenses(expenseList);
+        setTotalPages(data.data.totalPages || data.data.pagination?.total_pages || 1);
+        setTotalItems(data.data.totalElements || data.data.pagination?.total_items || 0);
       }
     } catch (err) {
       console.error('Error fetching expenses:', err);

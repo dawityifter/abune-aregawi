@@ -21,22 +21,22 @@ const MemberRegistration: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { currentUser, getUserProfile, clearNewUserCache } = useAuth();
+  const { currentUser, getUserProfile, clearNewUserCache, authReady } = useAuth();
   const { email, phone } = location.state || {};
-  
+
   // State to track if we're still checking user status
   const [checkingUser, setCheckingUser] = useState(true);
   const [userStatus, setUserStatus] = useState<'new' | 'existing' | 'error'>('new');
-  
+
   // Track window width for responsive behavior
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-  
+
   // Registration form state
   const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dependents, setDependents] = useState<Dependent[]>([]);
-  
+
   const [formData, setFormData] = useState({
     // Personal Information
     firstName: '',
@@ -47,7 +47,7 @@ const MemberRegistration: React.FC = () => {
     isHeadOfHousehold: true,
     headOfHouseholdPhone: '',
     hasDependents: false,
-    
+
     // Contact & Address
     email: email || '',
     phoneNumber: phone || '',
@@ -57,7 +57,7 @@ const MemberRegistration: React.FC = () => {
     state: 'TX',
     postalCode: '',
     country: 'United States',
-    
+
     // Family Information
     spouseName: '',
     spousePhone: '',
@@ -65,7 +65,7 @@ const MemberRegistration: React.FC = () => {
     emergencyContactName: '',
     emergencyContactPhone: '',
     emergencyContactRelationship: '',
-    
+
     // Spiritual Information
     baptismName: '',
     isBaptized: false,
@@ -75,13 +75,13 @@ const MemberRegistration: React.FC = () => {
     dateJoinedParish: '',
     interestedInServing: '',
     languagePreference: 'English',
-    
+
     // Contribution & Giving
     preferredGivingMethod: 'Cash',
     monthlyContribution: '',
     specialContributions: [],
     yearlyPledge: '',
-    
+
     // Account Information
     preferredLanguage: 'English',
     communicationPreferences: [],
@@ -91,21 +91,26 @@ const MemberRegistration: React.FC = () => {
       receiveEventNotifications: true
     }
   });
-  
+
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
+
   const isMobile = windowWidth < 768;
-  
+
   // Check if user exists when component mounts
   useEffect(() => {
     const checkUserStatus = async () => {
+      // Wait for auth to be fully initialized before making decisions
+      if (!authReady) {
+        return;
+      }
+
       try {
         setCheckingUser(true);
-        
+
         // If we have a current user, check if they have a profile
         if (currentUser) {
           try {
@@ -115,7 +120,7 @@ const MemberRegistration: React.FC = () => {
               currentUser.email || '',
               currentUser.phoneNumber || ''
             );
-            
+
             if (profile) {
               // User has a profile, they are an existing user
               console.log('User profile found, redirecting to dashboard');
@@ -137,6 +142,13 @@ const MemberRegistration: React.FC = () => {
             }
           }
         } else {
+          // Check for Magic Mode before redirecting
+          if ((localStorage.getItem('magic_demo_mode') === 'true' || localStorage.getItem('magic_new_user_mode') === 'true')) {
+            console.log('✨ Magic Mode detected in Registration - Bypassing Login Redirect');
+            setUserStatus('new');
+            return;
+          }
+
           // No current user, redirect to login
           console.log('No current user, redirecting to login');
           navigate('/login');
@@ -148,9 +160,9 @@ const MemberRegistration: React.FC = () => {
         setCheckingUser(false);
       }
     };
-    
+
     checkUserStatus();
-  }, [currentUser, navigate, getUserProfile]);
+  }, [currentUser, navigate, getUserProfile, authReady]);
 
   // Loading and error are rendered conditionally in JSX below to keep hooks order consistent
 
@@ -159,25 +171,25 @@ const MemberRegistration: React.FC = () => {
       ...prev,
       [field]: value
     }));
-    
+
     // Handle hasDependents change - adjust current step if needed
     if (field === 'hasDependents') {
-          // If user unchecks hasDependents and is currently on or past the dependents step
-    if (!value && currentStep >= 4) {
-      // If currently on dependents step (4), move to next step (spiritual info)
-      if (currentStep === 4) {
-        setCurrentStep(4); // This will now show spiritual info due to getStepContent logic
+      // If user unchecks hasDependents and is currently on or past the dependents step
+      if (!value && currentStep >= 4) {
+        // If currently on dependents step (4), move to next step (spiritual info)
+        if (currentStep === 4) {
+          setCurrentStep(4); // This will now show spiritual info due to getStepContent logic
+        }
+        // Clear any dependents data since they won't be submitted
+        setDependents([]);
       }
-      // Clear any dependents data since they won't be submitted
-      setDependents([]);
+      // If user checks hasDependents and is currently past where dependents step should be
+      else if (value && currentStep >= 4) {
+        // Adjust current step to account for the newly included dependents step
+        // No automatic navigation needed - user can navigate manually
+      }
     }
-    // If user checks hasDependents and is currently past where dependents step should be
-    else if (value && currentStep >= 4) {
-      // Adjust current step to account for the newly included dependents step
-      // No automatic navigation needed - user can navigate manually
-    }
-    }
-    
+
     // Clear error for this field
     if (errors[field]) {
       setErrors((prev: any) => ({
@@ -190,11 +202,11 @@ const MemberRegistration: React.FC = () => {
   // Validate head of household phone number
   const validateHeadOfHouseholdPhone = async (phoneNumber: string) => {
     if (!phoneNumber.trim()) return false;
-    
+
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/validate-head-of-household/${encodeURIComponent(phoneNumber)}`);
       const data = await response.json();
-      
+
       if (data.success) {
         return true;
       } else {
@@ -216,9 +228,9 @@ const MemberRegistration: React.FC = () => {
 
   const validateStep = async (step: number): Promise<boolean> => {
     const newErrors: any = {};
-    
+
     console.log('🔍 validateStep called for step:', step);
-    
+
     switch (step) {
       case 1: // Personal Information
         if (!formData.firstName.trim()) newErrors.firstName = t('first.name.required');
@@ -233,7 +245,7 @@ const MemberRegistration: React.FC = () => {
           }
         }
         break;
-        
+
       case 2: // Contact & Address
         console.log('🔍 Validating step 2 - Contact & Address');
         console.log('🔍 Email:', formData.email, 'Phone:', formData.phoneNumber);
@@ -244,7 +256,7 @@ const MemberRegistration: React.FC = () => {
           postalCode: formData.postalCode,
           country: formData.country
         });
-        
+
         // Email is optional for phone sign-in users, but required if no phone
         if (!formData.email.trim() && !formData.phoneNumber.trim()) {
           newErrors.email = t('email.or.phone.required');
@@ -280,7 +292,7 @@ const MemberRegistration: React.FC = () => {
           console.log('🔍 Country validation failed');
         }
         break;
-        
+
       case 3: // Family Information
         if (formData.maritalStatus === 'Married') {
           // For married users, only spouse name is required
@@ -297,10 +309,10 @@ const MemberRegistration: React.FC = () => {
           }
         }
         break;
-        
+
       // Steps 4-7 are optional or have minimal validation
     }
-    
+
     setErrors(newErrors);
     console.log('🔍 Validation errors set:', newErrors);
     return Object.keys(newErrors).length === 0;
@@ -352,14 +364,14 @@ const MemberRegistration: React.FC = () => {
   const handleSubmit = async () => {
     const isValid = await validateStep(currentStep);
     if (!isValid) return;
-    
+
     setIsSubmitting(true);
     try {
       // Normalize phone numbers before submission
       const normalizedPhoneNumber = formData.phoneNumber ? normalizePhoneNumber(formData.phoneNumber) : '';
       const normalizedSpousePhone = formData.spousePhone ? normalizePhoneNumber(formData.spousePhone) : '';
       const normalizedEmergencyPhone = formData.emergencyContactPhone ? normalizePhoneNumber(formData.emergencyContactPhone) : '';
-      
+
       // Normalize and sanitize dependents data (phone and dates)
       const normalizedDependents = dependents.map((dependent) => {
         // Normalize phone
@@ -395,10 +407,10 @@ const MemberRegistration: React.FC = () => {
 
         return cleaned;
       });
-      
+
       // Normalize head of household phone number
       const normalizedHeadOfHouseholdPhone = formData.headOfHouseholdPhone ? normalizePhoneNumber(formData.headOfHouseholdPhone) : '';
-      
+
       // Prepare registration data with proper validation and normalized phone numbers
       const registrationData: any = {
         ...formData,
@@ -422,8 +434,8 @@ const MemberRegistration: React.FC = () => {
         // Convert preferred giving method to lowercase to match backend validation
         preferredGivingMethod: formData.preferredGivingMethod?.toLowerCase(),
         // Ensure interestedInServing matches backend enum ('yes','no','maybe')
-        interestedInServing: typeof formData.interestedInServing === 'string' 
-          ? formData.interestedInServing.toLowerCase() 
+        interestedInServing: typeof formData.interestedInServing === 'string'
+          ? formData.interestedInServing.toLowerCase()
           : undefined
       };
 
@@ -431,7 +443,7 @@ const MemberRegistration: React.FC = () => {
       if (formData.yearlyPledge !== '' && formData.yearlyPledge !== null && formData.yearlyPledge !== undefined) {
         registrationData.yearlyPledge = Number(formData.yearlyPledge);
       }
-      
+
       // Remove undefined/null/empty string values to let backend use defaults
       Object.keys(registrationData).forEach(key => {
         const value = (registrationData as any)[key];
@@ -439,9 +451,9 @@ const MemberRegistration: React.FC = () => {
           delete (registrationData as any)[key];
         }
       });
-      
+
       console.log('🔍 Sending registration data to backend:', registrationData);
-      
+
       let res;
       try {
         res = await fetch(`${process.env.REACT_APP_API_URL}/api/members/register`, {
@@ -454,7 +466,7 @@ const MemberRegistration: React.FC = () => {
         setErrors({ submit: 'Failed to connect to the server. Please check your internet connection and try again.' });
         return;
       }
-      
+
       // Parse the response data
       let responseData;
       try {
@@ -466,24 +478,24 @@ const MemberRegistration: React.FC = () => {
         setErrors({ submit: 'Error processing server response. Please try again.' });
         return;
       }
-      
+
       if (res.status === 201) {
         // Registration successful - show success message and navigate to dashboard
         alert("Registration successful! You will be redirected to your dashboard.");
 
         // Clear the new user cache to force a fresh profile check
         clearNewUserCache();
-        
+
         // Force a re-check of the auth state by triggering the auth state listener
         // This will update the user state from temporary to permanent
         try {
           // Trigger a profile check to update the user state
           const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}&phone=${encodeURIComponent(phone || '')}`);
-          
+
           if (profileResponse.ok) {
             const profileData = await profileResponse.json();
             console.log('✅ Profile fetched after registration:', profileData);
-            
+
             // Force a re-check of the auth state to ensure the user is properly authenticated
             // This is important for new users to get their profile data
             window.location.reload();
@@ -500,7 +512,7 @@ const MemberRegistration: React.FC = () => {
         console.log('🔍 Backend registration error:', responseData);
         console.log('🔍 Backend error status:', res.status);
         console.log('🔍 Backend validation errors:', responseData.errors);
-        
+
         // Format and display validation errors to the user
         if (responseData.errors && Array.isArray(responseData.errors)) {
           // Combine all validation error messages
@@ -510,9 +522,9 @@ const MemberRegistration: React.FC = () => {
             if (err.message) return err.message;
             return JSON.stringify(err);
           }).join('\n');
-          
-          setErrors({ 
-            submit: `Please fix the following errors:\n${errorMessages}` 
+
+          setErrors({
+            submit: `Please fix the following errors:\n${errorMessages}`
           });
         } else if (responseData.message) {
           setErrors({ submit: responseData.message });
@@ -531,9 +543,9 @@ const MemberRegistration: React.FC = () => {
 
   const renderStep = () => {
     // Calculate the actual step based on whether dependents should be shown
-    const actualStep = formData.hasDependents ? currentStep : 
+    const actualStep = formData.hasDependents ? currentStep :
       (currentStep >= 4 ? currentStep + 1 : currentStep);
-    
+
     switch (actualStep) {
       case 1:
         return (
@@ -609,24 +621,38 @@ const MemberRegistration: React.FC = () => {
   // Build dynamic step configuration
   const stepConfig = useMemo(() => {
     const steps: Array<{ key: string; titleKey: string; render: () => React.ReactNode }> = [
-      { key: 'personal', titleKey: 'personal.info', render: () => (
-        <PersonalInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
-      { key: 'contact', titleKey: 'contact.address', render: () => (
-        <ContactAddressStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
-      { key: 'family', titleKey: 'family.info', render: () => (
-        <FamilyInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
-      { key: 'spiritual', titleKey: 'spiritual.info', render: () => (
-        <SpiritualInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
-      { key: 'contribution', titleKey: 'contribution.giving', render: () => (
-        <ContributionStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
+      {
+        key: 'personal', titleKey: 'personal.info', render: () => (
+          <PersonalInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />)
+      },
+      {
+        key: 'contact', titleKey: 'contact.address', render: () => (
+          <ContactAddressStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />)
+      },
+      {
+        key: 'family', titleKey: 'family.info', render: () => (
+          <FamilyInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />)
+      },
+      {
+        key: 'spiritual', titleKey: 'spiritual.info', render: () => (
+          <SpiritualInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />)
+      },
+      {
+        key: 'contribution', titleKey: 'contribution.giving', render: () => (
+          <ContributionStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />)
+      },
     ];
     if (!isPhoneSignIn) {
-      steps.push({ key: 'account', titleKey: 'account.info', render: () => (
-        <AccountStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) });
+      steps.push({
+        key: 'account', titleKey: 'account.info', render: () => (
+          <AccountStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />)
+      });
     }
     if (formData.hasDependents) {
-      steps.push({ key: 'dependents', titleKey: 'dependents', render: () => (
-        <DependentsStep dependents={dependents} onDependentsChange={setDependents} errors={errors} t={t} />) });
+      steps.push({
+        key: 'dependents', titleKey: 'dependents', render: () => (
+          <DependentsStep dependents={dependents} onDependentsChange={setDependents} errors={errors} t={t} />)
+      });
     }
     return steps;
   }, [formData, errors, t, dependents, isPhoneSignIn]);
@@ -634,7 +660,7 @@ const MemberRegistration: React.FC = () => {
   // Derive titles and total steps
   const stepTitles = stepConfig.map(s => t(s.titleKey));
   const totalSteps = stepConfig.length;
-  
+
   // Navigation functions
   const handleNextStep = () => {
     if (currentStep < totalSteps) {
@@ -656,13 +682,12 @@ const MemberRegistration: React.FC = () => {
           {stepTitles.map((title, index) => (
             <div key={index} className="text-center">
               <div
-                className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-sm font-medium ${
-                  currentStep > index + 1
-                    ? 'bg-green-100 text-green-600'
-                    : currentStep === index + 1
+                className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-sm font-medium ${currentStep > index + 1
+                  ? 'bg-green-100 text-green-600'
+                  : currentStep === index + 1
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-500'
-                }`}
+                  }`}
               >
                 {currentStep > index + 1 ? (
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -678,7 +703,7 @@ const MemberRegistration: React.FC = () => {
         </div>
         <div className="relative">
           <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 -translate-y-1/2"></div>
-          <div 
+          <div
             className="absolute top-1/2 left-0 h-0.5 bg-blue-600 -translate-y-1/2 transition-all duration-300 ease-in-out"
             style={{
               width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%`,
@@ -699,7 +724,7 @@ const MemberRegistration: React.FC = () => {
           </div>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div 
+          <div
             className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
             style={{ width: `${(currentStep / totalSteps) * 100}%` }}
           />
@@ -732,7 +757,7 @@ const MemberRegistration: React.FC = () => {
         {/* Step Content */}
         <div className="mt-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           {renderStepContent()}
-          
+
           {errors.submit && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
               <p className="text-red-600">{errors.submit}</p>
@@ -753,9 +778,8 @@ const MemberRegistration: React.FC = () => {
             <button
               type="button"
               onClick={nextStep}
-              className={`w-full sm:w-auto px-6 py-2.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-              }`}
+              className={`w-full sm:w-auto px-6 py-2.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
               disabled={isSubmitting}
             >
               {isSubmitting ? (
