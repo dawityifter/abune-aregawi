@@ -34,6 +34,10 @@ interface Meeting {
     purpose?: string;
     agenda?: string;
     minutes?: string;
+    title_ti?: string;
+    purpose_ti?: string;
+    agenda_ti?: string;
+    minutes_ti?: string;
     attendees?: number[];
     creator?: Member;
     tasks?: Task[];
@@ -175,6 +179,9 @@ const MeetingDetailsPage: React.FC = () => {
                         <div className="flex justify-between items-start">
                             <div className="flex-1">
                                 <h1 className="text-3xl font-bold text-gray-900">{meeting.title}</h1>
+                                {meeting.title_ti && (
+                                    <h2 className="text-xl font-medium text-gray-600 mt-1">{meeting.title_ti}</h2>
+                                )}
                                 <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
                                     <span>
                                         <i className="fas fa-calendar mr-1"></i>
@@ -194,6 +201,9 @@ const MeetingDetailsPage: React.FC = () => {
                                 </div>
                                 {meeting.purpose && (
                                     <p className="text-gray-700 mt-2">{meeting.purpose}</p>
+                                )}
+                                {meeting.purpose_ti && (
+                                    <p className="text-gray-600 mt-1 italic">{meeting.purpose_ti}</p>
                                 )}
                             </div>
                             <div className="flex gap-2">
@@ -311,32 +321,54 @@ const MeetingDetailsPage: React.FC = () => {
                 </div>
 
                 {/* Agenda */}
-                {meeting.agenda && (
+                {(meeting.agenda || meeting.agenda_ti) && (
                     <div className="bg-white shadow rounded-lg p-6 mb-6">
                         <h2 className="text-xl font-semibold text-gray-900 mb-4">
                             <i className="fas fa-list-ul mr-2 text-gray-600"></i>
                             Agenda
                         </h2>
-                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                {meeting.agenda}
+                        {meeting.agenda && (
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4 last:mb-0">
+                                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">English</h3>
+                                <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                    {meeting.agenda}
+                                </div>
                             </div>
-                        </div>
+                        )}
+                        {meeting.agenda_ti && (
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Tigrinya</h3>
+                                <div className="text-gray-700 leading-relaxed whitespace-pre-wrap font-serif">
+                                    {meeting.agenda_ti}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
                 {/* Meeting Notes */}
-                {meeting.minutes && (
+                {(meeting.minutes || meeting.minutes_ti) && (
                     <div className="bg-white shadow rounded-lg p-6 mb-6">
                         <h2 className="text-xl font-semibold text-gray-900 mb-4">
                             <i className="fas fa-file-alt mr-2 text-gray-600"></i>
                             Meeting Notes
                         </h2>
-                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                {meeting.minutes}
+                        {meeting.minutes && (
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4 last:mb-0">
+                                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">English</h3>
+                                <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                    {meeting.minutes}
+                                </div>
                             </div>
-                        </div>
+                        )}
+                        {meeting.minutes_ti && (
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Tigrinya</h3>
+                                <div className="text-gray-700 leading-relaxed whitespace-pre-wrap font-serif">
+                                    {meeting.minutes_ti}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
