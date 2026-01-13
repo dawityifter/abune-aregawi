@@ -8,15 +8,8 @@ const { google } = require('googleapis');
 const getFolderImages = async (req, res) => {
     try {
         const { folderId } = req.params;
-        const apiKey = process.env.GOOGLE_API_KEY;
 
-        if (!apiKey) {
-            return res.status(500).json({
-                message: 'Server configuration error: Google API Key not found'
-            });
-        }
-
-        let authClient = apiKey;
+        let authClient = process.env.GOOGLE_API_KEY || null;
 
         // Priority 1: OAuth2 (Refresh Token) - Best for Personal Accounts
         if (process.env.GALLERY_DRIVE_REFRESH_TOKEN && process.env.GALLERY_DRIVE_CLIENT_ID && process.env.GALLERY_DRIVE_CLIENT_SECRET) {
@@ -56,6 +49,13 @@ const getFolderImages = async (req, res) => {
             }
         }
 
+        if (!authClient) {
+            console.error('❌ Server configuration error: No valid Google Drive authentication found (API Key, OAuth2, or Service Account)');
+            return res.status(500).json({
+                message: 'Server configuration error: Google Drive credentials missing'
+            });
+        }
+
         const drive = google.drive({
             version: 'v3',
             auth: authClient
@@ -93,14 +93,13 @@ const getFolderImages = async (req, res) => {
 const uploadImage = async (req, res) => {
     try {
         const { folderId } = req.params;
-        const apiKey = process.env.GOOGLE_API_KEY;
 
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
         // Note: Google API Key is read-only. We MUST use a Service Account for uploads.
-        let authClient = apiKey;
+        let authClient = process.env.GOOGLE_API_KEY || null;
 
         // Priority 1: OAuth2 (Refresh Token) - Best for Personal Accounts
         if (process.env.GALLERY_DRIVE_REFRESH_TOKEN && process.env.GALLERY_DRIVE_CLIENT_ID && process.env.GALLERY_DRIVE_CLIENT_SECRET) {
@@ -138,6 +137,12 @@ const uploadImage = async (req, res) => {
             } catch (err) {
                 console.error('Failed to parse Firebase Service Account:', err.message);
             }
+        }
+
+        if (!authClient) {
+            return res.status(500).json({
+                message: 'Server configuration error: Google Drive credentials missing'
+            });
         }
 
         const drive = google.drive({
