@@ -49,7 +49,7 @@ const GalleryPage: React.FC = () => {
                 setError(null);
             } catch (err: any) {
                 console.error('Error fetching gallery:', err);
-                setError(err.response?.data?.message || 'Failed to load gallery images. Please try again later.');
+                setError(err.response?.data?.message || t('gallery.loadError'));
             } finally {
                 setLoading(false);
             }
@@ -75,7 +75,7 @@ const GalleryPage: React.FC = () => {
         if (!file || !firebaseUser) return;
 
         if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-            alert('Only JPEG and PNG images are allowed.');
+            alert(t('gallery.invalidFormat'));
             return;
         }
 
@@ -98,11 +98,11 @@ const GalleryPage: React.FC = () => {
             const newImage = response.data.file;
             setImages(prev => [newImage, ...prev]);
             setCurrentIndex(0); // Show uploaded image
-            alert('Image uploaded successfully!');
+            alert(t('gallery.uploadSuccess'));
 
         } catch (err: any) {
             console.error('Upload error:', err);
-            alert(err.response?.data?.message || 'Failed to upload image. Ensure you have permission.');
+            alert(err.response?.data?.message || t('gallery.uploadError'));
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -127,10 +127,10 @@ const GalleryPage: React.FC = () => {
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900 text-center md:text-left">
-                                Abune Aregawi Tigray Orthodox Church Gallery
+                                {t('gallery.title')}
                             </h1>
                             <p className="text-gray-600 mt-2 text-center md:text-left">
-                                {t('gallery.subtitle') || 'Capturing moments of faith, community, and celebration'}
+                                {t('gallery.subtitle')}
                             </p>
                         </div>
                         <div className="flex items-center gap-4">
@@ -149,7 +149,7 @@ const GalleryPage: React.FC = () => {
                                         className="flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
                                     >
                                         <i className={`fas ${uploading ? 'fa-spinner fa-spin' : 'fa-upload'} mr-2`}></i>
-                                        {uploading ? 'Uploading...' : 'Upload Photo'}
+                                        {uploading ? t('gallery.uploading') : t('gallery.upload')}
                                     </button>
                                 </>
                             )}
@@ -158,7 +158,7 @@ const GalleryPage: React.FC = () => {
                                 className="flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                             >
                                 <i className="fas fa-arrow-left mr-2"></i>
-                                {t('common.back') || 'Back to Dashboard'}
+                                {t('common.back')}
                             </button>
                         </div>
                     </div>
@@ -187,7 +187,7 @@ const GalleryPage: React.FC = () => {
                 ) : images.length === 0 ? (
                     <div className="text-center py-20 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg">
                         <i className="fas fa-images text-5xl mb-4 text-gray-300"></i>
-                        <p className="text-gray-500 text-lg">No images found in this gallery.</p>
+                        <p className="text-gray-500 text-lg">{t('gallery.noImages')}</p>
                     </div>
                 ) : (
                     <div className="flex flex-col items-center">
@@ -229,18 +229,20 @@ const GalleryPage: React.FC = () => {
                                 onClick={handlePrev}
                                 className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
                             >
-                                <i className="fas fa-arrow-left mr-2"></i> Previous
+                                <i className="fas fa-arrow-left mr-2"></i> {t('common.previous')}
                             </button>
 
                             <span className="text-gray-600 font-medium">
-                                Image {currentIndex + 1} of {images.length}
+                                {t('gallery.counter')
+                                    .replace('{current}', (currentIndex + 1).toString())
+                                    .replace('{total}', images.length.toString())}
                             </span>
 
                             <button
                                 onClick={handleNext}
                                 className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
                             >
-                                Next <i className="fas fa-arrow-right ml-2"></i>
+                                {t('common.next')} <i className="fas fa-arrow-right ml-2"></i>
                             </button>
                         </div>
 

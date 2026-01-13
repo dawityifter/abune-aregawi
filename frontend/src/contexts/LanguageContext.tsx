@@ -427,6 +427,21 @@ const translations = {
     'spouse.name.required': 'Spouse name is required',
     'emergency.contact.name.required': 'Emergency contact name is required',
     'emergency.contact.phone.required': 'Emergency contact phone is required',
+
+    // Gallery
+    'gallery.title': 'Abune Aregawi Tigray Orthodox Church Gallery',
+    'gallery.subtitle': 'Capturing moments of faith, community, and celebration',
+    'gallery.upload': 'Upload Photo',
+    'gallery.uploading': 'Uploading...',
+    'gallery.uploadSuccess': 'Image uploaded successfully!',
+    'gallery.uploadError': 'Failed to upload image. Ensure you have permission.',
+    'gallery.invalidFormat': 'Only JPEG and PNG images are allowed.',
+    'gallery.noImages': 'No images found in this gallery.',
+    'gallery.loadError': 'Failed to load gallery images. Please try again later.',
+    'gallery.counter': 'Image {current} of {total}',
+    'common.previous': 'Previous',
+    'common.next': 'Next',
+
   },
   ti: {
     // Hero Section
@@ -760,6 +775,21 @@ const translations = {
     'spouse.name.required': 'ስም መርዓ የድለ',
     'emergency.contact.name.required': 'ስም ተራኺል ሓጋዚ የድለ',
     'emergency.contact.phone.required': 'ስልኪ ተራኺል ሓጋዚ የድለ',
+
+    // Gallery
+    'gallery.title': 'ደብረ ጸሓይ አቡነ አረጋዊ ቤተ ክርስቲያን ስእሊ',
+    'gallery.subtitle': 'ናይ እምነት፣ ማሕበረሰብን በዓላትን ህሞታት',
+    'gallery.upload': 'ስእሊ ጽዓን',
+    'gallery.uploading': 'ይጽዓን ኣሎ...',
+    'gallery.uploadSuccess': 'ስእሊ ብዓወት ተጻዒኑ!',
+    'gallery.uploadError': 'ስእሊ ምጽዓን ኣይተኻእለን። ፍቃድ ከም ዘለኩም ኣረጋግጹ።',
+    'gallery.invalidFormat': 'JPEGን PNGን ዝዓይነቱ ስእሊ ጥራይ እዩ ዝፍቀድ።',
+    'gallery.noImages': 'ኣብዚ ማህደር ዝኾነ ስእሊ ኣይተረኽበን።',
+    'gallery.loadError': 'ስእሊታት ምምጻእ ኣይተኻእለን። በጃኹም ደሓር ፈትኑ።',
+    'gallery.counter': 'ስእሊ {current} ካብ {total}',
+    'common.previous': 'ዝሓለፈ',
+    'common.next': 'ቀጻሊ',
+
   }
 };
 
