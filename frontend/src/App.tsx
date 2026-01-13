@@ -30,6 +30,7 @@ import MeetingDetailsPage from './components/admin/MeetingDetailsPage';
 import ActivityLogViewer from './components/admin/ActivityLogViewer';
 import VoicemailInbox from './components/admin/VoicemailInbox';
 import BoardMembers from './components/board/BoardMembers';
+import GalleryPage from './components/GalleryPage';
 import './index.css';
 import DevBanner from './components/DevBanner';
 import { isFeatureEnabled } from './config/featureFlags';
@@ -120,6 +121,8 @@ function App() {
                   </ErrorBoundary>
                 </ProtectedRoute>
               } />
+              <Route path="/gallery" element={<ProtectedRoute><GalleryPage /></ProtectedRoute>} />
+              <Route path="/gallery/:folderId" element={<ProtectedRoute><GalleryPage /></ProtectedRoute>} />
               {/* Add more routes here as we build them */}
             </Routes>
           </div>
