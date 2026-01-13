@@ -103,6 +103,62 @@ const translations = {
     'account.settings': 'Account settings',
     'manage.account': 'Manage Account',
 
+    // Dashboard Cards (New)
+    'dashboard.welcome': 'Welcome',
+    'dashboard.settingUp': 'Setting up your dashboard...',
+    'dashboard.complete': 'Complete Registration',
+    'dashboard.retry': 'Retry',
+    'dashboard.incomplete.title': 'Incomplete Registration',
+    'dashboard.incomplete.desc': 'Your registration is incomplete. Please finish the registration process to access all features.',
+
+    'dashboard.profile.title': 'Profile',
+    'dashboard.profile.view': 'View Profile',
+
+    'dashboard.bylaw.title': 'Church Bylaw',
+    'dashboard.bylaw.desc': 'View our church bylaws and constitution',
+    'dashboard.bylaw.view': 'View Bylaws',
+
+    'dashboard.dues.title': 'Member Dues',
+    'dashboard.dues.viewAndPay': 'View and pay your membership dues',
+    'dashboard.dues.dependentView': 'View household dues status',
+    'dashboard.dues.view': 'View Dues',
+
+    'dashboard.events.title': 'Events',
+    'dashboard.events.upcoming': 'View upcoming church events',
+    'dashboard.events.view': 'View Events',
+
+    'dashboard.gallery.title': 'Photo Gallery',
+    'dashboard.gallery.desc': 'View photos from our latest church events',
+    'dashboard.gallery.view': 'View Gallery',
+
+    'dashboard.service.title': 'Services & Departments',
+    'dashboard.service.desc': 'Explore church ministries and departments',
+    'dashboard.service.view': 'View Services',
+
+    'dashboard.give.title': 'Giving',
+    'dashboard.give.desc': 'Support our church mission',
+    'dashboard.give.action': 'Donate',
+
+    'dashboard.family.title': 'Family & Children',
+    'dashboard.family.desc': 'Manage your family members and children',
+    'dashboard.family.manage': 'Manage Family',
+
+    'dashboard.communications.title': 'Communications',
+    'dashboard.communications.desc': 'Send messages to church members',
+    'dashboard.communications.open': 'Open Communications',
+
+    'dashboard.relationships.title': 'Relationships & Outreach',
+    'dashboard.relationships.desc': 'Manage member relationships and outreach',
+    'dashboard.relationships.open': 'Open Dashboard',
+
+    'dashboard.treasurer.title': 'Treasurer Dashboard',
+    'dashboard.treasurer.desc': 'Manage church finances and records',
+    'dashboard.treasurer.view': 'Open Treasurer Dashboard',
+
+    'dashboard.admin.title': 'Admin Panel',
+    'dashboard.admin.desc': 'Manage users, roles, and system settings',
+    'dashboard.admin.access': 'Access Admin Panel',
+
     // Admin Panel
     'admin.panel': 'Admin Panel',
     'admin.dashboard': 'Admin Dashboard',
@@ -441,6 +497,8 @@ const translations = {
     'gallery.counter': 'Image {current} of {total}',
     'common.previous': 'Previous',
     'common.next': 'Next',
+    'common.back': 'Back',
+
 
   },
   ti: {
@@ -552,6 +610,62 @@ const translations = {
     'settings': 'ቅንጡፍቲ',
     'account.settings': 'ቅንጡፍቲ ኣካውንት',
     'manage.account': 'ኣካውንት ምምሕዳር',
+
+    // Dashboard Cards (New)
+    'dashboard.welcome': 'እንቋዕ ብደሓን መጻእኩም',
+    'dashboard.settingUp': 'ዳሽቦርድኩም ይዳሎ ኣሎ...',
+    'dashboard.complete': 'ምዝገባ ዛዝም',
+    'dashboard.retry': 'ዳግማይ ፈትን',
+    'dashboard.incomplete.title': 'ምዝገባ ኣይተዛዘመን',
+    'dashboard.incomplete.desc': 'ምዝገባኹም ሙሉእ ኣይኮነን። ኩሉ መራሕቲ ንምርካብ በጃኹም ምዝገባኹም ዛዝሙ።',
+
+    'dashboard.profile.title': 'ፕሮፋይል',
+    'dashboard.profile.view': 'ፕሮፋይል ርኣይ',
+
+    'dashboard.bylaw.title': 'ሕጊ ቤተ ክርስቲያን',
+    'dashboard.bylaw.desc': 'ሕገ ቤተ ክርስቲያንን መምርሒታትን ርኣዩ',
+    'dashboard.bylaw.view': 'ሕጊ ርኣይ',
+
+    'dashboard.dues.title': 'ክፍሊት ኣባላት',
+    'dashboard.dues.viewAndPay': 'ክፍሊት ኣባላት ርኣዩን ክፈሉን',
+    'dashboard.dues.dependentView': 'ናይ ቤተሰብ ክፍሊት ኩነታት ርኣዩ',
+    'dashboard.dues.view': 'ክፍሊት ርኣይ',
+
+    'dashboard.events.title': 'መደባት',
+    'dashboard.events.upcoming': 'ዝመጽኡ መደባት ቤተ ክርስቲያን ርኣዩ',
+    'dashboard.events.view': 'መደባት ርኣይ',
+
+    'dashboard.gallery.title': 'ስእሊ ቤተ ክርስቲያን',
+    'dashboard.gallery.desc': 'ናይ ቤተ ክርስቲያንና ሓድሽ ስእሊታት ርኣዩ',
+    'dashboard.gallery.view': 'ስእሊ ርኣይ',
+
+    'dashboard.service.title': 'ኣገልግሎትን ክፍለ-ሰራዊትን',
+    'dashboard.service.desc': 'ናይ ቤተ ክርስቲያን ኣገልግሎታትን ክፍለ-ሰራዊትን ርኣዩ',
+    'dashboard.service.view': 'ኣገልግሎት ርኣይ',
+
+    'dashboard.give.title': 'ወፈያ',
+    'dashboard.give.desc': 'ንቤተ ክርስቲያንና ደግፉ',
+    'dashboard.give.action': 'ወፈያ ሃብ',
+
+    'dashboard.family.title': 'ቤተሰብን ህጻናትን',
+    'dashboard.family.desc': 'ቤተሰብኩምን ህጻናትኩምን ኣመሓድሩ',
+    'dashboard.family.manage': 'ቤተሰብ ኣመሓድር',
+
+    'dashboard.communications.title': 'ርኽብ',
+    'dashboard.communications.desc': 'ንኣባላት ቤተ ክርስቲያን መልእኽቲ ስደዱ',
+    'dashboard.communications.open': 'ርኽብ ክፈት',
+
+    'dashboard.relationships.title': 'ርኽብን ተልእኾን',
+    'dashboard.relationships.desc': 'ናይ ኣባላት ርኽብን ተልእኾን ኣመሓድሩ',
+    'dashboard.relationships.open': 'ዳሽቦርድ ክፈት',
+
+    'dashboard.treasurer.title': 'ዳሽቦርድ ተሓዚ ገንዘብ',
+    'dashboard.treasurer.desc': 'ናይ ቤተ ክርስቲያን ገንዘብን መዝገብን ኣመሓድሩ',
+    'dashboard.treasurer.view': 'ዳሽቦርድ ተሓዚ ገንዘብ ክፈት',
+
+    'dashboard.admin.title': 'ፓነል ኣመሓዳሪ',
+    'dashboard.admin.desc': 'ተጠቀምቲ፣ መራሕትን ቅንጡፍትን ኣመሓድሩ',
+    'dashboard.admin.access': 'ናብ ፓነል ኣመሓዳሪ እተ',
 
     // Profile
     'edit.profile': 'ፕሮፋይል ኣምልስ',
@@ -789,6 +903,8 @@ const translations = {
     'gallery.counter': 'ስእሊ {current} ካብ {total}',
     'common.previous': 'ዝሓለፈ',
     'common.next': 'ቀጻሊ',
+    'common.back': 'ተመለስ',
+
 
   }
 };
