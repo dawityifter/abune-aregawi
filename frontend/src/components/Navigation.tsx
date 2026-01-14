@@ -87,7 +87,7 @@ const Navigation: React.FC = () => {
   // Show navigation on all pages including home page
 
   return (
-    <nav className="bg-gradient-to-r from-primary-700 to-primary-800 shadow-lg fixed w-full z-50">
+    <nav className="bg-gradient-to-r from-primary-700 to-primary-800 shadow-lg fixed w-full z-50 print:hidden">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           {/* Church Name - Home Link */}
