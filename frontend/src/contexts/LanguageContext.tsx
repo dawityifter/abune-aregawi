@@ -500,6 +500,7 @@ const translations = {
     'common.back': 'Back',
     'common.edit': 'Edit',
     'common.delete': 'Delete',
+    'common.print': 'Print',
 
     // Department Details
     'department.tabs.meetings': 'Meetings',
@@ -829,6 +830,7 @@ const translations = {
     'meeting.attendees': 'ተሳተፍቲ',
     'meeting.assignedTo': 'ሓላፍነት ዝወሰደ',
     'meeting.due': 'ክዛዘም ዘለዎ',
+    'common.print': 'ሕተም',
 
     // Department Details
     'department.tabs.meetings': 'ኣኼባታት',

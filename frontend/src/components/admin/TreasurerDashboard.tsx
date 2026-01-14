@@ -35,6 +35,7 @@ const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle' | 'member-dues' | 'employees' | 'vendors' | 'bank'>('overview');
+  const [activeReportTab, setActiveReportTab] = useState<'weekly' | 'payment'>('weekly');
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
@@ -167,13 +168,13 @@ const TreasurerDashboard: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 print:hidden">
           <h1 className="text-3xl font-bold text-gray-900">{t('treasurerDashboard.title')}</h1>
           <p className="mt-2 text-gray-600">{t('treasurerDashboard.subtitle')}</p>
         </div>
 
         {/* Tab Navigation */}
-        <div className="border-b border-gray-200 mb-8">
+        <div className="border-b border-gray-200 mb-8 print:hidden">
           <div className="-mb-px flex items-center justify-between">
             <nav className="flex space-x-8">
               <button
@@ -327,16 +328,39 @@ const TreasurerDashboard: React.FC = () => {
           )}
 
           {activeTab === 'reports' && (
-            <div className="space-y-8">
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-6">{t('treasurerDashboard.reports.weeklyCollection')}</h2>
-                <WeeklyCollectionReport />
+            <div className="space-y-6">
+              <div className="flex space-x-4 border-b border-gray-200 pb-4 mb-4 print:hidden">
+                <button
+                  onClick={() => setActiveReportTab('weekly')}
+                  className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeReportTab === 'weekly'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                >
+                  {t('treasurerDashboard.reports.weeklyCollection')}
+                </button>
+                <button
+                  onClick={() => setActiveReportTab('payment')}
+                  className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeReportTab === 'payment'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                >
+                  {t('treasurerDashboard.reports.paymentReports')}
+                </button>
               </div>
 
-              <div className="border-t pt-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-6">{t('treasurerDashboard.reports.paymentReports')}</h2>
-                <PaymentReports paymentView="new" />
-              </div>
+              {activeReportTab === 'weekly' ? (
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-6 print:hidden">{t('treasurerDashboard.reports.weeklyCollection')}</h2>
+                  <WeeklyCollectionReport />
+                </div>
+              ) : (
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-6 print:hidden">{t('treasurerDashboard.reports.paymentReports')}</h2>
+                  <PaymentReports paymentView="new" />
+                </div>
+              )}
             </div>
           )}
 
