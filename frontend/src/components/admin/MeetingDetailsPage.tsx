@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import AddTaskModal from './AddTaskModal';
 import AddMeetingModal from './AddMeetingModal';
+import { LanguageContext } from '../../contexts/LanguageContext';
+
 
 interface Member {
     id: number;
@@ -43,7 +45,11 @@ interface Meeting {
     tasks?: Task[];
 }
 
+
+
 const MeetingDetailsPage: React.FC = () => {
+    const { t } = React.useContext(LanguageContext)!;
+
     const { departmentId, meetingId } = useParams<{ departmentId: string; meetingId: string }>();
     const navigate = useNavigate();
     const { firebaseUser, user } = useAuth();
@@ -224,7 +230,7 @@ const MeetingDetailsPage: React.FC = () => {
                     <div className="bg-white shadow rounded-lg p-6 mb-6">
                         <h2 className="text-xl font-semibold text-gray-900 mb-4">
                             <i className="fas fa-history mr-2 text-gray-600"></i>
-                            Tasks from Previous Meeting
+                            {t('meeting.tasks.previous')}
                             <span className="text-sm font-normal text-gray-500 ml-2">
                                 ({new Date(previousMeeting.meeting_date).toLocaleDateString()})
                             </span>
@@ -241,7 +247,7 @@ const MeetingDetailsPage: React.FC = () => {
                                         </div>
                                         {task.assignee && (
                                             <p className="text-sm text-gray-600 mt-1">
-                                                Assigned to: {task.assignee.first_name} {task.assignee.last_name}
+                                                {t('meeting.assignedTo')}: {task.assignee.first_name} {task.assignee.last_name}
                                             </p>
                                         )}
                                     </div>
@@ -256,7 +262,7 @@ const MeetingDetailsPage: React.FC = () => {
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-semibold text-gray-900">
                             <i className="fas fa-tasks mr-2 text-gray-600"></i>
-                            Action Items from This Meeting
+                            {t('meeting.tasks.actionItems')}
                         </h2>
                         <button
                             onClick={() => {
@@ -266,7 +272,7 @@ const MeetingDetailsPage: React.FC = () => {
                             className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
                         >
                             <i className="fas fa-plus mr-2"></i>
-                            Add Task
+                            {t('meeting.tasks.add')}
                         </button>
                     </div>
 
@@ -297,7 +303,7 @@ const MeetingDetailsPage: React.FC = () => {
                                             {task.end_date && (
                                                 <span>
                                                     <i className="fas fa-calendar mr-1"></i>
-                                                    Due: {new Date(task.end_date).toLocaleDateString()}
+                                                    {t('meeting.due')}: {new Date(task.end_date).toLocaleDateString()}
                                                 </span>
                                             )}
                                         </div>
@@ -316,7 +322,7 @@ const MeetingDetailsPage: React.FC = () => {
                             ))}
                         </div>
                     ) : (
-                        <p className="text-gray-500 text-center py-8">No action items yet</p>
+                        <p className="text-gray-500 text-center py-8">{t('meeting.tasks.none')}</p>
                     )}
                 </div>
 
@@ -325,7 +331,7 @@ const MeetingDetailsPage: React.FC = () => {
                     <div className="bg-white shadow rounded-lg p-6 mb-6">
                         <h2 className="text-xl font-semibold text-gray-900 mb-4">
                             <i className="fas fa-list-ul mr-2 text-gray-600"></i>
-                            Agenda
+                            {t('meeting.agenda')}
                         </h2>
                         {meeting.agenda && (
                             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4 last:mb-0">
@@ -351,7 +357,7 @@ const MeetingDetailsPage: React.FC = () => {
                     <div className="bg-white shadow rounded-lg p-6 mb-6">
                         <h2 className="text-xl font-semibold text-gray-900 mb-4">
                             <i className="fas fa-file-alt mr-2 text-gray-600"></i>
-                            Meeting Notes
+                            {t('meeting.minutes')}
                         </h2>
                         {meeting.minutes && (
                             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4 last:mb-0">
@@ -377,7 +383,7 @@ const MeetingDetailsPage: React.FC = () => {
                     <div className="bg-white shadow rounded-lg p-6">
                         <h2 className="text-xl font-semibold text-gray-900 mb-4">
                             <i className="fas fa-users mr-2 text-gray-600"></i>
-                            Attendees ({meeting.attendees.length})
+                            {t('meeting.attendees')} ({meeting.attendees.length})
                         </h2>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {departmentMembers

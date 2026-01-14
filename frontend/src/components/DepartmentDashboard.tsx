@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import AddMeetingModal from './admin/AddMeetingModal';
 import AddTaskModal from './admin/AddTaskModal';
 import ManageDepartmentMembersModal from './admin/ManageDepartmentMembersModal';
+import { LanguageContext } from '../contexts/LanguageContext';
+
 
 interface Department {
     id: number;
@@ -57,7 +59,10 @@ interface Task {
     };
 }
 
+
+
 const DepartmentDashboard: React.FC = () => {
+    const { t } = React.useContext(LanguageContext)!;
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { firebaseUser, user } = useAuth();
@@ -65,7 +70,7 @@ const DepartmentDashboard: React.FC = () => {
     const [department, setDepartment] = useState<Department | null>(null);
     const [meetings, setMeetings] = useState<Meeting[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [activeTab, setActiveTab] = useState<'members' | 'meetings' | 'tasks'>('members');
+    const [activeTab, setActiveTab] = useState<'members' | 'meetings' | 'tasks'>('meetings');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -248,16 +253,6 @@ const DepartmentDashboard: React.FC = () => {
                     <div className="border-b border-gray-200 flex justify-between items-center pr-6">
                         <nav className="-mb-px flex">
                             <button
-                                onClick={() => setActiveTab('members')}
-                                className={`${activeTab === 'members'
-                                    ? 'border-primary-600 text-primary-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                    } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
-                            >
-                                <i className="fas fa-users mr-2"></i>
-                                Members ({department.memberships?.length || 0})
-                            </button>
-                            <button
                                 onClick={() => setActiveTab('meetings')}
                                 className={`${activeTab === 'meetings'
                                     ? 'border-primary-600 text-primary-600'
@@ -265,7 +260,7 @@ const DepartmentDashboard: React.FC = () => {
                                     } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
                             >
                                 <i className="fas fa-calendar mr-2"></i>
-                                Meetings ({meetings.length})
+                                {t('department.tabs.meetings')} ({meetings.length})
                             </button>
                             <button
                                 onClick={() => setActiveTab('tasks')}
@@ -275,7 +270,17 @@ const DepartmentDashboard: React.FC = () => {
                                     } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
                             >
                                 <i className="fas fa-tasks mr-2"></i>
-                                Tasks ({tasks.filter(t => t.status !== 'completed').length})
+                                {t('department.tabs.tasks')} ({tasks.filter(t => t.status !== 'completed').length})
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('members')}
+                                className={`${activeTab === 'members'
+                                    ? 'border-primary-600 text-primary-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
+                            >
+                                <i className="fas fa-users mr-2"></i>
+                                {t('department.tabs.members')} ({department.memberships?.length || 0})
                             </button>
                         </nav>
 
@@ -290,7 +295,7 @@ const DepartmentDashboard: React.FC = () => {
                                     className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                                 >
                                     <i className="fas fa-plus mr-1"></i>
-                                    Add Meeting
+                                    {t('department.addMeeting')}
                                 </button>
                             )}
                             {activeTab === 'tasks' && (
@@ -302,7 +307,7 @@ const DepartmentDashboard: React.FC = () => {
                                     className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                                 >
                                     <i className="fas fa-plus mr-1"></i>
-                                    Add Task
+                                    {t('department.addTask')}
                                 </button>
                             )}
                             {activeTab === 'members' && (
@@ -311,7 +316,7 @@ const DepartmentDashboard: React.FC = () => {
                                     className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                                 >
                                     <i className="fas fa-users-cog mr-1"></i>
-                                    Manage Members
+                                    {t('department.manageMembers')}
                                 </button>
                             )}
                         </div>

@@ -10,7 +10,7 @@ interface LanguageContextType {
   t: (key: string) => string;
 }
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+export const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 // Translations object
 const translations = {
@@ -498,6 +498,27 @@ const translations = {
     'common.previous': 'Previous',
     'common.next': 'Next',
     'common.back': 'Back',
+    'common.edit': 'Edit',
+    'common.delete': 'Delete',
+
+    // Department Details
+    'department.tabs.meetings': 'Meetings',
+    'department.tabs.tasks': 'Tasks',
+    'department.tabs.members': 'Members',
+    'department.addMeeting': 'Add Meeting',
+    'department.addTask': 'Add Task',
+    'department.manageMembers': 'Manage Members',
+
+    // Meeting Details
+    'meeting.tasks.previous': 'Tasks from Previous Meeting',
+    'meeting.tasks.actionItems': 'Action Items from This Meeting',
+    'meeting.tasks.add': 'Add Task',
+    'meeting.tasks.none': 'No action items yet',
+    'meeting.agenda': 'Agenda',
+    'meeting.minutes': 'Meeting Notes',
+    'meeting.attendees': 'Attendees',
+    'meeting.assignedTo': 'Assigned to',
+    'meeting.due': 'Due',
 
 
   },
@@ -797,6 +818,25 @@ const translations = {
     'submit': 'ምዝገባ ስደድ',
     'required': 'የድለ',
     'optional': 'ኣማራጺ',
+
+    // Meeting Details
+    'meeting.tasks.previous': 'ናይ ዝሓለፈ ኣኼባ ትልምታት',
+    'meeting.tasks.actionItems': 'ናይዚ ኣኼባ ትልምታት',
+    'meeting.tasks.add': 'ትልሚ ወስኽ',
+    'meeting.tasks.none': 'ገና ዝተወጠነ ትልሚ የለን',
+    'meeting.agenda': 'ኣጀንዳ',
+    'meeting.minutes': 'ቃለ ጉባኤ',
+    'meeting.attendees': 'ተሳተፍቲ',
+    'meeting.assignedTo': 'ሓላፍነት ዝወሰደ',
+    'meeting.due': 'ክዛዘም ዘለዎ',
+
+    // Department Details
+    'department.tabs.meetings': 'ኣኼባታት',
+    'department.tabs.tasks': 'ትልምታት',
+    'department.tabs.members': 'ኣባላት',
+    'department.addMeeting': 'ኣኼባ ወስኽ',
+    'department.addTask': 'ትልሚ ወስኽ',
+    'department.manageMembers': 'ኣባላት ኣመሓድር',
 
     // Form Fields
     'first.name': 'ስም ቀዳማይ',
