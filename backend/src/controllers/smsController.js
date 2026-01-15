@@ -84,12 +84,21 @@ exports.sendIndividual = async (req, res) => {
     }
 
     const to = normalizePhone(member.phone_number);
+
+    // Substitute template variables
+    const templateData = {
+      firstName: member.first_name,
+      lastName: member.last_name,
+      fullName: `${member.first_name || ''} ${member.last_name || ''}`.trim()
+    };
+    const personalizedMessage = substituteTemplateVariables(message, templateData);
+
     try {
-      const r = await sendSms(to, message);
-      await logSms({ sender_id: senderId, role, recipient_type: 'individual', recipient_member_id: member.id, recipient_count: 1, message, status: 'success' });
+      const r = await sendSms(to, personalizedMessage);
+      await logSms({ sender_id: senderId, role, recipient_type: 'individual', recipient_member_id: member.id, recipient_count: 1, message: personalizedMessage, status: 'success' });
       return res.json({ success: true, sid: r.sid });
     } catch (err) {
-      await logSms({ sender_id: senderId, role, recipient_type: 'individual', recipient_member_id: member.id, recipient_count: 1, message, status: 'failed', error: err.message });
+      await logSms({ sender_id: senderId, role, recipient_type: 'individual', recipient_member_id: member.id, recipient_count: 1, message: personalizedMessage, status: 'failed', error: err.message });
       return res.status(502).json({ success: false, message: 'Failed to send SMS', error: err.message });
     }
   } catch (error) {
@@ -118,15 +127,28 @@ exports.sendGroup = async (req, res) => {
     const memberships = await MemberGroup.findAll({ where: { group_id: groupId }, include: [{ model: Member, as: 'member' }] });
     const recipients = memberships
       .map(mg => mg.member)
-      .filter(m => m && m.is_active && !!m.phone_number)
-      .map(m => normalizePhone(m.phone_number));
+      .filter(m => m && m.is_active && !!m.phone_number);
 
     if (recipients.length === 0) {
       await logSms({ sender_id: senderId, role, recipient_type: 'group', group_id: groupId, recipient_count: 0, message, status: 'failed', error: 'No recipients in group' });
       return res.status(400).json({ success: false, message: 'No recipients in group' });
     }
 
-    const results = await sendSmsBatch(recipients, message, { concurrency: 20, delayMsBetweenBatches: 1000 });
+    // Personalize messages
+    const batch = recipients.map(member => {
+      const templateData = {
+        firstName: member.first_name,
+        lastName: member.last_name,
+        fullName: `${member.first_name || ''} ${member.last_name || ''}`.trim()
+      };
+      const personalized = substituteTemplateVariables(message, templateData);
+      return {
+        to: normalizePhone(member.phone_number),
+        body: personalized
+      };
+    });
+
+    const results = await sendSmsBatch(batch);
     const successCount = results.filter(r => r.success).length;
 
     let status = 'success';
@@ -154,16 +176,28 @@ exports.sendAll = async (req, res) => {
     }
 
     const members = await Member.findAll({ where: { is_active: true } });
-    const recipients = members
-      .filter(m => !!m.phone_number)
-      .map(m => normalizePhone(m.phone_number));
+    const recipients = members.filter(m => !!m.phone_number);
 
     if (recipients.length === 0) {
       await logSms({ sender_id: senderId, role, recipient_type: 'all', recipient_count: 0, message, status: 'failed', error: 'No active members with phone numbers' });
       return res.status(400).json({ success: false, message: 'No active members with phone numbers' });
     }
 
-    const results = await sendSmsBatch(recipients, message, { concurrency: 20, delayMsBetweenBatches: 1000 });
+    // Personalize messages
+    const batch = recipients.map(member => {
+      const templateData = {
+        firstName: member.first_name,
+        lastName: member.last_name,
+        fullName: `${member.first_name || ''} ${member.last_name || ''}`.trim()
+      };
+      const personalized = substituteTemplateVariables(message, templateData);
+      return {
+        to: normalizePhone(member.phone_number),
+        body: personalized
+      };
+    });
+
+    const results = await sendSmsBatch(batch);
     const successCount = results.filter(r => r.success).length;
 
     let status = 'success';
@@ -212,15 +246,28 @@ exports.sendDepartment = async (req, res) => {
 
     const recipients = memberships
       .map(dm => dm.member)
-      .filter(m => m && !!m.phone_number)
-      .map(m => normalizePhone(m.phone_number));
+      .filter(m => m && !!m.phone_number);
 
     if (recipients.length === 0) {
       await logSms({ sender_id: senderId, role, recipient_type: 'department', department_id: departmentId, recipient_count: 0, message, status: 'failed', error: 'No recipients in department' });
       return res.status(400).json({ success: false, message: 'No recipients in department' });
     }
 
-    const results = await sendSmsBatch(recipients, message, { concurrency: 20, delayMsBetweenBatches: 1000 });
+    // Personalize messages
+    const batch = recipients.map(member => {
+      const templateData = {
+        firstName: member.first_name,
+        lastName: member.last_name,
+        fullName: `${member.first_name || ''} ${member.last_name || ''}`.trim()
+      };
+      const personalized = substituteTemplateVariables(message, templateData);
+      return {
+        to: normalizePhone(member.phone_number),
+        body: personalized
+      };
+    });
+
+    const results = await sendSmsBatch(batch);
     const successCount = results.filter(r => r.success).length;
 
     let status = 'success';

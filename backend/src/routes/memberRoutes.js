@@ -96,10 +96,10 @@ router.get('/all/firebase', firebaseAuthMiddleware, roleMiddleware(['admin', 'ch
 // Dependents management routes (no JWT required - using member ID)
 router.get('/dependents/count', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), memberController.getTotalDependentsCount);
 router.get('/:memberId/dependents', validateMemberId, memberController.getMemberDependents);
-router.post('/:memberId/dependents', validateMemberId, validateDependentData, memberController.addDependent);
-router.put('/dependents/:dependentId', validateDependentId, validateDependentData, memberController.updateDependent);
-router.patch('/dependents/:dependentId', validateDependentId, validateDependentUpdate, memberController.updateDependent);
-router.delete('/dependents/:dependentId', validateDependentId, memberController.deleteDependent);
+router.post('/:memberId/dependents', validateMemberId, validateDependentData, activityLoggerMiddleware('Dependent'), memberController.addDependent);
+router.put('/dependents/:dependentId', validateDependentId, validateDependentData, activityLoggerMiddleware('Dependent'), memberController.updateDependent);
+router.patch('/dependents/:dependentId', validateDependentId, validateDependentUpdate, activityLoggerMiddleware('Dependent'), memberController.updateDependent);
+router.delete('/dependents/:dependentId', validateDependentId, activityLoggerMiddleware('Dependent'), memberController.deleteDependent);
 
 // JWT-protected profile routes (for testing and JWT-based auth)
 router.get('/profile/jwt', authMiddleware, memberController.getProfile);
@@ -133,6 +133,7 @@ router.get('/onboarding/pending',
 router.post('/:id/outreach',
   roleMiddleware(['admin', 'relationship']),
   validateOutreachCreate,
+  activityLoggerMiddleware('Outreach'),
   outreachController.createOutreach
 );
 
@@ -145,6 +146,7 @@ router.get('/:id/outreach',
 router.post('/:id/mark-welcomed',
   roleMiddleware(['admin', 'relationship']),
   validateMemberId,
+  activityLoggerMiddleware('Member'),
   memberController.markWelcomed
 );
 
@@ -176,18 +178,21 @@ router.put('/:id',
 router.patch('/:id/role',
   roleMiddleware(['admin']),
   validateMemberId,
+  activityLoggerMiddleware('Member'),
   memberController.updateMemberRole
 );
 
 router.delete('/:id',
   roleMiddleware(['admin']),
   validateMemberId,
+  activityLoggerMiddleware('Member'),
   memberController.deleteMember
 );
 
 // Promote dependent to member (admin only)
 router.post('/dependents/:dependentId/promote',
   roleMiddleware(['admin', 'church_leadership']),
+  activityLoggerMiddleware('Member'),
   memberController.promoteDependent
 );
 
