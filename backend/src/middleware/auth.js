@@ -282,6 +282,18 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       lastName: member.last_name
     }, null, 2));
 
+    // Sync Firebase UID if it has changed (e.g. user deleted and re-created in Firebase)
+    if (member.firebase_uid !== decodedToken.uid) {
+      console.log(`🔄 Updating member ${member.id} firebase_uid from ${member.firebase_uid} to ${decodedToken.uid}`);
+      try {
+        await member.update({ firebase_uid: decodedToken.uid });
+        console.log('✅ Firebase UID synced successfully');
+      } catch (updateError) {
+        console.error('❌ Failed to sync Firebase UID:', updateError.message);
+        // Continue anyway, this is non-blocking for login
+      }
+    }
+
     // Note: Do not enforce admin roles here. This middleware authenticates only.
     // Route-level authorization is handled by roleMiddleware on specific routes.
 
