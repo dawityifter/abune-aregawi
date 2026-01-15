@@ -343,8 +343,8 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Events Card */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
+            {/* Events Card - Hidden for now */}
+            {/* <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -370,7 +370,7 @@ const Dashboard: React.FC = () => {
                   </button>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Photo Gallery Card */}
             <div className="bg-white overflow-hidden shadow rounded-lg">

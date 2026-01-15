@@ -5,6 +5,7 @@ const { Member, Dependent, ActivityLog, Title } = require('../models');
 const { sanitizeInput } = require('../utils/sanitize');
 const { newMemberRegistered } = require('../utils/notifications');
 const logger = require('../utils/logger');
+const { logActivity } = require('../utils/activityLogger');
 
 // Utility function to normalize phone numbers
 const normalizePhoneNumber = (phoneNumber) => {
@@ -639,6 +640,22 @@ exports.register = async (req, res) => {
       console.warn('New member notification failed (non-blocking):', e.message);
     }
 
+    // Log registration activity
+    // If req.user exists, it's an admin creating the member. Otherwise, it's self-registration.
+    const actorId = req.user ? req.user.id : member.id;
+    logActivity({
+      userId: actorId,
+      action: 'REGISTER',
+      entityType: 'Member',
+      entityId: member.id,
+      details: {
+        method: firebaseUid ? 'FIREBASE' : 'TRADITIONAL',
+        role: member.role,
+        isAdminCreation: !!req.user
+      },
+      req
+    });
+
     res.status(201).json({
       success: true,
       message: 'Member registered successfully',
@@ -761,6 +778,16 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    // Log successful login
+    logActivity({
+      userId: member.id,
+      action: 'LOGIN',
+      entityType: 'Member',
+      entityId: member.id,
+      details: { method: 'EMAIL' },
+      req
+    });
 
     res.json({
       success: true,
