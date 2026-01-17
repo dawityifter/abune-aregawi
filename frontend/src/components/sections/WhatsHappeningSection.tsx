@@ -6,6 +6,7 @@ const WhatsHappeningSection: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const announcementImage = `${process.env.PUBLIC_URL || ''}/images/sunday_school/sundayschool1.png`;
+  const epiphanyImage = `${process.env.PUBLIC_URL || ''}/images/ephephany.jpeg`;
 
   return (
     <section className="py-16">
@@ -41,17 +42,19 @@ const WhatsHappeningSection: React.FC = () => {
               </button>
             </div>
 
-            <div className="content-card">
-              <h3 className="text-h4 font-serif text-primary-700 mb-4">
-                <i className="fas fa-festival mr-2"></i>
-                {t('sections.announcements.culture.title')}
-              </h3>
-              <p className="text-accent-700 mb-4">
-                {t('sections.announcements.culture.desc')}
-              </p>
-              <button className="btn btn-primary btn-small">
-                {t('common.cta.getDetails')}
-              </button>
+            {/* Epiphany Celebration Image */}
+            <div
+              className="content-card flex flex-col items-center justify-center p-0 overflow-hidden cursor-pointer group relative h-full"
+              onClick={() => setSelectedImage(epiphanyImage)}
+            >
+              <img
+                src={epiphanyImage}
+                alt="Epiphany Celebration"
+                className="w-full h-full object-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <i className="fas fa-search-plus text-white text-2xl opacity-0 group-hover:opacity-100 transition-opacity"></i>
+              </div>
             </div>
           </div>
         </div>
