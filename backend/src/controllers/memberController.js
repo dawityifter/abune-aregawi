@@ -1398,6 +1398,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         emergencyContactName: memberByUid.emergency_contact_name,
         emergencyContactPhone: memberByUid.emergency_contact_phone,
         titleId: memberByUid.title_id, // Add titleId here
+        yearlyPledge: memberByUid.yearly_pledge,
         dependents: memberByUid.dependents || []
       };
 
@@ -1599,6 +1600,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       apartmentNo: member.apartment_no,
       emergencyContactName: member.emergency_contact_name,
       emergencyContactPhone: member.emergency_contact_phone,
+      yearlyPledge: member.yearly_pledge,
       dependents: member.dependents || []
     };
 
@@ -1792,7 +1794,8 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
       apartment_no: req.body.apartmentNo,
       city: req.body.city,
       state: req.body.state,
-      postal_code: req.body.postalCode
+      postal_code: req.body.postalCode,
+      yearly_pledge: req.body.yearlyPledge
     };
 
     // Remove undefined values first

@@ -23,7 +23,8 @@ const deleteRoles = ['admin']; // Can delete departments
 
 // Department CRUD
 router.get('/stats', roleMiddleware(viewRoles), departmentController.getDepartmentStats);
-router.get('/', roleMiddleware(viewRoles), departmentController.getAllDepartments);
+// Basic members can view the department list
+router.get('/', roleMiddleware(['member', ...viewRoles]), departmentController.getAllDepartments);
 router.get('/:id', requireDepartmentMembership(), departmentController.getDepartmentById);
 router.post('/', roleMiddleware(manageRoles), departmentController.createDepartment);
 router.put('/:id', roleMiddleware(manageRoles), departmentController.updateDepartment);
