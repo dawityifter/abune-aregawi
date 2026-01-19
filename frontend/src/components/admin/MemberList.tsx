@@ -36,6 +36,7 @@ interface MemberListProps {
   canEditMembers: boolean;
   canDeleteMembers: boolean;
   canRegisterMembers: boolean;
+  canViewFinancialRecords: boolean;
   refreshToken?: number;
 }
 
@@ -44,6 +45,7 @@ const MemberList: React.FC<MemberListProps> = ({
   canEditMembers,
   canDeleteMembers,
   canRegisterMembers,
+  canViewFinancialRecords,
   refreshToken,
 }) => {
   const { t } = useLanguage();
@@ -488,7 +490,7 @@ const MemberList: React.FC<MemberListProps> = ({
                           <i className="fas fa-user-friends"></i>
                         </button>
                       )}
-                      {canEditMembers && (
+                      {canViewFinancialRecords && (
                         <button
                           onClick={() => setShowPaymentHistoryFor(member)}
                           className="text-blue-600 hover:text-blue-900"
