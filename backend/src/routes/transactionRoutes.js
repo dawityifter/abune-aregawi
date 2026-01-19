@@ -8,6 +8,7 @@ const {
   deleteTransaction,
   getTransactionStats,
   getMemberPaymentSummaries,
+  getSkippedReceipts,
   updateTransactionPaymentType,
   generateTransactionReport
 } = require('../controllers/transactionController');
@@ -30,6 +31,9 @@ router.get('/reports/:reportType', roleMiddleware(viewRoles), generateTransactio
 
 // Get member payment summaries for new system (READ-ONLY)
 router.get('/member-summaries', roleMiddleware(viewRoles), getMemberPaymentSummaries);
+
+// Get skipped receipt numbers
+router.get('/skipped-receipts', roleMiddleware(viewRoles), getSkippedReceipts);
 
 // Get all transactions (READ-ONLY)
 router.get('/', roleMiddleware(viewRoles), getAllTransactions);
