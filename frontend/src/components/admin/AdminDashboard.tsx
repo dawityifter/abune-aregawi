@@ -124,6 +124,7 @@ const AdminDashboard: React.FC = () => {
             canEditMembers={permissions.canEditAllMembers}
             canDeleteMembers={permissions.canDeleteMembers}
             canRegisterMembers={permissions.canRegisterMembers}
+            canViewFinancialRecords={permissions.canViewFinancialRecords}
             refreshToken={refreshToken}
           />
         );
