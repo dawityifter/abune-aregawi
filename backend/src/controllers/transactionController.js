@@ -798,70 +798,126 @@ const getMemberPaymentSummaries = async (req, res) => {
     });
 
     // Transform the data to match the expected format
-    const transformedMembers = members.map(member => {
-      const summary = summaryMap[member.id] || { totalCollected: 0, transactionCount: 0 };
-      const totalCollected = summary.totalCollected;
-      const transactionCount = summary.transactionCount;
+    const summaries = members.map(member => {
+      const stats = summaryMap[member.id] || { totalCollected: 0, transactionCount: 0 };
 
-      // For the new system, we'll use a simplified approach
-      // You might want to implement proper due calculation based on your business logic
-      const monthlyPayment = parseFloat(member.monthly_payment || 0);
-      const totalAmountDue = monthlyPayment * 12; // Annual dues
-      const balanceDue = totalAmountDue - totalCollected;
+      // Calculate status based on monthly payment vs collected
+      // This is a simplified logic - can be made more complex based on months passed
+      const currentMonth = new Date().getMonth() + 1;
+      const expectedTotal = (member.monthly_payment || 0) * currentMonth;
+
+      let status = 'up_to_date';
+      if (stats.totalCollected < expectedTotal) {
+        status = 'behind';
+      }
+      if (stats.totalCollected === 0) {
+        status = 'no_payment';
+      }
 
       return {
-        id: member.id,
-        memberName: `${member.first_name} ${member.last_name}`,
-        spouseName: member.spouse_name || '',
-        phone1: member.phone_number || '',
-        phone2: '', // Not available in new system
-        totalAmountDue,
-        totalCollected,
-        balanceDue,
-        monthlyPayment,
-        paymentMethod: 'Mixed', // Since new system supports multiple methods
         member: {
           id: member.id,
           firstName: member.first_name,
           lastName: member.last_name,
-          memberId: member.id.toString(),
+          email: member.email,
           phoneNumber: member.phone_number,
-          email: member.email
+          spouseName: member.spouse_name
+        },
+        stats: {
+          totalCollected: stats.totalCollected,
+          transactionCount: stats.transactionCount,
+          lastPaymentDate: null, // Would need another query or subquery for this
+          status
         }
       };
     });
 
-    // Apply status filter if specified
-    let filteredMembers = transformedMembers;
-    if (status && status !== 'all') {
-      filteredMembers = transformedMembers.filter(member => {
-        const collected = member.totalCollected;
-        const due = member.totalAmountDue;
-
-        if (status === 'up_to_date') return collected >= due;
-        if (status === 'behind') return collected < due && collected > 0;
-        if (status === 'partial') return collected > 0 && collected < due;
-        return true;
-      });
-    }
-
     res.json({
       success: true,
-      data: filteredMembers,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(count / limit),
-        totalMembers: count,
-        hasNext: page * limit < count,
-        hasPrev: page > 1
+      data: {
+        summaries,
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: Math.ceil(count / limit),
+          total_items: count,
+          items_per_page: parseInt(limit)
+        }
       }
     });
-
   } catch (error) {
     console.error('Error fetching member payment summaries:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch member payment summaries',
+      error: error.message
+    });
+  }
+};
+
+// Get skipped receipt numbers starting from a specific number
+const getSkippedReceipts = async (req, res) => {
+  try {
+    const START_RECEIPT_NUMBER = parseInt(process.env.START_RECEIPT_NUMBER || '5680', 10);
+
+    // Fetch all receipt numbers greater than or equal to the start number
+    // We only care about numeric receipt numbers for this check
+    const transactions = await Transaction.findAll({
+      attributes: ['receipt_number'],
+      where: {
+        receipt_number: {
+          [Op.not]: null
+        }
+      },
+      raw: true
+    });
+
+    // Extract numeric receipt numbers
+    const receiptNumbers = transactions
+      .map(t => parseInt(t.receipt_number, 10))
+      .filter(num => !isNaN(num) && num >= START_RECEIPT_NUMBER)
+      .sort((a, b) => a - b);
+
+    // Remove duplicates
+    const uniqueReceiptNumbers = [...new Set(receiptNumbers)];
+
+    if (uniqueReceiptNumbers.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          skippedReceipts: []
+        }
+      });
+    }
+
+    const skippedReceipts = [];
+    const maxReceipt = uniqueReceiptNumbers[uniqueReceiptNumbers.length - 1];
+
+    // Identify gaps
+    // We iterate from known start number up to the max found number
+    // If a number in that range doesn't exist in our sorted list, it's skipped
+    const receiptSet = new Set(uniqueReceiptNumbers);
+    for (let i = START_RECEIPT_NUMBER; i < maxReceipt; i++) {
+      if (!receiptSet.has(i)) {
+        skippedReceipts.push(i);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        skippedReceipts,
+        range: {
+          start: START_RECEIPT_NUMBER,
+          end: maxReceipt
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error checking skipped receipts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check skipped receipts',
       error: error.message
     });
   }
@@ -1092,6 +1148,7 @@ module.exports = {
   deleteTransaction,
   getTransactionStats,
   getMemberPaymentSummaries,
+  getSkippedReceipts,
   updateTransactionPaymentType,
   generateTransactionReport
 };

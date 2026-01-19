@@ -521,6 +521,15 @@ const translations = {
     'meeting.assignedTo': 'Assigned to',
     'meeting.due': 'Due',
 
+    // Skipped Receipts
+    'treasurer.skippedReceipts.button': 'Show Skipped Receipt Numbers',
+    'treasurer.skippedReceipts.title': 'Missing Receipt Numbers',
+    'treasurer.skippedReceipts.warning': 'Please check your receipt book. The following numbers appear to be skipped or missing from the system.',
+    'treasurer.skippedReceipts.range': 'Checked range',
+    'treasurer.skippedReceipts.noneFound': 'No skipped receipt numbers found in this range!',
+    'treasurer.skippedReceipts.note': 'It is important to enter every receipt to maintain accurate financial records.',
+    'treasurer.skippedReceipts.close': 'Close',
+
 
   },
   ti: {
@@ -798,6 +807,15 @@ const translations = {
     'admin.volunteer.requests.desc': 'ንምግልጋል ድሌት ዘለዎም ኣባላት',
     'admin.responded': 'ተራኺበሎም',
     'admin.call.requested': 'ደወል ተሓቲቱ',
+
+    // Skipped Receipts
+    'treasurer.skippedReceipts.button': 'ዝተዘለሉ ቁጽሪ ቅብሊት ርኣይ',
+    'treasurer.skippedReceipts.title': 'ዝጠፍኡ ቁጽሪ ቅብሊት',
+    'treasurer.skippedReceipts.warning': 'በጃኹም መዝገብ ቅብሊትኩም ተወከሱ። እዞም ዝስዕቡ ቁጽሪ ቅብሊት ኣብ መዝገብ የለውን።',
+    'treasurer.skippedReceipts.range': 'ዝተረጋገፀ ካብ',
+    'treasurer.skippedReceipts.noneFound': 'ኣብዚ ዝተረጋገፀ ቁጽሪ ዝተዘለለ ቅብሊት የለን!',
+    'treasurer.skippedReceipts.note': 'ልክዕ ዝኾነ ፋይናንስ መዝገብ ንምሓዝ ኩሉ ቅብሊት ክምዝገብ ኣገዳሲ እዩ።',
+    'treasurer.skippedReceipts.close': 'ዕጸ',
     'admin.no.new.requests': 'ሓድሽ ናይ ተወፉይነት ጠለብ የለን',
     'admin.voicemail.inbox': 'መልእኽቲ ድምጺ',
     'admin.refresh': 'ኣሐድስ',
