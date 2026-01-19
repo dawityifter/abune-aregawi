@@ -19,8 +19,8 @@ const roleMiddleware = require('../middleware/role');
 router.use(firebaseAuthMiddleware);
 
 // Define role groups
-const viewRoles = ['admin', 'treasurer', 'church_leadership', 'secretary']; // Can view financial data
-const editRoles = ['admin', 'treasurer']; // Can edit financial data
+const viewRoles = ['admin', 'treasurer', 'church_leadership', 'secretary', 'bookkeeper', 'auditor', 'budget_committee', 'ar_team', 'ap_team']; // Can view financial data
+const editRoles = ['admin', 'treasurer', 'bookkeeper', 'ar_team']; // Can edit financial data
 const deleteRoles = ['admin']; // Can delete transactions
 
 // Get transaction statistics (READ-ONLY)
