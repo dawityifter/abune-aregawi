@@ -16,8 +16,8 @@ const roleMiddleware = require('../middleware/role');
 router.use(firebaseAuthMiddleware);
 
 // Read-only routes - allow church_leadership to view financial data
-const viewRoles = ['treasurer', 'admin', 'church_leadership', 'secretary'];
-const editRoles = ['treasurer', 'admin'];
+const viewRoles = ['treasurer', 'admin', 'church_leadership', 'secretary', 'bookkeeper', 'auditor', 'budget_committee', 'ar_team'];
+const editRoles = ['treasurer', 'admin', 'bookkeeper', 'ar_team'];
 
 // Get payment statistics for dashboard (READ-ONLY)
 router.get('/stats', roleMiddleware(viewRoles), getPaymentStats);

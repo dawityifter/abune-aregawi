@@ -224,7 +224,7 @@ module.exports = (sequelize) => {
       field: 'title_id'
     },
     role: {
-      type: DataTypes.ENUM('member', 'admin', 'treasurer', 'secretary', 'church_leadership', 'relationship', 'guest', 'deacon', 'priest'),
+      type: DataTypes.ENUM('member', 'admin', 'treasurer', 'secretary', 'church_leadership', 'relationship', 'guest', 'deacon', 'priest', 'bookkeeper', 'budget_committee', 'auditor', 'ar_team', 'ap_team'),
       allowNull: false,
       defaultValue: 'member'
     },

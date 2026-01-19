@@ -366,6 +366,7 @@ export interface Dictionaries {
       stats: {
         members: string;
       };
+      descriptions: Record<string, string>;
       updateRole: string;
       currentRole: string;
       newRole: string;
@@ -945,6 +946,19 @@ export const en: Dictionaries = {
       description: "Manage member roles and permissions",
       stats: {
         members: "members"
+      },
+      descriptions: {
+        admin: "Full system access. Can manage users, roles, system settings, and all data.",
+        church_leadership: "Oversight access. Can view most data, approve budgets, and manage events.",
+        treasurer: "Full financial authority. Can manage all income, expenses, and reports.",
+        secretary: "Administrative support. Can manage member records and communications.",
+        bookkeeper: "Financial operations. Can record day-to-day income/expenses and reconcile banks.",
+        budget_committee: "Financial planning. Can view data and approve budgets (read-only transactions).",
+        auditor: "Financial oversight. Strict read-only access to all financial records and logs.",
+        ar_team: "Accounts Receivable. Can record donations/income. No expense access.",
+        ap_team: "Accounts Payable. Can record expenses/vendor payments. No income access.",
+        relationship: "Outreach & Care. Can manage member follow-ups and notes.",
+        member: "Standard access. Can view own profile and make donations."
       },
       updateRole: "Update Role",
       currentRole: "Current Role",
@@ -1530,6 +1544,19 @@ export const ti: Dictionaries = {
       description: "ናይ ኣባላት ሓላፍነትን ፍቓድን ምምሕዳር",
       stats: {
         members: "ኣባላት"
+      },
+      descriptions: {
+        admin: "ምሉእ ሓላፍነት ስርዓት። ኣባላት፣ መዝነታት፣ ቅጥዕታት ስርዓት ክመሓድር ይኽእል።",
+        church_leadership: "ላዕለዋይ አመራርሓ። መብዛሕትኡ ሓበሬታ ክርኢ፣ ባጀት ከጽድቕን መደባት ክመርሕን ይኽእል።",
+        treasurer: "ዋና ተሓዝ ገንዘብ። ኩሉ ኣታዊ፣ ወጻኢ፣ መብጽዓታትን ጸብጻባትን ክመሓድር ይኽእል።",
+        secretary: "ዋና ጸሓፊ። መዝገብ ኣባላት፣ ማውጫን ርክባትን ክመሓድር ይኽእል።",
+        bookkeeper: "ሒሳብ ሹም። ዕለታዊ ኣታዊን ወጻኢን ክምዝግብን ባንኪ ከረክብን ይኽእል።",
+        budget_committee: "ኮሚቴ ባጀት። ኩሉ פיናንሳዊ ሓበሬታ ክርኢን ባጀት ከጽድቕን ይኽእል፣ ግን ለውጢ ክገብር ኣይኽእልን።",
+        auditor: "ተቆጻጻሪ። ንኩሉ פיናንሳዊ መዝገባትን ስርዓታትን ከረጋግጽ ጥራይ ይኽእል (ንባብ ጥራይ)።",
+        ar_team: "ጉጅለ ኣታዊ (AR)። ውህብቶን ክፍሊትን ኣባላት ክምዝግብ ይኽእል።",
+        ap_team: "ጉጅለ ወጻኢ (AP)። ወጻኢታትን ክፍሊት ነጋዶን ክምዝግብ ይኽእል።",
+        relationship: "ዝምድናታት። ምክትታል ኣባላትን ርክባትን ክመሓድር ይኽእል።",
+        member: "ኣባልን። ናይ ባዕሉ ሓበሬታ ክርኢ፣ ስድራቤቱ ክመሓድርን ውህብቶ ክህብን ይኽእል።"
       },
       updateRole: "ሓላፍነት ኣሐድስ",
       currentRole: "ናይ ሕዚ ሓላፍነት",

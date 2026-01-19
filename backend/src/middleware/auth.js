@@ -87,6 +87,7 @@ const authMiddleware = async (req, res, next) => {
       member_id: member.id,
       email: member.email,
       role: member.role,
+      roles: (member.roles && member.roles.length > 0) ? member.roles : [member.role],
       memberId: member.memberId
     };
 
@@ -311,6 +312,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       member_id: member.id,
       email: member.email,
       role: member.role,
+      roles: (member.roles && member.roles.length > 0) ? member.roles : [member.role],
       memberId: member.memberId
     };
 

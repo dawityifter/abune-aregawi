@@ -1932,13 +1932,18 @@ exports.updateMemberRole = async (req, res) => {
     const { role, roles } = req.body;
 
     // Validate roles
-    const validRoles = ['admin', 'church_leadership', 'treasurer', 'secretary', 'member', 'guest', 'relationship', 'deacon', 'priest'];
+    const validRoles = ['admin', 'church_leadership', 'treasurer', 'bookkeeper', 'budget_committee', 'auditor', 'ar_team', 'ap_team', 'secretary', 'member', 'guest', 'relationship', 'deacon', 'priest'];
 
     let rolesToSet = [];
     if (Array.isArray(roles)) {
       rolesToSet = roles.filter(r => validRoles.includes(r));
     } else if (role && validRoles.includes(role)) {
       rolesToSet = [role];
+    }
+
+    // Ensure 'member' role is always included as everyone is a member
+    if (!rolesToSet.includes('member')) {
+      rolesToSet.push('member');
     }
 
     if (rolesToSet.length === 0) {

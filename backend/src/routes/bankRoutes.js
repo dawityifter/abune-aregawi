@@ -18,6 +18,6 @@ router.post('/upload', upload.single('file'), uploadBankCSV);
 router.get('/transactions', getBankTransactions);
 
 // Reconcile transaction
-router.post('/reconcile', authorize(['admin', 'treasurer']), reconcileTransaction);
+router.post('/reconcile', authorize(['admin', 'treasurer', 'bookkeeper']), reconcileTransaction);
 
 module.exports = router;
