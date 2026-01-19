@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AddMeetingModal from './admin/AddMeetingModal';
 import AddTaskModal from './admin/AddTaskModal';
+import ManageDepartmentMembersModal from './admin/ManageDepartmentMembersModal';
+import { LanguageContext } from '../contexts/LanguageContext';
+
 
 interface Department {
     id: number;
@@ -56,7 +59,10 @@ interface Task {
     };
 }
 
+
+
 const DepartmentDashboard: React.FC = () => {
+    const { t } = React.useContext(LanguageContext)!;
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { firebaseUser, user } = useAuth();
@@ -64,13 +70,14 @@ const DepartmentDashboard: React.FC = () => {
     const [department, setDepartment] = useState<Department | null>(null);
     const [meetings, setMeetings] = useState<Meeting[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [activeTab, setActiveTab] = useState<'members' | 'meetings' | 'tasks'>('members');
+    const [activeTab, setActiveTab] = useState<'members' | 'meetings' | 'tasks'>('meetings');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     // Modal states
     const [showAddMeetingModal, setShowAddMeetingModal] = useState(false);
     const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+    const [showManageMembersModal, setShowManageMembersModal] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
@@ -246,16 +253,6 @@ const DepartmentDashboard: React.FC = () => {
                     <div className="border-b border-gray-200 flex justify-between items-center pr-6">
                         <nav className="-mb-px flex">
                             <button
-                                onClick={() => setActiveTab('members')}
-                                className={`${activeTab === 'members'
-                                    ? 'border-primary-600 text-primary-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                    } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
-                            >
-                                <i className="fas fa-users mr-2"></i>
-                                Members ({department.memberships?.length || 0})
-                            </button>
-                            <button
                                 onClick={() => setActiveTab('meetings')}
                                 className={`${activeTab === 'meetings'
                                     ? 'border-primary-600 text-primary-600'
@@ -263,7 +260,7 @@ const DepartmentDashboard: React.FC = () => {
                                     } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
                             >
                                 <i className="fas fa-calendar mr-2"></i>
-                                Meetings ({meetings.length})
+                                {t('department.tabs.meetings')} ({meetings.length})
                             </button>
                             <button
                                 onClick={() => setActiveTab('tasks')}
@@ -273,7 +270,17 @@ const DepartmentDashboard: React.FC = () => {
                                     } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
                             >
                                 <i className="fas fa-tasks mr-2"></i>
-                                Tasks ({tasks.filter(t => t.status !== 'completed').length})
+                                {t('department.tabs.tasks')} ({tasks.filter(t => t.status !== 'completed').length})
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('members')}
+                                className={`${activeTab === 'members'
+                                    ? 'border-primary-600 text-primary-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm`}
+                            >
+                                <i className="fas fa-users mr-2"></i>
+                                {t('department.tabs.members')} ({department.memberships?.length || 0})
                             </button>
                         </nav>
 
@@ -288,7 +295,7 @@ const DepartmentDashboard: React.FC = () => {
                                     className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                                 >
                                     <i className="fas fa-plus mr-1"></i>
-                                    Add Meeting
+                                    {t('department.addMeeting')}
                                 </button>
                             )}
                             {activeTab === 'tasks' && (
@@ -300,7 +307,16 @@ const DepartmentDashboard: React.FC = () => {
                                     className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                                 >
                                     <i className="fas fa-plus mr-1"></i>
-                                    Add Task
+                                    {t('department.addTask')}
+                                </button>
+                            )}
+                            {activeTab === 'members' && (
+                                <button
+                                    onClick={() => setShowManageMembersModal(true)}
+                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                                >
+                                    <i className="fas fa-users-cog mr-1"></i>
+                                    {t('department.manageMembers')}
                                 </button>
                             )}
                         </div>
@@ -345,42 +361,73 @@ const DepartmentDashboard: React.FC = () => {
                                     meetings.map((meeting) => (
                                         <div
                                             key={meeting.id}
-                                            className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                                            className="group bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-all duration-200 cursor-pointer flex items-center gap-4"
                                             onClick={() => navigate(`/departments/${id}/meetings/${meeting.id}`)}
                                         >
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div className="flex-1">
-                                                    <h3 className="font-medium text-gray-900">{meeting.title}</h3>
-                                                    {meeting.purpose && (
-                                                        <p className="text-sm text-gray-600 mt-1">{meeting.purpose}</p>
-                                                    )}
-                                                </div>
-                                                <span className="text-sm text-gray-500">
-                                                    {new Date(meeting.meeting_date).toLocaleDateString()}
-                                                </span>
+                                            {/* Icon Container */}
+                                            <div className="flex-shrink-0 w-12 h-12 bg-primary-50 rounded-lg flex items-center justify-center group-hover:bg-primary-100 transition-colors">
+                                                <i className="fas fa-folder-open text-primary-600 text-xl group-hover:scale-110 transition-transform duration-200"></i>
                                             </div>
-                                            {meeting.location && (
-                                                <p className="text-sm text-gray-600 mb-1">
-                                                    <i className="fas fa-map-marker-alt mr-1"></i>
-                                                    {meeting.location}
-                                                </p>
-                                            )}
-                                            <div className="flex items-center gap-4 text-sm text-gray-500 mt-2">
-                                                <span>
-                                                    <i className="fas fa-users mr-1"></i>
-                                                    {meeting.attendees?.length || 0} attendees
-                                                </span>
-                                                {meeting.creator && (
-                                                    <span>
-                                                        <i className="fas fa-user mr-1"></i>
-                                                        {meeting.creator.first_name} {meeting.creator.last_name}
+
+                                            {/* Content */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h3 className="font-semibold text-gray-900 truncate pr-4 text-lg">
+                                                            {meeting.title}
+                                                        </h3>
+                                                        {meeting.purpose && (
+                                                            <p className="text-sm text-gray-500 mt-1 line-clamp-1">
+                                                                {meeting.purpose}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col items-end flex-shrink-0">
+                                                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full whitespace-nowrap">
+                                                            <i className="far fa-calendar-alt mr-1.5 opacity-70"></i>
+                                                            {new Date(meeting.meeting_date).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center mt-3 text-sm text-gray-500 gap-4">
+                                                    {meeting.location && (
+                                                        <span className="flex items-center">
+                                                            <i className="fas fa-map-marker-alt mr-1.5 text-gray-400"></i>
+                                                            {meeting.location}
+                                                        </span>
+                                                    )}
+                                                    <span className="flex items-center">
+                                                        <i className="fas fa-users mr-1.5 text-gray-400"></i>
+                                                        {meeting.attendees?.length || 0} attendees
                                                     </span>
-                                                )}
+                                                </div>
+                                            </div>
+
+                                            {/* Action Indicator */}
+                                            <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0">
+                                                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
+                                                    <i className="fas fa-chevron-right text-gray-400"></i>
+                                                </div>
                                             </div>
                                         </div>
                                     ))
                                 ) : (
-                                    <p className="text-gray-500 text-center py-8">No meetings recorded yet</p>
+                                    <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                                        <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4">
+                                            <i className="fas fa-folder-open text-gray-300 text-3xl"></i>
+                                        </div>
+                                        <p className="text-gray-500 font-medium">No meetings recorded yet</p>
+                                        <button
+                                            onClick={() => {
+                                                setSelectedMeeting(null);
+                                                setShowAddMeetingModal(true);
+                                            }}
+                                            className="mt-2 text-primary-600 hover:text-primary-700 text-sm font-medium"
+                                        >
+                                            Create your first meeting
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -503,6 +550,20 @@ const DepartmentDashboard: React.FC = () => {
                                 }
                             };
                             fetchTasks();
+                        }}
+                    />
+                )}
+
+                {showManageMembersModal && department && (
+                    <ManageDepartmentMembersModal
+                        department={department}
+                        onClose={() => setShowManageMembersModal(false)}
+                        onUpdate={() => {
+                            // Refresh department data to show new members
+                            // We can just trigger the same fetch effect by relying on ID or explicitly refetching
+                            // For simplicity, let's just reload the page or we can extract the fetch function.
+                            // Better: Duplicate the fetch logic for members or reload whole department.
+                            navigate(0); // Simple reload to refresh all data
                         }}
                     />
                 )}

@@ -28,9 +28,10 @@ interface DepartmentCardProps {
   department: Department;
   onUpdate: () => void;
   getTypeColor: (type: string) => string;
+  icon?: string;
 }
 
-const DepartmentCard: React.FC<DepartmentCardProps> = ({ department, onUpdate, getTypeColor }) => {
+const DepartmentCard: React.FC<DepartmentCardProps> = ({ department, onUpdate, getTypeColor, icon }) => {
   const { t } = useLanguage();
   const { firebaseUser } = useAuth();
   const [showEditModal, setShowEditModal] = useState(false);
@@ -45,7 +46,7 @@ const DepartmentCard: React.FC<DepartmentCardProps> = ({ department, onUpdate, g
     try {
       setIsDeleting(true);
       const idToken = await firebaseUser?.getIdToken();
-      
+
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/api/departments/${department.id}`,
         {
@@ -81,22 +82,30 @@ const DepartmentCard: React.FC<DepartmentCardProps> = ({ department, onUpdate, g
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-100 group">
         {/* Header */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-5 border-b border-gray-50">
           <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h4 className="text-lg font-semibold text-gray-900 mb-1">
-                {department.name}
-              </h4>
-              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(department.type)}`}>
-                {department.type}
-              </span>
+            <div className="flex items-start gap-4">
+              {icon && (
+                <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center text-primary-600 flex-shrink-0 group-hover:bg-primary-50 transition-colors">
+                  <i className={`${icon} text-xl`}></i>
+                </div>
+              )}
+              <div>
+                <h4 className="text-lg font-bold text-gray-900 mb-1 leading-tight group-hover:text-primary-700 transition-colors">
+                  {department.name}
+                </h4>
+                <span className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full items-center ${getTypeColor(department.type)}`}>
+                  {department.type}
+                </span>
+              </div>
             </div>
-            <div className="flex space-x-2">
+
+            <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={() => setShowEditModal(true)}
-                className="text-gray-400 hover:text-primary-600"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-primary-600 hover:bg-gray-50 transition-colors"
                 title="Edit"
               >
                 <i className="fas fa-edit"></i>
@@ -104,7 +113,7 @@ const DepartmentCard: React.FC<DepartmentCardProps> = ({ department, onUpdate, g
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                 title="Deactivate"
               >
                 <i className="fas fa-trash"></i>
@@ -155,7 +164,7 @@ const DepartmentCard: React.FC<DepartmentCardProps> = ({ department, onUpdate, g
                 </span>
               )}
             </div>
-            
+
             {department.is_public && (
               <span className="text-xs text-green-600 font-medium">
                 <i className="fas fa-globe mr-1"></i>

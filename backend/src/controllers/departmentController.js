@@ -546,7 +546,8 @@ exports.getDepartmentMeetings = async (req, res) => {
 // Create a new meeting
 exports.createMeeting = async (req, res) => {
   try {
-    const { department_id, title, meeting_date, location, purpose, agenda, attendees, minutes } = req.body;
+    const { department_id, title, meeting_date, location, purpose, agenda, attendees, minutes,
+      title_ti, purpose_ti, agenda_ti, minutes_ti } = req.body;
     const created_by = req.user?.member_id;
 
     const { DepartmentMeeting } = require('../models');
@@ -567,6 +568,10 @@ exports.createMeeting = async (req, res) => {
       agenda,
       attendees: attendees || [],
       minutes,
+      title_ti,
+      purpose_ti,
+      agenda_ti,
+      minutes_ti,
       created_by
     });
 

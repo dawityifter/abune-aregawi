@@ -17,11 +17,14 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
     const [activeChannelId, setActiveChannelId] = useState(channelId);
     const [streamTitle, setStreamTitle] = useState<string | null>(null);
     const [showPlayer, setShowPlayer] = useState(false);
+    const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
 
     const spiritualChannelId = 'UCQXFCGSNdQ1y8GOmqbvRefg';
 
     const youtubeChannelUrl = `https://www.youtube.com/channel/${activeChannelId}`;
-    const youtubeLiveUrl = `https://www.youtube.com/channel/${activeChannelId}/live`;
+    const youtubeLiveUrl = activeVideoId
+        ? `https://www.youtube.com/watch?v=${activeVideoId}`
+        : `https://www.youtube.com/channel/${activeChannelId}/live`;
 
     useEffect(() => {
         checkIfLive();
@@ -47,9 +50,11 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
             if (isMainLive) {
                 setActiveChannelId(data.main.channelId);
                 setStreamTitle(data.main.title || 'Main Service');
+                setActiveVideoId(data.main.videoId || null);
             } else if (isSpiritualLive) {
                 setActiveChannelId(data.spiritual.channelId);
                 setStreamTitle(data.spiritual.title || 'Spiritual Service');
+                setActiveVideoId(data.spiritual.videoId || null);
             }
 
             setIsLive(isMainLive || isSpiritualLive);
@@ -109,7 +114,10 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
                         <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
                             <iframe
                                 className="absolute top-0 left-0 w-full h-full rounded-lg"
-                                src={`https://www.youtube.com/embed/live_stream?channel=${activeChannelId}`}
+                                src={activeVideoId
+                                    ? `https://www.youtube.com/embed/${activeVideoId}?autoplay=1`
+                                    : `https://www.youtube.com/embed/live_stream?channel=${activeChannelId}&autoplay=1`
+                                }
                                 title="Live Stream"
                                 frameBorder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

@@ -114,7 +114,18 @@ graph TB
 - ✅ **Payment Validation**: Minimum payment amount of $1.00 enforced
   - Frontend validation with clear error messages
   - Backend validation at controller and model levels
-  - Applied to all payment types and methods
+    - Applied to all payment types and methods
+  
+  ### Financial Roles Expansion (January 2026)
+  - ✅ **Granular Financial Roles**: Expanded Treasurer role into specialized functions
+    - **Bookkeeper**: Daily financial operations, income/expense recording, and bank reconciliation
+    - **AR Team**: Accounts Receivable focus (income/donations only)
+    - **AP Team**: Accounts Payable focus (expenses/vendor payments only)
+    - **Budget Committee**: Read-only oversight with budget approval authority
+    - **Auditor**: Strict read-only access for financial and system log auditing
+  - ✅ **Enhanced RBAC**: Fine-grained permissions (e.g., `canManageIncome`, `canManageExpenses`)
+  - ✅ **Role Persistence**: Automatic enforcement of `Member` role for all users
+  - ✅ **UI Updates**: Admin role management updated with new roles and color coding
 
 ### Deployment & Infrastructure
 - ✅ **Firebase Hosting**: Migrated from Vercel to Firebase Hosting with asset path fixes
@@ -487,8 +498,13 @@ graph TD
     A[Guest] --> B[Member]
     B --> C[Secretary]
     B --> D[Treasurer]
+    D --> H[Bookkeeper]
+    D --> I[AR Team]
+    D --> J[AP Team]
     B --> E[🤝 Relationship Department]
     B --> F[Church Leadership]
+    F --> K[Budget Committee]
+    F --> L[Auditor]
     C --> G[Admin]
     D --> G
     E --> G
@@ -580,6 +596,83 @@ graph TD
 - ❌ No access to member management features
 - ❌ Cannot change system settings
 - ❌ Cannot record membership dues for anonymous donors
+
+---
+
+#### 📚 **Bookkeeper** (Financial Operations)
+**Description**: Dedicated financial staff responsible for daily transaction recording and reconciliation.
+
+**Permissions**:
+- ✅ All Member permissions
+- ✅ **Manage Income**: Record donations and payments
+- ✅ **Manage Expenses**: Record and categorize expenses
+- ✅ **Bank Reconciliation**: Reconcile bank transactions
+- ✅ View financial dashboards and reports
+
+**Restrictions**:
+- ❌ Cannot approve budgets
+- ❌ Cannot delete critical financial records
+- ❌ No access to system settings or user role management
+
+---
+
+#### 🧾 **AR Team** (Accounts Receivable)
+**Description**: Focused on managing incoming funds, donations, and member contributions.
+
+**Permissions**:
+- ✅ All Member permissions
+- ✅ **Manage Income**: Record member payments and donations
+- ✅ View income-related reports
+- ✅ Access transaction history
+
+**Restrictions**:
+- ❌ **No Expense Access**: Cannot view or manage expenses
+- ❌ Cannot reconcile bank accounts
+
+---
+
+#### 💸 **AP Team** (Accounts Payable)
+**Description**: Focused on managing outgoing funds, vendor payments, and expenses.
+
+**Permissions**:
+- ✅ All Member permissions
+- ✅ **Manage Expenses**: Record vendor payments and reimbursements
+- ✅ View expense-related reports
+- ✅ Manage vendor records
+
+**Restrictions**:
+- ❌ **No Income Access**: Cannot view or manage member contributions
+- ❌ Cannot reconcile bank accounts
+
+---
+
+#### 📊 **Budget Committee** (Financial Planning)
+**Description**: Committee members responsible for planning and approving the church budget.
+
+**Permissions**:
+- ✅ All Member permissions
+- ✅ **View All Financials**: Full read access to income and expenses
+- ✅ **Approve Budget**: Authority to finalize and approve budgets
+- ✅ View financial reports
+
+**Restrictions**:
+- ❌ Read-Only access to actual transactions (cannot add/edit)
+- ❌ Cannot manage users or system settings
+
+---
+
+#### 🔍 **Auditor** (Oversight)
+**Description**: Internal or external auditors responsible for reviewing financial integrity.
+
+**Permissions**:
+- ✅ All Member permissions
+- ✅ **View All Financials**: Read-only access to all financial records
+- ✅ **View Audit Logs**: Access to system activity and security logs
+- ✅ Generate comprehensive financial reports
+
+**Restrictions**:
+- ❌ **Strict Read-Only**: Cannot modify ANY data
+- ❌ No access to member personal notes via Relationship features
 
 ---
 

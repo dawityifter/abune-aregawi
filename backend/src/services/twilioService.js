@@ -35,12 +35,21 @@ async function sendSmsBatch(recipients, body, options = {}) {
   const results = [];
   for (let i = 0; i < recipients.length; i += concurrency) {
     const batch = recipients.slice(i, i + concurrency);
-    const batchResults = await Promise.all(batch.map(async (to) => {
+    const batchResults = await Promise.all(batch.map(async (recipient) => {
       try {
-        const res = await sendSms(to, body);
-        return { to, success: true, sid: res.sid };
+        // Handle both string recipients (using common body) and object recipients (personalized)
+        const to = typeof recipient === 'string' ? recipient : recipient.to;
+        const msgBody = typeof recipient === 'string' ? body : recipient.body;
+
+        if (!to || !msgBody) {
+          throw new Error('Invalid recipient or missing message body');
+        }
+
+        const res = await sendSms(to, msgBody);
+        return { to, success: true, sid: res.sid, metadata: recipient.metadata };
       } catch (err) {
-        return { to, success: false, error: err.message };
+        const to = typeof recipient === 'string' ? recipient : recipient.to;
+        return { to, success: false, error: err.message, metadata: recipient.metadata };
       }
     }));
     results.push(...batchResults);

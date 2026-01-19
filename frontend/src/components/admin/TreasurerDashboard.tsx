@@ -35,6 +35,7 @@ const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle' | 'member-dues' | 'employees' | 'vendors' | 'bank'>('overview');
+  const [activeReportTab, setActiveReportTab] = useState<'weekly' | 'payment'>('weekly');
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
@@ -43,8 +44,12 @@ const TreasurerDashboard: React.FC = () => {
   const [profileLoading, setProfileLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
 
-  console.log('🏦 TreasurerDashboard: Component loaded');
-  console.log('🏦 Current user:', currentUser);
+  // State for skipped receipts modal
+  const [showSkippedReceiptsModal, setShowSkippedReceiptsModal] = useState(false);
+  const [skippedReceipts, setSkippedReceipts] = useState<number[]>([]);
+  const [receiptRange, setReceiptRange] = useState<{ start: number; end: number } | null>(null);
+  const [loadingSkipped, setLoadingSkipped] = useState(false);
+
   console.log('🏦 Firebase user:', firebaseUser);
 
   // Check user permissions
@@ -54,6 +59,40 @@ const TreasurerDashboard: React.FC = () => {
 
   // Check if user has financial permissions
   const hasFinancialAccess = permissions.canViewFinancialRecords || permissions.canEditFinancialRecords;
+
+  const fetchSkippedReceipts = async () => {
+    try {
+      setLoadingSkipped(true);
+      const endpoint = '/api/transactions/skipped-receipts';
+      const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}`, {
+        headers: {
+          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSkippedReceipts(data.data.skippedReceipts || []);
+        setReceiptRange(data.data.range);
+      } else {
+        console.error('Failed to fetch skipped receipts');
+      }
+    } catch (error) {
+      console.error('Error checking skipped receipts:', error);
+    } finally {
+      setLoadingSkipped(false);
+    }
+  };
+
+  useEffect(() => {
+    if (permissions.canEditFinancialRecords) {
+      fetchSkippedReceipts();
+    }
+  }, [permissions.canEditFinancialRecords]);
+
+  const openSkippedReceiptsModal = () => {
+    setShowSkippedReceiptsModal(true);
+  };
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -167,13 +206,13 @@ const TreasurerDashboard: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 print:hidden">
           <h1 className="text-3xl font-bold text-gray-900">{t('treasurerDashboard.title')}</h1>
           <p className="mt-2 text-gray-600">{t('treasurerDashboard.subtitle')}</p>
         </div>
 
         {/* Tab Navigation */}
-        <div className="border-b border-gray-200 mb-8">
+        <div className="border-b border-gray-200 mb-8 print:hidden">
           <div className="-mb-px flex items-center justify-between">
             <nav className="flex space-x-8">
               <button
@@ -294,14 +333,25 @@ const TreasurerDashboard: React.FC = () => {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.tabs.payments')}</h2>
-                {permissions.canEditFinancialRecords && (
-                  <button
-                    onClick={() => setShowAddPaymentModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
-                  >
-                    {t('treasurerDashboard.actions.addPayment')}
-                  </button>
-                )}
+                <div className="flex space-x-3">
+                  {permissions.canEditFinancialRecords && skippedReceipts.length > 0 && (
+                    <>
+                      <button
+                        onClick={openSkippedReceiptsModal}
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md font-medium flex items-center"
+                      >
+                        <i className="fas fa-exclamation-triangle mr-2"></i>
+                        {t('treasurer.skippedReceipts.button')}
+                      </button>
+                      <button
+                        onClick={() => setShowAddPaymentModal(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                      >
+                        {t('treasurerDashboard.actions.addPayment')}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
               <TransactionList
                 onTransactionAdded={fetchPaymentStats}
@@ -327,16 +377,39 @@ const TreasurerDashboard: React.FC = () => {
           )}
 
           {activeTab === 'reports' && (
-            <div className="space-y-8">
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-6">{t('treasurerDashboard.reports.weeklyCollection')}</h2>
-                <WeeklyCollectionReport />
+            <div className="space-y-6">
+              <div className="flex space-x-4 border-b border-gray-200 pb-4 mb-4 print:hidden">
+                <button
+                  onClick={() => setActiveReportTab('weekly')}
+                  className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeReportTab === 'weekly'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                >
+                  {t('treasurerDashboard.reports.weeklyCollection')}
+                </button>
+                <button
+                  onClick={() => setActiveReportTab('payment')}
+                  className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeReportTab === 'payment'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                >
+                  {t('treasurerDashboard.reports.paymentReports')}
+                </button>
               </div>
 
-              <div className="border-t pt-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-6">{t('treasurerDashboard.reports.paymentReports')}</h2>
-                <PaymentReports paymentView="new" />
-              </div>
+              {activeReportTab === 'weekly' ? (
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-6 print:hidden">{t('treasurerDashboard.reports.weeklyCollection')}</h2>
+                  <WeeklyCollectionReport />
+                </div>
+              ) : (
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-6 print:hidden">{t('treasurerDashboard.reports.paymentReports')}</h2>
+                  <PaymentReports paymentView="new" />
+                </div>
+              )}
             </div>
           )}
 
@@ -441,6 +514,75 @@ const TreasurerDashboard: React.FC = () => {
               window.dispatchEvent(new CustomEvent('expenses:refresh'));
             }}
           />
+        )}
+
+        {/* Skipped Receipts Modal */}
+        {showSkippedReceiptsModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full m-4">
+              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="text-lg font-medium text-gray-900 flex items-center text-yellow-600">
+                  <i className="fas fa-exclamation-triangle mr-2"></i>
+                  {t('treasurer.skippedReceipts.title')}
+                </h3>
+                <button
+                  onClick={() => setShowSkippedReceiptsModal(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <span className="sr-only">Close</span>
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="px-6 py-4">
+                <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                  <div className="flex">
+                    <div className="ml-3">
+                      <p className="text-sm text-yellow-700">
+                        {t('treasurer.skippedReceipts.warning')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 mb-2">
+                    {t('treasurer.skippedReceipts.range')}: <span className="font-semibold">{receiptRange?.start} - {receiptRange?.end}</span>
+                  </p>
+
+                  {skippedReceipts.length > 0 ? (
+                    <div className="bg-gray-50 rounded-md p-3 max-h-60 overflow-y-auto border border-gray-200">
+                      <div className="flex flex-wrap gap-2">
+                        {skippedReceipts.map(num => (
+                          <span key={num} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            #{num}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-green-600">
+                      <i className="fas fa-check-circle text-2xl mb-2"></i>
+                      <p>{t('treasurer.skippedReceipts.noneFound')}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 text-sm text-gray-500">
+                  <p>{t('treasurer.skippedReceipts.note')}</p>
+                </div>
+              </div>
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+                <button
+                  onClick={() => setShowSkippedReceiptsModal(false)}
+                  className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  {t('treasurer.skippedReceipts.close')}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
