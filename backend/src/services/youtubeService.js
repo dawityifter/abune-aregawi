@@ -51,23 +51,27 @@ const checkYouTubeLiveStatus = async (channelId, forceCheck = false) => {
     const isCore = isCoreHour();
     const bypassCore = process.env.FORCE_YOUTUBE_CHECK === 'true' || process.env.NODE_ENV === 'development' || forceCheck;
 
-    // Return cached data if valid
+    // Return cached data if valid (unless forced)
     const now = Date.now();
     const cachedItem = cache.get(channelId);
 
-    // If outside core hours AND not bypassing, only check if cache is older than LONG_CACHE_TTL
-    if (!isCore && !bypassCore) {
-        if (cachedItem && (now - cachedItem.lastComputed < LONG_CACHE_TTL)) {
-            console.log(`[YouTube] Outside core hours: Serving cached status for ${channelId} (Last checked ${Math.round((now - cachedItem.lastComputed) / 60000)}m ago)`);
-            return cachedItem.data;
+    if (!forceCheck) {
+        // If outside core hours AND not bypassing
+        if (!isCore && !bypassCore) {
+            if (cachedItem && (now - cachedItem.lastComputed < LONG_CACHE_TTL)) {
+                console.log(`[YouTube] Outside core hours: Serving cached status for ${channelId} (Last checked ${Math.round((now - cachedItem.lastComputed) / 60000)}m ago)`);
+                return cachedItem.data;
+            }
+            console.log(`[YouTube] Outside core hours, but cache is stale. Fetching fresh status for ${channelId}...`);
+        } else {
+            // Within core hours or bypassing: use standard CACHE_TTL
+            if (cachedItem && (now - cachedItem.lastComputed < CACHE_TTL)) {
+                console.log(`[YouTube] Within core/bypass hours: Serving cached status for ${channelId}`);
+                return cachedItem.data;
+            }
         }
-        console.log(`[YouTube] Outside core hours, but cache is stale. Fetching fresh status for ${channelId}...`);
     } else {
-        // Within core hours or bypassing: use standard CACHE_TTL
-        if (cachedItem && (now - cachedItem.lastComputed < CACHE_TTL)) {
-            console.log(`[YouTube] Within core/bypass hours: Serving cached status for ${channelId}`);
-            return cachedItem.data;
-        }
+        console.log(`[YouTube] Force check requested. Bypassing cache for ${channelId}...`);
     }
 
     try {
@@ -85,7 +89,8 @@ const checkYouTubeLiveStatus = async (channelId, forceCheck = false) => {
             part: 'snippet',
             type: 'video',
             eventType: 'live',
-            maxResults: 1,
+            maxResults: 1
+        }, {
             headers: {
                 Referer: process.env.FRONTEND_URL || 'https://abunearegawi.church'
             }

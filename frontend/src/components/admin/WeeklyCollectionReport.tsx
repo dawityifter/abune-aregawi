@@ -213,7 +213,13 @@ const WeeklyCollectionReport: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print:space-y-0">
+      {/* Print Header */}
+      <div className="hidden print:block text-center mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 font-serif">Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church</h1>
+        <p className="text-sm text-gray-500 mt-1">{new Date().toLocaleDateString()}</p>
+      </div>
+
       {/* Header with Week Selector */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
@@ -226,7 +232,7 @@ const WeeklyCollectionReport: React.FC = () => {
           <div className="flex items-center space-x-4">
             <button
               onClick={goToPreviousWeek}
-              className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 print:hidden"
             >
               ← {t('treasurerDashboard.reportTabs.weekly.previous')}
             </button>
@@ -236,32 +242,49 @@ const WeeklyCollectionReport: React.FC = () => {
                 type="date"
                 value={weekStart}
                 onChange={handleDateChange}
-                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 print:hidden"
                 title="Select any date - will automatically adjust to the Monday of that week"
               />
-              <span className="text-xs text-gray-500 mt-1">
+              <span className="text-xs text-gray-500 mt-1 print:hidden">
                 📌 Week starts on Monday
               </span>
             </div>
 
             <button
               onClick={goToNextWeek}
-              className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 print:hidden"
             >
               {t('treasurerDashboard.reportTabs.weekly.next')} →
             </button>
 
-            <div className="flex-1 text-right">
+            <div className="flex-1 text-right print:text-center">
               <span className="text-lg font-semibold text-gray-700">
                 {formatDate(reportData.weekStart)} - {formatDate(reportData.weekEnd)}
               </span>
             </div>
           </div>
+          <div className="mt-4 flex justify-end print:hidden">
+            <button
+              onClick={() => {
+                if (reportData?.byPaymentMethod) {
+                  const allMethodKeys = Object.keys(reportData.byPaymentMethod);
+                  setExpandedSections(new Set(allMethodKeys));
+                  // Allow state to update and render before printing
+                  setTimeout(() => window.print(), 100);
+                }
+              }}
+              disabled={loading || !reportData}
+              className="bg-gray-600 hover:bg-gray-700 disabled:opacity-50 text-white px-4 py-2 rounded-md font-medium flex items-center"
+            >
+              <i className="fas fa-print mr-2"></i>
+              {t('common.print')}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Net Deposit Summary Card */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+      <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white print:bg-none print:text-black print:shadow-none print:border print:border-gray-800">
         <h3 className="text-xl font-semibold mb-4">{t('treasurerDashboard.reportTabs.weekly.netDeposit')}</h3>
         <div className="text-4xl font-bold mb-4">
           {formatCurrency(reportData.summary.netTotal)}
@@ -288,17 +311,17 @@ const WeeklyCollectionReport: React.FC = () => {
         const netColor = data.netToDeposit >= 0 ? 'text-green-600' : 'text-red-600';
 
         return (
-          <div key={method} className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div key={method} className="bg-white rounded-lg shadow-md overflow-hidden print:shadow-none print:overflow-visible print:break-inside-avoid print:mb-4">
             {/* Section Header */}
             <div
-              className="bg-gray-50 px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors"
+              className={`bg-gray-50 px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors print:bg-white print:px-0 print:py-2 ${expandedSections.has(method) ? 'print:border-b-2 print:border-gray-800' : ''}`}
               onClick={() => toggleSection(method)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <span className="text-3xl">{getPaymentMethodIcon(method)}</span>
+                  <span className="text-3xl print:hidden">{getPaymentMethodIcon(method)}</span>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">
+                    <h3 className="text-xl font-bold text-gray-900 print:text-lg">
                       {getPaymentMethodLabel(method)} {t('treasurerDashboard.reportTabs.weekly.transactions')}
                     </h3>
                     <p className="text-sm text-gray-600">
@@ -419,7 +442,15 @@ const WeeklyCollectionReport: React.FC = () => {
           {t('treasurerDashboard.reportTabs.weekly.empty')}
         </div>
       )}
-    </div>
+
+
+      {/* Print Footer */}
+      <div className="hidden print:block fixed bottom-0 left-0 w-full text-center p-4 border-t border-gray-300">
+        <p className="text-sm text-gray-600">
+          <a href="https://abunearegawi.church" className="text-blue-600 hover:underline">https://abunearegawi.church</a>
+        </p>
+      </div>
+    </div >
   );
 };
 

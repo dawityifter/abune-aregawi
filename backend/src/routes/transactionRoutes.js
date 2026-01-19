@@ -8,6 +8,7 @@ const {
   deleteTransaction,
   getTransactionStats,
   getMemberPaymentSummaries,
+  getSkippedReceipts,
   updateTransactionPaymentType,
   generateTransactionReport
 } = require('../controllers/transactionController');
@@ -18,8 +19,8 @@ const roleMiddleware = require('../middleware/role');
 router.use(firebaseAuthMiddleware);
 
 // Define role groups
-const viewRoles = ['admin', 'treasurer', 'church_leadership', 'secretary']; // Can view financial data
-const editRoles = ['admin', 'treasurer']; // Can edit financial data
+const viewRoles = ['admin', 'treasurer', 'church_leadership', 'secretary', 'bookkeeper', 'auditor', 'budget_committee', 'ar_team', 'ap_team']; // Can view financial data
+const editRoles = ['admin', 'treasurer', 'bookkeeper', 'ar_team']; // Can edit financial data
 const deleteRoles = ['admin']; // Can delete transactions
 
 // Get transaction statistics (READ-ONLY)
@@ -30,6 +31,9 @@ router.get('/reports/:reportType', roleMiddleware(viewRoles), generateTransactio
 
 // Get member payment summaries for new system (READ-ONLY)
 router.get('/member-summaries', roleMiddleware(viewRoles), getMemberPaymentSummaries);
+
+// Get skipped receipt numbers
+router.get('/skipped-receipts', roleMiddleware(viewRoles), getSkippedReceipts);
 
 // Get all transactions (READ-ONLY)
 router.get('/', roleMiddleware(viewRoles), getAllTransactions);

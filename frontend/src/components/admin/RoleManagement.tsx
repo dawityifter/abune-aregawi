@@ -142,6 +142,11 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
       case 'admin': return 'bg-red-100 text-red-800';
       case 'church_leadership': return 'bg-purple-100 text-purple-800';
       case 'treasurer': return 'bg-green-100 text-green-800';
+      case 'bookkeeper': return 'bg-indigo-100 text-indigo-800';
+      case 'budget_committee': return 'bg-yellow-100 text-yellow-800';
+      case 'auditor': return 'bg-orange-100 text-orange-800';
+      case 'ar_team': return 'bg-emerald-100 text-emerald-800';
+      case 'ap_team': return 'bg-pink-100 text-pink-800';
       case 'secretary': return 'bg-blue-100 text-blue-800';
       case 'relationship': return 'bg-teal-100 text-teal-800';
       case 'member': return 'bg-gray-100 text-gray-800';
@@ -233,10 +238,17 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
 
       {/* Role Statistics */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-        {(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship', 'member'] as UserRole[]).map((role) => (
+        {(['admin', 'church_leadership', 'treasurer', 'bookkeeper', 'budget_committee', 'auditor', 'ar_team', 'ap_team', 'secretary', 'relationship', 'member'] as UserRole[]).map((role) => (
           <div key={role} className="bg-white p-4 rounded-lg shadow text-center">
-            <div className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getRoleColor(role)}`}>
+            <div className={`inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full ${getRoleColor(role)}`}>
               {getRoleDisplayName(role)}
+              <div className="relative group ml-2">
+                <i className="fas fa-info-circle opacity-50 hover:opacity-100 cursor-help"></i>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity w-48 z-10 pointer-events-none font-normal leading-normal whitespace-normal">
+                  {t(`admin.roles.descriptions.${role}` as any)}
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                </div>
+              </div>
             </div>
             <div className="text-2xl font-bold text-gray-900 mt-2">
               {roleStats[role] || 0}
@@ -293,6 +305,11 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
               <option value="admin">Admin</option>
               <option value="church_leadership">Church Leadership</option>
               <option value="treasurer">Treasurer</option>
+              <option value="bookkeeper">Bookkeeper</option>
+              <option value="budget_committee">Budget Committee</option>
+              <option value="auditor">Auditor</option>
+              <option value="ar_team">AR Team</option>
+              <option value="ap_team">AP Team</option>
               <option value="secretary">Secretary</option>
               <option value="relationship">Relationship</option>
               <option value="member">Member</option>
@@ -427,24 +444,38 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
                 {t('admin.roles.newRole')}
               </label>
               <div className="space-y-2 border border-gray-200 rounded-md p-3 max-h-48 overflow-y-auto">
-                {(['admin', 'church_leadership', 'treasurer', 'secretary', 'relationship', 'member'] as UserRole[]).map((role) => (
-                  <label key={role} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
-                    <input
-                      type="checkbox"
-                      checked={newRoles.includes(role)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setNewRoles([...newRoles, role]);
-                        } else {
-                          // Prevent removing all roles
-                          if (newRoles.length > 1) {
-                            setNewRoles(newRoles.filter(r => r !== role));
+                {(['admin', 'church_leadership', 'treasurer', 'bookkeeper', 'budget_committee', 'auditor', 'ar_team', 'ap_team', 'secretary', 'relationship', 'member'] as UserRole[]).map((role) => (
+                  <label key={role} className={`flex items-center justify-between p-1 rounded ${role === 'member' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}`}>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={newRoles.includes(role) || role === 'member'}
+                        disabled={role === 'member'}
+                        onChange={(e) => {
+                          if (role === 'member') return; // Cannot toggle member
+                          if (e.target.checked) {
+                            setNewRoles([...newRoles, role]);
+                          } else {
+                            // Prevent removing all roles
+                            if (newRoles.length > 1) {
+                              setNewRoles(newRoles.filter(r => r !== role));
+                            }
                           }
-                        }
-                      }}
-                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                    />
-                    <span className="text-sm text-gray-700">{getRoleDisplayName(role)}</span>
+                        }}
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      <span className="text-sm text-gray-700">{getRoleDisplayName(role)}</span>
+                    </div>
+
+                    <div className="relative group ml-2">
+                      <div onClick={(e) => e.preventDefault()}>
+                        <i className="fas fa-info-circle text-gray-400 hover:text-gray-600 cursor-help text-xs"></i>
+                      </div>
+                      <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity w-48 z-50 pointer-events-none font-normal leading-normal whitespace-normal">
+                        {t(`admin.roles.descriptions.${role}` as any)}
+                        <div className="absolute top-full right-2 border-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
                   </label>
                 ))}
               </div>

@@ -135,9 +135,9 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
 
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-3">
           {stats.map((stat, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-md p-6">
+            <div key={index} className="bg-white rounded-lg shadow-md p-6 print:shadow-none print:border print:border-gray-200">
               <div className="flex items-center">
                 <div className={`${stat.color} rounded-lg p-3 mr-4`}>
                   <span className="text-white text-lg font-bold">
@@ -165,8 +165,8 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
 
     return (
       <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white rounded-lg shadow-md overflow-hidden print:shadow-none print:overflow-visible">
+          <div className="px-6 py-4 border-b border-gray-200 print:border-none">
             <h3 className="text-lg font-semibold text-gray-900">
               {t('treasurerDashboard.reportTabs.paymentReports.behind.title')} ({reportData.behindPayments.length})
             </h3>
@@ -252,9 +252,9 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('treasurerDashboard.reportTabs.paymentReports.monthly.title')}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:grid-cols-3">
             {months.map((month) => (
-              <div key={month.key} className="bg-gray-50 rounded-lg p-4">
+              <div key={month.key} className="bg-gray-50 rounded-lg p-4 print:border print:border-gray-200">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-700">{month.label}</span>
                   <span className="text-sm font-bold text-gray-900">
@@ -292,8 +292,8 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
 
     return (
       <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <div className="bg-white rounded-lg shadow-md overflow-hidden print:shadow-none print:overflow-visible">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center print:border-none">
             <h3 className="text-lg font-semibold text-gray-900">
               {t('treasurerDashboard.reportTabs.paymentReports.types.fundraiser')} ({transactions.length})
             </h3>
@@ -358,9 +358,15 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print:space-y-0">
+      {/* Print Header */}
+      <div className="hidden print:block text-center mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 font-serif">Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church</h1>
+        <p className="text-sm text-gray-500 mt-1">{new Date().toLocaleDateString()}</p>
+      </div>
+
       {/* Report Type Selector */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white rounded-lg shadow-md p-6 print:hidden">
         <div className="flex items-center space-x-4">
           <label className="text-sm font-medium text-gray-700">{t('treasurerDashboard.reportTabs.paymentReports.type')}</label>
           <select
@@ -380,6 +386,14 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
           >
             {loading ? t('treasurerDashboard.reportTabs.paymentReports.loading') : t('treasurerDashboard.reportTabs.paymentReports.generate')}
           </button>
+          <button
+            onClick={() => window.print()}
+            disabled={loading || !reportData}
+            className="bg-gray-600 hover:bg-gray-700 disabled:opacity-50 text-white px-4 py-2 rounded-md font-medium flex items-center"
+          >
+            <i className="fas fa-print mr-2"></i>
+            {t('common.print')}
+          </button>
         </div>
       </div>
 
@@ -396,6 +410,13 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
           {reportType === 'fundraiser' && renderFundraiserReport()}
         </div>
       )}
+
+      {/* Print Footer */}
+      <div className="hidden print:block fixed bottom-0 left-0 w-full text-center p-4 border-t border-gray-300">
+        <p className="text-sm text-gray-600">
+          <a href="https://abunearegawi.church" className="text-blue-600 hover:underline">https://abunearegawi.church</a>
+        </p>
+      </div>
     </div>
   );
 };

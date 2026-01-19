@@ -10,7 +10,7 @@ interface LanguageContextType {
   t: (key: string) => string;
 }
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+export const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 // Translations object
 const translations = {
@@ -102,6 +102,62 @@ const translations = {
     'settings': 'Settings',
     'account.settings': 'Account settings',
     'manage.account': 'Manage Account',
+
+    // Dashboard Cards (New)
+    'dashboard.welcome': 'Welcome',
+    'dashboard.settingUp': 'Setting up your dashboard...',
+    'dashboard.complete': 'Complete Registration',
+    'dashboard.retry': 'Retry',
+    'dashboard.incomplete.title': 'Incomplete Registration',
+    'dashboard.incomplete.desc': 'Your registration is incomplete. Please finish the registration process to access all features.',
+
+    'dashboard.profile.title': 'Profile',
+    'dashboard.profile.view': 'View Profile',
+
+    'dashboard.bylaw.title': 'Church Bylaw',
+    'dashboard.bylaw.desc': 'View our church bylaws and constitution',
+    'dashboard.bylaw.view': 'View Bylaws',
+
+    'dashboard.dues.title': 'Member Dues',
+    'dashboard.dues.viewAndPay': 'View and pay your membership dues',
+    'dashboard.dues.dependentView': 'View household dues status',
+    'dashboard.dues.view': 'View Dues',
+
+    'dashboard.events.title': 'Events',
+    'dashboard.events.upcoming': 'View upcoming church events',
+    'dashboard.events.view': 'View Events',
+
+    'dashboard.gallery.title': 'Photo Gallery',
+    'dashboard.gallery.desc': 'View photos from our latest church events',
+    'dashboard.gallery.view': 'View Gallery',
+
+    'dashboard.service.title': 'Services & Departments',
+    'dashboard.service.desc': 'Explore church ministries and departments',
+    'dashboard.service.view': 'View Services',
+
+    'dashboard.give.title': 'Giving',
+    'dashboard.give.desc': 'Support our church mission',
+    'dashboard.give.action': 'Donate',
+
+    'dashboard.family.title': 'Family & Children',
+    'dashboard.family.desc': 'Manage your family members and children',
+    'dashboard.family.manage': 'Manage Family',
+
+    'dashboard.communications.title': 'Communications',
+    'dashboard.communications.desc': 'Send messages to church members',
+    'dashboard.communications.open': 'Open Communications',
+
+    'dashboard.relationships.title': 'Relationships & Outreach',
+    'dashboard.relationships.desc': 'Manage member relationships and outreach',
+    'dashboard.relationships.open': 'Open Dashboard',
+
+    'dashboard.treasurer.title': 'Treasurer Dashboard',
+    'dashboard.treasurer.desc': 'Manage church finances and records',
+    'dashboard.treasurer.view': 'Open Treasurer Dashboard',
+
+    'dashboard.admin.title': 'Admin Panel',
+    'dashboard.admin.desc': 'Manage users, roles, and system settings',
+    'dashboard.admin.access': 'Access Admin Panel',
 
     // Admin Panel
     'admin.panel': 'Admin Panel',
@@ -427,6 +483,54 @@ const translations = {
     'spouse.name.required': 'Spouse name is required',
     'emergency.contact.name.required': 'Emergency contact name is required',
     'emergency.contact.phone.required': 'Emergency contact phone is required',
+
+    // Gallery
+    'gallery.title': 'Abune Aregawi Tigray Orthodox Church Gallery',
+    'gallery.subtitle': 'Capturing moments of faith, community, and celebration',
+    'gallery.upload': 'Upload Photo',
+    'gallery.uploading': 'Uploading...',
+    'gallery.uploadSuccess': 'Image uploaded successfully!',
+    'gallery.uploadError': 'Failed to upload image. Ensure you have permission.',
+    'gallery.invalidFormat': 'Only JPEG and PNG images are allowed.',
+    'gallery.noImages': 'No images found in this gallery.',
+    'gallery.loadError': 'Failed to load gallery images. Please try again later.',
+    'gallery.counter': 'Image {current} of {total}',
+    'common.previous': 'Previous',
+    'common.next': 'Next',
+    'common.back': 'Back',
+    'common.edit': 'Edit',
+    'common.delete': 'Delete',
+    'common.print': 'Print',
+
+    // Department Details
+    'department.tabs.meetings': 'Meetings',
+    'department.tabs.tasks': 'Tasks',
+    'department.tabs.members': 'Members',
+    'department.addMeeting': 'Add Meeting',
+    'department.addTask': 'Add Task',
+    'department.manageMembers': 'Manage Members',
+
+    // Meeting Details
+    'meeting.tasks.previous': 'Tasks from Previous Meeting',
+    'meeting.tasks.actionItems': 'Action Items from This Meeting',
+    'meeting.tasks.add': 'Add Task',
+    'meeting.tasks.none': 'No action items yet',
+    'meeting.agenda': 'Agenda',
+    'meeting.minutes': 'Meeting Notes',
+    'meeting.attendees': 'Attendees',
+    'meeting.assignedTo': 'Assigned to',
+    'meeting.due': 'Due',
+
+    // Skipped Receipts
+    'treasurer.skippedReceipts.button': 'Show Skipped Receipt Numbers',
+    'treasurer.skippedReceipts.title': 'Missing Receipt Numbers',
+    'treasurer.skippedReceipts.warning': 'Please check your receipt book. The following numbers appear to be skipped or missing from the system.',
+    'treasurer.skippedReceipts.range': 'Checked range',
+    'treasurer.skippedReceipts.noneFound': 'No skipped receipt numbers found in this range!',
+    'treasurer.skippedReceipts.note': 'It is important to enter every receipt to maintain accurate financial records.',
+    'treasurer.skippedReceipts.close': 'Close',
+
+
   },
   ti: {
     // Hero Section
@@ -538,6 +642,62 @@ const translations = {
     'account.settings': 'ቅንጡፍቲ ኣካውንት',
     'manage.account': 'ኣካውንት ምምሕዳር',
 
+    // Dashboard Cards (New)
+    'dashboard.welcome': 'እንቋዕ ብደሓን መጻእኩም',
+    'dashboard.settingUp': 'ዳሽቦርድኩም ይዳሎ ኣሎ...',
+    'dashboard.complete': 'ምዝገባ ዛዝም',
+    'dashboard.retry': 'ዳግማይ ፈትን',
+    'dashboard.incomplete.title': 'ምዝገባ ኣይተዛዘመን',
+    'dashboard.incomplete.desc': 'ምዝገባኹም ሙሉእ ኣይኮነን። ኩሉ መራሕቲ ንምርካብ በጃኹም ምዝገባኹም ዛዝሙ።',
+
+    'dashboard.profile.title': 'ፕሮፋይል',
+    'dashboard.profile.view': 'ፕሮፋይል ርኣይ',
+
+    'dashboard.bylaw.title': 'ሕጊ ቤተ ክርስቲያን',
+    'dashboard.bylaw.desc': 'ሕገ ቤተ ክርስቲያንን መምርሒታትን ርኣዩ',
+    'dashboard.bylaw.view': 'ሕጊ ርኣይ',
+
+    'dashboard.dues.title': 'ክፍሊት ኣባላት',
+    'dashboard.dues.viewAndPay': 'ክፍሊት ኣባላት ርኣዩን ክፈሉን',
+    'dashboard.dues.dependentView': 'ናይ ቤተሰብ ክፍሊት ኩነታት ርኣዩ',
+    'dashboard.dues.view': 'ክፍሊት ርኣይ',
+
+    'dashboard.events.title': 'መደባት',
+    'dashboard.events.upcoming': 'ዝመጽኡ መደባት ቤተ ክርስቲያን ርኣዩ',
+    'dashboard.events.view': 'መደባት ርኣይ',
+
+    'dashboard.gallery.title': 'ስእሊ ቤተ ክርስቲያን',
+    'dashboard.gallery.desc': 'ናይ ቤተ ክርስቲያንና ሓድሽ ስእሊታት ርኣዩ',
+    'dashboard.gallery.view': 'ስእሊ ርኣይ',
+
+    'dashboard.service.title': 'ኣገልግሎትን ክፍለ-ሰራዊትን',
+    'dashboard.service.desc': 'ናይ ቤተ ክርስቲያን ኣገልግሎታትን ክፍለ-ሰራዊትን ርኣዩ',
+    'dashboard.service.view': 'ኣገልግሎት ርኣይ',
+
+    'dashboard.give.title': 'ወፈያ',
+    'dashboard.give.desc': 'ንቤተ ክርስቲያንና ደግፉ',
+    'dashboard.give.action': 'ወፈያ ሃብ',
+
+    'dashboard.family.title': 'ቤተሰብን ህጻናትን',
+    'dashboard.family.desc': 'ቤተሰብኩምን ህጻናትኩምን ኣመሓድሩ',
+    'dashboard.family.manage': 'ቤተሰብ ኣመሓድር',
+
+    'dashboard.communications.title': 'ርኽብ',
+    'dashboard.communications.desc': 'ንኣባላት ቤተ ክርስቲያን መልእኽቲ ስደዱ',
+    'dashboard.communications.open': 'ርኽብ ክፈት',
+
+    'dashboard.relationships.title': 'ርኽብን ተልእኾን',
+    'dashboard.relationships.desc': 'ናይ ኣባላት ርኽብን ተልእኾን ኣመሓድሩ',
+    'dashboard.relationships.open': 'ዳሽቦርድ ክፈት',
+
+    'dashboard.treasurer.title': 'ዳሽቦርድ ተሓዚ ገንዘብ',
+    'dashboard.treasurer.desc': 'ናይ ቤተ ክርስቲያን ገንዘብን መዝገብን ኣመሓድሩ',
+    'dashboard.treasurer.view': 'ዳሽቦርድ ተሓዚ ገንዘብ ክፈት',
+
+    'dashboard.admin.title': 'ፓነል ኣመሓዳሪ',
+    'dashboard.admin.desc': 'ተጠቀምቲ፣ መራሕትን ቅንጡፍትን ኣመሓድሩ',
+    'dashboard.admin.access': 'ናብ ፓነል ኣመሓዳሪ እተ',
+
     // Profile
     'edit.profile': 'ፕሮፋይል ኣምልስ',
     'profile.information': 'ሓበሬታ ፕሮፋይል',
@@ -647,6 +807,15 @@ const translations = {
     'admin.volunteer.requests.desc': 'ንምግልጋል ድሌት ዘለዎም ኣባላት',
     'admin.responded': 'ተራኺበሎም',
     'admin.call.requested': 'ደወል ተሓቲቱ',
+
+    // Skipped Receipts
+    'treasurer.skippedReceipts.button': 'ዝተዘለሉ ቁጽሪ ቅብሊት ርኣይ',
+    'treasurer.skippedReceipts.title': 'ዝጠፍኡ ቁጽሪ ቅብሊት',
+    'treasurer.skippedReceipts.warning': 'በጃኹም መዝገብ ቅብሊትኩም ተወከሱ። እዞም ዝስዕቡ ቁጽሪ ቅብሊት ኣብ መዝገብ የለውን።',
+    'treasurer.skippedReceipts.range': 'ዝተረጋገፀ ካብ',
+    'treasurer.skippedReceipts.noneFound': 'ኣብዚ ዝተረጋገፀ ቁጽሪ ዝተዘለለ ቅብሊት የለን!',
+    'treasurer.skippedReceipts.note': 'ልክዕ ዝኾነ ፋይናንስ መዝገብ ንምሓዝ ኩሉ ቅብሊት ክምዝገብ ኣገዳሲ እዩ።',
+    'treasurer.skippedReceipts.close': 'ዕጸ',
     'admin.no.new.requests': 'ሓድሽ ናይ ተወፉይነት ጠለብ የለን',
     'admin.voicemail.inbox': 'መልእኽቲ ድምጺ',
     'admin.refresh': 'ኣሐድስ',
@@ -668,6 +837,26 @@ const translations = {
     'submit': 'ምዝገባ ስደድ',
     'required': 'የድለ',
     'optional': 'ኣማራጺ',
+
+    // Meeting Details
+    'meeting.tasks.previous': 'ናይ ዝሓለፈ ኣኼባ ትልምታት',
+    'meeting.tasks.actionItems': 'ናይዚ ኣኼባ ትልምታት',
+    'meeting.tasks.add': 'ትልሚ ወስኽ',
+    'meeting.tasks.none': 'ገና ዝተወጠነ ትልሚ የለን',
+    'meeting.agenda': 'ኣጀንዳ',
+    'meeting.minutes': 'ቃለ ጉባኤ',
+    'meeting.attendees': 'ተሳተፍቲ',
+    'meeting.assignedTo': 'ሓላፍነት ዝወሰደ',
+    'meeting.due': 'ክዛዘም ዘለዎ',
+    'common.print': 'ሕተም',
+
+    // Department Details
+    'department.tabs.meetings': 'ኣኼባታት',
+    'department.tabs.tasks': 'ትልምታት',
+    'department.tabs.members': 'ኣባላት',
+    'department.addMeeting': 'ኣኼባ ወስኽ',
+    'department.addTask': 'ትልሚ ወስኽ',
+    'department.manageMembers': 'ኣባላት ኣመሓድር',
 
     // Form Fields
     'first.name': 'ስም ቀዳማይ',
@@ -760,6 +949,23 @@ const translations = {
     'spouse.name.required': 'ስም መርዓ የድለ',
     'emergency.contact.name.required': 'ስም ተራኺል ሓጋዚ የድለ',
     'emergency.contact.phone.required': 'ስልኪ ተራኺል ሓጋዚ የድለ',
+
+    // Gallery
+    'gallery.title': 'ደብረ ጸሓይ አቡነ አረጋዊ ቤተ ክርስቲያን ስእሊ',
+    'gallery.subtitle': 'ናይ እምነት፣ ማሕበረሰብን በዓላትን ህሞታት',
+    'gallery.upload': 'ስእሊ ጽዓን',
+    'gallery.uploading': 'ይጽዓን ኣሎ...',
+    'gallery.uploadSuccess': 'ስእሊ ብዓወት ተጻዒኑ!',
+    'gallery.uploadError': 'ስእሊ ምጽዓን ኣይተኻእለን። ፍቃድ ከም ዘለኩም ኣረጋግጹ።',
+    'gallery.invalidFormat': 'JPEGን PNGን ዝዓይነቱ ስእሊ ጥራይ እዩ ዝፍቀድ።',
+    'gallery.noImages': 'ኣብዚ ማህደር ዝኾነ ስእሊ ኣይተረኽበን።',
+    'gallery.loadError': 'ስእሊታት ምምጻእ ኣይተኻእለን። በጃኹም ደሓር ፈትኑ።',
+    'gallery.counter': 'ስእሊ {current} ካብ {total}',
+    'common.previous': 'ዝሓለፈ',
+    'common.next': 'ቀጻሊ',
+    'common.back': 'ተመለስ',
+
+
   }
 };
 

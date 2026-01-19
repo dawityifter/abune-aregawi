@@ -77,6 +77,25 @@ module.exports = (sequelize) => {
             allowNull: true,
             comment: 'Rich text content of meeting minutes'
         },
+        title_ti: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        purpose_ti: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            comment: 'Short description of the meeting purpose in Tigrinya'
+        },
+        agenda_ti: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            comment: 'Detailed agenda for the meeting in Tigrinya'
+        },
+        minutes_ti: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            comment: 'Rich text content of meeting minutes in Tigrinya'
+        },
         created_by: {
             type: DataTypes.BIGINT,
             allowNull: true,

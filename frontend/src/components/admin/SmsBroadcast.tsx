@@ -258,13 +258,15 @@ const SmsBroadcast: React.FC = () => {
 
   const fullName = (m: MemberOption) => `${m.firstName || ''} ${m.middleName ? m.middleName + ' ' : ''}${m.lastName || ''}`.trim();
 
+  const [includeFooter, setIncludeFooter] = useState(true);
+
   // Mandatory footer to be appended to all SMS messages
   const SMS_FOOTER = "\n\nYou are receiving this because you are a member of Abune Aregawi Church. Learn more at https://abunearegawi.church. Reply STOP to unsubscribe.";
 
   // Standard US Carrier Limit for concatenated SMS is typically 1600 characters
   // We subtract the footer length to get the user's available space
   const MAX_TOTAL_CHARS = 1600;
-  const FOOTER_LENGTH = SMS_FOOTER.length; // ~144 chars
+  const FOOTER_LENGTH = includeFooter ? SMS_FOOTER.length : 0; // ~144 chars
   const MAX_USER_CHARS = MAX_TOTAL_CHARS - FOOTER_LENGTH;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -278,8 +280,8 @@ const SmsBroadcast: React.FC = () => {
       if (!message || !message.trim()) throw new Error('Message is required');
       if (message.length > MAX_USER_CHARS) throw new Error(`Message is too long. Please reduce by ${message.length - MAX_USER_CHARS} characters.`);
 
-      // Append footer to the message
-      const finalMessage = message.trim() + SMS_FOOTER;
+      // Append footer to the message if enabled
+      const finalMessage = message.trim() + (includeFooter ? SMS_FOOTER : '');
 
       const idToken = await firebaseUser.getIdToken(true);
       let endpoint = '';
@@ -356,7 +358,7 @@ const SmsBroadcast: React.FC = () => {
     return 'text-gray-500';
   };
 
-  const totalMessage = message + SMS_FOOTER;
+  const totalMessage = message + (includeFooter ? SMS_FOOTER : '');
   const totalSegments = calculateSegments(totalMessage);
   const isGsm7 = /^[\x00-\x7F]*$/.test(totalMessage);
 
@@ -636,23 +638,29 @@ const SmsBroadcast: React.FC = () => {
               Message <span className={getCharCountColor()}>({message.length} / {MAX_USER_CHARS})</span>
             </label>
 
-            {(recipientType === 'pending_pledges' || recipientType === 'fulfilled_pledges') && (
-              <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
-                <p className="font-medium text-green-800 mb-1">💡 Available Template Variables:</p>
-                <div className="grid grid-cols-2 gap-1 text-green-700">
-                  <span><code className="bg-white px-1 rounded">{'{firstName}'}</code> - First name</span>
-                  <span><code className="bg-white px-1 rounded">{'{lastName}'}</code> - Last name</span>
-                  <span><code className="bg-white px-1 rounded">{'{fullName}'}</code> - Full name</span>
-                  <span><code className="bg-white px-1 rounded">{'{amount}'}</code> - Pledge amount (single)</span>
-                  <span><code className="bg-white px-1 rounded">{'{totalAmount}'}</code> - Total of all pledges</span>
-                  <span><code className="bg-white px-1 rounded">{'{pledgeCount}'}</code> - Number of pledges</span>
-                  {recipientType === 'pending_pledges' && (
-                    <span><code className="bg-white px-1 rounded">{'{dueDate}'}</code> - Due date (single)</span>
-                  )}
-                </div>
-                <p className="text-green-600 mt-1 italic">Each member will receive a personalized message!</p>
+            {/* Template Variables Helper - Now available for ALL types */}
+            <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
+              <p className="font-medium text-green-800 mb-1">💡 Available Template Variables:</p>
+              <div className="grid grid-cols-2 gap-1 text-green-700">
+                {/* Common Variables */}
+                <span><code className="bg-white px-1 rounded">{'{firstName}'}</code> - First name</span>
+                <span><code className="bg-white px-1 rounded">{'{lastName}'}</code> - Last name</span>
+                <span><code className="bg-white px-1 rounded">{'{fullName}'}</code> - Full name</span>
+
+                {/* Pledge Specific Variables */}
+                {(recipientType === 'pending_pledges' || recipientType === 'fulfilled_pledges') && (
+                  <>
+                    <span><code className="bg-white px-1 rounded">{'{amount}'}</code> - Pledge amount (single)</span>
+                    <span><code className="bg-white px-1 rounded">{'{totalAmount}'}</code> - Total of all pledges</span>
+                    <span><code className="bg-white px-1 rounded">{'{pledgeCount}'}</code> - Number of pledges</span>
+                  </>
+                )}
+                {recipientType === 'pending_pledges' && (
+                  <span><code className="bg-white px-1 rounded">{'{dueDate}'}</code> - Due date (single)</span>
+                )}
               </div>
-            )}
+              <p className="text-green-600 mt-1 italic">Each member will receive a personalized message!</p>
+            </div>
 
             <textarea
               rows={5}
@@ -712,11 +720,29 @@ const SmsBroadcast: React.FC = () => {
               </span>
             </div>
 
-            <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded text-sm text-gray-600">
-              <span className="font-semibold text-gray-700">Footer to be appended automatically ({FOOTER_LENGTH} chars):</span>
-              <p className="mt-1 italic border-l-2 border-gray-300 pl-2 whitespace-pre-wrap">
-                {SMS_FOOTER.trim()}
-              </p>
+            {/* Footer Toggle */}
+            <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded flex items-start gap-3">
+              <div className="flex items-center h-5 mt-0.5">
+                <input
+                  id="includeFooter"
+                  name="includeFooter"
+                  type="checkbox"
+                  checked={includeFooter}
+                  onChange={(e) => setIncludeFooter(e.target.checked)}
+                  className="focus:ring-primary-500 h-4 w-4 text-primary-600 border-gray-300 rounded"
+                />
+              </div>
+              <div className="flex-1 text-sm">
+                <label htmlFor="includeFooter" className="font-medium text-gray-700">
+                  Include automated footer
+                </label>
+                <p className="text-gray-500 text-xs">Uncheck to remove the standard compliance message. Please ensure you still identify the sender manually.</p>
+                {includeFooter && (
+                  <p className="mt-1 italic text-gray-600 border-l-2 border-gray-300 pl-2 whitespace-pre-wrap text-xs">
+                    {SMS_FOOTER.trim()}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 

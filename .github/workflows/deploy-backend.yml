@@ -20,6 +20,10 @@ jobs:
           GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
           GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
           GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          GALLERY_DRIVE_CLIENT_ID: ${{ secrets.GALLERY_DRIVE_CLIENT_ID }}
+          GALLERY_DRIVE_CLIENT_SECRET: ${{ secrets.GALLERY_DRIVE_CLIENT_SECRET }}
+          GALLERY_DRIVE_REFRESH_TOKEN: ${{ secrets.GALLERY_DRIVE_REFRESH_TOKEN }}
+          REACT_APP_GALLERY_FOLDER_ID: ${{ secrets.REACT_APP_GALLERY_FOLDER_ID }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           NODE_ENV: ${{ secrets.NODE_ENV }}
           PORT: ${{ secrets.PORT }}
@@ -33,11 +37,12 @@ jobs:
           YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
           YOUTUBE_SPIRITUAL_CHANNEL_ID: ${{ secrets.YOUTUBE_SPIRITUAL_CHANNEL_ID }}
           OVERRIDE_YOUTUBE_LIVE_FLAG: ${{ secrets.OVERRIDE_YOUTUBE_LIVE_FLAG }}
+          START_RECEIPT_NUMBER: ${{ secrets.START_RECEIPT_NUMBER }}
         with:
           host: ${{ secrets.OCI_HOST }}
           username: ${{ secrets.OCI_USERNAME }}
           key: ${{ secrets.OCI_SSH_KEY }}
-          envs: DATABASE_URL,FIREBASE_SERVICE_ACCOUNT_BASE64,FRONTEND_URL,GMAIL_CLIENT_ID,GMAIL_CLIENT_SECRET,GMAIL_REFRESH_TOKEN,JWT_SECRET,NODE_ENV,PORT,TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_DRY_RUN,TWILIO_PHONE_NUMBER,STRIPE_WEBHOOK_SECRET,STRIPE_SECRET_KEY,YOUTUBE_API_KEY,YOUTUBE_CHANNEL_ID,YOUTUBE_SPIRITUAL_CHANNEL_ID,OVERRIDE_YOUTUBE_LIVE_FLAG
+          envs: DATABASE_URL,FIREBASE_SERVICE_ACCOUNT_BASE64,FRONTEND_URL,GMAIL_CLIENT_ID,GMAIL_CLIENT_SECRET,GMAIL_REFRESH_TOKEN,GALLERY_DRIVE_CLIENT_ID,GALLERY_DRIVE_CLIENT_SECRET,GALLERY_DRIVE_REFRESH_TOKEN,REACT_APP_GALLERY_FOLDER_ID,JWT_SECRET,NODE_ENV,PORT,TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_DRY_RUN,TWILIO_PHONE_NUMBER,STRIPE_WEBHOOK_SECRET,STRIPE_SECRET_KEY,YOUTUBE_API_KEY,YOUTUBE_CHANNEL_ID,YOUTUBE_SPIRITUAL_CHANNEL_ID,OVERRIDE_YOUTUBE_LIVE_FLAG,START_RECEIPT_NUMBER
           script: |
             # Navigate to project directory
             cd /var/www/repo
@@ -57,6 +62,11 @@ jobs:
             echo "GMAIL_CLIENT_ID=$GMAIL_CLIENT_ID" | sudo tee -a .env > /dev/null
             echo "GMAIL_CLIENT_SECRET=$GMAIL_CLIENT_SECRET" | sudo tee -a .env > /dev/null
             echo "GMAIL_REFRESH_TOKEN=$GMAIL_REFRESH_TOKEN" | sudo tee -a .env > /dev/null
+            echo "GMAIL_REFRESH_TOKEN=$GMAIL_REFRESH_TOKEN" | sudo tee -a .env > /dev/null
+            echo "GALLERY_DRIVE_CLIENT_ID=$GALLERY_DRIVE_CLIENT_ID" | sudo tee -a .env > /dev/null
+            echo "GALLERY_DRIVE_CLIENT_SECRET=$GALLERY_DRIVE_CLIENT_SECRET" | sudo tee -a .env > /dev/null
+            echo "GALLERY_DRIVE_REFRESH_TOKEN=$GALLERY_DRIVE_REFRESH_TOKEN" | sudo tee -a .env > /dev/null
+            echo "REACT_APP_GALLERY_FOLDER_ID=$REACT_APP_GALLERY_FOLDER_ID" | sudo tee -a .env > /dev/null
             echo "JWT_SECRET=$JWT_SECRET" | sudo tee -a .env > /dev/null
             echo "NODE_ENV=$NODE_ENV" | sudo tee -a .env > /dev/null
             echo "PORT=$PORT" | sudo tee -a .env > /dev/null
@@ -70,6 +80,7 @@ jobs:
             echo "YOUTUBE_CHANNEL_ID=$YOUTUBE_CHANNEL_ID" | sudo tee -a .env > /dev/null
             echo "YOUTUBE_SPIRITUAL_CHANNEL_ID=$YOUTUBE_SPIRITUAL_CHANNEL_ID" | sudo tee -a .env > /dev/null
             echo "OVERRIDE_YOUTUBE_LIVE_FLAG=$OVERRIDE_YOUTUBE_LIVE_FLAG" | sudo tee -a .env > /dev/null
+            echo "START_RECEIPT_NUMBER=$START_RECEIPT_NUMBER" | sudo tee -a .env > /dev/null
             
             # Fix permissions so the app user can read the file
             # Assuming current user is the one running the app

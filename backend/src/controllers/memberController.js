@@ -5,6 +5,7 @@ const { Member, Dependent, ActivityLog, Title } = require('../models');
 const { sanitizeInput } = require('../utils/sanitize');
 const { newMemberRegistered } = require('../utils/notifications');
 const logger = require('../utils/logger');
+const { logActivity } = require('../utils/activityLogger');
 
 // Utility function to normalize phone numbers
 const normalizePhoneNumber = (phoneNumber) => {
@@ -639,6 +640,22 @@ exports.register = async (req, res) => {
       console.warn('New member notification failed (non-blocking):', e.message);
     }
 
+    // Log registration activity
+    // If req.user exists, it's an admin creating the member. Otherwise, it's self-registration.
+    const actorId = req.user ? req.user.id : member.id;
+    logActivity({
+      userId: actorId,
+      action: 'REGISTER',
+      entityType: 'Member',
+      entityId: member.id,
+      details: {
+        method: firebaseUid ? 'FIREBASE' : 'TRADITIONAL',
+        role: member.role,
+        isAdminCreation: !!req.user
+      },
+      req
+    });
+
     res.status(201).json({
       success: true,
       message: 'Member registered successfully',
@@ -761,6 +778,16 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    // Log successful login
+    logActivity({
+      userId: member.id,
+      action: 'LOGIN',
+      entityType: 'Member',
+      entityId: member.id,
+      details: { method: 'EMAIL' },
+      req
+    });
 
     res.json({
       success: true,
@@ -1371,6 +1398,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         emergencyContactName: memberByUid.emergency_contact_name,
         emergencyContactPhone: memberByUid.emergency_contact_phone,
         titleId: memberByUid.title_id, // Add titleId here
+        yearlyPledge: memberByUid.yearly_pledge,
         dependents: memberByUid.dependents || []
       };
 
@@ -1572,6 +1600,7 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       apartmentNo: member.apartment_no,
       emergencyContactName: member.emergency_contact_name,
       emergencyContactPhone: member.emergency_contact_phone,
+      yearlyPledge: member.yearly_pledge,
       dependents: member.dependents || []
     };
 
@@ -1765,7 +1794,8 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
       apartment_no: req.body.apartmentNo,
       city: req.body.city,
       state: req.body.state,
-      postal_code: req.body.postalCode
+      postal_code: req.body.postalCode,
+      yearly_pledge: req.body.yearlyPledge
     };
 
     // Remove undefined values first
@@ -1902,13 +1932,18 @@ exports.updateMemberRole = async (req, res) => {
     const { role, roles } = req.body;
 
     // Validate roles
-    const validRoles = ['admin', 'church_leadership', 'treasurer', 'secretary', 'member', 'guest', 'relationship', 'deacon', 'priest'];
+    const validRoles = ['admin', 'church_leadership', 'treasurer', 'bookkeeper', 'budget_committee', 'auditor', 'ar_team', 'ap_team', 'secretary', 'member', 'guest', 'relationship', 'deacon', 'priest'];
 
     let rolesToSet = [];
     if (Array.isArray(roles)) {
       rolesToSet = roles.filter(r => validRoles.includes(r));
     } else if (role && validRoles.includes(role)) {
       rolesToSet = [role];
+    }
+
+    // Ensure 'member' role is always included as everyone is a member
+    if (!rolesToSet.includes('member')) {
+      rolesToSet.push('member');
     }
 
     if (rolesToSet.length === 0) {

@@ -44,6 +44,7 @@ jobs:
           REACT_APP_ENABLE_EMAIL_AUTH: ${{ secrets.REACT_APP_ENABLE_EMAIL_AUTH }}
           REACT_APP_ENABLE_PHONE_AUTH: ${{ secrets.REACT_APP_ENABLE_PHONE_AUTH }}
           REACT_APP_YOUTUBE_SPIRITUAL_CHANNEL_ID: ${{ secrets.REACT_APP_YOUTUBE_SPIRITUAL_CHANNEL_ID }}
+          REACT_APP_GALLERY_FOLDER_ID: ${{ secrets.REACT_APP_GALLERY_FOLDER_ID }}
       
       - name: Deploy to Firebase
         working-directory: ./frontend

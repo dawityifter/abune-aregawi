@@ -26,6 +26,7 @@ interface ProfileData {
   dateJoinedParish?: string;
   baptismName?: string;
   interestedInServing?: string;
+  yearlyPledge?: number;
   streetLine1?: string;
   apartmentNo?: string;
   city?: string;
@@ -93,6 +94,7 @@ const Profile: React.FC = () => {
     dateJoinedParish: '',
     baptismName: '',
     interestedInServing: '',
+    yearlyPledge: undefined,
     streetLine1: '',
     apartmentNo: '',
     city: '',
@@ -139,6 +141,7 @@ const Profile: React.FC = () => {
             dateJoinedParish: '',
             baptismName: '',
             interestedInServing: '',
+            yearlyPledge: undefined,
             streetLine1: '',
             apartmentNo: '',
             city: '',
@@ -177,37 +180,38 @@ const Profile: React.FC = () => {
               const result = await response.json();
 
               // Merge backend data with Firebase data
-              const linked = result?.data?.linkedMember || null;
+              const linked = result?.data?.member?.linkedMember || null;
               const hohName = linked
                 ? `${(linked.firstName || '').trim()} ${(linked.lastName || '').trim()}`.trim()
-                : (result?.data?.headOfHouseholdName || '');
-              const isDep = result?.data?.role === 'dependent';
+                : (result?.data?.member?.headOfHouseholdName || '');
+              const isDep = result?.data?.member?.role === 'dependent';
               const mergedData = {
                 ...userProfile,
-                firstName: result.data.firstName,
-                middleName: result.data.middleName,
-                lastName: result.data.lastName,
-                email: result.data.email,
-                role: result.data.role,
-                createdAt: result.data.createdAt,
-                phoneNumber: result.data.phoneNumber,
-                dateOfBirth: result.data.dateOfBirth,
-                gender: result.data.gender,
-                maritalStatus: result.data.maritalStatus,
-                emergencyContact: result.data.emergencyContactName,
-                emergencyPhone: result.data.emergencyContactPhone,
-                ministries: result.data.ministries ? JSON.parse(result.data.ministries) : [],
-                languagePreference: result.data.languagePreference,
-                dateJoinedParish: result.data.dateJoinedParish,
-                baptismName: result.data.baptismName,
-                interestedInServing: result.data.interestedInServing,
+                firstName: result.data.member.firstName,
+                middleName: result.data.member.middleName,
+                lastName: result.data.member.lastName,
+                email: result.data.member.email,
+                role: result.data.member.role,
+                createdAt: result.data.member.createdAt,
+                phoneNumber: result.data.member.phoneNumber,
+                dateOfBirth: result.data.member.dateOfBirth,
+                gender: result.data.member.gender,
+                maritalStatus: result.data.member.maritalStatus,
+                emergencyContact: result.data.member.emergencyContactName,
+                emergencyPhone: result.data.member.emergencyContactPhone,
+                ministries: result.data.member.ministries ? JSON.parse(result.data.member.ministries) : [],
+                languagePreference: result.data.member.languagePreference,
+                dateJoinedParish: result.data.member.dateJoinedParish,
+                baptismName: result.data.member.baptismName,
+                interestedInServing: result.data.member.interestedInServing,
+                yearlyPledge: result.data.member.yearlyPledge,
                 // For dependents, show address from head of household when available
-                streetLine1: isDep ? (linked?.streetLine1 ?? result.data.streetLine1) : result.data.streetLine1,
-                apartmentNo: isDep ? (linked?.apartmentNo ?? result.data.apartmentNo) : result.data.apartmentNo,
-                city: isDep ? (linked?.city ?? result.data.city) : result.data.city,
-                state: isDep ? (linked?.state ?? result.data.state) : result.data.state,
-                postalCode: isDep ? (linked?.postalCode ?? result.data.postalCode) : result.data.postalCode,
-                dependents: result.data.dependents || [],
+                streetLine1: isDep ? (linked?.streetLine1 ?? result.data.member.streetLine1) : result.data.member.streetLine1,
+                apartmentNo: isDep ? (linked?.apartmentNo ?? result.data.member.apartmentNo) : result.data.member.apartmentNo,
+                city: isDep ? (linked?.city ?? result.data.member.city) : result.data.member.city,
+                state: isDep ? (linked?.state ?? result.data.member.state) : result.data.member.state,
+                postalCode: isDep ? (linked?.postalCode ?? result.data.member.postalCode) : result.data.member.postalCode,
+                dependents: result.data.member.dependents || [],
                 headOfHouseholdName: hohName || undefined,
                 isDependent: isDep
               };
@@ -239,6 +243,7 @@ const Profile: React.FC = () => {
                 dateJoinedParish: '',
                 baptismName: '',
                 interestedInServing: '',
+                yearlyPledge: undefined,
                 streetLine1: '',
                 apartmentNo: '',
                 city: '',
@@ -332,6 +337,7 @@ const Profile: React.FC = () => {
         interestedInServing: formData.interestedInServing
           ? formData.interestedInServing.toLowerCase()
           : undefined,
+        yearlyPledge: formData.yearlyPledge,
         // Only allow address updates for non-dependents; dependents inherit from head of household
         ...(profile?.isDependent
           ? {}
@@ -406,6 +412,7 @@ const Profile: React.FC = () => {
       dateJoinedParish: '',
       baptismName: '',
       interestedInServing: '',
+      yearlyPledge: undefined,
       streetLine1: '',
       apartmentNo: '',
       city: '',
@@ -799,6 +806,31 @@ const Profile: React.FC = () => {
                   <h3 className="text-md font-medium text-gray-900 border-b pb-2">
                     {t('church.information')}
                   </h3>
+
+                  {/* Yearly Pledge */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('yearly.pledge')} ($)
+                    </label>
+                    {editing ? (
+                      <input
+                        type="number"
+                        name="yearlyPledge"
+                        value={formData.yearlyPledge || ''}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    ) : (
+                      <p className="text-gray-900">
+                        {profile.yearlyPledge
+                          ? `$${Number(profile.yearlyPledge).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : t('not.provided')}
+                      </p>
+                    )}
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
