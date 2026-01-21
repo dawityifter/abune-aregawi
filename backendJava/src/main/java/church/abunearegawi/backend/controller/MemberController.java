@@ -62,7 +62,13 @@ public class MemberController {
 
     @GetMapping("/all/firebase")
     public ResponseEntity<ApiResponse<java.util.List<MemberDTO>>> getAllMembersLegacy(
-            @RequestParam(name = "limit", defaultValue = "1000") Integer limit) {
+            @RequestParam(name = "limit", defaultValue = "1000") Integer limit,
+            @RequestParam(name = "search", required = false) String search) {
+
+        if (search != null && !search.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(memberService.search(search)));
+        }
+
         System.out.println("DEBUG: Entering getAllMembersLegacy with limit=" + limit);
         return ResponseEntity.ok(ApiResponse.success(memberService.findAllList(limit)));
     }
@@ -105,6 +111,23 @@ public class MemberController {
             @RequestBody MemberUpdateRequest request) {
         Member updated = memberService.update(id, request);
         return ResponseEntity.ok(ApiResponse.success(MemberDTO.fromEntity(updated)));
+    }
+
+    @PatchMapping("/{id:\\d+}/role")
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> updateMemberRole(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, Object> request) {
+
+        String role = (String) request.get("role");
+        @SuppressWarnings("unchecked")
+        java.util.List<String> roles = (java.util.List<String>) request.get("roles");
+
+        Member updated = memberService.updateMemberRole(id, role, roles);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                java.util.Map.of("member", MemberDTO.fromEntity(updated)),
+                "Member role updated successfully"));
     }
 
     @GetMapping("/{id:\\d+}/dependents")
@@ -171,19 +194,23 @@ public class MemberController {
         return ResponseEntity.ok(ApiResponse.success(MemberDTO.fromEntity(member), "Member marked as welcomed"));
     }
 
+    private final church.abunearegawi.backend.service.TransactionService transactionService;
+
     @GetMapping("/{id:\\d+}/contributions")
     @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER') or #id == authentication.principal.memberId")
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getMemberContributions(@PathVariable Long id) {
         return memberService.findById(id)
                 .map(member -> {
-                    // TODO: Implement contributions when Contribution/Transaction models are ready
+                    java.util.List<church.abunearegawi.backend.dto.TransactionDTO> contributions = transactionService
+                            .findByMember(id);
+
                     java.util.Map<String, Object> response = new java.util.HashMap<>();
                     response.put("member", java.util.Map.of(
                             "id", member.getId(),
                             "firstName", member.getFirstName(),
-                            "lastName", member.getLastName()
-                    ));
-                    response.put("contributions", java.util.Collections.emptyList());
+                            "lastName", member.getLastName()));
+                    response.put("contributions", contributions);
+
                     return ResponseEntity.ok(ApiResponse.success(response));
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -197,6 +224,24 @@ public class MemberController {
         String email = request != null ? request.get("email") : null;
         String phone = request != null ? request.get("phone") : null;
         Member promoted = memberService.promoteDependent(dependentId, email, phone);
-        return ResponseEntity.ok(ApiResponse.success(MemberDTO.fromEntity(promoted), "Dependent promoted to member successfully"));
+        return ResponseEntity
+                .ok(ApiResponse.success(MemberDTO.fromEntity(promoted), "Dependent promoted to member successfully"));
+    }
+
+    @GetMapping("/validate-family-head/{phoneNumber}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> validateHeadOfHouseholdPhone(
+            @PathVariable String phoneNumber) {
+        return ResponseEntity.ok(ApiResponse.success(memberService.validateHeadOfHousehold(phoneNumber)));
+    }
+
+    @GetMapping("/registration-status")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> checkRegistrationStatus(
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String firebaseUid) {
+        if (email == null && firebaseUid == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Either email or firebaseUid is required"));
+        }
+        return ResponseEntity.ok(ApiResponse.success(memberService.checkRegistrationStatus(email, firebaseUid)));
     }
 }

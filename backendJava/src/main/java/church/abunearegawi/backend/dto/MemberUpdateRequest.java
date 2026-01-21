@@ -40,4 +40,5 @@ public class MemberUpdateRequest {
     private Long titleId;
     private String spouseName;
     private java.util.List<MemberDTO> dependents; // For updating dependents
+    private java.util.List<String> roles; // Support for multiple roles
 }

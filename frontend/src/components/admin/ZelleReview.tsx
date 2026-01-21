@@ -68,13 +68,16 @@ const ZelleReview: React.FC = () => {
       }
       const data = await resp.json();
       if (data.success) {
-        setItems(data.items);
+        // Handle both Node (flat) and Java (nested in data) response structures
+        const rawItems = data.data?.items || data.items;
+        const items = Array.isArray(rawItems) ? rawItems : [];
+        setItems(items);
 
         // Prepopulate manual donor info and row modes from existing notes
         const newRowModes: Record<string, RowMode> = {};
         const newManualDonors: Record<string, ManualDonor> = {};
 
-        data.items.forEach((it: ZellePreviewItem, idx: number) => {
+        items.forEach((it: ZellePreviewItem, idx: number) => {
           const key = getKey(it, idx);
           if (it.already_exists && it.existing_note) {
             const donorMatch = it.existing_note.match(/\[Anonymous Donor\]\nName: (.*)\nType: (Individual|Organization)/);

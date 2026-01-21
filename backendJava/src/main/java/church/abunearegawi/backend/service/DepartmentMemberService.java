@@ -1,5 +1,6 @@
 package church.abunearegawi.backend.service;
 
+import church.abunearegawi.backend.dto.DepartmentMemberDTO;
 import church.abunearegawi.backend.model.Department;
 import church.abunearegawi.backend.model.DepartmentMember;
 import church.abunearegawi.backend.model.Member;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,35 +25,47 @@ public class DepartmentMemberService {
     private final MemberRepository memberRepository;
 
     @Transactional(readOnly = true)
-    public List<DepartmentMember> findByDepartmentId(Long departmentId, DepartmentMember.Status status, String role) {
+    public List<DepartmentMemberDTO> findByDepartmentId(Long departmentId, DepartmentMember.Status status,
+            String role) {
         // Verify department exists
         if (!departmentRepository.findById(departmentId).isPresent()) {
             throw new RuntimeException("Department not found");
         }
 
+        List<DepartmentMember> members;
+
         if (status != null && role != null) {
-            return departmentMemberRepository.findByDepartmentIdAndStatusAndRoleInDepartment(departmentId, status, role);
+            members = departmentMemberRepository.findByDepartmentIdAndStatusAndRoleInDepartment(departmentId, status,
+                    role);
         } else if (status != null) {
-            return departmentMemberRepository.findByDepartmentIdAndStatus(departmentId, status);
+            members = departmentMemberRepository.findByDepartmentIdAndStatus(departmentId, status);
         } else if (role != null) {
-            return departmentMemberRepository.findByDepartmentIdAndRoleInDepartment(departmentId, role);
+            members = departmentMemberRepository.findByDepartmentIdAndRoleInDepartment(departmentId, role);
+        } else {
+            members = departmentMemberRepository.findByDepartmentId(departmentId);
         }
-        return departmentMemberRepository.findByDepartmentId(departmentId);
+
+        return members.stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public List<DepartmentMember> findByMemberId(Long memberId) {
-        return departmentMemberRepository.findByMemberId(memberId);
+    public List<DepartmentMemberDTO> findByMemberId(Long memberId) {
+        return departmentMemberRepository.findByMemberId(memberId)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public Optional<DepartmentMember> findById(Long id) {
-        return departmentMemberRepository.findById(id);
+    public Optional<DepartmentMemberDTO> findById(Long id) {
+        return departmentMemberRepository.findById(id).map(this::toDTO);
     }
 
     @Transactional
     public java.util.Map<String, Object> addMembersToDepartment(Long departmentId, List<Long> memberIds,
-                                                                 String roleInDepartment, String notes) {
+            String roleInDepartment, String notes) {
         Department department = departmentRepository.findById(departmentId)
                 .orElseThrow(() -> new RuntimeException("Department not found"));
 
@@ -81,8 +95,7 @@ public class DepartmentMemberService {
             if (existing.isPresent()) {
                 alreadyExists.add(java.util.Map.of(
                         "member_id", memberId,
-                        "name", member.getFirstName() + " " + member.getLastName()
-                ));
+                        "name", member.getFirstName() + " " + member.getLastName()));
                 continue;
             }
 
@@ -98,8 +111,7 @@ public class DepartmentMemberService {
             added.add(java.util.Map.of(
                     "member_id", memberId,
                     "name", member.getFirstName() + " " + member.getLastName(),
-                    "role", saved.getRoleInDepartment()
-            ));
+                    "role", saved.getRoleInDepartment()));
         }
 
         java.util.Map<String, Object> result = new java.util.HashMap<>();
@@ -111,20 +123,42 @@ public class DepartmentMemberService {
     }
 
     @Transactional
-    public DepartmentMember update(Long id, DepartmentMember.Status status, String roleInDepartment, String notes) {
+    public DepartmentMemberDTO update(Long id, DepartmentMember.Status status, String roleInDepartment, String notes) {
         DepartmentMember membership = departmentMemberRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Department membership not found"));
 
-        if (status != null) membership.setStatus(status);
-        if (roleInDepartment != null) membership.setRoleInDepartment(roleInDepartment);
-        if (notes != null) membership.setNotes(notes);
+        if (status != null)
+            membership.setStatus(status);
+        if (roleInDepartment != null)
+            membership.setRoleInDepartment(roleInDepartment);
+        if (notes != null)
+            membership.setNotes(notes);
 
-        return departmentMemberRepository.save(membership);
+        DepartmentMember saved = departmentMemberRepository.save(membership);
+        return toDTO(saved);
     }
 
     @Transactional
     public void removeFromDepartment(Long id) {
         departmentMemberRepository.deleteById(id);
     }
-}
 
+    private DepartmentMemberDTO toDTO(DepartmentMember dm) {
+        return new DepartmentMemberDTO(
+                dm.getId(),
+                dm.getDepartment().getId(),
+                dm.getDepartment().getName(),
+                dm.getMember().getId(),
+                dm.getMember().getFirstName() + " " + dm.getMember().getLastName(),
+                dm.getMember().getFirstName(),
+                dm.getMember().getLastName(),
+                dm.getMember().getEmail(),
+                dm.getMember().getPhoneNumber(),
+                dm.getRoleInDepartment(),
+                dm.getStatus() != null ? dm.getStatus().name() : null,
+                dm.getJoinedAt(),
+                dm.getNotes(),
+                dm.getCreatedAt(),
+                dm.getUpdatedAt());
+    }
+}

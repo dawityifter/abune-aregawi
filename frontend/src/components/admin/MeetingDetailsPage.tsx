@@ -112,7 +112,16 @@ const MeetingDetailsPage: React.FC = () => {
 
             if (response.ok) {
                 const data = await response.json();
-                setDepartmentMembers(data.data.members.map((m: any) => m.member));
+                setDepartmentMembers(data.data.members.map((m: any) => {
+                    const fullName = m.memberName || '';
+                    const parts = fullName.split(' ');
+                    return {
+                        id: m.memberId,
+                        first_name: m.memberFirstName || parts[0] || '',
+                        last_name: m.memberLastName || parts.slice(1).join(' ') || '',
+                        email: m.memberEmail
+                    };
+                }));
             }
         } catch (err) {
             console.error('Error fetching members:', err);
@@ -387,7 +396,7 @@ const MeetingDetailsPage: React.FC = () => {
                         </h2>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {departmentMembers
-                                .filter(m => meeting.attendees?.includes(m.id))
+                                .filter(m => meeting.attendees?.some(a => String(a) === String(m.id)))
                                 .map((member) => (
                                     <div key={member.id} className="flex items-center p-2 bg-gray-50 rounded">
                                         <i className="fas fa-user-circle text-gray-400 mr-2"></i>

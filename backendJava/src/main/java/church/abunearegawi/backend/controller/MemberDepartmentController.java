@@ -19,24 +19,23 @@ public class MemberDepartmentController {
     private final DepartmentMemberService departmentMemberService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'CHURCH_LEADERSHIP') or #memberId == authentication.principal.memberId")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'CHURCH_LEADERSHIP', 'MEMBER') or #memberId == authentication.principal.memberId")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getMemberDepartments(
             @PathVariable Long memberId,
             @RequestParam(required = false) DepartmentMember.Status status) {
-        List<DepartmentMember> memberships = departmentMemberService.findByMemberId(memberId);
-        
+        List<church.abunearegawi.backend.dto.DepartmentMemberDTO> memberships = departmentMemberService
+                .findByMemberId(memberId);
+
         // Filter by status if provided
         if (status != null) {
             memberships = memberships.stream()
-                    .filter(m -> m.getStatus() == status)
+                    .filter(m -> m.status() != null && m.status().equalsIgnoreCase(status.name()))
                     .toList();
         }
-        
+
         Map<String, Object> response = Map.of(
                 "departments", memberships,
-                "count", memberships.size()
-        );
+                "count", memberships.size());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
-

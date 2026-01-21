@@ -42,6 +42,13 @@ public class DepartmentController {
         return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("departments", depts)));
     }
 
+    @GetMapping("/stats")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getDepartmentStats() {
+        // Placeholder for stats logic. Returning empty map to fix 404/500 and satisfy
+        // route
+        return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("stats", new java.util.HashMap<>())));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getDepartment(@PathVariable Long id) {
         try {
@@ -57,6 +64,29 @@ public class DepartmentController {
         java.util.List<church.abunearegawi.backend.dto.DepartmentMeetingDTO> meetings = departmentService
                 .getMeetings(id);
         return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("meetings", meetings)));
+    }
+
+    @GetMapping("/meetings/{id}")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getMeeting(@PathVariable Long id) {
+        try {
+            church.abunearegawi.backend.dto.DepartmentMeetingDTO meeting = departmentService.getMeeting(id);
+            return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("meeting", meeting)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/meetings/{id}")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> updateMeeting(
+            @PathVariable Long id,
+            @RequestBody church.abunearegawi.backend.model.DepartmentMeeting request) {
+        try {
+            church.abunearegawi.backend.dto.DepartmentMeetingDTO updated = departmentService.updateMeeting(id,
+                    request);
+            return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("meeting", updated)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @GetMapping("/{id}/tasks")

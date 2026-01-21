@@ -12,8 +12,10 @@ import java.time.LocalDate
 
 class TransactionServiceSpec extends Specification {
 
+
     TransactionRepository transactionRepository = Mock()
-    TransactionService transactionService = new TransactionService(transactionRepository)
+    church.abunearegawi.backend.repository.MemberRepository memberRepository = Mock()
+    TransactionService transactionService = new TransactionService(transactionRepository, memberRepository)
 
     def "should find transaction by id"() {
         given:

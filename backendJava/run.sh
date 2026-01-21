@@ -14,7 +14,7 @@ export $(grep 'DATABASE_PASSWORD=' .env | xargs)
 
 # Convert DATABASE_URL from postgresql:// to jdbc:postgresql://
 # Cleaning: Remove " and ' and spaces
-NODE_DB_URL=$(grep 'DATABASE_URL=' .env | cut -d '=' -f2- | tr -d '"' | tr -d "'" | xargs)
+NODE_DB_URL=$(grep '^DATABASE_URL=' .env | head -n 1 | cut -d '=' -f2- | tr -d '"' | tr -d "'" | xargs)
 
 echo "🔍 DEBUG: Raw DATABASE_URL from .env: '$NODE_DB_URL'"
 
@@ -42,6 +42,13 @@ export SPRING_DATASOURCE_URL="$DATABASE_URL"
 # Handle the Firebase variable specially since it's base64 encoded
 FIREBASE_KEY=$(grep 'FIREBASE_SERVICE_ACCOUNT_BASE64=' .env | cut -d '=' -f2-)
 export FIREBASE_SERVICE_ACCOUNT_BASE64="$FIREBASE_KEY"
+
+# Export other critical API Keys
+export $(grep '^GMAIL_' .env | xargs)
+export $(grep '^GALLERY_' .env | xargs)
+export $(grep '^GOOGLE_' .env | xargs)
+export $(grep '^TWILIO_' .env | xargs)
+export $(grep '^REACT_APP_GALLERY_' .env | xargs)
 
 # Force Enable Demo Mode (Override .env)
 export ENABLE_DEMO_MODE=true

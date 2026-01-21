@@ -108,6 +108,10 @@ public class TransactionService {
                                 t.getMember() != null ? t.getMember().getId() : null,
                                 t.getMember() != null ? t.getMember().getFirstName() + " " + t.getMember().getLastName()
                                                 : null,
+                                t.getMember() != null
+                                                ? church.abunearegawi.backend.dto.MemberDTO.fromEntity(t.getMember(),
+                                                                false)
+                                                : null,
                                 t.getDonation() != null ? t.getDonation().getId() : null,
                                 t.getIncomeCategory() != null ? t.getIncomeCategory().getId() : null,
                                 t.getIncomeCategory() != null ? t.getIncomeCategory().getName() : null,
@@ -249,5 +253,31 @@ public class TransactionService {
                 summary.put("collectionRate", collectionRate);
 
                 return java.util.Map.of("summary", summary);
+        }
+
+        @Transactional(readOnly = true)
+        public java.util.Map<String, Object> getSkippedReceipts() {
+                List<Integer> receipts = transactionRepository.findAllReceiptNumbers();
+                if (receipts.isEmpty()) {
+                        return java.util.Map.of(
+                                        "range", java.util.Map.of("start", 0, "end", 0),
+                                        "skippedReceipts", List.of());
+                }
+
+                int min = receipts.get(0);
+                int max = receipts.get(receipts.size() - 1);
+
+                List<Integer> skipped = new java.util.ArrayList<>();
+                java.util.Set<Integer> present = new java.util.HashSet<>(receipts);
+
+                for (int i = min; i <= max; i++) {
+                        if (!present.contains(i)) {
+                                skipped.add(i);
+                        }
+                }
+
+                return java.util.Map.of(
+                                "range", java.util.Map.of("start", min, "end", max),
+                                "skippedReceipts", skipped);
         }
 }

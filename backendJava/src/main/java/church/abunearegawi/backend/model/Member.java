@@ -176,7 +176,9 @@ public class Member {
 
     public enum Role {
         member, admin, treasurer, secretary, church_leadership, relationship, guest, deacon, priest, dependent,
-        Member, Admin, Treasurer, Secretary, Church_Leadership, Relationship, Guest, Deacon, Priest, Dependent
+        bookkeeper, budget_committee, auditor, ar_team, ap_team,
+        Member, Admin, Treasurer, Secretary, Church_Leadership, Relationship, Guest, Deacon, Priest, Dependent,
+        Bookkeeper, Budget_Committee, Auditor, AR_Team, AP_Team
     }
 
     public enum RegistrationStatus {

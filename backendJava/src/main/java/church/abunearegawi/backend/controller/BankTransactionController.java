@@ -22,7 +22,7 @@ public class BankTransactionController {
     private final BankTransactionService bankTransactionService;
 
     @GetMapping("/transactions")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER', 'BUDGET_COMMITTEE', 'AUDITOR', 'AR_TEAM', 'AP_TEAM')")
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getBankTransactions(
             @RequestParam(required = false) BankTransaction.Status status,
             @RequestParam(required = false) String type,
@@ -49,7 +49,7 @@ public class BankTransactionController {
     }
 
     @GetMapping("/transactions/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER', 'BUDGET_COMMITTEE', 'AUDITOR', 'AR_TEAM', 'AP_TEAM')")
     public ResponseEntity<ApiResponse<BankTransaction>> getBankTransactionById(@PathVariable Integer id) {
         return bankTransactionService.findById(id)
                 .map(transaction -> ResponseEntity.ok(ApiResponse.success(transaction)))
@@ -57,7 +57,7 @@ public class BankTransactionController {
     }
 
     @PostMapping("/transactions")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER')")
     public ResponseEntity<ApiResponse<BankTransaction>> createBankTransaction(
             @RequestBody BankTransaction transaction) {
         BankTransaction created = bankTransactionService.create(transaction);
@@ -66,7 +66,7 @@ public class BankTransactionController {
     }
 
     @PutMapping("/transactions/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER')")
     public ResponseEntity<ApiResponse<BankTransaction>> updateBankTransaction(
             @PathVariable Integer id,
             @RequestBody BankTransaction transaction) {
@@ -82,7 +82,7 @@ public class BankTransactionController {
     }
 
     @PostMapping("/upload")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER')")
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> uploadBankStatement(
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
         java.util.Map<String, Object> result = bankTransactionService.processUpload(file);
@@ -90,7 +90,7 @@ public class BankTransactionController {
     }
 
     @PostMapping("/reconcile")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER')")
     public ResponseEntity<ApiResponse<Void>> reconcile(@RequestBody java.util.Map<String, Object> payload,
             @org.springframework.security.core.annotation.AuthenticationPrincipal church.abunearegawi.backend.security.FirebaseUserDetails userDetails) {
         Integer txId = (Integer) payload.get("transaction_id");
@@ -110,7 +110,7 @@ public class BankTransactionController {
     }
 
     @PostMapping("/reconcile/batch")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER')")
     public ResponseEntity<ApiResponse<Void>> batchReconcile(@RequestBody java.util.Map<String, Object> payload,
             @org.springframework.security.core.annotation.AuthenticationPrincipal church.abunearegawi.backend.security.FirebaseUserDetails userDetails) {
         // Expected payload: { "items": [ {transaction_id, member_id, payment_type,

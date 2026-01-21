@@ -24,7 +24,7 @@ public class ExpenseController {
     private final ExpenseService expenseService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'CHURCH_LEADERSHIP', 'SECRETARY', 'BOOKKEEPER', 'BUDGET_COMMITTEE', 'AUDITOR', 'AP_TEAM')")
     public ResponseEntity<ApiResponse<Page<LedgerEntry>>> getExpenses(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
@@ -36,7 +36,7 @@ public class ExpenseController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER', 'AP_TEAM')")
     public ResponseEntity<ApiResponse<LedgerEntry>> createExpense(
             @RequestBody LedgerEntry expense,
             @AuthenticationPrincipal FirebaseUserDetails userDetails) {
@@ -47,11 +47,10 @@ public class ExpenseController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'CHURCH_LEADERSHIP', 'SECRETARY', 'BOOKKEEPER', 'BUDGET_COMMITTEE', 'AUDITOR', 'AP_TEAM')")
     public ResponseEntity<ApiResponse<LedgerEntry>> getExpenseById(@PathVariable Long id) {
         return expenseService.findById(id)
                 .map(expense -> ResponseEntity.ok(ApiResponse.success(expense)))
                 .orElse(ResponseEntity.notFound().build());
     }
 }
-

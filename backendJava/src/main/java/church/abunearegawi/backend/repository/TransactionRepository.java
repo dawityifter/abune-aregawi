@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
@@ -43,4 +44,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
                         @Param("endDate") LocalDate endDate);
 
         boolean existsByExternalId(String externalId);
+
+        Optional<Transaction> findByExternalId(String externalId);
+
+        @Query(value = "SELECT CAST(receipt_number AS INTEGER) FROM transactions WHERE receipt_number ~ '^[0-9]+$' ORDER BY 1", nativeQuery = true)
+        List<Integer> findAllReceiptNumbers();
 }

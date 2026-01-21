@@ -142,12 +142,18 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
     };
 
     const toggleAttendee = (memberId: number) => {
-        setFormData(prev => ({
-            ...prev,
-            attendees: prev.attendees?.includes(memberId)
-                ? prev.attendees.filter(id => id !== memberId)
-                : [...(prev.attendees || []), memberId]
-        }));
+        setFormData(prev => {
+            const currentAttendees = prev.attendees || [];
+            const strId = String(memberId);
+            const exists = currentAttendees.some(id => String(id) === strId); // Check as string
+
+            return {
+                ...prev,
+                attendees: exists
+                    ? currentAttendees.filter(id => String(id) !== strId) // Remove if exists
+                    : [...currentAttendees, memberId] // Add if not
+            };
+        });
     };
 
     return (
@@ -181,8 +187,8 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
                                     type="button"
                                     onClick={() => setInputMode('en')}
                                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${inputMode === 'en'
-                                            ? 'bg-white text-primary-700 shadow'
-                                            : 'text-gray-500 hover:text-gray-700'
+                                        ? 'bg-white text-primary-700 shadow'
+                                        : 'text-gray-500 hover:text-gray-700'
                                         }`}
                                 >
                                     English (Latin)
@@ -191,8 +197,8 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
                                     type="button"
                                     onClick={() => setInputMode('ti')}
                                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${inputMode === 'ti'
-                                            ? 'bg-white text-primary-700 shadow'
-                                            : 'text-gray-500 hover:text-gray-700'
+                                        ? 'bg-white text-primary-700 shadow'
+                                        : 'text-gray-500 hover:text-gray-700'
                                         }`}
                                 >
                                     ትግርኛ (Ge'ez)
@@ -204,8 +210,8 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
                                     type="button"
                                     onClick={() => setShowHelp(!showHelp)}
                                     className={`p-2 rounded-full transition-colors ${showHelp
-                                            ? 'bg-primary-100 text-primary-800'
-                                            : 'text-primary-600 hover:text-primary-800 hover:bg-gray-100'
+                                        ? 'bg-primary-100 text-primary-800'
+                                        : 'text-primary-600 hover:text-primary-800 hover:bg-gray-100'
                                         }`}
                                     title="Toggle Ge'ez Transliteration Guide"
                                 >
@@ -307,7 +313,7 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
                                             >
                                                 <input
                                                     type="checkbox"
-                                                    checked={formData.attendees?.includes(member.id)}
+                                                    checked={formData.attendees?.some(id => String(id) === String(member.id))}
                                                     onChange={() => toggleAttendee(member.id)}
                                                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                                                 />

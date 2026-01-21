@@ -29,6 +29,8 @@ public interface MemberRepository
     @org.springframework.data.jpa.repository.Query("SELECT SUM(m.yearlyPledge) FROM Member m WHERE m.isActive = true")
     java.math.BigDecimal sumYearlyPledges();
 
+    java.util.List<Member> findByIsActiveTrue();
+
     @org.springframework.data.jpa.repository.Query("SELECT m FROM Member m WHERE " +
             "LOWER(m.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
             "LOWER(m.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +

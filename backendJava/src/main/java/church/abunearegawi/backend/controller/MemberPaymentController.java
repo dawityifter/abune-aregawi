@@ -25,7 +25,7 @@ public class MemberPaymentController {
     private final MemberPaymentService memberPaymentService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'SECRETARY', 'CHURCH_LEADERSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'SECRETARY', 'CHURCH_LEADERSHIP', 'BOOKKEEPER', 'BUDGET_COMMITTEE', 'AUDITOR', 'AR_TEAM')")
     public ResponseEntity<ApiResponse<Page<MemberPaymentDTO>>> getAllPayments(Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(memberPaymentService.findAll(pageable)));
     }
@@ -45,7 +45,7 @@ public class MemberPaymentController {
     }
 
     @GetMapping("/by-member/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'SECRETARY', 'CHURCH_LEADERSHIP') or #id == authentication.principal.memberId or @securityService.isHeadOfHousehold(authentication.principal.memberId, #id)")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'SECRETARY', 'CHURCH_LEADERSHIP', 'BOOKKEEPER', 'BUDGET_COMMITTEE', 'AUDITOR', 'AR_TEAM') or #id == authentication.principal.memberId or @securityService.isHeadOfHousehold(authentication.principal.memberId, #id)")
     public ResponseEntity<ApiResponse<church.abunearegawi.backend.dto.DuesDetailsDTO>> getDuesByMember(
             @PathVariable Long id,
             @RequestParam(defaultValue = "2024") Integer year) {
@@ -54,7 +54,7 @@ public class MemberPaymentController {
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'SECRETARY', 'CHURCH_LEADERSHIP', 'BOOKKEEPER', 'BUDGET_COMMITTEE', 'AUDITOR', 'AR_TEAM')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getSummary(
             @RequestParam(defaultValue = "2024") Integer year) {
         // Implement summary logic: Total collected for the year
