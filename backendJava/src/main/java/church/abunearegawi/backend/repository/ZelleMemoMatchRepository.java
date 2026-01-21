@@ -11,7 +11,10 @@ import java.util.UUID;
 @Repository
 public interface ZelleMemoMatchRepository extends JpaRepository<ZelleMemoMatch, UUID> {
     Optional<ZelleMemoMatch> findByMemberIdAndMemo(Long memberId, String memo);
-    List<ZelleMemoMatch> findByMemberId(Long memberId);
-    List<ZelleMemoMatch> findByMemoContainingIgnoreCase(String memo);
-}
 
+    List<ZelleMemoMatch> findByMemberId(Long memberId);
+
+    List<ZelleMemoMatch> findByMemoContainingIgnoreCase(String memo);
+
+    Optional<ZelleMemoMatch> findByMemoIgnoreCase(String memo);
+}

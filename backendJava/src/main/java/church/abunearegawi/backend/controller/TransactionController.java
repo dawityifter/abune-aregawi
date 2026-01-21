@@ -32,7 +32,7 @@ public class TransactionController {
     private final TransactionService transactionService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'CHURCH_LEADERSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'CHURCH_LEADERSHIP', 'SECRETARY', 'BOOKKEEPER', 'BUDGET_COMMITTEE', 'AUDITOR', 'AR_TEAM')")
     public ResponseEntity<ApiResponse<Page<TransactionDTO>>> getAllTransactions(Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(transactionService.findAll(pageable)));
     }
@@ -47,7 +47,7 @@ public class TransactionController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER', 'AR_TEAM')")
     public ResponseEntity<ApiResponse<TransactionDTO>> createTransaction(
             @Valid @RequestBody TransactionCreateRequest request,
             @AuthenticationPrincipal FirebaseUserDetails userDetails) {
@@ -83,8 +83,14 @@ public class TransactionController {
                 .body(ApiResponse.success(saved));
     }
 
+    @GetMapping("/skipped-receipts")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'CHURCH_LEADERSHIP', 'SECRETARY', 'BOOKKEEPER', 'AR_TEAM')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getSkippedReceipts() {
+        return ResponseEntity.ok(ApiResponse.success(transactionService.getSkippedReceipts()));
+    }
+
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'CHURCH_LEADERSHIP', 'SECRETARY', 'BOOKKEEPER', 'BUDGET_COMMITTEE', 'AUDITOR', 'AR_TEAM')")
     public ResponseEntity<ApiResponse<TransactionDTO>> getTransaction(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(ApiResponse.success(transactionService.findById(id)));
@@ -94,7 +100,7 @@ public class TransactionController {
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'CHURCH_LEADERSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'CHURCH_LEADERSHIP', 'SECRETARY', 'BOOKKEEPER', 'BUDGET_COMMITTEE', 'AUDITOR', 'AR_TEAM')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getSummary(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,

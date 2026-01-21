@@ -45,7 +45,7 @@ const GalleryPage: React.FC = () => {
                     }
                 });
 
-                setImages(response.data);
+                setImages(response.data.data || []);
                 setError(null);
             } catch (err: any) {
                 console.error('Error fetching gallery:', err);
@@ -194,7 +194,7 @@ const GalleryPage: React.FC = () => {
                         {/* Main Image View */}
                         <div className="relative w-full max-w-5xl aspect-w-16 aspect-h-9 bg-black rounded-xl shadow-2xl overflow-hidden mb-6 group">
                             <img
-                                src={currentImage.thumbnailLink ? currentImage.thumbnailLink.replace('=s220', '=s3000') : currentImage.webContentLink}
+                                src={currentImage?.thumbnailLink ? currentImage.thumbnailLink.replace('=s220', '=s3000') : currentImage?.webContentLink}
                                 alt={currentImage.name}
                                 className="w-full h-full object-contain"
                                 referrerPolicy="no-referrer"

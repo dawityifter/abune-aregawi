@@ -30,7 +30,7 @@ app:
 logging:
   level:
      church:
-        abunearegawi: DEBUG
+        abunearegawi: WARN
      org:
         springframework:
-           security: DEBUG
+           security: ERROR

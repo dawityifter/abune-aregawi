@@ -9,7 +9,10 @@ import java.util.Optional;
 @Repository
 public interface IncomeCategoryRepository extends JpaRepository<IncomeCategory, Long> {
     Optional<IncomeCategory> findByGlCode(String glCode);
-    java.util.List<IncomeCategory> findByIsActiveTrueOrderByDisplayOrderAscGlCodeAsc();
-    java.util.List<IncomeCategory> findAllByOrderByDisplayOrderAscGlCodeAsc();
-}
 
+    java.util.List<IncomeCategory> findByIsActiveTrueOrderByDisplayOrderAscGlCodeAsc();
+
+    java.util.List<IncomeCategory> findAllByOrderByDisplayOrderAscGlCodeAsc();
+
+    java.util.List<IncomeCategory> findByPaymentTypeMapping(String paymentTypeMapping);
+}

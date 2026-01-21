@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -351,6 +352,30 @@ public class MemberService {
             }
         }
 
+        // Update multiple roles
+        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            try {
+                // Serialize list to simple JSON string: ["role1", "role2"]
+                String jsonRoles = "[" + request.getRoles().stream()
+                        .map(r -> "\"" + r + "\"")
+                        .collect(java.util.stream.Collectors.joining(",")) + "]";
+                member.setRoles(jsonRoles);
+
+                // If single role is NOT provided but multiple roles ARE, sync single role to
+                // first one
+                // This maintains backward compatibility
+                if (request.getRole() == null && !request.getRoles().isEmpty()) {
+                    try {
+                        member.setRole(Member.Role.valueOf(request.getRoles().get(0)));
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Error updating roles: " + e.getMessage());
+            }
+        }
+
         // Spiritual Information
         // Note: languagePreference field may not exist in Member entity
         // if (request.getLanguagePreference() != null)
@@ -399,6 +424,51 @@ public class MemberService {
     @Transactional(readOnly = true)
     public Page<Member> findPendingWelcomes(Pageable pageable) {
         return memberRepository.findByIsWelcomedFalseAndIsActiveTrue(pageable);
+    }
+
+    @Transactional
+    public Member updateMemberRole(Long id, String role, java.util.List<String> roles) {
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Member not found"));
+
+        java.util.List<String> validRoles = java.util.Arrays.asList(
+                "admin", "church_leadership", "treasurer", "bookkeeper", "budget_committee",
+                "auditor", "ar_team", "ap_team", "secretary", "member", "guest",
+                "relationship", "deacon", "priest");
+
+        java.util.List<String> rolesToSet = new java.util.ArrayList<>();
+        if (roles != null) {
+            rolesToSet = roles.stream()
+                    .filter(validRoles::contains)
+                    .collect(java.util.stream.Collectors.toList());
+        } else if (role != null && validRoles.contains(role)) {
+            rolesToSet.add(role);
+        }
+
+        // Ensure 'member' role is always included
+        if (!rolesToSet.contains("member")) {
+            rolesToSet.add("member");
+        }
+
+        if (rolesToSet.isEmpty()) {
+            throw new RuntimeException("Invalid roles. Must be one or more of: " + String.join(", ", validRoles));
+        }
+
+        // Update single role (legacy) to first item
+        try {
+            member.setRole(Member.Role.valueOf(rolesToSet.get(0)));
+        } catch (Exception e) {
+            // Should not happen due to validation, but safe fallback
+            member.setRole(Member.Role.member);
+        }
+
+        // Update plural roles JSON
+        String jsonRoles = "[" + rolesToSet.stream()
+                .map(r -> "\"" + r + "\"")
+                .collect(java.util.stream.Collectors.joining(",")) + "]";
+        member.setRoles(jsonRoles);
+
+        return memberRepository.save(member);
     }
 
     @Transactional
@@ -501,5 +571,51 @@ public class MemberService {
         dependentRepository.save(dependent);
 
         return savedMember;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> validateHeadOfHousehold(String phoneNumber) {
+        String normalizedPhone = phoneNumber.startsWith("+") ? phoneNumber : "+" + phoneNumber;
+
+        Member member = memberRepository.findByPhoneNumber(normalizedPhone)
+                .orElseThrow(() -> new RuntimeException("No member found with this phone number"));
+
+        // Check if head of household (familyHead is null or self)
+        boolean isHeadOfHousehold = member.getFamilyHead() == null ||
+                (member.getFamilyHead().getId().equals(member.getId()));
+
+        if (!isHeadOfHousehold) {
+            throw new RuntimeException("This phone number belongs to a member who is not a head of household");
+        }
+
+        return Map.of(
+                "memberId", member.getId(),
+                "firstName", member.getFirstName(),
+                "lastName", member.getLastName(),
+                "phoneNumber", member.getPhoneNumber());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> checkRegistrationStatus(String email, String firebaseUid) {
+        Optional<Member> memberOpt = Optional.empty();
+
+        if (email != null) {
+            memberOpt = memberRepository.findByEmail(email);
+        }
+        if (memberOpt.isEmpty() && firebaseUid != null) {
+            memberOpt = memberRepository.findByFirebaseUid(firebaseUid);
+        }
+
+        if (memberOpt.isPresent()) {
+            Member member = memberOpt.get();
+            return Map.of(
+                    "status", "complete",
+                    "member", church.abunearegawi.backend.dto.MemberDTO.fromEntity(member),
+                    "hasFirebaseUid", member.getFirebaseUid() != null);
+        } else {
+            return Map.of(
+                    "status", "incomplete",
+                    "suggestion", "User needs to complete registration");
+        }
     }
 }

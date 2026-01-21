@@ -65,6 +65,13 @@ public class DepartmentService {
     }
 
     @Transactional(readOnly = true)
+    public church.abunearegawi.backend.dto.DepartmentMeetingDTO getMeeting(Long id) {
+        return meetingRepository.findById(id)
+                .map(this::toMeetingDTO)
+                .orElseThrow(() -> new RuntimeException("Meeting not found: " + id));
+    }
+
+    @Transactional(readOnly = true)
     public List<church.abunearegawi.backend.dto.DepartmentMeetingDTO> getMeetings(Long departmentId) {
         return meetingRepository.findByDepartmentId(departmentId)
                 .stream()
@@ -106,6 +113,31 @@ public class DepartmentService {
 
         Department updated = departmentRepository.save(existing);
         return toDTO(updated);
+    }
+
+    @Transactional
+    public church.abunearegawi.backend.dto.DepartmentMeetingDTO updateMeeting(Long id,
+            church.abunearegawi.backend.model.DepartmentMeeting details) {
+        church.abunearegawi.backend.model.DepartmentMeeting existing = meetingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Meeting not found: " + id));
+
+        if (details.getTitle() != null)
+            existing.setTitle(details.getTitle());
+        if (details.getMeetingDate() != null)
+            existing.setMeetingDate(details.getMeetingDate());
+        if (details.getLocation() != null)
+            existing.setLocation(details.getLocation());
+        if (details.getPurpose() != null)
+            existing.setPurpose(details.getPurpose());
+        if (details.getAgenda() != null)
+            existing.setAgenda(details.getAgenda());
+        if (details.getAttendees() != null)
+            existing.setAttendees(details.getAttendees());
+        if (details.getMinutes() != null)
+            existing.setMinutes(details.getMinutes());
+
+        church.abunearegawi.backend.model.DepartmentMeeting saved = meetingRepository.save(existing);
+        return toMeetingDTO(saved);
     }
 
     @Transactional
