@@ -58,6 +58,10 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [searching, setSearching] = useState(false);
 
+    // Multi-select state
+    const [selectedTxnIds, setSelectedTxnIds] = useState<number[]>([]);
+    const [isBulkMode, setIsBulkMode] = useState(false);
+
     const paymentTypes = [
         { value: 'donation', label: 'Donation (General)' },
         { value: 'tithe', label: 'Tithe (አስራት)' },
@@ -113,6 +117,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     useEffect(() => {
         const handleRefresh = () => {
             setPage(1); // Reset to first page on refresh
+            setSelectedTxnIds([]); // Clear selection on refresh
             fetchTransactions();
         };
         window.addEventListener('bank:refresh', handleRefresh);
@@ -122,6 +127,10 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
     };
+
+    const [selectedForYear, setSelectedForYear] = useState<number | ''>(''); // Year override state
+
+    // ... existing code ...
 
     const handleReconcile = async (txn: BankTransaction, memberId?: number, paymentType: string = 'donation', existingTransactionId?: number) => {
         if (!memberId && !existingTransactionId) return;
@@ -140,6 +149,11 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
             } else {
                 payload.member_id = memberId;
                 payload.payment_type = paymentType;
+            }
+
+            // Allow override year or use txn date year as default (backend handles null, but good to be explicit if user selected one)
+            if (selectedForYear) {
+                payload.for_year = selectedForYear;
             }
 
             const res = await fetch(`${apiUrl}/api/bank/reconcile`, {
@@ -163,6 +177,55 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         }
     };
 
+    const handleBulkReconcile = async (member: any) => {
+        if (selectedTxnIds.length === 0) return;
+        if (!window.confirm(`Link ${selectedTxnIds.length} transactions to ${member.name} as ${selectedPaymentType}?`)) return;
+
+        try {
+            const token = await firebaseUser?.getIdToken();
+            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
+            const payload: any = {
+                transaction_ids: selectedTxnIds,
+                member_id: member.id,
+                payment_type: selectedPaymentType
+            };
+
+            if (selectedForYear) {
+                payload.for_year = selectedForYear;
+            }
+
+            const res = await fetch(`${apiUrl}/api/bank/reconcile-bulk`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                // Clear selection
+                setSelectedTxnIds([]);
+                setIsBulkMode(false);
+                setShowLinkModal(false);
+                fetchTransactions();
+                window.dispatchEvent(new CustomEvent('payments:refresh'));
+
+                if (data.data.errors.length > 0) {
+                    alert(`Completed with some errors: ${data.data.errors.length} failed.`);
+                }
+            } else {
+                alert('Failed to bulk reconcile: ' + (data.message || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error processing bulk reconciliation');
+        }
+    };
+
     // --- Modal Logic ---
 
     // Open Confirm Modal (for suggested matches)
@@ -170,6 +233,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         setTxnToLink(txn);
         setMatchCandidate(candidate);
         setSelectedPaymentType('donation'); // Default
+        setSelectedForYear(''); // Reset year
         setShowConfirmModal(true);
     };
 
@@ -179,56 +243,41 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         setShowConfirmModal(false);
         setTxnToLink(null);
         setMatchCandidate(null);
+        setSelectedForYear('');
     };
 
-    const openLinkModal = (txn: BankTransaction) => {
-        setTxnToLink(txn);
+    const openLinkModal = (txn?: BankTransaction) => {
+        if (txn) {
+            // Single mode
+            setTxnToLink(txn);
+            setIsBulkMode(false);
+        } else {
+            // Bulk mode
+            setIsBulkMode(true);
+            setTxnToLink(null); // No single txn
+        }
         setSearchTerm('');
         setSearchResults([]);
         setSelectedPaymentType('donation'); // Default
+        setSelectedForYear(''); // Reset year
         setShowLinkModal(true);
     };
 
     const handleManualReconcile = async (member: any) => {
-        if (!txnToLink) return;
-        if (!window.confirm(`Link ${txnToLink.description} to ${member.name} as ${selectedPaymentType}?`)) return;
+        if (isBulkMode) {
+            await handleBulkReconcile(member);
+        } else {
+            if (!txnToLink) return;
+            // Rename confirmation text as requested: "Link and Add Transaction" implies adding to system
+            if (!window.confirm(`Link and Add Transaction: ${txnToLink.description} to ${member.name} as ${selectedPaymentType}?`)) return;
 
-        await handleReconcile(txnToLink, member.id, selectedPaymentType);
-        setShowLinkModal(false);
-        setTxnToLink(null);
+            await handleReconcile(txnToLink, member.id, selectedPaymentType);
+            setShowLinkModal(false);
+            setTxnToLink(null);
+        }
     };
 
-    // Search members
-    useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (searchTerm.length < 3 || !showLinkModal) {
-                setSearchResults([]);
-                return;
-            }
-            if (!firebaseUser) return;
-
-            setSearching(true);
-            try {
-                const token = await firebaseUser.getIdToken();
-                const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-                const res = await fetch(`${apiUrl}/api/members/search?q=${encodeURIComponent(searchTerm)}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    setSearchResults(data.data.results);
-                }
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setSearching(false);
-            }
-        }, 500);
-
-        return () => clearTimeout(timer);
-    }, [searchTerm, showLinkModal, firebaseUser]);
-
-
+    const currentYear = new Date().getFullYear();
 
     return (
         <div className="space-y-4">
@@ -243,9 +292,9 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
             </div>
 
             <div className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <div className="p-4 border-b border-gray-200 flex flex-col xl:flex-row justify-between items-center bg-gray-50 gap-4">
                     <h3 className="text-lg font-medium text-gray-900">Bank Transactions</h3>
-                    <div className="flex space-x-2 flex-wrap gap-y-2">
+                    <div className="flex flex-wrap gap-2 items-center">
                         <input
                             type="text"
                             placeholder="Search description..."
@@ -286,6 +335,14 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                             <option value="MATCHED">Matched</option>
                             <option value="IGNORED">Ignored</option>
                         </select>
+                        {selectedTxnIds.length > 0 && (
+                            <button
+                                onClick={() => openLinkModal()}
+                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+                            >
+                                Link {selectedTxnIds.length} Transactions
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -293,6 +350,21 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <input
+                                        type="checkbox"
+                                        checked={transactions.length > 0 && selectedTxnIds.length === transactions.filter(t => t.status === 'PENDING').length}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                const allPending = transactions.filter(t => t.status === 'PENDING').map(t => t.id);
+                                                setSelectedTxnIds(allPending);
+                                            } else {
+                                                setSelectedTxnIds([]);
+                                            }
+                                        }}
+                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    />
+                                </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Detected / Suggested</th>
@@ -303,12 +375,28 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {loading ? (
-                                <tr><td colSpan={6} className="px-6 py-4 text-center">Loading...</td></tr>
+                                <tr><td colSpan={7} className="px-6 py-4 text-center">Loading...</td></tr>
                             ) : transactions.length === 0 ? (
-                                <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500">No transactions found.</td></tr>
+                                <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500">No transactions found.</td></tr>
                             ) : (
                                 transactions.map((txn) => (
                                     <tr key={txn.id} className={txn.status === 'PENDING' ? 'bg-yellow-50' : ''}>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {txn.status === 'PENDING' && (
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedTxnIds.includes(txn.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedTxnIds(prev => [...prev, txn.id]);
+                                                        } else {
+                                                            setSelectedTxnIds(prev => prev.filter(id => id !== txn.id));
+                                                        }
+                                                    }}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                />
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {txn.date}
                                         </td>
@@ -359,7 +447,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                                                     onClick={() => openLinkModal(txn)}
                                                                     className="text-blue-600 hover:text-blue-900 text-xs border border-blue-600 rounded px-2 py-1"
                                                                 >
-                                                                    Link Member
+                                                                    Link and Add Transaction
                                                                 </button>
                                                             )}
                                                         </>
@@ -401,7 +489,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
             </div>
 
             {/* Manual Link Modal */}
-            {showLinkModal && txnToLink && (
+            {showLinkModal && (txnToLink || isBulkMode) && (
                 <div className="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowLinkModal(false)}></div>
@@ -411,25 +499,64 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                 <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
                                     Link Transaction to Member
                                 </h3>
-                                <div className="mt-2">
+                                <div className="mt-2 text-sm text-gray-500">
+                                    <div className="mb-4 text-xs bg-blue-50 p-2 rounded text-blue-700">
+                                        Select "Membership Due" and specify a Year to apply this payment to a specific year's balance.
+                                    </div>
                                     <p className="text-sm text-gray-500 mb-4">
-                                        Transaction: <strong>{txnToLink.description}</strong><br />
-                                        Amount: {formatCurrency(txnToLink.amount)}
+                                        {isBulkMode ? (
+                                            <strong>Linking {selectedTxnIds.length} transactions</strong>
+                                        ) : (
+                                            <>
+                                                Transaction: <strong>{txnToLink?.description}</strong><br />
+                                                Amount: {txnToLink && formatCurrency(txnToLink.amount)}
+                                            </>
+                                        )}
                                     </p>
 
-                                    <div className="mb-4">
-                                        <label className="block text-sm font-medium text-gray-700">Payment Type</label>
-                                        <select
-                                            value={selectedPaymentType}
-                                            onChange={(e) => setSelectedPaymentType(e.target.value)}
-                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
-                                        >
-                                            {paymentTypes.map(type => (
-                                                <option key={type.value} value={type.value}>{type.label}</option>
-                                            ))}
-                                        </select>
+                                    <div className="mb-4 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="link-payment-type" className="block text-sm font-medium text-gray-700">Payment Type</label>
+                                            <select
+                                                id="link-payment-type"
+                                                value={selectedPaymentType}
+                                                onChange={(e) => setSelectedPaymentType(e.target.value)}
+                                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                                            >
+                                                {paymentTypes.map(type => (
+                                                    <option key={type.value} value={type.value}>{type.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        {selectedPaymentType === 'membership_due' && (
+                                            <div>
+                                                <label htmlFor="link-payment-year" className="block text-sm font-medium text-gray-700">Year (Optional)</label>
+                                                <select
+                                                    id="link-payment-year"
+                                                    value={selectedForYear}
+                                                    onChange={(e) => setSelectedForYear(e.target.value ? parseInt(e.target.value) : '')}
+                                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                                                >
+                                                    <option value="">Default (Auto)</option>
+                                                    {(() => {
+                                                        const currentYear = new Date().getFullYear();
+                                                        // Range: 2025 to (CurrentYear - 1)
+                                                        const minYear = 2025;
+                                                        const maxYear = currentYear - 1;
+                                                        const yearOptions = [];
+                                                        for (let y = maxYear; y >= minYear; y--) {
+                                                            yearOptions.push(y);
+                                                        }
+                                                        return yearOptions.map(y => (
+                                                            <option key={y} value={y}>{y}</option>
+                                                        ));
+                                                    })()}
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
 
+                                    {/* ... existing member search code ... */}
                                     <input
                                         type="text"
                                         placeholder="Search member by name or phone..."
@@ -460,8 +587,8 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         )}
                                     </div>
 
-                                    {/* Potential Matches Section */}
-                                    {txnToLink.potential_matches && txnToLink.potential_matches.length > 0 && (
+                                    {/* Potential Matches Section (Single Only) */}
+                                    {!isBulkMode && txnToLink?.potential_matches && txnToLink.potential_matches.length > 0 && (
                                         <div className="mt-6 border-t pt-4">
                                             <h4 className="text-sm font-medium text-orange-700 mb-2">Potential System Matches (Prevent Duplicates)</h4>
                                             <div className="bg-orange-50 rounded-md p-2">
@@ -523,17 +650,46 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                     <p>Amount: {formatCurrency(txnToLink.amount)}</p>
                                     <p className="mt-2">Match with Member: <strong className="text-gray-900">{matchCandidate.member.first_name} {matchCandidate.member.last_name}</strong></p>
 
-                                    <div className="mt-4">
-                                        <label className="block text-sm font-medium text-gray-700">Payment Type</label>
-                                        <select
-                                            value={selectedPaymentType}
-                                            onChange={(e) => setSelectedPaymentType(e.target.value)}
-                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md border"
-                                        >
-                                            {paymentTypes.map(type => (
-                                                <option key={type.value} value={type.value}>{type.label}</option>
-                                            ))}
-                                        </select>
+                                    <div className="mt-4 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="confirm-payment-type" className="block text-sm font-medium text-gray-700">Payment Type</label>
+                                            <select
+                                                id="confirm-payment-type"
+                                                value={selectedPaymentType}
+                                                onChange={(e) => setSelectedPaymentType(e.target.value)}
+                                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md border"
+                                            >
+                                                {paymentTypes.map(type => (
+                                                    <option key={type.value} value={type.value}>{type.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        {selectedPaymentType === 'membership_due' && (
+                                            <div>
+                                                <label htmlFor="confirm-payment-year" className="block text-sm font-medium text-gray-700">Year (Optional)</label>
+                                                <select
+                                                    id="confirm-payment-year"
+                                                    value={selectedForYear}
+                                                    onChange={(e) => setSelectedForYear(e.target.value ? parseInt(e.target.value) : '')}
+                                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md border"
+                                                >
+                                                    <option value="">Default (Auto)</option>
+                                                    {(() => {
+                                                        const currentYear = new Date().getFullYear();
+                                                        // Range: 2025 to (CurrentYear - 1)
+                                                        const minYear = 2025;
+                                                        const maxYear = currentYear - 1;
+                                                        const yearOptions = [];
+                                                        for (let y = maxYear; y >= minYear; y--) {
+                                                            yearOptions.push(y);
+                                                        }
+                                                        return yearOptions.map(y => (
+                                                            <option key={y} value={y}>{y}</option>
+                                                        ));
+                                                    })()}
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
