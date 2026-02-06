@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { formatDateForDisplay } from '../../utils/dateUtils';
 
 interface PaymentStatsProps {
   stats: {
@@ -15,6 +16,8 @@ interface PaymentStatsProps {
     netIncome: number;
     collectionRate: number;
     outstandingAmount: number;
+    currentBankBalance?: number;
+    lastBankUpdate?: string;
   };
 }
 
@@ -27,123 +30,120 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats }) => {
     }).format(amount);
   };
 
-  const statsCards = [
-    {
-      title: t('treasurerDashboard.stats.totalMembers'),
-      value: stats.totalMembers,
-      color: 'bg-blue-500',
-      icon: '👥'
-    },
-    {
-      title: t('treasurerDashboard.stats.contributingMembers'),
-      value: stats.contributingMembers,
-      color: 'bg-indigo-500',
-      icon: '🤝'
-    },
-    {
-      title: t('treasurerDashboard.stats.upToDate'),
-      value: stats.upToDateMembers,
-      color: 'bg-green-500',
-      icon: '✅'
-    },
-    {
-      title: t('treasurerDashboard.stats.behind'),
-      value: stats.behindMembers,
-      color: 'bg-red-500',
-      icon: '⚠️'
-    },
-    {
-      title: t('treasurerDashboard.stats.collectionRate'),
-      value: `${stats.collectionRate}%`,
-      color: 'bg-purple-500',
-      icon: '📊'
-    },
-    {
-      title: t('treasurerDashboard.stats.membershipCollected'),
-      value: formatCurrency(stats.totalMembershipCollected),
-      color: 'bg-green-600',
-      icon: '💵'
-    },
-    {
-      title: t('treasurerDashboard.stats.otherPayments'),
-      value: formatCurrency(stats.otherPayments),
-      color: 'bg-blue-600',
-      icon: '🎁'
-    },
-    {
-      title: t('treasurerDashboard.stats.totalCollected'),
-      value: formatCurrency(stats.totalCollected),
-      color: 'bg-emerald-600',
-      icon: '💰'
-    },
-    {
-      title: t('treasurerDashboard.stats.totalExpenses'),
-      value: formatCurrency(stats.totalExpenses),
-      color: 'bg-red-600',
-      icon: '💳'
-    },
-    {
-      title: t('treasurerDashboard.stats.netIncome'),
-      value: formatCurrency(stats.netIncome),
-      color: stats.netIncome >= 0 ? 'bg-teal-600' : 'bg-red-700',
-      icon: stats.netIncome >= 0 ? '📈' : '📉'
-    },
-    {
-      title: t('treasurerDashboard.stats.outstanding'),
-      value: formatCurrency(stats.outstandingAmount),
-      color: 'bg-orange-500',
-      icon: '💸'
-    }
-  ];
-
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {statsCards.map((card, index) => (
-          <div key={index} className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center">
-              <div className={`${card.color} rounded-lg p-3 mr-4`}>
-                <span className="text-2xl">{card.icon}</span>
+      {/* Tier 1: Financial Summary (The Bottom Line) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        {/* Bank Balance - Hero Card */}
+        <div className="bg-gradient-to-br from-blue-700 to-blue-800 rounded-lg shadow-md p-6 text-white col-span-1 md:col-span-2 lg:col-span-1">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-blue-100 font-medium text-sm mb-1">{t('treasurerDashboard.stats.currentBalance')}</p>
+              <h3 className="text-2xl font-bold">{formatCurrency(stats.currentBankBalance || 0)}</h3>
+              {stats.lastBankUpdate && (
+                <p className="text-xs text-blue-200 mt-2">
+                  {t('treasurerDashboard.stats.lastUpdated')}: {formatDateForDisplay(stats.lastBankUpdate)}
+                </p>
+              )}
+            </div>
+            <div className="bg-white/20 p-2 rounded-lg">
+              <span className="text-xl">🏦</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Net Income - Hero Card */}
+        <div className={`rounded-lg shadow-md p-6 text-white ${stats.netIncome >= 0 ? 'bg-gradient-to-br from-green-600 to-green-700' : 'bg-gradient-to-br from-red-600 to-red-700'}`}>
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-green-100 font-medium text-sm mb-1">{t('treasurerDashboard.stats.netIncome')}</p>
+              <h3 className="text-2xl font-bold">{formatCurrency(stats.netIncome)}</h3>
+              <p className="text-xs opacity-80 mt-2">
+                {stats.netIncome >= 0 ? 'Surplus' : 'Deficit'}
+              </p>
+            </div>
+            <div className="bg-white/20 p-2 rounded-lg">
+              <span className="text-xl">{stats.netIncome >= 0 ? '📈' : '📉'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Revenue & Expenses Summary */}
+        <div className="bg-white rounded-lg shadow-md p-6 flex flex-col justify-center lg:col-span-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-gray-500 text-xs uppercase tracking-wider">{t('treasurerDashboard.stats.totalCollected')}</span>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">{card.title}</p>
-                <p className="text-2xl font-bold text-gray-900">{card.value}</p>
+              <div className="text-xl font-bold text-green-700">{formatCurrency(stats.totalCollected)}</div>
+              <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2">
+                <div className="bg-green-500 h-1.5 rounded-full" style={{ width: '100%' }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-gray-500 text-xs uppercase tracking-wider">{t('treasurerDashboard.stats.totalExpenses')}</span>
+              </div>
+              <div className="text-xl font-bold text-red-700">{formatCurrency(stats.totalExpenses)}</div>
+              <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2">
+                <div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${Math.min((stats.totalExpenses / (stats.totalCollected || 1)) * 100, 100)}%` }}></div>
               </div>
             </div>
           </div>
-        ))}
+        </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('treasurerDashboard.stats.collectionProgress')}</h3>
-        <div className="space-y-4">
-          <div>
-            <div className="flex justify-between text-sm font-medium text-gray-700 mb-2">
-              <span>{t('treasurerDashboard.stats.collectionRate')}</span>
-              <span>{stats.collectionRate}%</span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tier 2: Membership Health */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('treasurerDashboard.health.title')}</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-blue-50 rounded-lg p-4 text-center">
+              <span className="block text-2xl font-bold text-blue-700">{stats.contributingMembers}</span>
+              <span className="text-xs text-blue-600 font-medium uppercase tracking-wide">{t('treasurerDashboard.health.activeGivers')}</span>
+              <p className="text-xs text-blue-400 mt-1">{t('treasurerDashboard.health.totalMembers', { count: stats.totalMembers })}</p>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${stats.collectionRate}%` }}
-              ></div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center p-2 bg-green-50 rounded border border-green-100">
+                <span className="text-sm text-green-800">{t('treasurerDashboard.health.upToDate')}</span>
+                <span className="font-bold text-green-700">{stats.upToDateMembers}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 bg-red-50 rounded border border-red-100">
+                <span className="text-sm text-red-800">{t('treasurerDashboard.health.behind')}</span>
+                <span className="font-bold text-red-700">{stats.behindMembers}</span>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-green-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-green-800">{t('treasurerDashboard.stats.membershipCollected')}</p>
-              <p className="text-2xl font-bold text-green-900">{formatCurrency(stats.totalMembershipCollected)}</p>
+        {/* Tier 3: Dues & Pledges Progress */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('treasurerDashboard.stats.collectionProgress')}</h3>
+
+          <div className="mb-6">
+            <div className="flex justify-between text-sm font-medium text-gray-700 mb-1">
+              <span>{t('treasurerDashboard.stats.collectionRate')} (Dues Only)</span>
+              <span>{stats.collectionRate}%</span>
             </div>
-            <div className="bg-blue-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-blue-800">{t('treasurerDashboard.stats.otherPayments')}</p>
-              <p className="text-2xl font-bold text-blue-900">{formatCurrency(stats.otherPayments)}</p>
+            <div className="w-full bg-gray-200 rounded-full h-3">
+              <div
+                className="bg-blue-600 h-3 rounded-full transition-all duration-300 shadow-sm"
+                style={{ width: `${Math.min(parseFloat(stats.collectionRate.toString()), 100)}%` }}
+              ></div>
             </div>
-            <div className="bg-red-50 rounded-lg p-4">
-              <p className="text-sm font-medium text-red-800">{t('treasurerDashboard.stats.outstanding')}</p>
-              <p className="text-2xl font-bold text-red-900">{formatCurrency(stats.outstandingAmount)}</p>
+            <p className="text-xs text-gray-500 mt-1 text-right">{t('treasurerDashboard.stats.target')}: {formatCurrency(stats.totalAmountDue)}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="border-r border-gray-100 pr-4">
+              <p className="text-gray-500">{t('treasurerDashboard.stats.membershipDues')}</p>
+              <p className="text-lg font-bold text-gray-900">{formatCurrency(stats.totalMembershipCollected)}</p>
+            </div>
+            <div className="pl-4">
+              <p className="text-gray-500">{t('treasurerDashboard.stats.otherDonations')}</p>
+              <p className="text-lg font-bold text-gray-900">{formatCurrency(stats.otherPayments)}</p>
             </div>
           </div>
         </div>
@@ -152,4 +152,4 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats }) => {
   );
 };
 
-export default PaymentStats; 
+export default PaymentStats;

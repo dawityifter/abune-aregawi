@@ -29,6 +29,8 @@ interface PaymentStatsData {
   netIncome: number;
   collectionRate: number;
   outstandingAmount: number;
+  currentBankBalance?: number;
+  lastBankUpdate?: string;
 }
 
 const TreasurerDashboard: React.FC = () => {
@@ -163,7 +165,12 @@ const TreasurerDashboard: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 Payment stats data:', data);
+        console.log('🔍 Payment stats data received:', data);
+        if (data.data) {
+          console.log('🔍 Data payload:', data.data);
+          console.log('🔍 Bank Balance:', data.data.currentBankBalance);
+          console.log('🔍 Last Update:', data.data.lastBankUpdate);
+        }
         setStats(data.data);
       } else {
         console.error('❌ Payment stats API error:', response.status, response.statusText);
@@ -174,6 +181,13 @@ const TreasurerDashboard: React.FC = () => {
       console.error('❌ Error fetching payment stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshFinancialData = () => {
+    fetchPaymentStats();
+    if (permissions.canEditFinancialRecords) {
+      fetchSkippedReceipts();
     }
   };
 
@@ -231,7 +245,7 @@ const TreasurerDashboard: React.FC = () => {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
-                Bank Integration
+                {t('treasurerDashboard.tabs.bank')}
               </button>
               <button
                 onClick={() => setActiveTab('payments')}
@@ -334,15 +348,17 @@ const TreasurerDashboard: React.FC = () => {
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.tabs.payments')}</h2>
                 <div className="flex space-x-3">
-                  {permissions.canEditFinancialRecords && skippedReceipts.length > 0 && (
+                  {permissions.canEditFinancialRecords && (
                     <>
-                      <button
-                        onClick={openSkippedReceiptsModal}
-                        className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md font-medium flex items-center"
-                      >
-                        <i className="fas fa-exclamation-triangle mr-2"></i>
-                        {t('treasurer.skippedReceipts.button')}
-                      </button>
+                      {skippedReceipts.length > 0 && (
+                        <button
+                          onClick={openSkippedReceiptsModal}
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md font-medium flex items-center"
+                        >
+                          <i className="fas fa-exclamation-triangle mr-2"></i>
+                          {t('treasurer.skippedReceipts.button')}
+                        </button>
+                      )}
                       <button
                         onClick={() => setShowAddPaymentModal(true)}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
@@ -354,7 +370,7 @@ const TreasurerDashboard: React.FC = () => {
                 </div>
               </div>
               <TransactionList
-                onTransactionAdded={fetchPaymentStats}
+                onTransactionAdded={refreshFinancialData}
               />
             </div>
           )}
@@ -455,8 +471,8 @@ const TreasurerDashboard: React.FC = () => {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">Bank Reconciliation</h2>
-                  <p className="text-gray-600 mt-1">Upload Chase CSVs and match transactions to members.</p>
+                  <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.bank.title')}</h2>
+                  <p className="text-gray-600 mt-1">{t('treasurerDashboard.bank.subtitle')}</p>
                 </div>
               </div>
               <BankUpload onUploadSuccess={() => window.dispatchEvent(new CustomEvent('bank:refresh'))} />
@@ -496,7 +512,7 @@ const TreasurerDashboard: React.FC = () => {
             onClose={() => setShowAddPaymentModal(false)}
             onPaymentAdded={() => {
               setShowAddPaymentModal(false);
-              fetchPaymentStats();
+              refreshFinancialData();
             }}
             paymentView="new"
           />
@@ -509,7 +525,7 @@ const TreasurerDashboard: React.FC = () => {
             onClose={() => setShowAddExpenseModal(false)}
             onSuccess={() => {
               setShowAddExpenseModal(false);
-              fetchPaymentStats();
+              refreshFinancialData();
               // Trigger refresh for expense list if on that tab
               window.dispatchEvent(new CustomEvent('expenses:refresh'));
             }}
