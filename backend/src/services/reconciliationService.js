@@ -177,3 +177,136 @@ exports.findPotentialMatches = async (bankTxn) => {
     // Filter out the one that is ALREADY linked to this hash (if we are re-processing)
     return potentials.filter(t => t.external_id !== transaction_hash);
 };
+
+/**
+ * Process a single bank transaction reconciliation.
+ * - Creates/Links Transaction (Donation)
+ * - Updates BankTransaction status
+ * - Updates LedgerEntry
+ * - Learns Zelle Match
+ */
+exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user, existingTransactionId, forYear }) => {
+    const { BankTransaction, Transaction, LedgerEntry, IncomeCategory, ZelleMemoMatch, sequelize } = require('../models');
+
+    const txn = await BankTransaction.findByPk(bankTxnId);
+    if (!txn) {
+        throw new Error(`Bank transaction ${bankTxnId} not found`);
+    }
+
+    if (txn.status === 'MATCHED' || txn.status === 'IGNORED') {
+        throw new Error(`Transaction ${txn.description} already processed`);
+    }
+
+    // 1. Create OR Link Donation (Transaction record)
+    let donation;
+
+    if (existingTransactionId) {
+        // LINK to existing
+        donation = await Transaction.findByPk(existingTransactionId);
+        if (!donation) {
+            throw new Error(`Existing transaction ${existingTransactionId} not found`);
+        }
+
+        // Link them
+        donation.external_id = txn.transaction_hash;
+        // Optionally update status if it was pending
+        if (donation.status !== 'succeeded') {
+            donation.status = 'succeeded';
+        }
+        await donation.save();
+    } else {
+        // CREATE new
+        // Determine payment method from type
+        let method = 'other';
+        if (txn.type.includes('ZELLE')) method = 'zelle';
+        else if (txn.type.includes('CHECK')) method = 'check';
+        else if (txn.type.includes('ACH')) method = 'ach';
+        else if (txn.type.includes('DEBIT')) method = 'debit_card';
+
+        // Extract receipt number for checks
+        let receiptNumber = null;
+        if (method === 'check' && txn.check_number) {
+            receiptNumber = txn.check_number;
+        }
+
+        donation = await Transaction.create({
+            member_id: memberId,
+            collected_by: user.id, // The admin/user performing the action
+            amount: txn.amount,
+            payment_date: txn.date,
+            payment_type: paymentType || 'donation', // Default to donation
+            payment_method: method,
+            status: 'succeeded',
+            note: txn.description,
+            external_id: txn.transaction_hash,
+            receipt_number: receiptNumber,
+            for_year: forYear || null
+        });
+    }
+
+    // 2. Link BankTransaction
+    txn.status = 'MATCHED';
+    txn.member_id = memberId || donation.member_id; // Use existing donation member_id if linking
+    await txn.save();
+
+    // 3. Learn (Save to ZelleMemoMatch)
+    // Only learn if we have a direct member association and it's not a generic manual link
+    let cleanMemo = normalizeDescription(txn.description, txn.type);
+
+    if (cleanMemo && cleanMemo.length > 2 && memberId) {
+        const existingMatch = await ZelleMemoMatch.findOne({
+            where: sequelize.where(sequelize.fn('lower', sequelize.col('memo')), cleanMemo.toLowerCase())
+        });
+
+        if (!existingMatch) {
+            await ZelleMemoMatch.create({
+                member_id: memberId,
+                memo: cleanMemo
+            });
+        }
+    }
+
+    // 4. Create/Sync Ledger Entry
+    try {
+        const pType = donation.payment_type || paymentType || 'donation';
+        const incomeCategory = await IncomeCategory.findOne({
+            where: { payment_type_mapping: pType }
+        });
+        const glCode = incomeCategory?.gl_code || 'INC999';
+        const memo = `${glCode} - Bank reconciliation match ${txn.transaction_hash}`;
+
+        // Find existing or create new
+        const [ledgerEntry, created] = await LedgerEntry.findOrCreate({
+            where: { transaction_id: donation.id },
+            defaults: {
+                type: pType,
+                category: glCode,
+                amount: parseFloat(donation.amount),
+                entry_date: donation.payment_date,
+                member_id: donation.member_id,
+                payment_method: donation.payment_method,
+                memo: memo,
+                transaction_id: donation.id,
+                external_id: txn.transaction_hash
+            }
+        });
+
+        if (!created) {
+            await ledgerEntry.update({
+                type: pType,
+                category: glCode,
+                amount: parseFloat(donation.amount),
+                entry_date: donation.payment_date,
+                member_id: donation.member_id,
+                payment_method: donation.payment_method,
+                memo: memo,
+                external_id: txn.transaction_hash
+            });
+        }
+    } catch (ledgerErr) {
+        console.error('⚠️ Failed to sync ledger entry for bank reconciliation:', ledgerErr.message);
+        // We don't fail the whole request for ledger sync, just log it
+    }
+
+    return { txn, donation };
+};
