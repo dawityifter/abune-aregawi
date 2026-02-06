@@ -1,4 +1,4 @@
-const { MemberPayment, Member, Transaction, Dependent, LedgerEntry, Title } = require('../models');
+const { MemberPayment, Member, Transaction, Dependent, LedgerEntry, Title, BankTransaction } = require('../models');
 const { Op, literal } = require('sequelize');
 
 // Get all member payments with pagination and filtering
@@ -356,6 +356,26 @@ const getPaymentStats = async (req, res) => {
       ? Number(((upToDateMembers / contributingMembers) * 100).toFixed(2))
       : 0;
 
+    // Fetch latest bank balance
+    console.log('--- DEBUG: Fetching Bank Balance in memberPaymentController ---');
+    const latestBankTxn = await BankTransaction.findOne({
+      where: {
+        balance: { [Op.ne]: null }
+      },
+      order: [['date', 'DESC'], ['id', 'DESC']],
+      attributes: ['id', 'balance', 'date', ['created_at', 'createdAt']]
+    });
+
+    if (latestBankTxn) {
+      console.log('--- DEBUG: Bank Transaction Found ---');
+      console.log('Raw Balance:', latestBankTxn.balance);
+    } else {
+      console.log('--- DEBUG: No Bank Transaction Found ---');
+    }
+
+    const currentBankBalance = latestBankTxn && latestBankTxn.balance ? parseFloat(latestBankTxn.balance) : 0;
+    const lastBankUpdate = latestBankTxn ? (latestBankTxn.get('createdAt') || latestBankTxn.date) : null;
+
     const stats = {
       totalMembers,
       contributingMembers,
@@ -368,7 +388,9 @@ const getPaymentStats = async (req, res) => {
       totalExpenses: Number((totalExpenses || 0).toFixed(2)),
       netIncome: Number((netIncome || 0).toFixed(2)),
       outstandingAmount: Number((outstandingAmount || 0).toFixed(2)),
-      collectionRate
+      collectionRate,
+      currentBankBalance,
+      lastBankUpdate
     };
 
     res.json({ success: true, data: stats });
@@ -644,7 +666,6 @@ async function computeAndReturnDues(res, member, requestedYear) {
   let futureDues = 0;
 
   // 1. Identify Family Members
-  let familyMemberIds = [member.id];
 
   // Determine the effective family ID (either the assigned family_id or the member's own ID)
   const effectiveFamilyId = member.family_id || member.id;
@@ -661,7 +682,7 @@ async function computeAndReturnDues(res, member, requestedYear) {
     include: [{ model: Title, as: 'title' }]
   });
 
-  familyMemberIds = familyMembers.map(m => m.id);
+  const familyMemberIds = familyMembers.map(m => m.id);
 
   // 2. Identify Head of Household
   // Head of Household is either:
@@ -698,7 +719,78 @@ async function computeAndReturnDues(res, member, requestedYear) {
     .map(m => m.first_name)
     .join(', ');
 
-  // 2. Fetch Transactions for ALL family members in the requested year
+  // 2. Fetch Transactions
+  // We need two sets:
+  // A. ALL historical "membership_due" transactions for this family (for rollover calculation)
+  // B. Transactions to display for this specific year (for the list view)
+
+  // Fetch A: All historical dues
+  const allDuesTransactions = await Transaction.findAll({
+    where: {
+      member_id: { [Op.in]: familyMemberIds },
+      payment_type: 'membership_due'
+    },
+    raw: true
+  });
+
+  // Calculate Rollover (Surplus from previous years)
+  // We assume the current yearly_pledge applies retroactively as we don't track historical pledge changes.
+  let rolloverAmount = 0;
+  const yearlyPledge = Number(headOfHousehold.yearly_pledge || 0);
+
+  if (yearlyPledge > 0) {
+    // Determine start year for calculation (Join Year or reasonable default)
+    let startCalcYear = joinYear;
+    if (!startCalcYear) {
+      // If no join date, try to infer from first transaction, otherwise default to requested year
+      if (allDuesTransactions.length > 0) {
+        const firstTxnDate = new Date(Math.min(...allDuesTransactions.map(t => new Date(t.payment_date))));
+        startCalcYear = firstTxnDate.getFullYear();
+      } else {
+        startCalcYear = year;
+      }
+    }
+
+    // Loop from start year up to the year BEFORE the requested year
+    for (let y = startCalcYear; y < year; y++) {
+      // 1. Calculate Dues for Year Y
+      let duesForY = yearlyPledge;
+      // Adjust if it's the join year
+      if (y === joinYear && joinDateStr) {
+        // e.g. Joined in March (index 2). Dues = monthly * (12 - 2) = 10 months.
+        const monthlyForY = yearlyPledge / 12;
+        duesForY = monthlyForY * (12 - joinMonth);
+      }
+
+      // 2. Calculate Payments for Year Y (Available)
+      // Payments explicitly for Y OR (Payments with no year AND dated in Y)
+      const paymentsForY = allDuesTransactions.filter(t => {
+        // robust year check
+        const tDate = new Date(t.payment_date); // careful with timezone, usually YYYY-MM-DD matches UTC if simple string
+        // Better: parse string manually to be safe like we do below
+        const tY = t.payment_date instanceof Date
+          ? t.payment_date.getFullYear()
+          : parseInt(String(t.payment_date).split('-')[0]);
+
+        if (t.for_year === y) return true;
+        if (!t.for_year && tY === y) return true;
+        return false;
+      }).reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+      const totalAvailableForY = paymentsForY + rolloverAmount;
+
+      // 3. Determine Surplus
+      // We satisfy the dues first. Any remainder is surplus.
+      if (totalAvailableForY > duesForY) {
+        rolloverAmount = totalAvailableForY - duesForY;
+      } else {
+        rolloverAmount = 0; // Debt doesn't carry forward as negative surplus in this logic, we strictly track 'extra'
+      }
+    }
+  }
+
+  // Fetch B: Display Transactions for the requested year
+  // STRICTLY purely by payment_date (Cash Flow View)
   const memberTransactions = await Transaction.findAll({
     where: {
       member_id: { [Op.in]: familyMemberIds },
@@ -713,23 +805,26 @@ async function computeAndReturnDues(res, member, requestedYear) {
     ],
     order: [['payment_date', 'ASC']]
   });
-  const duesTransactions = memberTransactions.filter(t => String(t.payment_type) === 'membership_due');
-  const totalsByCalendarMonth = new Array(12).fill(0);
-  for (const t of duesTransactions) {
-    // Robust date parsing using string split to avoid timezone shift
-    const parts = String(t.payment_date).split('-');
-    const transYear = parseInt(parts[0]);
-    const transMonth = parseInt(parts[1]) - 1; // 0-indexed month
-    if (transYear === year) totalsByCalendarMonth[transMonth] += Number(t.amount || 0);
-  }
 
-  // Use the head of household's yearly pledge for calculations
-  const yearlyPledge = Number(headOfHousehold.yearly_pledge || 0);
+  // Calculate Allocated Dues for THIS Year (Accrual View)
+  const duesAllocatedForYear = allDuesTransactions.filter(t => {
+    const tDate = new Date(t.payment_date);
+    const tY = t.payment_date instanceof Date
+      ? t.payment_date.getFullYear()
+      : parseInt(String(t.payment_date).split('-')[0]);
+
+    if (t.for_year === year) return true;
+    if (!t.for_year && tY === year) return true;
+    return false;
+  }).reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
   if (yearlyPledge > 0) {
     monthlyPayment = Math.round((yearlyPledge / 12) * 100) / 100;
-    const totalDuesCollected = duesTransactions.reduce((s, t) => s + Number(t.amount || 0), 0);
 
-    // Membership requirement logic:
+    // Total Dues Collected = (Directly Allocated to Year) + (Rollover from previous)
+    const totalDuesCollected = duesAllocatedForYear + rolloverAmount;
+
+    // Membership requirement logic
     let monthsRequired = 12;
     if (joinDateStr) {
       if (year < joinYear) {
@@ -742,6 +837,7 @@ async function computeAndReturnDues(res, member, requestedYear) {
     totalAmountDue = Number((monthlyPayment * monthsRequired).toFixed(2));
     balanceDue = Math.max(totalAmountDue - totalDuesCollected, 0);
 
+    // Waterfall logic for month statuses
     let remaining = totalDuesCollected;
     monthStatuses = months.map((m, idx) => {
       const isPreMembership = joinDateStr && (year < joinYear || (year === joinYear && idx < joinMonth));
@@ -750,15 +846,27 @@ async function computeAndReturnDues(res, member, requestedYear) {
       }
 
       const isFutureMonth = idx > currentMonthIndex;
+
+      // How much can we pay for this month?
       const paidForMonth = Math.min(monthlyPayment, Math.max(remaining, 0));
       remaining = Math.max(remaining - monthlyPayment, 0);
+
       const dueForMonth = Math.max(monthlyPayment - paidForMonth, 0);
       const status = paidForMonth >= monthlyPayment ? 'paid' : (idx <= currentMonthIndex ? 'due' : 'upcoming');
       return { month: m, paid: Number(paidForMonth.toFixed(2)), due: Number(dueForMonth.toFixed(2)), status, isFutureMonth };
     });
-    totalCollected = totalDuesCollected;
+
+    totalCollected = totalDuesCollected; // This includes the rollover
     futureDues = monthStatuses.filter(ms => ms.isFutureMonth && ms.status !== 'pre-membership').reduce((s, m) => s + m.due, 0);
   } else {
+    // ... No Pledge Logic (Keep existing simple view) ...
+    const totalsByCalendarMonth = new Array(12).fill(0);
+    for (const t of memberTransactions) { // Use the strictly-this-year ledger
+      const parts = String(t.payment_date).split('-');
+      const transMonth = parseInt(parts[1]) - 1;
+      totalsByCalendarMonth[transMonth] += Number(t.amount || 0);
+    }
+
     monthStatuses = months.map((m, idx) => {
       const isPreMembership = joinDateStr && (year < joinYear || (year === joinYear && idx < joinMonth));
       if (isPreMembership) {
@@ -782,6 +890,7 @@ async function computeAndReturnDues(res, member, requestedYear) {
       payment_type: t.payment_type,
       payment_method: t.payment_method,
       receipt_number: t.receipt_number,
+      for_year: t.for_year, // Include for display
       note: t.note,
       paid_by: t.member ? t.member.first_name : 'Unknown'
     }))
@@ -865,5 +974,6 @@ module.exports = {
   getWeeklyReport,
   getMyDues,
   getDuesByMemberIdWithAuth,
-  getMemberDuesForTreasurer
+  getMemberDuesForTreasurer,
+  computeAndReturnDues // Exported for testing
 };
