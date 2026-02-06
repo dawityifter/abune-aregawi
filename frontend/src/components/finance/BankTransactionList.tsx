@@ -58,6 +58,38 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [searching, setSearching] = useState(false);
 
+    // Search effect
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(async () => {
+            if (!searchTerm || searchTerm.length < 3) {
+                setSearchResults([]);
+                return;
+            }
+
+            try {
+                setSearching(true);
+                const token = await firebaseUser?.getIdToken();
+                const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
+                const res = await fetch(`${apiUrl}/api/members/search?q=${encodeURIComponent(searchTerm)}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    setSearchResults(data.data.results);
+                }
+            } catch (error) {
+                console.error("Search error:", error);
+                setSearchResults([]);
+            } finally {
+                setSearching(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm, firebaseUser]);
+
     // Multi-select state
     const [selectedTxnIds, setSelectedTxnIds] = useState<number[]>([]);
     const [isBulkMode, setIsBulkMode] = useState(false);
