@@ -30,9 +30,9 @@ const HomePage: React.FC = () => {
       <Hero />
       <LiveStreamBanner />
       <QuickLinks />
-      <WhatsHappeningSection />
       <CalendarSection />
       <GrowSpirituallySection />
+      <WhatsHappeningSection />
       <Footer />
     </div>
   );
