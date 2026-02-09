@@ -1,4 +1,4 @@
-const { Transaction, Member, LedgerEntry, IncomeCategory, sequelize } = require('../models');
+const { Transaction, Member, LedgerEntry, IncomeCategory, sequelize, BankTransaction } = require('../models');
 const { Op } = require('sequelize');
 const tz = require('../config/timezone');
 
@@ -180,7 +180,8 @@ const createTransaction = async (req, res) => {
       donor_name,
       donor_email,
       donor_phone,
-      donor_memo
+      donor_memo,
+      for_year // Add for_year support
     } = req.body;
 
     // Validate required fields (member_id is optional for anonymous donations)
@@ -321,8 +322,10 @@ const createTransaction = async (req, res) => {
             receipt_number,
             note: finalNote,
             status: txStatus,
+            status: txStatus,
             donation_id: donation_id || transaction.donation_id,
-            income_category_id: finalIncomeCategoryId
+            income_category_id: finalIncomeCategoryId,
+            for_year: for_year || transaction.for_year // Update for_year if provided
           }, { transaction: t }),
 
           // Update corresponding ledger entries
@@ -377,7 +380,8 @@ const createTransaction = async (req, res) => {
         external_id: external_id || null,
         status: txStatus,
         donation_id: donation_id || null,
-        income_category_id: finalIncomeCategoryId
+        income_category_id: finalIncomeCategoryId,
+        for_year: for_year || null
       }, { transaction: t });
     }
 
@@ -672,52 +676,182 @@ const deleteTransaction = async (req, res) => {
 // Get transaction statistics for dashboard (compatible with payment stats format)
 const getTransactionStats = async (req, res) => {
   try {
-    const { start_date, end_date, payment_type } = req.query;
-    const whereClause = {};
+    const { start_date, end_date } = req.query;
+    const dateFilter = {};
+    const expenseDateFilter = {};
 
     if (start_date || end_date) {
-      whereClause.payment_date = {};
-      if (start_date) whereClause.payment_date[Op.gte] = start_date;
-      if (end_date) whereClause.payment_date[Op.lte] = end_date;
+      dateFilter.payment_date = {};
+      expenseDateFilter.entry_date = {};
+
+      if (start_date) {
+        dateFilter.payment_date[Op.gte] = start_date;
+        expenseDateFilter.entry_date[Op.gte] = start_date;
+      }
+      if (end_date) {
+        dateFilter.payment_date[Op.lte] = end_date;
+        expenseDateFilter.entry_date[Op.lte] = end_date;
+      }
     }
 
-    if (payment_type) whereClause.payment_type = payment_type;
+    // 1. Total Expenses
+    const totalExpensesResult = await LedgerEntry.sum('amount', {
+      where: {
+        type: 'expense',
+        ...expenseDateFilter
+      }
+    });
+    const totalExpenses = parseFloat(totalExpensesResult || 0);
 
-    // Get basic transaction stats
-    const totalTransactions = await Transaction.count({ where: whereClause });
-    const totalAmount = await Transaction.sum('amount', { where: whereClause });
+    // 2. Revenue Breakdown
+    // Total Collected (All income)
+    const totalCollectedResult = await Transaction.sum('amount', {
+      where: {
+        status: { [Op.notIn]: ['failed', 'cancelled'] }, // Exclude failed/cancelled
+        ...dateFilter
+      }
+    });
+    const totalCollected = parseFloat(totalCollectedResult || 0);
 
-    // Count ALL households/members, not just those with transactions
+    // Membership Dues Only
+    const totalMembershipCollectedResult = await Transaction.sum('amount', {
+      where: {
+        payment_type: 'membership_due',
+        status: { [Op.notIn]: ['failed', 'cancelled'] },
+        ...dateFilter
+      }
+    });
+    const totalMembershipCollected = parseFloat(totalMembershipCollectedResult || 0);
+
+    // Other Payments - Ensure not negative due to any async data issues, though calculated from same source
+    const otherPayments = Math.max(totalCollected - totalMembershipCollected, 0);
+
+    // 3. Net Income
+    const netIncome = totalCollected - totalExpenses;
+
+    // 4. Member Stats
     const totalMembers = await Member.count();
 
-    // Compute totals based on pledges and collections
-    // Sum of all members' yearly pledges (null-safe)
+    // Contributing Members: distinct members who paid > 0 in period
+    const contributingMembersCount = await Transaction.count({
+      where: {
+        amount: { [Op.gt]: 0 },
+        status: { [Op.notIn]: ['failed', 'cancelled'] },
+        ...dateFilter
+      },
+      distinct: true,
+      col: 'member_id'
+    });
+
+    // 5. Collection Rate & Outstanding
+    // Based on Yearly Pledge vs Membership Collected
     const totalPledgeRaw = await Member.sum('yearly_pledge');
     const totalAmountDue = parseFloat(totalPledgeRaw || 0);
 
-    // Total collected from transactions (respecting any date/payment_type filters)
-    const totalCollected = parseFloat(totalAmount || 0);
+    // Outstanding = Pledges - Dues Collected (never negative)
+    const outstandingAmount = Math.max(totalAmountDue - totalMembershipCollected, 0);
 
-    // Outstanding = pledges - collected (never negative)
-    const outstandingAmount = Math.max(totalAmountDue - totalCollected, 0);
-
-    // Collection rate as percentage string (0-100)
+    // Collection Rate (Dues / Pledges)
     const collectionRate = totalAmountDue > 0
-      ? ((totalCollected / totalAmountDue) * 100).toFixed(0)
+      ? ((totalMembershipCollected / totalAmountDue) * 100).toFixed(0)
       : '0';
 
-    // Keep placeholders for member status counts until per-member calc is implemented
-    const upToDateMembers = 0;
-    const behindMembers = 0;
+    // 6. Up to Date vs Behind Calculation
+    let upToDateMembers = 0;
+    let behindMembers = 0;
+
+    // To avoid fetching all members, we default to: 
+    // "Up to Date" ~= Contributing Members (Approx)
+    // "Behind" ~= Total Members - Contributing (Approx)
+    // However, since we want to be accurate for Pledgers:
+
+    const pledgedMembers = await Member.findAll({
+      where: { yearly_pledge: { [Op.gt]: 0 } },
+      attributes: ['id', 'yearly_pledge']
+    });
+
+    if (pledgedMembers.length > 0) {
+      const pledgedMemberIds = pledgedMembers.map(m => m.id);
+
+      const memberDues = await Transaction.findAll({
+        where: {
+          member_id: pledgedMemberIds,
+          payment_type: 'membership_due',
+          ...dateFilter
+        },
+        attributes: [
+          'member_id',
+          [sequelize.fn('SUM', sequelize.col('amount')), 'total']
+        ],
+        group: ['member_id'],
+        raw: true
+      });
+
+      const duesMap = {};
+      memberDues.forEach(d => { duesMap[d.member_id] = parseFloat(d.total); });
+
+      // Prorate expectation based on current month of year
+      const now = new Date();
+      // If we are filtering by date, we might want to adjust expectation, but simple YTD is safer default
+      const currentMonth = now.getMonth() + 1;
+      const prorateFactor = currentMonth / 12.0;
+
+      pledgedMembers.forEach(m => {
+        const paid = duesMap[m.id] || 0;
+        const totalPledge = parseFloat(m.yearly_pledge || 0);
+        const expected = totalPledge * prorateFactor;
+
+        // Allow $1 margin for float errors
+        if (paid >= (expected - 1)) {
+          upToDateMembers++;
+        } else {
+          behindMembers++;
+        }
+      });
+    }
+
+    // 7. Recent Bank Balance
+    console.log('--- DEBUG: Fetching Bank Balance ---');
+    const latestBankTxn = await BankTransaction.findOne({
+      where: {
+        balance: { [Op.ne]: null }
+      },
+      order: [['date', 'DESC'], ['id', 'DESC']],
+      attributes: ['id', 'balance', 'date', ['created_at', 'createdAt']]
+    });
+
+    if (latestBankTxn) {
+      console.log('--- DEBUG: Bank Transaction Found ---');
+      console.log('ID:', latestBankTxn.id);
+      console.log('Raw Balance:', latestBankTxn.balance);
+      console.log('Date:', latestBankTxn.date);
+      console.log('CreatedAt:', latestBankTxn.get('createdAt'));
+    } else {
+      console.log('--- DEBUG: No Bank Transaction Found ---');
+    }
+
+    const currentBankBalance = latestBankTxn && latestBankTxn.balance ? parseFloat(latestBankTxn.balance) : 0;
+    const lastBankUpdate = latestBankTxn ? (latestBankTxn.get('createdAt') || latestBankTxn.date) : null;
+
+    console.log('Calculated Current Balance:', currentBankBalance);
+    console.log('Calculated Last Update:', lastBankUpdate);
+    console.log('------------------------------------');
 
     const stats = {
       totalMembers,
+      contributingMembers: contributingMembersCount,
       upToDateMembers,
       behindMembers,
       totalAmountDue,
+      totalMembershipCollected,
+      otherPayments,
       totalCollected,
+      totalExpenses,
+      netIncome,
       collectionRate,
-      outstandingAmount
+      outstandingAmount,
+      currentBankBalance,
+      lastBankUpdate
     };
 
     res.json({

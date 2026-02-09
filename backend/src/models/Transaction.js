@@ -110,6 +110,11 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'External payment reference (e.g., Stripe payment_intent id)'
     },
+    for_year: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: 'Year this payment applies to (null = use payment_date year)'
+    },
     donation_id: {
       type: DataTypes.BIGINT,
       allowNull: true,
