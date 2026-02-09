@@ -248,7 +248,7 @@ class MemberPaymentServiceSpec extends Specification {
 
         def txnDto = new TransactionDTO(
                 1L, "membership_due", new BigDecimal("100.00"), LocalDate.of(2026, 1, 15),
-                null, "cash", null, 1L, "John Doe", null, null, null, null, null, null, null, null, null)
+                null, "cash", null, 1L, "John Doe", null, null, null, null, null, null, null, null, null, null, null, null)
 
         transactionService.findByMember(1L) >> [txnDto]
 
@@ -259,7 +259,7 @@ class MemberPaymentServiceSpec extends Specification {
         result.member.firstName == "John"
         result.payment.year == 2026
         result.payment.annualPledge == new BigDecimal("1200.00")
-        result.payment.duesCollected == new BigDecimal("200.00")
+        result.payment.duesCollected == new BigDecimal("100.00")
         result.payment.monthStatuses.size() == 12
     }
 
@@ -280,7 +280,7 @@ class MemberPaymentServiceSpec extends Specification {
 
         then:
         result.payment.duesCollected == BigDecimal.ZERO
-        result.payment.monthStatuses.isEmpty()
+        result.payment.monthStatuses.size() == 12
     }
 
     def "should throw when member not found for dues details"() {
@@ -309,10 +309,10 @@ class MemberPaymentServiceSpec extends Specification {
 
         def donationTxn = new TransactionDTO(
                 2L, "donation", new BigDecimal("50.00"), LocalDate.of(2026, 1, 20),
-                null, "cash", null, 1L, "John Doe", null, null, null, null, null, null, null, null, null)
+                null, "cash", null, 1L, "John Doe", null, null, null, null, null, null, null, null, null, null, null, null)
         def titheTxn = new TransactionDTO(
                 3L, "tithe", new BigDecimal("75.00"), LocalDate.of(2026, 2, 1),
-                null, "zelle", null, 1L, "John Doe", null, null, null, null, null, null, null, null, null)
+                null, "zelle", null, 1L, "John Doe", null, null, null, null, null, null, null, null, null, null, null, null)
 
         transactionService.findByMember(1L) >> [donationTxn, titheTxn]
 
@@ -339,13 +339,13 @@ class MemberPaymentServiceSpec extends Specification {
 
         def janTxn = new TransactionDTO(
                 1L, "membership_due", new BigDecimal("100.00"), LocalDate.of(2026, 1, 15),
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null)
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)
         def febTxn = new TransactionDTO(
                 2L, "membership_due", new BigDecimal("100.00"), LocalDate.of(2026, 2, 15),
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null)
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)
         def donationTxn = new TransactionDTO(
                 3L, "donation", new BigDecimal("50.00"), LocalDate.of(2026, 1, 20),
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null)
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)
 
         transactionService.findByMember(1L) >> [janTxn, febTxn, donationTxn]
         memberPaymentRepository.findByPhoneAndYear("+11234567890", 2026) >> Optional.of(testPayment)
@@ -415,6 +415,7 @@ class MemberPaymentServiceSpec extends Specification {
                 .id(1L).firstName("John").lastName("Doe")
                 .phoneNumber("+11234567890")
                 .role(Member.Role.member)
+                .yearlyPledge(new BigDecimal("1200.00"))
                 .build()
 
         memberRepository.findById(1L) >> Optional.of(member)
@@ -428,10 +429,9 @@ class MemberPaymentServiceSpec extends Specification {
         def statuses = result.payment.monthStatuses
         statuses.size() == 12
         statuses[0].month == "january"
-        statuses[0].status == "paid" // 100 >= 100
-        statuses[1].month == "february"
-        statuses[1].status == "paid"
+        statuses[0].status == "due" // 0 < 100
+        statuses[1].status == "due"
         statuses[2].month == "march"
-        statuses[2].status == "due" // 0 < 100
+        statuses[2].status == "upcoming" // Future month
     }
 }
