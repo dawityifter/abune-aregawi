@@ -11,4 +11,3 @@ import java.util.UUID;
 public interface OutreachRepository extends JpaRepository<Outreach, UUID> {
     List<Outreach> findByMemberIdOrderByWelcomedDateDescCreatedAtDesc(Long memberId);
 }
-

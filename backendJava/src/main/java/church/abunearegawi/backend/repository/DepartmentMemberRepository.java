@@ -17,4 +17,3 @@ public interface DepartmentMemberRepository extends JpaRepository<DepartmentMemb
     List<DepartmentMember> findByMemberId(Long memberId);
     long countByDepartmentIdAndStatus(Long departmentId, DepartmentMember.Status status);
 }
-

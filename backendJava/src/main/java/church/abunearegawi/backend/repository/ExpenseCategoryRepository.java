@@ -13,4 +13,3 @@ public interface ExpenseCategoryRepository extends JpaRepository<ExpenseCategory
     java.util.List<ExpenseCategory> findByIsActiveTrueOrderByGlCodeAsc();
     java.util.List<ExpenseCategory> findAllByOrderByGlCodeAsc();
 }
-

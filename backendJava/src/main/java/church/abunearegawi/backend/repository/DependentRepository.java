@@ -10,4 +10,3 @@ import java.util.List;
 public interface DependentRepository extends JpaRepository<Dependent, Long> {
     List<Dependent> findByMemberId(Long memberId);
 }
-

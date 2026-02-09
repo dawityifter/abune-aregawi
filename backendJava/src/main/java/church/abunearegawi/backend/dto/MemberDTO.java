@@ -4,6 +4,7 @@ import church.abunearegawi.backend.model.Member;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -43,6 +44,7 @@ public class MemberDTO {
     private String medications;
     private String dietaryRestrictions;
     private String notes;
+    private BigDecimal yearlyPledge;
     private String createdAt;
     private String updatedAt;
 
@@ -110,6 +112,7 @@ public class MemberDTO {
                 .medications(member.getMedications())
                 .dietaryRestrictions(member.getDietaryRestrictions())
                 .notes(member.getNotes())
+                .yearlyPledge(member.getYearlyPledge())
                 .createdAt(member.getCreatedAt() != null ? member.getCreatedAt().toString() : null)
                 .updatedAt(member.getUpdatedAt() != null ? member.getUpdatedAt().toString() : null)
                 .build();

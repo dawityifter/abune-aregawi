@@ -8,4 +8,6 @@ import java.util.UUID;
 
 @Repository
 public interface VendorRepository extends JpaRepository<Vendor, UUID> {
+    java.util.List<Vendor> findByIsActiveOrderByNameAsc(boolean isActive);
+    java.util.List<Vendor> findAllByOrderByNameAsc();
 }

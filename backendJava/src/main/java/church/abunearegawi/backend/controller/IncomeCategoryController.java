@@ -63,4 +63,3 @@ public class IncomeCategoryController {
         return ResponseEntity.ok(ApiResponse.success(null, "Income category deactivated successfully"));
     }
 }
-

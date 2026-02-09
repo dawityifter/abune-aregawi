@@ -78,26 +78,62 @@ public class ZelleController {
         }
     }
 
-    @PostMapping("/reconcile/batch-create")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER', 'AP_TEAM')")
-    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> batchCreate(
-            @RequestBody Map<String, List<church.abunearegawi.backend.service.ZelleGmailService.ParsedZelle>> request,
+    @PostMapping("/reconcile/create-transaction")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> createTransaction(
+            @RequestBody Map<String, Object> request,
             @org.springframework.security.core.annotation.AuthenticationPrincipal church.abunearegawi.backend.security.FirebaseUserDetails userDetails) {
         try {
-            List<church.abunearegawi.backend.service.ZelleGmailService.ParsedZelle> items = request.get("items");
-            if (items == null) return ResponseEntity.badRequest().body(ApiResponse.error("Items list is required"));
-            
             Long collectorId = userDetails != null ? userDetails.getMemberId() : null;
             if (collectorId == null) return ResponseEntity.status(401).body(ApiResponse.error("Collector ID not found"));
 
-            List<church.abunearegawi.backend.model.Transaction> created = zelleService.batchCreate(items, collectorId);
-            
-            java.util.Map<String, Object> response = new java.util.HashMap<>();
-            response.put("success", true);
-            response.put("createdCount", created.size());
-            response.put("results", created);
-            
-            return ResponseEntity.ok(ApiResponse.success(response, "Batch transactions processed successfully"));
+            String externalId = (String) request.get("external_id");
+            java.math.BigDecimal amount = request.get("amount") != null
+                    ? new java.math.BigDecimal(request.get("amount").toString()) : null;
+            java.time.LocalDate paymentDate = request.get("payment_date") != null
+                    ? java.time.LocalDate.parse(request.get("payment_date").toString()) : null;
+            String note = (String) request.get("note");
+            Long memberId = request.get("member_id") != null ? ((Number) request.get("member_id")).longValue() : null;
+            String paymentType = (String) request.get("payment_type");
+
+            Map<String, Object> result = zelleService.createTransaction(
+                    externalId, amount, paymentDate, note, memberId, paymentType, collectorId);
+            return ResponseEntity.ok(ApiResponse.success(result));
+        } catch (church.abunearegawi.backend.service.ZelleService.DuplicateTransactionException e) {
+            // Return 409 Conflict matching Node.js format
+            Map<String, Object> errorData = new java.util.LinkedHashMap<>();
+            errorData.put("id", e.getExistingId());
+            errorData.put("code", "EXISTS");
+            return ResponseEntity.status(409).body(ApiResponse.<Map<String, Object>>builder()
+                    .success(false)
+                    .message(e.getMessage())
+                    .data(errorData)
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.error("Failed to create transaction: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reconcile/batch-create")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> batchCreate(
+            @RequestBody Map<String, Object> request,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal church.abunearegawi.backend.security.FirebaseUserDetails userDetails) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> items = (List<Map<String, Object>>) request.get("items");
+            if (items == null || items.isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Items list is required"));
+            }
+
+            Long collectorId = userDetails != null ? userDetails.getMemberId() : null;
+            if (collectorId == null) return ResponseEntity.status(401).body(ApiResponse.error("Collector ID not found"));
+
+            List<Map<String, Object>> results = zelleService.batchCreateFromMaps(items, collectorId);
+
+            Map<String, Object> response = new java.util.LinkedHashMap<>();
+            response.put("results", results);
+            return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(ApiResponse.error("Failed to batch create transactions: " + e.getMessage()));
         }

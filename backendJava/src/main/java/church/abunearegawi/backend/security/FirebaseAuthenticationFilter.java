@@ -66,6 +66,16 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
                     log.warn("BYPASSING AUTH: Demo Mode active for email: {}", demoEmail);
                     Optional<Member> memberOpt = memberRepository.findByEmail(demoEmail);
 
+                    // Fallback: try phone lookup from X-Demo-Phone header or default demo phone
+                    if (memberOpt.isEmpty()) {
+                        String demoPhone = request.getHeader("X-Demo-Phone");
+                        if (demoPhone == null || demoPhone.isEmpty()) {
+                            demoPhone = "+14699078229"; // Default demo admin phone
+                        }
+                        log.warn("Demo Mode: Email lookup failed, trying phone: {}", demoPhone);
+                        memberOpt = memberRepository.findByPhoneNumber(demoPhone);
+                    }
+
                     if (memberOpt.isPresent()) {
                         Member member = memberOpt.get();
                         FirebaseUserDetails userDetails = new FirebaseUserDetails(member);

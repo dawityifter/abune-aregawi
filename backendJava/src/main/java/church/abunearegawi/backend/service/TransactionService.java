@@ -95,8 +95,40 @@ public class TransactionService {
                 transactionRepository.deleteById(id);
         }
 
-        // Manual DTO mapping (will be replaced by MapStruct later)
+        // Manual DTO mapping
         public TransactionDTO toDTO(Transaction t) {
+                // Build snake_case member map matching Node.js Sequelize output
+                java.util.Map<String, Object> memberMap = null;
+                if (t.getMember() != null) {
+                        memberMap = new java.util.LinkedHashMap<>();
+                        memberMap.put("id", t.getMember().getId());
+                        memberMap.put("first_name", t.getMember().getFirstName());
+                        memberMap.put("last_name", t.getMember().getLastName());
+                        memberMap.put("email", t.getMember().getEmail());
+                        memberMap.put("phone_number", t.getMember().getPhoneNumber());
+                }
+
+                // Build snake_case collector map
+                java.util.Map<String, Object> collectorMap = null;
+                if (t.getCollector() != null) {
+                        collectorMap = new java.util.LinkedHashMap<>();
+                        collectorMap.put("id", t.getCollector().getId());
+                        collectorMap.put("first_name", t.getCollector().getFirstName());
+                        collectorMap.put("last_name", t.getCollector().getLastName());
+                        collectorMap.put("email", t.getCollector().getEmail());
+                        collectorMap.put("phone_number", t.getCollector().getPhoneNumber());
+                }
+
+                // Build incomeCategory map
+                java.util.Map<String, Object> incomeCategoryMap = null;
+                if (t.getIncomeCategory() != null) {
+                        incomeCategoryMap = new java.util.LinkedHashMap<>();
+                        incomeCategoryMap.put("id", t.getIncomeCategory().getId());
+                        incomeCategoryMap.put("gl_code", t.getIncomeCategory().getGlCode());
+                        incomeCategoryMap.put("name", t.getIncomeCategory().getName());
+                        incomeCategoryMap.put("description", t.getIncomeCategory().getDescription());
+                }
+
                 return new TransactionDTO(
                                 t.getId(),
                                 t.getPaymentType() != null ? t.getPaymentType().name() : null,
@@ -104,22 +136,23 @@ public class TransactionService {
                                 t.getPaymentDate(),
                                 null, // description
                                 t.getPaymentMethod() != null ? t.getPaymentMethod().name() : null,
-                                t.getReceiptNumber(), // correct field
+                                t.getReceiptNumber(),
                                 t.getMember() != null ? t.getMember().getId() : null,
-                                t.getMember() != null ? t.getMember().getFirstName() + " " + t.getMember().getLastName()
-                                                : null,
                                 t.getMember() != null
-                                                ? church.abunearegawi.backend.dto.MemberDTO.fromEntity(t.getMember(),
-                                                                false)
+                                                ? t.getMember().getFirstName() + " " + t.getMember().getLastName()
                                                 : null,
+                                memberMap,
+                                collectorMap,
                                 t.getDonation() != null ? t.getDonation().getId() : null,
                                 t.getIncomeCategory() != null ? t.getIncomeCategory().getId() : null,
                                 t.getIncomeCategory() != null ? t.getIncomeCategory().getName() : null,
+                                incomeCategoryMap,
                                 t.getCollector() != null ? t.getCollector().getId() : null,
                                 t.getCollector() != null
                                                 ? t.getCollector().getFirstName() + " " + t.getCollector().getLastName()
                                                 : null,
                                 t.getNote(),
+                                t.getStatus() != null ? t.getStatus().name() : null,
                                 t.getCreatedAt(),
                                 t.getUpdatedAt());
         }

@@ -35,14 +35,13 @@ public class OutreachController {
             @RequestBody Map<String, String> request,
             @AuthenticationPrincipal FirebaseUserDetails userDetails) {
         String note = request.get("note");
-        String welcomedBy = userDetails != null ? 
-            (userDetails.getMemberId() != null ? userDetails.getMemberId().toString() : 
-             (userDetails.getEmail() != null ? userDetails.getEmail() : "unknown")) : 
+        String welcomedBy = userDetails != null ?
+            (userDetails.getMemberId() != null ? userDetails.getMemberId().toString() :
+             (userDetails.getEmail() != null ? userDetails.getEmail() : "unknown")) :
             "unknown";
-        
+
         Outreach created = outreachService.create(memberId, note, welcomedBy);
         return ResponseEntity.created(URI.create("/api/members/" + memberId + "/outreach/" + created.getId()))
                 .body(ApiResponse.success(created));
     }
 }
-

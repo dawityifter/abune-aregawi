@@ -37,10 +37,9 @@ public class Employee {
     @Column(length = 100)
     private String position;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "employment_type", nullable = false)
     @Builder.Default
-    private EmploymentType employmentType = EmploymentType.PART_TIME;
+    private String employmentType = "part-time";
 
     @Column(length = 255)
     private String email;
@@ -63,9 +62,8 @@ public class Employee {
     @Column(name = "salary_amount", precision = 10, scale = 2)
     private BigDecimal salaryAmount;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "salary_frequency")
-    private SalaryFrequency salaryFrequency;
+    private String salaryFrequency;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
@@ -91,11 +89,6 @@ public class Employee {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    public enum EmploymentType {
-        FULL_TIME, PART_TIME, CONTRACT, VOLUNTEER
-    }
-
-    public enum SalaryFrequency {
-        WEEKLY, BI_WEEKLY, MONTHLY, ANNUAL, PER_SERVICE
-    }
+    // Employment types stored as lowercase strings in DB: full-time, part-time, contract, volunteer
+    // Salary frequencies stored as lowercase strings in DB: weekly, bi-weekly, monthly, annual, per-service
 }

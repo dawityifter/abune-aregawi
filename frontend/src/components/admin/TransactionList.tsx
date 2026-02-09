@@ -59,6 +59,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<string>('id');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Debounce search term to reduce API calls while typing
   useEffect(() => {
@@ -70,7 +72,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   useEffect(() => {
     fetchTransactions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentTypeFilter, paymentMethodFilter, dateRangeFilter, customStartDate, customEndDate, receiptNumberFilter, currentPage]);
+  }, [paymentTypeFilter, paymentMethodFilter, dateRangeFilter, customStartDate, customEndDate, receiptNumberFilter, currentPage, sortField, sortDirection]);
 
   // Fetch only when search is cleared or has at least 3 characters
   useEffect(() => {
@@ -103,7 +105,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     try {
       const params = new URLSearchParams({
         page: (currentPage - 1).toString(), // Spring is 0-indexed
-        size: '20' // Spring uses 'size' instead of 'limit'
+        size: '20', // Spring uses 'size' instead of 'limit'
+        sort: `${sortField},${sortDirection}`
       });
 
       if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
@@ -247,6 +250,23 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     }
 
     return donorInfo;
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+    setCurrentPage(1);
+  };
+
+  const SortIndicator = ({ field }: { field: string }) => {
+    if (sortField !== field) {
+      return <span className="ml-1 text-gray-300">&uarr;&darr;</span>;
+    }
+    return <span className="ml-1">{sortDirection === 'asc' ? '\u2191' : '\u2193'}</span>;
   };
 
   if (loading) {
@@ -397,17 +417,29 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.transactionId')}
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('id')}
+                >
+                  {t('treasurerDashboard.transactionList.table.transactionId')}<SortIndicator field="id" />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.date')}
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('paymentDate')}
+                >
+                  {t('treasurerDashboard.transactionList.table.date')}<SortIndicator field="paymentDate" />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.memberId')}
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('member.id')}
+                >
+                  {t('treasurerDashboard.transactionList.table.memberId')}<SortIndicator field="member.id" />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.member')}
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('member.firstName')}
+                >
+                  {t('treasurerDashboard.transactionList.table.member')}<SortIndicator field="member.firstName" />
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('treasurerDashboard.transactionList.table.amount')}

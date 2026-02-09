@@ -28,11 +28,7 @@ public class PaymentController {
     private final ReportService reportService;
     private final TransactionService transactionService;
 
-    @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'CHURCH_LEADERSHIP')")
-    public ResponseEntity<ApiResponse<PaymentStatsDTO>> getPaymentStats() {
-        return ResponseEntity.ok(ApiResponse.success(reportService.getPaymentStats()));
-    }
+
 
     @GetMapping("/weekly-report")
     @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'SECRETARY')")

@@ -5,6 +5,7 @@ import church.abunearegawi.backend.model.Member;
 import church.abunearegawi.backend.repository.MemberRepository;
 import church.abunearegawi.backend.repository.DependentRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MemberService {
@@ -136,8 +138,7 @@ public class MemberService {
                     try {
                         return church.abunearegawi.backend.dto.MemberDTO.fromEntity(member);
                     } catch (Throwable e) {
-                        System.out.println("❌ ERROR mapping member " + member.getId() + ": " + e.getMessage());
-                        // e.printStackTrace(System.out); // Optional: keep verbose off unless needed
+                        log.error("Error mapping member {}: {}", member.getId(), e.getMessage());
                         return null;
                     }
                 })
@@ -372,7 +373,7 @@ public class MemberService {
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Error updating roles: " + e.getMessage());
+                log.error("Error updating roles: {}", e.getMessage());
             }
         }
 

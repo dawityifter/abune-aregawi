@@ -24,7 +24,7 @@ server:
 
 app:
   # Demo mode (for testing without real Firebase tokens)
-  enable-demo-mode: false
+  enable-demo-mode: ${APP_ENABLE_DEMO_MODE:false}
   demo-token: MAGIC_DEMO_TOKEN
 
 logging:

@@ -22,8 +22,9 @@ public class VendorController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'SECRETARY')")
-    public ResponseEntity<ApiResponse<Page<Vendor>>> getAllVendors(Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(vendorService.findAll(pageable)));
+    public ResponseEntity<ApiResponse<java.util.List<Vendor>>> getAllVendors(
+            @RequestParam(name = "is_active", required = false) Boolean isActive) {
+        return ResponseEntity.ok(ApiResponse.success(vendorService.findAll(isActive)));
     }
 
     @GetMapping("/{id}")

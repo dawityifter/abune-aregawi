@@ -49,4 +49,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
         @Query(value = "SELECT CAST(receipt_number AS INTEGER) FROM transactions WHERE receipt_number ~ '^[0-9]+$' ORDER BY 1", nativeQuery = true)
         List<Integer> findAllReceiptNumbers();
+
+        @Query("SELECT t FROM Transaction t LEFT JOIN FETCH t.member WHERE t.amount = :amount AND t.paymentDate BETWEEN :startDate AND :endDate AND t.externalId IS NULL")
+        List<Transaction> findByAmountAndDateRange(
+                        @Param("amount") java.math.BigDecimal amount,
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate);
 }

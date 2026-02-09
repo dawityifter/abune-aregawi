@@ -34,6 +34,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
                         .requestMatchers("/api/ready", "/api/health", "/api/members/register", "/api/departments",
+                                "/api/members/titles", "/api/members/check-phone/**",
                                 "/api/members/profile/firebase/**", "/api/youtube/**")
                         .permitAll()
                         // All other API endpoints require authentication
