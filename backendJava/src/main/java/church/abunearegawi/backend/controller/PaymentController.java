@@ -1,7 +1,6 @@
 package church.abunearegawi.backend.controller;
 
 import church.abunearegawi.backend.dto.ApiResponse;
-import church.abunearegawi.backend.dto.PaymentStatsDTO;
 
 import church.abunearegawi.backend.dto.TransactionDTO;
 import church.abunearegawi.backend.model.Member;

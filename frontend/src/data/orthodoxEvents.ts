@@ -57,7 +57,7 @@ export const MAJOR_FEASTS_LIST = [
     { title: "Hosanna (Palm Sunday)", titleTi: "ሆሳእና" },
     { title: "Siklet (Good Friday)", titleTi: "ስቅለት" },
     { title: "Fasika (Easter)", titleTi: "ትንሳኤ" },
-    { title: "Beale Urget (Ascension)", titleTi: "ዕርገት" },
+    { title: "Ascension of the lord (Beale Erget)", titleTi: "ዕርገት" },
     { title: "Pentecost (Paracletos)", titleTi: "ጰራቅሊጦስ" },
     { title: "Beale Transfiguration", titleTi: "ደብረ ታቦር" },
     { title: "Annunciation (His Conception)", titleTi: "በስራት" }
@@ -239,7 +239,7 @@ export const ORTHODOX_EVENTS_2025: CalendarEvent[] = [
     },
     {
         date: '2025-05-29',
-        title: 'Beale Urget (Ascension)',
+        title: 'Ascension of the Lord (Beale Erget)',
         titleTi: 'በዓለ ዕርገት',
         type: 'major_feast',
         isMajor: true

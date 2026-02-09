@@ -4,8 +4,6 @@ import church.abunearegawi.backend.dto.ApiResponse;
 import church.abunearegawi.backend.model.Vendor;
 import church.abunearegawi.backend.service.VendorService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
