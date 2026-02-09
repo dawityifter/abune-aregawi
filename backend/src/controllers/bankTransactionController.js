@@ -156,17 +156,22 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
     const enrichedRows = await Promise.all(rows.map(async (txn) => {
         const plain = txn.get({ plain: true });
         if (txn.status === 'PENDING') {
-            // 1. Suggest Member Match
-            const suggestion = await suggestMatch(plain);
-            if (suggestion) {
-                plain.suggested_match = suggestion;
-            }
+            try {
+                // 1. Suggest Member Match
+                const suggestion = await suggestMatch(plain);
+                if (suggestion) {
+                    plain.suggested_match = suggestion;
+                }
 
-            // 2. Find Potential System Duplicates (Matches)
-            const { findPotentialMatches } = require('../services/reconciliationService');
-            const potentialMatches = await findPotentialMatches(plain);
-            if (potentialMatches && potentialMatches.length > 0) {
-                plain.potential_matches = potentialMatches;
+                // 2. Find Potential System Duplicates (Matches)
+                const { findPotentialMatches } = require('../services/reconciliationService');
+                const potentialMatches = await findPotentialMatches(plain);
+                if (potentialMatches && potentialMatches.length > 0) {
+                    plain.potential_matches = potentialMatches;
+                }
+            } catch (err) {
+                console.error(`Error enriching transaction ${txn.id}:`, err.message);
+                // Continue without enrichment to avoid blocking list loading
             }
         }
         return plain;
@@ -224,111 +229,70 @@ exports.reconcileTransaction = asyncHandler(async (req, res) => {
         throw new Error('Member ID or Existing Transaction ID required for matching');
     }
 
-    // 1. Create OR Link Donation (Transaction record)
-    let donation;
-
-    if (existing_transaction_id) {
-        // LINK to existing
-        donation = await Transaction.findByPk(existing_transaction_id);
-        if (!donation) {
-            res.status(404);
-            throw new Error('Existing transaction not found');
-        }
-
-        // Link them
-        donation.external_id = txn.transaction_hash;
-        // Optionally update status if it was pending
-        if (donation.status !== 'succeeded') {
-            donation.status = 'succeeded';
-        }
-        await donation.save();
-    } else {
-        // CREATE new
-        donation = await Transaction.create({
-            member_id,
-            collected_by: req.user.id,
-            amount: txn.amount,
-            payment_date: txn.date,
-            payment_type: payment_type || 'donation', // Default to donation
-            payment_method: txn.type.includes('ZELLE') ? 'zelle' : (txn.type.includes('CHECK') ? 'check' : 'ach'),
-            status: 'succeeded',
-            note: txn.description,
-            external_id: txn.transaction_hash
-        });
-    }
-
-    // 2. Link BankTransaction
-    txn.status = 'MATCHED';
-    txn.member_id = member_id || donation.member_id; // Use existing donation member_id if linking
-    await txn.save();
-
-    // 3. Learn (Save to ZelleMemoMatch)
-    let cleanMemo = txn.description;
-    if (txn.type.includes('ZELLE') || txn.description.startsWith('Zelle')) {
-        cleanMemo = txn.description.replace(/^Zelle payment from\s+/i, '').replace(/\s+\d+$/, '').trim();
-    } else {
-        // Generic cleanup
-        cleanMemo = cleanMemo.replace(/^CHECK\s+\d+\s+/i, '')
-            .replace(/ORIG CO NAME:/i, '').replace(/IND NAME:/i, '')
-            .replace(/\d{1,2}\/\d{1,2}\/\d{2,4}/g, '')
-            .replace(/\s+\d{6,}$/, '')
-            .trim();
-    }
-
-    if (cleanMemo && cleanMemo.length > 2 && member_id) { // Only learn if we have a direct member association
-        const existingMatch = await ZelleMemoMatch.findOne({
-            where: sequelize.where(sequelize.fn('lower', sequelize.col('memo')), cleanMemo.toLowerCase())
-        });
-
-        if (!existingMatch) {
-            await ZelleMemoMatch.create({
-                member_id,
-                memo: cleanMemo
-            });
-        }
-    }
-
-    // 4. Create/Sync Ledger Entry
     try {
-        const pType = donation.payment_type || payment_type || 'donation';
-        const incomeCategory = await IncomeCategory.findOne({
-            where: { payment_type_mapping: pType }
-        });
-        const glCode = incomeCategory?.gl_code || 'INC999';
-        const memo = `${glCode} - Bank reconciliation match ${txn.transaction_hash}`;
-
-        // Find existing or create new
-        const [ledgerEntry, created] = await LedgerEntry.findOrCreate({
-            where: { transaction_id: donation.id },
-            defaults: {
-                type: pType,
-                category: glCode,
-                amount: parseFloat(donation.amount),
-                entry_date: donation.payment_date,
-                member_id: donation.member_id,
-                payment_method: donation.payment_method,
-                memo: memo,
-                transaction_id: donation.id,
-                external_id: txn.transaction_hash
-            }
+        const { processReconciliation } = require('../services/reconciliationService');
+        const results = await processReconciliation({
+            bankTxnId: transaction_id,
+            memberId: member_id,
+            paymentType: payment_type,
+            user: req.user,
+            existingTransactionId: existing_transaction_id,
+            forYear: req.body.for_year // Pass year override if provided
         });
 
-        if (!created) {
-            await ledgerEntry.update({
-                type: pType,
-                category: glCode,
-                amount: parseFloat(donation.amount),
-                entry_date: donation.payment_date,
-                member_id: donation.member_id,
-                payment_method: donation.payment_method,
-                memo: memo,
-                external_id: txn.transaction_hash
-            });
-        }
-        console.log(`✅ ${created ? 'Created' : 'Updated'} ledger entry for bank transaction ${txn.id}`);
-    } catch (ledgerErr) {
-        console.error('⚠️ Failed to sync ledger entry for bank reconciliation:', ledgerErr.message);
+        res.json({ success: true, ...results });
+    } catch (error) {
+        console.error('Reconciliation error:', error);
+        res.status(500);
+        throw new Error(error.message);
+    }
+});
+
+/**
+ * @desc    Bulk reconcile bank transactions
+ * @route   POST /api/bank/reconcile-bulk
+ * @access  Private (Treasurer)
+ */
+exports.reconcileBulkTransactions = asyncHandler(async (req, res) => {
+    const { transaction_ids, member_id, payment_type } = req.body;
+
+    if (!Array.isArray(transaction_ids) || transaction_ids.length === 0) {
+        res.status(400);
+        throw new Error('Transaction IDs array required');
     }
 
-    res.json({ success: true, txn, donation });
+    if (!member_id) {
+        res.status(400);
+        throw new Error('Member ID required for bulk matching');
+    }
+
+    const { processReconciliation } = require('../services/reconciliationService');
+
+    const results = {
+        success: [],
+        errors: []
+    };
+
+    for (const id of transaction_ids) {
+        try {
+            await processReconciliation({
+                bankTxnId: id,
+                memberId: member_id,
+                paymentType: payment_type,
+                user: req.user,
+                forYear: req.body.for_year // Pass year override
+            });
+            results.success.push(id);
+        } catch (error) {
+            console.error(`Failed to reconcile txn ${id}:`, error);
+            results.errors.push({ id, message: error.message });
+        }
+    }
+
+    res.json({
+        success: true,
+        message: `Processed ${transaction_ids.length} items. Success: ${results.success.length}, Errors: ${results.errors.length}`,
+        data: results
+    });
 });
+

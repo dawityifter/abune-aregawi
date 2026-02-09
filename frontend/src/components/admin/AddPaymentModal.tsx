@@ -56,6 +56,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   // New transaction fields
   const [paymentDate, setPaymentDate] = useState('');
   const [paymentType, setPaymentType] = useState(initialPaymentType || '');
+  const [forYear, setForYear] = useState('');
   const [receiptNumber, setReceiptNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [submissionId, setSubmissionId] = useState('');
@@ -320,6 +321,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           payment_type: paymentType,
           payment_method: paymentMethod,
           receipt_number: receiptNumber,
+          for_year: forYear ? parseInt(forYear) : null,
           note: notes,
           external_id: submissionId
         };
@@ -686,6 +688,37 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                   </select>
                 </div>
 
+                {paymentType === 'membership_due' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Year (Optional)
+                    </label>
+                    <select
+                      value={forYear}
+                      onChange={(e) => setForYear(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Default (Auto)</option>
+                      {/* Dynamic Year List: 2025 to CurrentYear - 1 */}
+                      {(() => {
+                        const currentYear = new Date().getFullYear();
+                        const minYear = 2025;
+                        const maxYear = currentYear - 1;
+                        const yearOptions = [];
+                        for (let y = maxYear; y >= minYear; y--) {
+                          yearOptions.push(y);
+                        }
+                        return yearOptions.map(y => (
+                          <option key={y} value={String(y)}>{y}</option>
+                        ));
+                      })()}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Use this to pay for a past year's dues.
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Income Category (GL Code)
@@ -781,6 +814,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                                   external_id: result?.payment_intent_id,
                                   donation_id: result?.donation_id,
                                   receipt_number: receiptNumber,
+                                  for_year: forYear ? parseInt(forYear) : null,
                                   note: notes,
                                   ...(selectedIncomeCategoryId && { income_category_id: parseInt(selectedIncomeCategoryId) })
                                 })

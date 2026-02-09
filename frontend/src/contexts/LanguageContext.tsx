@@ -7,7 +7,7 @@ interface LanguageContextType {
   language: Language;
   currentLanguage: Language; // Alias for language for better compatibility
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, any>) => string;
 }
 
 export const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -530,6 +530,28 @@ const translations = {
     'treasurer.skippedReceipts.note': 'It is important to enter every receipt to maintain accurate financial records.',
     'treasurer.skippedReceipts.close': 'Close',
 
+    // Treasurer Stats
+    'treasurerDashboard.stats.currentBalance': 'Current Bank Balance',
+    'treasurerDashboard.stats.lastUpdated': 'Last Updated',
+    'treasurerDashboard.stats.netIncome': 'Net Income',
+    'treasurerDashboard.stats.totalCollected': 'Total Revenue',
+    'treasurerDashboard.stats.totalExpenses': 'Total Expenses',
+    'treasurerDashboard.stats.collectionProgress': 'Dues & Pledges Progress',
+    'treasurerDashboard.stats.collectionRate': 'Collection Rate',
+
+    // New Keys for Treasurer Dashboard
+    'treasurerDashboard.tabs.bank': 'Bank Integration',
+    'treasurerDashboard.bank.title': 'Bank Reconciliation',
+    'treasurerDashboard.bank.subtitle': 'Upload Chase CSVs and match transactions to members.',
+    'treasurerDashboard.health.title': 'Membership Health',
+    'treasurerDashboard.health.activeGivers': 'Active Givers',
+    'treasurerDashboard.health.totalMembers': 'of {count} Total Members',
+    'treasurerDashboard.health.upToDate': 'Up to Date',
+    'treasurerDashboard.health.behind': 'Behind',
+    'treasurerDashboard.stats.membershipDues': 'Membership Dues',
+    'treasurerDashboard.stats.otherDonations': 'Other Donations',
+    'treasurerDashboard.stats.target': 'Target',
+
 
   },
   ti: {
@@ -798,6 +820,28 @@ const translations = {
     'roles.member': 'ኣባል',
     'priest.bio': 'ንምእመናንና ብጥበብ፣ ትሕትናን ጽኑዕ እምነትን ይመርሑ። ንማሕበረሰብና ብጸሎት፣ ትምህርትን መንፈሳዊ መሪሕነትን የገልግሉ።',
     'board.currentMembers': 'ናይ ሕዚ ቦርድ ኣባላት',
+
+    // Treasurer Stats
+    'treasurerDashboard.stats.currentBalance': 'ናይ ባንክ ሂሳብ',
+    'treasurerDashboard.stats.lastUpdated': 'መወዳእታ ዝተመሓየሸ',
+    'treasurerDashboard.stats.netIncome': 'ዝተረፈ ኣታዊ',
+    'treasurerDashboard.stats.totalCollected': 'ጠቕላላ ኣታዊ',
+    'treasurerDashboard.stats.totalExpenses': 'ጠቕላላ ወጻኢ',
+    'treasurerDashboard.stats.collectionProgress': 'ሂደት ምእካብ',
+    'treasurerDashboard.stats.collectionRate': 'ምእካብ መጠነ',
+
+    // New Keys for Treasurer Dashboard (Tigrinya)
+    'treasurerDashboard.tabs.bank': 'ባንክ ምስምማዕ',
+    'treasurerDashboard.bank.title': 'ባንክ ምስምማዕ',
+    'treasurerDashboard.bank.subtitle': 'ናይ Chase CSV ጽዓን እሞ ምስ ኣባላት ኣዛምድ።',
+    'treasurerDashboard.health.title': 'ቅዋም ኣባላት',
+    'treasurerDashboard.health.activeGivers': 'ንጡፋት ወፈይቲ',
+    'treasurerDashboard.health.totalMembers': 'ካብ {count} ጠቕላላ ኣባላት',
+    'treasurerDashboard.health.upToDate': 'ወቅታዊ ዝኾኑ',
+    'treasurerDashboard.health.behind': 'ዝተረፎም',
+    'treasurerDashboard.stats.membershipDues': 'ክፍሊት ኣባላት',
+    'treasurerDashboard.stats.otherDonations': 'ካልኦት ወፈያታት',
+    'treasurerDashboard.stats.target': 'ሸቶ',
     'board.volunteer.title': 'ንምግልጋል ተጸውዕኩምዶ?',
     'board.volunteer.desc': 'ቤተ ክርስቲያንና ኣብ ተወፉይነት ኣባላትና እያ ትምርኮስ። ኣብ ኮሚተ ንምስታፍ ወይ ንዝመጽእ ግዜ ንቦርድ ንምወዳደር ድሌት እንተለኩም፣ በጃኹም ተወከሱና።',
     'board.volunteer.action': 'ተሳትፉ',
@@ -980,7 +1024,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     setLang(newLang);
   };
 
-  const t = (key: string): string => {
+  const t = (key: string, params?: Record<string, any>): string => {
     // 1. Try global dictionary (dictionaries.ts) via i18n provider
     // The i18nT function returns the key if not found.
     const globalMatch = i18nT(key);
@@ -1003,10 +1047,30 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
 
     // 4. Last resort: convert dotted key to readable text
-    return key
-      .split('.')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+    if (!globalMatch || globalMatch === key) {
+      let translation = key
+        .split('.')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      // Perform interpolation if params are provided
+      if (params) {
+        Object.entries(params).forEach(([paramKey, paramValue]) => {
+          translation = translation.replace(new RegExp(`{${paramKey}}`, 'g'), String(paramValue));
+        });
+      }
+      return translation;
+    }
+
+    // Perform interpolation if params are provided for looked-up values
+    let finalTranslation = globalMatch;
+    if (params) {
+      Object.entries(params).forEach(([paramKey, paramValue]) => {
+        finalTranslation = finalTranslation.replace(new RegExp(`{${paramKey}}`, 'g'), String(paramValue));
+      });
+    }
+
+    return finalTranslation;
   };
 
   // We rely on I18nProvider to handle localStorage persistence

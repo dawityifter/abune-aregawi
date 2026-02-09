@@ -58,39 +58,46 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [searching, setSearching] = useState(false);
 
-    // Member Search Logic
+    // Search effect
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
-            if (searchTerm.length < 3) {
+            if (!searchTerm || searchTerm.length < 3) {
                 setSearchResults([]);
                 return;
             }
 
-            setSearching(true);
             try {
+                setSearching(true);
                 const token = await firebaseUser?.getIdToken();
                 const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
                 const res = await fetch(`${apiUrl}/api/members/search?q=${encodeURIComponent(searchTerm)}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+
                 const data = await res.json();
                 if (data.success) {
-                    setSearchResults(data.data);
+                    setSearchResults(data.data.results);
                 }
-            } catch (err) {
-                console.error("Search failed", err);
+            } catch (error) {
+                console.error("Search error:", error);
+                setSearchResults([]);
             } finally {
                 setSearching(false);
             }
-        }, 500);
+        }, 300);
 
         return () => clearTimeout(delayDebounceFn);
     }, [searchTerm, firebaseUser]);
 
+    // Multi-select state
+    const [selectedTxnIds, setSelectedTxnIds] = useState<number[]>([]);
+    const [isBulkMode, setIsBulkMode] = useState(false);
+
     const paymentTypes = [
         { value: 'donation', label: 'Donation (General)' },
         { value: 'tithe', label: 'Tithe (አስራት)' },
-        { value: 'membership_due', label: 'Membership Due (ወርहዊ ክፍያ)' },
+        { value: 'membership_due', label: 'Membership Due (ወርhዊ ክፍያ)' },
         { value: 'offering', label: 'Offering (መባእ)' },
         { value: 'building_fund', label: 'Building Fund (ንሕንጻ)' },
         { value: 'event', label: 'Event / Fundraising (ንበዓል)' },
@@ -142,6 +149,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     useEffect(() => {
         const handleRefresh = () => {
             setPage(1); // Reset to first page on refresh
+            setSelectedTxnIds([]); // Clear selection on refresh
             fetchTransactions();
         };
         window.addEventListener('bank:refresh', handleRefresh);
@@ -152,140 +160,12 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
     };
 
-    // Batch Selection Logic
-    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-    const [batchLoading, setBatchLoading] = useState(false);
+    const [selectedForYear, setSelectedForYear] = useState<number | ''>(''); // Year override state
 
-    const toggleSelection = (id: number) => {
-        const newSet = new Set(selectedIds);
-        if (newSet.has(id)) newSet.delete(id);
-        else newSet.add(id);
-        setSelectedIds(newSet);
-    };
+    // ... existing code ...
 
-    const toggleSelectAll = () => {
-        if (selectedIds.size === transactions.filter(t => t.status === 'PENDING').length && selectedIds.size > 0) {
-            setSelectedIds(new Set());
-        } else {
-            const pendingIds = transactions.filter(t => t.status === 'PENDING').map(t => t.id);
-            setSelectedIds(new Set(pendingIds));
-        }
-    };
-
-    const handleBatchReconcile = async () => {
-        if (selectedIds.size === 0) return;
-        if (!window.confirm(`Are you sure you want to reconcile ${selectedIds.size} transactions? This will attempt to auto-match using suggestions or default to 'donation'.`)) return;
-
-        setBatchLoading(true);
-        try {
-            const token = await firebaseUser?.getIdToken();
-            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-
-            const items = Array.from(selectedIds).map(id => {
-                const txn = transactions.find(t => t.id === id);
-                if (!txn) return null;
-
-                const payload: any = { transaction_id: id };
-                if (txn.suggested_match) {
-                    payload.member_id = txn.suggested_match.member.id;
-                    payload.payment_type = txn.suggested_match.type || 'donation';
-                } else {
-                    // No match? We can't really reconcile without a member unless we want to mark it as... processed?
-                    // Or maybe we just send it and let backend fail/default?
-                    // Currently checking backend logic: logic says "Either Member ID or Manual Donor Name must be provided."
-                    // So if we send just ID, it will fail.
-                    // Filter out items without suggestion?
-                    // Or maybe for batch, we ONLY process suggested matches?
-                    // Let's assume for now we only process ones with suggestions OR we error out?
-                    // Let's send what we have. If backend fails, the batch fails.
-                }
-                // Determine 'donation' default if missing
-                if (!payload.payment_type) payload.payment_type = 'donation';
-
-                return payload;
-            }).filter(p => p !== null);
-
-            // Filter out items that are invalid (no member_id and no manual donor)
-            // Ideally we tell user "X items skipped due to no match".
-            const validItems = items.filter(i => i.member_id || i.manual_donor_name);
-
-            if (validItems.length === 0) {
-                alert("No valid matches found in selection. Please link members manually first or ensure suggestions exist.");
-                setBatchLoading(false);
-                return;
-            }
-
-            if (validItems.length < items.length) {
-                if (!window.confirm(`Only ${validItems.length} of ${items.length} selected items have suggested matches. Proceed with valid ones?`)) {
-                    setBatchLoading(false);
-                    return;
-                }
-            }
-
-            const res = await fetch(`${apiUrl}/api/bank/reconcile/batch`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ items: validItems })
-            });
-
-            if (res.ok) {
-                alert(`Successfully processed ${validItems.length} transactions.`);
-                setSelectedIds(new Set());
-                fetchTransactions();
-                window.dispatchEvent(new CustomEvent('payments:refresh'));
-            } else {
-                const err = await res.json();
-                alert(`Batch failed: ${err.message || 'Unknown error'}`);
-            }
-        } catch (err) {
-            console.error(err);
-            alert("Error processing batch.");
-        } finally {
-            setBatchLoading(false);
-        }
-    };
-
-    // Updated Link Modal State
-    const [manualDonorName, setManualDonorName] = useState('');
-    const [manualDonorType, setManualDonorType] = useState('Individual');
-    const [manualMode, setManualMode] = useState(false);
-
-    const openLinkModal = (txn: BankTransaction) => {
-        setTxnToLink(txn);
-        setSearchTerm('');
-        setSearchResults([]);
-        setSelectedPaymentType('donation');
-        setManualMode(false);
-        setManualDonorName('');
-        setManualDonorType('Individual');
-        setShowLinkModal(true);
-    };
-
-    const handleLinkSubmit = async () => {
-        if (!txnToLink) return;
-
-        // Manual Mode
-        if (manualMode) {
-            if (!manualDonorName.trim()) {
-                alert("Please enter a donor name.");
-                return;
-            }
-            if (!window.confirm(`Link ${txnToLink.description} to Manual Donor '${manualDonorName}' (${manualDonorType}) as ${selectedPaymentType}?`)) return;
-
-            await handleReconcile(txnToLink, undefined, selectedPaymentType, undefined, manualDonorName, manualDonorType);
-            setShowLinkModal(false);
-            setTxnToLink(null);
-            return;
-        }
-
-        // Member Search Mode (handled by onClick in list)
-    };
-
-    const handleReconcile = async (txn: BankTransaction, memberId?: number, paymentType: string = 'donation', existingTransactionId?: number, manualDonor?: string, manualDonorType?: string) => {
-        if (!memberId && !existingTransactionId && !manualDonor) return;
+    const handleReconcile = async (txn: BankTransaction, memberId?: number, paymentType: string = 'donation', existingTransactionId?: number) => {
+        if (!memberId && !existingTransactionId) return;
 
         try {
             const token = await firebaseUser?.getIdToken();
@@ -300,9 +180,11 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                 payload.existing_transaction_id = existingTransactionId;
             } else if (memberId) {
                 payload.member_id = memberId;
-            } else if (manualDonor) {
-                payload.manual_donor_name = manualDonor;
-                payload.manual_donor_type = manualDonorType || 'Individual';
+            }
+
+            // Allow override year or use txn date year as default (backend handles null, but good to be explicit if user selected one)
+            if (selectedForYear) {
+                payload.for_year = selectedForYear;
             }
 
             const res = await fetch(`${apiUrl}/api/bank/reconcile`, {
@@ -325,6 +207,55 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         }
     };
 
+    const handleBulkReconcile = async (member: any) => {
+        if (selectedTxnIds.length === 0) return;
+        if (!window.confirm(`Link ${selectedTxnIds.length} transactions to ${member.name} as ${selectedPaymentType}?`)) return;
+
+        try {
+            const token = await firebaseUser?.getIdToken();
+            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+
+            const payload: any = {
+                transaction_ids: selectedTxnIds,
+                member_id: member.id,
+                payment_type: selectedPaymentType
+            };
+
+            if (selectedForYear) {
+                payload.for_year = selectedForYear;
+            }
+
+            const res = await fetch(`${apiUrl}/api/bank/reconcile-bulk`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                // Clear selection
+                setSelectedTxnIds([]);
+                setIsBulkMode(false);
+                setShowLinkModal(false);
+                fetchTransactions();
+                window.dispatchEvent(new CustomEvent('payments:refresh'));
+
+                if (data.data.errors.length > 0) {
+                    alert(`Completed with some errors: ${data.data.errors.length} failed.`);
+                }
+            } else {
+                alert('Failed to bulk reconcile: ' + (data.message || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error processing bulk reconciliation');
+        }
+    };
+
     // --- Modal Logic ---
 
     // Open Confirm Modal (for suggested matches)
@@ -332,6 +263,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         setTxnToLink(txn);
         setMatchCandidate(candidate);
         setSelectedPaymentType('donation'); // Default
+        setSelectedForYear(''); // Reset year
         setShowConfirmModal(true);
     };
 
@@ -341,25 +273,41 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         setShowConfirmModal(false);
         setTxnToLink(null);
         setMatchCandidate(null);
+        setSelectedForYear('');
     };
 
-    const handleManualReconcile = (member: any) => {
-        if (!txnToLink) return;
-
-        // Prepare matched candidate for confirmation modal
-        // Note: Search results use camelCase (firstName), but ConfirmModal expects snake_case (first_name)
-        setMatchCandidate({
-            member: {
-                id: member.id,
-                first_name: member.firstName,
-                last_name: member.lastName
-            }
-        });
-
-        // Switch from Link Modal to Confirm Modal
-        setShowLinkModal(false);
-        setShowConfirmModal(true);
+    const openLinkModal = (txn?: BankTransaction) => {
+        if (txn) {
+            // Single mode
+            setTxnToLink(txn);
+            setIsBulkMode(false);
+        } else {
+            // Bulk mode
+            setIsBulkMode(true);
+            setTxnToLink(null); // No single txn
+        }
+        setSearchTerm('');
+        setSearchResults([]);
+        setSelectedPaymentType('donation'); // Default
+        setSelectedForYear(''); // Reset year
+        setShowLinkModal(true);
     };
+
+    const handleManualReconcile = async (member: any) => {
+        if (isBulkMode) {
+            await handleBulkReconcile(member);
+        } else {
+            if (!txnToLink) return;
+            // Rename confirmation text as requested: "Link and Add Transaction" implies adding to system
+            if (!window.confirm(`Link and Add Transaction: ${txnToLink.description} to ${member.name} as ${selectedPaymentType}?`)) return;
+
+            await handleReconcile(txnToLink, member.id, selectedPaymentType);
+            setShowLinkModal(false);
+            setTxnToLink(null);
+        }
+    };
+
+    const currentYear = new Date().getFullYear();
 
     return (
         <div className="space-y-4">
@@ -374,22 +322,9 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
             </div>
 
             <div className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-wrap gap-4">
-                    <div className="flex items-center space-x-4">
-                        <h3 className="text-lg font-medium text-gray-900">Bank Transactions</h3>
-                        {selectedIds.size > 0 && (
-                            <button
-                                onClick={handleBatchReconcile}
-                                disabled={batchLoading}
-                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-                            >
-                                {batchLoading ? 'Processing...' : `Process Selected (${selectedIds.size})`}
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Filters */}
-                    <div className="flex space-x-2 flex-wrap gap-y-2">
+                <div className="p-4 border-b border-gray-200 flex flex-col xl:flex-row justify-between items-center bg-gray-50 gap-4">
+                    <h3 className="text-lg font-medium text-gray-900">Bank Transactions</h3>
+                    <div className="flex flex-wrap gap-2 items-center">
                         <input
                             type="text"
                             placeholder="Search description..."
@@ -431,6 +366,14 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                             <option value="MATCHED">Matched</option>
                             <option value="IGNORED">Ignored</option>
                         </select>
+                        {selectedTxnIds.length > 0 && (
+                            <button
+                                onClick={() => openLinkModal()}
+                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+                            >
+                                Link {selectedTxnIds.length} Transactions
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -438,12 +381,19 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-center">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     <input
                                         type="checkbox"
-                                        onChange={toggleSelectAll}
-                                        checked={selectedIds.size > 0 && selectedIds.size === transactions.filter(t => t.status === 'PENDING').length}
-                                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                                        checked={transactions.length > 0 && selectedTxnIds.length === transactions.filter(t => t.status === 'PENDING').length}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                const allPending = transactions.filter(t => t.status === 'PENDING').map(t => t.id);
+                                                setSelectedTxnIds(allPending);
+                                            } else {
+                                                setSelectedTxnIds([]);
+                                            }
+                                        }}
+                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                     />
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -463,13 +413,19 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                             ) : (
                                 transactions.map((txn) => (
                                     <tr key={txn.id} className={txn.status === 'PENDING' ? 'bg-yellow-50' : ''}>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                        <td className="px-6 py-4 whitespace-nowrap">
                                             {txn.status === 'PENDING' && (
                                                 <input
                                                     type="checkbox"
-                                                    checked={selectedIds.has(txn.id)}
-                                                    onChange={() => toggleSelection(txn.id)}
-                                                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                                                    checked={selectedTxnIds.includes(txn.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedTxnIds(prev => [...prev, txn.id]);
+                                                        } else {
+                                                            setSelectedTxnIds(prev => prev.filter(id => id !== txn.id));
+                                                        }
+                                                    }}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                                 />
                                             )}
                                         </td>
@@ -497,7 +453,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
                                                 ${txn.status === 'MATCHED' ? 'bg-green-100 text-green-800' :
                                                     txn.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
                                                         'bg-gray-100 text-gray-800'}`}>
@@ -525,7 +481,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                                                     disabled={!['ZELLE', 'OTHER'].includes((txn.type || '').toUpperCase())}
                                                                     title={!['ZELLE', 'OTHER'].includes((txn.type || '').toUpperCase()) ? "Only available for Zelle or Other types" : "Link to member"}
                                                                 >
-                                                                    Link Member
+                                                                    Link and Add Transaction
                                                                 </button>
                                                             )}
                                                         </>
@@ -566,7 +522,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
             </div>
 
             {/* Manual Link Modal */}
-            {showLinkModal && txnToLink && (
+            {showLinkModal && (txnToLink || isBulkMode) && (
                 <div className="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowLinkModal(false)}></div>
@@ -576,120 +532,95 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                 <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
                                     Link Transaction to Donor
                                 </h3>
-                                <div className="mt-2">
+                                <div className="mt-2 text-sm text-gray-500">
+                                    <div className="mb-4 text-xs bg-blue-50 p-2 rounded text-blue-700">
+                                        Select "Membership Due" and specify a Year to apply this payment to a specific year's balance.
+                                    </div>
                                     <p className="text-sm text-gray-500 mb-4">
-                                        Transaction: <strong>{txnToLink.description}</strong><br />
-                                        Amount: {formatCurrency(txnToLink.amount)}
+                                        {isBulkMode ? (
+                                            <strong>Linking {selectedTxnIds.length} transactions</strong>
+                                        ) : (
+                                            <>
+                                                Transaction: <strong>{txnToLink?.description}</strong><br />
+                                                Amount: {txnToLink && formatCurrency(txnToLink.amount)}
+                                            </>
+                                        )}
                                     </p>
 
-                                    <div className="mb-4">
-                                        <label className="block text-sm font-medium text-gray-700">Payment Type</label>
-                                        <select
-                                            value={selectedPaymentType}
-                                            onChange={(e) => setSelectedPaymentType(e.target.value)}
-                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
-                                        >
-                                            {paymentTypes.map(type => (
-                                                <option key={type.value} value={type.value}>{type.label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Link Mode Toggles */}
-                                    <div className="flex space-x-2 mb-4 border-b border-gray-200 pb-2">
-                                        <button
-                                            className={`px-3 py-1 text-sm font-medium rounded-t-md ${!manualMode ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'}`}
-                                            onClick={() => setManualMode(false)}
-                                        >
-                                            Link to Member
-                                        </button>
-                                        <button
-                                            className={`px-3 py-1 text-sm font-medium rounded-t-md ${manualMode ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'}`}
-                                            onClick={() => setManualMode(true)}
-                                        >
-                                            Manual Entry (Anonymous/Guest)
-                                        </button>
-                                    </div>
-
-                                    {!manualMode ? (
-                                        <>
-                                            <input
-                                                type="text"
-                                                placeholder="Search member by name or phone..."
-                                                className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
-                                                value={searchTerm}
-                                                onChange={(e) => setSearchTerm(e.target.value)}
-                                                autoFocus
-                                            />
-
-                                            {searching && <p className="text-xs text-gray-500 mt-2">Searching...</p>}
-
-                                            <div className="mt-4 max-h-60 overflow-y-auto">
-                                                {(searchResults || []).map(member => (
-                                                    <div
-                                                        key={member.id}
-                                                        onClick={() => handleManualReconcile(member)}
-                                                        className="cursor-pointer hover:bg-gray-100 p-2 rounded flex justify-between items-center border-b last:border-0"
-                                                    >
-                                                        <div>
-                                                            <span className="font-medium">{member.firstName} {member.lastName}</span>
-                                                            <span className="text-xs text-gray-500 ml-2">{member.phoneNumber}</span>
-                                                        </div>
-                                                        <span className="text-blue-600 text-sm font-medium">Select</span>
-                                                    </div>
-                                                ))}
-                                                {!searching && searchTerm.length >= 3 && searchResults.length === 0 && (
-                                                    <p className="text-sm text-gray-500 text-center py-2">No members found.</p>
-                                                )}
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            <p className="text-xs text-gray-500">
-                                                Enter the donor's name manually. This will be recorded in the transaction notes and ledger memo (e.g., "[Manual Donor]: Name").
-                                            </p>
-                                            <div className="flex space-x-4 mb-2">
-                                                <label className="inline-flex items-center">
-                                                    <input
-                                                        type="radio"
-                                                        value="Individual"
-                                                        checked={manualDonorType === 'Individual'}
-                                                        onChange={() => setManualDonorType('Individual')}
-                                                        className="form-radio text-blue-600"
-                                                    />
-                                                    <span className="ml-2">Individual</span>
-                                                </label>
-                                                <label className="inline-flex items-center">
-                                                    <input
-                                                        type="radio"
-                                                        value="Organization"
-                                                        checked={manualDonorType === 'Organization'}
-                                                        onChange={() => setManualDonorType('Organization')}
-                                                        className="form-radio text-blue-600"
-                                                    />
-                                                    <span className="ml-2">Organization</span>
-                                                </label>
-                                            </div>
-                                            <input
-                                                type="text"
-                                                placeholder={manualDonorType === 'Individual' ? "Enter Donor Name (e.g. John Doe - Guest)" : "Enter Organization Name (e.g. Local Business)"}
-                                                className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
-                                                value={manualDonorName}
-                                                onChange={(e) => setManualDonorName(e.target.value)}
-                                                autoFocus
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={handleLinkSubmit}
-                                                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:text-sm"
+                                    <div className="mb-4 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="link-payment-type" className="block text-sm font-medium text-gray-700">Payment Type</label>
+                                            <select
+                                                id="link-payment-type"
+                                                value={selectedPaymentType}
+                                                onChange={(e) => setSelectedPaymentType(e.target.value)}
+                                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
                                             >
-                                                Save Manual Entry
-                                            </button>
+                                                {paymentTypes.map(type => (
+                                                    <option key={type.value} value={type.value}>{type.label}</option>
+                                                ))}
+                                            </select>
                                         </div>
-                                    )}
+                                        {selectedPaymentType === 'membership_due' && (
+                                            <div>
+                                                <label htmlFor="link-payment-year" className="block text-sm font-medium text-gray-700">Year (Optional)</label>
+                                                <select
+                                                    id="link-payment-year"
+                                                    value={selectedForYear}
+                                                    onChange={(e) => setSelectedForYear(e.target.value ? parseInt(e.target.value) : '')}
+                                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                                                >
+                                                    <option value="">Default (Auto)</option>
+                                                    {(() => {
+                                                        // Range: 2025 to (CurrentYear - 1)
+                                                        const minYear = 2025;
+                                                        const maxYear = currentYear - 1;
+                                                        const yearOptions = [];
+                                                        for (let y = maxYear; y >= minYear; y--) {
+                                                            yearOptions.push(y);
+                                                        }
+                                                        return yearOptions.map(y => (
+                                                            <option key={y} value={y}>{y}</option>
+                                                        ));
+                                                    })()}
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
 
-                                    {/* Potential Matches Section - Only show in Member Mode or always? Always useful to see checks. */}
-                                    {!manualMode && txnToLink.potential_matches && txnToLink.potential_matches.length > 0 && (
+                                    {/* ... existing member search code ... */}
+                                    <input
+                                        type="text"
+                                        placeholder="Search member by name or phone..."
+                                        className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        autoFocus
+                                    />
+
+                                    {searching && <p className="text-xs text-gray-500 mt-2">Searching...</p>}
+
+                                    <div className="mt-4 max-h-60 overflow-y-auto">
+                                        {searchResults.map(member => (
+                                            <div
+                                                key={member.id}
+                                                onClick={() => handleManualReconcile(member)}
+                                                className="cursor-pointer hover:bg-gray-100 p-2 rounded flex justify-between items-center border-b last:border-0"
+                                            >
+                                                <div>
+                                                    <span className="font-medium">{member.name}</span>
+                                                    <span className="text-xs text-gray-500 ml-2">{member.phoneNumber}</span>
+                                                </div>
+                                                <span className="text-blue-600 text-sm font-medium">Select</span>
+                                            </div>
+                                        ))}
+                                        {!searching && searchTerm.length >= 3 && searchResults.length === 0 && (
+                                            <p className="text-sm text-gray-500 text-center py-2">No members found.</p>
+                                        )}
+                                    </div>
+
+                                    {/* Potential Matches Section (Single Only) */}
+                                    {!isBulkMode && txnToLink?.potential_matches && txnToLink.potential_matches.length > 0 && (
                                         <div className="mt-6 border-t pt-4">
                                             <h4 className="text-sm font-medium text-orange-700 mb-2">Potential System Matches (Prevent Duplicates)</h4>
                                             <div className="bg-orange-50 rounded-md p-2">
@@ -751,17 +682,45 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                     <p>Amount: {formatCurrency(txnToLink.amount)}</p>
                                     <p className="mt-2">Match with Member: <strong className="text-gray-900">{matchCandidate.member.first_name} {matchCandidate.member.last_name}</strong></p>
 
-                                    <div className="mt-4">
-                                        <label className="block text-sm font-medium text-gray-700">Payment Type</label>
-                                        <select
-                                            value={selectedPaymentType}
-                                            onChange={(e) => setSelectedPaymentType(e.target.value)}
-                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md border"
-                                        >
-                                            {paymentTypes.map(type => (
-                                                <option key={type.value} value={type.value}>{type.label}</option>
-                                            ))}
-                                        </select>
+                                    <div className="mt-4 grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="confirm-payment-type" className="block text-sm font-medium text-gray-700">Payment Type</label>
+                                            <select
+                                                id="confirm-payment-type"
+                                                value={selectedPaymentType}
+                                                onChange={(e) => setSelectedPaymentType(e.target.value)}
+                                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md border"
+                                            >
+                                                {paymentTypes.map(type => (
+                                                    <option key={type.value} value={type.value}>{type.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        {selectedPaymentType === 'membership_due' && (
+                                            <div>
+                                                <label htmlFor="confirm-payment-year" className="block text-sm font-medium text-gray-700">Year (Optional)</label>
+                                                <select
+                                                    id="confirm-payment-year"
+                                                    value={selectedForYear}
+                                                    onChange={(e) => setSelectedForYear(e.target.value ? parseInt(e.target.value) : '')}
+                                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md border"
+                                                >
+                                                    <option value="">Default (Auto)</option>
+                                                    {(() => {
+                                                        // Range: 2025 to (CurrentYear - 1)
+                                                        const minYear = 2025;
+                                                        const maxYear = currentYear - 1;
+                                                        const yearOptions = [];
+                                                        for (let y = maxYear; y >= minYear; y--) {
+                                                            yearOptions.push(y);
+                                                        }
+                                                        return yearOptions.map(y => (
+                                                            <option key={y} value={y}>{y}</option>
+                                                        ));
+                                                    })()}
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
