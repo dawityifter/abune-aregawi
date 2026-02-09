@@ -33,8 +33,12 @@ public class BankTransactionController {
         Page<BankTransaction> page = bankTransactionService.findAll(status, type, startDate, endDate,
                 description, pageable);
 
+        // Enrich PENDING transactions with suggested_match and potential_matches
+        java.util.List<java.util.Map<String, Object>> enrichedTransactions =
+                bankTransactionService.enrichTransactions(page.getContent());
+
         java.util.Map<String, Object> response = new java.util.HashMap<>();
-        response.put("transactions", page.getContent());
+        response.put("transactions", enrichedTransactions);
 
         java.util.Map<String, Object> pagination = new java.util.HashMap<>();
         pagination.put("total", page.getTotalElements());
@@ -42,7 +46,6 @@ public class BankTransactionController {
         pagination.put("page", page.getNumber() + 1);
         response.put("pagination", pagination);
 
-        // Optional: current_balance could be fetched from service if implemented
         response.put("current_balance", bankTransactionService.getCurrentBalance());
 
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -91,40 +94,46 @@ public class BankTransactionController {
 
     @PostMapping("/reconcile")
     @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER')")
-    public ResponseEntity<ApiResponse<Void>> reconcile(@RequestBody java.util.Map<String, Object> payload,
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> reconcile(@RequestBody java.util.Map<String, Object> payload,
             @org.springframework.security.core.annotation.AuthenticationPrincipal church.abunearegawi.backend.security.FirebaseUserDetails userDetails) {
-        Integer txId = (Integer) payload.get("transaction_id");
+        Integer txId = payload.get("transaction_id") != null ? ((Number) payload.get("transaction_id")).intValue() : null;
         Long memberId = payload.get("member_id") != null ? ((Number) payload.get("member_id")).longValue() : null;
         String type = (String) payload.get("payment_type");
+        String action = (String) payload.get("action");
         String manualDonor = (String) payload.get("manual_donor_name");
         String manualDonorType = (String) payload.get("manual_donor_type");
         Integer existingId = payload.get("existing_transaction_id") != null
-                ? (Integer) payload.get("existing_transaction_id")
+                ? ((Number) payload.get("existing_transaction_id")).intValue()
                 : null;
+        Integer forYear = payload.get("for_year") != null ? ((Number) payload.get("for_year")).intValue() : null;
 
         // Collector is the authenticated user
         church.abunearegawi.backend.model.Member collector = userDetails.getMember();
 
-        bankTransactionService.reconcile(txId, memberId, type, manualDonor, manualDonorType, existingId, collector);
-        return ResponseEntity.ok(ApiResponse.success(null));
+        java.util.Map<String, Object> result = bankTransactionService.reconcile(
+                txId, memberId, type, action, manualDonor, manualDonorType, existingId, forYear, collector);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
-    @PostMapping("/reconcile/batch")
+    @PostMapping("/reconcile-bulk")
     @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER')")
-    public ResponseEntity<ApiResponse<Void>> batchReconcile(@RequestBody java.util.Map<String, Object> payload,
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> batchReconcile(@RequestBody java.util.Map<String, Object> payload,
             @org.springframework.security.core.annotation.AuthenticationPrincipal church.abunearegawi.backend.security.FirebaseUserDetails userDetails) {
-        // Expected payload: { "items": [ {transaction_id, member_id, payment_type,
-        // manual_donor_name, ...}, ... ] }
-        java.util.List<java.util.Map<String, Object>> items = (java.util.List<java.util.Map<String, Object>>) payload
-                .get("items");
-        if (items == null || items.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Items list is required"));
+        // Node.js format: { transaction_ids: [1,2,3], member_id, payment_type, for_year }
+        java.util.List<Number> transactionIds = (java.util.List<Number>) payload.get("transaction_ids");
+        if (transactionIds == null || transactionIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("transaction_ids list is required"));
         }
 
-        // Collector is the authenticated user
+        Long memberId = payload.get("member_id") != null ? ((Number) payload.get("member_id")).longValue() : null;
+        String paymentType = (String) payload.get("payment_type");
+        Integer forYear = payload.get("for_year") != null ? ((Number) payload.get("for_year")).intValue() : null;
+
         church.abunearegawi.backend.model.Member collector = userDetails.getMember();
 
-        bankTransactionService.batchReconcile(items, collector);
-        return ResponseEntity.ok(ApiResponse.success(null));
+        java.util.Map<String, Object> result = bankTransactionService.batchReconcile(
+                transactionIds, memberId, paymentType, forYear, collector);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

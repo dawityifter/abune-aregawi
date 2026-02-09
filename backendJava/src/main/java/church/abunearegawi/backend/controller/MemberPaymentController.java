@@ -2,7 +2,6 @@ package church.abunearegawi.backend.controller;
 
 import church.abunearegawi.backend.dto.ApiResponse;
 import church.abunearegawi.backend.dto.MemberPaymentDTO;
-import church.abunearegawi.backend.model.Member;
 import church.abunearegawi.backend.security.FirebaseUserDetails;
 import church.abunearegawi.backend.service.MemberPaymentService;
 // cleaned up

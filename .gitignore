@@ -302,3 +302,8 @@ backend/restore-db-simple.sh
 
 # Gradle cache
 .gradle/
+
+# Playwright E2E
+frontend/e2e/auth-state/*.json
+frontend/e2e/test-results/
+frontend/e2e/playwright-report/

@@ -1,7 +1,6 @@
 package church.abunearegawi.backend.service;
 
 import church.abunearegawi.backend.model.Member;
-import church.abunearegawi.backend.model.Transaction;
 import church.abunearegawi.backend.model.ZelleMemoMatch;
 import church.abunearegawi.backend.repository.MemberRepository;
 import church.abunearegawi.backend.repository.TransactionRepository;
@@ -31,7 +30,6 @@ import java.math.BigDecimal;
 import java.security.GeneralSecurityException;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

@@ -34,4 +34,3 @@ public class ExpenseCategoryService {
         return expenseCategoryRepository.findByGlCode(glCode.toUpperCase());
     }
 }
-

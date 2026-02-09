@@ -11,4 +11,3 @@ public interface SmsLogRepository extends JpaRepository<SmsLog, Long> {
     Page<SmsLog> findBySenderId(Long senderId, Pageable pageable);
     Page<SmsLog> findByRecipientType(SmsLog.RecipientType recipientType, Pageable pageable);
 }
-

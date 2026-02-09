@@ -123,4 +123,3 @@ public class PledgeController {
         return ResponseEntity.ok(ApiResponse.success(null, "Pledge deleted successfully"));
     }
 }
-

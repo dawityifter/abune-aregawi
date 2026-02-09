@@ -14,4 +14,3 @@ public interface VoicemailRepository extends JpaRepository<Voicemail, Integer> {
     Page<Voicemail> findByIsArchivedFalseOrderByCreatedAtDesc(Pageable pageable);
     Page<Voicemail> findByIsArchivedTrueOrderByCreatedAtDesc(Pageable pageable);
 }
-

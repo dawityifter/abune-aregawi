@@ -22,6 +22,14 @@ public class VendorService {
     }
 
     @Transactional(readOnly = true)
+    public java.util.List<Vendor> findAll(Boolean isActive) {
+        if (isActive != null) {
+            return vendorRepository.findByIsActiveOrderByNameAsc(isActive);
+        }
+        return vendorRepository.findAllByOrderByNameAsc();
+    }
+
+    @Transactional(readOnly = true)
     public java.util.Optional<Vendor> findById(UUID id) {
         return vendorRepository.findById(id);
     }

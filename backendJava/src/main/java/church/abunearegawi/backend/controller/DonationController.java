@@ -12,8 +12,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/donations")
 @RequiredArgsConstructor
@@ -48,7 +51,7 @@ public class DonationController {
             @RequestHeader("Stripe-Signature") String sigHeader) {
         // TODO: Implement Stripe signature verification and event handling
         // For now, return 200 OK to acknowledge receipt
-        System.out.println("Received Stripe Webhook: " + payload);
+        log.info("Received Stripe Webhook: {}", payload);
         return ResponseEntity.ok("Received");
     }
 }

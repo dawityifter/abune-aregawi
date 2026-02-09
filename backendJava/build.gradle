@@ -1,8 +1,10 @@
 plugins {
     id 'java'
     id 'groovy'
+    id 'jacoco'
     id 'org.springframework.boot' version '4.0.1'
     id 'io.spring.dependency-management' version '1.1.6'
+    id 'com.diffplug.spotless' version '7.0.2'
 }
 
 group = 'church.abunearegawi'
@@ -24,37 +26,37 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
-    
+
     // Firebase Admin SDK
     implementation 'com.google.firebase:firebase-admin:9.4.2'
-    
+
     // Stripe SDK
     implementation 'com.stripe:stripe-java:25.10.0'
-    
+
     // Twilio SDK
     implementation 'com.twilio.sdk:twilio:10.6.1'
-    
+
     // Google API Client for YouTube
     implementation 'com.google.api-client:google-api-client:2.7.0'
     implementation 'com.google.apis:google-api-services-youtube:v3-rev20240514-2.0.0'
     implementation 'com.google.apis:google-api-services-drive:v3-rev20240521-2.0.0'
     implementation 'com.google.apis:google-api-services-gmail:v1-rev20240520-2.0.0'
-    
+
     // PostgreSQL
     runtimeOnly 'org.postgresql:postgresql'
-    
+
     // .env file support
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
-    
+
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-    
+
     // MapStruct for DTO mapping
     implementation 'org.mapstruct:mapstruct:1.5.5.Final'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
-    
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -67,8 +69,70 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    finalizedBy jacocoTestReport
 }
 
 tasks.named('bootRun') {
     systemProperty 'java.net.preferIPv4Stack', 'true'
+}
+
+// ── Spotless ─────────────────────────────────────────────────
+spotless {
+    java {
+        target 'src/*/java/**/*.java'
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    groovy {
+        target 'src/*/groovy/**/*.groovy'
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+// ── JaCoCo ───────────────────────────────────────────────────
+jacoco {
+    toolVersion = '0.8.14'
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, include: [
+                'church/abunearegawi/backend/service/**'
+            ])
+        }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            element = 'BUNDLE'
+            includes = ['church.abunearegawi.backend.service.*']
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.85
+            }
+        }
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, include: [
+                'church/abunearegawi/backend/service/**'
+            ])
+        }))
+    }
+}
+
+tasks.named('check') {
+    dependsOn jacocoTestCoverageVerification
 }

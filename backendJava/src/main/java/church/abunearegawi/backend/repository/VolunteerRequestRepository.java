@@ -11,4 +11,3 @@ public interface VolunteerRequestRepository extends JpaRepository<VolunteerReque
     Page<VolunteerRequest> findByStatus(VolunteerRequest.Status status, Pageable pageable);
     Page<VolunteerRequest> findByMemberId(Long memberId, Pageable pageable);
 }
-

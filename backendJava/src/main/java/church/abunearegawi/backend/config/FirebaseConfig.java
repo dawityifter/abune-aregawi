@@ -8,10 +8,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Base64;
 
+@Slf4j
 @Configuration
 public class FirebaseConfig {
 
@@ -22,8 +25,7 @@ public class FirebaseConfig {
     public FirebaseApp firebaseApp() throws IOException {
         if (FirebaseApp.getApps().isEmpty()) {
             if (firebaseServiceAccountBase64 == null || firebaseServiceAccountBase64.isEmpty()) {
-                System.err.println(
-                        "❌ FIREBASE_SERVICE_ACCOUNT_BASE64 not configured. Firebase authentication will not work.");
+                log.error("FIREBASE_SERVICE_ACCOUNT_BASE64 not configured. Firebase authentication will not work.");
                 throw new IllegalStateException("Firebase service account not configured");
             }
 
@@ -35,7 +37,7 @@ public class FirebaseConfig {
                     .build();
 
             FirebaseApp app = FirebaseApp.initializeApp(options);
-            System.out.println("✅ Firebase Admin SDK initialized successfully");
+            log.info("Firebase Admin SDK initialized successfully");
             return app;
         }
         return FirebaseApp.getInstance();

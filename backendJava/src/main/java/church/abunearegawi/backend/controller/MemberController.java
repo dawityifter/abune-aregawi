@@ -16,8 +16,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.net.URI;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/members")
 @RequiredArgsConstructor
@@ -42,13 +45,18 @@ public class MemberController {
     }
 
     @GetMapping("/profile/firebase/{uid}")
-    public ResponseEntity<ApiResponse<MemberDTO>> getProfileByFirebaseUid(
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getProfileByFirebaseUid(
             @PathVariable String uid,
             @RequestParam(required = false) String email,
             @RequestParam(required = false) String phone) {
 
         return memberService.findByFirebaseInfo(uid, email, phone)
-                .map(member -> ResponseEntity.ok(ApiResponse.success(MemberDTO.fromEntity(member))))
+                .map(member -> {
+                    // Wrap in { member: ... } to match Node.js response format expected by frontend
+                    java.util.Map<String, Object> wrapper = new java.util.HashMap<>();
+                    wrapper.put("member", MemberDTO.fromEntity(member));
+                    return ResponseEntity.ok(ApiResponse.success(wrapper));
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 
@@ -69,13 +77,26 @@ public class MemberController {
             return ResponseEntity.ok(ApiResponse.success(memberService.search(search)));
         }
 
-        System.out.println("DEBUG: Entering getAllMembersLegacy with limit=" + limit);
+        log.debug("Entering getAllMembersLegacy with limit={}", limit);
         return ResponseEntity.ok(ApiResponse.success(memberService.findAllList(limit)));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<java.util.List<MemberDTO>>> searchMembers(@RequestParam("q") String query) {
-        return ResponseEntity.ok(ApiResponse.success(memberService.search(query)));
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> searchMembers(@RequestParam("q") String query) {
+        java.util.List<MemberDTO> members = memberService.search(query);
+        // Map to simplified shape matching Node.js: { results: [{ id, name, phoneNumber, isActive }] }
+        java.util.List<java.util.Map<String, Object>> simplified = members.stream()
+                .map(m -> {
+                    java.util.Map<String, Object> item = new java.util.LinkedHashMap<>();
+                    item.put("id", m.getId());
+                    item.put("name", ((m.getFirstName() != null ? m.getFirstName() : "") + " " + (m.getLastName() != null ? m.getLastName() : "")).trim());
+                    item.put("phoneNumber", m.getPhoneNumber());
+                    item.put("isActive", m.isActive());
+                    return item;
+                })
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("results", simplified)));
     }
 
     @PostMapping("/register")
@@ -177,11 +198,49 @@ public class MemberController {
     }
 
     @GetMapping("/pending-welcomes")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'CHURCH_LEADERSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'CHURCH_LEADERSHIP', 'RELATIONSHIP')")
     public ResponseEntity<ApiResponse<Page<MemberDTO>>> getPendingWelcomes(Pageable pageable) {
         Page<Member> members = memberService.findPendingWelcomes(pageable);
         Page<MemberDTO> dtos = members.map(MemberDTO::fromEntity);
         return ResponseEntity.ok(ApiResponse.success(dtos));
+    }
+
+    @GetMapping("/onboarding/pending")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RELATIONSHIP')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getOnboardingPending(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit) {
+        Page<Member> members = memberService.findPendingWelcomes(
+                org.springframework.data.domain.PageRequest.of(
+                        Math.max(0, page - 1), limit,
+                        org.springframework.data.domain.Sort.by("createdAt").descending()));
+
+        java.util.List<java.util.Map<String, Object>> memberList = members.getContent().stream()
+                .map(m -> {
+                    java.util.Map<String, Object> item = new java.util.LinkedHashMap<>();
+                    item.put("id", m.getId());
+                    item.put("firstName", m.getFirstName());
+                    item.put("lastName", m.getLastName());
+                    item.put("email", m.getEmail());
+                    item.put("phoneNumber", m.getPhoneNumber());
+                    item.put("createdAt", m.getCreatedAt());
+                    item.put("registrationStatus", m.getRegistrationStatus() != null ? m.getRegistrationStatus().name() : null);
+                    return item;
+                })
+                .collect(java.util.stream.Collectors.toList());
+
+        java.util.Map<String, Object> pagination = new java.util.LinkedHashMap<>();
+        pagination.put("currentPage", page);
+        pagination.put("totalPages", members.getTotalPages());
+        pagination.put("totalMembers", members.getTotalElements());
+        pagination.put("hasNext", (long) page * limit < members.getTotalElements());
+        pagination.put("hasPrev", page > 1);
+
+        java.util.Map<String, Object> data = new java.util.LinkedHashMap<>();
+        data.put("members", memberList);
+        data.put("pagination", pagination);
+
+        return ResponseEntity.ok(ApiResponse.success(data));
     }
 
     @PostMapping("/{id:\\d+}/mark-welcomed")
@@ -226,6 +285,30 @@ public class MemberController {
         Member promoted = memberService.promoteDependent(dependentId, email, phone);
         return ResponseEntity
                 .ok(ApiResponse.success(MemberDTO.fromEntity(promoted), "Dependent promoted to member successfully"));
+    }
+
+    @GetMapping("/check-phone/{phoneNumber}")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> checkPhoneExists(
+            @PathVariable String phoneNumber) {
+        String normalized = phoneNumber.startsWith("+") ? phoneNumber : "+" + phoneNumber;
+        return memberService.findByEmailOrPhone(null, normalized)
+                .map(member -> {
+                    java.util.Map<String, Object> memberData = new java.util.LinkedHashMap<>();
+                    memberData.put("id", member.getId());
+                    memberData.put("first_name", member.getFirstName());
+                    memberData.put("last_name", member.getLastName());
+                    memberData.put("is_active", member.isActive());
+                    java.util.Map<String, Object> data = new java.util.LinkedHashMap<>();
+                    data.put("exists", true);
+                    data.put("member", memberData);
+                    return ResponseEntity.ok(ApiResponse.success(data));
+                })
+                .orElseGet(() -> {
+                    java.util.Map<String, Object> data = new java.util.LinkedHashMap<>();
+                    data.put("exists", false);
+                    data.put("member", null);
+                    return ResponseEntity.ok(ApiResponse.success(data));
+                });
     }
 
     @GetMapping("/validate-family-head/{phoneNumber}")

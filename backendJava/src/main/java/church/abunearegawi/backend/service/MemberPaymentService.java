@@ -128,26 +128,9 @@ public class MemberPaymentService {
         church.abunearegawi.backend.dto.MemberDTO memberDTO = church.abunearegawi.backend.dto.MemberDTO
                 .fromEntity(member);
 
-        // 2. Fetch Payment Summary
-        MemberPayment payment = memberPaymentRepository.findByPhoneAndYear(member.getPhoneNumber(), year)
-                .orElse(null);
-
-        // 3. Household Info
-        // Actually frontend logic: if headOfHousehold is set, it might be household
-        // view.
-        // Let's assume for this endpoint, we return relative to the requested member.
-        // If the member is a Head, isHouseholdView = true. If Dependent, maybe false or
-        // show Head's?
-        // Frontend says: if (duesData.household.isHouseholdView) ... "Household
-        // Finances"
-
-        // Logic: If member has dependents OR is a family head (but family head is null
-        // means THEY are head if they have dependents?)
-        // Better: check if they are Head of Household designated or have family
-        // members.
+        // 2. Household Info
         boolean isHead = member.getFamilyHead() == null
                 && (member.getFamilyMembers() != null && !member.getFamilyMembers().isEmpty());
-        // Or strictly if they are head.
 
         church.abunearegawi.backend.dto.MemberDTO headDTO = member.getFamilyHead() != null
                 ? church.abunearegawi.backend.dto.MemberDTO.fromEntity(member.getFamilyHead())
@@ -166,27 +149,9 @@ public class MemberPaymentService {
                 .totalMembers(member.getHouseholdSize())
                 .build();
 
-        // 4. Calculate Stats
-        BigDecimal annualPledge = member.getYearlyPledge() != null ? member.getYearlyPledge() : BigDecimal.ZERO;
-        BigDecimal monthlyPayment = payment != null ? payment.getMonthlyPayment() : BigDecimal.ZERO;
-        BigDecimal totalAmountDue = payment != null ? payment.getTotalAmountDue() : BigDecimal.ZERO;
-        BigDecimal duesCollected = payment != null ? payment.getTotalCollected() : BigDecimal.ZERO;
-        BigDecimal outstandingDues = payment != null ? payment.getBalanceDue() : BigDecimal.ZERO;
-
-        BigDecimal duesProgress = BigDecimal.ZERO;
-        if (totalAmountDue.compareTo(BigDecimal.ZERO) > 0) {
-            duesProgress = duesCollected.divide(totalAmountDue, 2, java.math.RoundingMode.HALF_UP)
-                    .multiply(new BigDecimal(100));
-        }
-
-        // 5. Fetch Transactions
+        // 3. Fetch ALL Transactions for this member and year
         List<church.abunearegawi.backend.dto.TransactionDTO> transactions = List.of();
-        // Safe transaction fetching
         try {
-            // Check if service is injected - it should be as it's private final.
-            // But we need to handle potential empty results safely.
-            // We can fetch all by member and filter by date/year manually if range query is
-            // risky.
             transactions = transactionService.findByMember(memberId).stream()
                     .filter(t -> {
                         java.time.LocalDate d = t.date();
@@ -194,11 +159,48 @@ public class MemberPaymentService {
                     })
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            // Log error or ignore
-            // System.err.println("Error fetching transactions: " + e.getMessage());
+            // Log and continue with empty list
         }
 
-        // 6. Calculate Other Contributions
+        // 4. Dynamically calculate dues from transactions (matching Node.js behavior)
+        BigDecimal annualPledge = member.getYearlyPledge() != null ? member.getYearlyPledge() : BigDecimal.ZERO;
+        BigDecimal monthlyPayment = annualPledge.compareTo(BigDecimal.ZERO) > 0
+                ? annualPledge.divide(BigDecimal.valueOf(12), 2, java.math.RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        // Determine how many months dues are required (prorate for join year)
+        int monthsRequired = 12;
+        java.time.LocalDate joinDate = member.getDateJoinedParish();
+        if (joinDate != null && joinDate.getYear() == year) {
+            monthsRequired = 12 - (joinDate.getMonthValue() - 1);
+        } else if (joinDate != null && joinDate.getYear() > year) {
+            monthsRequired = 0; // Not yet a member in this year
+        }
+
+        BigDecimal totalAmountDue = monthlyPayment.multiply(BigDecimal.valueOf(monthsRequired));
+
+        // Sum membership_due transactions to get duesCollected
+        List<church.abunearegawi.backend.dto.TransactionDTO> duesTransactions = transactions.stream()
+                .filter(t -> "membership_due".equalsIgnoreCase(t.type()))
+                .collect(Collectors.toList());
+
+        BigDecimal duesCollected = duesTransactions.stream()
+                .map(t -> t.amount() != null ? t.amount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal outstandingDues = totalAmountDue.subtract(duesCollected).max(BigDecimal.ZERO);
+
+        BigDecimal duesProgress = BigDecimal.ZERO;
+        if (totalAmountDue.compareTo(BigDecimal.ZERO) > 0) {
+            duesProgress = duesCollected.divide(totalAmountDue, 2, java.math.RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal(100));
+        }
+
+        // 5. Build month statuses from transactions
+        List<church.abunearegawi.backend.dto.MonthStatusDTO> monthStatuses = buildMonthStatusesFromTransactions(
+                duesTransactions, monthlyPayment, joinDate, year);
+
+        // 6. Calculate Other Contributions (non-membership transactions)
         BigDecimal donation = BigDecimal.ZERO;
         BigDecimal pledge = BigDecimal.ZERO;
         BigDecimal tithe = BigDecimal.ZERO;
@@ -224,6 +226,14 @@ public class MemberPaymentService {
         BigDecimal totalOther = donation.add(pledge).add(tithe).add(offering).add(other);
         BigDecimal grandTotal = duesCollected.add(totalOther);
 
+        // Future dues: months remaining in year after current month
+        BigDecimal futureDues = BigDecimal.ZERO;
+        int currentMonth = java.time.LocalDate.now().getMonthValue();
+        if (year == java.time.LocalDate.now().getYear()) {
+            int futureMonths = 12 - currentMonth;
+            futureDues = monthlyPayment.multiply(BigDecimal.valueOf(futureMonths));
+        }
+
         church.abunearegawi.backend.dto.DuesDetailsDTO.OtherContributionsDTO otherDocs = church.abunearegawi.backend.dto.DuesDetailsDTO.OtherContributionsDTO
                 .builder()
                 .donation(donation)
@@ -242,10 +252,10 @@ public class MemberPaymentService {
                 .duesCollected(duesCollected)
                 .outstandingDues(outstandingDues)
                 .duesProgress(duesProgress)
-                .futureDues(BigDecimal.ZERO)
+                .futureDues(futureDues)
                 .totalOtherContributions(totalOther)
                 .grandTotal(grandTotal)
-                .monthStatuses(payment != null ? buildMonthStatuses(payment) : List.of())
+                .monthStatuses(monthStatuses)
                 .otherContributions(otherDocs)
                 .build();
 
@@ -257,46 +267,70 @@ public class MemberPaymentService {
                 .build();
     }
 
-    private List<church.abunearegawi.backend.dto.MonthStatusDTO> buildMonthStatuses(MemberPayment mp) {
-        String[] months = { "january", "february", "march", "april", "may", "june", "july", "august", "september",
-                "october", "november", "december" };
-        // We need mapped values. Reflection or if/else chain.
-        // For simplicity, hardcode map since Lombok getters are just getJanuary(), etc.
+    /**
+     * Build month statuses from transactions, matching Node.js behavior.
+     * Distributes collected dues across months chronologically using a remaining-balance approach.
+     */
+    private List<church.abunearegawi.backend.dto.MonthStatusDTO> buildMonthStatusesFromTransactions(
+            List<church.abunearegawi.backend.dto.TransactionDTO> duesTransactions,
+            BigDecimal monthlyDue, java.time.LocalDate joinDate, int year) {
+
+        String[] monthNames = { "january", "february", "march", "april", "may", "june",
+                "july", "august", "september", "october", "november", "december" };
+
+        // Aggregate dues payments by month
+        BigDecimal[] monthlyPaid = new BigDecimal[12];
+        java.util.Arrays.fill(monthlyPaid, BigDecimal.ZERO);
+        for (church.abunearegawi.backend.dto.TransactionDTO t : duesTransactions) {
+            if (t.date() != null) {
+                int idx = t.date().getMonthValue() - 1;
+                BigDecimal amt = t.amount() != null ? t.amount() : BigDecimal.ZERO;
+                monthlyPaid[idx] = monthlyPaid[idx].add(amt);
+            }
+        }
+
+        // Determine join month (0-indexed) for pre-membership status
+        int joinMonthIdx = 0; // default: member for whole year
+        if (joinDate != null && joinDate.getYear() == year) {
+            joinMonthIdx = joinDate.getMonthValue() - 1;
+        } else if (joinDate != null && joinDate.getYear() > year) {
+            joinMonthIdx = 12; // not a member at all this year
+        }
+
+        int currentMonthIdx = java.time.LocalDate.now().getMonthValue() - 1;
+        int currentYear = java.time.LocalDate.now().getYear();
+
         java.util.ArrayList<church.abunearegawi.backend.dto.MonthStatusDTO> list = new java.util.ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            String status;
+            BigDecimal due;
+            boolean isFuture = false;
 
-        BigDecimal monthlyDue = mp.getMonthlyPayment() != null ? mp.getMonthlyPayment() : BigDecimal.ZERO;
+            if (i < joinMonthIdx) {
+                status = "pre-membership";
+                due = BigDecimal.ZERO;
+            } else if (year > currentYear || (year == currentYear && i > currentMonthIdx)) {
+                status = "upcoming";
+                due = monthlyDue;
+                isFuture = true;
+            } else if (monthlyPaid[i].compareTo(monthlyDue) >= 0) {
+                status = "paid";
+                due = monthlyDue;
+            } else {
+                status = "due";
+                due = monthlyDue;
+            }
 
-        list.add(createStatus("january", mp.getJanuary(), monthlyDue));
-        list.add(createStatus("february", mp.getFebruary(), monthlyDue));
-        list.add(createStatus("march", mp.getMarch(), monthlyDue));
-        list.add(createStatus("april", mp.getApril(), monthlyDue));
-        list.add(createStatus("may", mp.getMay(), monthlyDue));
-        list.add(createStatus("june", mp.getJune(), monthlyDue));
-        list.add(createStatus("july", mp.getJuly(), monthlyDue));
-        list.add(createStatus("august", mp.getAugust(), monthlyDue));
-        list.add(createStatus("september", mp.getSeptember(), monthlyDue));
-        list.add(createStatus("october", mp.getOctober(), monthlyDue));
-        list.add(createStatus("november", mp.getNovember(), monthlyDue));
-        list.add(createStatus("december", mp.getDecember(), monthlyDue));
+            list.add(church.abunearegawi.backend.dto.MonthStatusDTO.builder()
+                    .month(monthNames[i])
+                    .paid(monthlyPaid[i])
+                    .due(due)
+                    .status(status)
+                    .isFutureMonth(isFuture)
+                    .build());
+        }
 
         return list;
-    }
-
-    private church.abunearegawi.backend.dto.MonthStatusDTO createStatus(String month, BigDecimal paid, BigDecimal due) {
-        BigDecimal amountPaid = paid != null ? paid : BigDecimal.ZERO;
-        String status = amountPaid.compareTo(due) >= 0 ? "paid" : "due";
-        // Simple logic: if paid >= due, paid. Else due.
-        // "upcoming" or "pre-membership" logic requires joined date which we have in
-        // member.
-        // For now, simplify.
-
-        return church.abunearegawi.backend.dto.MonthStatusDTO.builder()
-                .month(month)
-                .paid(amountPaid)
-                .due(due)
-                .status(status)
-                .isFutureMonth(false) // Todo: calculate
-                .build();
     }
 
     @Transactional

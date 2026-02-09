@@ -32,4 +32,16 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, Long> 
                         @Param("type") String type,
                         @Param("startDate") LocalDate startDate,
                         @Param("endDate") LocalDate endDate);
+
+        @Query("SELECT SUM(le.amount) FROM LedgerEntry le WHERE le.type <> :excludeType AND le.entryDate BETWEEN :startDate AND :endDate")
+        java.math.BigDecimal sumByNotTypeAndDateRange(
+                        @Param("excludeType") String excludeType,
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate);
+
+        @Query("SELECT le.member.id, SUM(le.amount) FROM LedgerEntry le WHERE le.type = :type AND le.entryDate BETWEEN :startDate AND :endDate AND le.member IS NOT NULL GROUP BY le.member.id")
+        java.util.List<Object[]> findMembershipDueSumsByMember(
+                        @Param("type") String type,
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate);
 }

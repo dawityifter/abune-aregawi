@@ -29,10 +29,9 @@ public class Vendor {
     @Column(nullable = false)
     private String name;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "vendor_type", nullable = false)
     @Builder.Default
-    private VendorType vendorType = VendorType.OTHER;
+    private String vendorType = "other";
 
     @Column(name = "contact_person")
     private String contactPerson;
@@ -80,7 +79,5 @@ public class Vendor {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    public enum VendorType {
-        UTILITY, SUPPLIER, SERVICE_PROVIDER, CONTRACTOR, LENDER, OTHER
-    }
+    // Vendor types stored as lowercase strings in DB: utility, supplier, service-provider, contractor, lender, other
 }

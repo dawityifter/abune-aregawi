@@ -37,4 +37,3 @@ public class ExpenseCategoryController {
                 .orElse(ResponseEntity.notFound().build());
     }
 }
-
