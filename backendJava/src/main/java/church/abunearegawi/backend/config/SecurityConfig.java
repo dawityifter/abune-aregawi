@@ -37,6 +37,9 @@ public class SecurityConfig {
                                 "/api/members/titles", "/api/members/check-phone/**",
                                 "/api/members/profile/firebase/**", "/api/youtube/**")
                         .permitAll()
+                        // Actuator health endpoint is public; others require ADMIN
+                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         // All other API endpoints require authentication
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())
