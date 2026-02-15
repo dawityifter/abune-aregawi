@@ -16,7 +16,7 @@ import java.net.URI;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/volunteer-requests")
+@RequestMapping("/api/volunteers")
 @RequiredArgsConstructor
 public class VolunteerController {
 
@@ -24,11 +24,11 @@ public class VolunteerController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'CHURCH_LEADERSHIP')")
-    public ResponseEntity<ApiResponse<Page<VolunteerRequest>>> getVolunteerRequests(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getVolunteerRequests(
             @RequestParam(required = false) VolunteerRequest.Status status,
             Pageable pageable) {
-        Page<VolunteerRequest> requests = volunteerService.findAll(status, pageable);
-        return ResponseEntity.ok(ApiResponse.success(requests));
+        Map<String, Object> result = volunteerService.findAllAsMap(status, pageable);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/member/{memberId}")
@@ -63,7 +63,7 @@ public class VolunteerController {
                 Boolean.parseBoolean(request.get("agreed_to_contact").toString()) : false;
 
         VolunteerRequest created = volunteerService.create(memberId, message, agreedToContact);
-        return ResponseEntity.created(URI.create("/api/volunteer-requests/" + created.getId()))
+        return ResponseEntity.created(URI.create("/api/volunteers/" + created.getId()))
                 .body(ApiResponse.success(created, "Volunteer request submitted successfully"));
     }
 

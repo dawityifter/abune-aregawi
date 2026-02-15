@@ -44,9 +44,7 @@ public class DepartmentController {
 
     @GetMapping("/stats")
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getDepartmentStats() {
-        // Placeholder for stats logic. Returning empty map to fix 404/500 and satisfy
-        // route
-        return ResponseEntity.ok(ApiResponse.success(java.util.Map.of("stats", new java.util.HashMap<>())));
+        return ResponseEntity.ok(ApiResponse.success(departmentService.getDepartmentStats()));
     }
 
     @GetMapping("/{id}")

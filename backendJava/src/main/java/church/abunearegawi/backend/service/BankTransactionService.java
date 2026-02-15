@@ -60,7 +60,7 @@ public class BankTransactionService {
     }
 
     public java.math.BigDecimal getCurrentBalance() {
-        return bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdAsc()
+        return bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdDesc()
                 .map(anchor -> {
                     java.math.BigDecimal newerSum = bankTransactionRepository.sumAmountNewerThan(anchor.getDate(),
                             anchor.getId());
