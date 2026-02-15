@@ -112,7 +112,7 @@ public class PaymentStatsController {
         // 10. Current bank balance and last update
         BigDecimal currentBankBalance = BigDecimal.ZERO;
         String lastBankUpdate = null;
-        Optional<BankTransaction> latestBankTxn = bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdAsc();
+        Optional<BankTransaction> latestBankTxn = bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdDesc();
         if (latestBankTxn.isPresent()) {
             BankTransaction bt = latestBankTxn.get();
             currentBankBalance = bt.getBalance();

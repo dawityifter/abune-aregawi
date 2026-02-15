@@ -138,7 +138,7 @@ class BankTransactionServiceSpec extends Specification {
     def "should get current balance with anchor and newer sum"() {
         given:
         def anchor = BankTransaction.builder().id(1).date(LocalDate.of(2026, 1, 1)).balance(new BigDecimal("1000")).build()
-        bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdAsc() >> Optional.of(anchor)
+        bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdDesc() >> Optional.of(anchor)
         bankTransactionRepository.sumAmountNewerThan(anchor.date, anchor.id) >> new BigDecimal("500")
 
         when:
@@ -151,7 +151,7 @@ class BankTransactionServiceSpec extends Specification {
     def "should get current balance with no newer transactions"() {
         given:
         def anchor = BankTransaction.builder().id(1).date(LocalDate.of(2026, 1, 1)).balance(new BigDecimal("1000")).build()
-        bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdAsc() >> Optional.of(anchor)
+        bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdDesc() >> Optional.of(anchor)
         bankTransactionRepository.sumAmountNewerThan(_, _) >> null
 
         when:
@@ -163,7 +163,7 @@ class BankTransactionServiceSpec extends Specification {
 
     def "should return null when no anchor balance"() {
         given:
-        bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdAsc() >> Optional.empty()
+        bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdDesc() >> Optional.empty()
 
         when:
         def result = service.getCurrentBalance()

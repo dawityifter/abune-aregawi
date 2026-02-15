@@ -9,7 +9,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
 public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
+    private final church.abunearegawi.backend.repository.DepartmentMemberRepository departmentMemberRepository;
     private final church.abunearegawi.backend.repository.DepartmentMeetingRepository meetingRepository;
     private final church.abunearegawi.backend.repository.DepartmentTaskRepository taskRepository;
 
@@ -62,6 +65,32 @@ public class DepartmentService {
                 .stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getDepartmentStats() {
+        List<Department> activeDepartments = departmentRepository.findByActive(true);
+
+        long totalDepartments = activeDepartments.size();
+
+        // Group by type
+        Map<String, Long> byType = activeDepartments.stream()
+                .collect(Collectors.groupingBy(
+                        d -> d.getType() != null ? d.getType() : "unknown",
+                        Collectors.counting()));
+
+        // Count distinct active members across all departments
+        long totalUniqueMembers = departmentMemberRepository.findAll().stream()
+                .filter(dm -> dm.getStatus() == church.abunearegawi.backend.model.DepartmentMember.Status.active)
+                .map(dm -> dm.getMember().getId())
+                .distinct()
+                .count();
+
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("total_departments", totalDepartments);
+        stats.put("total_unique_members", totalUniqueMembers);
+        stats.put("by_type", byType);
+        return stats;
     }
 
     @Transactional(readOnly = true)

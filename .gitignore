@@ -307,3 +307,8 @@ backend/restore-db-simple.sh
 frontend/e2e/auth-state/*.json
 frontend/e2e/test-results/
 frontend/e2e/playwright-report/
+
+# Shadow mode (local dev only)
+backend/src/shadow/
+backend/shadow-report.log
+backend/shadow-errors.log
