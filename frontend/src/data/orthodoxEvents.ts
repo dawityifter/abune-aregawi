@@ -86,7 +86,20 @@ export const ETH_MONTHS_METADATA: EthMonthInfo[] = [
     { name: 'Tikemt', nameTi: 'ጥቅምቲ', year: 2018, startGC: '2025-10-11', days: 30 },
     { name: 'Hidar', nameTi: 'ሕዳር', year: 2018, startGC: '2025-11-10', days: 30 },
     { name: 'Tahsas', nameTi: 'ታሕሳስ', year: 2018, startGC: '2025-12-10', days: 30 },
-    { name: 'Tir', nameTi: 'ጥሪ', year: 2018, startGC: '2026-01-09', days: 30 }, // For continuity
+    { name: 'Tir', nameTi: 'ጥሪ', year: 2018, startGC: '2026-01-09', days: 30 },
+    { name: 'Yekatit', nameTi: 'ለካቲት', year: 2018, startGC: '2026-02-08', days: 30 },
+    { name: 'Megabit', nameTi: 'መጋቢት', year: 2018, startGC: '2026-03-10', days: 30 },
+    { name: 'Miazia', nameTi: 'ሚያዝያ', year: 2018, startGC: '2026-04-09', days: 30 },
+    { name: 'Ginbot', nameTi: 'ግንቦት', year: 2018, startGC: '2026-05-09', days: 30 },
+    { name: 'Sene', nameTi: 'ሰነ', year: 2018, startGC: '2026-06-08', days: 30 },
+    { name: 'Hamle', nameTi: 'ሓምለ', year: 2018, startGC: '2026-07-08', days: 30 },
+    { name: 'Nehasse', nameTi: 'ነሓሰ', year: 2018, startGC: '2026-08-07', days: 30 },
+    { name: 'Pagumes', nameTi: 'ጳጉሜን', year: 2018, startGC: '2026-09-06', days: 5 },
+    { name: 'Meskerem', nameTi: 'መስከረም', year: 2019, startGC: '2026-09-11', days: 30 },
+    { name: 'Tikemt', nameTi: 'ጥቅምቲ', year: 2019, startGC: '2026-10-11', days: 30 },
+    { name: 'Hidar', nameTi: 'ሕዳር', year: 2019, startGC: '2026-11-10', days: 30 },
+    { name: 'Tahsas', nameTi: 'ታሕሳስ', year: 2019, startGC: '2026-12-10', days: 30 },
+    { name: 'Tir', nameTi: 'ጥሪ', year: 2019, startGC: '2027-01-09', days: 30 }, // For continuity
 ];
 
 // Helper to get Ethiopian date info for a Gregorian Date
