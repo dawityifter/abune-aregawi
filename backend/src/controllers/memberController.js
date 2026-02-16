@@ -357,6 +357,7 @@ exports.register = async (req, res) => {
       // Spiritual Information
       dateJoinedParish,
       baptismName,
+      repentanceFather,
       interestedInServing,
       ministries,
       languagePreference,
@@ -534,6 +535,7 @@ exports.register = async (req, res) => {
       emergency_contact_phone: emergencyContactPhone,
       date_joined_parish: dateJoinedParish,
       baptism_name: baptismName,
+      repentance_father: repentanceFather,
       interested_in_serving: interestedInServing,
       ministries: ministries && Array.isArray(ministries) ? JSON.stringify(ministries) : null,
       language_preference: languagePreference,
@@ -1075,6 +1077,7 @@ exports.getAllMembersFirebase = async (req, res) => {
       spouseEmail: member.spouse_email,
       // Other
       yearlyPledge: member.yearly_pledge,
+      repentanceFather: member.repentance_father,
       familyId: member.family_id, // For head of household detection
       // Expose member number for frontend table
       memberId: member.member_id,
@@ -1150,6 +1153,12 @@ exports.updateMember = async (req, res) => {
       });
     }
 
+    // DEBUG: Log the incoming update request
+    console.log('📝 Updating member:', {
+      id: req.params.id,
+      body: req.body
+    });
+
     const updates = sanitizeInput(req.body);
 
     // Handle title_id separately as it might come as titleId or title_id
@@ -1162,6 +1171,9 @@ exports.updateMember = async (req, res) => {
       const numTitleId = Number(sanitizedTitleId);
       finalUpdates.title_id = (numTitleId > 0) ? numTitleId : null;
     }
+
+    // DEBUG: Log the final updates object being sent to Sequelize
+    console.log('📝 Final updates object:', finalUpdates);
 
     await member.update(finalUpdates);
 

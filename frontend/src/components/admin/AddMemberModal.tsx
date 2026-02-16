@@ -259,7 +259,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
                 className="w-full px-3 py-2 border rounded"
               >
                 <option value="">-- Select --</option>
-                <option value="H.G Abune Kerlos">H.G Abune Kerlos</option>
+                <option value="L.S Hamelmal">L.S MergetaHamelmal </option>
                 <option value="M.T Kesis Tadesse">M.T Kesis Tadesse</option>
                 <option value="M.M Kesis Seifu">M.M Kesis Seifu</option>
               </select>
