@@ -27,6 +27,7 @@ public class MemberDTO {
     private String gender;
     private String maritalStatus;
     private String baptismName;
+    private String repentanceFather;
     private String streetLine1;
     private String apartmentNo;
     private String city;
@@ -95,6 +96,7 @@ public class MemberDTO {
                 .gender(member.getGender() != null ? member.getGender().toString() : null)
                 .maritalStatus(member.getMaritalStatus() != null ? member.getMaritalStatus().toString() : null)
                 .baptismName(member.getBaptismName())
+                .repentanceFather(member.getRepentanceFather())
                 .streetLine1(member.getStreetLine1())
                 .apartmentNo(member.getApartmentNo())
                 .city(member.getCity())
