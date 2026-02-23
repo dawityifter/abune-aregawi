@@ -42,6 +42,7 @@ interface Member {
   family_id?: string | number;
   title_id?: number | string;
   titleId?: number | string;
+  repentanceFather?: string;
 }
 
 interface MemberEditModalProps {
@@ -266,6 +267,12 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
           payload.yearly_pledge = num;
         }
         delete payload.yearlyPledge;
+      }
+
+      // Map repentanceFather to repentance_father
+      if (payload.repentanceFather !== undefined) {
+        payload.repentance_father = payload.repentanceFather;
+        delete payload.repentanceFather;
       }
 
       // Map titleId to title_id (ensure '0' from Number(null) or empty string is null)
@@ -741,36 +748,18 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('admin.memberModal.fields.language')}
+                  Repentance Father
                 </label>
                 <select
-                  name="languagePreference"
-                  value={formData.languagePreference || ''}
+                  name="repentanceFather"
+                  value={formData.repentanceFather || ''}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">{t('select.language')}</option>
-                  <option value="English">English</option>
-                  <option value="Tigrigna">Tigrigna</option>
-                  <option value="Amharic">Amharic</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('admin.memberModal.fields.givingMethod')}
-                </label>
-                <select
-                  name="preferredGivingMethod"
-                  value={formData.preferredGivingMethod || ''}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">{t('admin.memberModal.placeholders.selectGivingMethod')}</option>
-                  <option value="cash">{t('admin.memberModal.options.cash')}</option>
-                  <option value="check">{t('admin.memberModal.options.check')}</option>
-                  <option value="online">{t('admin.memberModal.options.online')}</option>
-                  <option value="bank_transfer">{t('admin.memberModal.options.bank_transfer')}</option>
+                  <option value="">-- Select --</option>
+                  <option value="L.S Mergetha Hamelmal">L.S Mergetha Hamelmal</option>
+                  <option value="M.T Kesis Tadesse">M.T Kesis Tadesse</option>
+                  <option value="M.M Kesis Seifu">M.M Kesis Seifu</option>
                 </select>
               </div>
 
