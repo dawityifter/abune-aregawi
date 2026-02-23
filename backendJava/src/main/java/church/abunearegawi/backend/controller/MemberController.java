@@ -28,6 +28,7 @@ public class MemberController {
 
     private final MemberService memberService;
     private final church.abunearegawi.backend.repository.TitleRepository titleRepository;
+    private final church.abunearegawi.backend.repository.DependentRepository dependentRepository;
 
     @GetMapping("/titles")
     public ResponseEntity<ApiResponse<java.util.List<church.abunearegawi.backend.model.Title>>> getTitles() {
@@ -229,8 +230,22 @@ public class MemberController {
                         Math.max(0, page - 1), limit,
                         org.springframework.data.domain.Sort.by("createdAt").descending()));
 
+        // Batch-fetch dependent counts for all members on this page
+        java.util.List<Long> memberIds = members.getContent().stream()
+                .map(Member::getId).collect(java.util.stream.Collectors.toList());
+        java.util.Map<Long, Long> depCounts = new java.util.HashMap<>();
+        if (!memberIds.isEmpty()) {
+            dependentRepository.countByMemberIds(memberIds)
+                    .forEach(row -> depCounts.put((Long) row[0], (Long) row[1]));
+        }
+
         java.util.List<java.util.Map<String, Object>> memberList = members.getContent().stream()
                 .map(m -> {
+                    int declaredSize = m.getHouseholdSize() != null ? m.getHouseholdSize() : 1;
+                    long depCount = depCounts.getOrDefault(m.getId(), 0L);
+                    int computedSize = 1 + (int) depCount;
+                    int familySize = Math.max(declaredSize, computedSize);
+
                     java.util.Map<String, Object> item = new java.util.LinkedHashMap<>();
                     item.put("id", m.getId());
                     item.put("firstName", m.getFirstName());
@@ -239,6 +254,7 @@ public class MemberController {
                     item.put("phoneNumber", m.getPhoneNumber());
                     item.put("createdAt", m.getCreatedAt());
                     item.put("registrationStatus", m.getRegistrationStatus() != null ? m.getRegistrationStatus().name() : null);
+                    item.put("familySize", familySize);
                     return item;
                 })
                 .collect(java.util.stream.Collectors.toList());
