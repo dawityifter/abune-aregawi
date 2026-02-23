@@ -3,11 +3,14 @@ import ModalWelcomeNote from './ModalWelcomeNote';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
 import { formatE164ToDisplay } from '../../utils/formatPhoneNumber';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useI18n } from '../../i18n/I18nProvider';
+import { englishNameToTigrinya } from '../../utils/nameTransliteration';
 
 const OutreachDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const { t } = useI18n();
+  const { language } = useLanguage();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<any[]>([]);
@@ -160,10 +163,7 @@ const OutreachDashboard: React.FC = () => {
               <h1 className="text-xl font-semibold text-gray-900">{t('outreachDashboard.title')}</h1>
             </div>
             <div className="flex items-center space-x-6">
-              {/* Output Role Labels */}
-              <div className="hidden sm:flex items-center space-x-2">
-                <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded-full">{roles.join(', ')}</span>
-              </div>
+
 
               {/* TV View Toggle */}
               <div className="flex items-center">
@@ -224,9 +224,22 @@ const OutreachDashboard: React.FC = () => {
                   <div className="animate-scroll-up flex flex-col gap-6 w-full px-4 pt-10 pb-10">
                     {pending.map((m: any) => {
                       const familySize = m.familySize || 1;
-                      const displayName = familySize > 1
+
+                      let displayNameRaw = familySize > 1
                         ? `${m.firstName} ${m.middleName ? m.middleName + ' ' : ''}${m.lastName} ${t('outreachDashboard.andFamily')} (${familySize})`
                         : `${m.firstName} ${m.middleName ? m.middleName + ' ' : ''}${m.lastName}`;
+
+                      let displayName = displayNameRaw;
+                      if (language === 'ti') {
+                        // Extract just the name portion, ignoring the 'and family' translation and number if present, so we translate names accurately.
+                        // Or simpler: translate each word. Our utility ignores/skips translating strict translated suffix.
+                        const nameOnly = `${m.firstName} ${m.middleName ? m.middleName + ' ' : ''}${m.lastName}`;
+                        const nameTi = englishNameToTigrinya(nameOnly);
+
+                        displayName = familySize > 1
+                          ? `${nameTi} ${t('outreachDashboard.andFamily')} (${familySize})`
+                          : nameTi;
+                      }
 
                       return (
                         <div key={m.id} className="bg-white rounded-lg p-6 border-l-4 border-primary-600 flex items-center justify-center text-center shadow-sm w-full mx-auto max-w-3xl transform transition-transform hover:scale-105">
