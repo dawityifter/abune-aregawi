@@ -48,6 +48,7 @@ beforeEach(() => {
   });
   // Reinitialize getIdToken after clearAllMocks so it returns a token
   setFirebaseUserToken(mockFirebaseUser, 'test-token');
+  window.alert = jest.fn();
 });
 
 afterEach(() => {
@@ -179,5 +180,68 @@ describe('OutreachDashboard', () => {
 
     const errs = await screen.findAllByText('Failed to load pending welcomes');
     expect(errs.length).toBeGreaterThan(0);
+  });
+
+  it('supports toggling to Church TV View', async () => {
+    // Mock pending list response
+    (global.fetch as any) = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          success: true,
+          data: {
+            members: [
+              {
+                id: 'm1',
+                firstName: 'Alpha',
+                lastName: 'User',
+                phoneNumber: '+10000000001',
+                email: 'alpha@example.com',
+                createdAt: '2025-01-01T00:00:00Z',
+                familySize: 3,
+              },
+              {
+                id: 'm2',
+                firstName: 'Beta',
+                lastName: 'User',
+                phoneNumber: '+10000000002',
+                email: 'beta@example.com',
+                createdAt: '2025-01-02T00:00:00Z',
+                familySize: 1,
+              },
+            ],
+          },
+        }),
+      });
+
+    render(
+      <Wrapper>
+        <OutreachDashboard />
+      </Wrapper>
+    );
+
+    // Initial load is Outreach Committee View
+    const pendingElements = await screen.findAllByText('Pending Welcomes');
+    expect(pendingElements.length).toBeGreaterThan(0);
+    expect(screen.getByText('Alpha User')).toBeInTheDocument();
+
+    // Find and click Church TV View toggle
+    const tvToggle = screen.getByRole('switch', { name: /Church TV View/i });
+    fireEvent.click(tvToggle);
+
+    // After toggle, we should see Church TV View elements
+    expect(await screen.findByText('Welcome to Our Church Family!')).toBeInTheDocument();
+
+    // Member 1 has family > 1
+    expect(screen.getByText('Alpha User and Family (3)')).toBeInTheDocument();
+    // Member 2 has family = 1
+    expect(screen.getByText('Beta User')).toBeInTheDocument();
+
+    // Footer message
+    expect(screen.getByText(/New members, please meet our outreach committee at the bottom floor/i)).toBeInTheDocument();
+
+    // Standard view elements should be hidden
+    expect(screen.queryByText('+10000000001')).not.toBeInTheDocument();
   });
 });
