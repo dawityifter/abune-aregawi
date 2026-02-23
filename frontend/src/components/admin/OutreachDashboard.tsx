@@ -3,17 +3,26 @@ import ModalWelcomeNote from './ModalWelcomeNote';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
 import { formatE164ToDisplay } from '../../utils/formatPhoneNumber';
+import { useI18n } from '../../i18n/I18nProvider';
 
 const OutreachDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
+  const { t } = useI18n();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<any[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingError, setPendingError] = useState<string | null>(null);
+
+  const [welcomed, setWelcomed] = useState<any[]>([]);
+  const [welcomedLoading, setWelcomedLoading] = useState(false);
+  const [welcomedError, setWelcomedError] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'pending' | 'welcomed'>('pending');
   const [actionBusyId, setActionBusyId] = useState<string | number | null>(null);
   const [modalMember, setModalMember] = useState<any | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
+  const [isTvView, setIsTvView] = useState(false);
 
   // Helper: request with timeout to prevent hanging requests
   const requestWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 15000) => {
@@ -80,10 +89,41 @@ const OutreachDashboard: React.FC = () => {
     }
   };
 
+  // Fetch welcomed members from backend
+  const loadWelcomedMembers = async () => {
+    if (!firebaseUser) return;
+    setWelcomedLoading(true);
+    setWelcomedError(null);
+    try {
+      const idToken = await firebaseUser.getIdToken(true);
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/members/onboarding/welcomed`, {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+        credentials: 'include',
+      });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({} as any));
+        throw new Error(data?.message || 'Failed to load welcomed members');
+      }
+      const data = await resp.json();
+      const members = data?.data?.members || data?.data || [];
+      setWelcomed(members);
+    } catch (e: any) {
+      setWelcomedError(e.message || 'Failed to load welcomed members');
+    } finally {
+      setWelcomedLoading(false);
+    }
+  };
+
   useEffect(() => {
-    loadPendingWelcomes();
+    if (activeTab === 'pending') {
+      loadPendingWelcomes();
+    } else {
+      loadWelcomedMembers();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firebaseUser]);
+  }, [firebaseUser, activeTab]);
 
   if (loading) {
     return (
@@ -111,116 +151,270 @@ const OutreachDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col pt-16">
       <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="flex flex-col sm:flex-row justify-between items-center py-4 space-y-4 sm:space-y-0">
             <div className="flex items-center">
               <i className="fas fa-hands-helping text-2xl text-primary-800 mr-3"></i>
-              <h1 className="text-xl font-semibold text-gray-900">Outreach & Member Relations</h1>
+              <h1 className="text-xl font-semibold text-gray-900">{t('outreachDashboard.title')}</h1>
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded-full">{roles.join(', ')}</span>
+            <div className="flex items-center space-x-6">
+              {/* Output Role Labels */}
+              <div className="hidden sm:flex items-center space-x-2">
+                <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded-full">{roles.join(', ')}</span>
+              </div>
+
+              {/* TV View Toggle */}
+              <div className="flex items-center">
+                <span className="mr-3 text-sm font-medium text-gray-900">{t('outreachDashboard.churchTvView')}</span>
+                <button
+                  type="button"
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2 ${isTvView ? 'bg-primary-600' : 'bg-gray-200'}`}
+                  role="switch"
+                  aria-checked={isTvView}
+                  aria-label={t('outreachDashboard.churchTvView')}
+                  onClick={() => setIsTvView(!isTvView)}
+                >
+                  <span aria-hidden="true" className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isTvView ? 'translate-x-5' : 'translate-x-0'}`}></span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Pending welcome summary */}
-          <section className="bg-white shadow-sm rounded-lg p-4 border">
-            <h2 className="text-lg font-medium text-gray-900 flex items-center">
-              <i className="fas fa-bell mr-2 text-primary-700"></i>
-              Pending Welcomes
-            </h2>
-            <p className="text-sm text-gray-600 mb-3">Members who registered but haven't been welcomed yet.</p>
-            {pendingLoading && (
-              <div className="text-sm text-gray-500">Loading…</div>
-            )}
-            {pendingError && (
-              <div className="text-sm text-red-600">{pendingError}</div>
-            )}
-            {!pendingLoading && !pendingError && (
-              <div className="text-2xl font-semibold text-primary-800">{pending.length}</div>
-            )}
-            <button
-              onClick={loadPendingWelcomes}
-              className="mt-3 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded"
-            >
-              Refresh
-            </button>
-          </section>
-
-          {/* Right: Detailed list with actions */}
-          <section className="bg-white shadow-sm rounded-lg p-0 border lg:col-span-2">
-            <div className="p-4 border-b">
-              <h2 className="text-lg font-medium text-gray-900 flex items-center">
-                <i className="fas fa-user-friends mr-2 text-primary-700"></i>
-                Onboarding Queue
-              </h2>
-              <p className="text-sm text-gray-600">Mark a member as welcomed after contact is made.</p>
+      <main className="flex-1 max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 w-full">
+        {isTvView ? (
+          /* ========================================= */
+          /* Church TV View Layout                     */
+          /* ========================================= */
+          <div className="bg-white shadow-sm rounded-xl p-8 border flex flex-col h-[75vh]">
+            <div className="text-center mb-6">
+              <h2 className="text-4xl font-bold text-primary-800 mb-2">{t('outreachDashboard.welcomeTitle')}</h2>
+              <p className="text-xl text-gray-600">{t('outreachDashboard.welcomeSubtitle')}</p>
             </div>
 
-            <div className="p-4">
+            <div className="flex-1 w-full mx-auto max-w-5xl relative overflow-hidden flex flex-col justify-center items-center bg-gray-50/50 rounded-lg border border-gray-100">
+              {pendingLoading ? (
+                <div className="text-xl text-gray-500">{t('outreachDashboard.loadingMembers')}</div>
+              ) : pendingError ? (
+                <div className="text-xl text-red-600">{pendingError}</div>
+              ) : pending.length === 0 ? (
+                <div className="text-xl text-gray-500">{t('outreachDashboard.noNewMembers')}</div>
+              ) : (
+                <>
+                  <style>
+                    {`
+                      @keyframes scroll-up {
+                        0% { top: 100%; transform: translateY(0); }
+                        100% { top: 0; transform: translateY(-100%); }
+                      }
+                      .animate-scroll-up {
+                        position: absolute;
+                        width: 100%;
+                        /* Slower animation for larger lists */
+                        animation: scroll-up ${Math.max(20, pending.length * 4)}s linear infinite;
+                      }
+                      .animate-scroll-up:hover {
+                        animation-play-state: paused;
+                      }
+                    `}
+                  </style>
+                  <div className="animate-scroll-up flex flex-col gap-6 w-full px-4 pt-10 pb-10">
+                    {pending.map((m: any) => {
+                      const familySize = m.familySize || 1;
+                      const displayName = familySize > 1
+                        ? `${m.firstName} ${m.middleName ? m.middleName + ' ' : ''}${m.lastName} ${t('outreachDashboard.andFamily')} (${familySize})`
+                        : `${m.firstName} ${m.middleName ? m.middleName + ' ' : ''}${m.lastName}`;
+
+                      return (
+                        <div key={m.id} className="bg-white rounded-lg p-6 border-l-4 border-primary-600 flex items-center justify-center text-center shadow-sm w-full mx-auto max-w-3xl transform transition-transform hover:scale-105">
+                          <span className="text-3xl font-medium text-gray-900">{displayName}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-gray-200 text-center z-10 bg-white">
+              <p className="text-2xl font-semibold text-primary-900">
+                {t('outreachDashboard.tvFooterMessage')}
+              </p>
+            </div>
+          </div>
+        ) : (
+          /* ========================================= */
+          /* Standard Outreach Committee View Layout   */
+          /* ========================================= */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left: Pending welcome summary */}
+            <section className="bg-white shadow-sm rounded-lg p-4 border h-fit">
+              <h2 className="text-lg font-medium text-gray-900 flex items-center">
+                <i className="fas fa-bell mr-2 text-primary-700"></i>
+                {t('outreachDashboard.pendingWelcomes')}
+              </h2>
+              <p className="text-sm text-gray-600 mb-3">{t('outreachDashboard.pendingDesc')}</p>
               {pendingLoading && (
-                <div className="text-sm text-gray-500">Loading pending members…</div>
+                <div className="text-sm text-gray-500">{t('common.loading')}</div>
               )}
               {pendingError && (
                 <div className="text-sm text-red-600">{pendingError}</div>
               )}
-              {!pendingLoading && !pendingError && pending.length === 0 && (
-                <div className="text-sm text-gray-500">All caught up! No pending welcomes.</div>
+              {!pendingLoading && !pendingError && (
+                <div className="text-2xl font-semibold text-primary-800">{pending.length}</div>
               )}
+              <button
+                onClick={loadPendingWelcomes}
+                className="mt-3 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+              >
+                {t('outreachDashboard.refresh')}
+              </button>
+            </section>
 
-              {!pendingLoading && !pendingError && pending.length > 0 && (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {pending.map((m: any) => (
-                        <tr key={m.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                            {m.firstName} {m.middleName ? `${m.middleName} ` : ''}{m.lastName}
-                          </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
-                            <div>{m.phoneNumber || '-'}</div>
-                            <div className="text-gray-500">{m.email || '-'}</div>
-                          </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm">
-                            {permissions.canManageOnboarding ? (
-                              <button
-                                disabled={actionBusyId === m.id}
-                                onClick={() => {
-                                  setModalError(null);
-                                  setModalMember(m);
-                                }}
-                                className={`px-3 py-1.5 rounded text-white ${actionBusyId === m.id ? 'bg-gray-400' : 'bg-primary-600 hover:bg-primary-700'}`}
-                              >
-                                Mark Welcomed
-                              </button>
-                            ) : (
-                              <span className="text-gray-400">No permission</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
+            {/* Right: Detailed list with actions */}
+            <section className="bg-white shadow-sm rounded-lg p-0 border lg:col-span-2">
+              <div className="border-b border-gray-200">
+                <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">
+                  <button
+                    onClick={() => setActiveTab('pending')}
+                    className={`whitespace-nowrap flex py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'pending' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  >
+                    <i className="fas fa-user-clock mr-2 self-center"></i>
+                    {t('outreachDashboard.tabs.pending')}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('welcomed')}
+                    className={`whitespace-nowrap flex py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'welcomed' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  >
+                    <i className="fas fa-user-check mr-2 self-center"></i>
+                    {t('outreachDashboard.tabs.welcomed')}
+                  </button>
+                </nav>
+              </div>
+
+              <div className="p-4">
+                {activeTab === 'pending' && (
+                  <>
+                    <p className="text-sm text-gray-600 mb-4">{t('outreachDashboard.onboardingDesc')}</p>
+                    {pendingLoading && (
+                      <div className="text-sm text-gray-500">{t('outreachDashboard.loadingPending')}</div>
+                    )}
+                    {pendingError && (
+                      <div className="text-sm text-red-600">{pendingError}</div>
+                    )}
+                    {!pendingLoading && !pendingError && pending.length === 0 && (
+                      <div className="text-sm text-gray-500">{t('outreachDashboard.allCaughtUp')}</div>
+                    )}
+
+                    {!pendingLoading && !pendingError && pending.length > 0 && (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('outreachDashboard.table.name')}</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('outreachDashboard.table.contact')}</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('outreachDashboard.table.action')}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {pending.map((m: any) => (
+                              <tr key={m.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                  {m.firstName} {m.middleName ? `${m.middleName} ` : ''}{m.lastName}
+                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                                  <div>{m.phoneNumber || '-'}</div>
+                                  <div className="text-gray-500">{m.email || '-'}</div>
+                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                  {permissions.canManageOnboarding ? (
+                                    <button
+                                      disabled={actionBusyId === m.id}
+                                      onClick={() => {
+                                        setModalError(null);
+                                        setModalMember(m);
+                                      }}
+                                      className={`px-3 py-1.5 rounded text-white ${actionBusyId === m.id ? 'bg-gray-400' : 'bg-primary-600 hover:bg-primary-700'}`}
+                                    >
+                                      {t('outreachDashboard.markWelcomed')}
+                                    </button>
+                                  ) : (
+                                    <span className="text-gray-400">{t('outreachDashboard.noPermission')}</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {activeTab === 'welcomed' && (
+                  <>
+                    {welcomedLoading && (
+                      <div className="text-sm text-gray-500">{t('outreachDashboard.loadingWelcomed')}</div>
+                    )}
+                    {welcomedError && (
+                      <div className="text-sm text-red-600">{welcomedError}</div>
+                    )}
+                    {!welcomedLoading && !welcomedError && welcomed.length === 0 && (
+                      <div className="text-sm text-gray-500">{t('outreachDashboard.noWelcomedMembers')}</div>
+                    )}
+
+                    {!welcomedLoading && !welcomedError && welcomed.length > 0 && (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('outreachDashboard.welcomedColumns.memberNumber')}</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('outreachDashboard.table.name')}</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('outreachDashboard.welcomedColumns.familySize')}</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('outreachDashboard.welcomedColumns.dateJoined')}</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('outreachDashboard.welcomedColumns.welcomedBy')}</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('outreachDashboard.welcomedColumns.welcomeNote')}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {welcomed.map((m: any) => (
+                              <tr key={m.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                                  #{m.id}
+                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                  {m.firstName} {m.middleName ? `${m.middleName} ` : ''}{m.lastName}
+                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                                  {m.familySize}
+                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                                  {new Date(m.dateJoined || m.createdAt).toLocaleDateString()}
+                                </td>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                                  {m.welcomedBy || '-'}
+                                </td>
+                                <td className="px-4 py-2 text-sm text-gray-500 max-w-xs truncate" title={m.welcomeNote}>
+                                  {m.welcomeNote || '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
       </main>
 
-      {modalMember && (
+      {modalMember && !isTvView && (
         <ModalWelcomeNote
           memberId={modalMember.id}
           memberName={`${modalMember.firstName} ${modalMember.middleName ? modalMember.middleName + ' ' : ''}${modalMember.lastName}`}
@@ -266,7 +460,7 @@ const OutreachDashboard: React.FC = () => {
               }
               // Update UI
               setPending(prev => prev.filter(x => x.id !== modalMember.id));
-              alert('Welcomed note saved and member marked welcomed.');
+              alert(t('outreachDashboard.welcomedSuccess'));
               setModalMember(null);
             } catch (e: any) {
               if (e?.code === 'TIMEOUT') {

@@ -518,6 +518,65 @@ export interface Dictionaries {
       };
     };
   };
+  outreachDashboard: {
+    title: string;
+    churchTvView: string;
+    welcomeTitle: string;
+    welcomeSubtitle: string;
+    loadingMembers: string;
+    noNewMembers: string;
+    andFamily: string;
+    tvFooterMessage: string;
+    pendingWelcomes: string;
+    pendingDesc: string;
+    refresh: string;
+    onboardingQueue: string;
+    onboardingDesc: string;
+    loadingPending: string;
+    allCaughtUp: string;
+    tabs: {
+      pending: string;
+      welcomed: string;
+    };
+    welcomedColumns: {
+      memberNumber: string;
+      familySize: string;
+      dateJoined: string;
+      welcomedBy: string;
+      welcomeNote: string;
+    };
+    loadingWelcomed: string;
+    noWelcomedMembers: string;
+    table: {
+      name: string;
+      contact: string;
+      action: string;
+    };
+    markWelcomed: string;
+    noPermission: string;
+    welcomedSuccess: string;
+    addWelcomeNote: {
+      title: string;
+      for: string;
+      summary: string;
+      phone: string;
+      email: string;
+      pledge: string;
+      address: string;
+      registration: string;
+      householdSize: string;
+      loadingProfile: string;
+      profileUnavailable: string;
+      noteLabel: string;
+      notePlaceholder: string;
+      charMin: string;
+      looksGood: string;
+      remaining: string;
+      cancel: string;
+      save: string;
+      saving: string;
+    };
+  };
 }
 
 export const en: Dictionaries = {
@@ -1110,6 +1169,65 @@ export const en: Dictionaries = {
       }
     }
   },
+  outreachDashboard: {
+    title: "Outreach & Member Relations",
+    churchTvView: "Church TV View",
+    welcomeTitle: "Welcome to Our Church Family!",
+    welcomeSubtitle: "We are blessed to have you with us.",
+    loadingMembers: "Loading new members...",
+    noNewMembers: "No new members to welcome at this time.",
+    andFamily: "and Family",
+    tvFooterMessage: "New members, please meet our outreach committee at the bottom floor after church service.",
+    pendingWelcomes: "Pending Welcomes",
+    pendingDesc: "Members who registered but haven't been welcomed yet.",
+    refresh: "Refresh",
+    onboardingQueue: "Onboarding Queue",
+    onboardingDesc: "Mark a member as welcomed after contact is made.",
+    loadingPending: "Loading pending members…",
+    allCaughtUp: "All caught up! No pending welcomes.",
+    tabs: {
+      pending: "Pending Welcomes",
+      welcomed: "Already Welcomed"
+    },
+    welcomedColumns: {
+      memberNumber: "Member ID",
+      familySize: "Family Size",
+      dateJoined: "Date Joined",
+      welcomedBy: "Welcomed By",
+      welcomeNote: "Welcome Note"
+    },
+    loadingWelcomed: "Loading welcomed members…",
+    noWelcomedMembers: "No welcomed members found.",
+    table: {
+      name: "Name",
+      contact: "Contact",
+      action: "Action"
+    },
+    markWelcomed: "Mark Welcomed",
+    noPermission: "No permission",
+    welcomedSuccess: "Welcomed note saved and member marked welcomed.",
+    addWelcomeNote: {
+      title: "Add Welcome Note",
+      for: "for",
+      summary: "Member Summary",
+      phone: "Phone:",
+      email: "Email:",
+      pledge: "Yearly Pledge:",
+      address: "Address:",
+      registration: "Registration:",
+      householdSize: "Household Size:",
+      loadingProfile: "Loading profile…",
+      profileUnavailable: "Profile unavailable",
+      noteLabel: "Note (1–2000 characters)",
+      notePlaceholder: "Please note your greeting and pastoral conversation. For example: asked about their family and household details, when they moved to the Dallas–DFW area, and gently invited them to consider a yearly membership pledge as the Lord provides.",
+      charMin: "Enter at least 3 characters",
+      looksGood: "Looks good",
+      remaining: "remaining",
+      cancel: "Cancel",
+      save: "Save",
+      saving: "Saving…"
+    }
+  }
 
 };
 
@@ -1707,6 +1825,65 @@ export const ti: Dictionaries = {
         addSelected: "ዝተመረጹ ወስኽ"
       }
 
+    }
+  },
+  outreachDashboard: {
+    title: "ዝምድናን ርክብን ኣባላት",
+    churchTvView: "ናይ ቤተክርስቲያን ቲቪ ትርኢት",
+    welcomeTitle: "እንቋዕ ናብ ስድራቤት ቤተክርስቲያና ብደሓን መጻእኩም!",
+    welcomeSubtitle: "ምሳና ስለ ዝኾንኩም ብሩኻት ኢና።",
+    loadingMembers: "ሓደስቲ ኣባላት ይጽዕን ኣሎ...",
+    noNewMembers: "ኣብዚ እዋን ዝቕበልዎም ሓደስቲ ኣባላት የለዉን።",
+    andFamily: "ብኣባላት ስድራ",
+    tvFooterMessage: "ሓደስቲ ኣባላት፡ በጃኹም ድሕሪ ቅዳሴ ኣብ ታሕታይ ደርቢ ምስ ኮሚተ ርክብና ተራኸቡ።",
+    pendingWelcomes: "ዝጽበዩ ዘለዉ ኣባላት",
+    pendingDesc: "ዝተመዝገቡ ግና ዛጊድ ዘይተቐበልናዮም ኣባላት።",
+    refresh: "ኣሐድስ",
+    onboardingQueue: "መስርዕ ኣቀባብላ",
+    onboardingDesc: "ምስ ኣባል ምስ ተራኸብኩም \"ተቐቢልናዮም\" ኢልኩም መዝግቡ።",
+    loadingPending: "ዝጽበዩ ኣባላት ይጽዕን ኣሎ...",
+    allCaughtUp: "ኩሉ ተዛዚሙ! ዝጽበዩ የለዉን።",
+    tabs: {
+      pending: "ዝጽበዩ ዘለዉ",
+      welcomed: "ዝተቐበልናዮም"
+    },
+    welcomedColumns: {
+      memberNumber: "መለለዪ ኣባል",
+      familySize: "ብዝሒ ስድራ",
+      dateJoined: "ዝተጸምበረሉ ዕለት",
+      welcomedBy: "ተቐባሊ",
+      welcomeNote: "መዘኻኸሪ ኣቀባብላ"
+    },
+    loadingWelcomed: "ዝተቐበልናዮም ኣባላት ይጽዕን ኣሎ...",
+    noWelcomedMembers: "ዝተቐበልናዮም ኣባላት ኣይተረኽቡን።",
+    table: {
+      name: "ሽም",
+      contact: "ኣድራሻ",
+      action: "ተግባር"
+    },
+    markWelcomed: "ተቐቢልናዮ",
+    noPermission: "ፍቓድ የብልካን",
+    welcomedSuccess: "መዘኻኸሪ ኣቀባብላ ተዓቂቡ ኣባል ተቐቢልናዮ ተባሂሉ ተመዝጊቡ።",
+    addWelcomeNote: {
+      title: "ናይ ኣቀባብላ መዘኻኸሪ ወስኽ",
+      for: "ን",
+      summary: "ሓጺር መግለጺ ኣባል",
+      phone: "ቴሌፎን:",
+      email: "ኢሜይል:",
+      pledge: "ዓመታዊ መብጽዓ:",
+      address: "ኣድራሻ:",
+      registration: "ምዝገባ:",
+      householdSize: "ብዝሒ ስድራቤት:",
+      loadingProfile: "ፕሮፋይል ይጽዕን ኣሎ...",
+      profileUnavailable: "ፕሮፋይል የለን",
+      noteLabel: "መዘኻኸሪ (1-2000 ፊደላት)",
+      notePlaceholder: "በጃኹም ናይ ሰላምታን ርእይቶን መዘኻኸሪ ኣስፍሩ። ንኣብነት፡ ብዛዕባ ቤተሰቦምን ዝርዝር ስድራቤቶምን ሓቲትናዮም፣ ናብ ዳላስ መኣስ ከም ዝመጹ፣ ከምኡ'ውን እግዚኣብሔር ከም ዝፈቐዶ መጠን ዓመታዊ ናይ ኣባልነት ክፍሊት ክጅምሩ ብትሕትና ሓቲትናዮም።",
+      charMin: "እንተወሓደ 3 ፊደላት የእትዉ",
+      looksGood: "ጽቡቕ ኣሎ",
+      remaining: "ተሪፉ",
+      cancel: "ሰርዝ",
+      save: "ቀምጥ",
+      saving: "ይቅመጥ ኣሎ..."
     }
   }
 };

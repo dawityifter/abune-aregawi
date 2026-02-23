@@ -129,6 +129,11 @@ router.get('/onboarding/pending',
   memberController.getPendingWelcomes
 );
 
+router.get('/onboarding/welcomed',
+  roleMiddleware(['admin', 'relationship']),
+  memberController.getWelcomedMembers
+);
+
 // Outreach note routes
 router.post('/:id/outreach',
   roleMiddleware(['admin', 'relationship']),

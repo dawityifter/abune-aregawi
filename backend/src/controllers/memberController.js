@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { Member, Dependent, ActivityLog, Title } = require('../models');
+const { Member, Dependent, ActivityLog, Title, Outreach } = require('../models');
 const { sanitizeInput } = require('../utils/sanitize');
 const { newMemberRegistered } = require('../utils/notifications');
 const logger = require('../utils/logger');
@@ -111,22 +111,35 @@ exports.getPendingWelcomes = async (req, res) => {
     const { count, rows } = await Member.findAndCountAll({
       where,
       attributes: [
-        'id', 'first_name', 'last_name', 'email', 'phone_number', 'created_at', 'registration_status'
+        'id', 'first_name', 'last_name', 'email', 'phone_number', 'created_at', 'registration_status', 'household_size'
       ],
+      include: [{
+        model: Dependent,
+        as: 'dependents',
+        attributes: ['id']
+      }],
+      distinct: true,
       order: [['created_at', 'DESC']],
       limit: parseInt(limit),
       offset: parseInt(offset),
     });
 
-    const members = rows.map(m => ({
-      id: m.id,
-      firstName: m.first_name,
-      lastName: m.last_name,
-      email: m.email,
-      phoneNumber: m.phone_number,
-      createdAt: m.created_at,
-      registrationStatus: m.registration_status,
-    }));
+    const members = rows.map(m => {
+      const declaredSize = m.household_size || 1;
+      const computedSize = 1 + (m.dependents ? m.dependents.length : 0);
+      const familySize = Math.max(declaredSize, computedSize);
+
+      return {
+        id: m.id,
+        firstName: m.first_name,
+        lastName: m.last_name,
+        email: m.email,
+        phoneNumber: m.phone_number,
+        createdAt: m.created_at,
+        registrationStatus: m.registration_status,
+        familySize: familySize
+      };
+    });
 
     res.json({
       success: true,
@@ -143,6 +156,113 @@ exports.getPendingWelcomes = async (req, res) => {
     });
   } catch (error) {
     console.error('Get pending welcomes error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// List already welcomed members (admin/relationship)
+exports.getWelcomedMembers = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const where = {
+      is_welcomed: true,
+      is_active: true,
+    };
+
+    const { count, rows } = await Member.findAndCountAll({
+      where,
+      attributes: [
+        'id', 'first_name', 'last_name', 'email', 'phone_number', 'created_at', 'registration_status', 'household_size'
+      ],
+      include: [
+        {
+          model: Dependent,
+          as: 'dependents',
+          attributes: ['id']
+        },
+        {
+          model: Outreach,
+          as: 'outreach_notes',
+          attributes: ['id', 'welcomed_by', 'welcomed_date', 'note'],
+          required: false // Left outer join to allow members without notes (in case migrated data)
+        }
+      ],
+      distinct: true,
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+    });
+
+    const membersData = rows.map(m => {
+      const declaredSize = m.household_size || 1;
+      const computedSize = 1 + (m.dependents ? m.dependents.length : 0);
+      const familySize = Math.max(declaredSize, computedSize);
+
+      // We mainly care about the latest outreach note if there are multiple.
+      const sortedNotes = m.outreach_notes ? m.outreach_notes.sort((a, b) => new Date(b.welcomed_date) - new Date(a.welcomed_date)) : [];
+      const latestNote = sortedNotes.length > 0 ? sortedNotes[0] : null;
+
+      return {
+        id: m.id,
+        firstName: m.first_name,
+        lastName: m.last_name,
+        email: m.email,
+        phoneNumber: m.phone_number,
+        createdAt: m.createdAt || m.getDataValue('created_at') || m.created_at,
+        dateJoined: (latestNote && latestNote.welcomed_date) ? latestNote.welcomed_date : (m.createdAt || m.getDataValue('created_at') || m.created_at),
+        familySize: familySize,
+        welcomedByStr: latestNote ? latestNote.welcomed_by : null,
+        welcomeNote: latestNote ? latestNote.note : null,
+      };
+    });
+
+    // Lookup welcomers
+    const welcomerIds = new Set();
+    membersData.forEach(m => {
+      if (m.welcomedByStr && !isNaN(parseInt(m.welcomedByStr, 10))) {
+        welcomerIds.add(parseInt(m.welcomedByStr, 10));
+      }
+    });
+
+    const welcomerMap = {};
+    if (welcomerIds.size > 0) {
+      const welcomers = await Member.findAll({
+        where: { id: Array.from(welcomerIds) },
+        attributes: ['id', 'first_name', 'last_name']
+      });
+      welcomers.forEach(w => {
+        welcomerMap[w.id] = `${w.first_name} ${w.last_name}`;
+      });
+    }
+
+    const members = membersData.map(({ welcomedByStr, ...m }) => {
+      let welcomedBy = welcomedByStr;
+      if (welcomedByStr && welcomerMap[welcomedByStr]) {
+        welcomedBy = welcomerMap[welcomedByStr];
+      }
+      return {
+        ...m,
+        welcomedBy
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        members,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(count / limit),
+          totalMembers: count,
+          hasNext: page * limit < count,
+          hasPrev: page > 1,
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get welcomed members error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
