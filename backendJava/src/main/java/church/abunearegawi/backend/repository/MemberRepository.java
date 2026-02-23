@@ -26,6 +26,9 @@ public interface MemberRepository
     org.springframework.data.domain.Page<Member> findByIsWelcomedFalseAndIsActiveTrue(
             org.springframework.data.domain.Pageable pageable);
 
+    org.springframework.data.domain.Page<Member> findByIsWelcomedTrueAndIsActiveTrue(
+            org.springframework.data.domain.Pageable pageable);
+
     @org.springframework.data.jpa.repository.Query("SELECT SUM(m.yearlyPledge) FROM Member m WHERE m.isActive = true")
     java.math.BigDecimal sumYearlyPledges();
 

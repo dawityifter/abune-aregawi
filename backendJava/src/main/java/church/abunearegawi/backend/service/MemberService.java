@@ -4,6 +4,7 @@ import church.abunearegawi.backend.dto.MemberUpdateRequest;
 import church.abunearegawi.backend.model.Member;
 import church.abunearegawi.backend.repository.MemberRepository;
 import church.abunearegawi.backend.repository.DependentRepository;
+import church.abunearegawi.backend.repository.OutreachRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,7 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final DependentRepository dependentRepository;
+    private final OutreachRepository outreachRepository;
 
     @Transactional(readOnly = true)
     public Optional<Member> findByEmailOrPhone(String email, String phone) {
@@ -425,6 +427,21 @@ public class MemberService {
     @Transactional(readOnly = true)
     public Page<Member> findPendingWelcomes(Pageable pageable) {
         return memberRepository.findByIsWelcomedFalseAndIsActiveTrue(pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Member> findWelcomedMembers(Pageable pageable) {
+        return memberRepository.findByIsWelcomedTrueAndIsActiveTrue(pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<church.abunearegawi.backend.model.Outreach> findOutreachByMemberIds(java.util.List<Long> memberIds) {
+        return outreachRepository.findByMemberIdIn(memberIds);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<Member> findAllById(java.util.List<Long> ids) {
+        return memberRepository.findAllById(ids);
     }
 
     @Transactional
