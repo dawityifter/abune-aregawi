@@ -32,4 +32,5 @@ public class MemberCreateRequest {
     private String state;
     private String postalCode;
     private String country;
+    private String repentanceFather;
 }

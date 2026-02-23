@@ -108,6 +108,20 @@ public class MemberController {
         member.setPhoneNumber(request.getPhoneNumber());
         member.setFirebaseUid(request.getFirebaseUid());
 
+        if (request.getRepentanceFather() != null)
+            member.setRepentanceFather(request.getRepentanceFather());
+        if (request.getGender() != null) {
+            try { member.setGender(Member.Gender.valueOf(request.getGender())); } catch (IllegalArgumentException ignored) {}
+        }
+        if (request.getMaritalStatus() != null) {
+            try { member.setMaritalStatus(Member.MaritalStatus.valueOf(request.getMaritalStatus())); } catch (IllegalArgumentException ignored) {}
+        }
+        if (request.getStreetLine1() != null) member.setStreetLine1(request.getStreetLine1());
+        if (request.getCity() != null) member.setCity(request.getCity());
+        if (request.getState() != null) member.setState(request.getState());
+        if (request.getPostalCode() != null) member.setPostalCode(request.getPostalCode());
+        if (request.getCountry() != null) member.setCountry(request.getCountry());
+
         if (request.getDateOfBirth() != null)
             member.setDateOfBirth(request.getDateOfBirth());
         // Set defaults
