@@ -6,6 +6,7 @@ import church.abunearegawi.backend.model.Dependent
 import church.abunearegawi.backend.model.Member
 import church.abunearegawi.backend.repository.DependentRepository
 import church.abunearegawi.backend.repository.MemberRepository
+import church.abunearegawi.backend.repository.OutreachRepository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
@@ -17,7 +18,8 @@ class MemberServiceSpec extends Specification {
 
     MemberRepository memberRepository = Mock()
     DependentRepository dependentRepository = Mock()
-    MemberService service = new MemberService(memberRepository, dependentRepository)
+    OutreachRepository outreachRepository = Mock()
+    MemberService service = new MemberService(memberRepository, dependentRepository, outreachRepository)
 
     Member testMember = Member.builder()
             .id(1L).firstName("John").lastName("Doe")
@@ -1096,6 +1098,22 @@ class MemberServiceSpec extends Specification {
 
         then:
         result["memberId"] == 5L
+    }
+
+    // --- findWelcomedMembers ---
+
+    def "should find welcomed members"() {
+        given:
+        def pageable = PageRequest.of(0, 10)
+        def welcomed = Member.builder().id(4L).firstName("Welcomed").lastName("Member").isWelcomed(true).isActive(true).build()
+        memberRepository.findByIsWelcomedTrueAndIsActiveTrue(pageable) >> new PageImpl<>([welcomed])
+
+        when:
+        def result = service.findWelcomedMembers(pageable)
+
+        then:
+        result.totalElements == 1
+        result.content[0].firstName == "Welcomed"
     }
 
     // --- checkRegistrationStatus edge cases ---

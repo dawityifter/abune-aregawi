@@ -273,6 +273,107 @@ public class MemberController {
         return ResponseEntity.ok(ApiResponse.success(data));
     }
 
+    @GetMapping("/onboarding/welcomed")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RELATIONSHIP')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getWelcomedMembers(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit) {
+        Page<Member> members = memberService.findWelcomedMembers(
+                org.springframework.data.domain.PageRequest.of(
+                        Math.max(0, page - 1), limit,
+                        org.springframework.data.domain.Sort.by("createdAt").descending()));
+
+        java.util.List<Long> memberIds = members.getContent().stream()
+                .map(Member::getId).collect(java.util.stream.Collectors.toList());
+
+        // Batch-fetch dependent counts
+        java.util.Map<Long, Long> depCounts = new java.util.HashMap<>();
+        if (!memberIds.isEmpty()) {
+            dependentRepository.countByMemberIds(memberIds)
+                    .forEach(row -> depCounts.put((Long) row[0], (Long) row[1]));
+        }
+
+        // Batch-fetch outreach notes
+        java.util.Map<Long, java.util.List<church.abunearegawi.backend.model.Outreach>> outreachMap = new java.util.HashMap<>();
+        if (!memberIds.isEmpty()) {
+            java.util.List<church.abunearegawi.backend.model.Outreach> allNotes =
+                    memberService.findOutreachByMemberIds(memberIds);
+            for (church.abunearegawi.backend.model.Outreach note : allNotes) {
+                outreachMap.computeIfAbsent(note.getMember().getId(), k -> new java.util.ArrayList<>()).add(note);
+            }
+        }
+
+        // Collect welcomer IDs that are numeric (member IDs)
+        java.util.Set<Long> welcomerIds = new java.util.HashSet<>();
+        outreachMap.values().forEach(notes -> {
+            if (!notes.isEmpty()) {
+                notes.sort((a, b) -> b.getWelcomedDate().compareTo(a.getWelcomedDate()));
+                String wb = notes.get(0).getWelcomedBy();
+                try { welcomerIds.add(Long.parseLong(wb)); } catch (NumberFormatException ignored) {}
+            }
+        });
+
+        // Batch-fetch welcomer names
+        java.util.Map<Long, String> welcomerNames = new java.util.HashMap<>();
+        if (!welcomerIds.isEmpty()) {
+            memberService.findAllById(new java.util.ArrayList<>(welcomerIds))
+                    .forEach(w -> welcomerNames.put(w.getId(), w.getFirstName() + " " + w.getLastName()));
+        }
+
+        java.util.List<java.util.Map<String, Object>> memberList = members.getContent().stream()
+                .map(m -> {
+                    int declaredSize = m.getHouseholdSize() != null ? m.getHouseholdSize() : 1;
+                    long depCount = depCounts.getOrDefault(m.getId(), 0L);
+                    int familySize = Math.max(declaredSize, 1 + (int) depCount);
+
+                    java.util.List<church.abunearegawi.backend.model.Outreach> notes =
+                            outreachMap.getOrDefault(m.getId(), java.util.Collections.emptyList());
+                    church.abunearegawi.backend.model.Outreach latestNote = notes.isEmpty() ? null : notes.get(0);
+
+                    String welcomedBy = null;
+                    String welcomeNote = null;
+                    Object dateJoined = m.getCreatedAt();
+                    if (latestNote != null) {
+                        String wb = latestNote.getWelcomedBy();
+                        try {
+                            Long wbId = Long.parseLong(wb);
+                            welcomedBy = welcomerNames.getOrDefault(wbId, wb);
+                        } catch (NumberFormatException e) {
+                            welcomedBy = wb;
+                        }
+                        welcomeNote = latestNote.getNote();
+                        dateJoined = latestNote.getWelcomedDate();
+                    }
+
+                    java.util.Map<String, Object> item = new java.util.LinkedHashMap<>();
+                    item.put("id", m.getId());
+                    item.put("firstName", m.getFirstName());
+                    item.put("lastName", m.getLastName());
+                    item.put("email", m.getEmail());
+                    item.put("phoneNumber", m.getPhoneNumber());
+                    item.put("createdAt", m.getCreatedAt());
+                    item.put("dateJoined", dateJoined);
+                    item.put("familySize", familySize);
+                    item.put("welcomedBy", welcomedBy);
+                    item.put("welcomeNote", welcomeNote);
+                    return item;
+                })
+                .collect(java.util.stream.Collectors.toList());
+
+        java.util.Map<String, Object> pagination = new java.util.LinkedHashMap<>();
+        pagination.put("currentPage", page);
+        pagination.put("totalPages", members.getTotalPages());
+        pagination.put("totalMembers", members.getTotalElements());
+        pagination.put("hasNext", (long) page * limit < members.getTotalElements());
+        pagination.put("hasPrev", page > 1);
+
+        java.util.Map<String, Object> data = new java.util.LinkedHashMap<>();
+        data.put("members", memberList);
+        data.put("pagination", pagination);
+
+        return ResponseEntity.ok(ApiResponse.success(data));
+    }
+
     @PostMapping("/{id:\\d+}/mark-welcomed")
     @PreAuthorize("hasAnyRole('ADMIN', 'SECRETARY', 'CHURCH_LEADERSHIP')")
     public ResponseEntity<ApiResponse<MemberDTO>> markWelcomed(
