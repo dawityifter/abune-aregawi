@@ -35,6 +35,7 @@ public class AnnouncementController {
     public ResponseEntity<ApiResponse<AnnouncementDTO>> create(@RequestBody Map<String, String> body) {
         AnnouncementDTO dto = announcementService.create(
             body.get("title"), body.get("description"),
+            body.get("title_ti"), body.get("description_ti"),
             LocalDate.parse(body.get("start_date")), LocalDate.parse(body.get("end_date")),
             null
         );
@@ -46,6 +47,7 @@ public class AnnouncementController {
     public ResponseEntity<ApiResponse<AnnouncementDTO>> update(@PathVariable Long id, @RequestBody Map<String, String> body) {
         AnnouncementDTO dto = announcementService.update(
             id, body.get("title"), body.get("description"),
+            body.get("title_ti"), body.get("description_ti"),
             LocalDate.parse(body.get("start_date")), LocalDate.parse(body.get("end_date"))
         );
         return ResponseEntity.ok(ApiResponse.success(dto));
