@@ -7,6 +7,9 @@ import church.abunearegawi.backend.repository.DependentRepository;
 import church.abunearegawi.backend.repository.OutreachRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -54,6 +57,7 @@ public class MemberService {
         return memberRepository.findAll(pageable);
     }
 
+    @Cacheable(value = "member-search", key = "#query")
     @Transactional(readOnly = true)
     public java.util.List<church.abunearegawi.backend.dto.MemberDTO> search(String query) {
         if (query == null || query.trim().length() < 3) {
@@ -130,6 +134,7 @@ public class MemberService {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    @Cacheable(value = "members", key = "'list-' + #limit")
     @Transactional(readOnly = true)
     public java.util.List<church.abunearegawi.backend.dto.MemberDTO> findAllList(int limit) {
         // Naive limit implementation using Pageable
@@ -148,6 +153,10 @@ public class MemberService {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "members", allEntries = true),
+        @CacheEvict(value = "member-search", allEntries = true)
+    })
     @Transactional
     public Member register(Member member) {
         if (member.getEmail() != null && memberRepository.findByEmail(member.getEmail()).isPresent()) {
@@ -281,6 +290,10 @@ public class MemberService {
         return dependentRepository.count();
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "members", allEntries = true),
+        @CacheEvict(value = "member-search", allEntries = true)
+    })
     @Transactional
     public Member update(Long id, MemberUpdateRequest request) {
         Member member = memberRepository.findById(id)
@@ -417,6 +430,10 @@ public class MemberService {
         return memberRepository.save(member);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "members", allEntries = true),
+        @CacheEvict(value = "member-search", allEntries = true)
+    })
     @Transactional
     public void delete(Long id) {
         Member member = memberRepository.findById(id)
@@ -444,6 +461,10 @@ public class MemberService {
         return memberRepository.findAllById(ids);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "members", allEntries = true),
+        @CacheEvict(value = "member-search", allEntries = true)
+    })
     @Transactional
     public Member updateMemberRole(Long id, String role, java.util.List<String> roles) {
         Member member = memberRepository.findById(id)
@@ -489,6 +510,10 @@ public class MemberService {
         return memberRepository.save(member);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "members", allEntries = true),
+        @CacheEvict(value = "member-search", allEntries = true)
+    })
     @Transactional
     public Member markWelcomed(Long id, Long welcomedByMemberId) {
         Member member = memberRepository.findById(id)

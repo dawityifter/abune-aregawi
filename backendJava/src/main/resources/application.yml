@@ -26,15 +26,52 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,env,metrics
+        include: health,prometheus
   endpoint:
     health:
       show-details: when-authorized
-    env:
-      show-values: when-authorized
-  info:
-    env:
+      probes:
+        enabled: true
+    prometheus:
       enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+    group:
+      liveness:
+        include: livenessState
+      readiness:
+        include: readinessState,db,diskSpace,firebase
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
+
+spring.cache:
+  type: caffeine
+
+cache:
+  specs:
+    members:
+      ttl: 300        # seconds
+      max-size: 500
+    member-search:
+      ttl: 60
+      max-size: 200
+    outreach:
+      ttl: 120
+      max-size: 200
+    titles:
+      ttl: 3600
+      max-size: 50
 
 app:
   # Demo mode (for testing without real Firebase tokens)
