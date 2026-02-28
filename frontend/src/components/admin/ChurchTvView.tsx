@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -14,7 +14,7 @@ interface Props {
   onIntervalChange: (seconds: number) => void;
 }
 
-type Slide = 'announcements' | 'welcomes';
+type SlideItem = { type: 'announcement'; idx: number } | { type: 'welcomes' };
 
 const ChurchTvView: React.FC<Props> = ({ pendingWelcomes, announcements, rotationIntervalSeconds, onIntervalChange }) => {
   const { dict } = useI18n();
@@ -24,67 +24,60 @@ const ChurchTvView: React.FC<Props> = ({ pendingWelcomes, announcements, rotatio
   const hasAnnouncements = announcements.length > 0;
   const hasWelcomes = pendingWelcomes.length > 0;
 
-  const initialSlide: Slide = hasAnnouncements ? 'announcements' : 'welcomes';
-  const [currentSlide, setCurrentSlide] = useState<Slide>(initialSlide);
-  const [announcementIdx, setAnnouncementIdx] = useState(0);
+  // Flat slide sequence: each announcement is its own slide, then welcomes
+  const slides: SlideItem[] = useMemo(() => [
+    ...announcements.map((_, i): SlideItem => ({ type: 'announcement', idx: i })),
+    ...(hasWelcomes ? [{ type: 'welcomes' as const }] : []),
+  ], [announcements, hasWelcomes]);
+
+  const [slideIdx, setSlideIdx] = useState(0);
   const [visible, setVisible] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [intervalInput, setIntervalInput] = useState(String(rotationIntervalSeconds));
 
-  // Reset announcement index when list changes
-  useEffect(() => { setAnnouncementIdx(0); }, [announcements]);
+  // Reset to first slide when the slide list changes
+  useEffect(() => { setSlideIdx(0); }, [slides.length]);
 
-  // Main rotation: switch between announcements slide and welcomes slide
+  // Flat rotation: each slide gets the full rotationIntervalSeconds
   useEffect(() => {
-    if (!hasAnnouncements || !hasWelcomes) return; // nothing to rotate
+    if (slides.length < 2) return;
     const id = setInterval(() => {
       setVisible(false);
       setTimeout(() => {
-        setCurrentSlide(prev => prev === 'announcements' ? 'welcomes' : 'announcements');
+        setSlideIdx(prev => (prev + 1) % slides.length);
         setVisible(true);
       }, 500);
     }, rotationIntervalSeconds * 1000);
     return () => clearInterval(id);
-  }, [rotationIntervalSeconds, hasAnnouncements, hasWelcomes]);
-
-  // Within-slide rotation for multiple announcements
-  useEffect(() => {
-    if (!hasAnnouncements || announcements.length < 2) return;
-    const perAnnouncement = Math.max(5, Math.floor(rotationIntervalSeconds / announcements.length));
-    const id = setInterval(() => {
-      setAnnouncementIdx(prev => (prev + 1) % announcements.length);
-    }, perAnnouncement * 1000);
-    return () => clearInterval(id);
-  }, [announcements, rotationIntervalSeconds, hasAnnouncements]);
+  }, [rotationIntervalSeconds, slides.length]);
 
   const handleIntervalSave = () => {
     const v = parseInt(intervalInput, 10);
     if (v >= 5 && v <= 300) { onIntervalChange(v); setSettingsOpen(false); }
   };
 
-  const currentAnnouncement = announcements[announcementIdx];
+  const currentSlide = slides[Math.min(slideIdx, slides.length - 1)];
 
-  const renderAnnouncementsSlide = () => (
+  const renderAnnouncementSlide = (ann: Announcement, annIdx: number) => (
     <div className="flex flex-col items-center justify-center h-full px-12 text-center">
       <div className="text-primary-500 text-lg font-medium mb-4 uppercase tracking-widest">
         {od.announcements.tabTitle}
       </div>
-      <h2 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">{currentAnnouncement?.title}</h2>
-      {currentAnnouncement?.description && (
+      <h2 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">{ann.title}</h2>
+      {ann.description && (
         <div
           className="text-2xl text-gray-700 max-w-3xl prose prose-2xl mx-auto"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentAnnouncement.description) }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(ann.description) }}
         />
       )}
-      {currentAnnouncement && (
-        <p className="mt-8 text-lg text-gray-400">
-          {currentAnnouncement.start_date} – {currentAnnouncement.end_date}
-        </p>
-      )}
-      {announcements.length > 1 && (
+      <p className="mt-8 text-lg text-gray-400">{ann.start_date} – {ann.end_date}</p>
+      {slides.length > 1 && (
         <div className="flex gap-2 mt-6">
-          {announcements.map((_, i) => (
-            <span key={i} className={`w-2 h-2 rounded-full ${i === announcementIdx ? 'bg-primary-600' : 'bg-gray-300'}`} />
+          {slides.map((s, i) => (
+            <span
+              key={i}
+              className={`w-2 h-2 rounded-full ${i === slideIdx ? 'bg-primary-600' : 'bg-gray-300'}`}
+            />
           ))}
         </div>
       )}
@@ -123,7 +116,17 @@ const ChurchTvView: React.FC<Props> = ({ pendingWelcomes, announcements, rotatio
           </>
         )}
       </div>
-      <div className="mt-8 pt-6 border-t border-gray-200 text-center z-10 bg-white">
+      {slides.length > 1 && (
+        <div className="flex gap-2 justify-center mt-4">
+          {slides.map((s, i) => (
+            <span
+              key={i}
+              className={`w-2 h-2 rounded-full ${i === slideIdx ? 'bg-primary-600' : 'bg-gray-300'}`}
+            />
+          ))}
+        </div>
+      )}
+      <div className="mt-4 pt-6 border-t border-gray-200 text-center z-10 bg-white">
         <p className="text-2xl font-semibold text-primary-900">{od.tvFooterMessage}</p>
       </div>
     </>
@@ -160,13 +163,11 @@ const ChurchTvView: React.FC<Props> = ({ pendingWelcomes, announcements, rotatio
 
       {/* Slide content */}
       <div className={`flex-1 flex flex-col transition-opacity duration-500 ${visible ? 'opacity-100' : 'opacity-0'}`}>
-        {!hasAnnouncements && !hasWelcomes
+        {!currentSlide
           ? renderEmpty()
-          : currentSlide === 'announcements' && hasAnnouncements
-            ? renderAnnouncementsSlide()
-            : hasWelcomes
-              ? renderWelcomesSlide()
-              : renderAnnouncementsSlide()
+          : currentSlide.type === 'announcement'
+            ? renderAnnouncementSlide(announcements[currentSlide.idx], currentSlide.idx)
+            : renderWelcomesSlide()
         }
       </div>
     </div>
