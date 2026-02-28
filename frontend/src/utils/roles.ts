@@ -51,6 +51,7 @@ export interface RolePermissions {
   canRecordEngagement: boolean; // Record/track member engagement activities
   canManageExternalPartners: boolean; // Add/edit partner org info
   canGenerateOutreachReports: boolean; // Generate outreach/relationship reports
+  canManageAnnouncements: boolean; // Create/edit/cancel public announcements
 
   // Public Access
   canViewPublicInfo: boolean;
@@ -106,6 +107,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: true,
     canManageExternalPartners: true,
     canGenerateOutreachReports: true,
+    canManageAnnouncements: true,
 
     // Public Access
     canViewPublicInfo: true,
@@ -159,6 +161,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
+    canManageAnnouncements: false,
 
     // Public Access
     canViewPublicInfo: true,
@@ -212,6 +215,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
+    canManageAnnouncements: false,
 
     // Public Access
     canViewPublicInfo: true,
@@ -265,6 +269,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
+    canManageAnnouncements: false,
 
     // Public Access
     canViewPublicInfo: true,
@@ -318,6 +323,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: true,
+    canManageAnnouncements: false,
 
     // Public Access
     canViewPublicInfo: true,
@@ -371,6 +377,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
+    canManageAnnouncements: false,
 
     // Public Access
     canViewPublicInfo: true,
@@ -424,6 +431,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: true, // Vendor management
     canGenerateOutreachReports: false,
+    canManageAnnouncements: false,
 
     // Public Access
     canViewPublicInfo: true,
@@ -477,6 +485,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
+    canManageAnnouncements: false,
 
     // Public Access
     canViewPublicInfo: true,
@@ -530,6 +539,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
+    canManageAnnouncements: false,
 
     // Public Access
     canViewPublicInfo: true,
@@ -583,6 +593,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: true,
     canManageExternalPartners: true,
     canGenerateOutreachReports: true,
+    canManageAnnouncements: true,
 
     // Public Access
     canViewPublicInfo: true,
@@ -636,6 +647,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
+    canManageAnnouncements: false,
 
     // Public Access
     canViewPublicInfo: true,
@@ -689,6 +701,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canRecordEngagement: false,
     canManageExternalPartners: false,
     canGenerateOutreachReports: false,
+    canManageAnnouncements: false,
 
     // Public Access
     canViewPublicInfo: true,
