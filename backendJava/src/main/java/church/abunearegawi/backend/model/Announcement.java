@@ -22,6 +22,12 @@ public class Announcement {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "title_ti", length = 255)
+    private String titleTi;
+
+    @Column(name = "description_ti", columnDefinition = "TEXT")
+    private String descriptionTi;
+
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 

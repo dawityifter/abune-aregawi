@@ -33,9 +33,10 @@ public class AnnouncementService {
     }
 
     @Transactional
-    public AnnouncementDTO create(String title, String description, LocalDate startDate, LocalDate endDate, Long createdByMemberId) {
+    public AnnouncementDTO create(String title, String description, String titleTi, String descriptionTi, LocalDate startDate, LocalDate endDate, Long createdByMemberId) {
         Announcement a = Announcement.builder()
             .title(title).description(description)
+            .titleTi(titleTi).descriptionTi(descriptionTi)
             .startDate(startDate).endDate(endDate)
             .createdByMemberId(createdByMemberId)
             .build();
@@ -43,11 +44,13 @@ public class AnnouncementService {
     }
 
     @Transactional
-    public AnnouncementDTO update(Long id, String title, String description, LocalDate startDate, LocalDate endDate) {
+    public AnnouncementDTO update(Long id, String title, String description, String titleTi, String descriptionTi, LocalDate startDate, LocalDate endDate) {
         Announcement a = announcementRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Announcement not found: " + id));
         a.setTitle(title);
         a.setDescription(description);
+        a.setTitleTi(titleTi);
+        a.setDescriptionTi(descriptionTi);
         a.setStartDate(startDate);
         a.setEndDate(endDate);
         return AnnouncementDTO.from(announcementRepository.save(a));
