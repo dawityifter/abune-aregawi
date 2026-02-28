@@ -31,6 +31,7 @@ public class MemberController {
     private final church.abunearegawi.backend.repository.DependentRepository dependentRepository;
 
     @GetMapping("/titles")
+    @org.springframework.cache.annotation.Cacheable("titles")
     public ResponseEntity<ApiResponse<java.util.List<church.abunearegawi.backend.model.Title>>> getTitles() {
         return ResponseEntity.ok(ApiResponse.success(titleRepository.findAllByOrderByPriorityAsc()));
     }

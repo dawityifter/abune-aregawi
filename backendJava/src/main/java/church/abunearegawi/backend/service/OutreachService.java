@@ -5,6 +5,8 @@ import church.abunearegawi.backend.model.Outreach;
 import church.abunearegawi.backend.repository.MemberRepository;
 import church.abunearegawi.backend.repository.OutreachRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,11 +19,13 @@ public class OutreachService {
     private final OutreachRepository outreachRepository;
     private final MemberRepository memberRepository;
 
+    @Cacheable(value = "outreach", key = "#memberId")
     @Transactional(readOnly = true)
     public List<Outreach> findByMemberId(Long memberId) {
         return outreachRepository.findByMemberIdOrderByWelcomedDateDescCreatedAtDesc(memberId);
     }
 
+    @CacheEvict(value = "outreach", key = "#memberId")
     @Transactional
     public Outreach create(Long memberId, String note, String welcomedBy) {
         Member member = memberRepository.findById(memberId)

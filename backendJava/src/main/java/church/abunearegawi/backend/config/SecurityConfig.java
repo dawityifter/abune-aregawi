@@ -37,8 +37,8 @@ public class SecurityConfig {
                                 "/api/members/titles", "/api/members/check-phone/**",
                                 "/api/members/profile/firebase/**", "/api/youtube/**")
                         .permitAll()
-                        // Actuator health endpoint is public; others require ADMIN
-                        .requestMatchers("/actuator/health").permitAll()
+                        // Actuator: health + prometheus are public (prometheus scraped by cluster Prometheus)
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/prometheus").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
                         // All other API endpoints require authentication
                         .requestMatchers("/api/**").authenticated()
