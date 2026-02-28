@@ -49,8 +49,8 @@ public class AnnouncementService {
             .orElseThrow(() -> new RuntimeException("Announcement not found: " + id));
         a.setTitle(title);
         a.setDescription(description);
-        a.setTitleTi(titleTi);
-        a.setDescriptionTi(descriptionTi);
+        if (titleTi != null) a.setTitleTi(titleTi);
+        if (descriptionTi != null) a.setDescriptionTi(descriptionTi);
         a.setStartDate(startDate);
         a.setEndDate(endDate);
         return AnnouncementDTO.from(announcementRepository.save(a));
