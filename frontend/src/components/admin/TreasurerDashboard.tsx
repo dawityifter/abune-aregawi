@@ -39,6 +39,8 @@ const TreasurerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle' | 'member-dues' | 'employees' | 'vendors' | 'bank'>('overview');
   const [activeReportTab, setActiveReportTab] = useState<'weekly' | 'payment'>('weekly');
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [showMemberSearch, setShowMemberSearch] = useState(false);
@@ -128,7 +130,9 @@ const TreasurerDashboard: React.FC = () => {
   useEffect(() => {
     if (hasFinancialAccess) {
       fetchPaymentStats();
+      loadAvailableYears();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasFinancialAccess]);
 
   // Keep stats in sync when payments complete (Stripe or non-Stripe)
@@ -138,6 +142,12 @@ const TreasurerDashboard: React.FC = () => {
     return () => window.removeEventListener('payments:refresh' as any, listener);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!firebaseUser) return;
+    fetchPaymentStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedYear]);
 
   const fetchPaymentStats = async () => {
     try {
@@ -150,7 +160,7 @@ const TreasurerDashboard: React.FC = () => {
       setLoading(true);
 
       // Fetch pledge/ledger-based stats
-      const endpoint = '/api/payments/stats';
+      const endpoint = `/api/payments/stats?year=${selectedYear}`;
 
       console.log('🔍 Using endpoint:', endpoint);
 
@@ -182,6 +192,19 @@ const TreasurerDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadAvailableYears = async () => {
+    try {
+      const token = await firebaseUser?.getIdToken();
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/payments/stats/years`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.data?.years?.length) setAvailableYears(data.data.years);
+      }
+    } catch { /* non-critical */ }
   };
 
   const refreshFinancialData = () => {
@@ -339,7 +362,14 @@ const TreasurerDashboard: React.FC = () => {
                   )}
                 </div>
               </div>
-              {stats && <PaymentStats stats={stats} />}
+              {stats && (
+                <PaymentStats
+                  stats={stats}
+                  selectedYear={selectedYear}
+                  availableYears={availableYears}
+                  onYearChange={setSelectedYear}
+                />
+              )}
             </div>
           )}
 
