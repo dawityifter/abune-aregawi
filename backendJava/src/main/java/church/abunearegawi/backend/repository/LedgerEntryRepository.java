@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Repository
 public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, Long> {
@@ -44,4 +45,7 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, Long> 
                         @Param("type") String type,
                         @Param("startDate") LocalDate startDate,
                         @Param("endDate") LocalDate endDate);
+
+        @Query("SELECT DISTINCT YEAR(e.entryDate) FROM LedgerEntry e ORDER BY YEAR(e.entryDate) DESC")
+        List<Integer> findDistinctYears();
 }
