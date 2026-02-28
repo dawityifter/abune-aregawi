@@ -7,7 +7,8 @@ const {
   generatePaymentReport,
   getPaymentStats,
   getWeeklyReport,
-  getMemberDuesForTreasurer
+  getMemberDuesForTreasurer,
+  getAvailableYears
 } = require('../controllers/memberPaymentController');
 const { firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
@@ -18,6 +19,9 @@ router.use(firebaseAuthMiddleware);
 // Read-only routes - allow church_leadership to view financial data
 const viewRoles = ['treasurer', 'admin', 'church_leadership', 'secretary', 'bookkeeper', 'auditor', 'budget_committee', 'ar_team'];
 const editRoles = ['treasurer', 'admin', 'bookkeeper', 'ar_team'];
+
+// Get available years for stats filtering (READ-ONLY - must be before /stats to avoid route conflicts)
+router.get('/stats/years', roleMiddleware(viewRoles), getAvailableYears);
 
 // Get payment statistics for dashboard (READ-ONLY)
 router.get('/stats', roleMiddleware(viewRoles), getPaymentStats);
