@@ -537,6 +537,7 @@ export interface Dictionaries {
     tabs: {
       pending: string;
       welcomed: string;
+      announcements: string;
     };
     welcomedColumns: {
       memberNumber: string;
@@ -555,6 +556,36 @@ export interface Dictionaries {
     markWelcomed: string;
     noPermission: string;
     welcomedSuccess: string;
+    announcements: {
+      tabTitle: string;
+      addButton: string;
+      editButton: string;
+      cancelButton: string;
+      statusActive: string;
+      statusExpired: string;
+      statusCancelled: string;
+      filterAll: string;
+      titleLabel: string;
+      descriptionLabel: string;
+      startDateLabel: string;
+      endDateLabel: string;
+      modalCreateTitle: string;
+      modalEditTitle: string;
+      saveButton: string;
+      confirmCancel: string;
+      noAnnouncements: string;
+      columns: {
+        title: string;
+        dates: string;
+        status: string;
+        actions: string;
+      };
+    };
+    tvSettings: {
+      gearLabel: string;
+      intervalLabel: string;
+      saveLabel: string;
+    };
     addWelcomeNote: {
       title: string;
       for: string;
@@ -1187,7 +1218,8 @@ export const en: Dictionaries = {
     allCaughtUp: "All caught up! No pending welcomes.",
     tabs: {
       pending: "Pending Welcomes",
-      welcomed: "Already Welcomed"
+      welcomed: "Already Welcomed",
+      announcements: "Public Announcements"
     },
     welcomedColumns: {
       memberNumber: "Member ID",
@@ -1206,6 +1238,36 @@ export const en: Dictionaries = {
     markWelcomed: "Mark Welcomed",
     noPermission: "No permission",
     welcomedSuccess: "Welcomed note saved and member marked welcomed.",
+    announcements: {
+      tabTitle: "Public Announcements",
+      addButton: "Add Announcement",
+      editButton: "Edit",
+      cancelButton: "Cancel Announcement",
+      statusActive: "Active",
+      statusExpired: "Expired",
+      statusCancelled: "Cancelled",
+      filterAll: "All",
+      titleLabel: "Title",
+      descriptionLabel: "Description",
+      startDateLabel: "Start Date",
+      endDateLabel: "End Date",
+      modalCreateTitle: "New Announcement",
+      modalEditTitle: "Edit Announcement",
+      saveButton: "Save",
+      confirmCancel: "Cancel this announcement? This cannot be undone.",
+      noAnnouncements: "No announcements found.",
+      columns: {
+        title: "Title",
+        dates: "Date Range",
+        status: "Status",
+        actions: "Actions"
+      }
+    },
+    tvSettings: {
+      gearLabel: "TV Settings",
+      intervalLabel: "Rotate every (seconds)",
+      saveLabel: "Save"
+    },
     addWelcomeNote: {
       title: "Add Welcome Note",
       for: "for",
@@ -1845,7 +1907,8 @@ export const ti: Dictionaries = {
     allCaughtUp: "ኩሉ ተዛዚሙ! ዝጽበዩ የለዉን።",
     tabs: {
       pending: "ዝጽበዩ ዘለዉ",
-      welcomed: "ዝተቐበልናዮም"
+      welcomed: "ዝተቐበልናዮም",
+      announcements: "ሓበሬታታት"
     },
     welcomedColumns: {
       memberNumber: "መለለዪ ኣባል",
@@ -1864,6 +1927,36 @@ export const ti: Dictionaries = {
     markWelcomed: "ተቐቢልናዮ",
     noPermission: "ፍቓድ የብልካን",
     welcomedSuccess: "መዘኻኸሪ ኣቀባብላ ተዓቂቡ ኣባል ተቐቢልናዮ ተባሂሉ ተመዝጊቡ።",
+    announcements: {
+      tabTitle: "ሓበሬታታት",
+      addButton: "ሓበሬታ ወሰኽ",
+      editButton: "ኣርም",
+      cancelButton: "ሰርዝ",
+      statusActive: "ንጡፍ",
+      statusExpired: "ገደፍ",
+      statusCancelled: "ተሰሪዙ",
+      filterAll: "ኹሉ",
+      titleLabel: "ኣርእስቲ",
+      descriptionLabel: "መግለጺ",
+      startDateLabel: "ዕለት ምጅማር",
+      endDateLabel: "ዕለት ምዝዛም",
+      modalCreateTitle: "ሓድሽ ሓበሬታ",
+      modalEditTitle: "ሓበሬታ ኣርም",
+      saveButton: "ዕቀብ",
+      confirmCancel: "ሓበሬታ ክትሰርዞ? እዚ ክምለስ ኣይክእልን።",
+      noAnnouncements: "ሓበሬታ ኣይተረኸበን።",
+      columns: {
+        title: "ኣርእስቲ",
+        dates: "ዕለታት",
+        status: "ኩነታት",
+        actions: "ተግባር"
+      }
+    },
+    tvSettings: {
+      gearLabel: "ቴለቪዥን መቆጻጸሪ",
+      intervalLabel: "ዙረት ኣብ (ካልኢታት)",
+      saveLabel: "ዕቀብ"
+    },
     addWelcomeNote: {
       title: "ናይ ኣቀባብላ መዘኻኸሪ ወስኽ",
       for: "ን",

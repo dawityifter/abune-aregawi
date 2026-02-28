@@ -1,16 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import ModalWelcomeNote from './ModalWelcomeNote';
 import { useAuth } from '../../contexts/AuthContext';
-import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
+import { getMergedPermissions, UserRole } from '../../utils/roles';
 import { formatE164ToDisplay } from '../../utils/formatPhoneNumber';
-import { useLanguage } from '../../contexts/LanguageContext';
 import { useI18n } from '../../i18n/I18nProvider';
-import { englishNameToTigrinya } from '../../utils/nameTransliteration';
+import AnnouncementsPanel from './AnnouncementsPanel';
+import ChurchTvView from './ChurchTvView';
 
 const OutreachDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const { t } = useI18n();
-  const { language } = useLanguage();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<any[]>([]);
@@ -21,11 +20,13 @@ const OutreachDashboard: React.FC = () => {
   const [welcomedLoading, setWelcomedLoading] = useState(false);
   const [welcomedError, setWelcomedError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'pending' | 'welcomed'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'welcomed' | 'announcements'>('pending');
   const [actionBusyId, setActionBusyId] = useState<string | number | null>(null);
   const [modalMember, setModalMember] = useState<any | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const [isTvView, setIsTvView] = useState(false);
+  const [tvInterval, setTvInterval] = useState(30);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
 
   // Helper: request with timeout to prevent hanging requests
   const requestWithTimeout = async (input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 15000) => {
@@ -63,6 +64,47 @@ const OutreachDashboard: React.FC = () => {
     };
     fetch();
   }, [currentUser, getUserProfile]);
+
+  // Load TV rotation interval and active announcements
+  useEffect(() => {
+    if (!firebaseUser) return;
+    (async () => {
+      try {
+        const token = await firebaseUser.getIdToken(true);
+        const headers = { Authorization: `Bearer ${token}` };
+        const [intervalRes, announcementsRes] = await Promise.all([
+          fetch(`${process.env.REACT_APP_API_URL}/api/settings/tv-rotation-interval`, { headers, credentials: 'include' }),
+          fetch(`${process.env.REACT_APP_API_URL}/api/announcements/active`, { headers, credentials: 'include' }),
+        ]);
+        if (intervalRes.ok) {
+          const d = await intervalRes.json();
+          if (d?.data?.seconds) setTvInterval(d.data.seconds);
+        }
+        if (announcementsRes.ok) {
+          const d = await announcementsRes.json();
+          setAnnouncements(d?.data || []);
+        }
+      } catch (e) {
+        // non-critical; TV view still works with defaults
+      }
+    })();
+  }, [firebaseUser]);
+
+  const handleIntervalChange = async (seconds: number) => {
+    setTvInterval(seconds);
+    if (!firebaseUser) return;
+    try {
+      const token = await firebaseUser.getIdToken(true);
+      await fetch(`${process.env.REACT_APP_API_URL}/api/settings/tv-rotation-interval`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        body: JSON.stringify({ seconds }),
+      });
+    } catch (e) {
+      // best-effort persist
+    }
+  };
 
   // Fetch pending welcomes from backend
   const loadPendingWelcomes = async () => {
@@ -122,9 +164,10 @@ const OutreachDashboard: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'pending') {
       loadPendingWelcomes();
-    } else {
+    } else if (activeTab === 'welcomed') {
       loadWelcomedMembers();
     }
+    // 'announcements' tab manages its own data via AnnouncementsPanel
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firebaseUser, activeTab]);
 
@@ -186,78 +229,12 @@ const OutreachDashboard: React.FC = () => {
 
       <main className="flex-1 max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 w-full">
         {isTvView ? (
-          /* ========================================= */
-          /* Church TV View Layout                     */
-          /* ========================================= */
-          <div className="bg-white shadow-sm rounded-xl p-8 border flex flex-col h-[75vh]">
-            <div className="text-center mb-6">
-              <h2 className="text-4xl font-bold text-primary-800 mb-2">{t('outreachDashboard.welcomeTitle')}</h2>
-              <p className="text-xl text-gray-600">{t('outreachDashboard.welcomeSubtitle')}</p>
-            </div>
-
-            <div className="flex-1 w-full mx-auto max-w-5xl relative overflow-hidden flex flex-col justify-center items-center bg-gray-50/50 rounded-lg border border-gray-100">
-              {pendingLoading ? (
-                <div className="text-xl text-gray-500">{t('outreachDashboard.loadingMembers')}</div>
-              ) : pendingError ? (
-                <div className="text-xl text-red-600">{pendingError}</div>
-              ) : pending.length === 0 ? (
-                <div className="text-xl text-gray-500">{t('outreachDashboard.noNewMembers')}</div>
-              ) : (
-                <>
-                  <style>
-                    {`
-                      @keyframes scroll-up {
-                        0% { top: 100%; transform: translateY(0); }
-                        100% { top: 0; transform: translateY(-100%); }
-                      }
-                      .animate-scroll-up {
-                        position: absolute;
-                        width: 100%;
-                        /* Slower animation for larger lists */
-                        animation: scroll-up ${Math.max(20, pending.length * 4)}s linear infinite;
-                      }
-                      .animate-scroll-up:hover {
-                        animation-play-state: paused;
-                      }
-                    `}
-                  </style>
-                  <div className="animate-scroll-up flex flex-col gap-6 w-full px-4 pt-10 pb-10">
-                    {pending.map((m: any) => {
-                      const familySize = m.familySize || 1;
-
-                      let displayNameRaw = familySize > 1
-                        ? `${m.firstName} ${m.middleName ? m.middleName + ' ' : ''}${m.lastName} ${t('outreachDashboard.andFamily')} (${familySize})`
-                        : `${m.firstName} ${m.middleName ? m.middleName + ' ' : ''}${m.lastName}`;
-
-                      let displayName = displayNameRaw;
-                      if (language === 'ti') {
-                        // Extract just the name portion, ignoring the 'and family' translation and number if present, so we translate names accurately.
-                        // Or simpler: translate each word. Our utility ignores/skips translating strict translated suffix.
-                        const nameOnly = `${m.firstName} ${m.middleName ? m.middleName + ' ' : ''}${m.lastName}`;
-                        const nameTi = englishNameToTigrinya(nameOnly);
-
-                        displayName = familySize > 1
-                          ? `${nameTi} ${t('outreachDashboard.andFamily')} (${familySize})`
-                          : nameTi;
-                      }
-
-                      return (
-                        <div key={m.id} className="bg-white rounded-lg p-6 border-l-4 border-primary-600 flex items-center justify-center text-center shadow-sm w-full mx-auto max-w-3xl transform transition-transform hover:scale-105">
-                          <span className="text-3xl font-medium text-gray-900">{displayName}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-gray-200 text-center z-10 bg-white">
-              <p className="text-2xl font-semibold text-primary-900">
-                {t('outreachDashboard.tvFooterMessage')}
-              </p>
-            </div>
-          </div>
+          <ChurchTvView
+            pendingWelcomes={pending}
+            announcements={announcements}
+            rotationIntervalSeconds={tvInterval}
+            onIntervalChange={handleIntervalChange}
+          />
         ) : (
           /* ========================================= */
           /* Standard Outreach Committee View Layout   */
@@ -304,6 +281,13 @@ const OutreachDashboard: React.FC = () => {
                   >
                     <i className="fas fa-user-check mr-2 self-center"></i>
                     {t('outreachDashboard.tabs.welcomed')}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('announcements')}
+                    className={`whitespace-nowrap flex py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'announcements' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  >
+                    <i className="fas fa-bullhorn mr-2 self-center"></i>
+                    {t('outreachDashboard.tabs.announcements')}
                   </button>
                 </nav>
               </div>
@@ -365,6 +349,13 @@ const OutreachDashboard: React.FC = () => {
                       </div>
                     )}
                   </>
+                )}
+
+                {activeTab === 'announcements' && (
+                  <AnnouncementsPanel
+                    canManage={permissions.canManageAnnouncements}
+                    getIdToken={() => firebaseUser!.getIdToken(true)}
+                  />
                 )}
 
                 {activeTab === 'welcomed' && (
