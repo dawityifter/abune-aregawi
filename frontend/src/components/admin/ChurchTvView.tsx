@@ -4,7 +4,7 @@ import { useI18n } from '../../i18n/I18nProvider';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { englishNameToTigrinya } from '../../utils/nameTransliteration';
 
-interface Announcement { id: string; title: string; description: string; start_date: string; end_date: string; }
+interface Announcement { id: string; title: string; description: string; start_date: string; end_date: string; title_ti?: string; description_ti?: string; }
 interface Member { id: number | string; firstName: string; middleName?: string; lastName: string; familySize?: number; }
 
 interface Props {
@@ -63,13 +63,17 @@ const ChurchTvView: React.FC<Props> = ({ pendingWelcomes, announcements, rotatio
       <div className="text-primary-500 text-lg font-medium mb-4 uppercase tracking-widest">
         {od.announcements.tabTitle}
       </div>
-      <h2 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">{ann.title}</h2>
-      {ann.description && (
+      <h2 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
+        {language === 'ti' ? (ann.title_ti || ann.title) : ann.title}
+      </h2>
+      {language === 'ti' && ann.description_ti ? (
+        <p className="text-2xl text-gray-700 max-w-3xl mx-auto whitespace-pre-wrap">{ann.description_ti}</p>
+      ) : ann.description ? (
         <div
           className="text-2xl text-gray-700 max-w-3xl prose prose-2xl mx-auto"
           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(ann.description) }}
         />
-      )}
+      ) : null}
       <p className="mt-8 text-lg text-gray-400">{ann.start_date} – {ann.end_date}</p>
       {slides.length > 1 && (
         <div className="flex gap-2 mt-6">

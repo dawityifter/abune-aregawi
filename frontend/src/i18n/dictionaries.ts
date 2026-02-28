@@ -574,6 +574,9 @@ export interface Dictionaries {
       saveButton: string;
       confirmCancel: string;
       noAnnouncements: string;
+      titleTiLabel: string;
+      descriptionTiLabel: string;
+      tigrinyaSectionToggle: string;
       columns: {
         title: string;
         dates: string;
@@ -1256,6 +1259,9 @@ export const en: Dictionaries = {
       saveButton: "Save",
       confirmCancel: "Cancel this announcement? This cannot be undone.",
       noAnnouncements: "No announcements found.",
+      titleTiLabel: "Title (Tigrinya)",
+      descriptionTiLabel: "Description (Tigrinya)",
+      tigrinyaSectionToggle: "Add Tigrinya Translation",
       columns: {
         title: "Title",
         dates: "Date Range",
@@ -1945,6 +1951,9 @@ export const ti: Dictionaries = {
       saveButton: "ዕቀብ",
       confirmCancel: "ሓበሬታ ክትሰርዞ? እዚ ክምለስ ኣይክእልን።",
       noAnnouncements: "ሓበሬታ ኣይተረኸበን።",
+      titleTiLabel: "ኣርእስቲ (ትግርኛ)",
+      descriptionTiLabel: "መግለጺ (ትግርኛ)",
+      tigrinyaSectionToggle: "ትርጉም ትግርኛ ወሲኽ",
       columns: {
         title: "ኣርእስቲ",
         dates: "ዕለታት",
