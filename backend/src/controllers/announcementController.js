@@ -44,13 +44,14 @@ const getActiveAnnouncements = async (req, res) => {
 // POST /api/announcements
 const createAnnouncement = async (req, res) => {
   try {
-    const { title, description, start_date, end_date } = req.body;
+    const { title, description, start_date, end_date, title_ti, description_ti } = req.body;
     if (!title || !start_date || !end_date) {
       return res.status(400).json({ success: false, message: 'title, start_date, and end_date are required' });
     }
     const createdByMemberId = req.user?.id || null;
     const announcement = await Announcement.create({
       id: uuidv4(), title, description, start_date, end_date,
+      title_ti: title_ti || null, description_ti: description_ti || null,
       status: 'active', created_by_member_id: createdByMemberId
     });
     return res.status(201).json({ success: true, data: announcement });
@@ -67,8 +68,8 @@ const updateAnnouncement = async (req, res) => {
     const announcement = await Announcement.findByPk(id);
     if (!announcement) return res.status(404).json({ success: false, message: 'Announcement not found' });
 
-    const { title, description, start_date, end_date } = req.body;
-    await announcement.update({ title, description, start_date, end_date });
+    const { title, description, start_date, end_date, title_ti, description_ti } = req.body;
+    await announcement.update({ title, description, title_ti: title_ti ?? announcement.title_ti, description_ti: description_ti ?? announcement.description_ti, start_date, end_date });
     return res.json({ success: true, data: announcement });
   } catch (err) {
     console.error('updateAnnouncement error:', err);
