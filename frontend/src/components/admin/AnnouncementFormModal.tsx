@@ -29,7 +29,7 @@ const AnnouncementFormModal: React.FC<Props> = ({ initial, busy, error, onSave, 
   const [endDate, setEndDate] = useState(initial?.end_date || '');
   const [titleTi, setTitleTi] = useState(initial?.title_ti || '');
   const [descriptionTi, setDescriptionTi] = useState(initial?.description_ti || '');
-  const [tiSectionOpen, setTiSectionOpen] = useState(!!initial?.title_ti);
+  const [tiSectionOpen, setTiSectionOpen] = useState(!!(initial?.title_ti || initial?.description_ti));
 
   const editor = useEditor({
     extensions: [StarterKit, Link.configure({ openOnClick: false })],

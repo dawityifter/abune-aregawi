@@ -58,7 +58,7 @@ const ChurchTvView: React.FC<Props> = ({ pendingWelcomes, announcements, rotatio
 
   const currentSlide = slides[Math.min(slideIdx, slides.length - 1)];
 
-  const renderAnnouncementSlide = (ann: Announcement, annIdx: number) => (
+  const renderAnnouncementSlide = (ann: Announcement) => (
     <div className="flex flex-col items-center justify-center h-full px-12 text-center">
       <div className="text-primary-500 text-lg font-medium mb-4 uppercase tracking-widest">
         {od.announcements.tabTitle}
@@ -170,7 +170,7 @@ const ChurchTvView: React.FC<Props> = ({ pendingWelcomes, announcements, rotatio
         {!currentSlide
           ? renderEmpty()
           : currentSlide.type === 'announcement'
-            ? renderAnnouncementSlide(announcements[currentSlide.idx], currentSlide.idx)
+            ? renderAnnouncementSlide(announcements[currentSlide.idx])
             : renderWelcomesSlide()
         }
       </div>
