@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import ModalWelcomeNote from './ModalWelcomeNote';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMergedPermissions, UserRole } from '../../utils/roles';
@@ -66,29 +66,29 @@ const OutreachDashboard: React.FC = () => {
   }, [currentUser, getUserProfile]);
 
   // Load TV rotation interval and active announcements
-  useEffect(() => {
+  const loadTvData = useCallback(async () => {
     if (!firebaseUser) return;
-    (async () => {
-      try {
-        const token = await firebaseUser.getIdToken(true);
-        const headers = { Authorization: `Bearer ${token}` };
-        const [intervalRes, announcementsRes] = await Promise.all([
-          fetch(`${process.env.REACT_APP_API_URL}/api/settings/tv-rotation-interval`, { headers, credentials: 'include' }),
-          fetch(`${process.env.REACT_APP_API_URL}/api/announcements/active`, { headers, credentials: 'include' }),
-        ]);
-        if (intervalRes.ok) {
-          const d = await intervalRes.json();
-          if (d?.data?.seconds) setTvInterval(d.data.seconds);
-        }
-        if (announcementsRes.ok) {
-          const d = await announcementsRes.json();
-          setAnnouncements(d?.data || []);
-        }
-      } catch (e) {
-        // non-critical; TV view still works with defaults
+    try {
+      const token = await firebaseUser.getIdToken(true);
+      const headers = { Authorization: `Bearer ${token}` };
+      const [intervalRes, announcementsRes] = await Promise.all([
+        fetch(`${process.env.REACT_APP_API_URL}/api/settings/tv-rotation-interval`, { headers, credentials: 'include' }),
+        fetch(`${process.env.REACT_APP_API_URL}/api/announcements/active`, { headers, credentials: 'include' }),
+      ]);
+      if (intervalRes.ok) {
+        const d = await intervalRes.json();
+        if (d?.data?.seconds) setTvInterval(d.data.seconds);
       }
-    })();
+      if (announcementsRes.ok) {
+        const d = await announcementsRes.json();
+        setAnnouncements(d?.data || []);
+      }
+    } catch (e) {
+      // non-critical; TV view still works with defaults
+    }
   }, [firebaseUser]);
+
+  useEffect(() => { loadTvData(); }, [loadTvData]);
 
   const handleIntervalChange = async (seconds: number) => {
     setTvInterval(seconds);
@@ -355,6 +355,7 @@ const OutreachDashboard: React.FC = () => {
                   <AnnouncementsPanel
                     canManage={permissions.canManageAnnouncements}
                     getIdToken={() => firebaseUser!.getIdToken(true)}
+                    onChanged={loadTvData}
                   />
                 )}
 

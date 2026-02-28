@@ -16,9 +16,10 @@ type FilterStatus = 'active' | 'expired' | 'cancelled' | 'all';
 interface Props {
   canManage: boolean;
   getIdToken: () => Promise<string>;
+  onChanged?: () => void;
 }
 
-const AnnouncementsPanel: React.FC<Props> = ({ canManage, getIdToken }) => {
+const AnnouncementsPanel: React.FC<Props> = ({ canManage, getIdToken, onChanged }) => {
   const { dict } = useI18n();
   const od = dict.outreachDashboard;
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -68,6 +69,7 @@ const AnnouncementsPanel: React.FC<Props> = ({ canManage, getIdToken }) => {
       setModalOpen(false);
       setEditTarget(null);
       load();
+      onChanged?.();
     } catch (e: any) {
       setSaveError(e.message);
     } finally {
@@ -84,6 +86,7 @@ const AnnouncementsPanel: React.FC<Props> = ({ canManage, getIdToken }) => {
       });
       if (!res.ok) throw new Error('Failed to cancel');
       load();
+      onChanged?.();
     } catch (e: any) {
       setError(e.message);
     }
