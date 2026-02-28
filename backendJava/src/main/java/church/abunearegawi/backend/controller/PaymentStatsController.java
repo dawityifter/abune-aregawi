@@ -11,11 +11,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,13 +33,24 @@ public class PaymentStatsController {
     private final LedgerEntryRepository ledgerEntryRepository;
     private final BankTransactionRepository bankTransactionRepository;
 
+    @GetMapping("/stats/years")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getAvailableYears() {
+        List<Integer> years = new ArrayList<>(ledgerEntryRepository.findDistinctYears());
+        int currentYear = LocalDate.now().getYear();
+        if (!years.contains(currentYear)) years.add(0, currentYear);
+        Collections.sort(years, Collections.reverseOrder());
+        return ResponseEntity.ok(ApiResponse.success(Map.of("years", years)));
+    }
+
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'SECRETARY', 'CHURCH_LEADERSHIP', 'BOOKKEEPER', 'AUDITOR', 'BUDGET_COMMITTEE', 'AR_TEAM')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getPaymentStats() {
-        int year = LocalDate.now().getYear();
-        int currentMonth = LocalDate.now().getMonthValue();
-        LocalDate startOfYear = LocalDate.of(year, 1, 1);
-        LocalDate endOfYear = LocalDate.of(year, 12, 31);
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getPaymentStats(
+            @RequestParam(required = false) Integer year) {
+        int targetYear = (year != null) ? year : LocalDate.now().getYear();
+        int currentMonth = (targetYear == LocalDate.now().getYear()) ? LocalDate.now().getMonthValue() : 12;
+        LocalDate startOfYear = LocalDate.of(targetYear, 1, 1);
+        LocalDate endOfYear = LocalDate.of(targetYear, 12, 31);
 
         // 1. Total members
         long totalMembers = memberRepository.count();
