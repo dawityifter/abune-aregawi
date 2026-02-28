@@ -9,6 +9,8 @@ interface Announcement {
   start_date: string;
   end_date: string;
   status: 'active' | 'cancelled';
+  title_ti?: string;
+  description_ti?: string;
 }
 
 type FilterStatus = 'active' | 'expired' | 'cancelled' | 'all';

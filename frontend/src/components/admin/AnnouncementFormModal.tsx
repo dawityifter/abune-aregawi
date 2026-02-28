@@ -9,6 +9,8 @@ export interface AnnouncementFormData {
   description: string;
   start_date: string;
   end_date: string;
+  title_ti?: string;
+  description_ti?: string;
 }
 
 interface Props {
@@ -25,6 +27,9 @@ const AnnouncementFormModal: React.FC<Props> = ({ initial, busy, error, onSave, 
   const [title, setTitle] = useState(initial?.title || '');
   const [startDate, setStartDate] = useState(initial?.start_date || '');
   const [endDate, setEndDate] = useState(initial?.end_date || '');
+  const [titleTi, setTitleTi] = useState(initial?.title_ti || '');
+  const [descriptionTi, setDescriptionTi] = useState(initial?.description_ti || '');
+  const [tiSectionOpen, setTiSectionOpen] = useState(!!initial?.title_ti);
 
   const editor = useEditor({
     extensions: [StarterKit, Link.configure({ openOnClick: false })],
@@ -34,7 +39,14 @@ const AnnouncementFormModal: React.FC<Props> = ({ initial, busy, error, onSave, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !startDate || !endDate) return;
-    onSave({ title: title.trim(), description: editor?.getHTML() || '', start_date: startDate, end_date: endDate });
+    onSave({
+      title: title.trim(),
+      description: editor?.getHTML() || '',
+      start_date: startDate,
+      end_date: endDate,
+      title_ti: titleTi.trim() || undefined,
+      description_ti: descriptionTi.trim() || undefined,
+    });
   };
 
   return (
@@ -87,6 +99,41 @@ const AnnouncementFormModal: React.FC<Props> = ({ initial, busy, error, onSave, 
               editor={editor}
               className="border border-t-0 rounded-b min-h-[120px] px-3 py-2 text-sm prose max-w-none focus:outline-none"
             />
+          </div>
+          {/* Tigrinya translation section */}
+          <div className="border rounded p-3 bg-gray-50">
+            <button
+              type="button"
+              onClick={() => setTiSectionOpen(o => !o)}
+              className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 w-full text-left"
+            >
+              <i className={`fas fa-chevron-${tiSectionOpen ? 'down' : 'right'} text-xs`}></i>
+              {od.announcements.tigrinyaSectionToggle}
+            </button>
+            {tiSectionOpen && (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{od.announcements.titleTiLabel}</label>
+                  <input
+                    type="text"
+                    value={titleTi}
+                    onChange={e => setTitleTi(e.target.value)}
+                    className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+                    dir="auto"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{od.announcements.descriptionTiLabel}</label>
+                  <textarea
+                    value={descriptionTi}
+                    onChange={e => setDescriptionTi(e.target.value)}
+                    rows={4}
+                    className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 resize-y"
+                    dir="auto"
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm rounded border hover:bg-gray-50">
