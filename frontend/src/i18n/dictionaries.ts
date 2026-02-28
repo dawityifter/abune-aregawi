@@ -135,6 +135,35 @@ export interface Dictionaries {
       netIncome: string;
       outstanding: string;
       collectionProgress: string;
+      pageTitle: string;
+      yearLabel: string;
+      totalReceipts: string;
+      ytdBalance: string;
+      surplus: string;
+      deficit: string;
+      annualDuesProgress: string;
+      collectedOf: string;
+      stillOutstanding: string;
+      otherIncome: string;
+      currentBalance: string;
+      lastUpdated: string;
+      target: string;
+      membershipDues: string;
+      otherDonations: string;
+    };
+    health: {
+      title: string;
+      financialHealth: string;
+      duesAndMemberStatus: string;
+      activeGivers: string;
+      totalMembers: string;
+      upToDate: string;
+      behind: string;
+      fullyPaid: string;
+      behindOnDues: string;
+      activeMembers: string;
+      membershipDues: string;
+      otherDonations: string;
     };
     transactionList: {
       filters: {
@@ -808,7 +837,36 @@ export const en: Dictionaries = {
       totalExpenses: "Total Expenses",
       netIncome: "Net Income",
       outstanding: "Outstanding Amount",
-      collectionProgress: "Collection Progress"
+      collectionProgress: "Collection Progress",
+      pageTitle: "Financial Overview",
+      yearLabel: "Year",
+      totalReceipts: "Total Receipts",
+      ytdBalance: "Year-to-Date Balance",
+      surplus: "Surplus",
+      deficit: "Deficit",
+      annualDuesProgress: "Annual Dues Progress",
+      collectedOf: "collected of",
+      stillOutstanding: "still outstanding",
+      otherIncome: "Other Income",
+      currentBalance: "Bank Balance",
+      lastUpdated: "Updated",
+      target: "Goal",
+      membershipDues: "Membership Dues",
+      otherDonations: "Other Donations",
+    },
+    health: {
+      title: "Membership Health",
+      financialHealth: "Financial Health",
+      duesAndMemberStatus: "Dues & Member Status",
+      activeGivers: "Active Givers",
+      totalMembers: "of {count} members",
+      upToDate: "Up to Date",
+      behind: "Behind",
+      fullyPaid: "Fully Paid",
+      behindOnDues: "Behind on Dues",
+      activeMembers: "Active Members",
+      membershipDues: "Membership Dues",
+      otherDonations: "Other Donations",
     },
     transactionList: {
       filters: {
@@ -1499,7 +1557,36 @@ export const ti: Dictionaries = {
       totalExpenses: "ጠቕላላ ወጪ",
       netIncome: "ዝተረፈ እቶት",
       outstanding: "ዝተረፈ ክፍሊት",
-      collectionProgress: "ትልሚ ኣከባብ ክፍሊት"
+      collectionProgress: "ትልሚ ኣከባብ ክፍሊት",
+      pageTitle: "ናይ ፋይናንስ ሓጺር መግለጺ",
+      yearLabel: "ዓመት",
+      totalReceipts: "ጠቕላሊ እቶት",
+      ytdBalance: "ናይ ዓመት ሕሳብ",
+      surplus: "ትርፊ",
+      deficit: "ጉድለት",
+      annualDuesProgress: "ናይ ዓመት ኣባልነት ክፍሊት",
+      collectedOf: "ተኣኺቡ ካብ",
+      stillOutstanding: "ዝተረፈ",
+      otherIncome: "ካልእ እቶት",
+      currentBalance: "ሕሳብ ባንኪ",
+      lastUpdated: "ዝተሓደሰሉ",
+      target: "ዕላማ",
+      membershipDues: "ናይ ኣባልነት ክፍሊት",
+      otherDonations: "ካልእ ሽልማታት",
+    },
+    health: {
+      title: "ጥዕና ኣባልነት",
+      financialHealth: "ናይ ፋይናንስ ጥዕና",
+      duesAndMemberStatus: "ክፍሊት ኣባልነትን ኩነታት ኣባላትን",
+      activeGivers: "ዝኸፍሉ ኣባላት",
+      totalMembers: "ካብ {count} ኣባላት",
+      upToDate: "እዋናዊ ዝኸፈሉ",
+      behind: "ዝተረፎም",
+      fullyPaid: "ብምሉኡ ከፊሉ",
+      behindOnDues: "ዕዳ ኣለዎ",
+      activeMembers: "ንጡፋት ኣባላት",
+      membershipDues: "ናይ ኣባልነት ክፍሊት",
+      otherDonations: "ካልእ ሽልማታት",
     },
     transactionList: {
       filters: {
