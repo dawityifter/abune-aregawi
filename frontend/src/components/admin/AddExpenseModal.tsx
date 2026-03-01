@@ -282,6 +282,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
 
   // Determine which payee fields to show based on expense category
   const shouldShowEmployeeField = () => {
+    // EXP110 (Visiting Priest Allowances & Travel Expense) uses a free-text payee name instead
+    if (glCode === 'EXP110') return false;
     // Salary/Allowance expenses typically use EXP001 or similar
     // You can customize this logic based on your GL codes
     return glCode && (glCode.includes('6000') || glCode.includes('EXP001') ||
@@ -435,7 +437,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
           {shouldShowPayeeNameField() && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('treasurerDashboard.expenses.addModal.payeeType')} <span className="text-red-500">*</span>
+                Payee Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
