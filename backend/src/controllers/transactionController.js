@@ -216,8 +216,8 @@ const createTransaction = async (req, res) => {
       });
     }
 
-    // Check for duplicate receipt number
-    if (receipt_number) {
+    // Check for duplicate receipt number ('000' is allowed as a no-receipt placeholder)
+    if (receipt_number && receipt_number !== '000') {
       const existing = await Transaction.findOne({ where: { receipt_number } });
       if (existing) {
         return res.status(409).json({
