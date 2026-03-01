@@ -216,6 +216,17 @@ const createTransaction = async (req, res) => {
       });
     }
 
+    // Check for duplicate receipt number
+    if (receipt_number) {
+      const existing = await Transaction.findOne({ where: { receipt_number } });
+      if (existing) {
+        return res.status(409).json({
+          success: false,
+          message: `Receipt number "${receipt_number}" has already been used. Please use a unique receipt number.`
+        });
+      }
+    }
+
     // Determine GL code from income_category_id or auto-assign from payment_type
     let glCode = payment_type; // Fallback to payment_type for backward compatibility
     let finalIncomeCategoryId = income_category_id;
