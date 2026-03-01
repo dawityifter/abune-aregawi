@@ -67,11 +67,11 @@ const Footer: React.FC = () => {
               <i className="fab fa-youtube"></i>
             </button>
           </span>
-          {/* Stream Us */}
-          <button className="text-secondary-400 hover:text-secondary-200 font-semibold flex items-center gap-2 bg-transparent border-none cursor-pointer">
-            <i className="fas fa-broadcast-tower"></i>
-            Stream Us
-          </button>
+          {/* WhatsApp */}
+          <a href="https://chat.whatsapp.com/H3p98BGvP4172pzuqyZKZh" target="_blank" rel="noopener noreferrer" className="text-secondary-400 hover:text-secondary-200 font-semibold flex items-center gap-2">
+            <i className="fab fa-whatsapp"></i>
+            Join us on WhatsApp
+          </a>
         </div>
       </div>
     </footer>
