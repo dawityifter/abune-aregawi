@@ -43,6 +43,7 @@ export interface Dictionaries {
       times: string;
       watch: string;
       viewChannel: string;
+      whatsapp: string;
     };
     mission: string;
   };
@@ -681,6 +682,7 @@ export const en: Dictionaries = {
       times: "Worship Times",
       watch: "Watch Live",
       viewChannel: "View Our Youtube Channel",
+      whatsapp: "Join us on WhatsApp",
     },
     mission: "We want everyone, everywhere to have an everyday relationship with the lord. By uniting through the Eucharist.",
   },
@@ -1401,6 +1403,7 @@ export const ti: Dictionaries = {
       times: "ሰዓታት ስግደ",
       watch: "ቀጥታ ርእይ",
       viewChannel: "ቻነል ዩቲዩብና ርኣይ",
+      whatsapp: "ናብ WhatsApp ተሳተፍ",
     },
     mission: "ንሕና ኩሉ ሰብ፣ ኣብ ኩሉ ቦታ፣ ምስ ጎይታ መዓልታዊ ርክብ ክህልዎ ንደሊ። ብቅዱስ ቁርባን ብምሕባር።",
   },
