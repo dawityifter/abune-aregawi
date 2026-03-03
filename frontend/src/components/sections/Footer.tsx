@@ -36,12 +36,12 @@ const Footer: React.FC = () => {
           </div>
         </div>
         <div className="text-center mt-8 pt-8 border-t border-accent-400">
-          <p className="text-white/90">&copy; 2025 Tigray Orthodox Church. All rights reserved.</p>
+          <p className="text-white/90">&copy; 2026 Tigray Orthodox Church. All rights reserved.</p>
           <p className="mt-4 flex items-center justify-center gap-4">
-            <a href="/credits" className="text-secondary-200 hover:text-secondary-100 transition-colors">
+            {/* <a href="/credits" className="text-secondary-200 hover:text-secondary-100 transition-colors">
               <i className="fas fa-code mr-2"></i>
               Tech Team / Credits
-            </a>
+            </a> */}
             <span className="text-secondary-400">|</span>
             <a href="/privacy" className="text-secondary-200 hover:text-secondary-100 transition-colors">
               <i className="fas fa-user-shield mr-2"></i>
@@ -60,12 +60,12 @@ const Footer: React.FC = () => {
             <button className="hover:text-secondary-200 bg-transparent border-none cursor-pointer">
               <i className="fab fa-twitter"></i>
             </button>
-            <button className="hover:text-secondary-200 bg-transparent border-none cursor-pointer">
+            <a href="https://www.instagram.com/debretsehayabunearegawi_otc/" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-200">
               <i className="fab fa-instagram"></i>
-            </button>
-            <button className="hover:text-secondary-200 bg-transparent border-none cursor-pointer">
+            </a>
+            <a href="https://www.youtube.com/@debretsehayotcdallastexas" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-200">
               <i className="fab fa-youtube"></i>
-            </button>
+            </a>
           </span>
           {/* WhatsApp */}
           <a href="https://chat.whatsapp.com/H3p98BGvP4172pzuqyZKZh" target="_blank" rel="noopener noreferrer" className="text-secondary-400 hover:text-secondary-200 font-semibold flex items-center gap-2">

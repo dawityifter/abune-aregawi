@@ -67,7 +67,7 @@ const Hero: React.FC = () => {
             className="btn btn-secondary"
             onClick={() => window.open('https://chat.whatsapp.com/H3p98BGvP4172pzuqyZKZh', '_blank', 'noopener,noreferrer')}
           >
-            <i className="fab fa-whatsapp mr-2" />
+            <i className="fab fa-whatsapp mr-2" style={{ color: '#25D366' }} />
             {t('hero.cta.whatsapp')}
           </button>
         </div>
