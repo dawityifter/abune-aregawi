@@ -4,6 +4,7 @@ const path = require('path');
 const { Op } = require('sequelize');
 const { Member, Transaction, IncomeCategory, sequelize } = require('../models');
 const { sendEmail } = require('../services/emailService');
+const { logActivity } = require('../utils/activityLogger');
 
 const TAX_DEDUCTIBLE_GL_CODES = ['INC001', 'INC002', 'INC003', 'INC004', 'INC008'];
 const LOGO_PATH = path.join(__dirname, '../assets/church-logo.png');
@@ -263,6 +264,15 @@ const downloadStatement = async (req, res) => {
       `attachment; filename="Annual_Contribution_Statement_${data.year}.pdf"`
     );
     res.send(pdfBuffer);
+
+    logActivity({
+      userId: data.member.id,
+      action: 'DOWNLOAD_STATEMENT',
+      entityType: 'ContributionStatement',
+      entityId: String(data.member.id),
+      details: { year: data.year, memberName: `${data.member.first_name} ${data.member.last_name}` },
+      req,
+    });
   } catch (err) {
     const status = err.status || 500;
     console.error('Error generating statement PDF:', err);
