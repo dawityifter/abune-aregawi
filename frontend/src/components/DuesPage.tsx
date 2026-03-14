@@ -323,8 +323,8 @@ const DuesPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Annual Contribution Statement */}
-            <div className="mt-8 pt-6 border-t border-gray-200">
+            {/* Annual Contribution Statement — only available for completed (prior) years */}
+            {selectedYear < new Date().getFullYear() && <div className="mt-8 pt-6 border-t border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-1">
                 Annual Contribution Statement
               </h3>
@@ -357,7 +357,7 @@ const DuesPage: React.FC = () => {
                   {statementMsg.text}
                 </p>
               )}
-            </div>
+            </div>}
           </div>
         </div>
       </main>

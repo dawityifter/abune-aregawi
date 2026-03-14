@@ -498,7 +498,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
             Authorized Financial Statement • Generated {new Date().toLocaleDateString()}
           </p>
           <div className="flex items-center space-x-3">
-            {permissions.canEditFinancialRecords && (
+            {permissions.canEditFinancialRecords && selectedYear < new Date().getFullYear() && (
               <div className="flex flex-col items-end">
                 <button
                   onClick={handleDownloadStatement}
