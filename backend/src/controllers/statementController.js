@@ -55,126 +55,198 @@ async function fetchStatementData(firebaseUid, yearParam) {
 function buildPdfBuffer({ member, transactions, year }) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    const doc = new PDFDocument({ margin: 50, size: 'LETTER', bufferPages: true });
 
-    doc.on('data', (chunk) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    const MARGIN       = 50;
+    const PAGE_W       = 612;
+    const PAGE_H       = 792;
+    const CONTENT_W    = PAGE_W - MARGIN * 2;   // 512
+    const FOOTER_Y     = PAGE_H - 38;
+    const PAGE_BOTTOM  = PAGE_H - 70;           // trigger new page before here
+
+    const doc = new PDFDocument({ margin: MARGIN, size: 'LETTER' });
+    doc.on('data',  (chunk) => chunks.push(chunk));
+    doc.on('end',   () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    const total = transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+    const total      = transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
     const memberName = `${member.first_name} ${member.last_name}`;
-    const greeting = member.spouse_name
-      ? `Dear ${memberName} & ${member.spouse_name},`
-      : `Dear ${memberName},`;
+    const churchEIN  = process.env.CHURCH_EIN || '—';
+
     const currentDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',
     });
 
-    // ── Header ────────────────────────────────────────────────
-    try { doc.image(LOGO_PATH, 50, 45, { width: 55 }); } catch (_) { /* no logo - continue */ }
+    // Build member address (single line when possible)
+    const cityLine = [member.city, member.state, member.postal_code].filter(Boolean).join(', ');
+    const addrLine1 = member.street_line1 || '';
+    const memberAddress = [addrLine1, cityLine].filter(Boolean).join(', ');
 
-    doc.fontSize(13).font('Helvetica-Bold')
-      .text('Debre Tsehay Abune Aregawi', 115, 48);
-    doc.fontSize(11).font('Helvetica')
-      .text('Orthodox Tewahedo Church', 115, 65);
-    doc.fontSize(9)
-      .text('1621 S Jupiter Rd, Garland, TX 75042', 115, 80)
-      .text('info@abunearegawi.church', 115, 93);
+    const formatMethod = (m) =>
+      m ? m.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : '';
 
-    doc.moveTo(50, 118).lineTo(562, 118).lineWidth(1).stroke();
+    // Draw footer on whichever page is current
+    const drawFooter = () => {
+      doc.save();
+      doc.fontSize(8).font('Helvetica').fillColor('#888888')
+        .text(
+          'Debre Tsehay Abune Aregawi Orthodox Tewahedo Church  ·  1621 S Jupiter Rd, Garland, TX 75042  ·  (469) 436-3356',
+          MARGIN, FOOTER_Y, { width: CONTENT_W, align: 'center' }
+        );
+      doc.restore();
+    };
 
-    // ── Date & Greeting ───────────────────────────────────────
-    doc.fontSize(11).font('Helvetica').moveDown(2);
-    doc.text(`Date: ${currentDate}`).moveDown(1);
-    doc.text(greeting).moveDown(1);
+    let y = MARGIN;
 
-    // ── Letter body ───────────────────────────────────────────
-    const bodyOpts = { align: 'left', lineGap: 2 };
+    // ── Church Letterhead ─────────────────────────────────────
+    try { doc.image(LOGO_PATH, MARGIN, y, { width: 58 }); } catch (_) {}
+
+    const hx = MARGIN + 68;
+    doc.font('Helvetica-Bold').fontSize(13).fillColor('#000000')
+      .text('DEBRE TSEHAY ABUNE AREGAWI', hx, y, { width: CONTENT_W - 68 });
+    y += 17;
+    doc.fontSize(11)
+      .text('ORTHODOX TEWAHEDO CHURCH', hx, y, { width: CONTENT_W - 68 });
+    y += 15;
+    doc.font('Helvetica').fontSize(9).fillColor('#555555')
+      .text('1621 S Jupiter Rd, Garland, TX 75042', hx, y, { width: CONTENT_W - 68 });
+    y += 13;
+    doc.text('Phone: (469) 436-3356  |  Email: abunearegawitx@gmail.com', hx, y, { width: CONTENT_W - 68 });
+    y += 20;
+
+    // Separator
+    doc.moveTo(MARGIN, y).lineTo(PAGE_W - MARGIN, y).lineWidth(1.5).strokeColor('#333333').stroke();
+    y += 10;
+
+    // EIN
+    doc.font('Helvetica').fontSize(9).fillColor('#333333')
+      .text(`Tax ID (EIN): ${churchEIN}`, MARGIN, y);
+    y = doc.y + 14;
+
+    // ── Date & Member Info ────────────────────────────────────
+    doc.font('Helvetica').fontSize(10).fillColor('#000000')
+      .text(`Date: ${currentDate}`, MARGIN, y);
+    y = doc.y + 6;
+
+    doc.text(`Member Name: ${memberName}`, MARGIN, y);
+    y = doc.y + 4;
+
+    if (memberAddress) {
+      doc.text(`Member Address: ${memberAddress}`, MARGIN, y);
+      y = doc.y + 4;
+    }
+    y += 10;
+
+    // Subject
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#000000')
+      .text(`Subject: Annual Contribution Statement for Tax Year ${year}`, MARGIN, y, { width: CONTENT_W });
+    y = doc.y + 16;
+
+    // ── Salutation ────────────────────────────────────────────
+    const salutation = member.spouse_name
+      ? `Dear ${memberName} and ${member.spouse_name},`
+      : `Dear ${memberName},`;
+    doc.font('Helvetica').fontSize(10)
+      .text(salutation, MARGIN, y);
+    y = doc.y + 12;
+
+    // ── Body ──────────────────────────────────────────────────
+    doc.text('Peace and blessings to you.', MARGIN, y, { width: CONTENT_W });
+    y = doc.y + 10;
+
     doc.text(
-      'We thank God for you! Your gifts to Debre Tsehay Abune Aregawi Orthodox Tewahedo Church ' +
-      'throughout the year are gratefully acknowledged.',
-      bodyOpts
-    ).moveDown(0.8);
+      'Thank you for your faithful support of Debre Tsehay Abune Aregawi Orthodox Tewahedo Church. ' +
+      'Your generosity enables our parish to continue its worship services, ministries, and outreach ' +
+      'within the community in the name of our Lord Jesus Christ.',
+      MARGIN, y, { width: CONTENT_W }
+    );
+    y = doc.y + 10;
 
     doc.text(
-      'Because of your contributions, our congregation has been able to continue the work of our ' +
-      'Lord Jesus Christ in the community. Your generosity helps maintain our church building, support ' +
-      'our ministries, and sustain the worship and sacramental services of our parish.',
-      bodyOpts
-    ).moveDown(0.8);
+      `According to our records, the following is a summary of your charitable contributions for the tax year ${year}.`,
+      MARGIN, y, { width: CONTENT_W }
+    );
+    y = doc.y + 16;
 
-    doc.text(
-      `Below is an itemized statement of your contributions for the year ${year} according to our records. ` +
-      'If you have any concerns regarding the accuracy of this information, please contact us.',
-      bodyOpts
-    ).moveDown(0.8);
+    // ── Contribution Summary heading ──────────────────────────
+    doc.font('Helvetica-Bold').fontSize(11)
+      .text('Contribution Summary', MARGIN, y);
+    y = doc.y + 10;
 
-    doc.text(
-      'For income tax purposes, please note that you did not receive any goods or services in return ' +
-      'for these contributions other than intangible religious benefits.',
-      bodyOpts
-    ).moveDown(1.5);
+    // ── Table ─────────────────────────────────────────────────
+    const COL_DATE   = MARGIN;
+    const COL_DESC   = MARGIN + 88;
+    const COL_METHOD = MARGIN + 268;
+    const COL_AMT    = PAGE_W - MARGIN - 78;
+    const ROW_H      = 16;
+    const TABLE_R    = PAGE_W - MARGIN;
 
-    // ── Itemized table ────────────────────────────────────────
-    const COL_DATE = 50;
-    const COL_CAT  = 175;
-    const COL_AMT  = 462;
-    const ROW_H    = 18;
-    const PAGE_BOTTOM = doc.page.height - 80;
+    // Header row
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#000000');
+    doc.text('Date',        COL_DATE,   y, { width: 84 });
+    doc.text('Description', COL_DESC,   y, { width: 176 });
+    doc.text('Method',      COL_METHOD, y, { width: 105 });
+    doc.text('Amount',      COL_AMT,    y, { width: 78, align: 'right' });
+    y += ROW_H - 2;
+    doc.moveTo(MARGIN, y).lineTo(TABLE_R, y).lineWidth(0.5).strokeColor('#000000').stroke();
+    y += 5;
 
-    let rowY = doc.y;
-    doc.font('Helvetica-Bold').fontSize(10);
-    doc.text('Date',     COL_DATE, rowY);
-    doc.text('Category', COL_CAT,  rowY);
-    doc.text('Amount',   COL_AMT,  rowY, { width: 100, align: 'right' });
-    rowY += ROW_H - 2;
-    doc.moveTo(50, rowY).lineTo(562, rowY).lineWidth(0.5).stroke();
-    rowY += 6;
-
-    doc.font('Helvetica').fontSize(10);
+    // Data rows
+    doc.font('Helvetica').fontSize(9).fillColor('#000000');
     transactions.forEach((t) => {
-      if (rowY > PAGE_BOTTOM) {
+      if (y > PAGE_BOTTOM) {
+        drawFooter();
         doc.addPage();
-        rowY = 60;
+        y = MARGIN;
       }
       const dateStr = new Date(t.payment_date).toLocaleDateString('en-US', {
         year: 'numeric', month: 'short', day: 'numeric',
       });
-      doc.text(dateStr,                  COL_DATE, rowY);
-      doc.text(t.incomeCategory.name,    COL_CAT,  rowY);
-      doc.text(currency(t.amount),       COL_AMT,  rowY, { width: 100, align: 'right' });
-      rowY += ROW_H;
+      doc.text(dateStr,                         COL_DATE,   y, { width: 84 });
+      doc.text(t.incomeCategory.name,           COL_DESC,   y, { width: 176 });
+      doc.text(formatMethod(t.payment_method),  COL_METHOD, y, { width: 105 });
+      doc.text(currency(t.amount),              COL_AMT,    y, { width: 78, align: 'right' });
+      y += ROW_H;
     });
 
-    doc.moveTo(50, rowY).lineTo(562, rowY).lineWidth(0.5).stroke();
-    rowY += 6;
-    doc.font('Helvetica-Bold').fontSize(10);
-    doc.text(`Total Contributions for ${year}:`, COL_DATE, rowY);
-    doc.text(currency(total), COL_AMT, rowY, { width: 100, align: 'right' });
+    // Total row
+    doc.moveTo(MARGIN, y).lineTo(TABLE_R, y).lineWidth(0.5).stroke();
+    y += 6;
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#000000')
+      .text(`Total Contributions for ${year}:`, COL_DATE, y, { width: 320 });
+    doc.text(currency(total), COL_AMT, y, { width: 78, align: 'right' });
+    y += 24;
+
+    // ── Disclaimers ───────────────────────────────────────────
+    doc.font('Helvetica').fontSize(9).fillColor('#333333')
+      .text(
+        'For federal income tax purposes, please note that no goods or services were provided in ' +
+        'exchange for these contributions other than intangible religious benefits.',
+        MARGIN, y, { width: CONTENT_W }
+      );
+    y = doc.y + 8;
+
+    doc.text(
+      'Please retain this statement for your tax records. If you believe any information on this ' +
+      'statement is inaccurate or if you have any questions, please contact the church office.',
+      MARGIN, y, { width: CONTENT_W }
+    );
+    y = doc.y + 16;
 
     // ── Closing ───────────────────────────────────────────────
-    doc.font('Helvetica').fontSize(11).moveDown(3);
-    doc.text(
-      'Thank you again for your generous commitment to the work of Jesus Christ through this church.'
-    ).moveDown(0.8);
-    doc.text('God bless you.').moveDown(1.5);
-    doc.text('Sincerely,').moveDown(0.5);
-    doc.font('Helvetica-Bold')
-      .text('Debre Tsehay Abune Aregawi Orthodox Tewahedo Church');
-
-    // ── Footer on every page ──────────────────────────────────
-    const range = doc.bufferedPageRange();
-    for (let i = range.start; i < range.start + range.count; i++) {
-      doc.switchToPage(i);
-      doc.fontSize(8).font('Helvetica').fillColor('#888888').text(
-        `Page ${i - range.start + 1} of ${range.count}  ·  Confidential`,
-        50,
-        doc.page.height - 40,
-        { align: 'center', width: doc.page.width - 100 }
+    doc.font('Helvetica').fontSize(10).fillColor('#000000')
+      .text(
+        'Thank you again for your generosity and commitment to the work of Christ through His Church.',
+        MARGIN, y, { width: CONTENT_W }
       );
-    }
+    y = doc.y + 10;
+    doc.text('May God bless you and your family abundantly.', MARGIN, y, { width: CONTENT_W });
+    y = doc.y + 28;
+    doc.text('Sincerely,', MARGIN, y);
+    y = doc.y + 30;
+    doc.font('Helvetica-Bold').fontSize(10)
+      .text('Debre Tsehay Abune Aregawi Orthodox Tewahedo Church', MARGIN, y, { width: CONTENT_W });
 
-    doc.flushPages();
+    drawFooter();
     doc.end();
   });
 }
