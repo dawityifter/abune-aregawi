@@ -1,7 +1,7 @@
 'use strict';
 jest.mock('pdfkit');
 jest.mock('../../models', () => ({
-  Member: { findOne: jest.fn() },
+  Member: { findOne: jest.fn(), findAll: jest.fn(), findByPk: jest.fn() },
   Transaction: { findAll: jest.fn() },
   IncomeCategory: {},
   sequelize: {
@@ -56,6 +56,7 @@ describe('statementController', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     Member.findOne.mockResolvedValue(mockMember);
+    Member.findAll.mockResolvedValue([mockMember]);
     Transaction.findAll.mockResolvedValue(mockTransactions);
   });
 
@@ -81,6 +82,7 @@ describe('statementController', () => {
   describe('emailStatement', () => {
     it('returns 400 when member has no email', async () => {
       Member.findOne.mockResolvedValue({ ...mockMember, email: null });
+      Member.findAll.mockResolvedValue([{ ...mockMember, email: null }]);
       const { emailStatement } = require('../../controllers/statementController');
       const req = { firebaseUid: 'uid-123', body: { year: 2025 } };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };

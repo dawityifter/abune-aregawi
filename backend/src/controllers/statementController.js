@@ -7,10 +7,64 @@ const { sendEmail } = require('../services/emailService');
 const { logActivity } = require('../utils/activityLogger');
 
 const TAX_DEDUCTIBLE_GL_CODES = ['INC001', 'INC002', 'INC003', 'INC004', 'INC008'];
+// Payment types that are inherently tax-deductible (used as fallback when income_category_id is null)
+const TAX_DEDUCTIBLE_PAYMENT_TYPES = ['membership_due', 'offering', 'tithe', 'event', 'donation', 'vow'];
 const LOGO_PATH = path.join(__dirname, '../assets/church-logo.png');
 
 const currency = (n) =>
   Number(n).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+// Resolves head-of-household and all family member IDs for any given member.
+// Returns { headOfHousehold: Member, familyMemberIds: number[] }
+async function resolveHousehold(member) {
+  const effectiveFamilyId = member.family_id || member.id;
+  const familyMembers = await Member.findAll({
+    where: {
+      [Op.or]: [
+        { family_id: effectiveFamilyId },
+        { id: effectiveFamilyId },
+      ],
+    },
+  });
+
+  const headOfHousehold = familyMembers.find(
+    (m) => !m.family_id || String(m.family_id) === String(m.id) || String(m.id) === String(effectiveFamilyId)
+  ) || member;
+
+  const familyMemberIds = familyMembers.map((m) => m.id);
+  return { headOfHousehold, familyMemberIds };
+}
+
+async function fetchTaxDeductibleTransactions(memberIds, parsedYear) {
+  return Transaction.findAll({
+    where: {
+      member_id: { [Op.in]: memberIds },
+      status: 'succeeded',
+      [Op.and]: [
+        sequelize.where(
+          sequelize.fn('COALESCE',
+            sequelize.col('for_year'),
+            sequelize.fn('date_part', sequelize.literal("'year'"), sequelize.col('payment_date'))
+          ),
+          parsedYear
+        )
+      ],
+      [Op.or]: [
+        // Transactions with a linked income category whose GL code is tax-deductible
+        { '$incomeCategory.gl_code$': { [Op.in]: TAX_DEDUCTIBLE_GL_CODES } },
+        // Transactions with no income_category_id but whose payment_type is inherently deductible
+        // (covers legacy imported transactions that predate income_category_id population)
+        { income_category_id: null, payment_type: { [Op.in]: TAX_DEDUCTIBLE_PAYMENT_TYPES } },
+      ],
+    },
+    include: [{
+      model: IncomeCategory,
+      as: 'incomeCategory',
+      required: false, // LEFT JOIN — transactions with null income_category_id are kept
+    }],
+    order: [['payment_date', 'ASC']],
+  });
+}
 
 async function fetchStatementData(firebaseUid, yearParam) {
   const parsedYear = parseInt(yearParam, 10);
@@ -27,30 +81,9 @@ async function fetchStatementData(firebaseUid, yearParam) {
     throw err;
   }
 
-  const transactions = await Transaction.findAll({
-    where: {
-      member_id: member.id,
-      status: 'succeeded',
-      [Op.and]: [
-        sequelize.where(
-          sequelize.fn('COALESCE',
-            sequelize.col('for_year'),
-            sequelize.fn('date_part', sequelize.literal("'year'"), sequelize.col('payment_date'))
-          ),
-          parsedYear
-        )
-      ]
-    },
-    include: [{
-      model: IncomeCategory,
-      as: 'incomeCategory',
-      where: { gl_code: { [Op.in]: TAX_DEDUCTIBLE_GL_CODES } },
-      required: true,
-    }],
-    order: [['payment_date', 'ASC']],
-  });
-
-  return { member, transactions, year: parsedYear };
+  const { headOfHousehold, familyMemberIds } = await resolveHousehold(member);
+  const transactions = await fetchTaxDeductibleTransactions(familyMemberIds, parsedYear);
+  return { member: headOfHousehold, transactions, year: parsedYear };
 }
 
 function buildPdfBuffer({ member, transactions, year }) {
@@ -85,16 +118,8 @@ function buildPdfBuffer({ member, transactions, year }) {
     const formatMethod = (m) =>
       m ? m.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : '';
 
-    // Draw footer on whichever page is current
-    const drawFooter = () => {
-      doc.save();
-      doc.fontSize(8).font('Helvetica').fillColor('#888888')
-        .text(
-          'Debre Tsehay Abune Aregawi Orthodox Tewahedo Church  ·  1621 S Jupiter Rd, Garland, TX 75042  ·  (469) 436-3356',
-          MARGIN, FOOTER_Y, { width: CONTENT_W, align: 'center' }
-        );
-      doc.restore();
-    };
+    // Footer temporarily hidden — re-enable once multi-page layout is finalized
+    const drawFooter = () => {};
 
     let y = MARGIN;
 
@@ -202,8 +227,9 @@ function buildPdfBuffer({ member, transactions, year }) {
       const dateStr = new Date(t.payment_date).toLocaleDateString('en-US', {
         year: 'numeric', month: 'short', day: 'numeric',
       });
-      doc.text(dateStr,                         COL_DATE,   y, { width: 84 });
-      doc.text(t.incomeCategory.name,           COL_DESC,   y, { width: 176 });
+      const categoryName = t.incomeCategory?.name || formatMethod(t.payment_type);
+      doc.text(dateStr,        COL_DATE,   y, { width: 84 });
+      doc.text(categoryName,   COL_DESC,   y, { width: 176 });
       doc.text(formatMethod(t.payment_method),  COL_METHOD, y, { width: 105 });
       doc.text(currency(t.amount),              COL_AMT,    y, { width: 78, align: 'right' });
       y += ROW_H;
@@ -284,30 +310,9 @@ async function fetchStatementDataById(memberIdParam, yearParam) {
     throw err;
   }
 
-  const transactions = await Transaction.findAll({
-    where: {
-      member_id: member.id,
-      status: 'succeeded',
-      [Op.and]: [
-        sequelize.where(
-          sequelize.fn('COALESCE',
-            sequelize.col('for_year'),
-            sequelize.fn('date_part', sequelize.literal("'year'"), sequelize.col('payment_date'))
-          ),
-          parsedYear
-        )
-      ]
-    },
-    include: [{
-      model: IncomeCategory,
-      as: 'incomeCategory',
-      where: { gl_code: { [Op.in]: TAX_DEDUCTIBLE_GL_CODES } },
-      required: true,
-    }],
-    order: [['payment_date', 'ASC']],
-  });
-
-  return { member, transactions, year: parsedYear };
+  const { headOfHousehold, familyMemberIds } = await resolveHousehold(member);
+  const transactions = await fetchTaxDeductibleTransactions(familyMemberIds, parsedYear);
+  return { member: headOfHousehold, transactions, year: parsedYear };
 }
 
 const downloadStatementForMember = async (req, res) => {
