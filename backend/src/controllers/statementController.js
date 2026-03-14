@@ -217,6 +217,13 @@ function buildPdfBuffer({ member, transactions, year }) {
     doc.text(currency(total), COL_AMT, y, { width: 78, align: 'right' });
     y += 24;
 
+    // Only break to a new page if the closing block (~200px) truly won't fit
+    if (y + 200 > PAGE_H) {
+      drawFooter();
+      doc.addPage();
+      y = MARGIN;
+    }
+
     // ── Disclaimers ───────────────────────────────────────────
     doc.font('Helvetica').fontSize(9).fillColor('#333333')
       .text(
@@ -247,10 +254,93 @@ function buildPdfBuffer({ member, transactions, year }) {
     doc.font('Helvetica-Bold').fontSize(10)
       .text('Debre Tsehay Abune Aregawi Orthodox Tewahedo Church', MARGIN, y, { width: CONTENT_W });
 
-    drawFooter();
+    // Only draw footer if content doesn't crowd it (avoids overlap on tight pages)
+    if (doc.y < FOOTER_Y - 5) {
+      drawFooter();
+    }
     doc.end();
   });
 }
+
+async function fetchStatementDataById(memberIdParam, yearParam) {
+  const parsedYear = parseInt(yearParam, 10);
+  if (isNaN(parsedYear) || parsedYear < 2000 || parsedYear > new Date().getFullYear() + 1) {
+    const err = new Error('Invalid year parameter');
+    err.status = 400;
+    throw err;
+  }
+
+  const memberId = parseInt(memberIdParam, 10);
+  if (isNaN(memberId)) {
+    const err = new Error('Invalid member ID');
+    err.status = 400;
+    throw err;
+  }
+
+  const member = await Member.findByPk(memberId);
+  if (!member) {
+    const err = new Error('Member not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const transactions = await Transaction.findAll({
+    where: {
+      member_id: member.id,
+      status: 'succeeded',
+      [Op.and]: [
+        sequelize.where(
+          sequelize.fn('COALESCE',
+            sequelize.col('for_year'),
+            sequelize.fn('date_part', sequelize.literal("'year'"), sequelize.col('payment_date'))
+          ),
+          parsedYear
+        )
+      ]
+    },
+    include: [{
+      model: IncomeCategory,
+      as: 'incomeCategory',
+      where: { gl_code: { [Op.in]: TAX_DEDUCTIBLE_GL_CODES } },
+      required: true,
+    }],
+    order: [['payment_date', 'ASC']],
+  });
+
+  return { member, transactions, year: parsedYear };
+}
+
+const downloadStatementForMember = async (req, res) => {
+  try {
+    const { memberId, year } = req.query;
+    const data = await fetchStatementDataById(memberId, year);
+    const pdfBuffer = await buildPdfBuffer(data);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="Annual_Contribution_Statement_${data.year}_${data.member.last_name}.pdf"`
+    );
+    res.send(pdfBuffer);
+
+    logActivity({
+      userId: req.user.id,
+      action: 'ADMIN_DOWNLOAD_STATEMENT',
+      entityType: 'ContributionStatement',
+      entityId: String(data.member.id),
+      details: {
+        year: data.year,
+        memberName: `${data.member.first_name} ${data.member.last_name}`,
+        memberId: data.member.id,
+      },
+      req,
+    });
+  } catch (err) {
+    const status = err.status || 500;
+    console.error('Error generating statement PDF for member:', err);
+    res.status(status).json({ message: err.message || 'Failed to generate statement' });
+  }
+};
 
 const downloadStatement = async (req, res) => {
   try {
@@ -322,4 +412,4 @@ const emailStatement = async (req, res) => {
   }
 };
 
-module.exports = { downloadStatement, emailStatement };
+module.exports = { downloadStatement, emailStatement, downloadStatementForMember };

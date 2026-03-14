@@ -82,7 +82,37 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
   const [error, setError] = useState<string | null>(null);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [statementLoading, setStatementLoading] = useState(false);
+  const [statementError, setStatementError] = useState<string | null>(null);
   const yearOptions = [2026, 2025];
+
+  const handleDownloadStatement = async () => {
+    if (!firebaseUser) return;
+    setStatementLoading(true);
+    setStatementError(null);
+    try {
+      const token = await firebaseUser.getIdToken();
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/members/statement/pdf/for-member?memberId=${memberId}&year=${selectedYear}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error((json as any).message || 'Failed to generate statement');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Annual_Contribution_Statement_${selectedYear}_${duesData?.member.lastName || memberId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setStatementError(e.message || 'Failed to generate statement');
+    } finally {
+      setStatementLoading(false);
+    }
+  };
 
   const fetchMemberDues = useCallback(async () => {
     if (!firebaseUser || !memberId) return;
@@ -467,12 +497,32 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
           <p className="text-xs text-gray-400 font-medium">
             Authorized Financial Statement • Generated {new Date().toLocaleDateString()}
           </p>
-          <button
-            onClick={onClose}
-            className="bg-gray-800 hover:bg-gray-900 text-white px-8 py-2.5 rounded-xl font-bold shadow-lg transition-transform active:scale-95"
-          >
-            Finish Review
-          </button>
+          <div className="flex items-center space-x-3">
+            {permissions.canEditFinancialRecords && (
+              <div className="flex flex-col items-end">
+                <button
+                  onClick={handleDownloadStatement}
+                  disabled={statementLoading}
+                  className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl font-bold flex items-center shadow-lg transition-transform active:scale-95"
+                >
+                  {statementLoading ? (
+                    <><i className="fas fa-spinner fa-spin mr-2"></i>Generating...</>
+                  ) : (
+                    <><i className="fas fa-file-pdf mr-2"></i>Print Statement</>
+                  )}
+                </button>
+                {statementError && (
+                  <p className="text-xs text-red-600 font-medium mt-1">{statementError}</p>
+                )}
+              </div>
+            )}
+            <button
+              onClick={onClose}
+              className="bg-gray-800 hover:bg-gray-900 text-white px-8 py-2.5 rounded-xl font-bold shadow-lg transition-transform active:scale-95"
+            >
+              Finish Review
+            </button>
+          </div>
         </div>
       </div>
 

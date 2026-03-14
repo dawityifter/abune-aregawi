@@ -1,0 +1,161 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - navigation [ref=e4]:
+      - generic [ref=e6]:
+        - link " Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e9]: 
+          - generic [ref=e10]: Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church
+        - generic [ref=e11]:
+          - generic [ref=e12]:
+            - button "EN" [ref=e13] [cursor=pointer]
+            - button "ትግ" [ref=e15] [cursor=pointer]
+          - link "Sign In" [ref=e17] [cursor=pointer]:
+            - /url: /login
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - heading "Support Our Church" [level=1] [ref=e21]
+        - paragraph [ref=e22]: Your generous donation helps us continue our mission and serve our community.
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - heading "Online Donation" [level=2] [ref=e25]
+          - generic [ref=e26]:
+            - generic [ref=e27]:
+              - generic [ref=e28]: How often would you like to donate?
+              - generic [ref=e29]:
+                - generic [ref=e30]:
+                  - radio "One-Time" [checked] [ref=e31]
+                  - text: One-Time
+                - generic [ref=e32]:
+                  - radio "Recurring" [ref=e33]
+                  - text: Recurring
+            - generic [ref=e34]:
+              - generic [ref=e35]: Donation Amount
+              - generic [ref=e36]:
+                - generic [ref=e37]: $
+                - textbox "0.00" [ref=e38]
+            - generic [ref=e39]:
+              - generic [ref=e40]: Payment Method
+              - generic [ref=e41]:
+                - generic [ref=e42]:
+                  - radio "Credit/Debit Card" [checked] [ref=e43]
+                  - text: Credit/Debit Card
+                - generic [ref=e44]:
+                  - radio "Bank Account (ACH)" [ref=e45]
+                  - text: Bank Account (ACH)
+            - generic [ref=e46]:
+              - heading "Card Information" [level=3] [ref=e47]
+              - generic [ref=e49]:
+                - generic [ref=e50]: Card Information
+                - group "Credit or debit card information" [ref=e51]:
+                  - generic [ref=e52]: Credit or debit card information
+                  - generic [ref=e54]:
+                    - iframe [ref=e55]:
+                      - generic [ref=f2e1]:
+                        - generic: 0123456789０１２３４５６７８９
+                        - textbox [disabled]
+                        - generic [ref=f2e2]:
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - img
+                                - generic:
+                                  - img
+                          - generic [ref=f2e3]:
+                            - generic [ref=f2e4]:
+                              - generic: Number
+                              - generic [ref=f2e6]:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - img
+                                      - generic:
+                                        - img
+                                - textbox "Credit or debit card number" [ref=f2e9]:
+                                  - /placeholder: Card number
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - textbox:
+                                      - /placeholder: MM / YY
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - textbox:
+                                      - /placeholder: CVC
+                        - textbox [disabled]
+                        - button
+                    - textbox
+                    - iframe [ref=e57]:
+                      - button "Autofill with Link" [ref=f6e3] [cursor=pointer]:
+                        - generic [ref=f6e4]: Autofill
+                - generic [ref=e58]:
+                  - generic [ref=e59]: Name on card
+                  - textbox "Name on card" [ref=e60]:
+                    - /placeholder: Full name as shown on card
+            - generic [ref=e61]:
+              - heading "Donor Information" [level=3] [ref=e62]
+              - generic [ref=e63]:
+                - generic [ref=e64]:
+                  - generic [ref=e65]: First Name *
+                  - textbox [ref=e66]
+                - generic [ref=e67]:
+                  - generic [ref=e68]: Last Name *
+                  - textbox [ref=e69]
+              - generic [ref=e70]:
+                - generic [ref=e71]: Email
+                - textbox [ref=e72]
+              - generic [ref=e73]:
+                - generic [ref=e74]: Phone Number
+                - textbox [ref=e75]
+              - generic [ref=e76]:
+                - generic [ref=e77]: Billing Address
+                - textbox [ref=e78]
+              - generic [ref=e79]:
+                - generic [ref=e80]: Zip Code
+                - textbox [ref=e81]
+            - paragraph [ref=e83]: I authorize this merchant or their agent to charge my credit cardin the amount above as soon as I click the "Continue to Payment" button below. I agree that credit card transactions I authorize comply with all applicable law.
+            - button "Continue to Payment - $0.00" [ref=e84] [cursor=pointer]
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - heading "Donate via Zelle" [level=3] [ref=e87]
+            - generic [ref=e89]:
+              - generic [ref=e90]:
+                - img "Zelle QR code for Abune Aregawi Church" [ref=e91]
+                - paragraph [ref=e92]: Scan this QR code in your banking app to donate via Zelle.
+              - generic [ref=e93]:
+                - generic [ref=e94]: "Zelle Email Address:"
+                - generic "Click to copy email address" [ref=e95] [cursor=pointer]: abunearegawitx@gmail.com
+              - generic [ref=e96]:
+                - heading "How to donate via Zelle:" [level=4] [ref=e97]
+                - list [ref=e98]:
+                  - listitem [ref=e99]: Open your banking app or Zelle app
+                  - listitem [ref=e100]: Select "Send Money" or "Send with Zelle"
+                  - listitem [ref=e101]: "Enter the email address: abunearegawitx@gmail.com"
+                  - listitem [ref=e102]: Enter your donation amount
+                  - listitem [ref=e103]:
+                    - text: "Add a memo/note: \"[Your Phone Number] for [reason]\""
+                    - generic [ref=e104]: Please include your phone number for proper tracking.
+                  - listitem [ref=e105]: Review and send your payment
+              - generic [ref=e106]:
+                - paragraph [ref=e107]: "✅ Quick Copy:"
+                - paragraph [ref=e108]: Click the email address above to copy it to your clipboard, then paste it directly into your Zelle app.
+          - generic [ref=e109]:
+            - heading "Donate by Check" [level=3] [ref=e110]
+            - generic [ref=e111]:
+              - generic [ref=e112]: "Make checks payable to:"
+              - generic [ref=e113]: Abune Aregawi Orthodox Tewahedo Church
+          - generic [ref=e114]:
+            - heading "Questions?" [level=3] [ref=e115]
+            - paragraph [ref=e116]: "For questions about donations, please contact us:"
+            - link "abunearegawitx@gmail.com" [ref=e117] [cursor=pointer]:
+              - /url: mailto:abunearegawitx@gmail.com
+  - generic [ref=e120] [cursor=pointer]: May the peace and blessings of God be with you. I’m here to help answer your questions about our church, services, events, and community. How may I assist you today?
+  - button "chat-button" [ref=e121] [cursor=pointer]
+```
