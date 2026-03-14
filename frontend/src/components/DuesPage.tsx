@@ -349,23 +349,7 @@ const DuesPage: React.FC = () => {
                   Print Statement
                 </button>
 
-                {member.email && (
-                  <button
-                    onClick={handleEmailStatement}
-                    disabled={statementLoading !== null}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {statementLoading === 'email' ? (
-                      <span className="animate-spin h-4 w-4 border-2 border-primary-600 border-t-transparent rounded-full" />
-                    ) : (
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    )}
-                    Email Statement
-                  </button>
-                )}
+                {/* Email Statement button — hidden until email delivery is enabled */}
               </div>
 
               {statementMsg && (
