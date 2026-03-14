@@ -8,6 +8,7 @@ jest.mock('../../models', () => ({
     where: jest.fn((a, b) => ({ _where: true })),
     fn: jest.fn((name, ...args) => ({ _fn: name, args })),
     col: jest.fn((name) => ({ _col: name })),
+    literal: jest.fn((val) => ({ _literal: val })),
   },
 }));
 jest.mock('../../services/emailService', () => ({ sendEmail: jest.fn() }));

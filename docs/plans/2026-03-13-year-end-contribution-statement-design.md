@@ -44,7 +44,7 @@ SELECT t.payment_date, t.amount, ic.name AS category, t.receipt_number, t.note
 FROM transactions t
 INNER JOIN income_categories ic ON t.income_category_id = ic.id
 WHERE t.member_id = :memberId
-  AND COALESCE(t.for_year, YEAR(t.payment_date)) = :year
+  AND COALESCE(t.for_year, date_part('year', t.payment_date)) = :year
   AND t.status = 'succeeded'
   AND ic.gl_code IN ('INC001','INC002','INC003','INC004','INC008')
 ORDER BY t.payment_date ASC
