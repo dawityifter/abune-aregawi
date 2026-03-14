@@ -53,6 +53,8 @@ const DuesPage: React.FC = () => {
   const [dues, setDues] = useState<DuesResponse['data'] | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const yearOptions = [2026, 2025];
+  const [statementLoading, setStatementLoading] = useState<'pdf' | 'email' | null>(null);
+  const [statementMsg, setStatementMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const apiUrl = process.env.REACT_APP_API_URL;
 
@@ -113,6 +115,58 @@ const DuesPage: React.FC = () => {
     if (!authReady) return;
     fetchDues();
   }, [authReady, fetchDues]);
+
+  const handleDownloadStatement = async () => {
+    if (!firebaseUser) return;
+    setStatementLoading('pdf');
+    setStatementMsg(null);
+    try {
+      const token = await firebaseUser.getIdToken();
+      const res = await fetch(
+        `${apiUrl}/api/members/statement/pdf?year=${selectedYear}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.message || 'Failed to generate statement');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Annual_Contribution_Statement_${selectedYear}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setStatementMsg({ type: 'error', text: e.message || 'Failed to generate statement' });
+    } finally {
+      setStatementLoading(null);
+    }
+  };
+
+  const handleEmailStatement = async () => {
+    if (!firebaseUser) return;
+    setStatementLoading('email');
+    setStatementMsg(null);
+    try {
+      const token = await firebaseUser.getIdToken();
+      const res = await fetch(`${apiUrl}/api/members/statement/email`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ year: selectedYear }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Failed to send email');
+      setStatementMsg({ type: 'success', text: json.message });
+    } catch (e: any) {
+      setStatementMsg({ type: 'error', text: e.message || 'Failed to send email' });
+    } finally {
+      setStatementLoading(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -267,6 +321,58 @@ const DuesPage: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* Annual Contribution Statement */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                Annual Contribution Statement
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Generate your tax-deductible contribution statement for {selectedYear}.
+              </p>
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={handleDownloadStatement}
+                  disabled={statementLoading !== null}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {statementLoading === 'pdf' ? (
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                  ) : (
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  )}
+                  Print Statement
+                </button>
+
+                {member.email && (
+                  <button
+                    onClick={handleEmailStatement}
+                    disabled={statementLoading !== null}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {statementLoading === 'email' ? (
+                      <span className="animate-spin h-4 w-4 border-2 border-primary-600 border-t-transparent rounded-full" />
+                    ) : (
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                    Email Statement
+                  </button>
+                )}
+              </div>
+
+              {statementMsg && (
+                <p className={`mt-3 text-sm ${statementMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                  {statementMsg.text}
+                </p>
+              )}
             </div>
           </div>
         </div>
