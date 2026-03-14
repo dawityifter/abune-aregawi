@@ -51,6 +51,7 @@ const volunteerRoutes = require('./routes/volunteerRoutes');
 const bankRoutes = require('./routes/bankRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const settingRoutes = require('./routes/settingRoutes');
+const statementRoutes = require('./routes/statementRoutes');
 const donationController = require('./controllers/donationController');
 
 // Import database
@@ -244,6 +245,7 @@ app.get('/api/ready', async (req, res) => {
 
 
 // API routes
+app.use('/api/members/statement', statementRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/payments', memberPaymentRoutes);
 app.use('/api/transactions', transactionRoutes);
