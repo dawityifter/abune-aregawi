@@ -34,7 +34,7 @@ async function fetchStatementData(firebaseUid, yearParam) {
         sequelize.where(
           sequelize.fn('COALESCE',
             sequelize.col('for_year'),
-            sequelize.fn('YEAR', sequelize.col('payment_date'))
+            sequelize.fn('date_part', sequelize.literal("'year'"), sequelize.col('payment_date'))
           ),
           parsedYear
         )
