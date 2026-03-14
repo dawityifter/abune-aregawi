@@ -1,0 +1,39 @@
+{
+  "cookies": [
+    {
+      "name": "chatbase_anon_id",
+      "value": "6f5cb91c-85be-4705-9395-cbfd4eb5b8ef",
+      "domain": "localhost",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "__cf_bm",
+      "value": "6bwU0QoiycBb9E26aXiDo1.4RJkSjhEz30S5Lone1Js-1770524252-1.0.1.1-uVKTJMlJq9o_kjfaralB6QYX8nssmxDmd_0C0M327pDS6DGKoGcg75XJRNI56n28L9YRkVkn9wI0_rKfTIf38mMu8lV5uZu5CR1TCanDzIs",
+      "domain": ".backend.chatbase.co",
+      "path": "/",
+      "expires": 1770526052.748839,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "magic_demo_mode",
+          "value": "true"
+        },
+        {
+          "name": "app.lang",
+          "value": "en"
+        }
+      ]
+    }
+  ]
+}
