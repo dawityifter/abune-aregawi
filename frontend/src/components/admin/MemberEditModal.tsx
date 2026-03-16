@@ -810,34 +810,6 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                 return null;
               })()}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('admin.memberModal.fields.spouseName')}
-                  </label>
-                  <input
-                    type="text"
-                    name="spouseName"
-                    value={formData.spouseName || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('admin.memberModal.fields.spouseEmail')}
-                  </label>
-                  <input
-                    type="email"
-                    name="spouseEmail"
-                    value={formData.spouseEmail || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-              </div>
-
               <div className="flex items-center justify-between">
                 <h4 className="text-lg font-medium text-gray-900">
                   {t('dependents') || 'Dependents'} ({dependents.length})
