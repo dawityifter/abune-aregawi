@@ -40,6 +40,9 @@ dependencies {
     // Twilio SDK
     implementation 'com.twilio.sdk:twilio:10.6.1'
 
+    // OpenPDF for PDF generation
+    implementation 'com.github.librepdf:openpdf:1.3.43'
+
     // Google API Client for YouTube
     implementation 'com.google.api-client:google-api-client:2.7.0'
     implementation 'com.google.apis:google-api-services-youtube:v3-rev20240514-2.0.0'
@@ -48,9 +51,6 @@ dependencies {
 
     // PostgreSQL
     runtimeOnly 'org.postgresql:postgresql'
-
-    // .env file support
-    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'
@@ -78,6 +78,26 @@ tasks.named('test') {
 
 tasks.named('bootRun') {
     systemProperty 'java.net.preferIPv4Stack', 'true'
+
+    // Load .env file from project root so env vars are available without any prefix
+    def envFile = project.file('.env')
+    if (envFile.exists()) {
+        envFile.readLines().each { line ->
+            def trimmed = line.trim()
+            if (!trimmed.startsWith('#') && trimmed.contains('=')) {
+                def idx = trimmed.indexOf('=')
+                def key = trimmed.substring(0, idx).trim()
+                def value = trimmed.substring(idx + 1).trim()
+                // Strip surrounding quotes if present
+                if (value.length() >= 2 &&
+                        ((value.startsWith('"') && value.endsWith('"')) ||
+                         (value.startsWith("'") && value.endsWith("'")))) {
+                    value = value.substring(1, value.length() - 1)
+                }
+                environment key, value
+            }
+        }
+    }
 }
 
 // ── Spotless ─────────────────────────────────────────────────

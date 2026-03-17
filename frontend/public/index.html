@@ -168,6 +168,24 @@
     </script>
 
   <title>Debre Tsehay Abune Aregawi - Tigray Orthodox Church Dallas </title>
+
+  <!-- Suppress benign reCAPTCHA/Firebase Timeout rejections that fire after
+       phone-number login. Must live here (before React bundles) so it registers
+       before CRA's dev-overlay listener and can call preventDefault() first. -->
+  <script>
+    window.addEventListener('unhandledrejection', function(event) {
+      try {
+        var reason = event && event.reason;
+        var message = (reason && reason.message) || '';
+        var stack = String((reason && reason.stack) || '');
+        var isTimeout = /timeout/i.test(message);
+        var fromRecaptchaOrFirebase = /recaptcha|gstatic|firebase|identitytoolkit/i.test(stack);
+        if (isTimeout && fromRecaptchaOrFirebase) {
+          event.preventDefault();
+        }
+      } catch (e) { /* ignore */ }
+    }, true);
+  </script>
 </head>
 
 <body>

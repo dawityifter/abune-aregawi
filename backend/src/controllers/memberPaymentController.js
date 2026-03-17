@@ -1,5 +1,5 @@
 const { MemberPayment, Member, Transaction, Dependent, LedgerEntry, Title, BankTransaction } = require('../models');
-const { Op, literal } = require('sequelize');
+const { Op, literal, fn, col } = require('sequelize');
 
 // Get all member payments with pagination and filtering
 const getAllMemberPayments = async (req, res) => {
@@ -229,10 +229,19 @@ const getMyDues = async (req, res) => {
 const getPaymentStats = async (req, res) => {
   try {
     const now = new Date();
-    const year = now.getFullYear();
+    const currentYear = now.getFullYear();
+    let year = currentYear;
+    if (req.query.year) {
+      const parsed = parseInt(req.query.year, 10);
+      if (isNaN(parsed) || parsed < 2000 || parsed > currentYear + 1) {
+        return res.status(400).json({ success: false, message: 'Invalid year parameter' });
+      }
+      year = parsed;
+    }
     const start = new Date(year, 0, 1);
     const end = new Date(year, 11, 31, 23, 59, 59, 999);
-    const currentMonth = now.getMonth() + 1; // 1-12
+    // For past years use all 12 months; for current year use months elapsed so far
+    const currentMonth = year === currentYear ? now.getMonth() + 1 : 12;
 
     // All real members
     const totalMembers = await Member.count();
@@ -965,6 +974,28 @@ async function computeAndReturnDues(res, member, requestedYear) {
   });
 };
 
+// GET /api/payments/stats/years — returns sorted list of years that have ledger entries
+const getAvailableYears = async (req, res) => {
+  try {
+    const rows = await LedgerEntry.findAll({
+      attributes: [[fn('date_part', literal("'year'"), col('entry_date')), 'yr']],
+      group: [[fn('date_part', literal("'year'"), col('entry_date'))]],
+      order: [[fn('date_part', literal("'year'"), col('entry_date')), 'DESC']],
+      raw: true,
+    });
+    const currentYear = new Date().getFullYear();
+    const years = rows
+      .map(r => Number(r.yr))
+      .filter(y => Number.isFinite(y) && y > 2000 && y <= currentYear + 1);
+    if (!years.includes(currentYear)) years.push(currentYear);
+    years.sort((a, b) => b - a);
+    return res.json({ success: true, data: { years } });
+  } catch (error) {
+    console.error('Error fetching available years:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch available years' });
+  }
+};
+
 module.exports = {
   getAllMemberPayments,
   getMemberPaymentDetails,
@@ -975,5 +1006,6 @@ module.exports = {
   getMyDues,
   getDuesByMemberIdWithAuth,
   getMemberDuesForTreasurer,
+  getAvailableYears,
   computeAndReturnDues // Exported for testing
 };

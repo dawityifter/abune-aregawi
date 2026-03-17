@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/announcements")
@@ -44,7 +45,7 @@ public class AnnouncementController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'RELATIONSHIP')")
-    public ResponseEntity<ApiResponse<AnnouncementDTO>> update(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public ResponseEntity<ApiResponse<AnnouncementDTO>> update(@PathVariable UUID id, @RequestBody Map<String, String> body) {
         AnnouncementDTO dto = announcementService.update(
             id, body.get("title"), body.get("description"),
             body.get("title_ti"), body.get("description_ti"),
@@ -55,7 +56,7 @@ public class AnnouncementController {
 
     @PatchMapping("/{id}/cancel")
     @PreAuthorize("hasAnyRole('ADMIN', 'RELATIONSHIP')")
-    public ResponseEntity<ApiResponse<AnnouncementDTO>> cancel(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<AnnouncementDTO>> cancel(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(announcementService.cancel(id)));
     }
 }

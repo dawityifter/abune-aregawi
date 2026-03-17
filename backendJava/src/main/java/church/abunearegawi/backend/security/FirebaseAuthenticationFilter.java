@@ -213,7 +213,8 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         // Remove firebase profile path from exclusion to ensure Demo Login works for it
-        return path.equals("/api/ready") ||
+        return path.equals("/health") ||
+                path.equals("/api/ready") ||
                 path.equals("/api/health") ||
                 path.startsWith("/api/members/register");
     }

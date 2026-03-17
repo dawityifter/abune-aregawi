@@ -33,8 +33,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
-                        .requestMatchers("/api/ready", "/api/health", "/api/members/register", "/api/departments",
-                                "/api/members/titles", "/api/members/check-phone/**",
+                        .requestMatchers("/health", "/api/ready", "/api/health", "/api/members/register",
+                                "/api/departments", "/api/members/titles", "/api/members/check-phone/**",
                                 "/api/members/profile/firebase/**", "/api/youtube/**")
                         .permitAll()
                         // Actuator: health + prometheus are public (prometheus scraped by cluster Prometheus)

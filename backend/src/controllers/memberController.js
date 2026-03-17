@@ -2498,7 +2498,7 @@ exports.promoteDependent = async (req, res) => {
     const familyId = parent.family_id || parent.id;
 
     // 3. Create New Member
-    const memberEmail = email || dependent.email || `dependent_${dependent.id}@placeholder.local`;
+    const memberEmail = email || null; // Email is not required for membership; phone is the identifier
     const memberPhone = phone || dependent.phone;
 
     // Check if phone number already exists in members table

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,7 +45,7 @@ public class AnnouncementService {
     }
 
     @Transactional
-    public AnnouncementDTO update(Long id, String title, String description, String titleTi, String descriptionTi, LocalDate startDate, LocalDate endDate) {
+    public AnnouncementDTO update(UUID id, String title, String description, String titleTi, String descriptionTi, LocalDate startDate, LocalDate endDate) {
         Announcement a = announcementRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Announcement not found: " + id));
         a.setTitle(title);
@@ -57,7 +58,7 @@ public class AnnouncementService {
     }
 
     @Transactional
-    public AnnouncementDTO cancel(Long id) {
+    public AnnouncementDTO cancel(UUID id) {
         Announcement a = announcementRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Announcement not found: " + id));
         a.setStatus(Announcement.Status.CANCELLED);

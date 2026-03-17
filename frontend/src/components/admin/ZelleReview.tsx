@@ -49,6 +49,11 @@ const ZelleReview: React.FC = () => {
   const [rowModes, setRowModes] = useState<Record<string, RowMode>>({});
   const [manualDonors, setManualDonors] = useState<Record<string, ManualDonor>>({});
 
+  // Per-row payment type (controlled) and membership year
+  const [rowPaymentTypes, setRowPaymentTypes] = useState<Record<string, string>>({});
+  const [rowYears, setRowYears] = useState<Record<string, string>>({});
+  const currentYear = new Date().getFullYear();
+
   const getKey = (it: ZellePreviewItem, idx: number) => it.gmail_id || it.external_id || String(idx);
 
   const fetchPreview = useCallback(async () => {
@@ -157,8 +162,10 @@ const ZelleReview: React.FC = () => {
             note = note ? `${donorPrefix}\n\n${note}` : donorPrefix;
           }
 
-          const paymentTypeSelect = (document.getElementById(`paymentType-${key}`) as HTMLSelectElement | null);
-          const payment_type = paymentTypeSelect?.value || 'donation';
+          const payment_type = rowPaymentTypes[key] ?? item.payment_type ?? 'donation';
+          const for_year = payment_type === 'membership_due'
+            ? parseInt(rowYears[key] ?? String(currentYear))
+            : null;
           const numericAmount = typeof item.amount === 'number' ? item.amount : Number(item.amount);
 
           return {
@@ -167,7 +174,8 @@ const ZelleReview: React.FC = () => {
             payment_date: item.payment_date,
             note,
             member_id,
-            payment_type
+            payment_type,
+            for_year
           };
         });
 
@@ -219,8 +227,10 @@ const ZelleReview: React.FC = () => {
         throw new Error('Please provide a member ID or manual donor name to reconcile.');
       }
 
-      const paymentTypeSelect = (document.getElementById(`paymentType-${key}`) as HTMLSelectElement | null);
-      const payment_type = paymentTypeSelect?.value || 'donation';
+      const payment_type = rowPaymentTypes[key] ?? item.payment_type ?? 'donation';
+      const for_year = payment_type === 'membership_due'
+        ? parseInt(rowYears[key] ?? String(currentYear))
+        : null;
 
       if (!item.external_id) {
         throw new Error('Missing external_id for this item.');
@@ -243,6 +253,7 @@ const ZelleReview: React.FC = () => {
           note,
           member_id,
           payment_type,
+          for_year,
         })
       });
       const data = await resp.json().catch(() => ({}));
@@ -256,7 +267,7 @@ const ZelleReview: React.FC = () => {
     } finally {
       setBusyIds((m) => ({ ...m, [key]: false }));
     }
-  }, [firebaseUser, fetchPreview, rowSearch, rowModes, manualDonors]);
+  }, [firebaseUser, fetchPreview, rowSearch, rowModes, manualDonors, rowPaymentTypes, rowYears, currentYear]);
 
   const handleUpdatePaymentType = useCallback(async (item: ZellePreviewItem, idx?: number) => {
     if (!firebaseUser) return;
@@ -559,10 +570,16 @@ const ZelleReview: React.FC = () => {
                         </div>
                       )}
                       <select
-                        key={`pt-${getKey(it, items.indexOf(it))}-${it.payment_type || 'donation'}`}
-                        id={`paymentType-${getKey(it, items.indexOf(it))}`}
                         className="px-2 py-1 border border-gray-300 rounded"
-                        defaultValue={it.payment_type || 'donation'}
+                        value={rowPaymentTypes[getKey(it, items.indexOf(it))] ?? it.payment_type ?? 'donation'}
+                        onChange={(e) => {
+                          const key = getKey(it, items.indexOf(it));
+                          setRowPaymentTypes(prev => ({ ...prev, [key]: e.target.value }));
+                          // Reset year to current year when switching to membership_due
+                          if (e.target.value === 'membership_due') {
+                            setRowYears(prev => ({ ...prev, [key]: prev[key] ?? String(currentYear) }));
+                          }
+                        }}
                         disabled={!!busyIds[getKey(it, items.indexOf(it))]}
                         title="Payment Type"
                       >
@@ -573,6 +590,22 @@ const ZelleReview: React.FC = () => {
                         <option value="tigray_hunger_fundraiser">Tigray Hunger Fundraiser</option>
                         <option value="other">Other</option>
                       </select>
+                      {(rowPaymentTypes[getKey(it, items.indexOf(it))] ?? it.payment_type) === 'membership_due' && (
+                        <select
+                          className="px-2 py-1 border border-gray-300 rounded"
+                          value={rowYears[getKey(it, items.indexOf(it))] ?? String(currentYear)}
+                          onChange={(e) => {
+                            const key = getKey(it, items.indexOf(it));
+                            setRowYears(prev => ({ ...prev, [key]: e.target.value }));
+                          }}
+                          disabled={!!busyIds[getKey(it, items.indexOf(it))]}
+                          title="Membership Year"
+                        >
+                          {Array.from({ length: currentYear - 2023 }, (_, i) => currentYear - i).map(y => (
+                            <option key={y} value={String(y)}>{y}</option>
+                          ))}
+                        </select>
+                      )}
                       {!it.already_exists ? (
                         <button
                           type="button"
