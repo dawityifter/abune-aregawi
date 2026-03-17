@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 declare global {
     interface Window {
         chatbase?: any;
+        chatbaseConfig?: any;
     }
 }
 
@@ -12,6 +13,12 @@ declare global {
  */
 const ChatWidget: React.FC = () => {
     useEffect(() => {
+        // 0. Configure Chatbase
+        window.chatbaseConfig = {
+            chatbotId: "Tk-sJVWamI6RB5fUi12Kw",
+            showFloatingInitialMessages: false,
+        };
+
         // 1. Initialize the Chatbase global function
         if (!window.chatbase || window.chatbase("getState") !== "initialized") {
             window.chatbase = (...args: any[]) => {

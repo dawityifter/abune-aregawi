@@ -43,6 +43,7 @@ export interface Dictionaries {
       times: string;
       watch: string;
       viewChannel: string;
+      whatsapp: string;
     };
     mission: string;
   };
@@ -135,6 +136,35 @@ export interface Dictionaries {
       netIncome: string;
       outstanding: string;
       collectionProgress: string;
+      pageTitle: string;
+      yearLabel: string;
+      totalReceipts: string;
+      ytdBalance: string;
+      surplus: string;
+      deficit: string;
+      annualDuesProgress: string;
+      collectedOf: string;
+      stillOutstanding: string;
+      otherIncome: string;
+      currentBalance: string;
+      lastUpdated: string;
+      target: string;
+      membershipDues: string;
+      otherDonations: string;
+    };
+    health: {
+      title: string;
+      financialHealth: string;
+      duesAndMemberStatus: string;
+      activeGivers: string;
+      totalMembers: string;
+      upToDate: string;
+      behind: string;
+      fullyPaid: string;
+      behindOnDues: string;
+      activeMembers: string;
+      membershipDues: string;
+      otherDonations: string;
     };
     transactionList: {
       filters: {
@@ -537,6 +567,7 @@ export interface Dictionaries {
     tabs: {
       pending: string;
       welcomed: string;
+      announcements: string;
     };
     welcomedColumns: {
       memberNumber: string;
@@ -555,6 +586,39 @@ export interface Dictionaries {
     markWelcomed: string;
     noPermission: string;
     welcomedSuccess: string;
+    announcements: {
+      tabTitle: string;
+      addButton: string;
+      editButton: string;
+      cancelButton: string;
+      statusActive: string;
+      statusExpired: string;
+      statusCancelled: string;
+      filterAll: string;
+      titleLabel: string;
+      descriptionLabel: string;
+      startDateLabel: string;
+      endDateLabel: string;
+      modalCreateTitle: string;
+      modalEditTitle: string;
+      saveButton: string;
+      confirmCancel: string;
+      noAnnouncements: string;
+      titleTiLabel: string;
+      descriptionTiLabel: string;
+      tigrinyaSectionToggle: string;
+      columns: {
+        title: string;
+        dates: string;
+        status: string;
+        actions: string;
+      };
+    };
+    tvSettings: {
+      gearLabel: string;
+      intervalLabel: string;
+      saveLabel: string;
+    };
     addWelcomeNote: {
       title: string;
       for: string;
@@ -618,6 +682,7 @@ export const en: Dictionaries = {
       times: "Worship Times",
       watch: "Watch Live",
       viewChannel: "View Our Youtube Channel",
+      whatsapp: "Join us on WhatsApp",
     },
     mission: "We want everyone, everywhere to have an everyday relationship with the lord. By uniting through the Eucharist.",
   },
@@ -774,7 +839,36 @@ export const en: Dictionaries = {
       totalExpenses: "Total Expenses",
       netIncome: "Net Income",
       outstanding: "Outstanding Amount",
-      collectionProgress: "Collection Progress"
+      collectionProgress: "Collection Progress",
+      pageTitle: "Financial Overview",
+      yearLabel: "Year",
+      totalReceipts: "Total Receipts",
+      ytdBalance: "Year-to-Date Balance",
+      surplus: "Surplus",
+      deficit: "Deficit",
+      annualDuesProgress: "Annual Dues Progress",
+      collectedOf: "collected of",
+      stillOutstanding: "still outstanding",
+      otherIncome: "Other Income",
+      currentBalance: "Bank Balance",
+      lastUpdated: "Updated",
+      target: "Goal",
+      membershipDues: "Membership Dues",
+      otherDonations: "Other Donations",
+    },
+    health: {
+      title: "Membership Health",
+      financialHealth: "Financial Health",
+      duesAndMemberStatus: "Dues & Member Status",
+      activeGivers: "Active Givers",
+      totalMembers: "of {count} members",
+      upToDate: "Up to Date",
+      behind: "Behind",
+      fullyPaid: "Fully Paid",
+      behindOnDues: "Behind on Dues",
+      activeMembers: "Active Members",
+      membershipDues: "Membership Dues",
+      otherDonations: "Other Donations",
     },
     transactionList: {
       filters: {
@@ -1187,7 +1281,8 @@ export const en: Dictionaries = {
     allCaughtUp: "All caught up! No pending welcomes.",
     tabs: {
       pending: "Pending Welcomes",
-      welcomed: "Already Welcomed"
+      welcomed: "Already Welcomed",
+      announcements: "Public Announcements"
     },
     welcomedColumns: {
       memberNumber: "Member ID",
@@ -1206,6 +1301,39 @@ export const en: Dictionaries = {
     markWelcomed: "Mark Welcomed",
     noPermission: "No permission",
     welcomedSuccess: "Welcomed note saved and member marked welcomed.",
+    announcements: {
+      tabTitle: "Public Announcements",
+      addButton: "Add Announcement",
+      editButton: "Edit",
+      cancelButton: "Cancel Announcement",
+      statusActive: "Active",
+      statusExpired: "Expired",
+      statusCancelled: "Cancelled",
+      filterAll: "All",
+      titleLabel: "Title",
+      descriptionLabel: "Description",
+      startDateLabel: "Start Date",
+      endDateLabel: "End Date",
+      modalCreateTitle: "New Announcement",
+      modalEditTitle: "Edit Announcement",
+      saveButton: "Save",
+      confirmCancel: "Cancel this announcement? This cannot be undone.",
+      noAnnouncements: "No announcements found.",
+      titleTiLabel: "Title (Tigrinya)",
+      descriptionTiLabel: "Description (Tigrinya)",
+      tigrinyaSectionToggle: "Add Tigrinya Translation",
+      columns: {
+        title: "Title",
+        dates: "Date Range",
+        status: "Status",
+        actions: "Actions"
+      }
+    },
+    tvSettings: {
+      gearLabel: "TV Settings",
+      intervalLabel: "Rotate every (seconds)",
+      saveLabel: "Save"
+    },
     addWelcomeNote: {
       title: "Add Welcome Note",
       for: "for",
@@ -1275,6 +1403,7 @@ export const ti: Dictionaries = {
       times: "ሰዓታት ስግደ",
       watch: "ቀጥታ ርእይ",
       viewChannel: "ቻነል ዩቲዩብና ርኣይ",
+      whatsapp: "ናብ WhatsApp ተሳተፍ",
     },
     mission: "ንሕና ኩሉ ሰብ፣ ኣብ ኩሉ ቦታ፣ ምስ ጎይታ መዓልታዊ ርክብ ክህልዎ ንደሊ። ብቅዱስ ቁርባን ብምሕባር።",
   },
@@ -1431,7 +1560,36 @@ export const ti: Dictionaries = {
       totalExpenses: "ጠቕላላ ወጪ",
       netIncome: "ዝተረፈ እቶት",
       outstanding: "ዝተረፈ ክፍሊት",
-      collectionProgress: "ትልሚ ኣከባብ ክፍሊት"
+      collectionProgress: "ትልሚ ኣከባብ ክፍሊት",
+      pageTitle: "ናይ ፋይናንስ ሓጺር መግለጺ",
+      yearLabel: "ዓመት",
+      totalReceipts: "ጠቕላሊ እቶት",
+      ytdBalance: "ናይ ዓመት ሕሳብ",
+      surplus: "ትርፊ",
+      deficit: "ጉድለት",
+      annualDuesProgress: "ናይ ዓመት ኣባልነት ክፍሊት",
+      collectedOf: "ተኣኺቡ ካብ",
+      stillOutstanding: "ዝተረፈ",
+      otherIncome: "ካልእ እቶት",
+      currentBalance: "ሕሳብ ባንኪ",
+      lastUpdated: "ዝተሓደሰሉ",
+      target: "ዕላማ",
+      membershipDues: "ናይ ኣባልነት ክፍሊት",
+      otherDonations: "ካልእ ሽልማታት",
+    },
+    health: {
+      title: "ጥዕና ኣባልነት",
+      financialHealth: "ናይ ፋይናንስ ጥዕና",
+      duesAndMemberStatus: "ክፍሊት ኣባልነትን ኩነታት ኣባላትን",
+      activeGivers: "ዝኸፍሉ ኣባላት",
+      totalMembers: "ካብ {count} ኣባላት",
+      upToDate: "እዋናዊ ዝኸፈሉ",
+      behind: "ዝተረፎም",
+      fullyPaid: "ብምሉኡ ከፊሉ",
+      behindOnDues: "ዕዳ ኣለዎ",
+      activeMembers: "ንጡፋት ኣባላት",
+      membershipDues: "ናይ ኣባልነት ክፍሊት",
+      otherDonations: "ካልእ ሽልማታት",
     },
     transactionList: {
       filters: {
@@ -1845,7 +2003,8 @@ export const ti: Dictionaries = {
     allCaughtUp: "ኩሉ ተዛዚሙ! ዝጽበዩ የለዉን።",
     tabs: {
       pending: "ዝጽበዩ ዘለዉ",
-      welcomed: "ዝተቐበልናዮም"
+      welcomed: "ዝተቐበልናዮም",
+      announcements: "ሓበሬታታት"
     },
     welcomedColumns: {
       memberNumber: "መለለዪ ኣባል",
@@ -1864,6 +2023,39 @@ export const ti: Dictionaries = {
     markWelcomed: "ተቐቢልናዮ",
     noPermission: "ፍቓድ የብልካን",
     welcomedSuccess: "መዘኻኸሪ ኣቀባብላ ተዓቂቡ ኣባል ተቐቢልናዮ ተባሂሉ ተመዝጊቡ።",
+    announcements: {
+      tabTitle: "ሓበሬታታት",
+      addButton: "ሓበሬታ ወሰኽ",
+      editButton: "ኣርም",
+      cancelButton: "ሰርዝ",
+      statusActive: "ንጡፍ",
+      statusExpired: "ገደፍ",
+      statusCancelled: "ተሰሪዙ",
+      filterAll: "ኹሉ",
+      titleLabel: "ኣርእስቲ",
+      descriptionLabel: "መግለጺ",
+      startDateLabel: "ዕለት ምጅማር",
+      endDateLabel: "ዕለት ምዝዛም",
+      modalCreateTitle: "ሓድሽ ሓበሬታ",
+      modalEditTitle: "ሓበሬታ ኣርም",
+      saveButton: "ዕቀብ",
+      confirmCancel: "ሓበሬታ ክትሰርዞ? እዚ ክምለስ ኣይክእልን።",
+      noAnnouncements: "ሓበሬታ ኣይተረኸበን።",
+      titleTiLabel: "ኣርእስቲ (ትግርኛ)",
+      descriptionTiLabel: "መግለጺ (ትግርኛ)",
+      tigrinyaSectionToggle: "ትርጉም ትግርኛ ወሲኽ",
+      columns: {
+        title: "ኣርእስቲ",
+        dates: "ዕለታት",
+        status: "ኩነታት",
+        actions: "ተግባር"
+      }
+    },
+    tvSettings: {
+      gearLabel: "ቴለቪዥን መቆጻጸሪ",
+      intervalLabel: "ዙረት ኣብ (ካልኢታት)",
+      saveLabel: "ዕቀብ"
+    },
     addWelcomeNote: {
       title: "ናይ ኣቀባብላ መዘኻኸሪ ወስኽ",
       for: "ን",

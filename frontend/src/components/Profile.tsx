@@ -911,7 +911,7 @@ const Profile: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('date.joined.parish')}
                     </label>
-                    {editing ? (
+                    {editing && profile.role !== 'member' ? (
                       <input
                         type="date"
                         name="dateJoinedParish"

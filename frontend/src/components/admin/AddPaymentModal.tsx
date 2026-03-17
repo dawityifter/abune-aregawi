@@ -905,7 +905,12 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                     required={receiptRequired}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  {receiptRequired && (
+                  {receiptNumber === '000' && (
+                    <p className="mt-1 text-xs text-amber-600 font-medium">
+                      ⚠️ Using 000 means no receipt was given. A written receipt must be issued as soon as possible.
+                    </p>
+                  )}
+                  {receiptRequired && receiptNumber !== '000' && (
                     <p className="mt-1 text-xs text-gray-600">Required for Cash and Check payments.</p>
                   )}
                 </div>

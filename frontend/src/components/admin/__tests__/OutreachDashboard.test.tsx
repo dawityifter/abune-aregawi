@@ -6,6 +6,12 @@ import { I18nProvider } from '../../../i18n/I18nProvider';
 import '@testing-library/jest-dom';
 import { setFirebaseUserToken, extractHeader } from '../../../testUtils/authTestUtils';
 
+// Mock AnnouncementsPanel to avoid TipTap ESM module issues in Jest
+jest.mock('../AnnouncementsPanel', () => ({
+  __esModule: true,
+  default: () => <div data-testid="announcements-panel">Announcements</div>,
+}));
+
 // Under test
 import OutreachDashboard from '../OutreachDashboard';
 
@@ -83,7 +89,10 @@ describe('OutreachDashboard', () => {
     // Mock pending list response
     (global.fetch as any) = jest
       .fn()
-      // First call: GET /onboarding/pending
+      // TV data calls (fired in parallel on mount)
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: { seconds: 30 } }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: [] }) })
+      // GET /onboarding/pending
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
@@ -110,14 +119,14 @@ describe('OutreachDashboard', () => {
           },
         }),
       })
-      // Second call: GET /api/members/m1 (Profile load in modal)
+      // GET /api/members/m1 (Profile load in modal)
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ success: true, data: { member: { id: 'm1', firstName: 'Alpha' } } })
       })
-      // Third call: POST /api/members/m1/outreach (Save note)
+      // POST /api/members/m1/outreach (Save note)
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true }) })
-      // Fourth call: POST /:id/mark-welcomed
+      // POST /:id/mark-welcomed
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true }) });
 
     render(
@@ -158,18 +167,19 @@ describe('OutreachDashboard', () => {
     await waitFor(() => expect(screen.queryByText('Alpha User')).not.toBeInTheDocument());
     expect(screen.getByText('1')).toBeInTheDocument();
 
-    // Verify fetch calls
-    // Profile load in modal
-    expect((global.fetch as jest.Mock).mock.calls[1][0]).toContain('/api/members/m1');
-    // Save note
-    expect((global.fetch as jest.Mock).mock.calls[2][0]).toContain('/api/members/m1/outreach');
-    // Mark welcomed
-    expect((global.fetch as jest.Mock).mock.calls[3][0]).toContain('/api/members/m1/mark-welcomed');
+    // Verify fetch calls (0=tv-interval, 1=active-announcements, 2=pending, 3=member-profile, 4=outreach, 5=mark-welcomed)
+    expect((global.fetch as jest.Mock).mock.calls[3][0]).toContain('/api/members/m1');
+    expect((global.fetch as jest.Mock).mock.calls[4][0]).toContain('/api/members/m1/outreach');
+    expect((global.fetch as jest.Mock).mock.calls[5][0]).toContain('/api/members/m1/mark-welcomed');
   });
 
   it('shows error state when pending fetch fails', async () => {
     (global.fetch as any) = jest
       .fn()
+      // TV data calls (parallel) succeed silently
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: { seconds: 30 } }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: [] }) })
+      // Pending list fails
       .mockResolvedValueOnce({ ok: false, json: () => Promise.resolve({ message: 'Failed to load pending welcomes' }) });
 
     render(
@@ -186,6 +196,10 @@ describe('OutreachDashboard', () => {
     // Mock pending list response
     (global.fetch as any) = jest
       .fn()
+      // TV data calls (parallel)
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: { seconds: 30 } }) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: [] }) })
+      // GET /onboarding/pending
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({

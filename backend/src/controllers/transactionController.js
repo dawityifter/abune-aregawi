@@ -6,8 +6,9 @@ const tz = require('../config/timezone');
 const getAllTransactions = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 10,
+      page = 0,
+      limit,
+      size = 10,
       member_id,
       payment_type,
       payment_method,
@@ -19,7 +20,10 @@ const getAllTransactions = async (req, res) => {
       receipt_number
     } = req.query;
 
-    const offset = (page - 1) * limit;
+    // Accept both `limit` and `size` (Spring Data style); page is 0-based
+    const parsedLimit = parseInt(limit || size) || 10;
+    const parsedPage = Math.max(0, parseInt(page) || 0);
+    const offset = parsedPage * parsedLimit;
     const whereClause = {};
 
     // Add filters
@@ -89,8 +93,8 @@ const getAllTransactions = async (req, res) => {
       where: whereClause,
       include: includes,
       order: [['payment_date', 'DESC'], ['created_at', 'DESC']],
-      limit: parseInt(limit),
-      offset: parseInt(offset)
+      limit: parsedLimit,
+      offset: offset
     });
 
     res.json({
@@ -98,10 +102,10 @@ const getAllTransactions = async (req, res) => {
       data: {
         transactions,
         pagination: {
-          current_page: parseInt(page),
-          total_pages: Math.ceil(count / limit),
+          current_page: parsedPage,
+          total_pages: Math.ceil(count / parsedLimit),
           total_items: count,
-          items_per_page: parseInt(limit)
+          items_per_page: parsedLimit
         }
       }
     });
@@ -214,6 +218,17 @@ const createTransaction = async (req, res) => {
         success: false,
         message: 'Receipt number is required for cash and check payments'
       });
+    }
+
+    // Check for duplicate receipt number ('000' is allowed as a no-receipt placeholder)
+    if (receipt_number && receipt_number !== '000') {
+      const existing = await Transaction.findOne({ where: { receipt_number } });
+      if (existing) {
+        return res.status(409).json({
+          success: false,
+          message: `Receipt number "${receipt_number}" has already been used. Please use a unique receipt number.`
+        });
+      }
     }
 
     // Determine GL code from income_category_id or auto-assign from payment_type

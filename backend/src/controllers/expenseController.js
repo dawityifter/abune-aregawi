@@ -106,6 +106,18 @@ const createExpense = async (req, res) => {
       });
     }
 
+    // Check for duplicate check number
+    if (check_number) {
+      const existing = await LedgerEntry.findOne({ where: { check_number } });
+      if (existing) {
+        await t.rollback();
+        return res.status(409).json({
+          success: false,
+          message: `Check number "${check_number}" has already been used. Please use a unique check number.`
+        });
+      }
+    }
+
     // Get collector (the logged-in user)
     const collected_by = req.user?.id;
     if (!collected_by) {

@@ -38,7 +38,7 @@ async function previewFromGmail(req, res) {
 module.exports.previewFromGmail = previewFromGmail;
 
 // Helper to process a single transaction creation
-async function processTransactionCreation({ external_id, amount, payment_date, note, member_id, payment_type }, user) {
+async function processTransactionCreation({ external_id, amount, payment_date, note, member_id, payment_type, for_year }, user) {
   if (!external_id || !amount || !payment_date) {
     throw new Error('external_id, amount, and payment_date are required');
   }
@@ -92,7 +92,8 @@ async function processTransactionCreation({ external_id, amount, payment_date, n
     note: note || null,
     external_id,
     donation_id: null,
-    income_category_id
+    income_category_id,
+    for_year: for_year || null
   });
 
   // Persist memo -> member mapping if a member is matched

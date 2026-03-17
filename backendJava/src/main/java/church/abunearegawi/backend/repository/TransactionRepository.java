@@ -55,4 +55,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
                         @Param("amount") java.math.BigDecimal amount,
                         @Param("startDate") LocalDate startDate,
                         @Param("endDate") LocalDate endDate);
+
+        @Query("SELECT t FROM Transaction t LEFT JOIN FETCH t.incomeCategory ic WHERE t.member.id IN :memberIds AND t.status = church.abunearegawi.backend.model.Transaction.Status.succeeded AND t.paymentDate >= :startDate AND t.paymentDate <= :endDate AND (ic.glCode IN :glCodes OR (ic IS NULL AND CAST(t.paymentType AS string) IN :paymentTypes)) ORDER BY t.paymentDate ASC")
+        List<Transaction> findTaxDeductibleForHousehold(
+                        @Param("memberIds") List<Long> memberIds,
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate,
+                        @Param("glCodes") List<String> glCodes,
+                        @Param("paymentTypes") List<String> paymentTypes);
 }

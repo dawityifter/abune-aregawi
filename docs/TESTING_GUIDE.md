@@ -32,43 +32,28 @@ This guide will help you test the complete Firebase authentication setup for the
    - Redirect: Should navigate to dashboard on success.
 5. **Notes**:
    - There is no standalone "regular registration" start anymore; it begins after successful phone sign-in when no member exists.
-   - Email/password login remains for existing accounts but is not used to initiate registration.
 
-#### **B. User Login (Email/Password)**
+#### **B. User Login (Phone/OTP)**
 1. **Navigate to login**: Click "Sign In" or go to `/login`
-2. **Select email method**: Ensure "Email" tab is selected
-3. **Enter credentials**: Use the email and password from registration
-4. **Submit login**: Should authenticate and redirect to dashboard
-5. **Verify authentication state**: User should remain logged in
-
-#### **C. User Login (Phone/OTP)**
-1. **Navigate to login**: Click "Sign In" or go to `/login`
-2. **Select phone method**: Click "Phone" tab
-3. **Enter phone number**: Use format `(XXX) XXX-XXXX` or `+1XXXXXXXXXX`
-4. **Test phone number formatting**: 
+2. **Enter phone number**: Use format `(XXX) XXX-XXXX` or `+1XXXXXXXXXX`
+3. **Test phone number formatting**: 
    - Enter `1234567890` → Should format to `(123) 456-7890`
    - Enter `+11234567890` → Should format to `(123) 456-7890`
-5. **Test reCAPTCHA behavior**:
+4. **Test reCAPTCHA behavior**:
    - **Development mode**: Should auto-bypass reCAPTCHA
    - **Test numbers** (`+1234567890`, `+15551234567`): Should bypass reCAPTCHA
    - **Regular numbers**: Should show invisible reCAPTCHA (auto-solved)
-6. **Send OTP**: Click "Send OTP" button
-7. **Verify OTP form**: Should show OTP input field
-8. **Enter OTP**: Input the 6-digit code received
-9. **Submit OTP**: Click "Verify OTP"
-10. **Verify authentication**: On success, app either redirects to dashboard (existing member) or to `/register` (new user) as described above.
-11. **Test error handling**:
+5. **Send OTP**: Click "Send OTP" button
+6. **Verify OTP form**: Should show OTP input field
+7. **Enter OTP**: Input the 6-digit code received
+8. **Submit OTP**: Click "Verify OTP"
+9. **Verify authentication**: On success, app either redirects to dashboard (existing member) or to `/register` (new user) as described above.
+10. **Test error handling**:
     - **Invalid OTP**: Should show "Invalid verification code" message
     - **Expired OTP**: Should show "Verification code has expired" message
     - **Try Again button**: Should reset form and allow retry
 
-#### **D. Password Reset**
-1. **On login page**: Click "Forgot Password?"
-2. **Enter email**: Use registered email address
-3. **Submit**: Should send reset email (check console for Firebase messages)
-4. **Return to login**: Click "Back to Login"
-
-#### **E. User Logout**
+#### **C. User Logout**
 1. **From dashboard**: Click "Sign Out" in header
 2. **Verify logout**: Should redirect to homepage
 3. **Check authentication state**: User should be logged out
@@ -102,19 +87,7 @@ curl -X POST http://localhost:5000/api/members/register \
     "firstName": "Test",
     "lastName": "User",
     "email": "test@example.com",
-    "loginEmail": "test@example.com",
-    "password": "password123",
     "phoneNumber": "1234567890"
-  }'
-```
-
-#### **C. Member Login API**
-```bash
-curl -X POST http://localhost:5000/api/members/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "test@example.com",
-    "password": "password123"
   }'
 ```
 
@@ -182,13 +155,7 @@ curl -X POST http://localhost:5000/api/members/login \
 
 ### **7. Error Handling Test**
 
-#### **A. Email Authentication Errors**
-1. **Wrong password**: Try logging in with wrong password
-2. **Expected**: Error message displayed
-3. **Non-existent email**: Try logging in with non-existent email
-4. **Expected**: Error message displayed
-
-#### **B. Phone Authentication Errors**
+#### **A. Phone Authentication Errors**
 1. **Invalid phone format**: Try with invalid phone number
 2. **Expected**: "Please enter a valid phone number" message
 3. **OTP verification errors**:
@@ -197,17 +164,15 @@ curl -X POST http://localhost:5000/api/members/login \
    - **Too many attempts**: Should show "Too many failed attempts"
 4. **reCAPTCHA errors**: Should be suppressed in development mode
 
-#### **C. Network Errors**
+#### **B. Network Errors**
 1. **Backend offline**: Stop backend server
 2. **Try registration**: Should show appropriate error
-3. **Try email login**: Should show appropriate error
-4. **Try phone login**: Should show appropriate error
+3. **Try phone login**: Should show appropriate error
 
-#### **D. Validation Errors**
+#### **C. Validation Errors**
 1. **Invalid email format**: Try registration with invalid email
-2. **Weak password**: Try registration with short password
-3. **Missing required fields**: Try submitting incomplete forms
-4. **Invalid phone format**: Try registration with invalid phone number
+2. **Missing required fields**: Try submitting incomplete forms
+3. **Invalid phone format**: Try registration with invalid phone number
 
 ### **8. Multilingual Test**
 
@@ -284,12 +249,10 @@ Tester: ___________
 
 ✅ Basic Navigation: _____
 ✅ User Registration: _____
-✅ Email Login: _____
 ✅ Phone Login: _____
 ✅ Phone Number Formatting: _____
 ✅ reCAPTCHA Integration: _____
 ✅ OTP Verification: _____
-✅ Password Reset: _____
 ✅ User Logout: _____
 ✅ Protected Routes: _____
 ✅ Dashboard Features: _____
