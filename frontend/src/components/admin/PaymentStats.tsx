@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PaymentStatsData {
   totalMembers: number;
@@ -26,14 +27,50 @@ interface PaymentStatsProps {
   onYearChange: (year: number) => void;
 }
 
+interface LoanStats {
+  totalOutstandingBalance: number;
+  lendingMembersCount: number;
+}
+
 const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availableYears, onYearChange }) => {
   const { t } = useLanguage();
+  const { firebaseUser } = useAuth();
   const td = 'treasurerDashboard';
+  const [loanStats, setLoanStats] = useState<LoanStats | null>(null);
 
   const fmt = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 
   const progressPct = Math.min(parseFloat(stats.collectionRate.toString()), 100);
+
+  const currentYear = new Date().getFullYear();
+  const isCurrentYear = selectedYear === currentYear;
+  const today = new Date();
+  const endDate = isCurrentYear
+    ? today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : `Dec 31, ${selectedYear}`;
+  const periodLabel = `Jan 1 – ${endDate}`;
+  const periodTag = isCurrentYear ? 'year to date' : 'full year';
+  const currentMonthAbbr = today.toLocaleDateString('en-US', { month: 'short' });
+  const ytdLabel = isCurrentYear ? `Jan–${currentMonthAbbr} Net` : 'Full-Year Net';
+
+  useEffect(() => {
+    const fetchLoanStats = async () => {
+      try {
+        const token = await firebaseUser?.getIdToken();
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/api/loans/stats`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setLoanStats(data.data);
+        }
+      } catch (err) {
+        // Non-critical — silently skip if loans endpoint unavailable
+      }
+    };
+    fetchLoanStats();
+  }, [firebaseUser]);
 
   return (
     <div className="space-y-6">
@@ -71,6 +108,9 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availa
                   {t(`${td}.stats.lastUpdated`)}: {formatDateForDisplay(stats.lastBankUpdate)}
                 </p>
               )}
+              <p className="text-xs text-blue-200 mt-1 italic">
+                Balance reflects all transactions on record, not filtered by year
+              </p>
             </div>
             <div className="bg-white/20 p-2 rounded-lg">
               <span className="text-xl">🏦</span>
@@ -120,25 +160,30 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availa
 
         {/* Left: Financial Health */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-            {t(`${td}.health.financialHealth`)}
-          </h3>
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+              {t(`${td}.health.financialHealth`)}
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5 font-normal normal-case tracking-normal">
+              {periodLabel} <span className="italic">({periodTag})</span>
+            </p>
+          </div>
 
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600 flex items-center gap-1">
-                <span className="text-green-500">↑</span> {t(`${td}.stats.totalReceipts`)}
+                <span className="text-green-500">↑</span> {t(`${td}.stats.totalReceipts`)} <span className="font-normal text-gray-400">({selectedYear})</span>
               </span>
               <span className="text-lg font-bold text-green-700">{fmt(stats.totalCollected)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600 flex items-center gap-1">
-                <span className="text-red-500">↓</span> {t(`${td}.stats.totalExpenses`)}
+                <span className="text-red-500">↓</span> {t(`${td}.stats.totalExpenses`)} <span className="font-normal text-gray-400">({selectedYear})</span>
               </span>
               <span className="text-lg font-bold text-red-700">{fmt(stats.totalExpenses)}</span>
             </div>
             <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
-              <span className="text-sm font-semibold text-gray-700">{t(`${td}.stats.ytdBalance`)}</span>
+              <span className="text-sm font-semibold text-gray-700">{ytdLabel}</span>
               <div className="text-right">
                 <span className={`text-xl font-bold ${stats.netIncome >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                   {stats.netIncome >= 0 ? '+' : ''}{fmt(stats.netIncome)}
@@ -152,6 +197,15 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availa
                 </span>
               </div>
             </div>
+            {loanStats && loanStats.totalOutstandingBalance > 0 && (
+              <div className="border-t border-orange-100 pt-3 flex justify-between items-center bg-orange-50 -mx-6 px-6 pb-1 rounded-b-lg">
+                <span className="text-sm text-orange-800 flex items-center gap-1.5">
+                  <span>⚠</span> Member Loans Owed
+                  <span className="text-xs text-orange-600">({loanStats.lendingMembersCount} member{loanStats.lendingMembersCount !== 1 ? 's' : ''})</span>
+                </span>
+                <span className="text-base font-bold text-orange-700">{fmt(loanStats.totalOutstandingBalance)}</span>
+              </div>
+            )}
           </div>
         </div>
 
