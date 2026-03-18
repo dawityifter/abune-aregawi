@@ -115,6 +115,7 @@ try {
   const Title = require('./Title')(sequelize);
   const Announcement = require('./Announcement')(sequelize);
   const ChurchSetting = require('./ChurchSetting')(sequelize);
+  const MemberLoan = require('./MemberLoan')(sequelize);
 
   // Define models object
   const models = {
@@ -144,7 +145,8 @@ try {
     BankTransaction,
     Title,
     Announcement,
-    ChurchSetting
+    ChurchSetting,
+    MemberLoan
   };
 
   // Call associate on each model

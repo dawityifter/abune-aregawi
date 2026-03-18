@@ -42,6 +42,7 @@ const SHADOW_ALLOWLIST = [
   '/api/vendors',
   '/api/bank',
   '/api/volunteers',
+  '/api/loans',
 ];
 
 /** Check if this request should be shadowed */

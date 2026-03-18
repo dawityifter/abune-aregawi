@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const authorize = require('../middleware/role');
 const { firebaseAuthMiddleware } = require('../middleware/auth');
-const { uploadBankCSV, getBankTransactions, reconcileTransaction, reconcileBulkTransactions } = require('../controllers/bankTransactionController');
+const { uploadBankCSV, getBankTransactions, reconcileTransaction, reconcileBulkTransactions, reconcileExpense } = require('../controllers/bankTransactionController');
 
 // Configure Multer for memory storage (direct buffer access)
 const upload = multer({ storage: multer.memoryStorage() });
@@ -20,5 +20,6 @@ router.get('/transactions', getBankTransactions);
 // Reconcile transaction
 router.post('/reconcile', authorize(['admin', 'treasurer', 'bookkeeper']), reconcileTransaction);
 router.post('/reconcile-bulk', authorize(['admin', 'treasurer', 'bookkeeper']), reconcileBulkTransactions);
+router.post('/reconcile-expense', authorize(['admin', 'treasurer', 'bookkeeper']), reconcileExpense);
 
 module.exports = router;

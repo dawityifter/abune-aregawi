@@ -1,5 +1,5 @@
 const asyncHandler = require('express-async-handler');
-const { BankTransaction, Member, LedgerEntry, IncomeCategory, Transaction, ZelleMemoMatch, sequelize } = require('../models');
+const { BankTransaction, Member, LedgerEntry, IncomeCategory, Transaction, ZelleMemoMatch, ExpenseCategory, sequelize } = require('../models');
 const { parseChaseCSV } = require('../services/bankParserService');
 
 /**
@@ -296,3 +296,48 @@ exports.reconcileBulkTransactions = asyncHandler(async (req, res) => {
     });
 });
 
+/**
+ * @desc    Reconcile a bank debit by recording an expense ledger entry
+ * @route   POST /api/bank/reconcile-expense
+ * @access  Private (Admin/Treasurer/Bookkeeper)
+ */
+exports.reconcileExpense = asyncHandler(async (req, res) => {
+    const { transaction_id, gl_code, payee_name, vendor_id, employee_id, memo, check_number } = req.body;
+    if (!transaction_id || !gl_code) {
+        res.status(400); throw new Error('transaction_id and gl_code are required');
+    }
+    const t = await sequelize.transaction();
+    try {
+        const bankTxn = await BankTransaction.findByPk(transaction_id, { transaction: t });
+        if (!bankTxn) { res.status(404); throw new Error('Bank transaction not found'); }
+        if (bankTxn.status !== 'PENDING') { res.status(409); throw new Error('Already reconciled'); }
+        if (bankTxn.amount >= 0) { res.status(400); throw new Error('Not a debit transaction'); }
+
+        const category = await ExpenseCategory.findOne({ where: { gl_code, is_active: true }, transaction: t });
+        if (!category) { res.status(400); throw new Error('Invalid or inactive GL code'); }
+
+        const expense = await LedgerEntry.create({
+            type:           'expense',
+            category:       gl_code,
+            amount:         Math.abs(bankTxn.amount),
+            entry_date:     bankTxn.date,
+            payment_method: 'check',
+            check_number:   check_number || bankTxn.check_number || null,
+            memo:           memo || bankTxn.description,
+            payee_name:     payee_name || bankTxn.payer_name || null,
+            vendor_id:      vendor_id  || null,
+            employee_id:    employee_id || null,
+            external_id:    bankTxn.transaction_hash,
+            collected_by:   req.user.id,
+            source_system:  'bank_reconciliation',
+        }, { transaction: t });
+
+        bankTxn.status = 'MATCHED';
+        await bankTxn.save({ transaction: t });
+        await t.commit();
+        res.status(201).json({ success: true, message: 'Expense recorded and bank transaction matched', data: expense });
+    } catch (err) {
+        await t.rollback();
+        throw err;
+    }
+});

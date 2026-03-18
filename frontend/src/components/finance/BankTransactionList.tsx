@@ -58,6 +58,16 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [searching, setSearching] = useState(false);
 
+    // Expense modal state
+    const [showExpenseModal, setShowExpenseModal] = useState(false);
+    const [txnToExpense, setTxnToExpense] = useState<BankTransaction | null>(null);
+    const [expenseCategories, setExpenseCategories] = useState<{ gl_code: string; name: string }[]>([]);
+    const [expGlCode, setExpGlCode] = useState('');
+    const [expPayeeName, setExpPayeeName] = useState('');
+    const [expMemo, setExpMemo] = useState('');
+    const [expLoading, setExpLoading] = useState(false);
+    const [expError, setExpError] = useState<string | null>(null);
+
     // Search effect
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
@@ -158,6 +168,53 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    };
+
+    const openExpenseModal = async (txn: BankTransaction) => {
+        setTxnToExpense(txn);
+        setExpMemo(txn.description);
+        setExpGlCode('');
+        setExpPayeeName(txn.payer_name || '');
+        setExpError(null);
+        if (expenseCategories.length === 0) {
+            const token = await firebaseUser?.getIdToken();
+            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+            const res = await fetch(`${apiUrl}/api/expenses/categories`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setExpenseCategories((data.data || []).filter((c: any) => c.is_active));
+            }
+        }
+        setShowExpenseModal(true);
+    };
+
+    const handleSubmitExpense = async () => {
+        if (!txnToExpense || !expGlCode) { setExpError('Please select an expense category'); return; }
+        setExpLoading(true);
+        try {
+            const token = await firebaseUser?.getIdToken();
+            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+            const res = await fetch(`${apiUrl}/api/bank/reconcile-expense`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    transaction_id: txnToExpense.id,
+                    gl_code: expGlCode,
+                    payee_name: expPayeeName || undefined,
+                    memo: expMemo || undefined,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Failed to record expense');
+            setShowExpenseModal(false);
+            fetchTransactions();
+        } catch (err: any) {
+            setExpError(err.message);
+        } finally {
+            setExpLoading(false);
+        }
     };
 
     const [selectedForYear, setSelectedForYear] = useState<number | ''>(''); // Year override state
@@ -464,7 +521,12 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                             {txn.status === 'PENDING' && (
                                                 <div className="flex space-x-2">
                                                     {txn.amount < 0 ? (
-                                                        <span className="text-gray-400 italic text-xs">Expense</span>
+                                                        <button
+                                                            onClick={() => openExpenseModal(txn)}
+                                                            className="text-orange-600 hover:text-orange-900 text-xs border border-orange-400 rounded px-2 py-1"
+                                                        >
+                                                            Add Expense
+                                                        </button>
                                                     ) : (
                                                         <>
                                                             {txn.suggested_match ? (
@@ -739,6 +801,61 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                     onClick={handleConfirmReconcile}
                                 >
                                     Confirm Match
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Expense Modal */}
+            {showExpenseModal && txnToExpense && (
+                <div className="fixed z-50 inset-0 overflow-y-auto" role="dialog">
+                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setShowExpenseModal(false)} />
+                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+                        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                            <h3 className="text-lg font-medium text-gray-900">Record Bank Expense</h3>
+
+                            <div className="mt-3 mb-4 bg-gray-50 rounded p-3 text-sm text-gray-700 space-y-1">
+                                <p><span className="font-medium">Description:</span> {txnToExpense.description}</p>
+                                <p><span className="font-medium">Amount:</span> <span className="text-red-600 font-bold">{formatCurrency(txnToExpense.amount)}</span></p>
+                                <p><span className="font-medium">Date:</span> {txnToExpense.date}</p>
+                                {txnToExpense.check_number && <p><span className="font-medium">Check #:</span> {txnToExpense.check_number}</p>}
+                            </div>
+
+                            {expError && <p className="mb-3 text-sm text-red-600">{expError}</p>}
+
+                            <div className="mb-3">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Expense Category *</label>
+                                <select value={expGlCode} onChange={e => setExpGlCode(e.target.value)}
+                                    className="w-full border rounded px-3 py-2 text-sm">
+                                    <option value="">-- Select category --</option>
+                                    {expenseCategories.map(c => (
+                                        <option key={c.gl_code} value={c.gl_code}>{c.gl_code} — {c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="mb-3">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Payee (optional)</label>
+                                <input type="text" value={expPayeeName} onChange={e => setExpPayeeName(e.target.value)}
+                                    className="w-full border rounded px-3 py-2 text-sm" placeholder="Vendor or payee name" />
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Memo (optional)</label>
+                                <textarea value={expMemo} onChange={e => setExpMemo(e.target.value)} rows={2}
+                                    className="w-full border rounded px-3 py-2 text-sm" />
+                            </div>
+
+                            <div className="flex justify-end gap-3">
+                                <button onClick={() => setShowExpenseModal(false)} className="px-4 py-2 text-sm text-gray-700 border rounded hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                                <button onClick={handleSubmitExpense} disabled={expLoading || !expGlCode}
+                                    className="px-4 py-2 text-sm text-white bg-orange-600 rounded hover:bg-orange-700 disabled:opacity-50">
+                                    {expLoading ? 'Saving...' : 'Record Expense'}
                                 </button>
                             </div>
                         </div>

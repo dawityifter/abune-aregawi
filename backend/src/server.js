@@ -52,6 +52,7 @@ const bankRoutes = require('./routes/bankRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const settingRoutes = require('./routes/settingRoutes');
 const statementRoutes = require('./routes/statementRoutes');
+const loanRoutes = require('./routes/loanRoutes');
 const donationController = require('./controllers/donationController');
 
 // Import database
@@ -267,6 +268,7 @@ app.use('/api/volunteers', volunteerRoutes);
 app.use('/api/bank', bankRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/loans', loanRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

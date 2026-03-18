@@ -14,6 +14,7 @@ import ZelleReview from './ZelleReview';
 import MemberSearch from './MemberSearch';
 import EmployeeList from './EmployeeList';
 import VendorList from './VendorList';
+import LoansPage from './LoansPage';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PaymentStatsData {
@@ -36,7 +37,7 @@ interface PaymentStatsData {
 const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle' | 'member-dues' | 'employees' | 'vendors' | 'bank'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'loans' | 'reports' | 'zelle' | 'member-dues' | 'employees' | 'vendors' | 'bank'>('overview');
   const [activeReportTab, setActiveReportTab] = useState<'weekly' | 'payment'>('weekly');
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -289,6 +290,15 @@ const TreasurerDashboard: React.FC = () => {
                 {t('treasurerDashboard.tabs.expenses')}
               </button>
               <button
+                onClick={() => setActiveTab('loans')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'loans'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                Loans (Not Donations)
+              </button>
+              <button
                 onClick={() => setActiveTab('reports')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'reports'
                   ? 'border-blue-500 text-blue-600'
@@ -419,6 +429,18 @@ const TreasurerDashboard: React.FC = () => {
                 )}
               </div>
               <ExpenseList />
+            </div>
+          )}
+
+          {activeTab === 'loans' && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900">Member Loans</h2>
+                  <p className="text-gray-600 mt-1">Track interest-free loans from members — liabilities, not donations</p>
+                </div>
+              </div>
+              <LoansPage />
             </div>
           )}
 
