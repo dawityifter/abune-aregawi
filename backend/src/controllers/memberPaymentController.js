@@ -1,4 +1,4 @@
-const { MemberPayment, Member, Transaction, Dependent, LedgerEntry, Title, BankTransaction } = require('../models');
+const { MemberPayment, Member, Transaction, Dependent, LedgerEntry, Title, BankTransaction, Employee, Vendor } = require('../models');
 const { Op, literal, fn, col } = require('sequelize');
 
 // Get all member payments with pagination and filtering
@@ -474,6 +474,18 @@ const getWeeklyReport = async (req, res) => {
           as: 'collector',
           attributes: ['id', 'first_name', 'last_name', 'email'],
           required: false
+        },
+        {
+          model: Employee,
+          as: 'employee',
+          attributes: ['id', 'first_name', 'last_name', 'position'],
+          required: false
+        },
+        {
+          model: Vendor,
+          as: 'vendor',
+          attributes: ['id', 'name', 'vendor_type'],
+          required: false
         }
       ],
       order: [['payment_method', 'ASC'], ['type', 'ASC'], ['amount', 'DESC']]
@@ -514,6 +526,10 @@ const getWeeklyReport = async (req, res) => {
         amount: amount,
         entry_date: transaction.entry_date,
         receipt_number: transaction.receipt_number,
+        check_number: transaction.check_number,
+        payee_name: transaction.payee_name,
+        employee: transaction.employee,
+        vendor: transaction.vendor,
         memo: transaction.memo
       };
 

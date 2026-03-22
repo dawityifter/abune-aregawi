@@ -92,7 +92,7 @@ const checkYouTubeLiveStatus = async (channelId, forceCheck = false) => {
             maxResults: 1
         }, {
             headers: {
-                Referer: process.env.FRONTEND_URL || 'https://abunearegawi.church'
+                Referer: (process.env.FRONTEND_URL || 'https://abunearegawi.church').split(',')[0].trim()
             }
         });
 

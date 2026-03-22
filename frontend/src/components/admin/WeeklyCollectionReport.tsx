@@ -14,6 +14,19 @@ interface Transaction {
   amount: number;
   entry_date: string;
   receipt_number: string | null;
+  check_number: string | null;
+  payee_name?: string;
+  employee?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    position: string;
+  };
+  vendor?: {
+    id: string;
+    name: string;
+    vendor_type: string;
+  };
   memo: string | null;
 }
 
@@ -168,6 +181,37 @@ const WeeklyCollectionReport: React.FC = () => {
       other: t('treasurerDashboard.transactionList.types.other')
     };
     return labels[type as keyof typeof labels] || type.split('_').join(' ');
+  };
+
+  const getPayeeDisplay = (transaction: Transaction) => {
+    if (transaction.employee) {
+      return (
+        <div>
+          <div className="text-sm font-medium text-gray-900">
+            {transaction.employee.first_name} {transaction.employee.last_name}
+          </div>
+          <div className="text-xs text-gray-500">{t('treasurerDashboard.expenses.table.employee')}</div>
+        </div>
+      );
+    }
+    if (transaction.vendor) {
+      return (
+        <div>
+          <div className="text-sm font-medium text-gray-900">
+            {transaction.vendor.name}
+          </div>
+          <div className="text-xs text-gray-500">{t('treasurerDashboard.expenses.table.vendor')}</div>
+        </div>
+      );
+    }
+    if (transaction.payee_name) {
+      return (
+        <div className="text-sm text-gray-900">
+          {transaction.payee_name}
+        </div>
+      );
+    }
+    return <span className="text-sm text-gray-400">-</span>;
   };
 
   const toggleSection = (method: string) => {
@@ -396,8 +440,9 @@ const WeeklyCollectionReport: React.FC = () => {
                           <tr>
                             <th className="px-4 py-2 text-left text-xs font-medium text-red-800">{t('treasurerDashboard.expenses.table.date')}</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-red-800">{t('treasurerDashboard.expenses.table.category')}</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-red-800">{t('treasurerDashboard.expenses.table.recordedBy')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-red-800">{t('treasurerDashboard.expenses.table.payee')}</th>
                             <th className="px-4 py-2 text-right text-xs font-medium text-red-800">{t('treasurerDashboard.expenses.table.amount')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-red-800">{t('treasurerDashboard.expenses.table.checkNumber')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-red-200">
@@ -412,11 +457,14 @@ const WeeklyCollectionReport: React.FC = () => {
                                   <div className="text-xs text-gray-500">{transaction.memo}</div>
                                 )}
                               </td>
-                              <td className="px-4 py-2 text-sm text-gray-700">
-                                {transaction.collector_name}
+                              <td className="px-4 py-2 whitespace-nowrap">
+                                {getPayeeDisplay(transaction)}
                               </td>
                               <td className="px-4 py-2 text-sm text-right font-semibold text-red-700">
                                 -{formatCurrency(transaction.amount)}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-700">
+                                {transaction.check_number || '-'}
                               </td>
                             </tr>
                           ))}
