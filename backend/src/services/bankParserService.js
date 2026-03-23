@@ -80,14 +80,13 @@ const parseChaseCSV = (fileBuffer) => {
         }
 
         // 4. Robust Amount Parsing (Remove commas and $ if present)
+        // Chase CSV already encodes the correct sign in the Amount column:
+        //   - Expenses (DEBIT): negative, e.g. -50.00
+        //   - Refunds (DEBIT): positive, e.g. +25.00
+        // We trust the raw sign rather than forcing negative by Details type.
         const amountStr = (row['Amount'] || '0').replace(/[$,]/g, '');
         let amount = parseFloat(amountStr);
         if (isNaN(amount)) amount = 0;
-
-        // Apply debit sign if applicable
-        if (row['Details'] === 'DEBIT' || row['Details'] === 'CHKS P' || amountStr.startsWith('-')) {
-            amount = -Math.abs(amount);
-        }
 
         // 5. Robust Balance Parsing
         const balanceStr = (row['Balance'] || '').replace(/[$,]/g, '');
