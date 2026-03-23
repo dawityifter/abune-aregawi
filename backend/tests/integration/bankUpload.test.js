@@ -32,9 +32,9 @@ describe('Bank CSV Upload API', () => {
     });
 
     test('should bulk create transactions from CSV', async () => {
-        // Create a simple CSV string
+        // Chase CSV encodes sign in Amount: expenses are negative, refunds positive
         const csvContent = `Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #
-DEBIT,01/01/2024,Payment to Vendor,100.00,ACH_DEBIT,900.00,
+DEBIT,01/01/2024,Payment to Vendor,-100.00,ACH_DEBIT,900.00,
 CREDIT,01/02/2024,Deposit,200.00,DEPOSIT,1100.00,
 CHECK,01/03/2024,Check 123,-50.00,CHECK,,123`;
 
@@ -52,9 +52,9 @@ CHECK,01/03/2024,Check 123,-50.00,CHECK,,123`;
 
         const txns = await BankTransaction.findAll({ order: [['date', 'ASC']] });
         expect(txns).toHaveLength(3);
-        expect(txns[0].amount).toBe(-100.00); // Debit negated
+        expect(txns[0].amount).toBe(-100.00); // Expense: negative in CSV, stays negative
         expect(txns[1].amount).toBe(200.00);
-        expect(txns[2].amount).toBe(-50.00); // Check is debit
+        expect(txns[2].amount).toBe(-50.00);
     });
 
     test('should update existing transactions with balance if missing', async () => {
@@ -62,15 +62,13 @@ CHECK,01/03/2024,Check 123,-50.00,CHECK,,123`;
         const date = new Date('2024-01-01');
         const amount = -100.00;
         const description = 'Payment to Vendor';
-        // Generate hash manually to match parser logic
+        // Generate hash manually to match parser logic.
+        // Chase CSV expenses have negative amounts, so the hash key uses '-100.00'.
         const hash = generateTransactionHash({
             'Posting Date': '01/01/2024',
             'Description': description,
-            'Amount': '100.00' // Note: Hash uses raw amount string usually? Let's check parser service.
+            'Amount': '-100.00'
         });
-
-        // Wait, parser service uses: `${row['Posting Date']}|${row['Description']}|${row['Amount']}`
-        // And the parser service sees '100.00' for the row.
 
         await BankTransaction.create({
             transaction_hash: hash,
@@ -84,7 +82,7 @@ CHECK,01/03/2024,Check 123,-50.00,CHECK,,123`;
 
         // 2. Upload CSV containing SAME transaction but WITH balance
         const csvContent = `Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #
-DEBIT,01/01/2024,Payment to Vendor,100.00,ACH_DEBIT,900.00,`;
+DEBIT,01/01/2024,Payment to Vendor,-100.00,ACH_DEBIT,900.00,`;
 
         const buffer = Buffer.from(csvContent, 'utf-8');
 
