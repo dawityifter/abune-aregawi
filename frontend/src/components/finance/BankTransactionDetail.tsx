@@ -85,6 +85,13 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [txn?.id, txn?.amount, apiUrl]);
 
+  useEffect(() => {
+    setExpGlCode('');
+    setExpPayeeName(txn?.payer_name || '');
+    setExpMemo(txn?.description || '');
+    setExpError(null);
+  }, [txn?.id, txn?.payer_name, txn?.description]);
+
   const handleReconcile = async (memberId: number, paymentType: string = selectedPaymentType) => {
     const token = await firebaseUser?.getIdToken();
     const payload: any = { transaction_id: txn!.id, action: 'MATCH', member_id: memberId, payment_type: paymentType };
@@ -351,8 +358,9 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
               </div>
 
               <div className="mb-3">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Payee (optional)</label>
+                <label htmlFor="detail-exp-payee" className="block text-xs font-semibold text-gray-600 mb-1">Payee (optional)</label>
                 <input
+                  id="detail-exp-payee"
                   type="text"
                   value={expPayeeName}
                   onChange={(e) => setExpPayeeName(e.target.value)}
@@ -362,8 +370,9 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
               </div>
 
               <div className="mb-4">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Memo (optional)</label>
+                <label htmlFor="detail-exp-memo" className="block text-xs font-semibold text-gray-600 mb-1">Memo (optional)</label>
                 <textarea
+                  id="detail-exp-memo"
                   value={expMemo}
                   onChange={(e) => setExpMemo(e.target.value)}
                   rows={2}
