@@ -59,7 +59,7 @@ describe('BankTransactionDetail — shell behavior', () => {
 describe('BankTransactionDetail — field display', () => {
   test('shows transaction id in header', () => {
     render(<BankTransactionDetail txn={mockTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
-    expect(screen.getByText('#42')).toBeInTheDocument();
+    expect(screen.getByText('#TXN-42')).toBeInTheDocument();
   });
 
   test('shows PENDING status badge', () => {
