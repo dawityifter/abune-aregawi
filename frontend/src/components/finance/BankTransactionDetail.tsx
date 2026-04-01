@@ -46,7 +46,76 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-5">
-          {/* Fields and actions added in Tasks 2–4 */}
+          {/* Status badge */}
+          <div className="mb-4">
+            {txn.status === 'PENDING' && (
+              <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold">
+                PENDING REVIEW
+              </span>
+            )}
+            {txn.status === 'MATCHED' && (
+              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold">
+                MATCHED
+              </span>
+            )}
+            {txn.status === 'IGNORED' && (
+              <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">
+                IGNORED
+              </span>
+            )}
+          </div>
+
+          {/* Core fields card */}
+          <div className="bg-gray-50 rounded-lg p-3 mb-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Date</p>
+                <p className="text-sm text-gray-900 font-medium">{txn.date}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Type</p>
+                <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded">
+                  {txn.type}
+                </span>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Amount</p>
+                <p className={`text-lg font-bold ${txn.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(txn.amount)}
+                </p>
+              </div>
+              {txn.payer_name && txn.status !== 'MATCHED' && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Payer Name</p>
+                  <p className="text-sm text-gray-900 font-medium">{txn.payer_name}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-gray-200 pt-3">
+              <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Description</p>
+              <p className="text-sm text-gray-900 break-words">{txn.description}</p>
+            </div>
+
+            {txn.check_number && (
+              <div className="border-t border-gray-200 pt-3">
+                <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Check Number</p>
+                <p className="text-sm text-gray-900 font-medium">Check #{txn.check_number}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Linked member (MATCHED) */}
+          {txn.status === 'MATCHED' && txn.member && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+              <p className="text-xs text-green-700 font-bold mb-1">Linked Member</p>
+              <p className="text-sm text-gray-900 font-semibold">
+                {txn.member.first_name} {txn.member.last_name}
+              </p>
+            </div>
+          )}
+
+          {/* Actions section added in Tasks 3–4 */}
         </div>
       </div>
     </>
