@@ -212,17 +212,6 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
 
     // --- Modal Logic ---
 
-    const openLinkModal = () => {
-        setIsBulkMode(true);
-        setSearchTerm('');
-        setSearchResults([]);
-        setSelectedPaymentType('donation');
-        setSelectedForYear('');
-        setShowLinkModal(true);
-    };
-
-    const currentYear = new Date().getFullYear();
-
     return (
         <div className="space-y-4">
             {/* Balance Card */}
@@ -281,7 +270,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                         </select>
                         {selectedTxnIds.length > 0 && (
                             <button
-                                onClick={() => openLinkModal()}
+                                onClick={() => { setIsBulkMode(true); setSearchTerm(''); setSearchResults([]); setSelectedPaymentType('donation'); setSelectedForYear(''); setShowLinkModal(true); }}
                                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
                             >
                                 Link {selectedTxnIds.length} Transactions
@@ -473,7 +462,6 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         )}
                                     </div>
 
-                                    {/* ... existing member search code ... */}
                                     <input
                                         type="text"
                                         placeholder="Search member by name or phone..."
