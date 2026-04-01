@@ -158,7 +158,7 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
         <div className="px-5 py-4 border-b border-gray-200 flex justify-between items-center bg-blue-900">
           <div>
             <p className="font-bold text-white text-sm">Transaction Details</p>
-            <p className="text-blue-300 text-xs mt-0.5">#{txn.id}</p>
+            <p className="text-blue-300 text-xs mt-0.5">#TXN-{txn.id}</p>
           </div>
           <button
             onClick={onClose}
