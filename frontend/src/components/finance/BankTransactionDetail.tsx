@@ -84,7 +84,7 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
                   {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(txn.amount)}
                 </p>
               </div>
-              {txn.payer_name && txn.status !== 'MATCHED' && (
+              {txn.payer_name && (
                 <div>
                   <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Payer Name</p>
                   <p className="text-sm text-gray-900 font-medium">{txn.payer_name}</p>

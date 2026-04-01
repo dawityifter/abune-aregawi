@@ -99,7 +99,12 @@ describe('BankTransactionDetail — field display', () => {
   });
 
   test('shows MATCHED status badge for matched transaction', () => {
-    const matched = { ...mockTxn, status: 'MATCHED' as const, member: { first_name: 'Dawit', last_name: 'Yifter' } };
+    const matched = {
+      ...mockTxn,
+      payer_name: 'Bank Payer Name',  // different from member name
+      status: 'MATCHED' as const,
+      member: { first_name: 'Dawit', last_name: 'Yifter' },
+    };
     render(<BankTransactionDetail txn={matched} onClose={jest.fn()} onSuccess={jest.fn()} />);
     expect(screen.getByText('MATCHED')).toBeInTheDocument();
     expect(screen.getByText('Dawit Yifter')).toBeInTheDocument();
