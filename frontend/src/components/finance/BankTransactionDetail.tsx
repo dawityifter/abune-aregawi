@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BankTransaction } from './BankTransactionList';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -19,11 +19,20 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
   }, [txn, onClose]);
 
   const { firebaseUser } = useAuth();
+  const firebaseUserRef = useRef(firebaseUser);
+  firebaseUserRef.current = firebaseUser;
   const [selectedPaymentType, setSelectedPaymentType] = useState('donation');
   const [selectedForYear, setSelectedForYear] = useState<number | ''>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+
+  const [expenseCategories, setExpenseCategories] = useState<{ gl_code: string; name: string }[]>([]);
+  const [expGlCode, setExpGlCode] = useState('');
+  const [expPayeeName, setExpPayeeName] = useState(txn?.payer_name || '');
+  const [expMemo, setExpMemo] = useState(txn?.description || '');
+  const [expLoading, setExpLoading] = useState(false);
+  const [expError, setExpError] = useState<string | null>(null);
 
   const paymentTypes = [
     { value: 'donation', label: 'Donation (General)' },
@@ -57,6 +66,25 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
     return () => clearTimeout(timer);
   }, [searchTerm, firebaseUser, apiUrl]);
 
+  useEffect(() => {
+    if (!txn || txn.amount >= 0) return;
+    (async () => {
+      try {
+        const token = await firebaseUserRef.current?.getIdToken();
+        const res = await fetch(`${apiUrl}/api/expenses/categories`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res?.ok) {
+          const data = await res.json();
+          setExpenseCategories((data.data || []).filter((c: any) => c.is_active));
+        }
+      } catch {
+        // silently ignore fetch errors (e.g. network unavailable or test env)
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txn?.id, txn?.amount, apiUrl]);
+
   const handleReconcile = async (memberId: number, paymentType: string = selectedPaymentType) => {
     const token = await firebaseUser?.getIdToken();
     const payload: any = { transaction_id: txn!.id, action: 'MATCH', member_id: memberId, payment_type: paymentType };
@@ -77,6 +105,32 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
       body: JSON.stringify({ transaction_id: txn!.id, action: 'IGNORE' }),
     });
     if (res.ok) { onSuccess(); onClose(); }
+  };
+
+  const handleSubmitExpense = async () => {
+    if (!expGlCode) return;
+    setExpLoading(true);
+    try {
+      const token = await firebaseUser?.getIdToken();
+      const res = await fetch(`${apiUrl}/api/bank/reconcile-expense`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          transaction_id: txn!.id,
+          gl_code: expGlCode,
+          payee_name: expPayeeName || undefined,
+          memo: expMemo || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to record expense');
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      setExpError(err.message);
+    } finally {
+      setExpLoading(false);
+    }
   };
 
   if (!txn) return null;
@@ -271,7 +325,61 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
             </div>
           )}
 
-          {/* Expense actions added in Task 4 */}
+          {/* Actions — PENDING expense */}
+          {txn.status === 'PENDING' && txn.amount < 0 && (
+            <div className="border-t border-gray-200 pt-4">
+              <p className="text-xs text-gray-400 uppercase font-semibold mb-3">Record as Expense</p>
+
+              {expError && <p className="text-red-600 text-xs mb-3">{expError}</p>}
+
+              <div className="mb-3">
+                <label htmlFor="detail-exp-category" className="block text-xs font-semibold text-gray-600 mb-1">
+                  Expense Category *
+                </label>
+                <select
+                  id="detail-exp-category"
+                  aria-label="Expense Category"
+                  value={expGlCode}
+                  onChange={(e) => setExpGlCode(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                >
+                  <option value="">-- Select category --</option>
+                  {expenseCategories.map((c) => (
+                    <option key={c.gl_code} value={c.gl_code}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-3">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Payee (optional)</label>
+                <input
+                  type="text"
+                  value={expPayeeName}
+                  onChange={(e) => setExpPayeeName(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  placeholder="Vendor or payee name"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Memo (optional)</label>
+                <textarea
+                  value={expMemo}
+                  onChange={(e) => setExpMemo(e.target.value)}
+                  rows={2}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+
+              <button
+                onClick={handleSubmitExpense}
+                disabled={expLoading || !expGlCode}
+                className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-md py-2 text-sm font-semibold"
+              >
+                {expLoading ? 'Saving...' : 'Record Expense'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>
