@@ -6,14 +6,14 @@ const WhatsHappeningSection: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const announcementImage = `${process.env.PUBLIC_URL || ''}/images/sunday_school/sundayschool1.png`;
-
+  const youthImage = `${process.env.PUBLIC_URL || ''}/images/sunday_school/youthOfAAOTC-April4th.png`;
 
   return (
     <section className="py-16">
       <div className="container mx-auto px-4">
         <h2 className="section-title">{t('sections.announcements.title')}</h2>
-        <div className="max-w-4xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8">
             {/* Announcement Card - Temporary replacement for Community Support Initiatives */}
             <div
               className="content-card flex flex-col items-center justify-center p-0 overflow-hidden cursor-pointer group relative h-full"
@@ -42,6 +42,20 @@ const WhatsHappeningSection: React.FC = () => {
               </button>
             </div>
 
+            {/* Youth Announcement Card */}
+            <div
+              className="content-card flex flex-col items-center justify-center p-0 overflow-hidden cursor-pointer group relative h-full"
+              onClick={() => setSelectedImage(youthImage)}
+            >
+              <img
+                src={youthImage}
+                alt="Youth Announcement"
+                className="w-full h-full object-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <i className="fas fa-search-plus text-white text-2xl opacity-0 group-hover:opacity-100 transition-opacity"></i>
+              </div>
+            </div>
 
           </div>
         </div>
