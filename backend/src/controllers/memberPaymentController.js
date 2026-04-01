@@ -367,22 +367,29 @@ const getPaymentStats = async (req, res) => {
 
     // Fetch latest bank balance
     console.log('--- DEBUG: Fetching Bank Balance in memberPaymentController ---');
+    
+    // We use id ASC because newest transactions get inserted first in bulk creation from Top-To-Bottom CSVs
     const latestBankTxn = await BankTransaction.findOne({
-      where: {
-        balance: { [Op.ne]: null }
-      },
-      order: [['date', 'DESC'], ['id', 'DESC']],
+      where: { balance: { [Op.ne]: null } },
+      order: [['date', 'DESC'], ['id', 'ASC']],
       attributes: ['id', 'balance', 'date', ['created_at', 'createdAt']]
     });
 
+    let currentBankBalance = 0;
     if (latestBankTxn) {
-      console.log('--- DEBUG: Bank Transaction Found ---');
-      console.log('Raw Balance:', latestBankTxn.balance);
-    } else {
-      console.log('--- DEBUG: No Bank Transaction Found ---');
+      currentBankBalance = parseFloat(latestBankTxn.balance) || 0;
+      
+      // Add pending/newer transactions that don't have a balance but affect current totals
+      const newerTxnsSum = await BankTransaction.sum('amount', {
+          where: {
+              date: { [Op.gt]: latestBankTxn.date }
+          }
+      });
+      
+      if (newerTxnsSum) {
+          currentBankBalance += Number(newerTxnsSum);
+      }
     }
-
-    const currentBankBalance = latestBankTxn && latestBankTxn.balance ? parseFloat(latestBankTxn.balance) : 0;
     const lastBankUpdate = latestBankTxn ? (latestBankTxn.get('createdAt') || latestBankTxn.date) : null;
 
     const stats = {
