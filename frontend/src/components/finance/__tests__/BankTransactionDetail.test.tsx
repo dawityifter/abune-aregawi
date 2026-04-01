@@ -185,3 +185,87 @@ describe('BankTransactionDetail — PENDING income actions', () => {
     expect(body.transaction_id).toBe(42);
   });
 });
+
+describe('BankTransactionDetail — PENDING expense actions', () => {
+  const mockExpenseTxn: BankTransaction = {
+    id: 43,
+    date: '2026-03-20',
+    amount: -250,
+    description: 'CHECK #1099 TO VENDOR',
+    type: 'CHECK',
+    status: 'PENDING',
+    payer_name: null,
+    check_number: '1099',
+  };
+
+  beforeEach(() => {
+    (global.fetch as jest.Mock).mockReset();
+  });
+
+  test('shows Record Expense button for negative-amount PENDING', () => {
+    render(<BankTransactionDetail txn={mockExpenseTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    expect(screen.getByText('Record Expense')).toBeInTheDocument();
+  });
+
+  test('does not show income action buttons for negative amount', () => {
+    render(<BankTransactionDetail txn={mockExpenseTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    expect(screen.queryByLabelText('Payment Type')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ignore Transaction')).not.toBeInTheDocument();
+  });
+
+  test('fetches expense categories on mount for negative-amount PENDING', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        data: [{ gl_code: '6000', name: 'Utilities', is_active: true }],
+      }),
+    });
+    render(<BankTransactionDetail txn={mockExpenseTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/expenses/categories'),
+        expect.any(Object)
+      )
+    );
+  });
+
+  test('calls /api/bank/reconcile-expense on Record Expense', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [{ gl_code: '6000', name: 'Utilities', is_active: true }] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+    const onSuccess = jest.fn();
+    render(<BankTransactionDetail txn={mockExpenseTxn} onClose={jest.fn()} onSuccess={onSuccess} />);
+
+    await waitFor(() => screen.getByText('Utilities'));
+
+    fireEvent.change(screen.getByRole('combobox', { name: /expense category/i }), {
+      target: { value: '6000' },
+    });
+    fireEvent.click(screen.getByText('Record Expense'));
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/bank/reconcile-expense'),
+      expect.objectContaining({ method: 'POST' })
+    );
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body);
+    expect(body.transaction_id).toBe(43);
+    expect(body.gl_code).toBe('6000');
+  });
+
+  test('Record Expense button is disabled when no category selected', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [] }),
+    });
+    render(<BankTransactionDetail txn={mockExpenseTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    expect(screen.getByText('Record Expense')).toBeDisabled();
+  });
+});
