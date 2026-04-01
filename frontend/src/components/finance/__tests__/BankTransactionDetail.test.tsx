@@ -268,4 +268,23 @@ describe('BankTransactionDetail — PENDING expense actions', () => {
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(screen.getByText('Record Expense')).toBeDisabled();
   });
+
+  test('shows error message when Record Expense fails', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [{ gl_code: '6000', name: 'Utilities', is_active: true }] }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ message: 'Server error' }),
+      });
+    render(<BankTransactionDetail txn={mockExpenseTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    await waitFor(() => screen.getByText('Utilities'));
+    fireEvent.change(screen.getByRole('combobox', { name: /expense category/i }), {
+      target: { value: '6000' },
+    });
+    fireEvent.click(screen.getByText('Record Expense'));
+    await waitFor(() => expect(screen.getByText('Server error')).toBeInTheDocument());
+  });
 });
