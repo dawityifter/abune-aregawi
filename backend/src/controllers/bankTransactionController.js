@@ -178,16 +178,34 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
     }));
 
     // Get current balance (balance of the most recent transaction with a valid balance)
+    // Since parsed Chase CSVs list newest transactions first, bulkCreate assigns the LOWEST id
+    // to the NEWEST transaction on any given day. So id ASC is chronologically newest.
     const latestTxn = await BankTransaction.findOne({
         where: { balance: { [Op.ne]: null } },
-        order: [['date', 'DESC'], ['id', 'DESC']],
-        attributes: ['balance']
+        order: [['date', 'DESC'], ['id', 'ASC']],
+        attributes: ['balance', 'date']
     });
+
+    let currentBalance = 0;
+    if (latestTxn) {
+        currentBalance = Number(latestTxn.balance);
+        
+        // Add pending/newer transactions that don't have a balance but affect current totals
+        const newerTxnsSum = await BankTransaction.sum('amount', {
+            where: {
+                date: { [Op.gt]: latestTxn.date }
+            }
+        });
+        
+        if (newerTxnsSum) {
+            currentBalance += Number(newerTxnsSum);
+        }
+    }
 
     res.status(200).json({
         success: true,
         data: {
-            current_balance: latestTxn ? latestTxn.balance : 0,
+            current_balance: Number(currentBalance.toFixed(2)),
             transactions: enrichedRows,
             pagination: {
                 total: count,
