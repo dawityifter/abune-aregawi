@@ -16,6 +16,9 @@ pnpm-debug.log*
 build/
 dist/
 
+# Git worktrees
+.worktrees/
+
 # Member data files (contain personal information)
 frontend/src/utils/members-2024.json
 frontend/src/utils/fullMemberData.ts
