@@ -222,7 +222,7 @@ const getExpenses = async (req, res) => {
       start_date,
       end_date,
       gl_code,
-      payment_method
+      payee
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -244,9 +244,14 @@ const getExpenses = async (req, res) => {
       whereClause.category = gl_code.toUpperCase();
     }
 
-    // Payment method filter
-    if (payment_method) {
-      whereClause.payment_method = payment_method.toLowerCase();
+    // Payee filter (search across payee_name, employee name, and vendor name)
+    if (payee) {
+      whereClause[Op.or] = [
+        { payee_name: { [Op.iLike]: `%${payee}%` } },
+        { '$employee.first_name$': { [Op.iLike]: `%${payee}%` } },
+        { '$employee.last_name$': { [Op.iLike]: `%${payee}%` } },
+        { '$vendor.name$': { [Op.iLike]: `%${payee}%` } }
+      ];
     }
 
     const { count, rows } = await LedgerEntry.findAndCountAll({

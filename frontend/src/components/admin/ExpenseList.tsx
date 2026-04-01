@@ -55,7 +55,7 @@ const ExpenseList: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [glCodeFilter, setGlCodeFilter] = useState('');
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
+  const [payeeFilter, setPayeeFilter] = useState('');
 
   useEffect(() => {
     fetchCategories();
@@ -63,7 +63,7 @@ const ExpenseList: React.FC = () => {
 
   useEffect(() => {
     fetchExpenses();
-  }, [page, startDate, endDate, glCodeFilter, paymentMethodFilter]);
+  }, [page, startDate, endDate, glCodeFilter, payeeFilter]);
 
   // Listen for refresh events
   useEffect(() => {
@@ -72,7 +72,7 @@ const ExpenseList: React.FC = () => {
     };
     window.addEventListener('expenses:refresh' as any, handleRefresh);
     return () => window.removeEventListener('expenses:refresh' as any, handleRefresh);
-  }, [page, startDate, endDate, glCodeFilter, paymentMethodFilter]);
+  }, [page, startDate, endDate, glCodeFilter, payeeFilter]);
 
   const fetchCategories = async () => {
     try {
@@ -105,7 +105,7 @@ const ExpenseList: React.FC = () => {
       if (startDate) params.append('start_date', startDate);
       if (endDate) params.append('end_date', endDate);
       if (glCodeFilter) params.append('gl_code', glCodeFilter);
-      if (paymentMethodFilter) params.append('payment_method', paymentMethodFilter);
+      if (payeeFilter) params.append('payee', payeeFilter);
 
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/api/expenses?${params.toString()}`,
@@ -179,7 +179,7 @@ const ExpenseList: React.FC = () => {
     setStartDate('');
     setEndDate('');
     setGlCodeFilter('');
-    setPaymentMethodFilter('');
+    setPayeeFilter('');
     setPage(1);
   };
 
@@ -243,28 +243,26 @@ const ExpenseList: React.FC = () => {
             </select>
           </div>
 
-          {/* Payment Method */}
+          {/* Payee */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('treasurerDashboard.expenses.filters.paymentMethod')}
+              Payee
             </label>
-            <select
-              value={paymentMethodFilter}
+            <input
+              type="text"
+              placeholder="Search payee..."
+              value={payeeFilter}
               onChange={(e) => {
-                setPaymentMethodFilter(e.target.value);
+                setPayeeFilter(e.target.value);
                 setPage(1);
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">{t('treasurerDashboard.expenses.filters.allMethods')}</option>
-              <option value="cash">{t('treasurerDashboard.transactionList.methods.cash')}</option>
-              <option value="check">{t('treasurerDashboard.transactionList.methods.check')}</option>
-            </select>
+            />
           </div>
         </div>
 
         {/* Clear Filters Button */}
-        {(startDate || endDate || glCodeFilter || paymentMethodFilter) && (
+        {(startDate || endDate || glCodeFilter || payeeFilter) && (
           <div className="mt-4">
             <button
               onClick={clearFilters}
@@ -318,9 +316,6 @@ const ExpenseList: React.FC = () => {
                       {t('treasurerDashboard.expenses.table.checkNumber')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('treasurerDashboard.expenses.table.recordedBy')}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {t('treasurerDashboard.expenses.table.memo')}
                     </th>
                   </tr>
@@ -355,11 +350,6 @@ const ExpenseList: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {expense.check_number || expense.receipt_number || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {expense.collector
-                          ? `${expense.collector.first_name} ${expense.collector.last_name}`
-                          : 'Unknown'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                         {expense.memo || '-'}
