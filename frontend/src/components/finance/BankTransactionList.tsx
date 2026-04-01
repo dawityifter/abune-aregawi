@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import BankTransactionDetail from './BankTransactionDetail';
 
 export interface BankTransaction {
     id: number;
@@ -47,26 +48,15 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     const [endDate, setEndDate] = useState<string>('');
     const [searchDescription, setSearchDescription] = useState<string>('');
     const [currentBalance, setCurrentBalance] = useState<number | null>(null);
+    const [selectedTxn, setSelectedTxn] = useState<BankTransaction | null>(null);
 
-    // Manual Link & Payment Type Selection
+    // Manual Link & Payment Type Selection (bulk mode)
     const [showLinkModal, setShowLinkModal] = useState(false);
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [txnToLink, setTxnToLink] = useState<BankTransaction | null>(null);
-    const [matchCandidate, setMatchCandidate] = useState<any>(null); // For Confirm Match
     const [selectedPaymentType, setSelectedPaymentType] = useState('donation');
+    const [selectedForYear, setSelectedForYear] = useState<number | ''>('');
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [searching, setSearching] = useState(false);
-
-    // Expense modal state
-    const [showExpenseModal, setShowExpenseModal] = useState(false);
-    const [txnToExpense, setTxnToExpense] = useState<BankTransaction | null>(null);
-    const [expenseCategories, setExpenseCategories] = useState<{ gl_code: string; name: string }[]>([]);
-    const [expGlCode, setExpGlCode] = useState('');
-    const [expPayeeName, setExpPayeeName] = useState('');
-    const [expMemo, setExpMemo] = useState('');
-    const [expLoading, setExpLoading] = useState(false);
-    const [expError, setExpError] = useState<string | null>(null);
 
     // Search effect
     useEffect(() => {
@@ -170,101 +160,6 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
     };
 
-    const openExpenseModal = async (txn: BankTransaction) => {
-        setTxnToExpense(txn);
-        setExpMemo(txn.description);
-        setExpGlCode('');
-        setExpPayeeName(txn.payer_name || '');
-        setExpError(null);
-        if (expenseCategories.length === 0) {
-            const token = await firebaseUser?.getIdToken();
-            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-            const res = await fetch(`${apiUrl}/api/expenses/categories`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setExpenseCategories((data.data || []).filter((c: any) => c.is_active));
-            }
-        }
-        setShowExpenseModal(true);
-    };
-
-    const handleSubmitExpense = async () => {
-        if (!txnToExpense || !expGlCode) { setExpError('Please select an expense category'); return; }
-        setExpLoading(true);
-        try {
-            const token = await firebaseUser?.getIdToken();
-            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-            const res = await fetch(`${apiUrl}/api/bank/reconcile-expense`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                    transaction_id: txnToExpense.id,
-                    gl_code: expGlCode,
-                    payee_name: expPayeeName || undefined,
-                    memo: expMemo || undefined,
-                }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message || 'Failed to record expense');
-            setShowExpenseModal(false);
-            fetchTransactions();
-        } catch (err: any) {
-            setExpError(err.message);
-        } finally {
-            setExpLoading(false);
-        }
-    };
-
-    const [selectedForYear, setSelectedForYear] = useState<number | ''>(''); // Year override state
-
-    // ... existing code ...
-
-    const handleReconcile = async (txn: BankTransaction, memberId?: number, paymentType: string = 'donation', existingTransactionId?: number) => {
-        if (!memberId && !existingTransactionId) return;
-
-        try {
-            const token = await firebaseUser?.getIdToken();
-            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-
-            const payload: any = {
-                transaction_id: txn.id,
-                action: 'MATCH'
-            };
-
-            if (existingTransactionId) {
-                payload.existing_transaction_id = existingTransactionId;
-            } else {
-                payload.member_id = memberId;
-                payload.payment_type = paymentType;
-            }
-
-            // Allow override year or use txn date year as default (backend handles null, but good to be explicit if user selected one)
-            if (selectedForYear) {
-                payload.for_year = selectedForYear;
-            }
-
-            const res = await fetch(`${apiUrl}/api/bank/reconcile`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                fetchTransactions();
-                // Trigger general payments stats refresh in dashboard
-                window.dispatchEvent(new CustomEvent('payments:refresh'));
-            } else {
-                alert('Failed to reconcile');
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    };
 
     const handleBulkReconcile = async (member: any) => {
         if (selectedTxnIds.length === 0) return;
@@ -317,53 +212,13 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
 
     // --- Modal Logic ---
 
-    // Open Confirm Modal (for suggested matches)
-    const openConfirmModal = (txn: BankTransaction, candidate: any) => {
-        setTxnToLink(txn);
-        setMatchCandidate(candidate);
-        setSelectedPaymentType('donation'); // Default
-        setSelectedForYear(''); // Reset year
-        setShowConfirmModal(true);
-    };
-
-    const handleConfirmReconcile = async () => {
-        if (!txnToLink || !matchCandidate) return;
-        await handleReconcile(txnToLink, matchCandidate.member.id, selectedPaymentType);
-        setShowConfirmModal(false);
-        setTxnToLink(null);
-        setMatchCandidate(null);
-        setSelectedForYear('');
-    };
-
-    const openLinkModal = (txn?: BankTransaction) => {
-        if (txn) {
-            // Single mode
-            setTxnToLink(txn);
-            setIsBulkMode(false);
-        } else {
-            // Bulk mode
-            setIsBulkMode(true);
-            setTxnToLink(null); // No single txn
-        }
+    const openLinkModal = () => {
+        setIsBulkMode(true);
         setSearchTerm('');
         setSearchResults([]);
-        setSelectedPaymentType('donation'); // Default
-        setSelectedForYear(''); // Reset year
+        setSelectedPaymentType('donation');
+        setSelectedForYear('');
         setShowLinkModal(true);
-    };
-
-    const handleManualReconcile = async (member: any) => {
-        if (isBulkMode) {
-            await handleBulkReconcile(member);
-        } else {
-            if (!txnToLink) return;
-            // Rename confirmation text as requested: "Link and Add Transaction" implies adding to system
-            if (!window.confirm(`Link and Add Transaction: ${txnToLink.description} to ${member.name} as ${selectedPaymentType}?`)) return;
-
-            await handleReconcile(txnToLink, member.id, selectedPaymentType);
-            setShowLinkModal(false);
-            setTxnToLink(null);
-        }
     };
 
     const currentYear = new Date().getFullYear();
@@ -518,41 +373,16 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            {txn.status === 'PENDING' && (
-                                                <div className="flex space-x-2">
-                                                    {txn.amount < 0 ? (
-                                                        <button
-                                                            onClick={() => openExpenseModal(txn)}
-                                                            className="text-orange-600 hover:text-orange-900 text-xs border border-orange-400 rounded px-2 py-1"
-                                                        >
-                                                            Add Expense
-                                                        </button>
-                                                    ) : (
-                                                        <>
-                                                            {txn.suggested_match ? (
-                                                                <button
-                                                                    onClick={() => openConfirmModal(txn, txn.suggested_match)}
-                                                                    className="text-green-600 hover:text-green-900 font-bold"
-                                                                >
-                                                                    Confirm Match
-                                                                </button>
-                                                            ) : (
-                                                                <button
-                                                                    onClick={() => openLinkModal(txn)}
-                                                                    className="text-blue-600 hover:text-blue-900 text-xs border border-blue-600 rounded px-2 py-1"
-                                                                >
-                                                                    Link and Add Transaction
-                                                                </button>
-                                                            )}
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
-                                            {txn.status === 'MATCHED' && txn.member && (
-                                                <span className="text-gray-500 text-xs">
-                                                    Linked to: {txn.member.first_name} {txn.member.last_name}
-                                                </span>
-                                            )}
+                                            <button
+                                                onClick={() => setSelectedTxn(txn)}
+                                                className={`text-xs px-3 py-1.5 rounded font-semibold border transition-colors ${
+                                                    selectedTxn?.id === txn.id
+                                                        ? 'bg-blue-600 text-white border-blue-600'
+                                                        : 'bg-white text-blue-600 border-blue-600 hover:bg-blue-50'
+                                                }`}
+                                            >
+                                                Details →
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -582,8 +412,8 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                 </div>
             </div>
 
-            {/* Manual Link Modal */}
-            {showLinkModal && (txnToLink || isBulkMode) && (
+            {/* Manual Link Modal (bulk mode only) */}
+            {showLinkModal && isBulkMode && (
                 <div className="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowLinkModal(false)}></div>
@@ -598,14 +428,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         Select "Membership Due" and specify a Year to apply this payment to a specific year's balance.
                                     </div>
                                     <p className="text-sm text-gray-500 mb-4">
-                                        {isBulkMode ? (
-                                            <strong>Linking {selectedTxnIds.length} transactions</strong>
-                                        ) : (
-                                            <>
-                                                Transaction: <strong>{txnToLink?.description}</strong><br />
-                                                Amount: {txnToLink && formatCurrency(txnToLink.amount)}
-                                            </>
-                                        )}
+                                        <strong>Linking {selectedTxnIds.length} transactions</strong>
                                     </p>
 
                                     <div className="mb-4 grid grid-cols-2 gap-4">
@@ -666,7 +489,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         {searchResults.map(member => (
                                             <div
                                                 key={member.id}
-                                                onClick={() => handleManualReconcile(member)}
+                                                onClick={() => handleBulkReconcile(member)}
                                                 className="cursor-pointer hover:bg-gray-100 p-2 rounded flex justify-between items-center border-b last:border-0"
                                             >
                                                 <div>
@@ -681,37 +504,6 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         )}
                                     </div>
 
-                                    {/* Potential Matches Section (Single Only) */}
-                                    {!isBulkMode && txnToLink?.potential_matches && txnToLink.potential_matches.length > 0 && (
-                                        <div className="mt-6 border-t pt-4">
-                                            <h4 className="text-sm font-medium text-orange-700 mb-2">Potential System Matches (Prevent Duplicates)</h4>
-                                            <div className="bg-orange-50 rounded-md p-2">
-                                                {txnToLink.potential_matches.map(pm => (
-                                                    <div key={pm.id} className="flex justify-between items-center text-sm py-2 border-b border-orange-200 last:border-0">
-                                                        <div>
-                                                            <span className="font-bold">{formatCurrency(pm.amount)}</span>
-                                                            <span className="mx-2">-</span>
-                                                            <span>{pm.payment_date}</span>
-                                                            <span className="mx-2">-</span>
-                                                            <span className="text-gray-600">{pm.member?.first_name} {pm.member?.last_name}</span>
-                                                        </div>
-                                                        <button
-                                                            onClick={async () => {
-                                                                if (window.confirm('Link this bank transaction to the existing system record?')) {
-                                                                    await handleReconcile(txnToLink, undefined, undefined, pm.id);
-                                                                    setShowLinkModal(false);
-                                                                    setTxnToLink(null);
-                                                                }
-                                                            }}
-                                                            className="text-xs bg-white border border-orange-300 text-orange-700 px-2 py-1 rounded hover:bg-orange-100"
-                                                        >
-                                                            Link to Existing
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                             <div className="mt-5 sm:mt-6">
@@ -728,140 +520,15 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                 </div>
             )}
 
-            {/* Confirm Match Modal */}
-            {showConfirmModal && txnToLink && matchCandidate && (
-                <div className="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowConfirmModal(false)}></div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-                            <div>
-                                <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                    Confirm Match & Payment Type
-                                </h3>
-                                <div className="mt-2 text-sm text-gray-500">
-                                    <p>Transaction: <strong>{txnToLink.description}</strong></p>
-                                    <p>Amount: {formatCurrency(txnToLink.amount)}</p>
-                                    <p className="mt-2">Match with Member: <strong className="text-gray-900">{matchCandidate.member.first_name} {matchCandidate.member.last_name}</strong></p>
-
-                                    <div className="mt-4 grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label htmlFor="confirm-payment-type" className="block text-sm font-medium text-gray-700">Payment Type</label>
-                                            <select
-                                                id="confirm-payment-type"
-                                                value={selectedPaymentType}
-                                                onChange={(e) => setSelectedPaymentType(e.target.value)}
-                                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md border"
-                                            >
-                                                {paymentTypes.map(type => (
-                                                    <option key={type.value} value={type.value}>{type.label}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        {selectedPaymentType === 'membership_due' && (
-                                            <div>
-                                                <label htmlFor="confirm-payment-year" className="block text-sm font-medium text-gray-700">Year (Optional)</label>
-                                                <select
-                                                    id="confirm-payment-year"
-                                                    value={selectedForYear}
-                                                    onChange={(e) => setSelectedForYear(e.target.value ? parseInt(e.target.value) : '')}
-                                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md border"
-                                                >
-                                                    <option value="">Default (Auto)</option>
-                                                    {(() => {
-                                                        const currentYear = new Date().getFullYear();
-                                                        // Range: 2025 to (CurrentYear - 1)
-                                                        const minYear = 2025;
-                                                        const maxYear = currentYear - 1;
-                                                        const yearOptions = [];
-                                                        for (let y = maxYear; y >= minYear; y--) {
-                                                            yearOptions.push(y);
-                                                        }
-                                                        return yearOptions.map(y => (
-                                                            <option key={y} value={y}>{y}</option>
-                                                        ));
-                                                    })()}
-                                                </select>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="mt-5 sm:mt-6 flex space-x-3">
-                                <button
-                                    type="button"
-                                    className="flex-1 justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:text-sm"
-                                    onClick={() => setShowConfirmModal(false)}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    className="flex-1 justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:text-sm"
-                                    onClick={handleConfirmReconcile}
-                                >
-                                    Confirm Match
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Expense Modal */}
-            {showExpenseModal && txnToExpense && (
-                <div className="fixed z-50 inset-0 overflow-y-auto" role="dialog">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setShowExpenseModal(false)} />
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-                            <h3 className="text-lg font-medium text-gray-900">Record Bank Expense</h3>
-
-                            <div className="mt-3 mb-4 bg-gray-50 rounded p-3 text-sm text-gray-700 space-y-1">
-                                <p><span className="font-medium">Description:</span> {txnToExpense.description}</p>
-                                <p><span className="font-medium">Amount:</span> <span className="text-red-600 font-bold">{formatCurrency(txnToExpense.amount)}</span></p>
-                                <p><span className="font-medium">Date:</span> {txnToExpense.date}</p>
-                                {txnToExpense.check_number && <p><span className="font-medium">Check #:</span> {txnToExpense.check_number}</p>}
-                            </div>
-
-                            {expError && <p className="mb-3 text-sm text-red-600">{expError}</p>}
-
-                            <div className="mb-3">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Expense Category *</label>
-                                <select value={expGlCode} onChange={e => setExpGlCode(e.target.value)}
-                                    className="w-full border rounded px-3 py-2 text-sm">
-                                    <option value="">-- Select category --</option>
-                                    {expenseCategories.map(c => (
-                                        <option key={c.gl_code} value={c.gl_code}>{c.gl_code} — {c.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="mb-3">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Payee (optional)</label>
-                                <input type="text" value={expPayeeName} onChange={e => setExpPayeeName(e.target.value)}
-                                    className="w-full border rounded px-3 py-2 text-sm" placeholder="Vendor or payee name" />
-                            </div>
-
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Memo (optional)</label>
-                                <textarea value={expMemo} onChange={e => setExpMemo(e.target.value)} rows={2}
-                                    className="w-full border rounded px-3 py-2 text-sm" />
-                            </div>
-
-                            <div className="flex justify-end gap-3">
-                                <button onClick={() => setShowExpenseModal(false)} className="px-4 py-2 text-sm text-gray-700 border rounded hover:bg-gray-50">
-                                    Cancel
-                                </button>
-                                <button onClick={handleSubmitExpense} disabled={expLoading || !expGlCode}
-                                    className="px-4 py-2 text-sm text-white bg-orange-600 rounded hover:bg-orange-700 disabled:opacity-50">
-                                    {expLoading ? 'Saving...' : 'Record Expense'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <BankTransactionDetail
+                txn={selectedTxn}
+                onClose={() => setSelectedTxn(null)}
+                onSuccess={() => {
+                    setSelectedTxn(null);
+                    fetchTransactions();
+                    window.dispatchEvent(new CustomEvent('payments:refresh'));
+                }}
+            />
         </div>
     );
 };
