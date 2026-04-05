@@ -3,6 +3,30 @@
 const { Op } = require('sequelize');
 const { LedgerEntry, Member } = require('../../models');
 
+function extractYear(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    const timestamp = value.getTime();
+    return Number.isNaN(timestamp) ? null : value.getUTCFullYear();
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value >= 1000 && value <= 9999 ? value : null;
+  }
+
+  const asString = String(value).trim();
+  const match = asString.match(/^(\d{4})/);
+  if (match) {
+    const parsed = Number(match[1]);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
 function getYearBounds(year) {
   return {
     start: `${year}-01-01`,
@@ -19,8 +43,9 @@ async function listAvailableYears() {
 
   const years = new Set();
   for (const entry of entries) {
-    if (entry.entry_date) {
-      years.add(Number(String(entry.entry_date).slice(0, 4)));
+    const year = extractYear(entry.entry_date);
+    if (year !== null) {
+      years.add(year);
     }
   }
 
@@ -52,6 +77,7 @@ async function fetchLedgerEntriesForYear(year) {
 }
 
 module.exports = {
+  extractYear,
   fetchLedgerEntriesForYear,
   listAvailableYears
 };

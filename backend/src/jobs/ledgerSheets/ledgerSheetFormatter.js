@@ -1,5 +1,7 @@
 'use strict';
 
+const { extractYear } = require('./ledgerExportQuery');
+
 const HEADERS = [
   'Ledger Entry ID',
   'Entry Date',
@@ -45,7 +47,7 @@ function buildMemberName(member) {
 }
 
 function toSheetRow(entry) {
-  const year = entry.entry_date ? Number(String(entry.entry_date).slice(0, 4)) : '';
+  const year = extractYear(entry.entry_date) ?? '';
 
   return [
     entry.id ?? '',
