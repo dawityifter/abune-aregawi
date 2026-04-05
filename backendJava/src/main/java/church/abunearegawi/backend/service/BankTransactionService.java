@@ -1,8 +1,14 @@
 package church.abunearegawi.backend.service;
 
 import church.abunearegawi.backend.model.BankTransaction;
+import church.abunearegawi.backend.model.Employee;
+import church.abunearegawi.backend.model.ExpenseCategory;
+import church.abunearegawi.backend.model.LedgerEntry;
+import church.abunearegawi.backend.model.Member;
+import church.abunearegawi.backend.model.Vendor;
 import church.abunearegawi.backend.model.ZelleMemoMatch;
 import church.abunearegawi.backend.repository.BankTransactionRepository;
+import church.abunearegawi.backend.repository.ExpenseCategoryRepository;
 import church.abunearegawi.backend.repository.ZelleMemoMatchRepository;
 import church.abunearegawi.backend.repository.IncomeCategoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +33,7 @@ public class BankTransactionService {
     private final MemberPaymentService memberPaymentService;
     private final ZelleMemoMatchRepository zelleMemoMatchRepository;
     private final IncomeCategoryRepository incomeCategoryRepository;
+    private final ExpenseCategoryRepository expenseCategoryRepository;
 
     @Transactional(readOnly = true)
     public Page<BankTransaction> findAll(BankTransaction.Status status, String type,
@@ -60,16 +67,73 @@ public class BankTransactionService {
     }
 
     public java.math.BigDecimal getCurrentBalance() {
-        return bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdDesc()
+        return bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdAsc()
                 .map(anchor -> {
-                    java.math.BigDecimal newerSum = bankTransactionRepository.sumAmountNewerThan(anchor.getDate(),
-                            anchor.getId());
+                    java.math.BigDecimal newerSum = bankTransactionRepository.sumAmountAfterDate(anchor.getDate());
                     if (newerSum != null) {
                         return anchor.getBalance().add(newerSum);
                     }
                     return anchor.getBalance();
                 })
-                .orElse(null);
+                .orElse(java.math.BigDecimal.ZERO);
+    }
+
+    @Transactional
+    public java.util.Map<String, Object> reconcileExpense(Integer transactionId, String glCode, String payeeName,
+            java.util.UUID vendorId, java.util.UUID employeeId, String memo, String checkNumber, Member collector) {
+        if (transactionId == null || glCode == null || glCode.isBlank()) {
+            throw new RuntimeException("transaction_id and gl_code are required");
+        }
+
+        BankTransaction bankTxn = bankTransactionRepository.findById(transactionId)
+                .orElseThrow(() -> new RuntimeException("Bank transaction not found"));
+
+        if (bankTxn.getStatus() != BankTransaction.Status.PENDING) {
+            throw new RuntimeException("Already reconciled");
+        }
+
+        if (bankTxn.getAmount() == null || bankTxn.getAmount().signum() >= 0) {
+            throw new RuntimeException("Not a debit transaction");
+        }
+
+        ExpenseCategory category = expenseCategoryRepository.findByGlCode(glCode)
+                .filter(ExpenseCategory::isActive)
+                .orElseThrow(() -> new RuntimeException("Invalid or inactive GL code"));
+
+        LedgerEntry expense = LedgerEntry.builder()
+                .type("expense")
+                .category(category.getGlCode())
+                .amount(bankTxn.getAmount().abs())
+                .entryDate(bankTxn.getDate())
+                .paymentMethod("check")
+                .checkNumber(firstNonBlank(checkNumber, bankTxn.getCheckNumber()))
+                .memo(firstNonBlank(memo, bankTxn.getDescription()))
+                .payeeName(firstNonBlank(payeeName, bankTxn.getPayerName()))
+                .externalId(bankTxn.getTransactionHash())
+                .collector(collector)
+                .sourceSystem("bank_reconciliation")
+                .build();
+
+        if (vendorId != null) {
+            Vendor vendor = new Vendor();
+            vendor.setId(vendorId);
+            expense.setVendor(vendor);
+        }
+
+        if (employeeId != null) {
+            Employee employee = new Employee();
+            employee.setId(employeeId);
+            expense.setEmployee(employee);
+        }
+
+        LedgerEntry savedExpense = ledgerEntryRepository.save(expense);
+        bankTxn.setStatus(BankTransaction.Status.MATCHED);
+        bankTransactionRepository.save(bankTxn);
+
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("message", "Expense recorded and bank transaction matched");
+        result.put("data", savedExpense.getId());
+        return result;
     }
 
     @Transactional
@@ -606,5 +670,15 @@ public class BankTransactionService {
         if (upper.contains("ACH"))
             return "ACH";
         return "OTHER";
+    }
+
+    private String firstNonBlank(String primary, String fallback) {
+        if (primary != null && !primary.isBlank()) {
+            return primary;
+        }
+        if (fallback != null && !fallback.isBlank()) {
+            return fallback;
+        }
+        return null;
     }
 }

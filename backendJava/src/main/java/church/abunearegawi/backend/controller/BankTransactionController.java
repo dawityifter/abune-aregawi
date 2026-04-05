@@ -136,4 +136,23 @@ public class BankTransactionController {
                 transactionIds, memberId, paymentType, forYear, collector);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
+
+    @PostMapping("/reconcile-expense")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'BOOKKEEPER')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> reconcileExpense(
+            @RequestBody java.util.Map<String, Object> payload,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal church.abunearegawi.backend.security.FirebaseUserDetails userDetails) {
+        Integer transactionId = payload.get("transaction_id") != null ? ((Number) payload.get("transaction_id")).intValue() : null;
+        String glCode = (String) payload.get("gl_code");
+        String payeeName = (String) payload.get("payee_name");
+        java.util.UUID vendorId = payload.get("vendor_id") != null ? java.util.UUID.fromString(payload.get("vendor_id").toString()) : null;
+        java.util.UUID employeeId = payload.get("employee_id") != null ? java.util.UUID.fromString(payload.get("employee_id").toString()) : null;
+        String memo = (String) payload.get("memo");
+        String checkNumber = (String) payload.get("check_number");
+
+        java.util.Map<String, Object> result = bankTransactionService.reconcileExpense(
+                transactionId, glCode, payeeName, vendorId, employeeId, memo, checkNumber,
+                userDetails != null ? userDetails.getMember() : null);
+        return ResponseEntity.status(201).body(ApiResponse.success(result));
+    }
 }

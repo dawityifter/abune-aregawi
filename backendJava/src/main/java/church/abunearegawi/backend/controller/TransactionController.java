@@ -3,6 +3,7 @@ package church.abunearegawi.backend.controller;
 import church.abunearegawi.backend.dto.ApiResponse;
 import church.abunearegawi.backend.dto.TransactionCreateRequest;
 import church.abunearegawi.backend.dto.TransactionDTO;
+import church.abunearegawi.backend.exception.BadRequestException;
 import church.abunearegawi.backend.model.IncomeCategory;
 import church.abunearegawi.backend.model.Member;
 import church.abunearegawi.backend.model.Transaction;
@@ -11,7 +12,9 @@ import church.abunearegawi.backend.service.TransactionService; // Implements fin
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,8 +37,33 @@ public class TransactionController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'CHURCH_LEADERSHIP', 'SECRETARY', 'BOOKKEEPER', 'BUDGET_COMMITTEE', 'AUDITOR', 'AR_TEAM')")
-    public ResponseEntity<ApiResponse<Page<TransactionDTO>>> getAllTransactions(Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(transactionService.findAll(pageable)));
+    public ResponseEntity<ApiResponse<Page<TransactionDTO>>> getAllTransactions(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String search,
+            @RequestParam(name = "member_id", required = false) String memberId,
+            @RequestParam(name = "payment_type", required = false) String paymentType,
+            @RequestParam(name = "payment_method", required = false) String paymentMethod,
+            @RequestParam(name = "start_date", required = false) String startDate,
+            @RequestParam(name = "end_date", required = false) String endDate,
+            @RequestParam(name = "receipt_number", required = false) String receiptNumber) {
+        boolean nodeStylePaging = limit != null;
+        int pageSize = limit != null ? limit : (size != null ? size : 10);
+        int pageIndex = nodeStylePaging ? Math.max(0, page - 1) : Math.max(0, page);
+
+        Pageable pageable = PageRequest.of(pageIndex, pageSize, parseSort(sort));
+        Map<String, String> filters = new LinkedHashMap<>();
+        filters.put("search", search);
+        filters.put("member_id", memberId);
+        filters.put("payment_type", paymentType);
+        filters.put("payment_method", paymentMethod);
+        filters.put("start_date", startDate);
+        filters.put("end_date", endDate);
+        filters.put("receipt_number", receiptNumber);
+
+        return ResponseEntity.ok(ApiResponse.success(transactionService.findAllFiltered(filters, pageable)));
     }
 
     @GetMapping("/my-history")
@@ -173,5 +202,31 @@ public class TransactionController {
             monthlyTotals.put(m, 0);
 
         return ResponseEntity.ok(ApiResponse.success(Map.of("monthlyTotals", monthlyTotals)));
+    }
+
+    private Sort parseSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return Sort.by(Sort.Order.desc("paymentDate"), Sort.Order.desc("createdAt"));
+        }
+
+        String[] parts = sort.split(",", 2);
+        String field = mapSortField(parts[0].trim());
+        Sort.Direction direction = (parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim()))
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        return Sort.by(new Sort.Order(direction, field));
+    }
+
+    private String mapSortField(String field) {
+        return switch (field) {
+            case "id" -> "id";
+            case "payment_date" -> "paymentDate";
+            case "amount" -> "amount";
+            case "payment_type" -> "paymentType";
+            case "payment_method" -> "paymentMethod";
+            case "receipt_number" -> "receiptNumber";
+            case "created_at" -> "createdAt";
+            default -> throw new BadRequestException("Invalid sort field");
+        };
     }
 }

@@ -80,11 +80,8 @@ public class DepartmentService {
                         Collectors.counting()));
 
         // Count distinct active members across all departments
-        long totalUniqueMembers = departmentMemberRepository.findAll().stream()
-                .filter(dm -> dm.getStatus() == church.abunearegawi.backend.model.DepartmentMember.Status.active)
-                .map(dm -> dm.getMember().getId())
-                .distinct()
-                .count();
+        long totalUniqueMembers = departmentMemberRepository.countDistinctMemberIdsByStatus(
+                church.abunearegawi.backend.model.DepartmentMember.Status.active);
 
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("total_departments", totalDepartments);

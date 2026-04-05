@@ -280,10 +280,10 @@ class TransactionServiceSpec extends Specification {
 
         Transaction t = Transaction.builder().id(1L).amount(new BigDecimal("1200.00")).member(activeMember).paymentDate(LocalDate.of(LocalDate.now().getYear(), 6, 1)).build()
 
-        memberRepository.findAll() >> [activeMember, inactiveMember]
+        memberRepository.findByIsActiveTrue() >> [activeMember]
         memberRepository.sumYearlyPledges() >> new BigDecimal("1200.00")
         transactionRepository.sumTotalByDateRange(_, _) >> new BigDecimal("1200.00")
-        transactionRepository.findByPaymentDateBetween(_, _) >> [t]
+        transactionRepository.sumAmountsByMemberAndDateRange(_, _) >> [([1L, new BigDecimal("1200.00")] as Object[])]
 
         when:
         Map<String, Object> result = transactionService.getPaymentSummaryReport("admin@test.com")
@@ -298,10 +298,10 @@ class TransactionServiceSpec extends Specification {
 
     def "should get payment summary report with null totals"() {
         given:
-        memberRepository.findAll() >> []
+        memberRepository.findByIsActiveTrue() >> []
         memberRepository.sumYearlyPledges() >> null
         transactionRepository.sumTotalByDateRange(_, _) >> null
-        transactionRepository.findByPaymentDateBetween(_, _) >> []
+        transactionRepository.sumAmountsByMemberAndDateRange(_, _) >> []
 
         when:
         Map<String, Object> result = transactionService.getPaymentSummaryReport(null)

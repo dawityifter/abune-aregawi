@@ -150,17 +150,12 @@ public class MemberPaymentService {
                 .build();
 
         // 3. Fetch ALL Transactions for this member and year
-        List<church.abunearegawi.backend.dto.TransactionDTO> transactions = List.of();
-        try {
-            transactions = transactionService.findByMember(memberId).stream()
-                    .filter(t -> {
-                        java.time.LocalDate d = t.date();
-                        return d != null && d.getYear() == year;
-                    })
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            // Log and continue with empty list
-        }
+        List<church.abunearegawi.backend.dto.TransactionDTO> transactions = transactionService.findByMember(memberId).stream()
+                .filter(t -> {
+                    java.time.LocalDate d = t.date();
+                    return d != null && d.getYear() == year;
+                })
+                .collect(Collectors.toList());
 
         // 4. Dynamically calculate dues from transactions (matching Node.js behavior)
         BigDecimal annualPledge = member.getYearlyPledge() != null ? member.getYearlyPledge() : BigDecimal.ZERO;

@@ -1,9 +1,11 @@
 package church.abunearegawi.backend.repository;
 
 import church.abunearegawi.backend.model.Transaction;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -14,17 +16,26 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+public interface TransactionRepository extends JpaRepository<Transaction, Long>, JpaSpecificationExecutor<Transaction> {
 
+        @EntityGraph(attributePaths = { "member", "collector", "incomeCategory", "donation" })
         List<Transaction> findByMemberId(Long memberId);
 
+        @EntityGraph(attributePaths = { "member", "collector", "incomeCategory", "donation" })
         List<Transaction> findByPaymentDateBetween(LocalDate startDate, LocalDate endDate);
 
+        @EntityGraph(attributePaths = { "member", "collector", "incomeCategory", "donation" })
         Page<Transaction> findByPaymentType(Transaction.PaymentType paymentType, Pageable pageable);
 
+        @EntityGraph(attributePaths = { "member", "collector", "incomeCategory", "donation" })
         List<Transaction> findByPaymentType(Transaction.PaymentType paymentType);
 
+        @EntityGraph(attributePaths = { "member", "collector", "incomeCategory", "donation" })
         Page<Transaction> findByMemberId(Long memberId, Pageable pageable);
+
+        @Override
+        @EntityGraph(attributePaths = { "member", "collector", "incomeCategory", "donation" })
+        Page<Transaction> findAll(org.springframework.data.jpa.domain.Specification<Transaction> spec, Pageable pageable);
 
         @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.paymentType = :paymentType AND t.paymentDate BETWEEN :startDate AND :endDate")
         BigDecimal sumByPaymentTypeAndDateRange(
@@ -43,7 +54,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
                         @Param("startDate") LocalDate startDate,
                         @Param("endDate") LocalDate endDate);
 
+        @Query("SELECT t.member.id, SUM(t.amount) FROM Transaction t WHERE t.paymentDate BETWEEN :startDate AND :endDate AND t.member IS NOT NULL GROUP BY t.member.id")
+        List<Object[]> sumAmountsByMemberAndDateRange(
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate);
+
         boolean existsByExternalId(String externalId);
+
+        boolean existsByReceiptNumber(String receiptNumber);
 
         Optional<Transaction> findByExternalId(String externalId);
 

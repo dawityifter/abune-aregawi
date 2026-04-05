@@ -80,6 +80,22 @@ public class ReportService {
             eMap.put("category", le.getCategory());
             eMap.put("amount", le.getAmount());
             eMap.put("entry_date", le.getEntryDate());
+            eMap.put("receipt_number", le.getReceiptNumber());
+            eMap.put("check_number", le.getCheckNumber());
+            eMap.put("payee_name", le.getPayeeName());
+            if (le.getEmployee() != null) {
+                eMap.put("employee", Map.of(
+                        "id", le.getEmployee().getId(),
+                        "first_name", le.getEmployee().getFirstName(),
+                        "last_name", le.getEmployee().getLastName(),
+                        "position", le.getEmployee().getPosition()));
+            }
+            if (le.getVendor() != null) {
+                eMap.put("vendor", Map.of(
+                        "id", le.getVendor().getId(),
+                        "name", le.getVendor().getName(),
+                        "vendor_type", le.getVendor().getVendorType()));
+            }
             eMap.put("memo", le.getMemo());
             expenseList.add(eMap);
 
@@ -136,9 +152,7 @@ public class ReportService {
     public Map<String, Object> getStats() {
         // Simple member stats for potential reuse
         long totalMembers = memberRepository.count();
-        long totalHouseholds = memberRepository.findAll().stream()
-                .filter(m -> m.getFamilyHead() == null)
-                .count();
+        long totalHouseholds = totalMembers - memberRepository.countByFamilyHeadIsNotNull();
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalMembers", totalMembers);

@@ -147,7 +147,7 @@ class ReportServiceSpec extends Specification {
         Member dep = Member.builder().id(3L).firstName("E").lastName("F").familyHead(head1).build()
 
         memberRepository.count() >> 3L
-        memberRepository.findAll() >> [head1, head2, dep]
+        memberRepository.countByFamilyHeadIsNotNull() >> 1L
 
         when:
         Map<String, Object> result = reportService.getStats()

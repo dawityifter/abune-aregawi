@@ -53,7 +53,6 @@ const announcementRoutes = require('./routes/announcementRoutes');
 const settingRoutes = require('./routes/settingRoutes');
 const statementRoutes = require('./routes/statementRoutes');
 const donationController = require('./controllers/donationController');
-const { requestIdMiddleware, shadowMiddleware } = require('./shadow/shadowMiddleware');
 
 // Import database
 const { sequelize } = require('./models');
@@ -144,10 +143,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Compression middleware
 app.use(compression());
-
-// Shadow comparison middleware (no-op unless SHADOW_MODE=true)
-app.use(requestIdMiddleware);
-app.use(shadowMiddleware);
 
 // Root route for debugging
 app.get('/', (req, res) => {

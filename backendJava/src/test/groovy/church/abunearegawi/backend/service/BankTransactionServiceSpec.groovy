@@ -7,6 +7,7 @@ import church.abunearegawi.backend.model.Member
 import church.abunearegawi.backend.model.Transaction
 import church.abunearegawi.backend.model.ZelleMemoMatch
 import church.abunearegawi.backend.repository.BankTransactionRepository
+import church.abunearegawi.backend.repository.ExpenseCategoryRepository
 import church.abunearegawi.backend.repository.IncomeCategoryRepository
 import church.abunearegawi.backend.repository.LedgerEntryRepository
 import church.abunearegawi.backend.repository.MemberRepository
@@ -29,11 +30,12 @@ class BankTransactionServiceSpec extends Specification {
     MemberPaymentService memberPaymentService = Mock()
     ZelleMemoMatchRepository zelleMemoMatchRepository = Mock()
     IncomeCategoryRepository incomeCategoryRepository = Mock()
+    ExpenseCategoryRepository expenseCategoryRepository = Mock()
 
     BankTransactionService service = new BankTransactionService(
             bankTransactionRepository, memberRepository, transactionRepository,
             ledgerEntryRepository, memberPaymentService, zelleMemoMatchRepository,
-            incomeCategoryRepository)
+            incomeCategoryRepository, expenseCategoryRepository)
 
     Member testMember = Member.builder().id(1L).firstName("John").lastName("Doe").phoneNumber("+1234").build()
     Member testCollector = Member.builder().id(2L).firstName("Admin").lastName("User").build()
@@ -138,8 +140,8 @@ class BankTransactionServiceSpec extends Specification {
     def "should get current balance with anchor and newer sum"() {
         given:
         def anchor = BankTransaction.builder().id(1).date(LocalDate.of(2026, 1, 1)).balance(new BigDecimal("1000")).build()
-        bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdDesc() >> Optional.of(anchor)
-        bankTransactionRepository.sumAmountNewerThan(anchor.date, anchor.id) >> new BigDecimal("500")
+        bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdAsc() >> Optional.of(anchor)
+        bankTransactionRepository.sumAmountAfterDate(anchor.date) >> new BigDecimal("500")
 
         when:
         def result = service.getCurrentBalance()
@@ -151,8 +153,8 @@ class BankTransactionServiceSpec extends Specification {
     def "should get current balance with no newer transactions"() {
         given:
         def anchor = BankTransaction.builder().id(1).date(LocalDate.of(2026, 1, 1)).balance(new BigDecimal("1000")).build()
-        bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdDesc() >> Optional.of(anchor)
-        bankTransactionRepository.sumAmountNewerThan(_, _) >> null
+        bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdAsc() >> Optional.of(anchor)
+        bankTransactionRepository.sumAmountAfterDate(_) >> null
 
         when:
         def result = service.getCurrentBalance()
@@ -161,15 +163,15 @@ class BankTransactionServiceSpec extends Specification {
         result == new BigDecimal("1000")
     }
 
-    def "should return null when no anchor balance"() {
+    def "should return zero when no anchor balance"() {
         given:
-        bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdDesc() >> Optional.empty()
+        bankTransactionRepository.findTopByBalanceNotNullOrderByDateDescIdAsc() >> Optional.empty()
 
         when:
         def result = service.getCurrentBalance()
 
         then:
-        result == null
+        result == BigDecimal.ZERO
     }
 
     // --- update ---

@@ -1,17 +1,22 @@
 package church.abunearegawi.backend.service;
 
 import church.abunearegawi.backend.dto.TransactionDTO;
+import church.abunearegawi.backend.exception.BadRequestException;
 import church.abunearegawi.backend.model.Transaction;
 import church.abunearegawi.backend.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.persistence.criteria.JoinType;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +45,68 @@ public class TransactionService {
         public Page<TransactionDTO> findAll(Pageable pageable) {
                 return transactionRepository.findAll(pageable)
                                 .map(this::toDTO);
+        }
+
+        @Transactional(readOnly = true)
+        public Page<TransactionDTO> findAllFiltered(Map<String, String> filters, Pageable pageable) {
+                Specification<Transaction> spec = (root, query, cb) -> cb.conjunction();
+
+                String search = trimToNull(filters.get("search"));
+                if (search != null) {
+                        String like = "%" + search.toLowerCase() + "%";
+                        spec = spec.and((root, query, cb) -> {
+                                query.distinct(true);
+                                var memberJoin = root.join("member", JoinType.LEFT);
+                                return cb.or(
+                                                cb.like(cb.lower(cb.coalesce(root.get("note"), "")), like),
+                                                cb.like(cb.lower(cb.coalesce(root.get("receiptNumber"), "")), like),
+                                                cb.like(cb.lower(cb.coalesce(memberJoin.get("firstName"), "")), like),
+                                                cb.like(cb.lower(cb.coalesce(memberJoin.get("lastName"), "")), like),
+                                                cb.like(cb.lower(cb.coalesce(memberJoin.get("email"), "")), like),
+                                                cb.like(cb.lower(cb.coalesce(memberJoin.get("phoneNumber"), "")), like));
+                        });
+                }
+
+                String paymentType = trimToNull(filters.get("payment_type"));
+                if (paymentType != null) {
+                        Transaction.PaymentType parsed = parseEnum(Transaction.PaymentType.class, paymentType, "Invalid payment_type");
+                        spec = spec.and((root, query, cb) -> cb.equal(root.get("paymentType"), parsed));
+                }
+
+                String paymentMethod = trimToNull(filters.get("payment_method"));
+                if (paymentMethod != null) {
+                        Transaction.PaymentMethod parsed = parseEnum(Transaction.PaymentMethod.class, paymentMethod, "Invalid payment_method");
+                        spec = spec.and((root, query, cb) -> cb.equal(root.get("paymentMethod"), parsed));
+                }
+
+                String receiptNumber = trimToNull(filters.get("receipt_number"));
+                if (receiptNumber != null) {
+                        spec = spec.and((root, query, cb) -> cb.equal(root.get("receiptNumber"), receiptNumber));
+                }
+
+                String memberId = trimToNull(filters.get("member_id"));
+                if (memberId != null) {
+                        Long parsedMemberId;
+                        try {
+                                parsedMemberId = Long.parseLong(memberId);
+                        } catch (NumberFormatException ex) {
+                                throw new BadRequestException("Invalid member_id");
+                        }
+                        Long finalMemberId = parsedMemberId;
+                        spec = spec.and((root, query, cb) -> cb.equal(root.join("member", JoinType.LEFT).get("id"), finalMemberId));
+                }
+
+                LocalDate startDate = parseDate(filters.get("start_date"), "Invalid start_date");
+                if (startDate != null) {
+                        spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("paymentDate"), startDate));
+                }
+
+                LocalDate endDate = parseDate(filters.get("end_date"), "Invalid end_date");
+                if (endDate != null) {
+                        spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("paymentDate"), endDate));
+                }
+
+                return transactionRepository.findAll(spec, pageable).map(this::toDTO);
         }
 
         @Transactional(readOnly = true)
@@ -223,30 +290,16 @@ public class TransactionService {
                 // members.
                 // Iterating is acceptable for now.
 
-                List<church.abunearegawi.backend.model.Member> members = memberRepository.findAll();
+                List<church.abunearegawi.backend.model.Member> members = memberRepository.findByIsActiveTrue();
                 long upToDateMembers = 0;
-
-                // Optimize: bulk fetch payments for the year? Or iterate (N+1 prob).
-                // Better: get list of member Ids and their sums in one query if possible.
-                // Or just fetch all transactions for the year and map to member.
-
-                List<Transaction> yearTransactions = transactionRepository.findByPaymentDateBetween(startOfYear,
-                                endOfYear);
                 java.util.Map<Long, BigDecimal> memberPayments = new java.util.HashMap<>();
-
-                for (Transaction t : yearTransactions) {
-                        if (t.getMember() != null) {
-                                memberPayments.merge(t.getMember().getId(), t.getAmount(), BigDecimal::add);
-                        }
+                for (Object[] row : transactionRepository.sumAmountsByMemberAndDateRange(startOfYear, endOfYear)) {
+                        memberPayments.put(((Number) row[0]).longValue(), (BigDecimal) row[1]);
                 }
 
                 for (church.abunearegawi.backend.model.Member m : members) {
-                        if (!m.isActive())
-                                continue; // Skip inactive?
-
                         BigDecimal pledge = m.getYearlyPledge();
                         if (pledge == null || pledge.compareTo(BigDecimal.ZERO) == 0) {
-                                // If no pledge, are they up to date? Let's say yes.
                                 upToDateMembers++;
                                 continue;
                         }
@@ -257,13 +310,8 @@ public class TransactionService {
                         }
                 }
 
-                long behindMembers = members.size() - upToDateMembers;
-                // Adjust behind to only count active members?
-                // Let's count total active members instead of totalMembers (count()).
-                long activeMembers = members.stream().filter(church.abunearegawi.backend.model.Member::isActive)
-                                .count();
-                // recalculate behind
-                behindMembers = activeMembers - upToDateMembers;
+                long activeMembers = members.size();
+                long behindMembers = activeMembers - upToDateMembers;
                 if (behindMembers < 0)
                         behindMembers = 0; // Just in case
 
@@ -312,5 +360,33 @@ public class TransactionService {
                 return java.util.Map.of(
                                 "range", java.util.Map.of("start", min, "end", max),
                                 "skippedReceipts", skipped);
+        }
+
+        private String trimToNull(String value) {
+                if (value == null) {
+                        return null;
+                }
+                String trimmed = value.trim();
+                return trimmed.isEmpty() ? null : trimmed;
+        }
+
+        private LocalDate parseDate(String value, String message) {
+                String trimmed = trimToNull(value);
+                if (trimmed == null) {
+                        return null;
+                }
+                try {
+                        return LocalDate.parse(trimmed);
+                } catch (Exception ex) {
+                        throw new BadRequestException(message);
+                }
+        }
+
+        private <E extends Enum<E>> E parseEnum(Class<E> enumClass, String value, String message) {
+            try {
+                return Enum.valueOf(enumClass, value);
+            } catch (Exception ex) {
+                throw new BadRequestException(message);
+            }
         }
 }
