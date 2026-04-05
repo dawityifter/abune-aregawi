@@ -16,4 +16,7 @@ public interface DepartmentMemberRepository extends JpaRepository<DepartmentMemb
     Optional<DepartmentMember> findByDepartmentIdAndMemberId(Long departmentId, Long memberId);
     List<DepartmentMember> findByMemberId(Long memberId);
     long countByDepartmentIdAndStatus(Long departmentId, DepartmentMember.Status status);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(DISTINCT dm.member.id) FROM DepartmentMember dm WHERE dm.status = :status")
+    long countDistinctMemberIdsByStatus(@org.springframework.data.repository.query.Param("status") DepartmentMember.Status status);
 }

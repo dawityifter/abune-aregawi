@@ -81,7 +81,7 @@ public class Transaction {
 
     public enum PaymentType {
         membership_due, tithe, offering, donation, vow, building_fund, event,
-        religious_item_sales, tigray_hunger_fundraiser, other
+        religious_item_sales, tigray_hunger_fundraiser, loan_received, loan_repayment, other
     }
 
     public enum PaymentMethod {

@@ -431,7 +431,7 @@ class MemberPaymentServiceSpec extends Specification {
         statuses[0].month == "january"
         statuses[0].status == "due" // 0 < 100
         statuses[1].status == "due"
-        statuses[2].month == "march"
-        statuses[2].status == "upcoming" // Future month
+        statuses[4].month == "may"
+        statuses[4].status == "upcoming" // Future month relative to the current month in this test year
     }
 }

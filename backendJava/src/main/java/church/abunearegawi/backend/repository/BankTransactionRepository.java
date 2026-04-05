@@ -17,10 +17,10 @@ public interface BankTransactionRepository extends JpaRepository<BankTransaction
 
         Optional<BankTransaction> findTopByOrderByDateDesc();
 
-        Optional<BankTransaction> findTopByBalanceNotNullOrderByDateDescIdDesc();
+        Optional<BankTransaction> findTopByBalanceNotNullOrderByDateDescIdAsc();
 
-        @Query("SELECT SUM(bt.amount) FROM BankTransaction bt WHERE (bt.date > :date) OR (bt.date = :date AND bt.id < :id)")
-        java.math.BigDecimal sumAmountNewerThan(@Param("date") LocalDate date, @Param("id") Integer id);
+        @Query("SELECT SUM(bt.amount) FROM BankTransaction bt WHERE bt.date > :date")
+        java.math.BigDecimal sumAmountAfterDate(@Param("date") LocalDate date);
 
         @Query("SELECT bt FROM BankTransaction bt WHERE " +
                         "(bt.status = COALESCE(:status, bt.status)) " +

@@ -39,9 +39,9 @@ public class ExpenseService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> findExpenses(LocalDate startDate, LocalDate endDate,
-                                            String glCode, String paymentMethod,
+                                            String glCode, String payee,
                                             Pageable pageable) {
-        Page<LedgerEntry> page = ledgerEntryRepository.findExpenses("expense", startDate, endDate, glCode, paymentMethod, pageable);
+        Page<LedgerEntry> page = ledgerEntryRepository.findExpenses("expense", startDate, endDate, glCode, payee, pageable);
 
         // Batch-load category names for all GL codes in the result
         Set<String> glCodes = page.getContent().stream()
@@ -155,65 +155,47 @@ public class ExpenseService {
 
         Map<String, Object> employeeMap = null;
         Object employeeId = null;
-        try {
-            if (e.getEmployee() != null) {
-                Employee emp = e.getEmployee();
-                employeeId = emp.getId();
-                employeeMap = new LinkedHashMap<>();
-                employeeMap.put("id", emp.getId());
-                employeeMap.put("first_name", emp.getFirstName());
-                employeeMap.put("last_name", emp.getLastName());
-                employeeMap.put("position", emp.getPosition());
-            }
-        } catch (Exception ignored) {
-            // Lazy loading failed - leave as null
+        if (e.getEmployee() != null) {
+            Employee emp = e.getEmployee();
+            employeeId = emp.getId();
+            employeeMap = new LinkedHashMap<>();
+            employeeMap.put("id", emp.getId());
+            employeeMap.put("first_name", emp.getFirstName());
+            employeeMap.put("last_name", emp.getLastName());
+            employeeMap.put("position", emp.getPosition());
         }
 
         Map<String, Object> vendorMap = null;
         Object vendorId = null;
-        try {
-            if (e.getVendor() != null) {
-                Vendor v = e.getVendor();
-                vendorId = v.getId();
-                vendorMap = new LinkedHashMap<>();
-                vendorMap.put("id", v.getId());
-                vendorMap.put("name", v.getName());
-                vendorMap.put("vendor_type", v.getVendorType());
-            }
-        } catch (Exception ignored) {
-            // Lazy loading failed - leave as null
+        if (e.getVendor() != null) {
+            Vendor v = e.getVendor();
+            vendorId = v.getId();
+            vendorMap = new LinkedHashMap<>();
+            vendorMap.put("id", v.getId());
+            vendorMap.put("name", v.getName());
+            vendorMap.put("vendor_type", v.getVendorType());
         }
 
         Map<String, Object> collectorMap = null;
         Long collectedBy = null;
-        try {
-            if (e.getCollector() != null) {
-                Member c = e.getCollector();
-                collectedBy = c.getId();
-                collectorMap = new LinkedHashMap<>();
-                collectorMap.put("id", c.getId());
-                collectorMap.put("first_name", c.getFirstName());
-                collectorMap.put("last_name", c.getLastName());
-                collectorMap.put("email", c.getEmail());
-            }
-        } catch (Exception ignored) {
-            // Lazy loading failed - leave as null
+        if (e.getCollector() != null) {
+            Member c = e.getCollector();
+            collectedBy = c.getId();
+            collectorMap = new LinkedHashMap<>();
+            collectorMap.put("id", c.getId());
+            collectorMap.put("first_name", c.getFirstName());
+            collectorMap.put("last_name", c.getLastName());
+            collectorMap.put("email", c.getEmail());
         }
 
         Long memberId = null;
-        try {
-            if (e.getMember() != null) {
-                memberId = e.getMember().getId();
-            }
-        } catch (Exception ignored) {
+        if (e.getMember() != null) {
+            memberId = e.getMember().getId();
         }
 
         Long transactionId = null;
-        try {
-            if (e.getTransaction() != null) {
-                transactionId = e.getTransaction().getId();
-            }
-        } catch (Exception ignored) {
+        if (e.getTransaction() != null) {
+            transactionId = e.getTransaction().getId();
         }
 
         return new ExpenseDTO(

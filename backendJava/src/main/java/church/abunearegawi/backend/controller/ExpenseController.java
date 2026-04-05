@@ -37,9 +37,9 @@ public class ExpenseController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) String glCode,
-            @RequestParam(required = false) String paymentMethod,
+            @RequestParam(required = false) String payee,
             Pageable pageable) {
-        Map<String, Object> result = expenseService.findExpenses(startDate, endDate, glCode, paymentMethod, pageable);
+        Map<String, Object> result = expenseService.findExpenses(startDate, endDate, glCode, payee, pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
