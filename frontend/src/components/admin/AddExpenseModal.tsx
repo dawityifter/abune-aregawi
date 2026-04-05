@@ -524,7 +524,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
                 </label>
               </div>
               <p className="text-xs text-amber-600 italic">
-                Note: Paying in cash is discouraged. Please use Check whenever possible.
+                Note: Paying in cash is discouraged. Please use {t('treasurerDashboard.transactionList.methods.check')} whenever possible.
               </p>
             </div>
           </div>

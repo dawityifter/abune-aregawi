@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ZellePreviewItem {
   gmail_id?: string;
@@ -25,6 +26,7 @@ interface ZellePreviewItem {
 
 const ZelleReview: React.FC = () => {
   const { currentUser, firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [items, setItems] = useState<ZellePreviewItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
@@ -355,8 +357,8 @@ const ZelleReview: React.FC = () => {
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Zelle Review</h2>
-          <p className="text-sm text-gray-600">Preview of Gmail-parsed Zelle payments for reconciliation</p>
+          <h2 className="text-xl font-semibold text-gray-900">{t('treasurerDashboard.tabs.zelle')}</h2>
+          <p className="text-sm text-gray-600">Preview of Gmail-parsed {t('zelle')} payments for reconciliation</p>
         </div>
         <div className="flex items-center space-x-2">
           <input

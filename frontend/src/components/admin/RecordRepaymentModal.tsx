@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface LoanMember {
   id: number;
@@ -30,6 +31,7 @@ const currency = (n: number | string) =>
 
 const RecordRepaymentModal: React.FC<RecordRepaymentModalProps> = ({ loan, onClose, onRepaymentRecorded }) => {
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
 
   const [repaymentAmount, setRepaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -159,8 +161,8 @@ const RecordRepaymentModal: React.FC<RecordRepaymentModalProps> = ({ loan, onClo
             >
               <option value="">Select method...</option>
               <option value="cash">Cash</option>
-              <option value="check">Check</option>
-              <option value="zelle">Zelle</option>
+              <option value="check">{t('check')}</option>
+              <option value="zelle">{t('zelle')}</option>
               <option value="other">Other</option>
             </select>
           </div>

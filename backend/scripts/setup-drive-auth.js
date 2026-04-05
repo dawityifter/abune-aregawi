@@ -41,11 +41,18 @@ async function setupAuth() {
         const { tokens } = await oauth2Client.getToken(code);
 
         console.log('\n✅ SUCCESS! Here are your credentials:\n');
-        console.log('Add these to your backend/.env file:');
+        console.log('Add these to your backend/.env.<environment> file:');
         console.log('---------------------------------------------------');
         console.log(`GALLERY_DRIVE_CLIENT_ID=${clientId}`);
         console.log(`GALLERY_DRIVE_CLIENT_SECRET=${clientSecret}`);
         console.log(`GALLERY_DRIVE_REFRESH_TOKEN=${tokens.refresh_token}`);
+        console.log('---------------------------------------------------');
+        console.log('');
+        console.log('Recommended ledger export aliases:');
+        console.log('---------------------------------------------------');
+        console.log(`LEDGER_SHEETS_CLIENT_ID=${clientId}`);
+        console.log(`LEDGER_SHEETS_CLIENT_SECRET=${clientSecret}`);
+        console.log(`LEDGER_SHEETS_REFRESH_TOKEN=${tokens.refresh_token}`);
         console.log('---------------------------------------------------');
 
         if (!tokens.refresh_token) {

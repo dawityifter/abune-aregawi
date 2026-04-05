@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import StripePayment from '../StripePayment';
 import ACHPayment from '../ACHPayment';
 import { Elements } from '@stripe/react-stripe-js';
@@ -34,6 +35,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   initialPaymentType
 }) => {
   const { user, firebaseUser } = useAuth();
+  const { t } = useLanguage();
 
   const [members, setMembers] = useState<Member[]>([]);
   const [memberSearch, setMemberSearch] = useState('');
@@ -398,9 +400,9 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   ];
 
   const paymentMethods = [
-    { value: 'Cash', label: 'Cash' },
-    { value: 'Check', label: 'Check' },
-    { value: 'Online', label: 'Online' }
+    { value: 'Cash', label: t('cash') },
+    { value: 'Check', label: t('check') },
+    { value: 'Online', label: t('online') }
   ];
 
   // New transaction payment types and methods
@@ -426,8 +428,8 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   // Religious item sales are not donations, so they shouldn't use Stripe (card/ACH)
   const transactionPaymentMethods = useMemo(() => {
     const allMethods = [
-      { value: 'cash', label: 'Cash' },
-      { value: 'check', label: 'Check' },
+      { value: 'cash', label: t('cash') },
+      { value: 'check', label: t('check') },
       // Combine Debit and Credit into one UI option; backend expects 'credit_card' or 'debit_card'. Use 'credit_card'.
       { value: 'credit_card', label: 'Debit/Credit Card' },
       { value: 'ach', label: 'ACH' },
@@ -440,7 +442,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
     }
 
     return allMethods;
-  }, [paymentType]);
+  }, [paymentType, t]);
 
   // Detect if Stripe publishable key exists at build time
   const hasStripeKey = !!process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;

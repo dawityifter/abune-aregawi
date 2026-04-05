@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BankTransaction } from './BankTransactionList';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface Props {
   txn: BankTransaction | null;
@@ -19,6 +20,7 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
   }, [txn, onClose]);
 
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const firebaseUserRef = useRef(firebaseUser);
   firebaseUserRef.current = firebaseUser;
   const [selectedPaymentType, setSelectedPaymentType] = useState('donation');
@@ -222,8 +224,8 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
 
             {txn.check_number && (
               <div className="border-t border-gray-200 pt-3">
-                <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Check Number</p>
-                <p className="text-sm text-gray-900 font-medium">Check #{txn.check_number}</p>
+                <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">{t('check')} Number</p>
+                <p className="text-sm text-gray-900 font-medium">{t('check')} #{txn.check_number}</p>
               </div>
             )}
           </div>

@@ -45,6 +45,7 @@ const ExpenseList: React.FC = () => {
   const { firebaseUser } = useAuth();
   const { t } = useLanguage();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -183,6 +184,17 @@ const ExpenseList: React.FC = () => {
     setPage(1);
   };
 
+  const closeDetails = () => setSelectedExpense(null);
+
+  useEffect(() => {
+    if (!selectedExpense) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeDetails();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedExpense]);
+
   return (
     <div className="space-y-6">
       {/* Filters */}
@@ -275,8 +287,8 @@ const ExpenseList: React.FC = () => {
       </div>
 
       {/* Expenses Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 bg-slate-50/80 px-6 py-4">
           <h3 className="text-lg font-semibold text-gray-900">
             {t('treasurerDashboard.expenses.table.title')} ({totalItems})
           </h3>
@@ -294,65 +306,68 @@ const ExpenseList: React.FC = () => {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-100/80">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       {t('treasurerDashboard.expenses.table.date')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       {t('treasurerDashboard.expenses.table.category')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       {t('treasurerDashboard.expenses.table.payee')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       {t('treasurerDashboard.expenses.table.amount')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       {t('treasurerDashboard.expenses.table.method')}
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('treasurerDashboard.expenses.table.checkNumber')}
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {t('treasurerDashboard.expenses.table.memo')}
+                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Action
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="divide-y divide-slate-100 bg-white">
                   {expenses.map((expense) => (
-                    <tr key={expense.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <tr key={expense.id} className="odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/70 transition-colors">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">
                         {formatDate(expense.entry_date)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <div className="text-sm font-semibold text-slate-900">
                           {expense.category}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-slate-500">
                           {expense.category_name}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-6 py-4">
                         {getPayeeDisplay(expense)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-900">
                         {formatCurrency(expense.amount)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${expense.payment_method === 'cash'
-                          ? 'bg-green-100 text-green-800'
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${expense.payment_method === 'cash'
+                          ? 'bg-emerald-100 text-emerald-800'
                           : 'bg-blue-100 text-blue-800'
                           }`}>
                           {expense.payment_method.toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {expense.check_number || expense.receipt_number || '-'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                        {expense.memo || '-'}
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
+                        <button
+                          onClick={() => setSelectedExpense(expense)}
+                          className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                            selectedExpense?.id === expense.id
+                              ? 'border-blue-600 bg-blue-600 text-white'
+                              : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
+                          }`}
+                        >
+                          Details
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -362,22 +377,22 @@ const ExpenseList: React.FC = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-700">
+              <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/70 px-6 py-4">
+                <div className="text-sm text-slate-700">
                   {t('treasurerDashboard.transactionList.pagination.page')} {page} {t('treasurerDashboard.transactionList.pagination.of')} {totalPages}
                 </div>
                 <div className="flex space-x-2">
                   <button
                     onClick={() => setPage(page - 1)}
                     disabled={page === 1}
-                    className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
                   >
                     {t('treasurerDashboard.transactionList.pagination.previous')}
                   </button>
                   <button
                     onClick={() => setPage(page + 1)}
                     disabled={page === totalPages}
-                    className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-50 hover:bg-slate-50"
                   >
                     {t('treasurerDashboard.transactionList.pagination.next')}
                   </button>
@@ -387,6 +402,105 @@ const ExpenseList: React.FC = () => {
           </>
         )}
       </div>
+
+      {selectedExpense && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={closeDetails} aria-hidden="true" />
+          <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-slate-200 bg-slate-900 px-5 py-4">
+              <div>
+                <p className="text-sm font-bold text-white">Expense Details</p>
+                <p className="mt-1 text-xs text-slate-300">Expense #{selectedExpense.id}</p>
+              </div>
+              <button
+                onClick={closeDetails}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+                aria-label="Close details"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-4 overflow-y-auto p-5">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Date</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatDate(selectedExpense.entry_date)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Amount</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900">{formatCurrency(selectedExpense.amount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Method</p>
+                    <div className="mt-1">
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${selectedExpense.payment_method === 'cash'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-blue-100 text-blue-800'
+                        }`}>
+                        {selectedExpense.payment_method.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Category</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{selectedExpense.category}</p>
+                    <p className="mt-1 text-xs text-slate-500">{selectedExpense.category_name}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Payee</p>
+                <div className="mt-2">
+                  {selectedExpense.employee ? (
+                    <>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {selectedExpense.employee.first_name} {selectedExpense.employee.last_name}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">Employee · {selectedExpense.employee.position}</p>
+                    </>
+                  ) : selectedExpense.vendor ? (
+                    <>
+                      <p className="text-sm font-semibold text-slate-900">{selectedExpense.vendor.name}</p>
+                      <p className="mt-1 text-sm text-slate-500">Vendor · {selectedExpense.vendor.vendor_type}</p>
+                    </>
+                  ) : (
+                    <p className="text-sm font-semibold text-slate-900">{selectedExpense.payee_name || '-'}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Record Info</p>
+                <dl className="mt-3 space-y-3">
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">{t('check')} / {t('treasurerDashboard.transactionList.table.receipt')}</dt>
+                    <dd className="mt-1 text-sm text-slate-900">{selectedExpense.check_number || selectedExpense.receipt_number || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">Category Description</dt>
+                    <dd className="mt-1 text-sm text-slate-700">{selectedExpense.category_description || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">Recorded By</dt>
+                    <dd className="mt-1 text-sm text-slate-900">
+                      {selectedExpense.collector
+                        ? `${selectedExpense.collector.first_name} ${selectedExpense.collector.last_name}`
+                        : '-'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">Memo</dt>
+                    <dd className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{selectedExpense.memo || '-'}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

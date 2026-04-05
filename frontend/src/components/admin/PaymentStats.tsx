@@ -109,7 +109,7 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availa
                 </p>
               )}
               <p className="text-xs text-blue-200 mt-1 italic">
-                Balance reflects all transactions on record, not filtered by year
+                {t(`${td}.stats.balanceNote`)}
               </p>
             </div>
             <div className="bg-white/20 p-2 rounded-lg">

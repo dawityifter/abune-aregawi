@@ -1,6 +1,6 @@
 const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
-const { Op } = require('sequelize');
+const { Op, fn, col, literal, where: seqWhere } = require('sequelize');
 const { Member, Dependent, ActivityLog, Title, Outreach } = require('../models');
 const { sanitizeInput } = require('../utils/sanitize');
 const { newMemberRegistered } = require('../utils/notifications');
@@ -58,22 +58,31 @@ exports.searchMembers = async (req, res) => {
 
     const nameTokenClauses = tokens.map(t => ({
       [Op.or]: [
-        { first_name: { [Op.iLike]: `%${t}%` } },
-        { middle_name: { [Op.iLike]: `%${t}%` } },
-        { last_name: { [Op.iLike]: `%${t}%` } },
+        seqWhere(fn('lower', col('first_name')), { [Op.like]: `%${t}%` }),
+        seqWhere(fn('lower', col('middle_name')), { [Op.like]: `%${t}%` }),
+        seqWhere(fn('lower', col('last_name')), { [Op.like]: `%${t}%` }),
       ]
     }));
 
-    const where = nameTokenClauses.length > 0
-      ? { [Op.and]: nameTokenClauses }
-      : {};
+    // Full-name concat: "Dawit Y" matches CONCAT('Dawit', ' ', 'Yifter') = 'Dawit Yifter'
+    // Use lower() + Op.like (not iLike) so this works in both PostgreSQL and SQLite tests
+    const fullNameClause = seqWhere(
+      fn('lower', literal(`trim(COALESCE("first_name", '') || ' ' || COALESCE("last_name", ''))`)),
+      { [Op.like]: `%${lower}%` }
+    );
 
+    // Name match: token-AND path OR full-name concat path
+    const nameMatch = nameTokenClauses.length > 0
+      ? { [Op.or]: [{ [Op.and]: nameTokenClauses }, fullNameClause] }
+      : fullNameClause;
+
+    // Top-level: name match OR phone match
+    const orClauses = [nameMatch];
     if (phoneCandidates.length > 0) {
-      where[Op.or] = [
-        ...(where[Op.or] || []),
-        { phone_number: { [Op.in]: phoneCandidates } }
-      ];
+      orClauses.push({ phone_number: { [Op.in]: phoneCandidates } });
     }
+
+    const where = orClauses.length === 1 ? orClauses[0] : { [Op.or]: orClauses };
 
     const members = await Member.findAll({
       where,
@@ -1118,10 +1127,22 @@ exports.getAllMembersFirebase = async (req, res) => {
     const whereClause = {};
 
     if (search) {
+      const searchLower = search.toLowerCase();
+      const searchTokens = searchLower.split(/\s+/).filter(Boolean);
+      const fullNameClause = seqWhere(
+        fn('lower', literal(`trim(COALESCE("Member"."first_name", '') || ' ' || COALESCE("Member"."last_name", ''))`)),
+        { [Op.like]: `%${searchLower}%` }
+      );
+      const tokenClauses = searchTokens.map(t => ({
+        [Op.or]: [
+          seqWhere(fn('lower', col('Member.first_name')), { [Op.like]: `%${t}%` }),
+          seqWhere(fn('lower', col('Member.last_name')), { [Op.like]: `%${t}%` }),
+          { email: { [Op.iLike]: `%${t}%` } },
+        ]
+      }));
       whereClause[Op.or] = [
-        { first_name: { [Op.iLike]: `%${search}%` } },
-        { last_name: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } }
+        { [Op.and]: tokenClauses },
+        fullNameClause,
       ];
     }
 
