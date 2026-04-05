@@ -148,6 +148,7 @@ export interface Dictionaries {
       otherIncome: string;
       currentBalance: string;
       lastUpdated: string;
+      balanceNote: string;
       target: string;
       membershipDues: string;
       otherDonations: string;
@@ -852,6 +853,7 @@ export const en: Dictionaries = {
       otherIncome: "Other Income",
       currentBalance: "Bank Balance",
       lastUpdated: "Updated",
+      balanceNote: "Balance reflects all transactions on record, not filtered by year",
       target: "Goal",
       membershipDues: "Membership Dues",
       otherDonations: "Other Donations",
@@ -1520,7 +1522,7 @@ export const ti: Dictionaries = {
       payments: "ክፍሊት ኣባላት",
       expenses: "ወጪታት",
       reports: "ጸብጻባት",
-      zelle: "ዘለ (Zelle) ክፍሊታት",
+      zelle: "ዜል ክፍሊታት",
       memberDues: "ወርሓዊ ክፍሊት",
       employees: "ሰራሕተኛታት",
       vendors: "ሻየጥቲ"
@@ -1573,6 +1575,7 @@ export const ti: Dictionaries = {
       otherIncome: "ካልእ እቶት",
       currentBalance: "ሕሳብ ባንኪ",
       lastUpdated: "ዝተሓደሰሉ",
+      balanceNote: "ሕሳብ ኣብ መዝገብ ዘለዉ ኩሎም ንግዳት የንጸባርቕ እዩ፣ ብዓመት ኣይተፈልየን",
       target: "ዕላማ",
       membershipDues: "ናይ ኣባልነት ክፍሊት",
       otherDonations: "ካልእ ሽልማታት",
@@ -1640,8 +1643,8 @@ export const ti: Dictionaries = {
       },
       methods: {
         cash: "ብጥረ ገንዘብ",
-        check: "Check",
-        zelle: "Zelle",
+        check: "ቼክ",
+        zelle: "ዜል",
         credit_card: "Credit Card",
         debit_card: "Debit Card",
         ach: "ACH",
@@ -1682,7 +1685,7 @@ export const ti: Dictionaries = {
         payee: "ተቀባሊ",
         amount: "መጠን",
         method: "ኣገባብ",
-        checkNumber: "Check #",
+        checkNumber: "ቁጽሪ ቼክ",
         recordedBy: "ዝመዝገቦ",
         memo: "መዘኻኸሪ",
         employee: "ሰራሕተኛ",
@@ -1697,7 +1700,7 @@ export const ti: Dictionaries = {
         category: "ዓይነት",
         payeeType: "ዓይነት ተቀባሊ",
         paymentMethod: "ኣገባብ ክፍሊት",
-        checkNumber: "Check Number",
+        checkNumber: "ቁጽሪ ቼክ",
         receiptNumber: "ቁጽሪ ቅብሊት",
         memo: "መዘኻኸሪ",
         cancel: "ሰርዝ",

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import MemberDuesViewer from './MemberDuesViewer';
 import { formatMemberName } from '../../utils/formatName';
 
 interface Member {
@@ -19,16 +18,23 @@ interface Member {
 
 interface MemberSearchProps {
   onMemberSelect: (memberId: string) => void;
-  onClose: () => void;
+  onClose?: () => void;
+  embedded?: boolean;
+  selectedMemberId?: string | null;
+  autoSelectFirst?: boolean;
 }
 
-const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) => {
+const MemberSearch: React.FC<MemberSearchProps> = ({
+  onMemberSelect,
+  onClose,
+  embedded = false,
+  selectedMemberId,
+  autoSelectFirst = false
+}) => {
   const { firebaseUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [members, setMembers] = useState<Member[]>([]);
-  const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -87,10 +93,14 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
     return () => clearTimeout(timeoutId);
   }, [firebaseUser, searchQuery]);
 
-  const handleMemberSelect = (member: Member) => {
-    setSelectedMember(String(member.id));
-    onMemberSelect(String(member.id));
-  };
+  const handleMemberSelect = (member: Member) => onMemberSelect(String(member.id));
+
+  useEffect(() => {
+    if (!embedded) return;
+    if (!autoSelectFirst) return;
+    if (selectedMemberId || members.length === 0) return;
+    onMemberSelect(String(members[0].id));
+  }, [embedded, autoSelectFirst, selectedMemberId, members, onMemberSelect]);
 
   // Check if member has no pledge (null, undefined, or 0)
   const hasNoPledge = (member: Member) => {
@@ -112,35 +122,24 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
     return hasNoPledge(member) ? 'text-red-600' : 'text-blue-600';
   };
 
-  if (selectedMember) {
-    return (
-      <MemberDuesViewer
-        memberId={selectedMember}
-        onClose={() => {
-          setSelectedMember(null);
-          onClose();
-        }}
-      />
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+  const content = (
+      <div className={`bg-white ${embedded ? 'rounded-2xl border border-gray-200 shadow-sm h-full min-h-[700px]' : 'rounded-lg max-w-2xl w-full max-h-[80vh]'} overflow-hidden flex flex-col`}>
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Search Members</h2>
             <p className="text-gray-600 text-sm">Select a member to view their dues and payment history</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {!embedded && onClose && (
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Search Input */}
@@ -186,7 +185,11 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
               {members.map((member) => (
                 <div
                   key={member.id}
-                  className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                  className={`p-4 cursor-pointer transition-colors ${
+                    selectedMemberId === String(member.id)
+                      ? 'bg-blue-50 ring-1 ring-inset ring-blue-200'
+                      : 'hover:bg-gray-50'
+                  }`}
                   onClick={() => handleMemberSelect(member)}
                 >
                   <div className="flex items-center justify-between">
@@ -256,14 +259,25 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
           <div className="text-sm text-gray-500">
             {members.length} member{members.length !== 1 ? 's' : ''} found
           </div>
-          <button
-            onClick={onClose}
-            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium"
-          >
-            Cancel
-          </button>
+          {!embedded && onClose && (
+            <button
+              onClick={onClose}
+              className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </div>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      {content}
     </div>
   );
 };

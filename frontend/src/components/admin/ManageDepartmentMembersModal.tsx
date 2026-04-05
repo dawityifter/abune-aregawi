@@ -70,7 +70,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
       }
     } catch (error) {
       console.error('Error fetching department members:', error);
-      setError('Failed to load members');
+      setError(t('admin.departmentMembers.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -100,7 +100,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
 
   const handleAddMembers = async () => {
     if (selectedMembers.length === 0) {
-      alert('Please select at least one member');
+      alert(t('admin.departmentMembers.selectAtLeastOne'));
       return;
     }
 
@@ -132,12 +132,12 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
       onUpdate();
     } catch (error) {
       console.error('Error adding members:', error);
-      alert('Failed to add members');
+      alert(t('admin.departmentMembers.addFailed'));
     }
   };
 
   const handleRemoveMember = async (memberId: number) => {
-    if (!window.confirm('Are you sure you want to remove this member?')) {
+    if (!window.confirm(t('admin.departmentMembers.removeConfirm'))) {
       return;
     }
 
@@ -163,7 +163,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
       onUpdate();
     } catch (error) {
       console.error('Error removing member:', error);
-      alert('Failed to remove member');
+      alert(t('admin.departmentMembers.removeFailed'));
     }
   };
 
@@ -193,7 +193,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
       onUpdate();
     } catch (error) {
       console.error('Error updating member role:', error);
-      alert('Failed to update member role');
+      alert(t('admin.departmentMembers.roleUpdateFailed'));
     }
   };
 

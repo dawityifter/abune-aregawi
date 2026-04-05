@@ -12,9 +12,11 @@ import ExpenseList from './ExpenseList';
 import WeeklyCollectionReport from './WeeklyCollectionReport';
 import ZelleReview from './ZelleReview';
 import MemberSearch from './MemberSearch';
+import MemberDuesViewer from './MemberDuesViewer';
 import EmployeeList from './EmployeeList';
 import VendorList from './VendorList';
 import LoansPage from './LoansPage';
+import LedgerSheetsPanel from './LedgerSheetsPanel';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PaymentStatsData {
@@ -34,17 +36,31 @@ interface PaymentStatsData {
   lastBankUpdate?: string;
 }
 
+type TreasurerTab =
+  | 'overview'
+  | 'payments'
+  | 'member-dues'
+  | 'expenses'
+  | 'loans'
+  | 'bank'
+  | 'reports'
+  | 'employees'
+  | 'vendors'
+  | 'zelle'
+  | 'backups';
+
 const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'loans' | 'reports' | 'zelle' | 'member-dues' | 'employees' | 'vendors' | 'bank'>('overview');
+  const [activeTab, setActiveTab] = useState<TreasurerTab>('overview');
   const [activeReportTab, setActiveReportTab] = useState<'weekly' | 'payment'>('weekly');
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
-  const [showMemberSearch, setShowMemberSearch] = useState(false);
+  const [selectedMemberDuesId, setSelectedMemberDuesId] = useState<string | null>(null);
+  const [memberDuesAutoSelectionEnabled, setMemberDuesAutoSelectionEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -64,6 +80,23 @@ const TreasurerDashboard: React.FC = () => {
 
   // Check if user has financial permissions
   const hasFinancialAccess = permissions.canViewFinancialRecords || permissions.canEditFinancialRecords;
+
+  const primaryTabs: Array<{ id: TreasurerTab; label: string; icon: string }> = [
+    { id: 'overview', label: t('treasurerDashboard.tabs.overview'), icon: 'fas fa-chart-line' },
+    { id: 'payments', label: t('treasurerDashboard.tabs.payments'), icon: 'fas fa-hand-holding-usd' },
+    { id: 'member-dues', label: t('treasurerDashboard.tabs.memberDues'), icon: 'fas fa-users' },
+    { id: 'expenses', label: t('treasurerDashboard.tabs.expenses'), icon: 'fas fa-receipt' },
+    { id: 'loans', label: t('treasurerDashboard.tabs.loans'), icon: 'fas fa-file-invoice-dollar' },
+    { id: 'bank', label: t('treasurerDashboard.tabs.bank'), icon: 'fas fa-university' },
+    { id: 'reports', label: t('treasurerDashboard.tabs.reports'), icon: 'fas fa-chart-bar' }
+  ];
+
+  const adminTabs: Array<{ id: TreasurerTab; label: string; icon: string }> = [
+    { id: 'employees', label: t('treasurerDashboard.tabs.employees'), icon: 'fas fa-id-badge' },
+    { id: 'vendors', label: t('treasurerDashboard.tabs.vendors'), icon: 'fas fa-store' },
+    { id: 'zelle', label: t('treasurerDashboard.tabs.zelle'), icon: 'fas fa-mobile-alt' },
+    { id: 'backups', label: t('treasurerDashboard.tabs.backups'), icon: 'fas fa-database' }
+  ];
 
   const fetchSkippedReceipts = async () => {
     try {
@@ -215,6 +248,16 @@ const TreasurerDashboard: React.FC = () => {
     }
   };
 
+  const handleMemberDuesSelect = (memberId: string) => {
+    setSelectedMemberDuesId(memberId);
+    setMemberDuesAutoSelectionEnabled(false);
+  };
+
+  const handleMemberDuesClear = () => {
+    setSelectedMemberDuesId(null);
+    setMemberDuesAutoSelectionEnabled(false);
+  };
+
   if (loading || profileLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -241,7 +284,7 @@ const TreasurerDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 print:hidden">
@@ -251,99 +294,52 @@ const TreasurerDashboard: React.FC = () => {
 
         {/* Tab Navigation */}
         <div className="border-b border-gray-200 mb-8 print:hidden">
-          <div className="-mb-px flex items-center justify-between">
-            <nav className="flex space-x-8">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.overview')}
-              </button>
-              <button
-                onClick={() => setActiveTab('bank')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'bank'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.bank')}
-              </button>
-              <button
-                onClick={() => setActiveTab('payments')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'payments'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.payments')}
-              </button>
-              <button
-                onClick={() => setActiveTab('expenses')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'expenses'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.expenses')}
-              </button>
-              <button
-                onClick={() => setActiveTab('loans')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'loans'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                Loans (Not Donations)
-              </button>
-              <button
-                onClick={() => setActiveTab('reports')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'reports'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.reports')}
-              </button>
-              <button
-                onClick={() => setActiveTab('zelle')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'zelle'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.zelle')}
-              </button>
-              <button
-                onClick={() => setActiveTab('member-dues')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'member-dues'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.memberDues')}
-              </button>
-              <button
-                onClick={() => setActiveTab('employees')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'employees'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.employees')}
-              </button>
-              <button
-                onClick={() => setActiveTab('vendors')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'vendors'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.vendors')}
-              </button>
-            </nav>
+          <div className="space-y-5 pb-2">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                Core Workflow
+              </p>
+              <div className="-mb-px overflow-x-auto">
+                <nav className="flex min-w-max items-center gap-6">
+                  {primaryTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${activeTab === tab.id
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        }`}
+                    >
+                      <i className={tab.icon} aria-hidden="true"></i>
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                Admin &amp; Maintenance
+              </p>
+              <div className="-mb-px overflow-x-auto">
+                <nav className="flex min-w-max items-center gap-6">
+                  {adminTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${activeTab === tab.id
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        }`}
+                    >
+                      <i className={tab.icon} aria-hidden="true"></i>
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -489,32 +485,43 @@ const TreasurerDashboard: React.FC = () => {
 
           {activeTab === 'member-dues' && (
             <div>
-              <div className="flex justify-between items-center mb-6">
+              <div className="mb-6">
                 <div>
                   <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.memberDues.title')}</h2>
                   <p className="text-gray-600 mt-1">{t('treasurerDashboard.memberDues.subtitle')}</p>
                 </div>
-                <button
-                  onClick={() => setShowMemberSearch(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium flex items-center"
-                >
-                  <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  {t('treasurerDashboard.actions.searchMember')}
-                </button>
               </div>
-              <div className="bg-white rounded-lg shadow p-8 text-center">
-                <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('treasurerDashboard.memberDues.searchTitle')}</h3>
-                <p className="text-gray-600 mb-4">
-                  {t('treasurerDashboard.memberDues.searchDesc')}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {t('treasurerDashboard.memberDues.searchNote')}
-                </p>
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+                <MemberSearch
+                  embedded
+                  autoSelectFirst={memberDuesAutoSelectionEnabled}
+                  selectedMemberId={selectedMemberDuesId}
+                  onMemberSelect={handleMemberDuesSelect}
+                />
+                <div className="min-h-[700px]">
+                  {selectedMemberDuesId ? (
+                    <MemberDuesViewer
+                      memberId={selectedMemberDuesId}
+                      embedded
+                      onClose={handleMemberDuesClear}
+                    />
+                  ) : (
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm h-full flex items-center justify-center p-8 text-center">
+                      <div>
+                        <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">{t('treasurerDashboard.memberDues.searchTitle')}</h3>
+                        <p className="text-gray-600 mb-4">
+                          {t('treasurerDashboard.memberDues.searchDesc')}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {t('treasurerDashboard.memberDues.searchNote')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -545,18 +552,11 @@ const TreasurerDashboard: React.FC = () => {
               <VendorList />
             </div>
           )}
-        </div>
 
-        {/* Member Search Modal */}
-        {showMemberSearch && (
-          <MemberSearch
-            onMemberSelect={(memberId) => {
-              // The MemberSearch component handles showing the MemberDuesViewer
-              console.log('Selected member:', memberId);
-            }}
-            onClose={() => setShowMemberSearch(false)}
-          />
-        )}
+          {activeTab === 'backups' && (
+            <LedgerSheetsPanel />
+          )}
+        </div>
 
         {/* Add Payment Modal */}
         {showAddPaymentModal && (

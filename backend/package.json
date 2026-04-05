@@ -23,7 +23,11 @@
     "db:migrate:income": "node src/database/migrations/addIncomeCategorySupport.js",
     "db:migrate:ledger-types": "node src/database/migrations/addNewPaymentTypesToLedgerEnum.js",
     "db:seed:expenses": "node src/database/seedExpenseCategories.js",
-    "db:seed:income": "node src/database/seedIncomeCategories.js"
+    "db:seed:income": "node src/database/seedIncomeCategories.js",
+    "export:ledger:sheets:preflight": "node src/scripts/preflight-ledger-sheets.js",
+    "export:ledger:sheets": "node src/scripts/export-ledger-to-sheets.js",
+    "export:ledger:sheets:year": "node src/scripts/export-ledger-to-sheets.js --year",
+    "export:ledger:sheets:scheduled": "node src/scripts/export-ledger-scheduled.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

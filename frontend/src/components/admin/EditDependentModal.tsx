@@ -8,7 +8,7 @@ interface EditDependentModalProps {
   onUpdated: () => void;
 }
 
-const RELATIONSHIP_VALUES = ['Son','Daughter','Spouse','Parent','Sibling','Other'] as const;
+const RELATIONSHIP_VALUES = ['Son', 'Daughter', 'Spouse', 'Parent', 'Sibling', 'Other'] as const;
 
 type Relationship = typeof RELATIONSHIP_VALUES[number];
 
@@ -43,7 +43,7 @@ const EditDependentModal: React.FC<EditDependentModalProps> = ({ dependent, onCl
     setError(null);
 
     if (!form.firstName || !form.lastName) {
-      setError('First name and last name are required');
+      setError(t('dependent.first.last.required'));
       return;
     }
 
@@ -75,23 +75,36 @@ const EditDependentModal: React.FC<EditDependentModalProps> = ({ dependent, onCl
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || 'Failed to update dependent');
+        throw new Error(data.message || t('failed.to.update.dependent'));
       }
 
       onUpdated();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to update dependent');
+      setError(err.message || t('failed.to.update.dependent'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const relationshipLabel = (relationship: Relationship) => {
+    const labels: Record<Relationship, string> = {
+      Son: t('relationship.son'),
+      Daughter: t('relationship.daughter'),
+      Spouse: t('relationship.spouse'),
+      Parent: t('relationship.parent'),
+      Sibling: t('relationship.sibling'),
+      Other: t('relationship.other'),
+    };
+
+    return labels[relationship];
   };
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
       <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-3xl shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-medium text-gray-900">{t('edit.dependent') || 'Edit Dependent'}</h3>
+          <h3 className="text-lg font-medium text-gray-900">{t('edit.dependent')}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <i className="fas fa-times text-xl"></i>
           </button>
@@ -102,64 +115,64 @@ const EditDependentModal: React.FC<EditDependentModalProps> = ({ dependent, onCl
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('first.name')} *</label>
               <input name="firstName" value={form.firstName} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('middle.name')}</label>
               <input name="middleName" value={form.middleName} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('last.name')} *</label>
               <input name="lastName" value={form.lastName} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('date.of.birth')}</label>
               <input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('gender')}</label>
               <select name="gender" value={form.gender} onChange={handleChange} className="w-full px-3 py-2 border rounded">
                 <option value="">--</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="male">{t('male')}</option>
+                <option value="female">{t('female')}</option>
+                <option value="other">{t('other')}</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('relationship')}</label>
               <select name="relationship" value={form.relationship} onChange={handleChange} className="w-full px-3 py-2 border rounded">
                 <option value="">--</option>
                 {relationshipOptions.map(opt => (
-                  <option key={opt} value={opt}>{opt}</option>
+                  <option key={opt} value={opt}>{relationshipLabel(opt)}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
               <input type="email" name="email" value={form.email} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')}</label>
               <input name="phone" value={form.phone} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Baptism Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptism.name')}</label>
               <input name="baptismName" value={form.baptismName} onChange={handleChange} className="w-full px-3 py-2 border rounded" />
             </div>
           </div>
 
           <div className="flex items-center space-x-2">
             <input id="isBaptized" type="checkbox" name="isBaptized" checked={form.isBaptized} onChange={handleChange} />
-            <label htmlFor="isBaptized" className="text-sm text-gray-700">Is Baptized</label>
+            <label htmlFor="isBaptized" className="text-sm text-gray-700">{t('is.baptized.label')}</label>
           </div>
 
           <div className="flex justify-end space-x-3 pt-4 border-t">
             <button type="button" onClick={onClose} className="px-4 py-2 border rounded">{t('cancel')}</button>
             <button type="submit" disabled={loading} className="px-4 py-2 bg-primary-600 text-white rounded disabled:opacity-50">
-              {loading ? (t('saving') || 'Saving...') : (t('save.changes') || 'Save Changes')}
+              {loading ? t('saving') : t('save.changes')}
             </button>
           </div>
         </form>

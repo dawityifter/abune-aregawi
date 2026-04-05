@@ -1,5 +1,11 @@
 'use strict';
 const { ChurchSetting } = require('../models');
+const {
+  getLedgerSheetsStatus,
+  normalizeSchedule,
+  runLedgerSheetsExport,
+  saveScheduleSettings
+} = require('../jobs/ledgerSheets/settingsService');
 
 // GET /api/settings/tv-rotation-interval
 const getTvRotationInterval = async (req, res) => {
@@ -29,4 +35,65 @@ const setTvRotationInterval = async (req, res) => {
   }
 };
 
-module.exports = { getTvRotationInterval, setTvRotationInterval };
+const getLedgerSheetsSettings = async (req, res) => {
+  try {
+    const data = await getLedgerSheetsStatus();
+    return res.json({ success: true, data });
+  } catch (err) {
+    console.error('getLedgerSheetsSettings error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to load ledger Sheets settings' });
+  }
+};
+
+const updateLedgerSheetsSettings = async (req, res) => {
+  try {
+    const schedule = normalizeSchedule(req.body || {});
+    const saved = await saveScheduleSettings(schedule);
+    const data = await getLedgerSheetsStatus();
+    return res.json({ success: true, data: { ...data, schedule: { ...saved, nextRunAt: data.schedule?.nextRunAt || null } } });
+  } catch (err) {
+    console.error('updateLedgerSheetsSettings error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to update ledger Sheets schedule' });
+  }
+};
+
+const runLedgerSheetsFullExport = async (req, res) => {
+  try {
+    const requestedBy = req.user?.email || req.user?.uid || req.user?.id || req.user?.member_id || 'manual';
+    const data = await runLedgerSheetsExport({
+      mode: 'full',
+      requestedBy,
+      logger: console
+    });
+    return res.json({ success: true, data });
+  } catch (err) {
+    console.error('runLedgerSheetsFullExport error:', err);
+    const status = /already running/i.test(err.message) ? 409 : 500;
+    return res.status(status).json({ success: false, message: err.message || 'Failed to run full ledger export' });
+  }
+};
+
+const runLedgerSheetsSyncNow = async (req, res) => {
+  try {
+    const requestedBy = req.user?.email || req.user?.uid || req.user?.id || req.user?.member_id || 'manual';
+    const data = await runLedgerSheetsExport({
+      mode: 'sync',
+      requestedBy,
+      logger: console
+    });
+    return res.json({ success: true, data });
+  } catch (err) {
+    console.error('runLedgerSheetsSyncNow error:', err);
+    const status = /already running/i.test(err.message) ? 409 : 500;
+    return res.status(status).json({ success: false, message: err.message || 'Failed to run ledger sync' });
+  }
+};
+
+module.exports = {
+  getTvRotationInterval,
+  setTvRotationInterval,
+  getLedgerSheetsSettings,
+  updateLedgerSheetsSettings,
+  runLedgerSheetsFullExport,
+  runLedgerSheetsSyncNow
+};

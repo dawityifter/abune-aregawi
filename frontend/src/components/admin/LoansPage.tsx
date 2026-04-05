@@ -216,61 +216,61 @@ const LoansPage: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-100/80">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Member</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loan Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Original Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Outstanding</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Method</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt #</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Member</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Loan Date</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Original Amount</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Outstanding</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Status</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Payment Method</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Receipt #</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">Loading...</td>
+                  <td colSpan={8} className="px-5 py-8 text-center text-slate-500">Loading...</td>
                 </tr>
               ) : loans.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">No loans found</td>
+                  <td colSpan={8} className="px-5 py-8 text-center text-slate-500">No loans found</td>
                 </tr>
               ) : (
                 loans.map((loan) => (
-                  <tr key={loan.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                  <tr key={loan.id} className="odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/70 transition-colors">
+                    <td className="px-5 py-4 text-sm font-semibold text-slate-900">
                       {loan.member ? `${loan.member.first_name} ${loan.member.last_name}` : '—'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-5 py-4 whitespace-nowrap text-sm font-medium text-slate-700">
                       {new Date(loan.loan_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 font-medium">{currency(loan.amount)}</td>
-                    <td className="px-4 py-3 text-sm font-semibold text-red-700">{currency(loan.outstanding_balance)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(loan.status)}`}>
+                    <td className="px-5 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">{currency(loan.amount)}</td>
+                    <td className="px-5 py-4 whitespace-nowrap text-sm font-semibold text-red-700">{currency(loan.outstanding_balance)}</td>
+                    <td className="px-5 py-4">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge(loan.status)}`}>
                         {loan.status.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{formatMethod(loan.payment_method)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{loan.receipt_number || '—'}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4 text-sm text-slate-600">{formatMethod(loan.payment_method)}</td>
+                    <td className="px-5 py-4 text-sm text-slate-600">{loan.receipt_number || '—'}</td>
+                    <td className="px-5 py-4">
                       <div className="flex gap-2">
                         {loan.status !== 'CLOSED' && (
                           <button
                             onClick={() => setSelectedLoan(loan)}
-                            className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded"
+                            className="rounded-md bg-blue-100 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-200"
                           >
                             Repayment
                           </button>
                         )}
                         <button
                           onClick={() => handleDownloadReceipt(loan.id, `${loan.member?.first_name}_${loan.member?.last_name}`)}
-                          className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded"
+                          className="rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
                         >
                           Receipt
                         </button>
@@ -285,19 +285,19 @@ const LoansPage: React.FC = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+          <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/70 px-4 py-3">
             <button
               onClick={() => setPage(Math.max(0, page - 1))}
               disabled={page === 0}
-              className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white px-3 py-1 text-sm disabled:opacity-50"
             >
               Previous
             </button>
-            <span className="text-sm text-gray-600">Page {page + 1} of {totalPages}</span>
+            <span className="text-sm text-slate-600">Page {page + 1} of {totalPages}</span>
             <button
               onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
               disabled={page >= totalPages - 1}
-              className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50"
+              className="rounded-md border border-slate-300 bg-white px-3 py-1 text-sm disabled:opacity-50"
             >
               Next
             </button>

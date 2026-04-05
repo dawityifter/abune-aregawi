@@ -70,9 +70,10 @@ interface MemberDuesData {
 interface MemberDuesViewerProps {
   memberId: string;
   onClose: () => void;
+  embedded?: boolean;
 }
 
-const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }) => {
+const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, embedded = false }) => {
   const { firebaseUser, currentUser: authUser } = useAuth();
   const userRoles: UserRole[] = (authUser as any)?.roles || [(authUser as any)?.role || 'member'];
   const permissions = getMergedPermissions(userRoles);
@@ -156,8 +157,8 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 border-2 border-blue-100 shadow-2xl">
+      <div className={embedded ? 'h-full' : 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'}>
+        <div className={`bg-white ${embedded ? 'rounded-2xl h-full border border-blue-100 shadow-sm' : 'rounded-lg max-w-4xl w-full mx-4 border-2 shadow-2xl'} p-6`}>
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/3"></div>
             <div className="h-32 bg-gray-100 rounded"></div>
@@ -170,8 +171,8 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
 
   if (error) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 border-t-4 border-red-500 shadow-2xl">
+      <div className={embedded ? 'h-full' : 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'}>
+        <div className={`bg-white ${embedded ? 'rounded-2xl max-w-none mx-0 h-full border border-red-200 shadow-sm' : 'rounded-lg max-w-md w-full mx-4 border-t-4 shadow-2xl'} p-6 border-red-500`}>
           <div className="text-red-600 mb-6 text-center">
             <i className="fas fa-exclamation-circle text-5xl mb-4 opacity-75"></i>
             <h3 className="text-xl font-bold">Unable to load data</h3>
@@ -204,8 +205,8 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col border border-gray-200">
+    <div className={embedded ? 'h-full' : 'fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm'}>
+      <div className={`bg-white rounded-2xl ${embedded ? 'w-full h-full shadow-sm' : 'max-w-6xl w-full max-h-[90vh] shadow-2xl'} overflow-hidden flex flex-col border border-gray-200`}>
 
         {/* Professional Header with Year Selection */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -274,7 +275,8 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
               <button
                 onClick={onClose}
                 className="bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 p-2 rounded-xl shadow-sm transition-colors"
-                aria-label="Close"
+                aria-label={embedded ? 'Clear selection' : 'Close'}
+                title={embedded ? 'Clear selection' : 'Close'}
               >
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -520,7 +522,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose }
               onClick={onClose}
               className="bg-gray-800 hover:bg-gray-900 text-white px-8 py-2.5 rounded-xl font-bold shadow-lg transition-transform active:scale-95"
             >
-              Finish Review
+              {embedded ? 'Clear Selection' : 'Finish Review'}
             </button>
           </div>
         </div>

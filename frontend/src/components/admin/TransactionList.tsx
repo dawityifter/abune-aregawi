@@ -48,6 +48,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   const { firebaseUser } = useAuth();
   const { t } = useLanguage();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [receiptNumberFilter, setReceiptNumberFilter] = useState('');
@@ -246,6 +247,17 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     return donorInfo;
   };
 
+  const closeDetails = () => setSelectedTransaction(null);
+
+  useEffect(() => {
+    if (!selectedTransaction) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeDetails();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTransaction]);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -389,71 +401,51 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
       </div>
 
       {/* Transactions Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-100/80">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.transactionId')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('treasurerDashboard.transactionList.table.date')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.memberId')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('treasurerDashboard.transactionList.table.member')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('treasurerDashboard.transactionList.table.amount')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('treasurerDashboard.transactionList.table.type')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.glCode')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('treasurerDashboard.transactionList.table.method')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('treasurerDashboard.transactionList.table.status')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.collectedBy')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('treasurerDashboard.transactionList.table.receipt')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.notes')}
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Action
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {transactions.map((transaction) => (
-                <tr key={transaction.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    #{transaction.id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <tr key={transaction.id} className="odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/70 transition-colors">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">
                     {formatDate(transaction.payment_date)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {transaction.member_id ? (transaction.member?.id ?? transaction.member_id) : (
-                      <span className="italic text-gray-500">Anonymous</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     {transaction.member_id ? (
                       <>
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-semibold text-slate-900">
                           {transaction.member ? `${transaction.member.first_name} ${transaction.member.last_name}` : `Member ${transaction.member_id}`}
                         </div>
                         {transaction.member?.email && (
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-slate-500">
                             {transaction.member.email}
                           </div>
                         )}
@@ -461,62 +453,56 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                     ) : (
                       <>
                         <div className="flex items-center">
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-sm font-semibold text-slate-900">
                             {parseDonorInfo(transaction.note)?.name || 'Anonymous Donor'}
                           </span>
-                          <span className="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                          <span className="ml-2 inline-flex rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-800">
                             Non-Member
                           </span>
                         </div>
                         {parseDonorInfo(transaction.note)?.email && (
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-slate-500">
                             {parseDonorInfo(transaction.note)?.email}
                           </div>
                         )}
                         {parseDonorInfo(transaction.note)?.type && (
-                          <div className="text-xs text-gray-400">
+                          <div className="text-xs text-slate-400">
                             {parseDonorInfo(transaction.note)?.type === 'organization' ? 'Organization/Group' : 'Individual'}
                           </div>
                         )}
                       </>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-900">
                     {formatCurrency(transaction.amount)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
                       {getPaymentTypeLabel(transaction.payment_type)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {transaction.incomeCategory ? (
-                      <div className="text-sm">
-                        <div className="font-medium text-gray-900">{transaction.incomeCategory.gl_code}</div>
-                        <div className="text-xs text-gray-500">{transaction.incomeCategory.name}</div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400 italic">Auto-assigned</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
                       {getPaymentMethodLabel(transaction.payment_method)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="whitespace-nowrap px-6 py-4">
                     {renderStatusBadge(transaction.status)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {transaction.collector ? `${transaction.collector.first_name} ${transaction.collector.last_name}` : `Collector ${transaction.collected_by}`}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
                     {transaction.receipt_number || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {transaction.note || '-'}
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
+                    <button
+                      onClick={() => setSelectedTransaction(transaction)}
+                      className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        selectedTransaction?.id === transaction.id
+                          ? 'border-blue-600 bg-blue-600 text-white'
+                          : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
+                      }`}
+                    >
+                      Details
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -561,6 +547,121 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
             {t('treasurerDashboard.transactionList.empty.desc')}
           </div>
         </div>
+      )}
+
+      {selectedTransaction && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={closeDetails} aria-hidden="true" />
+          <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-slate-200 bg-slate-900 px-5 py-4">
+              <div>
+                <p className="text-sm font-bold text-white">Payment Details</p>
+                <p className="mt-1 text-xs text-slate-300">Transaction #{selectedTransaction.id}</p>
+              </div>
+              <button
+                onClick={closeDetails}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+                aria-label="Close details"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-4 overflow-y-auto p-5">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Date</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatDate(selectedTransaction.payment_date)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Amount</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900">{formatCurrency(selectedTransaction.amount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Status</p>
+                    <div className="mt-1">{renderStatusBadge(selectedTransaction.status)}</div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Method</p>
+                    <div className="mt-1">
+                      <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                        {getPaymentMethodLabel(selectedTransaction.payment_method)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Member</p>
+                {selectedTransaction.member_id ? (
+                  <>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {selectedTransaction.member
+                        ? `${selectedTransaction.member.first_name} ${selectedTransaction.member.last_name}`
+                        : `Member ${selectedTransaction.member_id}`}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">Member ID: {selectedTransaction.member?.id ?? selectedTransaction.member_id}</p>
+                    {selectedTransaction.member?.email && <p className="mt-1 text-sm text-slate-500">{selectedTransaction.member.email}</p>}
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{parseDonorInfo(selectedTransaction.note)?.name || 'Anonymous Donor'}</p>
+                    <p className="mt-1 text-sm text-slate-500">Anonymous / non-member payment</p>
+                    {parseDonorInfo(selectedTransaction.note)?.email && (
+                      <p className="mt-1 text-sm text-slate-500">{parseDonorInfo(selectedTransaction.note)?.email}</p>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Classification</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
+                    {getPaymentTypeLabel(selectedTransaction.payment_type)}
+                  </span>
+                  {selectedTransaction.incomeCategory ? (
+                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                      GL {selectedTransaction.incomeCategory.gl_code}: {selectedTransaction.incomeCategory.name}
+                    </span>
+                  ) : (
+                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                      GL auto-assigned
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Record Info</p>
+                <dl className="mt-3 space-y-3">
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">Receipt Number</dt>
+                    <dd className="mt-1 text-sm text-slate-900">{selectedTransaction.receipt_number || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">Collected By</dt>
+                    <dd className="mt-1 text-sm text-slate-900">
+                      {selectedTransaction.collector
+                        ? `${selectedTransaction.collector.first_name} ${selectedTransaction.collector.last_name}`
+                        : `Collector ${selectedTransaction.collected_by}`}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">Created</dt>
+                    <dd className="mt-1 text-sm text-slate-900">{formatDate(selectedTransaction.created_at)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">Notes</dt>
+                    <dd className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{selectedTransaction.note || '-'}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

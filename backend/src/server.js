@@ -53,6 +53,7 @@ const announcementRoutes = require('./routes/announcementRoutes');
 const settingRoutes = require('./routes/settingRoutes');
 const statementRoutes = require('./routes/statementRoutes');
 const loanRoutes = require('./routes/loanRoutes');
+const { startLedgerSheetsScheduler } = require('./jobs/ledgerSheets/scheduler');
 const donationController = require('./controllers/donationController');
 
 // Import database
@@ -376,6 +377,7 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      startLedgerSheetsScheduler(console);
       console.log('✅ Server startup completed successfully!');
     });
 
