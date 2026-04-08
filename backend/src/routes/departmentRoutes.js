@@ -34,6 +34,13 @@ router.delete('/:id', roleMiddleware(deleteRoles), departmentController.deleteDe
 // Department Members Management
 // Allow global admins AND department leaders to manage members
 const leaderRoles = ['leader', 'chairperson', 'chairman', 'co-leader', 'vice chairperson', 'vice chairman', 'head'];
+const meetingEmailAllowedGlobals = ['admin', 'church_leadership'];
+const requireMeetingEmailPermission = (req, res, next) => {
+  if (meetingEmailAllowedGlobals.includes(req.user?.role)) {
+    return next();
+  }
+  return requireDepartmentRole(leaderRoles, false)(req, res, next);
+};
 router.get('/:departmentId/members', roleMiddleware(viewRoles), departmentMemberController.getDepartmentMembers);
 router.post('/:departmentId/members', requireDepartmentRole(leaderRoles), departmentMemberController.addMembersToDepartment);
 router.put('/:departmentId/members/:memberId', requireDepartmentRole(leaderRoles), departmentMemberController.updateDepartmentMember);
@@ -45,6 +52,8 @@ router.get('/members/:member_id/departments', departmentController.getMemberDepa
 
 // ========== MEETING ROUTES ==========
 // Department meetings (leaders can manage, all members can view)
+router.get('/:departmentId/meetings/:meetingId/email-preview', requireMeetingEmailPermission, departmentController.getMeetingEmailPreview);
+router.post('/:departmentId/meetings/:meetingId/email-members', requireMeetingEmailPermission, departmentController.emailMeetingMinutes);
 router.get('/:id/meetings', requireDepartmentMembership(), departmentController.getDepartmentMeetings);
 router.get('/meetings/:id', requireDepartmentMembership(), departmentController.getMeetingById);
 router.post('/:id/meetings', requireDepartmentMembership(), departmentController.createMeeting);
