@@ -108,7 +108,7 @@ Generated entirely in-memory — no temp files written to disk.
 ## Email Service
 
 - **Transport:** Gmail OAuth2 using existing `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` env vars
-- **From:** `Debre Tsehay Abune Aregawi Church <info@abunearegawi.church>`
+- **From:** `Debre Tsehay Abune Aregawi Church <abune.aregawi.dev@gmail.com>`
 - **Subject:** `Your Annual Contribution Statement for [YEAR]`
 - **Body:** Plain text using the approved email template
 - **Attachment:** `Annual_Contribution_Statement_[YEAR].pdf`

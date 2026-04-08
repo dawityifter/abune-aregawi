@@ -1,19 +1,36 @@
 'use strict';
 const nodemailer = require('nodemailer');
 
-function createTransporter() {
-  const { GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN } = process.env;
-  if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_REFRESH_TOKEN) {
-    throw new Error('Missing Gmail OAuth env vars (GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN)');
+function getMailerConfig() {
+  const user = process.env.MAILER_GMAIL_USER || process.env.GMAIL_USER || 'abune.aregawi.dev@gmail.com';
+  const clientId = process.env.MAILER_GMAIL_CLIENT_ID || process.env.GMAIL_CLIENT_ID;
+  const clientSecret = process.env.MAILER_GMAIL_CLIENT_SECRET || process.env.GMAIL_CLIENT_SECRET;
+  const refreshToken = process.env.MAILER_GMAIL_REFRESH_TOKEN || process.env.GMAIL_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error(
+      'Missing mail OAuth env vars. Set MAILER_GMAIL_CLIENT_ID/CLIENT_SECRET/REFRESH_TOKEN (preferred) or GMAIL_CLIENT_ID/CLIENT_SECRET/REFRESH_TOKEN.'
+    );
   }
+
+  return {
+    user,
+    clientId,
+    clientSecret,
+    refreshToken
+  };
+}
+
+function createTransporter() {
+  const { user, clientId, clientSecret, refreshToken } = getMailerConfig();
   return nodemailer.createTransport({
     service: 'gmail',
     auth: {
       type: 'OAuth2',
-      user: 'info@abunearegawi.church',
-      clientId: GMAIL_CLIENT_ID,
-      clientSecret: GMAIL_CLIENT_SECRET,
-      refreshToken: GMAIL_REFRESH_TOKEN,
+      user,
+      clientId,
+      clientSecret,
+      refreshToken,
     },
   });
 }
@@ -28,8 +45,9 @@ function createTransporter() {
  */
 async function sendEmail({ to, subject, text, attachments = [] }) {
   const transporter = createTransporter();
+  const { user } = getMailerConfig();
   await transporter.sendMail({
-    from: '"Debre Tsehay Abune Aregawi Church" <info@abunearegawi.church>',
+    from: `"Debre Tsehay Abune Aregawi Church" <${user}>`,
     to,
     subject,
     text,

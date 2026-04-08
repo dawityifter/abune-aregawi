@@ -1,8 +1,375 @@
 'use strict';
 
+const path = require('path');
+const PDFDocument = require('pdfkit');
 const { Department, DepartmentMember, Member, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const logger = require('../utils/logger');
+const { sendEmail } = require('../services/emailService');
+const { logActivity } = require('../utils/activityLogger');
+
+const LOGO_PATH = path.join(__dirname, '../assets/church-logo.png');
+const ETHIOPIC_FONT_REGULAR_PATH = path.join(__dirname, '../assets/fonts/NotoSansEthiopic-Regular.ttf');
+const ETHIOPIC_FONT_BOLD_PATH = path.join(__dirname, '../assets/fonts/NotoSansEthiopic-Bold.ttf');
+const LEADER_ROLES = ['leader', 'chairperson', 'chairman', 'co-leader', 'vice chairperson', 'vice chairman', 'head'];
+const VALID_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+const ETHIOPIC_CHAR_REGEX = /[\u1200-\u137F]/;
+
+const formatMeetingDate = (value) => new Date(value).toLocaleDateString('en-US', {
+  weekday: 'long',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric'
+});
+
+function buildMeetingEmailSubject(meeting) {
+  return `Meeting Minute - ${meeting.title}`;
+}
+
+function buildMeetingEmailBody({ meeting, department }) {
+  return `Attached are the meeting minutes for "${meeting.title}"${department?.name ? ` from the ${department.name} department` : ''}. Please review the meeting notes and action items.`;
+}
+
+function sanitizeFilenamePart(value) {
+  return String(value || '')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '_');
+}
+
+function containsEthiopic(value) {
+  return ETHIOPIC_CHAR_REGEX.test(String(value || ''));
+}
+
+function normalizePdfText(value) {
+  return String(value || '')
+    .normalize('NFC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[•●◦▪■]/g, '-')
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[–—]/g, '-');
+}
+
+async function fetchMeetingEmailContext(departmentId, meetingId) {
+  const { DepartmentMeeting, DepartmentTask } = require('../models');
+
+  const meeting = await DepartmentMeeting.findOne({
+    where: {
+      id: meetingId,
+      department_id: departmentId
+    },
+    include: [
+      {
+        model: Department,
+        as: 'department',
+        attributes: ['id', 'name', 'leader_id']
+      },
+      {
+        model: Member,
+        as: 'creator',
+        attributes: ['id', 'first_name', 'last_name']
+      },
+      {
+        model: DepartmentTask,
+        as: 'tasks',
+        include: [
+          {
+            model: Member,
+            as: 'assignee',
+            attributes: ['id', 'first_name', 'last_name', 'email']
+          }
+        ]
+      }
+    ],
+    order: [[{ model: DepartmentTask, as: 'tasks' }, 'created_at', 'DESC']]
+  });
+
+  if (!meeting) {
+    const error = new Error('Meeting not found');
+    error.status = 404;
+    throw error;
+  }
+
+  const memberships = await DepartmentMember.findAll({
+    where: {
+      department_id: departmentId,
+      status: 'active'
+    },
+    include: [{
+      model: Member,
+      as: 'member',
+      attributes: ['id', 'first_name', 'last_name', 'email']
+    }],
+    order: [
+      ['role_in_department', 'ASC'],
+      ['joined_at', 'ASC']
+    ]
+  });
+
+  return {
+    meeting,
+    department: meeting.department,
+    memberships
+  };
+}
+
+function splitEmailRecipients(memberships) {
+  const recipients = [];
+  const skipped = [];
+
+  memberships.forEach((membership) => {
+    const member = membership.member;
+    if (!member) return;
+
+    const email = String(member.email || '').trim();
+    const fullName = `${member.first_name} ${member.last_name}`.trim();
+
+    if (!email) {
+      skipped.push({
+        id: member.id,
+        name: fullName,
+        reason: 'missing_email'
+      });
+      return;
+    }
+
+    if (!VALID_EMAIL_REGEX.test(email)) {
+      skipped.push({
+        id: member.id,
+        name: fullName,
+        email,
+        reason: 'invalid_email'
+      });
+      return;
+    }
+
+    recipients.push({
+      id: member.id,
+      name: fullName,
+      email
+    });
+  });
+
+  return { recipients, skipped };
+}
+
+function buildMeetingMinutesPdfBuffer({ meeting, department, attendeeMembers }) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
+
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    const pageWidth = doc.page.width;
+    const pageHeight = doc.page.height;
+    const margin = 50;
+    const contentWidth = pageWidth - margin * 2;
+    const bottomLimit = pageHeight - margin - 40;
+    const fonts = {
+      latinRegular: 'Helvetica',
+      latinBold: 'Helvetica-Bold',
+      ethiopicRegular: 'EthiopicRegular',
+      ethiopicBold: 'EthiopicBold'
+    };
+
+    doc.registerFont(fonts.ethiopicRegular, ETHIOPIC_FONT_REGULAR_PATH);
+    doc.registerFont(fonts.ethiopicBold, ETHIOPIC_FONT_BOLD_PATH);
+
+    const pickFont = (text, weight = 'regular') => {
+      const normalizedText = normalizePdfText(text);
+      if (containsEthiopic(normalizedText)) {
+        return weight === 'bold' ? fonts.ethiopicBold : fonts.ethiopicRegular;
+      }
+      return weight === 'bold' ? fonts.latinBold : fonts.latinRegular;
+    };
+
+    const setFontForText = (text, weight = 'regular') => doc.font(pickFont(text, weight));
+    const splitMixedRuns = (text) => normalizePdfText(text).match(/[\u1200-\u137F]+|[^\u1200-\u137F]+/g) || [''];
+    const writeMixedText = (text, options = {}, weight = 'regular') => {
+      const normalizedText = normalizePdfText(text);
+      const lines = normalizedText.split('\n');
+
+      lines.forEach((line, lineIndex) => {
+        const runs = splitMixedRuns(line);
+        if (runs.length === 0) {
+          doc.text('', options);
+          return;
+        }
+
+        runs.forEach((run, runIndex) => {
+          const isLastRun = runIndex === runs.length - 1;
+          const isOnlyRun = runs.length === 1;
+          const runOptions = runIndex === 0
+            ? { ...options, continued: !isLastRun }
+            : { continued: !isLastRun };
+
+          doc.font(pickFont(run, weight)).text(run, runOptions);
+
+          if (isOnlyRun && !isLastRun) {
+            doc.text('', { continued: false });
+          }
+        });
+
+        if (lineIndex < lines.length - 1) {
+          doc.text('', { continued: false });
+        }
+      });
+    };
+
+    const ensureSpace = (needed = 80) => {
+      if (doc.y + needed > bottomLimit) {
+        doc.addPage();
+      }
+    };
+
+    const sectionTitle = (title) => {
+      ensureSpace(40);
+      doc.moveDown(0.5);
+      doc.fontSize(13).fillColor('#111827');
+      writeMixedText(title, { width: contentWidth }, 'bold');
+      doc.moveDown(0.2);
+      doc.moveTo(margin, doc.y).lineTo(pageWidth - margin, doc.y).lineWidth(1).strokeColor('#D1D5DB').stroke();
+      doc.moveDown(0.5);
+    };
+
+    const labelValue = (label, value) => {
+      const normalizedValue = normalizePdfText(value || 'Not provided');
+      ensureSpace(24);
+      doc.font(fonts.latinBold).fontSize(10).fillColor('#111827').text(`${label}: `, { continued: true });
+      doc.fontSize(10).fillColor('#111827');
+      writeMixedText(normalizedValue);
+    };
+
+    try { doc.image(LOGO_PATH, margin, margin, { width: 54 }); } catch (_) { }
+
+    const headerX = margin + 68;
+    let y = margin;
+    doc.font(fonts.latinBold).fontSize(13).fillColor('#111827')
+      .text('DEBRE TSEHAY ABUNE AREGAWI', headerX, y, { width: contentWidth - 68 });
+    y += 17;
+    doc.text('ORTHODOX TEWAHEDO CHURCH', headerX, y, { width: contentWidth - 68 });
+    y += 15;
+    doc.font(fonts.latinRegular).fontSize(9).fillColor('#4B5563')
+      .text('1621 S Jupiter Rd, Garland, TX 75042', headerX, y, { width: contentWidth - 68 });
+    y += 13;
+    doc.text('Phone: (469) 436-3356  |  Email: abune.aregawi.dev@gmail.com', headerX, y, { width: contentWidth - 68 });
+    y += 18;
+
+    doc.moveTo(margin, y).lineTo(pageWidth - margin, y).lineWidth(1.5).strokeColor('#111827').stroke();
+    doc.y = y + 18;
+
+    const meetingTitle = normalizePdfText(meeting.title);
+    doc.fontSize(18).fillColor('#111827');
+    writeMixedText(meetingTitle, { width: contentWidth, align: 'center' }, 'bold');
+    if (meeting.title_ti) {
+      const meetingTitleTi = normalizePdfText(meeting.title_ti);
+      doc.moveDown(0.2);
+      doc.fontSize(12).fillColor('#4B5563');
+      writeMixedText(meetingTitleTi, { width: contentWidth, align: 'center' });
+    }
+    doc.moveDown(0.6);
+    doc.font(fonts.latinRegular).fontSize(10).fillColor('#4B5563').text('Meeting Record', { width: contentWidth, align: 'center' });
+    doc.moveDown(1);
+
+    sectionTitle('Meeting Overview');
+    labelValue('Department', department?.name || 'Not provided');
+    labelValue('Date', formatMeetingDate(meeting.meeting_date));
+    labelValue('Location', meeting.location || 'Not provided');
+    labelValue('Purpose', meeting.purpose || meeting.purpose_ti || 'Not provided');
+
+    if (meeting.purpose_ti && meeting.purpose) {
+      const purposeTi = normalizePdfText(meeting.purpose_ti);
+      doc.moveDown(0.25);
+      doc.font(fonts.latinBold).fontSize(10).fillColor('#111827').text('Purpose (Tigrinya)');
+      doc.fontSize(10).fillColor('#374151');
+      writeMixedText(purposeTi, { width: contentWidth });
+    }
+
+    if (meeting.agenda || meeting.agenda_ti) {
+      sectionTitle('Agenda');
+      if (meeting.agenda) {
+        const agenda = normalizePdfText(meeting.agenda);
+        doc.font(fonts.latinBold).fontSize(10).fillColor('#111827').text('English');
+        doc.fontSize(10).fillColor('#374151');
+        writeMixedText(agenda, { width: contentWidth });
+        doc.moveDown(0.5);
+      }
+      if (meeting.agenda_ti) {
+        const agendaTi = normalizePdfText(meeting.agenda_ti);
+        doc.font(fonts.latinBold).fontSize(10).fillColor('#111827').text('Tigrinya');
+        doc.fontSize(10).fillColor('#374151');
+        writeMixedText(agendaTi, { width: contentWidth });
+      }
+    }
+
+    if (meeting.minutes || meeting.minutes_ti) {
+      sectionTitle('Meeting Notes');
+      if (meeting.minutes) {
+        const minutes = normalizePdfText(meeting.minutes);
+        doc.font(fonts.latinBold).fontSize(10).fillColor('#111827').text('English');
+        doc.fontSize(10).fillColor('#374151');
+        writeMixedText(minutes, { width: contentWidth });
+        doc.moveDown(0.5);
+      }
+      if (meeting.minutes_ti) {
+        const minutesTi = normalizePdfText(meeting.minutes_ti);
+        doc.font(fonts.latinBold).fontSize(10).fillColor('#111827').text('Tigrinya');
+        doc.fontSize(10).fillColor('#374151');
+        writeMixedText(minutesTi, { width: contentWidth });
+      }
+    }
+
+    sectionTitle('Action Items');
+    if (meeting.tasks && meeting.tasks.length > 0) {
+      meeting.tasks.forEach((task, index) => {
+        ensureSpace(56);
+        const taskTitle = normalizePdfText(task.title);
+        doc.fontSize(10).fillColor('#111827');
+        writeMixedText(`${index + 1}. ${taskTitle}`, { width: contentWidth }, 'bold');
+        const details = [
+          `Status: ${String(task.status || '').replace(/_/g, ' ') || 'pending'}`,
+          `Priority: ${task.priority || 'medium'}`,
+          task.assignee ? `Assigned to: ${task.assignee.first_name} ${task.assignee.last_name}` : null,
+          task.end_date ? `Due: ${new Date(task.end_date).toLocaleDateString('en-US')}` : null
+        ].filter(Boolean).map((detail) => normalizePdfText(detail));
+        doc.font(fonts.latinRegular).fontSize(9).fillColor('#4B5563').text(details.join(' | '), { width: contentWidth });
+        if (task.description) {
+          const taskDescription = normalizePdfText(task.description);
+          doc.moveDown(0.15);
+          doc.fontSize(10).fillColor('#374151');
+          writeMixedText(taskDescription, { width: contentWidth });
+        }
+        doc.moveDown(0.5);
+      });
+    } else {
+      doc.font(fonts.latinRegular).fontSize(10).fillColor('#6B7280').text('No action items were recorded for this meeting.', { width: contentWidth });
+    }
+
+    sectionTitle('Attendees');
+    if (attendeeMembers.length > 0) {
+      attendeeMembers.forEach((member, index) => {
+        ensureSpace(18);
+        const attendeeLabel = normalizePdfText(`${index + 1}. ${member.first_name} ${member.last_name}`);
+        doc.fontSize(10).fillColor('#374151');
+        writeMixedText(attendeeLabel, { width: contentWidth });
+      });
+    } else {
+      doc.font(fonts.latinRegular).fontSize(10).fillColor('#6B7280').text('No attendees were recorded for this meeting.', { width: contentWidth });
+    }
+
+    doc.moveDown(1.2);
+    doc.font(fonts.latinRegular).fontSize(9).fillColor('#6B7280')
+      .text(`Generated on ${new Date().toLocaleDateString('en-US')} | https://abunearegawi.church`, {
+        width: contentWidth,
+        align: 'center'
+      });
+
+    doc.end();
+  });
+}
 
 // Get board members (Department ID 2)
 exports.getBoardMembers = async (req, res) => {
@@ -701,6 +1068,148 @@ exports.getMeetingById = async (req, res) => {
       success: false,
       message: 'Failed to fetch meeting',
       error: error.message
+    });
+  }
+};
+
+exports.getMeetingEmailPreview = async (req, res) => {
+  try {
+    const { departmentId, meetingId } = req.params;
+    const { meeting, department, memberships } = await fetchMeetingEmailContext(departmentId, meetingId);
+    const { recipients, skipped } = splitEmailRecipients(memberships);
+
+    res.json({
+      success: true,
+      data: {
+        subject: buildMeetingEmailSubject(meeting),
+        body: buildMeetingEmailBody({ meeting, department }),
+        department: {
+          id: department?.id,
+          name: department?.name || ''
+        },
+        meeting: {
+          id: meeting.id,
+          title: meeting.title,
+          meeting_date: meeting.meeting_date
+        },
+        recipients,
+        skipped,
+        recipientCount: recipients.length,
+        skippedCount: skipped.length
+      }
+    });
+  } catch (error) {
+    console.error('Error building meeting email preview:', error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || 'Failed to build meeting email preview'
+    });
+  }
+};
+
+exports.emailMeetingMinutes = async (req, res) => {
+  try {
+    const { departmentId, meetingId } = req.params;
+    const { subject, body } = req.body || {};
+    const { meeting, department, memberships } = await fetchMeetingEmailContext(departmentId, meetingId);
+    const { recipients, skipped } = splitEmailRecipients(memberships);
+
+    if (recipients.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active department members have a valid email address.',
+        data: {
+          recipients: [],
+          skipped,
+          recipientCount: 0,
+          skippedCount: skipped.length
+        }
+      });
+    }
+
+    const attendeeIdSet = new Set(Array.isArray(meeting.attendees) ? meeting.attendees.map((value) => Number(value)) : []);
+    const attendeeMembers = memberships
+      .map((membership) => membership.member)
+      .filter((member) => member && attendeeIdSet.has(Number(member.id)));
+
+    const pdfBuffer = await buildMeetingMinutesPdfBuffer({ meeting, department, attendeeMembers });
+    const emailSubject = String(subject || buildMeetingEmailSubject(meeting)).trim();
+    const emailBody = String(body || buildMeetingEmailBody({ meeting, department })).trim();
+    const filenameBase = sanitizeFilenamePart(meeting.title) || `meeting_${meeting.id}`;
+    const attachment = {
+      filename: `Meeting_Minute_${filenameBase}.pdf`,
+      content: pdfBuffer,
+      contentType: 'application/pdf'
+    };
+
+    const sent = [];
+    const failed = [];
+
+    for (const recipient of recipients) {
+      try {
+        await sendEmail({
+          to: recipient.email,
+          subject: emailSubject,
+          text: emailBody,
+          attachments: [attachment]
+        });
+        sent.push(recipient);
+      } catch (sendError) {
+        failed.push({
+          ...recipient,
+          error: sendError.message || 'Failed to send email'
+        });
+      }
+    }
+
+    logActivity({
+      userId: req.user?.id || req.user?.member_id,
+      action: 'EMAIL_MEETING_MINUTES',
+      entityType: 'DepartmentMeeting',
+      entityId: String(meeting.id),
+      details: {
+        departmentId: department?.id || departmentId,
+        recipientCount: sent.length,
+        failedCount: failed.length,
+        skippedCount: skipped.length
+      },
+      req
+    });
+
+    if (sent.length === 0) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send meeting minutes email.',
+        data: {
+          sent,
+          failed,
+          skipped,
+          recipientCount: recipients.length,
+          skippedCount: skipped.length
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: failed.length > 0
+        ? `Meeting minutes emailed to ${sent.length} member(s). ${failed.length} delivery attempt(s) failed.`
+        : `Meeting minutes emailed to ${sent.length} member(s).`,
+      data: {
+        sent,
+        failed,
+        skipped,
+        recipientCount: recipients.length,
+        skippedCount: skipped.length,
+        sentCount: sent.length,
+        failedCount: failed.length
+      }
+    });
+  } catch (error) {
+    console.error('Error emailing meeting minutes:', error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || 'Failed to email meeting minutes'
     });
   }
 };
