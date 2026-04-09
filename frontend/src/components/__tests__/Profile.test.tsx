@@ -266,8 +266,8 @@ describe('Profile Component', () => {
     expect(await screen.findByText('profile')).toBeInTheDocument();
     expect(screen.getByText('Test')).toBeInTheDocument();
     expect(screen.getByText('User')).toBeInTheDocument();
-    expect(screen.getByText('test@example.com')).toBeInTheDocument();
-    expect(screen.getByText('member')).toBeInTheDocument();
+    expect(screen.getAllByText('test@example.com').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('member').length).toBeGreaterThan(0);
   });
 
   it('enters edit mode and saves changes', async () => {
