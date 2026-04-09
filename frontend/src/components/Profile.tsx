@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { formatDateForDisplay } from '../utils/dateUtils';
-import { Dependent } from '../utils/relationshipTypes';
 import { UserRole } from '../utils/roles';
 import { getDisplayEmail } from '../utils/email';
 
@@ -33,9 +32,7 @@ interface ProfileData {
   state?: string;
   postalCode?: string;
   dependents?: BackendDependentData[];
-  // For dependents, show the head of household name (non-editable)
   headOfHouseholdName?: string;
-  // Backend may return role 'dependent' which isn't in UserRole union; use a flag
   isDependent?: boolean;
 }
 
@@ -61,7 +58,127 @@ interface BackendDependentData {
   updatedAt: string;
 }
 
-// Phone number formatter - removed unused function
+const emptyProfileData: ProfileData = {
+  displayName: '',
+  firstName: '',
+  middleName: '',
+  lastName: '',
+  email: '',
+  role: 'member',
+  createdAt: '',
+  isActive: true,
+  phoneNumber: '',
+  dateOfBirth: '',
+  gender: '',
+  maritalStatus: '',
+  emergencyContact: '',
+  emergencyPhone: '',
+  ministries: [],
+  languagePreference: 'English',
+  dateJoinedParish: '',
+  baptismName: '',
+  interestedInServing: '',
+  yearlyPledge: undefined,
+  streetLine1: '',
+  apartmentNo: '',
+  city: '',
+  state: '',
+  postalCode: '',
+  dependents: []
+};
+
+const getFullName = (person?: {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  displayName?: string;
+}) => {
+  const name = [person?.firstName, person?.middleName, person?.lastName].filter(Boolean).join(' ').trim();
+  return name || person?.displayName || 'Profile';
+};
+
+const getInitials = (name: string) =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'P';
+
+const formatCurrency = (value?: number) => {
+  if (value === undefined || value === null || Number.isNaN(Number(value))) return 'Not provided';
+  return `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const getLocationLine = (profile: ProfileData) => {
+  const parts = [profile.city, profile.state, profile.postalCode].filter(Boolean);
+  return parts.length > 0 ? parts.join(', ') : '';
+};
+
+const getAgeFromDate = (dateString?: string) => {
+  if (!dateString) return '';
+
+  const birth = new Date(dateString);
+  if (Number.isNaN(birth.getTime())) return '';
+
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age -= 1;
+  }
+
+  return age >= 0 ? `${age} years old` : '';
+};
+
+const getDependentCardTone = (gender?: string) => {
+  const normalizedGender = gender?.toLowerCase();
+
+  if (normalizedGender === 'female') {
+    return {
+      cardClass: 'border-rose-100 bg-[linear-gradient(135deg,rgba(255,250,250,0.98),rgba(255,241,242,0.95))]',
+      badgeClass: 'bg-rose-50 text-rose-700',
+      avatarClass: 'bg-rose-50 text-rose-700',
+      noteClass: 'border-rose-100 bg-white/85',
+    };
+  }
+
+  if (normalizedGender === 'male') {
+    return {
+      cardClass: 'border-sky-100 bg-[linear-gradient(135deg,rgba(249,252,255,0.98),rgba(239,246,255,0.95))]',
+      badgeClass: 'bg-sky-50 text-sky-700',
+      avatarClass: 'bg-sky-50 text-sky-700',
+      noteClass: 'border-sky-100 bg-white/85',
+    };
+  }
+
+  return {
+    cardClass: 'border-accent-100 bg-[#fffdfa]',
+    badgeClass: 'bg-accent-50 text-accent-700',
+    avatarClass: 'bg-primary-50 text-primary-700',
+    noteClass: 'border-accent-100 bg-white',
+  };
+};
+
+const FieldValue: React.FC<{ value?: React.ReactNode; fallback?: string }> = ({ value, fallback = 'Not provided' }) => {
+  const hasValue =
+    value !== undefined &&
+    value !== null &&
+    !(typeof value === 'string' && value.trim() === '');
+
+  return (
+    <p className={`profile-detail-value ${hasValue ? '' : 'profile-muted-value'}`}>
+      {hasValue ? value : fallback}
+    </p>
+  );
+};
+
+const hasDisplayValue = (value?: React.ReactNode) => {
+  if (value === undefined || value === null) return false;
+  if (typeof value === 'string') return value.trim() !== '';
+  return true;
+};
 
 const Profile: React.FC = () => {
   const { currentUser, getUserProfile, updateUserProfileData, updateUserProfile } = useAuth();
@@ -72,37 +189,8 @@ const Profile: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [formData, setFormData] = useState<ProfileData>(emptyProfileData);
 
-  // Form state
-  const [formData, setFormData] = useState<ProfileData>({
-    displayName: '',
-    firstName: '',
-    middleName: '',
-    lastName: '',
-    email: '',
-    role: 'member',
-    createdAt: '',
-    isActive: true,
-    phoneNumber: '',
-    dateOfBirth: '',
-    gender: '',
-    maritalStatus: '',
-    emergencyContact: '',
-    emergencyPhone: '',
-    ministries: [],
-    languagePreference: 'English',
-    dateJoinedParish: '',
-    baptismName: '',
-    interestedInServing: '',
-    yearlyPledge: undefined,
-    streetLine1: '',
-    apartmentNo: '',
-    city: '',
-    state: '',
-    postalCode: ''
-  });
-
-  // Shared tiled background style (same as bylaws page)
   const bgStyle: React.CSSProperties = {
     backgroundImage: `url(${process.env.PUBLIC_URL}/bylaws/TigrayOrthodox-background.png)`,
     backgroundRepeat: 'repeat',
@@ -118,40 +206,11 @@ const Profile: React.FC = () => {
         try {
           console.log('🔍 Fetching profile for UID:', currentUser.uid);
 
-          // Fetch Firebase profile
           const userProfile = await getUserProfile(currentUser.uid, currentUser.email, currentUser.phoneNumber);
           setProfile(userProfile);
-          setFormData(userProfile as ProfileData || {
-            displayName: '',
-            firstName: '',
-            middleName: '',
-            lastName: '',
-            email: '',
-            role: 'member',
-            createdAt: '',
-            isActive: true,
-            phoneNumber: '',
-            dateOfBirth: '',
-            gender: '',
-            maritalStatus: '',
-            emergencyContact: '',
-            emergencyPhone: '',
-            ministries: [],
-            languagePreference: 'English',
-            dateJoinedParish: '',
-            baptismName: '',
-            interestedInServing: '',
-            yearlyPledge: undefined,
-            streetLine1: '',
-            apartmentNo: '',
-            city: '',
-            state: '',
-            postalCode: ''
-          });
+          setFormData((userProfile as ProfileData) || emptyProfileData);
 
-          // Fetch backend member data
           try {
-            // Build query parameters based on available user data
             const params = new URLSearchParams();
             console.log('🔍 currentUser object:', currentUser);
             console.log('🔍 currentUser.email:', currentUser.email);
@@ -179,7 +238,6 @@ const Profile: React.FC = () => {
             if (response.ok) {
               const result = await response.json();
 
-              // Merge backend data with Firebase data
               const linked = result?.data?.member?.linkedMember || null;
               const hohName = linked
                 ? `${(linked.firstName || '').trim()} ${(linked.lastName || '').trim()}`.trim()
@@ -205,7 +263,6 @@ const Profile: React.FC = () => {
                 baptismName: result.data.member.baptismName,
                 interestedInServing: result.data.member.interestedInServing,
                 yearlyPledge: result.data.member.yearlyPledge,
-                // For dependents, show address from head of household when available
                 streetLine1: isDep ? (linked?.streetLine1 ?? result.data.member.streetLine1) : result.data.member.streetLine1,
                 apartmentNo: isDep ? (linked?.apartmentNo ?? result.data.member.apartmentNo) : result.data.member.apartmentNo,
                 city: isDep ? (linked?.city ?? result.data.member.city) : result.data.member.city,
@@ -220,43 +277,16 @@ const Profile: React.FC = () => {
               setFormData(mergedData);
             } else {
               console.warn('Backend profile not found, using Firebase data only');
-              // Show a warning that registration is needed
               setError('You are logged in with Firebase but need to complete your member registration. Some features may not be available.');
               setProfile(userProfile);
-              setFormData(userProfile as ProfileData || {
-                displayName: '',
-                firstName: '',
-                middleName: '',
-                lastName: '',
-                email: '',
-                role: 'member',
-                createdAt: '',
-                isActive: true,
-                phoneNumber: '',
-                dateOfBirth: '',
-                gender: '',
-                maritalStatus: '',
-                emergencyContact: '',
-                emergencyPhone: '',
-                ministries: [],
-                languagePreference: 'English',
-                dateJoinedParish: '',
-                baptismName: '',
-                interestedInServing: '',
-                yearlyPledge: undefined,
-                streetLine1: '',
-                apartmentNo: '',
-                city: '',
-                state: '',
-                postalCode: ''
-              });
+              setFormData((userProfile as ProfileData) || emptyProfileData);
             }
           } catch (backendError) {
             console.error('Error fetching backend profile:', backendError);
             setError('Failed to fetch complete profile data. Please try again.');
           }
-        } catch (error) {
-          console.error('Error fetching profile:', error);
+        } catch (fetchError) {
+          console.error('Error fetching profile:', fetchError);
           setError('Failed to fetch profile data. Please try again.');
         } finally {
           setLoading(false);
@@ -274,6 +304,7 @@ const Profile: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     let newValue = value;
+
     if (name === 'phoneNumber' || name === 'emergencyPhone') {
       let digits = value.replace(/[^\d]/g, '');
       if (digits.length > 10) digits = digits.slice(0, 10);
@@ -285,7 +316,8 @@ const Profile: React.FC = () => {
         newValue = digits;
       }
     }
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
       [name]: newValue
     }));
@@ -302,23 +334,19 @@ const Profile: React.FC = () => {
     setSuccess(null);
 
     try {
-      // Create display name from separate name fields
       const displayName = `${formData.firstName || ''} ${formData.middleName || ''} ${formData.lastName || ''}`.replace(/\s+/g, ' ').trim();
 
-      // Update display name in Firebase Auth if it changed
       if (displayName && displayName !== currentUser.displayName) {
         await updateUserProfile({ displayName });
       }
 
-      // Update profile data in Firestore (only basic info)
       await updateUserProfileData(currentUser.uid, {
-        displayName: displayName,
+        displayName,
         email: formData.email,
         role: formData.role,
         updatedAt: new Date().toISOString()
       });
 
-      // Update detailed profile data in backend API
       const backendUpdateData = {
         firstName: formData.firstName,
         middleName: formData.middleName,
@@ -338,7 +366,6 @@ const Profile: React.FC = () => {
           ? formData.interestedInServing.toLowerCase()
           : undefined,
         yearlyPledge: formData.yearlyPledge,
-        // Only allow address updates for non-dependents; dependents inherit from head of household
         ...(profile?.isDependent
           ? {}
           : {
@@ -351,8 +378,6 @@ const Profile: React.FC = () => {
         dependents: formData.dependents || null
       };
 
-      // Send update to backend API
-      // Build query parameters based on available user data
       const params = new URLSearchParams();
       if (currentUser.email) {
         params.append('email', currentUser.email);
@@ -377,48 +402,20 @@ const Profile: React.FC = () => {
         throw new Error(errorData.message || 'Failed to update profile in backend');
       }
 
-      setProfile(prev => prev ? { ...prev, ...formData } as ProfileData : null);
+      setProfile((prev) => (prev ? { ...prev, ...formData } as ProfileData : null));
       setEditing(false);
       setSuccess('Profile updated successfully!');
-
-      // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
-    } catch (error: any) {
-      console.error('Error updating profile:', error);
-      setError('Failed to update profile: ' + error.message);
+    } catch (saveError: any) {
+      console.error('Error updating profile:', saveError);
+      setError('Failed to update profile: ' + saveError.message);
     } finally {
       setSaving(false);
     }
   };
 
   const handleCancel = () => {
-    setFormData(profile || {
-      displayName: '',
-      firstName: '',
-      middleName: '',
-      lastName: '',
-      email: '',
-      role: 'member',
-      createdAt: '',
-      isActive: true,
-      phoneNumber: '',
-      dateOfBirth: '',
-      gender: '',
-      maritalStatus: '',
-      emergencyContact: '',
-      emergencyPhone: '',
-      ministries: [],
-      languagePreference: 'English',
-      dateJoinedParish: '',
-      baptismName: '',
-      interestedInServing: '',
-      yearlyPledge: undefined,
-      streetLine1: '',
-      apartmentNo: '',
-      city: '',
-      state: '',
-      postalCode: ''
-    });
+    setFormData(profile || emptyProfileData);
     setEditing(false);
     setError(null);
   };
@@ -434,21 +431,21 @@ const Profile: React.FC = () => {
   if (!profile) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
-        <div className="text-center">
+        <div className="profile-card mx-4 max-w-lg p-10 text-center">
           <div className="text-red-600 text-lg mb-4">Profile not found</div>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-6">
             You are logged in with Firebase but haven't completed your member registration yet.
           </p>
-          <div className="space-x-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
             <button
               onClick={() => window.location.reload()}
-              className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
+              className="rounded-2xl bg-primary-600 px-4 py-3 text-white hover:bg-primary-700"
             >
               Retry
             </button>
             <button
-              onClick={() => window.location.href = '/register'}
-              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+              onClick={() => { window.location.href = '/register'; }}
+              className="rounded-2xl bg-green-600 px-4 py-3 text-white hover:bg-green-700"
             >
               Complete Registration
             </button>
@@ -458,619 +455,489 @@ const Profile: React.FC = () => {
     );
   }
 
+  const displayName = getFullName(profile);
+  const displayEmail = getDisplayEmail(profile.email);
+  const memberSince = profile.dateJoinedParish
+    ? formatDateForDisplay(profile.dateJoinedParish)
+    : profile.createdAt
+      ? formatDateForDisplay(profile.createdAt)
+      : 'Not available';
+  const birthDate = profile.dateOfBirth ? formatDateForDisplay(profile.dateOfBirth) : '';
+  const ageText = getAgeFromDate(profile.dateOfBirth);
+  const addressLine = [profile.streetLine1, profile.apartmentNo].filter(Boolean).join(', ');
+  const locationLine = getLocationLine(profile);
+  const dependents = profile.dependents || [];
+  const householdSummary = profile.isDependent
+    ? 'Your household details are managed through the head of household.'
+    : dependents.length > 0
+      ? `${dependents.length} ${dependents.length === 1 ? 'dependent' : 'dependents'} on file`
+      : 'No dependents on file yet.';
+
+  const renderTextField = (
+    label: string,
+    value: React.ReactNode,
+    fallback?: string,
+    hideWhenEmpty = false
+  ) => (
+    hideWhenEmpty && !hasDisplayValue(value) ? null : (
+    <div className="profile-detail-row">
+      <span className="profile-detail-label">{label}</span>
+      <FieldValue value={value} fallback={fallback} />
+    </div>
+    )
+  );
+
+  const renderInputField = (
+    label: string,
+    name: keyof ProfileData,
+    type: string = 'text',
+    required = false,
+    placeholder?: string,
+    maxLength?: number,
+    disabled = false
+  ) => (
+    <label className="block">
+      <span className="profile-label">{label}</span>
+      <input
+        type={type}
+        name={name}
+        value={(formData[name] as string | number | undefined) || ''}
+        onChange={handleInputChange}
+        required={required}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        disabled={disabled}
+        className={`profile-input ${disabled ? 'cursor-not-allowed bg-accent-50 text-accent-400' : ''}`}
+      />
+    </label>
+  );
+
+  const renderSelectField = (
+    label: string,
+    name: keyof ProfileData,
+    options: Array<{ label: string; value: string }>,
+    placeholder?: string
+  ) => (
+    <label className="block">
+      <span className="profile-label">{label}</span>
+      <select
+        name={name}
+        value={(formData[name] as string | undefined) || ''}
+        onChange={handleInputChange}
+        className="profile-input"
+      >
+        <option value="">{placeholder || 'Select an option'}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+
   return (
-    <div className="min-h-screen" style={bgStyle}>
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <button
-                onClick={() => window.history.back()}
-                className="mr-4 text-gray-600 hover:text-gray-800"
-              >
-                <i className="fas fa-arrow-left text-xl"></i>
-              </button>
-              <h1 className="text-xl font-semibold text-gray-900">
-                {t('profile')}
-              </h1>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              {/* Edit button moved to profile header */}
+    <div className="profile-shell min-h-screen" style={bgStyle}>
+      <main className="profile-surface mx-auto max-w-6xl px-4 pb-8 pt-24 sm:px-6 lg:px-8">
+        <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => window.history.back()}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-accent-200 bg-white text-accent-600 transition hover:border-accent-300 hover:text-accent-700"
+              aria-label="Go back"
+            >
+              <i className="fas fa-arrow-left text-sm"></i>
+            </button>
+            <div>
+              <p className="profile-section-kicker">{t('profile')}</p>
+              <h1 className="text-2xl font-serif text-accent-700">{displayName}</h1>
             </div>
           </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {/* Success/Error Messages */}
-          {success && (
-            <div className="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-              {success}
-            </div>
+          {!editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="hidden items-center justify-center gap-2 self-start rounded-full bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700 sm:inline-flex"
+            >
+              <i className="fas fa-edit text-xs"></i>
+              <span>{t('edit')}</span>
+            </button>
           )}
-          {error && (
-            <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
+        </section>
 
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-medium text-gray-900">
-                {editing ? t('edit.profile') : t('profile.information')}
-              </h2>
-              {!editing && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="bg-primary-600 text-white px-3 py-1.5 rounded-md hover:bg-primary-700 text-sm flex items-center"
-                >
-                  <i className="fas fa-edit mr-1.5"></i>
-                  <span>{t('edit')}</span>
-                </button>
-              )}
-            </div>
+        {success && (
+          <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 px-5 py-4 text-green-800 shadow-sm">
+            {success}
+          </div>
+        )}
+        {error && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-red-800 shadow-sm">
+            {error}
+          </div>
+        )}
 
-            <div className="px-6 py-4">
-              {/* Head of Household (for dependents only) */}
-              {profile.isDependent && (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Head of Household
-                  </label>
-                  <p className="text-gray-900">
-                    {profile.headOfHouseholdName || 'Not available'}
+        <section className="profile-card mb-8 overflow-hidden">
+          <div className="bg-gradient-to-r from-[#fff8f1] via-white to-[#faf1e6] px-6 py-8 sm:px-8">
+            <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr] lg:items-start">
+              <div className="flex gap-5">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary-100 text-xl font-bold text-primary-700 shadow-sm">
+                  {getInitials(displayName)}
+                </div>
+                <div className="min-w-0">
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <span className="profile-chip-accent">{profile.role || 'member'}</span>
+                    {profile.isDependent && <span className="profile-chip">Dependent account</span>}
+                    {profile.languagePreference && <span className="profile-chip">{profile.languagePreference}</span>}
+                  </div>
+                  <h2 className="text-3xl font-serif text-accent-700">{displayName}</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-accent-500">
+                    {profile.isDependent
+                      ? 'A clear snapshot of your household-linked member profile, contact details, and parish information.'
+                      : 'A refined overview of your member profile, household details, and church participation information.'}
                   </p>
-                </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Basic Information */}
-                <div className="space-y-4">
-                  <h3 className="text-md font-medium text-gray-900 border-b pb-2">
-                    {t('basic.information')}
-                  </h3>
-
-                  {/* First Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('first.name')}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="text"
-                        name="firstName"
-                        value={formData.firstName || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        required
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.firstName || 'Not provided'}</p>
-                    )}
-                  </div>
-
-                  {/* Middle Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('middle.name')}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="text"
-                        name="middleName"
-                        value={formData.middleName || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.middleName || 'Not provided'}</p>
-                    )}
-                  </div>
-
-                  {/* Last Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('last.name')}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="text"
-                        name="lastName"
-                        value={formData.lastName || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        required
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.lastName || 'Not provided'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('member.since')}
-                    </label>
-                    <p className="text-gray-900">
-                      {profile.createdAt ? formatDateForDisplay(profile.createdAt) : 'Not available'}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('phone.number')}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="tel"
-                        name="phoneNumber"
-                        value={formData.phoneNumber || ''}
-                        onChange={handleInputChange}
-                        maxLength={12}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.phoneNumber || t('not.provided')}</p>
-                    )}
-                  </div>
-
-                  {/* Email */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('email')}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{getDisplayEmail(profile.email) || t('not.provided')}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('role')}
-                    </label>
-                    <p className="text-gray-900">{profile.role || 'Member'}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('date.of.birth')}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="date"
-                        name="dateOfBirth"
-                        value={formData.dateOfBirth || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">
-                        {profile.dateOfBirth ? formatDateForDisplay(profile.dateOfBirth) : t('not.provided')}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text.sm font-medium text-gray-700 mb-1">
-                      {t('gender')}
-                    </label>
-                    {editing ? (
-                      <select
-                        name="gender"
-                        value={formData.gender || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                        <option value="">{t('select.gender')}</option>
-                        <option value="Male">{t('male')}</option>
-                        <option value="Female">{t('female')}</option>
-                      </select>
-                    ) : (
-                      <p className="text-gray-900">{profile.gender || t('not.provided')}</p>
-                    )}
-                  </div>
-
-                  {!profile.isDependent && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {t('marital.status')}
-                      </label>
-                      {editing ? (
-                        <select
-                          name="maritalStatus"
-                          value={formData.maritalStatus || ''}
-                          onChange={handleInputChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                          <option value="">{t('select.marital.status')}</option>
-                          <option value="Single">{t('single')}</option>
-                          <option value="Married">{t('married')}</option>
-                          <option value="Divorced">{t('divorced')}</option>
-                          <option value="Widowed">{t('widowed')}</option>
-                        </select>
-                      ) : (
-                        <p className="text-gray-900">{profile.maritalStatus || t('not.provided')}</p>
-                      )}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('street.line1')}
-                    </label>
-                    {profile.isDependent ? (
-                      <p className="text-gray-900">{profile.streetLine1 || t('not.provided')}</p>
-                    ) : editing ? (
-                      <input
-                        type="text"
-                        name="streetLine1"
-                        value={formData.streetLine1 || ''}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.streetLine1 || t('not.provided')}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('apartment.no')}
-                    </label>
-                    {profile.isDependent ? (
-                      <p className="text-gray-900">{profile.apartmentNo || t('not.provided')}</p>
-                    ) : editing ? (
-                      <input
-                        type="text"
-                        name="apartmentNo"
-                        value={formData.apartmentNo || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.apartmentNo || t('not.provided')}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('city')}
-                    </label>
-                    {profile.isDependent ? (
-                      <p className="text-gray-900">{profile.city || t('not.provided')}</p>
-                    ) : editing ? (
-                      <input
-                        type="text"
-                        name="city"
-                        value={formData.city || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.city || t('not.provided')}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('state')}
-                    </label>
-                    {profile.isDependent ? (
-                      <p className="text-gray-900">{profile.state || t('not.provided')}</p>
-                    ) : editing ? (
-                      <input
-                        type="text"
-                        name="state"
-                        value={formData.state || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.state || t('not.provided')}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('zip.code')}
-                    </label>
-                    {profile.isDependent ? (
-                      <p className="text-gray-900">{profile.postalCode || t('not.provided')}</p>
-                    ) : editing ? (
-                      <input
-                        type="text"
-                        name="postalCode"
-                        value={formData.postalCode || ''}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.postalCode || t('not.provided')}</p>
-                    )}
+                  <div className="mt-4 flex flex-wrap gap-4 text-sm text-accent-600">
+                    <span className="inline-flex items-center gap-2">
+                      <i className="fas fa-phone text-xs text-primary-600"></i>
+                      {profile.phoneNumber || 'Phone not provided'}
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                      <i className="fas fa-envelope text-xs text-primary-600"></i>
+                      {displayEmail || 'Email not provided'}
+                    </span>
                   </div>
                 </div>
-
-                {/* Church Information */}
-                <div className="space-y-4">
-                  <h3 className="text-md font-medium text-gray-900 border-b pb-2">
-                    {t('church.information')}
-                  </h3>
-
-                  {/* Yearly Pledge */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('yearly.pledge')} ($)
-                    </label>
-                    {editing ? (
-                      <input
-                        type="number"
-                        name="yearlyPledge"
-                        value={formData.yearlyPledge || ''}
-                        onChange={handleInputChange}
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">
-                        {profile.yearlyPledge
-                          ? `$${Number(profile.yearlyPledge).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                          : t('not.provided')}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('language.preference')}
-                    </label>
-                    {editing ? (
-                      <select
-                        name="languagePreference"
-                        value={formData.languagePreference || 'English'}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                        <option value="English">English</option>
-                        <option value="Tigrigna">Tigrigna</option>
-                        <option value="Amharic">Amharic</option>
-                      </select>
-                    ) : (
-                      <p className="text-gray-900">{profile.languagePreference || 'English'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('emergency.contact')}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="text"
-                        name="emergencyContact"
-                        value={formData.emergencyContact || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder={t('emergency.contact.name')}
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.emergencyContact || t('not.provided')}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('emergency.phone')}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="tel"
-                        name="emergencyPhone"
-                        value={formData.emergencyPhone || ''}
-                        onChange={handleInputChange}
-                        maxLength={12}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder={t('emergency.phone.number')}
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.emergencyPhone || t('not.provided')}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('baptism.name')}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="text"
-                        name="baptismName"
-                        value={formData.baptismName || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        placeholder={t('baptism.name.placeholder')}
-                      />
-                    ) : (
-                      <p className="text-gray-900">{profile.baptismName || t('not.provided')}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('date.joined.parish')}
-                    </label>
-                    {editing && profile.role !== 'member' ? (
-                      <input
-                        type="date"
-                        name="dateJoinedParish"
-                        value={formData.dateJoinedParish || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    ) : (
-                      <p className="text-gray-900">
-                        {profile.dateJoinedParish ? formatDateForDisplay(profile.dateJoinedParish) : t('not.provided')}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {t('interested.in.serving')}
-                    </label>
-                    {editing ? (
-                      <select
-                        name="interestedInServing"
-                        value={formData.interestedInServing || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                        <option value="">{t('select.option')}</option>
-                        <option value="Yes">{t('yes')}</option>
-                        <option value="No">{t('no')}</option>
-                      </select>
-                    ) : (
-                      <p className="text-gray-900">{profile.interestedInServing || t('not.provided')}</p>
-                    )}
-                  </div>
-                </div>
-
               </div>
 
-              {/* Children Information - Full Width */}
-              {profile.dependents && profile.dependents.length > 0 && (
-                <div className="mt-8 space-y-4">
-                  <h3 className="text-md font-medium text-gray-900 border-b pb-2">
-                    {t('children.and.dependents')}
-                  </h3>
-                  <div className="flex flex-col gap-4">
-                    {profile.dependents.map((dependent: BackendDependentData) => (
-                      <div key={dependent.id} className="bg-gray-50 p-4 rounded-lg w-full">
-                        <h4 className="font-medium text-gray-900 mb-3">
-                          {dependent.firstName} {dependent.middleName} {dependent.lastName}
-                        </h4>
-                        <div className="grid grid-cols-2 gap-6">
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('date.of.birth')}</label>
-                              <p className="text-gray-900">{formatDateForDisplay(dependent.dateOfBirth)}</p>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('gender')}</label>
-                              <p className="text-gray-900">{dependent.gender}</p>
-                            </div>
-                            {dependent.relationship && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('relationship')}</label>
-                                <p className="text-gray-900">{dependent.relationship}</p>
-                              </div>
-                            )}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                <div className="profile-stat">
+                  <div className="profile-stat-label">Member Since</div>
+                  <div className="profile-stat-value">{memberSince}</div>
+                </div>
+                <div className="profile-stat">
+                  <div className="profile-stat-label">Household</div>
+                  <div className="profile-stat-value">
+                    {profile.isDependent ? 'Linked profile' : `${dependents.length} ${dependents.length === 1 ? 'Dependent' : 'Dependents'}`}
+                  </div>
+                </div>
+                <div className="profile-stat">
+                  <div className="profile-stat-label">Birth Date</div>
+                  <div className="profile-stat-value">{birthDate || 'Not provided'}</div>
+                </div>
+                <div className="profile-stat">
+                  <div className="profile-stat-label">Yearly Pledge</div>
+                  <div className="profile-stat-value">{formatCurrency(profile.yearlyPledge)}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section className="profile-card p-6 sm:p-7">
+            <div className="mb-6">
+              <p className="profile-section-kicker">{editing ? t('edit.profile') : t('profile.information')}</p>
+              <h3 className="profile-section-title mt-2">{t('basic.information')}</h3>
+            </div>
+
+            <div className="space-y-1">
+              {editing ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {renderInputField(t('first.name'), 'firstName', 'text', true)}
+                  {renderInputField(t('middle.name'), 'middleName')}
+                  {renderInputField(t('last.name'), 'lastName', 'text', true)}
+                  {renderInputField(t('phone.number'), 'phoneNumber', 'tel', false, undefined, 12)}
+                  {renderInputField(t('email'), 'email', 'email')}
+                  {renderInputField(t('date.of.birth'), 'dateOfBirth', 'date')}
+                  {renderSelectField(t('gender'), 'gender', [
+                    { label: t('male'), value: 'Male' },
+                    { label: t('female'), value: 'Female' }
+                  ], t('select.gender'))}
+                  {!profile.isDependent && renderSelectField(t('marital.status'), 'maritalStatus', [
+                    { label: t('single'), value: 'Single' },
+                    { label: t('married'), value: 'Married' },
+                    { label: t('divorced'), value: 'Divorced' },
+                    { label: t('widowed'), value: 'Widowed' }
+                  ], t('select.marital.status'))}
+                </div>
+              ) : (
+                <>
+                  {renderTextField(t('first.name'), profile.firstName)}
+                  {renderTextField(t('middle.name'), profile.middleName, t('not.provided'), true)}
+                  {renderTextField(t('last.name'), profile.lastName)}
+                  {renderTextField(t('phone.number'), profile.phoneNumber, t('not.provided'))}
+                  {renderTextField(t('email'), displayEmail, t('not.provided'))}
+                  {renderTextField(t('role'), profile.role || 'Member')}
+                  {renderTextField(t('date.of.birth'), birthDate ? `${birthDate}${ageText ? ` • ${ageText}` : ''}` : '', t('not.provided'))}
+                  {renderTextField(t('gender'), profile.gender, t('not.provided'))}
+                  {!profile.isDependent && renderTextField(t('marital.status'), profile.maritalStatus, t('not.provided'), true)}
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className="profile-card p-6 sm:p-7">
+            <div className="mb-6">
+              <p className="profile-section-kicker">Contact</p>
+              <h3 className="profile-section-title mt-2">Contact & Address</h3>
+            </div>
+
+            {profile.isDependent && (
+              <div className="mb-5 rounded-2xl border border-secondary-200 bg-secondary-50/70 px-4 py-3 text-sm text-accent-600">
+                Address information is inherited from the head of household.
+              </div>
+            )}
+
+            <div className="space-y-1">
+              {editing ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {renderInputField(t('street.line1'), 'streetLine1', 'text', !profile.isDependent, undefined, undefined, !!profile.isDependent)}
+                  {renderInputField(t('apartment.no'), 'apartmentNo', 'text', false, undefined, undefined, !!profile.isDependent)}
+                  {renderInputField(t('city'), 'city', 'text', false, undefined, undefined, !!profile.isDependent)}
+                  {renderInputField(t('state'), 'state', 'text', false, undefined, undefined, !!profile.isDependent)}
+                  {renderInputField(t('zip.code'), 'postalCode', 'text', !profile.isDependent, undefined, undefined, !!profile.isDependent)}
+                  {renderInputField(t('emergency.contact'), 'emergencyContact', 'text', false, t('emergency.contact.name'))}
+                  {renderInputField(t('emergency.phone'), 'emergencyPhone', 'tel', false, t('emergency.phone.number'), 12)}
+                </div>
+              ) : (
+                <>
+                  {renderTextField(t('street.line1'), profile.streetLine1, t('not.provided'))}
+                  {renderTextField(t('apartment.no'), profile.apartmentNo, t('not.provided'), true)}
+                  {renderTextField('Address summary', addressLine || locationLine ? `${addressLine}${addressLine && locationLine ? ' • ' : ''}${locationLine}` : '', t('not.provided'))}
+                  {renderTextField(t('city'), profile.city, t('not.provided'), true)}
+                  {renderTextField(t('state'), profile.state, t('not.provided'), true)}
+                  {renderTextField(t('zip.code'), profile.postalCode, t('not.provided'), true)}
+                  {renderTextField(t('emergency.contact'), profile.emergencyContact, t('not.provided'), true)}
+                  {renderTextField(t('emergency.phone'), profile.emergencyPhone, t('not.provided'), true)}
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className="profile-card p-6 sm:p-7">
+            <div className="mb-6">
+              <p className="profile-section-kicker">Church</p>
+              <h3 className="profile-section-title mt-2">{t('church.information')}</h3>
+            </div>
+
+            <div className="space-y-1">
+              {editing ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block">
+                    <span className="profile-label">{t('yearly.pledge')} ($)</span>
+                    <input
+                      type="number"
+                      name="yearlyPledge"
+                      value={formData.yearlyPledge || ''}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="profile-input"
+                    />
+                  </label>
+                  {renderSelectField(t('language.preference'), 'languagePreference', [
+                    { label: 'English', value: 'English' },
+                    { label: 'Tigrigna', value: 'Tigrigna' },
+                    { label: 'Amharic', value: 'Amharic' }
+                  ])}
+                  {renderInputField(t('baptism.name'), 'baptismName', 'text', false, t('baptism.name.placeholder'))}
+                  {profile.role !== 'member'
+                    ? renderInputField(t('date.joined.parish'), 'dateJoinedParish', 'date')
+                    : (
+                      <div className="rounded-2xl border border-accent-100 bg-accent-50/60 px-4 py-3">
+                        <div className="profile-label">{t('date.joined.parish')}</div>
+                        <div className="mt-2 text-sm font-medium text-accent-700">
+                          {profile.dateJoinedParish ? formatDateForDisplay(profile.dateJoinedParish) : t('not.provided')}
+                        </div>
+                      </div>
+                    )}
+                  {renderSelectField(t('interested.in.serving'), 'interestedInServing', [
+                    { label: t('yes'), value: 'Yes' },
+                    { label: t('no'), value: 'No' }
+                  ], t('select.option'))}
+                </div>
+              ) : (
+                <>
+                  {renderTextField(t('yearly.pledge'), formatCurrency(profile.yearlyPledge), 'Not provided')}
+                  {renderTextField(t('language.preference'), profile.languagePreference || 'English')}
+                  {renderTextField(t('baptism.name'), profile.baptismName, t('not.provided'), true)}
+                  {renderTextField(t('date.joined.parish'), profile.dateJoinedParish ? formatDateForDisplay(profile.dateJoinedParish) : '', t('not.provided'), true)}
+                  {renderTextField(t('interested.in.serving'), profile.interestedInServing, t('not.provided'), true)}
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className="profile-card-muted p-6 sm:p-7">
+            <div className="mb-6">
+              <p className="profile-section-kicker">Household</p>
+              <h3 className="profile-section-title mt-2">{t('children.and.dependents')}</h3>
+            </div>
+
+            <div className="space-y-4">
+              {profile.isDependent && (
+                <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-4 shadow-sm">
+                  <div className="profile-detail-label">Head of Household</div>
+                  <div className="mt-2 text-lg font-semibold text-accent-700">
+                    {profile.headOfHouseholdName || 'Not available'}
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-4 shadow-sm">
+                <div className="profile-detail-label">Household Summary</div>
+                <p className="mt-2 text-sm leading-6 text-accent-600">{householdSummary}</p>
+                <div className="mt-4 rounded-2xl border border-secondary-200 bg-secondary-50/70 px-4 py-3 text-sm text-accent-600">
+                  Dependent information is view-only on this profile page. To add, edit, or remove dependents, use the dependents card in your dashboard.
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="profile-chip">{dependents.length} {dependents.length === 1 ? 'dependent' : 'dependents'}</span>
+                  {profile.isDependent && <span className="profile-chip">Address inherited</span>}
+                  {!profile.isDependent && dependents.length === 0 && <span className="profile-chip">Household ready for updates</span>}
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {dependents.length > 0 && (
+          <section className="profile-card mt-6 p-6 sm:p-7">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="profile-section-kicker">Household Records</p>
+                <h3 className="profile-section-title mt-2">Dependents on File</h3>
+                <p className="mt-2 text-sm text-accent-500">
+                  A read-only summary of each child or dependent linked to this household. Updates should be made from the dependents card in your dashboard.
+                </p>
+              </div>
+              <span className="profile-chip-accent">
+                {dependents.length} {dependents.length === 1 ? 'dependent' : 'dependents'}
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {dependents.map((dependent) => {
+                const dependentName = getFullName(dependent);
+                const dependentAge = getAgeFromDate(dependent.dateOfBirth);
+                const dependentDob = dependent.dateOfBirth ? formatDateForDisplay(dependent.dateOfBirth) : '';
+                const dependentEmail = getDisplayEmail(dependent.email);
+                const tone = getDependentCardTone(dependent.gender);
+                const summaryBits = [
+                  dependent.relationship,
+                  dependent.gender,
+                  dependentAge
+                ].filter(Boolean);
+
+                return (
+                  <article
+                    key={dependent.id}
+                    className={`rounded-3xl border p-5 shadow-[0_10px_30px_rgba(69,26,3,0.06)] ${tone.cardClass}`}
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="flex min-w-0 items-start gap-4">
+                        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-bold ${tone.avatarClass}`}>
+                          {getInitials(dependentName)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="text-xl font-serif text-accent-700">{dependentName}</h4>
+                            <span className={dependent.isBaptized ? 'profile-chip-accent' : 'profile-chip'}>
+                              {dependent.isBaptized ? t('yes') : t('no')} {t('baptized')}
+                            </span>
                           </div>
-                          <div className="space-y-4">
-                            {dependent.phone && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')}</label>
-                                <p className="text-gray-900">{dependent.phone}</p>
-                              </div>
-                            )}
-                            {dependent.email && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
-                                <p className="text-gray-900">{getDisplayEmail(dependent.email) || t('not.provided')}</p>
-                              </div>
-                            )}
-                            {dependent.baptismName && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptism.name')}</label>
-                                <p className="text-gray-900">{dependent.baptismName}</p>
-                              </div>
-                            )}
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">{t('baptized')}</label>
-                              <p className="text-gray-900">{dependent.isBaptized ? t('yes') : t('no')}</p>
-                            </div>
+                          {summaryBits.length > 0 && (
+                            <p className="mt-2 text-sm text-accent-500">
+                              {summaryBits.join(' • ')}
+                            </p>
+                          )}
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {dependentDob && <span className={`profile-chip border-transparent ${tone.badgeClass}`}>{dependentDob}</span>}
+                            {dependent.baptismName && <span className={`profile-chip border-transparent ${tone.badgeClass}`}>{dependent.baptismName}</span>}
+                            {dependent.phone && <span className={`profile-chip border-transparent ${tone.badgeClass}`}>{dependent.phone}</span>}
+                            {dependentEmail && <span className={`profile-chip border-transparent ${tone.badgeClass}`}>{dependentEmail}</span>}
+                          </div>
+                        </div>
+                      </div>
+
+                      {(dependent.medicalConditions || dependent.allergies || dependent.notes) && (
+                        <div className={`w-full rounded-2xl border p-4 lg:max-w-sm ${tone.noteClass}`}>
+                          <div className="profile-detail-label">Care Notes</div>
+                          <div className="mt-3 space-y-3 text-sm text-accent-600">
                             {dependent.medicalConditions && (
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('medical.conditions')}</label>
-                                <p className="text-gray-900">{dependent.medicalConditions}</p>
+                                <div className="font-semibold text-accent-700">{t('medical.conditions')}</div>
+                                <p className="mt-1">{dependent.medicalConditions}</p>
                               </div>
                             )}
                             {dependent.allergies && (
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('allergies')}</label>
-                                <p className="text-gray-900">{dependent.allergies}</p>
+                                <div className="font-semibold text-accent-700">{t('allergies')}</div>
+                                <p className="mt-1">{dependent.allergies}</p>
                               </div>
                             )}
                             {dependent.notes && (
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('notes')}</label>
-                                <p className="text-gray-900">{dependent.notes}</p>
+                                <div className="font-semibold text-accent-700">{t('notes')}</div>
+                                <p className="mt-1">{dependent.notes}</p>
                               </div>
                             )}
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
-              {/* Action Buttons */}
-              {editing && (
-                <div className="mt-8 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4">
-                  <button
-                    onClick={handleCancel}
-                    className="w-full sm:w-auto px-6 py-3 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-base font-medium"
-                    disabled={saving}
-                  >
-                    <i className="fas fa-times mr-2"></i>
-                    {t('cancel')}
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="w-full sm:w-auto px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 text-base font-medium"
-                  >
-                    {saving ? (
-                      <>
-                        <i className="fas fa-spinner fa-spin mr-2"></i>
-                        {t('saving')}
-                      </>
-                    ) : (
-                      <>
-                        <i className="fas fa-save mr-2"></i>
-                        {t('save')}
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
+        {editing && (
+          <div className="profile-card mt-6 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div>
+              <div className="profile-detail-label">Editing</div>
+              <p className="mt-1 text-sm text-accent-600">
+                Review your updates, then save them to refresh your member profile.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={handleCancel}
+                className="rounded-2xl border border-accent-200 bg-white px-5 py-3 text-sm font-semibold text-accent-700 transition hover:bg-accent-50"
+                disabled={saving}
+              >
+                <i className="fas fa-times mr-2"></i>
+                {t('cancel')}
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="rounded-2xl bg-primary-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                    {t('saving')}
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-save mr-2"></i>
+                    {t('save')}
+                  </>
+                )}
+              </button>
             </div>
           </div>
-        </div>
+        )}
       </main>
 
-      {/* Floating Action Button for Mobile */}
       {!editing && (
         <div className="fixed bottom-6 right-6 sm:hidden">
           <button
             onClick={() => setEditing(true)}
-            className="bg-primary-600 text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-colors"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-600 text-white shadow-lg transition hover:bg-primary-700"
             aria-label="Edit Profile"
           >
-            <i className="fas fa-edit text-xl"></i>
+            <i className="fas fa-edit text-lg"></i>
           </button>
         </div>
       )}
@@ -1078,4 +945,4 @@ const Profile: React.FC = () => {
   );
 };
 
-export default Profile; 
+export default Profile;
