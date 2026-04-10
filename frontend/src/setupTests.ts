@@ -64,6 +64,51 @@ process.env.REACT_APP_FIREBASE_PROJECT_ID = 'test-project';
 process.env.REACT_APP_FIREBASE_STORAGE_BUCKET = 'test.appspot.com';
 process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID = '1234567890';
 process.env.REACT_APP_FIREBASE_APP_ID = '1:1234567890:web:abcdef123456';
+process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY = 'pk_test_1234567890';
+
+const originalConsoleWarn = console.warn;
+const originalConsoleError = console.error;
+
+beforeAll(() => {
+  jest.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+    const firstArg = typeof args[0] === 'string' ? args[0] : '';
+    if (
+      firstArg.includes('React Router Future Flag Warning') ||
+      firstArg.includes('[Stripe] Missing REACT_APP_STRIPE_PUBLISHABLE_KEY')
+    ) {
+      return;
+    }
+    originalConsoleWarn(...args);
+  });
+
+  jest.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+    const firstArg = typeof args[0] === 'string' ? args[0] : '';
+    if (
+      firstArg.includes('reCAPTCHA initialization error:') ||
+      firstArg.includes('not wrapped in act(...)')
+    ) {
+      return;
+    }
+    originalConsoleError(...args);
+  });
+
+  jest.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+    const firstArg = typeof args[0] === 'string' ? args[0] : '';
+    if (
+      firstArg.includes('🔍 Phone authentication debug:') ||
+      firstArg.includes('📞 Clean phone:')
+    ) {
+      return;
+    }
+    // Keep other logs available if they become useful in tests.
+  });
+});
+
+afterAll(() => {
+  (console.warn as jest.Mock).mockRestore?.();
+  (console.error as jest.Mock).mockRestore?.();
+  (console.log as jest.Mock).mockRestore?.();
+});
 
 // Export the mocks for use in test files
 export {
