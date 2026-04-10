@@ -125,37 +125,100 @@ const ChurchBylaw: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header Bar */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-30 h-16 flex items-center px-4 md:px-8 justify-between">
-        <div className="flex items-center gap-4">
+      {/* Compact Sticky Bar */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-30 h-14 flex items-center px-4 md:px-8 justify-between">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="md:hidden text-gray-600 hover:text-gray-900 focus:outline-none"
+            className="md:hidden text-gray-500 hover:text-gray-800 focus:outline-none"
+            aria-label="Toggle navigation"
           >
-            <i className={`fas ${isSidebarOpen ? 'fa-times' : 'fa-bars'} text-xl`}></i>
+            <i className={`fas ${isSidebarOpen ? 'fa-times' : 'fa-bars'} text-lg`}></i>
           </button>
-          <h1 className="text-xl font-bold text-gray-800 hidden sm:block">{title}</h1>
+          <span className="text-sm font-semibold text-gray-700 hidden sm:inline">{title}</span>
+          {activeId && (
+            <span className="text-sm text-gray-400 hidden sm:inline">
+              › {toc.find(t => t.id === activeId)?.text}
+            </span>
+          )}
         </div>
-
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setSelectedLanguage('en')}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${selectedLanguage === 'en' ? 'bg-white shadow-sm text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              EN
-            </button>
+              className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${selectedLanguage === 'en' ? 'bg-white shadow-sm text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
+            >EN</button>
             <button
               onClick={() => setSelectedLanguage('ti')}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${selectedLanguage === 'ti' ? 'bg-white shadow-sm text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              TI
-            </button>
+              className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${selectedLanguage === 'ti' ? 'bg-white shadow-sm text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
+            >TI</button>
           </div>
-          {/* Print Button */}
-          <button onClick={() => window.print()} className="p-2 text-gray-500 hover:text-primary-700 transition" title="Print">
-            <i className="fas fa-print"></i>
+          <button onClick={() => window.print()} className="p-2 text-gray-400 hover:text-primary-700 transition" title="Print">
+            <i className="fas fa-print text-sm"></i>
           </button>
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="hidden md:inline text-xs text-gray-400 hover:text-gray-700 transition ml-1"
+          >↑ Top</button>
+        </div>
+      </div>
+
+      {/* Hero Banner */}
+      <div
+        className="relative overflow-hidden py-10 px-6 text-center"
+        style={{ background: 'linear-gradient(160deg, #7f1d1d 0%, #991b1b 60%, #78350f 100%)' }}
+      >
+        {/* Dot texture overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            opacity: 0.07,
+            backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)',
+            backgroundSize: '12px 12px',
+          }}
+        />
+        <div className="relative z-10">
+          <p
+            className="text-xs font-semibold uppercase mb-3"
+            style={{ color: '#fbbf24', letterSpacing: '2.5px' }}
+          >
+            Abune Aregawi Orthodox Tewahedo Church &middot; Garland, TX
+          </p>
+          <h1 className="text-3xl md:text-4xl font-serif font-bold text-white mb-2 tracking-wide">
+            {title}
+          </h1>
+          <p className="text-base font-serif italic mb-5" style={{ color: 'rgba(255,255,255,0.7)' }}>
+            {subtitle}
+          </p>
+          {/* Gold divider */}
+          <div
+            className="mx-auto mb-5 h-px w-16 rounded"
+            style={{ background: 'linear-gradient(to right, transparent, #fbbf24, transparent)' }}
+          />
+          {/* Language + Print pills */}
+          <div className="flex justify-center items-center gap-4 flex-wrap">
+            <button
+              onClick={() => setSelectedLanguage('en')}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold border transition-all ${
+                selectedLanguage === 'en'
+                  ? 'bg-white/20 border-white/40 text-white'
+                  : 'bg-transparent border-white/20 text-white/50 hover:text-white/75'
+              }`}
+            >EN</button>
+            <button
+              onClick={() => setSelectedLanguage('ti')}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold border transition-all ${
+                selectedLanguage === 'ti'
+                  ? 'bg-white/20 border-white/40 text-white'
+                  : 'bg-transparent border-white/20 text-white/50 hover:text-white/75'
+              }`}
+            >TI</button>
+            <div className="w-px h-4" style={{ background: 'rgba(255,255,255,0.2)' }} />
+            <button
+              onClick={() => window.print()}
+              className="rounded-full px-4 py-1.5 text-xs font-semibold border border-white/20 text-white/50 hover:text-white/75 transition-all"
+            >⎙ Print</button>
+          </div>
         </div>
       </div>
 
@@ -168,22 +231,33 @@ const ChurchBylaw: React.FC = () => {
                     ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
                  `}
         >
-          <div className="p-6">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Table of Contents</h3>
-            <nav className="space-y-1">
+          <div className="px-4 pt-6 pb-4">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-2">Table of Contents</h3>
+            <nav className="space-y-0.5">
               {toc.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => scrollToSection(item.id)}
-                  className={`
-                                    w-full text-left block px-3 py-2 rounded-md text-sm transition-colors duration-200
-                                    ${item.level === 1 ? 'font-semibold mt-4' : 'ml-3 font-normal'}
-                                    ${activeId === item.id
-                      ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
-                                `}
+                  className={[
+                    'w-full text-left flex items-center gap-2 rounded-md transition-colors duration-150',
+                    item.level === 1
+                      ? 'px-2 py-1.5 text-sm font-semibold mt-3'
+                      : 'pl-5 pr-2 py-1 text-xs',
+                    activeId === item.id
+                      ? 'bg-primary-50 text-primary-800'
+                      : item.level === 1
+                        ? 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600',
+                  ].join(' ')}
                 >
-                  {item.text}
+                  {item.level === 1 && (
+                    <span
+                      className={`inline-block w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-150 ${
+                        activeId === item.id ? 'bg-primary-600' : 'bg-transparent'
+                      }`}
+                    />
+                  )}
+                  <span className="truncate">{item.text}</span>
                 </button>
               ))}
             </nav>
@@ -201,16 +275,7 @@ const ChurchBylaw: React.FC = () => {
         {/* Main Content */}
         <main className="flex-1 p-4 md:p-12 lg:p-16 min-h-screen bg-white md:ml-0">
           <div className="max-w-4xl mx-auto">
-            {/* Document Header */}
-            <div className="mb-10 text-center border-b pb-8">
-              <div className="w-20 h-20 mx-auto mb-6">
-                <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="Logo" className="w-full h-full object-contain opacity-80" onError={(e) => e.currentTarget.style.display = 'none'} />
-              </div>
-              <h1 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-4">{title}</h1>
-              <p className="text-lg text-gray-600 font-serif italic">{subtitle}</p>
-            </div>
-
-            {/* Content Body */}
+              {/* Content Body */}
             <article className="prose md:prose-lg lg:prose-xl prose-primary max-w-none text-gray-700 leading-relaxed font-serif">
               {loading ? (
                 <div className="space-y-4 animate-pulse">
