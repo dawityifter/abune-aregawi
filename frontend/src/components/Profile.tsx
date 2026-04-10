@@ -33,7 +33,24 @@ interface ProfileData {
   postalCode?: string;
   dependents?: BackendDependentData[];
   headOfHouseholdName?: string;
+  headOfHousehold?: HouseholdMemberSummary;
+  householdMemberId?: string | number;
   isDependent?: boolean;
+  isHouseholdLinked?: boolean;
+}
+
+interface HouseholdMemberSummary {
+  id: string | number;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phoneNumber?: string;
+  streetLine1?: string;
+  apartmentNo?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
 }
 
 interface BackendDependentData {
@@ -180,6 +197,11 @@ const hasDisplayValue = (value?: React.ReactNode) => {
   return true;
 };
 
+const resolveHouseholdMemberId = (member: any) => {
+  if (member?.role === 'dependent') return member?.linkedMember?.id;
+  return member?.familyId || member?.id;
+};
+
 const Profile: React.FC = () => {
   const { currentUser, getUserProfile, updateUserProfileData, updateUserProfile } = useAuth();
   const { t } = useLanguage();
@@ -237,40 +259,72 @@ const Profile: React.FC = () => {
 
             if (response.ok) {
               const result = await response.json();
+              const profileMember = result?.data?.member || {};
+              const linked = profileMember.linkedMember || null;
+              const headOfHousehold = linked || profileMember.headOfHousehold || null;
+              const householdMemberId = resolveHouseholdMemberId(profileMember);
+              const isDep = profileMember.role === 'dependent';
+              const isHouseholdLinked =
+                isDep ||
+                (!!profileMember.familyId && String(profileMember.familyId) !== String(profileMember.id));
+              const hohName = headOfHousehold
+                ? `${(headOfHousehold.firstName || '').trim()} ${(headOfHousehold.lastName || '').trim()}`.trim()
+                : (profileMember.headOfHouseholdName || '');
+              let householdDependents = profileMember.dependents || [];
 
-              const linked = result?.data?.member?.linkedMember || null;
-              const hohName = linked
-                ? `${(linked.firstName || '').trim()} ${(linked.lastName || '').trim()}`.trim()
-                : (result?.data?.member?.headOfHouseholdName || '');
-              const isDep = result?.data?.member?.role === 'dependent';
+              if (householdMemberId) {
+                try {
+                  const dependentsResponse = await fetch(
+                    `${process.env.REACT_APP_API_URL}/api/members/${householdMemberId}/dependents`,
+                    {
+                      method: 'GET',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                    }
+                  );
+
+                  if (dependentsResponse.ok) {
+                    const dependentsResult = await dependentsResponse.json();
+                    householdDependents = dependentsResult?.data?.dependents || householdDependents;
+                  }
+                } catch (dependentsError) {
+                  console.warn('Failed to load household dependents for profile view', dependentsError);
+                }
+              }
+
+              const addressSource = isHouseholdLinked ? headOfHousehold : null;
               const mergedData = {
                 ...userProfile,
-                firstName: result.data.member.firstName,
-                middleName: result.data.member.middleName,
-                lastName: result.data.member.lastName,
-                email: result.data.member.email,
-                role: result.data.member.role,
-                createdAt: result.data.member.createdAt,
-                phoneNumber: result.data.member.phoneNumber,
-                dateOfBirth: result.data.member.dateOfBirth,
-                gender: result.data.member.gender,
-                maritalStatus: result.data.member.maritalStatus,
-                emergencyContact: result.data.member.emergencyContactName,
-                emergencyPhone: result.data.member.emergencyContactPhone,
-                ministries: result.data.member.ministries ? JSON.parse(result.data.member.ministries) : [],
-                languagePreference: result.data.member.languagePreference,
-                dateJoinedParish: result.data.member.dateJoinedParish,
-                baptismName: result.data.member.baptismName,
-                interestedInServing: result.data.member.interestedInServing,
-                yearlyPledge: result.data.member.yearlyPledge,
-                streetLine1: isDep ? (linked?.streetLine1 ?? result.data.member.streetLine1) : result.data.member.streetLine1,
-                apartmentNo: isDep ? (linked?.apartmentNo ?? result.data.member.apartmentNo) : result.data.member.apartmentNo,
-                city: isDep ? (linked?.city ?? result.data.member.city) : result.data.member.city,
-                state: isDep ? (linked?.state ?? result.data.member.state) : result.data.member.state,
-                postalCode: isDep ? (linked?.postalCode ?? result.data.member.postalCode) : result.data.member.postalCode,
-                dependents: result.data.member.dependents || [],
+                firstName: profileMember.firstName,
+                middleName: profileMember.middleName,
+                lastName: profileMember.lastName,
+                email: profileMember.email,
+                role: profileMember.role,
+                createdAt: profileMember.createdAt,
+                phoneNumber: profileMember.phoneNumber,
+                dateOfBirth: profileMember.dateOfBirth,
+                gender: profileMember.gender,
+                maritalStatus: profileMember.maritalStatus,
+                emergencyContact: profileMember.emergencyContactName,
+                emergencyPhone: profileMember.emergencyContactPhone,
+                ministries: profileMember.ministries ? JSON.parse(profileMember.ministries) : [],
+                languagePreference: profileMember.languagePreference,
+                dateJoinedParish: profileMember.dateJoinedParish,
+                baptismName: profileMember.baptismName,
+                interestedInServing: profileMember.interestedInServing,
+                yearlyPledge: profileMember.yearlyPledge,
+                streetLine1: addressSource?.streetLine1 ?? profileMember.streetLine1,
+                apartmentNo: addressSource?.apartmentNo ?? profileMember.apartmentNo,
+                city: addressSource?.city ?? profileMember.city,
+                state: addressSource?.state ?? profileMember.state,
+                postalCode: addressSource?.postalCode ?? profileMember.postalCode,
                 headOfHouseholdName: hohName || undefined,
-                isDependent: isDep
+                headOfHousehold: headOfHousehold || undefined,
+                householdMemberId,
+                isDependent: isDep,
+                isHouseholdLinked,
+                dependents: householdDependents
               };
 
               setProfile(mergedData);
@@ -367,6 +421,7 @@ const Profile: React.FC = () => {
           : undefined,
         yearlyPledge: formData.yearlyPledge,
         ...(profile?.isDependent
+        || profile?.isHouseholdLinked
           ? {}
           : {
             streetLine1: formData.streetLine1,
@@ -469,6 +524,8 @@ const Profile: React.FC = () => {
   const dependents = profile.dependents || [];
   const householdSummary = profile.isDependent
     ? 'Your household details are managed through the head of household.'
+    : profile.isHouseholdLinked
+      ? 'You are connected to a household record. Family members and children shown here are managed together.'
     : dependents.length > 0
       ? `${dependents.length} ${dependents.length === 1 ? 'dependent' : 'dependents'} on file`
       : 'No dependents on file yet.';
@@ -586,12 +643,15 @@ const Profile: React.FC = () => {
                   <div className="mb-3 flex flex-wrap items-center gap-2">
                     <span className="profile-chip-accent">{profile.role || 'member'}</span>
                     {profile.isDependent && <span className="profile-chip">Dependent account</span>}
+                    {!profile.isDependent && profile.isHouseholdLinked && <span className="profile-chip">Household-linked account</span>}
                     {profile.languagePreference && <span className="profile-chip">{profile.languagePreference}</span>}
                   </div>
                   <h2 className="text-3xl font-serif text-accent-700">{displayName}</h2>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-accent-500">
                     {profile.isDependent
                       ? 'A clear snapshot of your household-linked member profile, contact details, and parish information.'
+                      : profile.isHouseholdLinked
+                        ? 'A refined overview of your profile within the shared household record, including the family details tied to the head of household.'
                       : 'A refined overview of your member profile, household details, and church participation information.'}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-4 text-sm text-accent-600">
@@ -615,7 +675,11 @@ const Profile: React.FC = () => {
                 <div className="profile-stat">
                   <div className="profile-stat-label">Household</div>
                   <div className="profile-stat-value">
-                    {profile.isDependent ? 'Linked profile' : `${dependents.length} ${dependents.length === 1 ? 'Dependent' : 'Dependents'}`}
+                    {profile.isDependent
+                      ? 'Linked profile'
+                      : profile.isHouseholdLinked
+                        ? 'Shared household'
+                        : `${dependents.length} ${dependents.length === 1 ? 'Dependent' : 'Dependents'}`}
                   </div>
                 </div>
                 <div className="profile-stat">
@@ -680,7 +744,7 @@ const Profile: React.FC = () => {
               <h3 className="profile-section-title mt-2">Contact & Address</h3>
             </div>
 
-            {profile.isDependent && (
+            {profile.isHouseholdLinked && (
               <div className="mb-5 rounded-2xl border border-secondary-200 bg-secondary-50/70 px-4 py-3 text-sm text-accent-600">
                 Address information is inherited from the head of household.
               </div>
@@ -689,11 +753,11 @@ const Profile: React.FC = () => {
             <div className="space-y-1">
               {editing ? (
                 <div className="grid gap-4 md:grid-cols-2">
-                  {renderInputField(t('street.line1'), 'streetLine1', 'text', !profile.isDependent, undefined, undefined, !!profile.isDependent)}
-                  {renderInputField(t('apartment.no'), 'apartmentNo', 'text', false, undefined, undefined, !!profile.isDependent)}
-                  {renderInputField(t('city'), 'city', 'text', false, undefined, undefined, !!profile.isDependent)}
-                  {renderInputField(t('state'), 'state', 'text', false, undefined, undefined, !!profile.isDependent)}
-                  {renderInputField(t('zip.code'), 'postalCode', 'text', !profile.isDependent, undefined, undefined, !!profile.isDependent)}
+                  {renderInputField(t('street.line1'), 'streetLine1', 'text', !profile.isHouseholdLinked, undefined, undefined, !!profile.isHouseholdLinked)}
+                  {renderInputField(t('apartment.no'), 'apartmentNo', 'text', false, undefined, undefined, !!profile.isHouseholdLinked)}
+                  {renderInputField(t('city'), 'city', 'text', false, undefined, undefined, !!profile.isHouseholdLinked)}
+                  {renderInputField(t('state'), 'state', 'text', false, undefined, undefined, !!profile.isHouseholdLinked)}
+                  {renderInputField(t('zip.code'), 'postalCode', 'text', !profile.isHouseholdLinked, undefined, undefined, !!profile.isHouseholdLinked)}
                   {renderInputField(t('emergency.contact'), 'emergencyContact', 'text', false, t('emergency.contact.name'))}
                   {renderInputField(t('emergency.phone'), 'emergencyPhone', 'tel', false, t('emergency.phone.number'), 12)}
                 </div>
@@ -774,7 +838,7 @@ const Profile: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              {profile.isDependent && (
+              {profile.headOfHouseholdName && (
                 <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-4 shadow-sm">
                   <div className="profile-detail-label">Head of Household</div>
                   <div className="mt-2 text-lg font-semibold text-accent-700">
@@ -791,8 +855,9 @@ const Profile: React.FC = () => {
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="profile-chip">{dependents.length} {dependents.length === 1 ? 'dependent' : 'dependents'}</span>
-                  {profile.isDependent && <span className="profile-chip">Address inherited</span>}
-                  {!profile.isDependent && dependents.length === 0 && <span className="profile-chip">Household ready for updates</span>}
+                  {profile.isHouseholdLinked && <span className="profile-chip">Address inherited</span>}
+                  {!profile.isDependent && <span className="profile-chip">Family updates available in Dependents</span>}
+                  {!profile.isHouseholdLinked && dependents.length === 0 && <span className="profile-chip">Household ready for updates</span>}
                 </div>
               </div>
             </div>

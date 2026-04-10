@@ -4,11 +4,39 @@ import { formatPhoneNumber } from '../utils/formatPhoneNumber';
 import { formatDateForDisplay } from '../utils/dateUtils';
 import { Dependent, getRelationshipOptions, Relationship } from '../utils/relationshipTypes';
 
+interface HouseholdContext {
+  householdMemberId?: string | number;
+  headOfHouseholdName?: string;
+  isDependent: boolean;
+  isHouseholdLinked: boolean;
+}
+
+const resolveHouseholdContext = (member: any): HouseholdContext => {
+  const isDependent = member?.role === 'dependent';
+  const householdMemberId = isDependent ? member?.linkedMember?.id : (member?.familyId || member?.id);
+  const headOfHousehold = member?.linkedMember || member?.headOfHousehold || null;
+  const headOfHouseholdName = headOfHousehold
+    ? `${(headOfHousehold.firstName || '').trim()} ${(headOfHousehold.lastName || '').trim()}`.trim()
+    : (member?.headOfHouseholdName || '');
+
+  return {
+    householdMemberId,
+    headOfHouseholdName: headOfHouseholdName || undefined,
+    isDependent,
+    isHouseholdLinked: isDependent || (!!member?.familyId && String(member.familyId) !== String(member.id))
+  };
+};
 
 
 const DependentsManagement: React.FC = () => {
   const { currentUser, getUserProfile } = useAuth();
   const [dependents, setDependents] = useState<Dependent[]>([]);
+  const [householdContext, setHouseholdContext] = useState<HouseholdContext>({
+    householdMemberId: undefined,
+    headOfHouseholdName: undefined,
+    isDependent: false,
+    isHouseholdLinked: false
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [editingDependent, setEditingDependent] = useState<Dependent | null>(null);
@@ -41,7 +69,9 @@ const DependentsManagement: React.FC = () => {
       if (!profile || !profile.data?.member) return;
 
       const profileMember = profile.data.member;
-      const memberId = profileMember.role === 'dependent' ? profileMember.linkedMember?.id : profileMember.id;
+      const resolvedHouseholdContext = resolveHouseholdContext(profileMember);
+      setHouseholdContext(resolvedHouseholdContext);
+      const memberId = resolvedHouseholdContext.householdMemberId;
       if (!memberId) return;
 
       // Now fetch dependents using the resolved member ID (head of household)
@@ -78,7 +108,7 @@ const DependentsManagement: React.FC = () => {
       if (!profile || !profile.data?.member) throw new Error('Failed to get member profile');
 
       const profileMember = profile.data.member;
-      const memberId = profileMember.role === 'dependent' ? profileMember.linkedMember?.id : profileMember.id;
+      const memberId = resolveHouseholdContext(profileMember).householdMemberId;
       if (!memberId) throw new Error('Could not resolve member ID');
       
       const url = editingDependent 
@@ -183,6 +213,18 @@ const DependentsManagement: React.FC = () => {
           </button>
         )}
       </div>
+
+      {householdContext.headOfHouseholdName && (
+        <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 px-5 py-4 text-sm text-blue-900">
+          <div className="font-semibold">Household Record</div>
+          <p className="mt-1">
+            This family record is managed under <span className="font-semibold">{householdContext.headOfHouseholdName}</span>.
+            {householdContext.isDependent
+              ? ' You can review the household here, but family updates should be handled by the head of household.'
+              : ' You can review and update the spouse and children linked to this household from this page.'}
+          </p>
+        </div>
+      )}
 
       {/* Add/Edit Form */}
       {isAdding && (

@@ -7,6 +7,25 @@ const { newMemberRegistered } = require('../utils/notifications');
 const logger = require('../utils/logger');
 const { logActivity } = require('../utils/activityLogger');
 
+const buildHeadOfHouseholdSummary = (member) => {
+  if (!member?.family_head) return null;
+  if (!member.family_id || String(member.family_id) === String(member.id)) return null;
+
+  return {
+    id: member.family_head.id,
+    firstName: member.family_head.first_name,
+    lastName: member.family_head.last_name,
+    email: member.family_head.email,
+    phoneNumber: member.family_head.phone_number,
+    streetLine1: member.family_head.street_line1,
+    apartmentNo: member.family_head.apartment_no,
+    city: member.family_head.city,
+    state: member.family_head.state,
+    postalCode: member.family_head.postal_code,
+    country: member.family_head.country
+  };
+};
+
 // Utility function to normalize phone numbers
 const normalizePhoneNumber = (phoneNumber) => {
   // Return null for undefined/null/empty-like values
@@ -1518,6 +1537,8 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         logger.error('Failed to log daily visit activity', logErr);
       }
 
+      const headOfHousehold = buildHeadOfHouseholdSummary(memberByUid);
+
       // Transform snake_case to camelCase for frontend compatibility
       const transformedMember = {
         id: memberByUid.id,
@@ -1552,7 +1573,11 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         emergencyContactPhone: memberByUid.emergency_contact_phone,
         titleId: memberByUid.title_id, // Add titleId here
         yearlyPledge: memberByUid.yearly_pledge,
-        dependents: memberByUid.dependents || []
+        dependents: memberByUid.dependents || [],
+        headOfHousehold,
+        headOfHouseholdName: headOfHousehold
+          ? `${headOfHousehold.firstName || ''} ${headOfHousehold.lastName || ''}`.trim()
+          : null
       };
 
       const responseData = {
@@ -1721,6 +1746,8 @@ exports.getProfileByFirebaseUid = async (req, res) => {
 
     console.log('✅ Returning member profile');
 
+    const headOfHousehold = buildHeadOfHouseholdSummary(member);
+
     // Transform snake_case to camelCase for frontend compatibility
     const transformedMember = {
       id: member.id,
@@ -1754,7 +1781,11 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       emergencyContactName: member.emergency_contact_name,
       emergencyContactPhone: member.emergency_contact_phone,
       yearlyPledge: member.yearly_pledge,
-      dependents: member.dependents || []
+      dependents: member.dependents || [],
+      headOfHousehold,
+      headOfHouseholdName: headOfHousehold
+        ? `${headOfHousehold.firstName || ''} ${headOfHousehold.lastName || ''}`.trim()
+        : null
     };
 
     const responseData = {
