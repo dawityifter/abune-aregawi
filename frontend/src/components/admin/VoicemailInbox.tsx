@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getVoicemails, archiveVoicemail } from '../../utils/voicemailApi';
@@ -68,7 +68,7 @@ const VoicemailInbox: React.FC = () => {
     const [volPage, setVolPage] = useState(1);
     const [volTotalPages, setVolTotalPages] = useState(1);
 
-    const fetchVoicemails = async () => {
+    const fetchVoicemails = useCallback(async () => {
         if (!firebaseUser) return;
         try {
             setLoading(true);
@@ -84,11 +84,11 @@ const VoicemailInbox: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [firebaseUser, page]);
 
     useEffect(() => {
         fetchVoicemails();
-    }, [firebaseUser, page]);
+    }, [fetchVoicemails]);
 
     const handleArchive = async (id: number) => {
         if (!firebaseUser) return;
@@ -103,7 +103,7 @@ const VoicemailInbox: React.FC = () => {
         }
     };
 
-    const fetchVolunteerRequests = async () => {
+    const fetchVolunteerRequests = useCallback(async () => {
         if (!firebaseUser) return;
         try {
             const token = await firebaseUser.getIdToken();
@@ -120,7 +120,7 @@ const VoicemailInbox: React.FC = () => {
         } catch (err) {
             console.error(err);
         }
-    };
+    }, [firebaseUser, volPage]);
 
     const handleMarkContacted = async (id: number) => {
         if (!firebaseUser) return;
@@ -151,7 +151,7 @@ const VoicemailInbox: React.FC = () => {
 
     useEffect(() => {
         fetchVolunteerRequests();
-    }, [firebaseUser, volPage]);
+    }, [fetchVolunteerRequests]);
 
     if (loading && voicemails.length === 0) {
         return <div className="p-4 text-center">{t('admin.loading.inbox')}</div>;

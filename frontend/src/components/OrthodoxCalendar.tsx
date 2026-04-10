@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
     ORTHODOX_EVENTS_2025,
@@ -22,10 +22,10 @@ const OrthodoxCalendar: React.FC = () => {
     };
 
     // Help to parse "YYYY-MM-DD" safely as local midnight
-    const parseLocalISO = (iso: string) => {
+    const parseLocalISO = useCallback((iso: string) => {
         const [y, m, d] = iso.split('-').map(Number);
         return new Date(y, m - 1, d);
-    };
+    }, []);
 
     // Gregorian state
     const [currentGCDate, setCurrentGCDate] = useState(new Date());

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -46,12 +46,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
     max_members: department.max_members?.toString() || ''
   });
 
-  useEffect(() => {
-    fetchMembers();
-    fetchDepartments();
-  }, []);
-
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       const idToken = await firebaseUser?.getIdToken();
       const response = await fetch(
@@ -74,9 +69,9 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
     } catch (error) {
       console.error('Error fetching members:', error);
     }
-  };
+  }, [firebaseUser]);
 
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     try {
       const idToken = await firebaseUser?.getIdToken();
       const response = await fetch(
@@ -97,7 +92,12 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({ department, o
     } catch (error) {
       console.error('Error fetching departments:', error);
     }
-  };
+  }, [firebaseUser, department.id]);
+
+  useEffect(() => {
+    fetchMembers();
+    fetchDepartments();
+  }, [fetchMembers, fetchDepartments]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

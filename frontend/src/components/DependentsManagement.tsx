@@ -60,7 +60,7 @@ const DependentsManagement: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, getUserProfile]);
 
   useEffect(() => {
     if (currentUser) {

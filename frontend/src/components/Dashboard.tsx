@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getRolePermissions, getMergedPermissions, UserRole } from '../utils/roles';
+import { getMergedPermissions, UserRole } from '../utils/roles';
 import { getDisplayEmail } from '../utils/email';
 import { formatMemberName } from '../utils/formatName';
 
@@ -36,7 +36,7 @@ const Dashboard: React.FC = () => {
   const { t } = useLanguage();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
   // Temp user CTA timer should be declared at top-level, not conditionally
   const [showTempCta, setShowTempCta] = useState(false);
   const bgStyle: React.CSSProperties = {
@@ -54,12 +54,12 @@ const Dashboard: React.FC = () => {
     return () => clearTimeout(timer);
   }, [user]);
 
-  // Get user's display name for the welcome message
-  const userName = user?.first_name || user?.data?.member?.firstName || firebaseUser?.displayName || 'User';
-
   // Check if user has admin permissions
   const memberData = user?.data?.member || user;
-  const userRoles: UserRole[] = memberData?.roles || [memberData?.role || 'member'];
+  const userRoles: UserRole[] = useMemo(
+    () => memberData?.roles || [memberData?.role || 'member'],
+    [memberData]
+  );
   const permissions = getMergedPermissions(userRoles);
   const isTempUser = user?._temp || false;
   // Treat backend-returned 'dependent' as a restricted role for UI visibility
@@ -194,23 +194,8 @@ const Dashboard: React.FC = () => {
     navigate('/dues');
   };
 
-  const handleViewEvents = () => {
-    alert('View Events functionality coming soon!');
-    // TODO: Navigate to events page
-  };
-
-  const handleVolunteerSignUp = () => {
-    alert('Volunteer Sign Up functionality coming soon!');
-    // TODO: Navigate to volunteer signup page
-  };
-
   const handleDonate = () => {
     navigate('/donate');
-  };
-
-  const handleManageAccount = () => {
-    alert('Manage Account functionality coming soon!');
-    // TODO: Navigate to account settings page
   };
 
   const handleViewBylaw = () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
@@ -9,7 +9,7 @@ interface RoleManagementProps {
 
 const RoleManagement: React.FC<RoleManagementProps> = () => {
   const { t } = useLanguage();
-  const { currentUser, firebaseUser } = useAuth();
+  const { firebaseUser } = useAuth();
   const [members, setMembers] = useState<any[]>([]);
   const [totalDependents, setTotalDependents] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -25,12 +25,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
   const [sortBy, setSortBy] = useState<'member' | 'role'>('member');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-  useEffect(() => {
-    fetchMembers();
-    fetchDependentsCount();
-  }, []);
-
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -71,9 +66,9 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser]);
 
-  const fetchDependentsCount = async () => {
+  const fetchDependentsCount = useCallback(async () => {
     try {
       if (!firebaseUser) return;
 
@@ -93,7 +88,12 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
       console.error('Failed to fetch dependents count:', error);
       // Don't set error state - this is non-critical
     }
-  };
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    fetchMembers();
+    fetchDependentsCount();
+  }, [fetchMembers, fetchDependentsCount]);
 
   const handleRoleUpdate = async () => {
     if (!selectedMember) return;

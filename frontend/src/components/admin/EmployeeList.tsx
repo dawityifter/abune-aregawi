@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRolePermissions } from '../../utils/roles';
 import EmployeeFormModal from './EmployeeFormModal';
@@ -29,7 +29,6 @@ const EmployeeList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
   const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
@@ -41,7 +40,6 @@ const EmployeeList: React.FC = () => {
           const phone = currentUser.phoneNumber;
           if (uid) {
             const profile = await getUserProfile(uid, email, phone);
-            setUserProfile(profile);
             const userRole = profile?.data?.member?.role || currentUser?.role || 'member';
             const permissions = getRolePermissions(userRole);
             setCanEdit(permissions.canManageRoles || userRole === 'admin');
@@ -54,11 +52,7 @@ const EmployeeList: React.FC = () => {
     fetchUserProfile();
   }, [currentUser, getUserProfile]);
 
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -89,7 +83,11 @@ const EmployeeList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser, employmentTypeFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
 
   const handleDelete = async (employee: Employee) => {
     if (!window.confirm(`Are you sure you want to delete ${employee.first_name} ${employee.last_name}?`)) {
@@ -348,6 +346,5 @@ const EmployeeList: React.FC = () => {
 };
 
 export default EmployeeList;
-
 
 

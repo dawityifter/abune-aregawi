@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
@@ -44,12 +44,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
   const [error, setError] = useState<string | null>(null);
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchDepartmentMembers();
-    fetchAllMembers();
-  }, []);
-
-  const fetchDepartmentMembers = async () => {
+  const fetchDepartmentMembers = useCallback(async () => {
     try {
       setLoading(true);
       const idToken = await firebaseUser?.getIdToken();
@@ -74,9 +69,9 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser, department.id, t]);
 
-  const fetchAllMembers = async () => {
+  const fetchAllMembers = useCallback(async () => {
     try {
       const idToken = await firebaseUser?.getIdToken();
       const response = await fetch(
@@ -96,7 +91,12 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
     } catch (error) {
       console.error('Error fetching all members:', error);
     }
-  };
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    fetchDepartmentMembers();
+    fetchAllMembers();
+  }, [fetchDepartmentMembers, fetchAllMembers]);
 
   const handleAddMembers = async () => {
     if (selectedMembers.length === 0) {

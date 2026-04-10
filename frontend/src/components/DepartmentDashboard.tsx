@@ -65,7 +65,7 @@ const DepartmentDashboard: React.FC = () => {
     const { t } = React.useContext(LanguageContext)!;
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { firebaseUser, user } = useAuth();
+    const { firebaseUser } = useAuth();
 
     const [department, setDepartment] = useState<Department | null>(null);
     const [meetings, setMeetings] = useState<Meeting[]>([]);

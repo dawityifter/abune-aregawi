@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
 import { formatPhoneNumber } from '../utils/formatPhoneNumber';
 
 interface Member {
@@ -36,7 +35,6 @@ interface PledgeFormProps {
 }
 
 const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName }) => {
-  const { t } = useLanguage();
   const { currentUser, firebaseUser } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);

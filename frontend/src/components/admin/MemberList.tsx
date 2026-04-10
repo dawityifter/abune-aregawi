@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
@@ -103,7 +103,7 @@ const MemberList: React.FC<MemberListProps> = ({
   const endIndex = startIndex + itemsPerPage;
   const paginatedMembers = filteredMembers.slice(startIndex, endIndex);
 
-  const fetchAllMembers = async () => {
+  const fetchAllMembers = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -146,9 +146,9 @@ const MemberList: React.FC<MemberListProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser, currentUser]);
 
-  const fetchDependentsCount = async () => {
+  const fetchDependentsCount = useCallback(async () => {
     try {
       if (!firebaseUser) return;
 
@@ -167,7 +167,7 @@ const MemberList: React.FC<MemberListProps> = ({
     } catch (error) {
       console.error('Failed to fetch dependents count:', error);
     }
-  };
+  }, [firebaseUser]);
 
   useEffect(() => {
     if (!fetchedRef.current) {
@@ -175,14 +175,14 @@ const MemberList: React.FC<MemberListProps> = ({
       fetchDependentsCount();
       fetchedRef.current = true;
     }
-  }, []);
+  }, [fetchAllMembers, fetchDependentsCount]);
 
   // Refetch when parent signals a refresh (e.g., after save)
   useEffect(() => {
     if (typeof refreshToken === 'number') {
       fetchAllMembers();
     }
-  }, [refreshToken]);
+  }, [refreshToken, fetchAllMembers]);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -215,13 +215,6 @@ const MemberList: React.FC<MemberListProps> = ({
       setError(error.message);
     }
   };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Search is now handled by debounced effect
-  };
-
-
 
   if (loading) {
     return (

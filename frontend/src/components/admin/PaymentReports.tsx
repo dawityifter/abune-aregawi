@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
@@ -74,11 +74,7 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchReport();
-  }, [reportType, paymentView]);
-
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
       // Use different endpoints based on the selected view
@@ -98,7 +94,11 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [paymentView, reportType, currentUser?.email, firebaseUser]);
+
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
 
   const parseDonorInfo = (note?: string) => {
     if (!note || !note.includes('[Anonymous Donor]')) return null;

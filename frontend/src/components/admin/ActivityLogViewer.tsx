@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useLanguage } from '../../contexts/LanguageContext';
+import React, { useState, useEffect, useCallback } from 'react';
 import { fetchActivityLogs, ActivityLog } from '../../utils/activityLogApi';
 
 const ActivityLogViewer: React.FC = () => {
-    const { t } = useLanguage();
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -17,11 +15,7 @@ const ActivityLogViewer: React.FC = () => {
     const [actionFilter, setActionFilter] = useState('');
     const [entityTypeFilter, setEntityTypeFilter] = useState('');
 
-    useEffect(() => {
-        loadLogs();
-    }, [page, actionFilter, entityTypeFilter]);
-
-    const loadLogs = async () => {
+    const loadLogs = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -40,7 +34,11 @@ const ActivityLogViewer: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, actionFilter, entityTypeFilter]);
+
+    useEffect(() => {
+        loadLogs();
+    }, [loadLogs]);
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= totalPages) {

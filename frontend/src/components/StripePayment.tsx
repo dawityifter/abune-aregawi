@@ -76,7 +76,7 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     const name = `${donationData.donor_first_name || ''} ${donationData.donor_last_name || ''}`.trim();
     return name;
   });
-  const [donorEmail, setDonorEmail] = useState<string>('');
+  const [donorEmail] = useState<string>('');
   const [billingAddress1, setBillingAddress1] = useState<string>(donationData.donor_address || '');
   const [billingCity, setBillingCity] = useState<string>(donationData.donor_city || '');
   const [billingState, setBillingState] = useState<string>(donationData.donor_state || '');
@@ -105,7 +105,22 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     if (!billingCountry && donationData.donor_country) {
       setBillingCountry(normalizeCountryCode(donationData.donor_country));
     }
-  }, [donationData.donor_first_name, donationData.donor_last_name, donationData.donor_email, donationData.donor_address, donationData.donor_city, donationData.donor_state, donationData.donor_zip_code, donationData.donor_country]);
+  }, [
+    nameOnCard,
+    billingAddress1,
+    billingCity,
+    billingState,
+    billingPostal,
+    billingCountry,
+    donationData.donor_first_name,
+    donationData.donor_last_name,
+    donationData.donor_email,
+    donationData.donor_address,
+    donationData.donor_city,
+    donationData.donor_state,
+    donationData.donor_zip_code,
+    donationData.donor_country,
+  ]);
 
   // Expose payment processing function to parent component
   const processPayment = useCallback(async () => {
@@ -186,7 +201,22 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  }, [stripe, elements, donationData, onSuccess, onError, purpose, onRefreshHistory]);
+  }, [
+    stripe,
+    elements,
+    donationData,
+    onSuccess,
+    onError,
+    purpose,
+    onRefreshHistory,
+    nameOnCard,
+    donorEmail,
+    billingAddress1,
+    billingCity,
+    billingState,
+    billingPostal,
+    billingCountry,
+  ]);
 
   // Expose the payment processing function to parent component
   useEffect(() => {

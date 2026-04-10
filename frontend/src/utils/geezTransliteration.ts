@@ -89,8 +89,6 @@ export const applyTransliterationAtCursor = (
     // a few characters from the cursor.
 
     // Let's look at the text *before* the cursor in the new value
-    const textBeforeCursor = newValue.slice(0, cursorPos);
-
     // Find the last "word" or continuous segment of non-whitespace to operate on?
     // Or just look at the last few characters.
     // "sela" -> typed 'm' -> "selam" -> "ሰላም"

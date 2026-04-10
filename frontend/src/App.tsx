@@ -27,7 +27,6 @@ import PrivacyPage from './pages/PrivacyPage';
 import DepartmentsPage from './components/DepartmentsPage';
 import DepartmentDashboard from './components/DepartmentDashboard';
 import MeetingDetailsPage from './components/admin/MeetingDetailsPage';
-import ActivityLogViewer from './components/admin/ActivityLogViewer';
 import VoicemailInbox from './components/admin/VoicemailInbox';
 import BoardMembers from './components/board/BoardMembers';
 import GalleryPage from './components/GalleryPage';
@@ -133,4 +132,3 @@ function App() {
 }
 
 export default App;
-

@@ -1,17 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PledgeTracker from '../components/PledgeTracker';
 
 const ThankYouPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [pledgeData, setPledgeData] = useState<any>(null);
-
   useEffect(() => {
     // Get pledge data from navigation state
     if (location.state?.pledgeId) {
       // In a real app, you might fetch pledge details here
-      setPledgeData(location.state);
     }
   }, [location.state]);
 

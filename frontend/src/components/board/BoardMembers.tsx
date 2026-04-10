@@ -23,7 +23,6 @@ const BoardMembers: React.FC = () => {
     const { t } = useLanguage();
     const [members, setMembers] = React.useState<Member[]>([]);
     const [loading, setLoading] = React.useState(true);
-    const [error, setError] = React.useState<string | null>(null);
 
     React.useEffect(() => {
         const fetchMembers = async () => {
@@ -102,7 +101,6 @@ const BoardMembers: React.FC = () => {
                 }
             } catch (err) {
                 console.error(err);
-                setError('Failed to load board members');
             } finally {
                 setLoading(false);
             }

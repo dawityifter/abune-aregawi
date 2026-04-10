@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
@@ -97,13 +97,7 @@ const WeeklyCollectionReport: React.FC = () => {
     setWeekStart(getMondayOfWeek(today));
   }, []);
 
-  useEffect(() => {
-    if (weekStart) {
-      fetchReport();
-    }
-  }, [weekStart]);
-
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
     try {
       setLoading(true);
       const token = await firebaseUser?.getIdToken();
@@ -131,7 +125,13 @@ const WeeklyCollectionReport: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser, weekStart]);
+
+  useEffect(() => {
+    if (weekStart) {
+      fetchReport();
+    }
+  }, [weekStart, fetchReport]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

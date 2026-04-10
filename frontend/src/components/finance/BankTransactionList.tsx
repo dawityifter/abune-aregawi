@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import BankTransactionDetail from './BankTransactionDetail';
@@ -107,7 +107,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         { value: 'other', label: 'Other (ሌላ)' },
     ];
 
-    const fetchTransactions = async () => {
+    const fetchTransactions = useCallback(async () => {
         if (!firebaseUser) return;
         try {
             setLoading(true);
@@ -139,11 +139,11 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         } finally {
             setLoading(false);
         }
-    };
+    }, [firebaseUser, page, filterStatus, filterType, startDate, endDate, searchDescription]);
 
     useEffect(() => {
         fetchTransactions();
-    }, [firebaseUser, page, filterStatus, filterType, startDate, endDate, searchDescription, refreshTrigger]);
+    }, [fetchTransactions, refreshTrigger]);
 
     // Global refresh listener
     useEffect(() => {
@@ -154,7 +154,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         };
         window.addEventListener('bank:refresh', handleRefresh);
         return () => window.removeEventListener('bank:refresh', handleRefresh);
-    }, [firebaseUser, filterStatus, filterType, startDate, endDate, searchDescription]);
+    }, [fetchTransactions]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);

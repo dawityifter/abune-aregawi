@@ -12,14 +12,10 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
 }) => {
     const { t } = useI18n();
     const [isLive, setIsLive] = useState(false);
-    const [mainLive, setMainLive] = useState(false);
-    const [spiritualLive, setSpiritualLive] = useState(false);
     const [activeChannelId, setActiveChannelId] = useState(channelId);
     const [streamTitle, setStreamTitle] = useState<string | null>(null);
     const [showPlayer, setShowPlayer] = useState(false);
     const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
-
-    const spiritualChannelId = 'UCQXFCGSNdQ1y8GOmqbvRefg';
 
     const youtubeChannelUrl = `https://www.youtube.com/channel/${activeChannelId}`;
     const youtubeLiveUrl = activeVideoId
@@ -42,9 +38,6 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
 
             const isMainLive = data.main?.isLive || false;
             const isSpiritualLive = data.spiritual?.isLive || false;
-
-            setMainLive(isMainLive);
-            setSpiritualLive(isSpiritualLive);
 
             // Prioritize Main Channel if both are live (rare)
             if (isMainLive) {

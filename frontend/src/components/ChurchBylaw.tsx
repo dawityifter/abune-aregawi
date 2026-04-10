@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -10,6 +10,26 @@ interface TocItem {
   text: string;
   level: number;
 }
+
+const slugifyHeading = (value: string) =>
+  value.toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
+const getNodeText = (children: React.ReactNode): string =>
+  React.Children.toArray(children)
+    .map((child) => {
+      if (typeof child === 'string' || typeof child === 'number') {
+        return String(child);
+      }
+      if (React.isValidElement(child)) {
+        return getNodeText((child.props as { children?: React.ReactNode }).children);
+      }
+      return '';
+    })
+    .join('')
+    .trim();
 
 const ChurchBylaw: React.FC = () => {
   const { currentLanguage, setLanguage } = useLanguage();
@@ -54,10 +74,7 @@ const ChurchBylaw: React.FC = () => {
             const level = h1Match ? 1 : 2;
 
             // Generate ID
-            let baseSlug = text.toLowerCase()
-              .replace(/[`~!@#$%^&*()+=|{}\[\]:;"'<>?,./\\]/g, '')
-              .replace(/\s+/g, '-')
-              .replace(/-+/g, '-');
+            let baseSlug = slugifyHeading(text);
 
             // Handle Duplicate IDs
             slugCounts[baseSlug] = (slugCounts[baseSlug] || 0) + 1;
@@ -213,22 +230,28 @@ const ChurchBylaw: React.FC = () => {
                   components={{
                     h1: ({ node, ...props }) => {
                       // Generate ID for auto-linking
-                      const text = props.children?.toString() || '';
-                      const id = text.toLowerCase()
-                        .replace(/[`~!@#$%^&*()+=|{}\[\]:;"'<>?,./\\]/g, '')
-                        .replace(/\s+/g, '-')
-                        .replace(/-+/g, '-');
-                      return <h1 id={id} className="scroll-mt-24 text-primary-800 border-b-2 border-primary-100 pb-4 mb-8 mt-12" {...props} />;
+                      const text = getNodeText(props.children);
+                      const id = slugifyHeading(text);
+                      return (
+                        <h1 id={id || undefined} className="scroll-mt-24 text-primary-800 border-b-2 border-primary-100 pb-4 mb-8 mt-12">
+                          {props.children}
+                        </h1>
+                      );
                     },
                     h2: ({ node, ...props }) => {
-                      const text = props.children?.toString() || '';
-                      const id = text.toLowerCase()
-                        .replace(/[`~!@#$%^&*()+=|{}\[\]:;"'<>?,./\\]/g, '')
-                        .replace(/\s+/g, '-')
-                        .replace(/-+/g, '-');
-                      return <h2 id={id} className="scroll-mt-24 text-primary-700 mt-10 mb-6" {...props} />;
+                      const text = getNodeText(props.children);
+                      const id = slugifyHeading(text);
+                      return (
+                        <h2 id={id || undefined} className="scroll-mt-24 text-primary-700 mt-10 mb-6">
+                          {props.children}
+                        </h2>
+                      );
                     },
-                    h3: ({ node, ...props }) => <h3 className="text-gray-800 font-bold mt-8 mb-4" {...props} />,
+                    h3: ({ node, ...props }) => (
+                      <h3 className="text-gray-800 font-bold mt-8 mb-4">
+                        {props.children}
+                      </h3>
+                    ),
                     ul: ({ node, ...props }) => <ul className="list-disc pl-6 space-y-2 mb-6" {...props} />,
                     ol: ({ node, ...props }) => <ol className="list-decimal pl-6 space-y-2 mb-6" {...props} />,
                     li: ({ node, ...props }) => <li className="pl-2" {...props} />,
@@ -240,7 +263,15 @@ const ChurchBylaw: React.FC = () => {
                         <img {...props} className="max-h-96 rounded shadow-lg border" alt={props.alt || 'Bylaw illustration'} />
                       </div>
                     ),
-                    a: ({ node, ...props }) => <a {...props} className="text-primary-600 hover:text-primary-800 hover:underline" />
+                    a: ({ node, ...props }) => (
+                      <a
+                        {...props}
+                        className="text-primary-600 hover:text-primary-800 hover:underline"
+                        aria-label={getNodeText(props.children) || props.href || 'Bylaw link'}
+                      >
+                        {props.children || props.href}
+                      </a>
+                    )
                   }}
                 >
                   {markdownContent}

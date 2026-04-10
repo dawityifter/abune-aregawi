@@ -866,7 +866,6 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                               <button
                                 type="button"
                                 onClick={async () => {
-                                  const action = d.linkedMemberId ? 'promote' : 'promote';
                                   if (!window.confirm(`Promote ${d.firstName} ${d.lastName} to have their own member account? This will allow them to login independently and join departments.`)) return;
                                   try {
                                     const idToken = await firebaseUser?.getIdToken();
