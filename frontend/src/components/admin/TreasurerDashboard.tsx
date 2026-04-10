@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import BankUpload from '../finance/BankUpload';
 import BankTransactionList from '../finance/BankTransactionList';
 import { useAuth } from '../../contexts/AuthContext';
-import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
+import { getMergedPermissions, UserRole } from '../../utils/roles';
 import TransactionList from './TransactionList';
 import PaymentStats from './PaymentStats';
 import PaymentReports from './PaymentReports';
@@ -69,8 +69,6 @@ const TreasurerDashboard: React.FC = () => {
   const [showSkippedReceiptsModal, setShowSkippedReceiptsModal] = useState(false);
   const [skippedReceipts, setSkippedReceipts] = useState<number[]>([]);
   const [receiptRange, setReceiptRange] = useState<{ start: number; end: number } | null>(null);
-  const [loadingSkipped, setLoadingSkipped] = useState(false);
-
   console.log('🏦 Firebase user:', firebaseUser);
 
   // Check user permissions
@@ -98,9 +96,8 @@ const TreasurerDashboard: React.FC = () => {
     { id: 'backups', label: t('treasurerDashboard.tabs.backups'), icon: 'fas fa-database' }
   ];
 
-  const fetchSkippedReceipts = async () => {
+  const fetchSkippedReceipts = useCallback(async () => {
     try {
-      setLoadingSkipped(true);
       const endpoint = '/api/transactions/skipped-receipts';
       const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}`, {
         headers: {
@@ -117,16 +114,14 @@ const TreasurerDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error('Error checking skipped receipts:', error);
-    } finally {
-      setLoadingSkipped(false);
     }
-  };
+  }, [firebaseUser]);
 
   useEffect(() => {
     if (permissions.canEditFinancialRecords) {
       fetchSkippedReceipts();
     }
-  }, [permissions.canEditFinancialRecords]);
+  }, [permissions.canEditFinancialRecords, fetchSkippedReceipts]);
 
   const openSkippedReceiptsModal = () => {
     setShowSkippedReceiptsModal(true);

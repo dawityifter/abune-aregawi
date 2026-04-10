@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
@@ -58,24 +58,7 @@ const ExpenseList: React.FC = () => {
   const [glCodeFilter, setGlCodeFilter] = useState('');
   const [payeeFilter, setPayeeFilter] = useState('');
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  useEffect(() => {
-    fetchExpenses();
-  }, [page, startDate, endDate, glCodeFilter, payeeFilter]);
-
-  // Listen for refresh events
-  useEffect(() => {
-    const handleRefresh = () => {
-      fetchExpenses();
-    };
-    window.addEventListener('expenses:refresh' as any, handleRefresh);
-    return () => window.removeEventListener('expenses:refresh' as any, handleRefresh);
-  }, [page, startDate, endDate, glCodeFilter, payeeFilter]);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const token = await firebaseUser?.getIdToken();
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/expenses/categories`, {
@@ -91,9 +74,9 @@ const ExpenseList: React.FC = () => {
     } catch (err) {
       console.error('Error fetching categories:', err);
     }
-  };
+  }, [firebaseUser]);
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
       const token = await firebaseUser?.getIdToken();
@@ -128,7 +111,24 @@ const ExpenseList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser, page, startDate, endDate, glCodeFilter, payeeFilter]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  useEffect(() => {
+    fetchExpenses();
+  }, [fetchExpenses]);
+
+  // Listen for refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchExpenses();
+    };
+    window.addEventListener('expenses:refresh' as any, handleRefresh);
+    return () => window.removeEventListener('expenses:refresh' as any, handleRefresh);
+  }, [fetchExpenses]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

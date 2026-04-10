@@ -146,7 +146,7 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  }, [bankInfo, donationData, onSuccess, onError, purpose, onRefreshHistory]);
+  }, [bankInfo, donationData, onSuccess, onError, purpose, onRefreshHistory, stripe]);
 
   // Expose the payment processing function to parent component
   useEffect(() => {

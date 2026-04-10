@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, Fragment } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../i18n/I18nProvider';
 import { useAuth } from '../contexts/AuthContext';
-import { getRolePermissions, getMergedPermissions, UserRole } from '../utils/roles';
-import { isFeatureEnabled, featureFlags } from '../config/featureFlags';
+import { UserRole } from '../utils/roles';
+import { featureFlags } from '../config/featureFlags';
 // import { Transition } from '@headlessui/react'; // Removed due to React 19 compatibility
 
 // type Language = 'en' | 'ti';
@@ -13,7 +13,6 @@ const Navigation: React.FC = () => {
   const { currentUser, logout, getUserProfile } = useAuth();
   const location = useLocation();
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +52,6 @@ const Navigation: React.FC = () => {
         }
 
         try {
-          setLoading(true);
           console.log('🔍 Navigation - currentUser:', currentUser);
 
           // Handle different user object structures
@@ -72,8 +70,6 @@ const Navigation: React.FC = () => {
           setUserProfile(profile);
         } catch (error) {
           console.error('Error fetching user profile:', error);
-        } finally {
-          setLoading(false);
         }
       }
     };
@@ -82,7 +78,6 @@ const Navigation: React.FC = () => {
 
   const member = userProfile?.data?.member || userProfile;
   const userRoles: UserRole[] = member?.roles || [member?.role || 'member'];
-  const permissions = getMergedPermissions(userRoles);
 
   // Show navigation on all pages including home page
 

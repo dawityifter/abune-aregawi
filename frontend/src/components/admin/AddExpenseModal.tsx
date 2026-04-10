@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getCurrentDateCST } from '../../utils/dateUtils';
@@ -64,15 +64,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
   const [amountError, setAmountError] = useState<string | null>(null);
 
   // Fetch expense categories, employees, and vendors
-  useEffect(() => {
-    if (isOpen) {
-      fetchCategories();
-      fetchEmployees();
-      fetchVendors();
-    }
-  }, [isOpen]);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       setLoadingCategories(true);
       const token = await firebaseUser?.getIdToken();
@@ -94,9 +86,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     } finally {
       setLoadingCategories(false);
     }
-  };
+  }, [firebaseUser]);
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
       setLoadingEmployees(true);
       const token = await firebaseUser?.getIdToken();
@@ -116,9 +108,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     } finally {
       setLoadingEmployees(false);
     }
-  };
+  }, [firebaseUser]);
 
-  const fetchVendors = async () => {
+  const fetchVendors = useCallback(async () => {
     try {
       setLoadingVendors(true);
       const token = await firebaseUser?.getIdToken();
@@ -138,7 +130,15 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     } finally {
       setLoadingVendors(false);
     }
-  };
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchCategories();
+      fetchEmployees();
+      fetchVendors();
+    }
+  }, [isOpen, fetchCategories, fetchEmployees, fetchVendors]);
 
   const handleAmountChange = (value: string) => {
     // Allow only numbers and decimal point

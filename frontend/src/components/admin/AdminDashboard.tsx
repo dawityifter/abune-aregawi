@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
+import { getMergedPermissions, UserRole } from '../../utils/roles';
 import MemberList from './MemberList';
 import MemberEditModal from './MemberEditModal';
 import RoleManagement from './RoleManagement';
@@ -15,7 +15,6 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'departments' | 'activity-logs' | 'voicemails'>('members');
   const [canAccess, setCanAccess] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
   // Member Edit Modal State
   const [showEditModal, setShowEditModal] = useState(false);
@@ -38,11 +37,7 @@ const AdminDashboard: React.FC = () => {
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
-        } finally {
-          setLoading(false);
         }
-      } else {
-        setLoading(false);
       }
     };
 
@@ -50,7 +45,10 @@ const AdminDashboard: React.FC = () => {
   }, [currentUser, getUserProfile]);
 
   const memberData = userProfile?.data?.member || userProfile;
-  const userRoles: UserRole[] = memberData?.roles || [(memberData?.role || 'member') as UserRole];
+  const userRoles: UserRole[] = useMemo(
+    () => memberData?.roles || [(memberData?.role || 'member') as UserRole],
+    [memberData]
+  );
   const permissions = getMergedPermissions(userRoles);
 
   useEffect(() => {

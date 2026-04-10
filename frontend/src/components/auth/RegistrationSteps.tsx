@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { formatPhoneNumber, normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
+import { formatPhoneNumber, normalizePhoneNumber } from '../../utils/formatPhoneNumber';
 import { formatDateForDisplay } from '../../utils/dateUtils';
 import { Dependent, getRelationshipOptions, Relationship } from '../../utils/relationshipTypes';
 

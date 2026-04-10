@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useLanguage } from '../../contexts/LanguageContext';
 
 interface BankUploadProps {
     onUploadSuccess: () => void;
@@ -8,7 +7,6 @@ interface BankUploadProps {
 
 const BankUpload: React.FC<BankUploadProps> = ({ onUploadSuccess }) => {
     const { firebaseUser } = useAuth();
-    const { t } = useLanguage();
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);

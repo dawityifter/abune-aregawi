@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { RecaptchaVerifier } from "firebase/auth";
 import { auth } from "../../firebase";
@@ -16,14 +15,11 @@ declare global {
 const SignIn: React.FC = () => {
   const { loginWithPhone, loading, currentUser, authReady } = useAuth();
   const { t } = useLanguage();
-  const navigate = useNavigate();
-  const location = useLocation();
 
   // Phone-only policy
   const [phone, setPhone] = useState(''); // Start with empty phone number
   const [otp, setOtp] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
-  const [redirecting, setRedirecting] = useState(false);
 
   // Validate confirmationResult when it changes
   useEffect(() => {
@@ -44,7 +40,7 @@ const SignIn: React.FC = () => {
   const [otpVerifying, setOtpVerifying] = useState(false);
 
   // Initialize reCAPTCHA when component mounts (phone-only)
-  const initializeRecaptcha = async () => {
+  const initializeRecaptcha = useCallback(async () => {
     if (!window.recaptchaVerifier && !confirmationResult) {
       try {
         // Check if container exists in DOM
@@ -88,21 +84,21 @@ const SignIn: React.FC = () => {
         setRecaptchaSolved(false);
       }
     }
-  };
+  }, [confirmationResult]);
 
   // Initialize reCAPTCHA only when we need to show it (after 10 digits entered)
-  const initializeRecaptchaIfNeeded = async () => {
+  const initializeRecaptchaIfNeeded = useCallback(async () => {
     if (isValidPhoneNumber(phone) && !window.recaptchaVerifier && !confirmationResult) {
       await initializeRecaptcha();
     }
-  };
+  }, [phone, confirmationResult, initializeRecaptcha]);
 
   // Initialize reCAPTCHA when phone becomes valid (10 digits)
   useEffect(() => {
     if (isValidPhoneNumber(phone) && !recaptchaSolved) {
       initializeRecaptchaIfNeeded();
     }
-  }, [phone, recaptchaSolved]);
+  }, [phone, recaptchaSolved, confirmationResult, initializeRecaptchaIfNeeded]);
 
   // Magic Phone Auto-Solve
   useEffect(() => {
@@ -111,7 +107,7 @@ const SignIn: React.FC = () => {
       console.log('✨ Magic Phone detected - Auto-solving reCAPTCHA');
       setRecaptchaSolved(true);
     }
-  }, [phone]);
+  }, [phone, recaptchaSolved]);
 
   // No method switching in phone-only policy
 
@@ -272,12 +268,7 @@ const SignIn: React.FC = () => {
         return;
       }
 
-      // For regular Firebase auth, onAuthStateChanged in AuthContext will trigger
-      // and update the user state. We just wait or let the listener handle navigation.
-      // However, to be safe and ensure smooth UI:
-      setRedirecting(true);
-
-      // AuthContext listener will handle the actual navigation
+      // For regular Firebase auth, AuthContext handles post-login navigation.
 
     } catch (err: any) {
       setOtpVerifying(false);

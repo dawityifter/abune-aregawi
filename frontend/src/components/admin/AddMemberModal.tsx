@@ -53,13 +53,6 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({ onClose, onCreated }) =
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const normalizePhone = (v: string) => {
-    if (!v) return v;
-    const trimmed = v.trim();
-    if (trimmed.startsWith('+')) return '+' + trimmed.slice(1).replace(/[^\d]/g, '');
-    return trimmed.replace(/[^\d]/g, '');
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);

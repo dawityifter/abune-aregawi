@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
+import { getMergedPermissions, UserRole } from '../../utils/roles';
 
 type RecipientType = 'individual' | 'department' | 'all' | 'pending_pledges' | 'fulfilled_pledges';
 
@@ -65,7 +65,10 @@ const SmsBroadcast: React.FC = () => {
   }, [currentUser, getUserProfile]);
 
   const memberData = userProfile?.data?.member || userProfile || currentUser;
-  const userRoles: UserRole[] = (memberData?.roles || [(memberData?.role || 'member') as UserRole]) as UserRole[];
+  const userRoles: UserRole[] = useMemo(
+    () => (memberData?.roles || [(memberData?.role || 'member') as UserRole]) as UserRole[],
+    [memberData]
+  );
   const permissions = useMemo(() => getMergedPermissions(userRoles), [userRoles]);
   const canSend = permissions.canSendCommunications || userRoles.some(r => ['admin', 'church_leadership', 'secretary'].includes(r));
 
@@ -334,11 +337,7 @@ const SmsBroadcast: React.FC = () => {
 
   // Helper to calculate segments based on encoding (GSM-7 vs UCS-2)
   const calculateSegments = (text: string) => {
-    // Basic GSM-7 character set regex (approximate)
-    // Checking if string contains any non-GSM7 compatible chars
-    // Double-byte chars (Tigrinya/Amharic) will trigger UCS-2
-    // eslint-disable-next-line
-    const isGsm7 = /^[\x00-\x7F]*$/.test(text);
+    const isGsm7 = Array.from(text).every((char) => char.charCodeAt(0) <= 0x7f);
 
     const maxPerSegment = isGsm7 ? 160 : 70;
     const maxMultipart = isGsm7 ? 153 : 67;
@@ -360,7 +359,7 @@ const SmsBroadcast: React.FC = () => {
 
   const totalMessage = message + (includeFooter ? SMS_FOOTER : '');
   const totalSegments = calculateSegments(totalMessage);
-  const isGsm7 = /^[\x00-\x7F]*$/.test(totalMessage);
+  const isGsm7 = Array.from(totalMessage).every((char) => char.charCodeAt(0) <= 0x7f);
 
   if (loadingProfile) {
     return (

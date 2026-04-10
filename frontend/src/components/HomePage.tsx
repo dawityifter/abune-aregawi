@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 import Hero from './Hero';
 import LiveStreamBanner from './LiveStreamBanner';
@@ -14,7 +14,6 @@ import useServerWarmup from '../hooks/useServerWarmup';
 const HomePage: React.FC = () => {
   const { lang } = useI18n();
 
-  // Trigger server warmup when component mounts
   useServerWarmup();
 
   return (

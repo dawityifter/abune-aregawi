@@ -1,7 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, User, signOut, onAuthStateChanged, updateProfile, Auth } from "firebase/auth";
+import { getAuth, signInWithPhoneNumber, User, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { normalizePhoneNumber } from "../utils/formatPhoneNumber";
+
+const PROFILE_FETCH_TIMEOUT_MS = Number(process.env.REACT_APP_PROFILE_FETCH_TIMEOUT_MS || 20000);
+const READY_PROBE_TIMEOUT_MS = 8000;
+const READY_BACKOFFS_MS = [3000, 7000, 15000, 25000, 30000];
 
 interface AuthContextType {
   user: any;
@@ -40,11 +44,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [backendStarting, setBackendStarting] = useState<boolean>(false);
   const navigate = useNavigate();
   const auth = getAuth();
-
-  // Configurable timeout for backend profile fetch (default 20s)
-  const PROFILE_FETCH_TIMEOUT_MS = Number(process.env.REACT_APP_PROFILE_FETCH_TIMEOUT_MS || 20000);
-  const READY_PROBE_TIMEOUT_MS = 8000;
-  const READY_BACKOFFS_MS = [3000, 7000, 15000, 25000, 30000]; // ~80s total
 
   // Cache for 404 results to prevent retry storms
   const [newUserCache, setNewUserCache] = useState<Set<string>>(new Set());
@@ -492,7 +491,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Don't redirect if user is already on a protected page (let them stay there)
           const REDIRECT_TO_DASHBOARD_PATHS = new Set<string>([
             '/login',
-            '/',
             '/credits',
             '/church-bylaw',
             '/donate',
@@ -530,7 +528,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
             // Only navigate to dashboard if on login page or public pages
             const REDIRECT_TO_DASHBOARD_PATHS = new Set<string>([
-              '/login', '/', '/credits', '/church-bylaw', '/donate', '/member-status', '/parish-pulse-sign-up',
+              '/login', '/credits', '/church-bylaw', '/donate', '/member-status', '/parish-pulse-sign-up',
             ]);
             const currentPath = window.location.pathname;
             if (REDIRECT_TO_DASHBOARD_PATHS.has(currentPath)) {
@@ -597,7 +595,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unsubscribe();
       }
     };
-  }, []); // Empty dependency array ensures listener is only registered once
+  }, [auth, checkUserProfile, clearNewUserCache, navigate, probeBackendReady]);
 
   // Client warm-up: background health ping on app load (prod-only, once per session)
   useEffect(() => {

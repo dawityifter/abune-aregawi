@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useLanguage } from '../contexts/LanguageContext';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface PledgeStats {
@@ -41,13 +40,12 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
   showRecentPledges = true,
   compact = false
 }) => {
-  const { t } = useLanguage();
   const { user } = useAuth();
   const [stats, setStats] = useState<PledgeStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -71,13 +69,13 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventName]);
 
   useEffect(() => {
     fetchStats();
     // Removed auto-refresh per requirement; manual refresh button provided instead
     return () => {};
-  }, [eventName]);
+  }, [fetchStats]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

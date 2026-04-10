@@ -56,7 +56,7 @@ const GalleryPage: React.FC = () => {
         };
 
         fetchImages();
-    }, [targetFolderId, firebaseUser]);
+    }, [targetFolderId, firebaseUser, t]);
 
     const handleNext = () => {
         setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);

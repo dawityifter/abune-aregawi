@@ -1,7 +1,6 @@
 import React from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const channelId = 'UCQXFCGSNdQ1y8GOmqbvRefg';
 const playlistId = 'UUQXFCGSNdQ1y8GOmqbvRefg';
 
 const GrowSpirituallySection: React.FC = () => {

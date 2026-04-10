@@ -21,7 +21,6 @@ const ChurchTvView: React.FC<Props> = ({ pendingWelcomes, announcements, rotatio
   const { language } = useLanguage();
   const od = dict.outreachDashboard;
 
-  const hasAnnouncements = announcements.length > 0;
   const hasWelcomes = pendingWelcomes.length > 0;
 
   // Flat slide sequence: each announcement is its own slide, then welcomes

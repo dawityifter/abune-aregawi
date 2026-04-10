@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRolePermissions } from '../../utils/roles';
 import VendorFormModal from './VendorFormModal';
@@ -26,7 +26,6 @@ const VendorList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
   const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
@@ -38,7 +37,6 @@ const VendorList: React.FC = () => {
           const phone = currentUser.phoneNumber;
           if (uid) {
             const profile = await getUserProfile(uid, email, phone);
-            setUserProfile(profile);
             const userRole = profile?.data?.member?.role || currentUser?.role || 'member';
             const permissions = getRolePermissions(userRole);
             setCanEdit(permissions.canManageRoles || userRole === 'admin');
@@ -51,11 +49,7 @@ const VendorList: React.FC = () => {
     fetchUserProfile();
   }, [currentUser, getUserProfile]);
 
-  useEffect(() => {
-    fetchVendors();
-  }, []);
-
-  const fetchVendors = async () => {
+  const fetchVendors = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -86,7 +80,11 @@ const VendorList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser, vendorTypeFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchVendors();
+  }, [fetchVendors]);
 
   const handleDelete = async (vendor: Vendor) => {
     if (!window.confirm(`Are you sure you want to delete ${vendor.name}?`)) {
@@ -345,6 +343,5 @@ const VendorList: React.FC = () => {
 };
 
 export default VendorList;
-
 
 

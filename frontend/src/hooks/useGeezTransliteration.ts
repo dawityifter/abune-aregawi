@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { geezMap } from '../utils/geezTransliteration';
 
 interface UseGeezTransliterationProps {
@@ -26,8 +26,6 @@ export const useGeezTransliteration = ({ enabled, value, onChange }: UseGeezTran
 
         // Capture the insertion
         const selectionStart = e.target.selectionStart || newValue.length;
-        const charInserted = newValue.slice(selectionStart - 1, selectionStart);
-
         // If inserted char is not a valid map key part (e.g. space, punctuation), just pass through
         // But we might need to process previous chars. 
         // For simplicity V1: complete replacement logic at cursor.

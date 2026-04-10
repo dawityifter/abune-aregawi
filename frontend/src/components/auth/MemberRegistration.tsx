@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from '../../contexts/LanguageContext';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
@@ -23,13 +23,6 @@ const MemberRegistration: React.FC = () => {
   const { t } = useLanguage();
   const { currentUser, getUserProfile, clearNewUserCache } = useAuth();
   const { email, phone } = location.state || {};
-  
-  // State to track if we're still checking user status
-  const [checkingUser, setCheckingUser] = useState(true);
-  const [userStatus, setUserStatus] = useState<'new' | 'existing' | 'error'>('new');
-  
-  // Track window width for responsive behavior
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   
   // Registration form state
   const [currentStep, setCurrentStep] = useState(1);
@@ -92,20 +85,10 @@ const MemberRegistration: React.FC = () => {
     }
   });
   
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  
-  const isMobile = windowWidth < 768;
-  
   // Check if user exists when component mounts
   useEffect(() => {
     const checkUserStatus = async () => {
       try {
-        setCheckingUser(true);
-        
         // If we have a current user, check if they have a profile
         if (currentUser) {
           try {
@@ -119,21 +102,17 @@ const MemberRegistration: React.FC = () => {
             if (profile) {
               // User has a profile, they are an existing user
               console.log('User profile found, redirecting to dashboard');
-              setUserStatus('existing');
               navigate('/dashboard');
             } else {
               // No profile found, this is a new user
               console.log('No user profile found, showing registration form');
-              setUserStatus('new');
             }
           } catch (error: any) {
             // If we get a 404, it means the user is new
             if (error.response?.status === 404) {
               console.log('User not found in backend, showing registration form');
-              setUserStatus('new');
             } else {
               console.error('Error checking user profile:', error);
-              setUserStatus('error');
             }
           }
         } else {
@@ -143,9 +122,6 @@ const MemberRegistration: React.FC = () => {
         }
       } catch (error) {
         console.error('Error checking user status:', error);
-        setUserStatus('error');
-      } finally {
-        setCheckingUser(false);
       }
     };
     
@@ -154,7 +130,7 @@ const MemberRegistration: React.FC = () => {
 
   // Loading and error are rendered conditionally in JSX below to keep hooks order consistent
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = useCallback((field: string, value: any) => {
     setFormData((prev: typeof formData) => ({
       ...prev,
       [field]: value
@@ -185,7 +161,7 @@ const MemberRegistration: React.FC = () => {
         [field]: null
       }));
     }
-  };
+  }, [currentStep, errors]);
 
   // Validate head of household phone number
   const validateHeadOfHouseholdPhone = async (phoneNumber: string) => {
@@ -342,11 +318,6 @@ const MemberRegistration: React.FC = () => {
         submit: e?.message ? `An unexpected error occurred: ${e.message}` : 'An unexpected error occurred. Please try again.',
       }));
     }
-  };
-
-  const prevStep = () => {
-    const prevStepNumber = currentStep - 1;
-    setCurrentStep(Math.max(prevStepNumber, 1));
   };
 
   const handleSubmit = async () => {
@@ -529,80 +500,6 @@ const MemberRegistration: React.FC = () => {
 
   // Note: redirect logic handled within checkUserStatus effect to avoid conditional hook ordering issues
 
-  const renderStep = () => {
-    // Calculate the actual step based on whether dependents should be shown
-    const actualStep = formData.hasDependents ? currentStep : 
-      (currentStep >= 4 ? currentStep + 1 : currentStep);
-    
-    switch (actualStep) {
-      case 1:
-        return (
-          <PersonalInfoStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            errors={errors}
-            t={t}
-          />
-        );
-      case 2:
-        return (
-          <ContactAddressStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            errors={errors}
-            t={t}
-          />
-        );
-      case 3:
-        return (
-          <FamilyInfoStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            errors={errors}
-            t={t}
-          />
-        );
-      case 4:
-        return (
-          <SpiritualInfoStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            errors={errors}
-            t={t}
-          />
-        );
-      case 5:
-        return (
-          <ContributionStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            errors={errors}
-            t={t}
-          />
-        );
-      case 6:
-        return (
-          <AccountStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            errors={errors}
-            t={t}
-          />
-        );
-      case 7:
-        return (
-          <DependentsStep
-            dependents={dependents}
-            onDependentsChange={setDependents}
-            errors={errors}
-            t={t}
-          />
-        );
-      default:
-        return null;
-    }
-  };
-
   // Determine if this is a phone sign-in user
   const isPhoneSignIn = phone && !email;
 
@@ -629,19 +526,12 @@ const MemberRegistration: React.FC = () => {
         <DependentsStep dependents={dependents} onDependentsChange={setDependents} errors={errors} t={t} />) });
     }
     return steps;
-  }, [formData, errors, t, dependents, isPhoneSignIn]);
+  }, [formData, errors, t, dependents, isPhoneSignIn, handleInputChange]);
 
   // Derive titles and total steps
   const stepTitles = stepConfig.map(s => t(s.titleKey));
   const totalSteps = stepConfig.length;
   
-  // Navigation functions
-  const handleNextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(prev => prev + 1);
-    }
-  };
-
   const handlePrevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(prev => prev - 1);

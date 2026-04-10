@@ -144,30 +144,6 @@ const DuesPage: React.FC = () => {
     }
   };
 
-  const handleEmailStatement = async () => {
-    if (!firebaseUser) return;
-    setStatementLoading('email');
-    setStatementMsg(null);
-    try {
-      const token = await firebaseUser.getIdToken();
-      const res = await fetch(`${apiUrl}/api/members/statement/email`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ year: selectedYear }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message || 'Failed to send email');
-      setStatementMsg({ type: 'success', text: json.message });
-    } catch (e: any) {
-      setStatementMsg({ type: 'error', text: e.message || 'Failed to send email' });
-    } finally {
-      setStatementLoading(null);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
