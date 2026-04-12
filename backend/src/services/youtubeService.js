@@ -6,6 +6,10 @@ const youtube = google.youtube('v3');
 const cache = new Map();
 const CACHE_TTL = 2 * 60 * 1000; // 2 minutes (Very responsive during active hours)
 const LONG_CACHE_TTL = 60 * 60 * 1000; // 1 hour (Low frequency check outside core hours)
+// Outside core hours, isLive: true results still expire quickly so a stream that
+// ends near a core-hours boundary doesn't stay "live" for up to an hour (which
+// would cause YouTube to show "This video is private" inside the embed).
+const LIVE_CACHE_TTL_OUTSIDE_CORE = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Check if the current time is within core broadcasting hours (CST)
@@ -58,9 +62,16 @@ const checkYouTubeLiveStatus = async (channelId, forceCheck = false) => {
     if (!forceCheck) {
         // If outside core hours AND not bypassing
         if (!isCore && !bypassCore) {
-            if (cachedItem && (now - cachedItem.lastComputed < LONG_CACHE_TTL)) {
-                console.log(`[YouTube] Outside core hours: Serving cached status for ${channelId} (Last checked ${Math.round((now - cachedItem.lastComputed) / 60000)}m ago)`);
-                return cachedItem.data;
+            if (cachedItem) {
+                const age = now - cachedItem.lastComputed;
+                // Use a short TTL for isLive: true — an ended stream becomes private on
+                // YouTube within minutes, so we must not serve a stale "live" result for
+                // the full 1-hour LONG_CACHE_TTL.  isLive: false is safe to cache longer.
+                const ttl = cachedItem.data.isLive ? LIVE_CACHE_TTL_OUTSIDE_CORE : LONG_CACHE_TTL;
+                if (age < ttl) {
+                    console.log(`[YouTube] Outside core hours: Serving cached status for ${channelId} (Last checked ${Math.round(age / 60000)}m ago)`);
+                    return cachedItem.data;
+                }
             }
             console.log(`[YouTube] Outside core hours, but cache is stale. Fetching fresh status for ${channelId}...`);
         } else {
