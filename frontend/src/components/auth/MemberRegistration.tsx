@@ -27,6 +27,7 @@ const MemberRegistration: React.FC = () => {
   // Registration form state
   const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState<any>({});
+  const [warnings, setWarnings] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dependents, setDependents] = useState<Dependent[]>([]);
   
@@ -161,6 +162,11 @@ const MemberRegistration: React.FC = () => {
         [field]: null
       }));
     }
+
+    // Clear email warning when email field changes
+    if (field === 'email') {
+      setWarnings((prev: any) => ({ ...prev, emailExists: false }));
+    }
   }, [currentStep, errors]);
 
   // Validate head of household phone number
@@ -187,6 +193,23 @@ const MemberRegistration: React.FC = () => {
         headOfHouseholdPhone: t('head.of.household.phone.validation.error')
       }));
       return false;
+    }
+  };
+
+  const handleEmailBlur = async () => {
+    const email = formData.email.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/members/check-email/${encodeURIComponent(email)}`
+      );
+      const data = await response.json();
+      if (data.success && data.exists) {
+        setWarnings((prev: any) => ({ ...prev, emailExists: true }));
+      }
+    } catch {
+      // Silently ignore — this is a best-effort warning, not a hard check
     }
   };
 
@@ -509,7 +532,14 @@ const MemberRegistration: React.FC = () => {
       { key: 'personal', titleKey: 'personal.info', render: () => (
         <PersonalInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
       { key: 'contact', titleKey: 'contact.address', render: () => (
-        <ContactAddressStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
+        <ContactAddressStep
+          formData={formData}
+          handleInputChange={handleInputChange}
+          errors={errors}
+          warnings={warnings}
+          onEmailBlur={handleEmailBlur}
+          t={t}
+        />) },
       { key: 'family', titleKey: 'family.info', render: () => (
         <FamilyInfoStep formData={formData} handleInputChange={handleInputChange} errors={errors} t={t} />) },
       { key: 'spiritual', titleKey: 'spiritual.info', render: () => (
