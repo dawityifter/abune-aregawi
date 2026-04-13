@@ -210,8 +210,10 @@ const ContactAddressStep: React.FC<{
   formData: any;
   handleInputChange: (field: any, value: any) => void;
   errors: any;
+  warnings: any;
+  onEmailBlur: () => void;
   t: any;
-}> = ({ formData, handleInputChange, errors, t }) => (
+}> = ({ formData, handleInputChange, errors, warnings, onEmailBlur, t }) => (
   <div className="space-y-4 sm:space-y-6">
     <h3 className="text-lg sm:text-xl font-semibold text-gray-800">{t('contactAddress')}</h3>
     
@@ -245,9 +247,10 @@ const ContactAddressStep: React.FC<{
           type="email"
           value={formData.email}
           onChange={(e) => handleInputChange('email', e.target.value)}
+          onBlur={onEmailBlur}
           className={`w-full px-3 py-2 sm:py-2.5 border rounded-lg text-base sm:text-sm ${
-            errors.email 
-              ? 'border-red-500 focus:ring-red-500' 
+            errors.email
+              ? 'border-red-500 focus:ring-red-500'
               : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
           } focus:outline-none focus:ring-1`}
           placeholder={t('email.placeholder')}
@@ -256,6 +259,16 @@ const ContactAddressStep: React.FC<{
           <p className="text-red-500 text-xs sm:text-sm mt-1">
             {errors.email}
           </p>
+        )}
+        {warnings.emailExists && (
+          <div className="mt-1 flex items-start gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+            <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            <p className="text-xs text-amber-700">
+              A member with this email already exists. You may still proceed.
+            </p>
+          </div>
         )}
       </div>
       
