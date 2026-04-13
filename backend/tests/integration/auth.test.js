@@ -71,8 +71,7 @@ describe('Authentication Endpoints', () => {
     it('should allow registration with a duplicate email when phone differs', async () => {
       const duplicateEmailData = {
         ...validMemberData,
-        phoneNumber: '+1999999999',
-        loginEmail: validMemberData.email
+        phoneNumber: '+1999999999'
       };
       const response = await request(app)
         .post('/api/members/register')
