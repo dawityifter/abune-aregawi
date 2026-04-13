@@ -68,6 +68,20 @@ describe('Authentication Endpoints', () => {
       expect(response.body.message).toContain('phone');
     });
 
+    it('should allow registration with a duplicate email when phone differs', async () => {
+      const duplicateEmailData = {
+        ...validMemberData,
+        phoneNumber: '+1999999999',
+        loginEmail: validMemberData.email
+      };
+      const response = await request(app)
+        .post('/api/members/register')
+        .send(duplicateEmailData)
+        .expect(201);
+
+      expect(response.body).toHaveProperty('success', true);
+    });
+
     it('should reject registration with invalid email format', async () => {
       const invalidData = { ...validMemberData, email: 'invalid-email' };
       
