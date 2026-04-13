@@ -558,20 +558,6 @@ exports.register = async (req, res) => {
     // Use provided email or null (do not generate fake emails)
     const email = providedEmail || null;
 
-    // Check if email already exists in PostgreSQL (skip check for generated placeholder emails)
-    let existingMemberByEmail = null;
-    if (providedEmail) {
-      existingMemberByEmail = await Member.findOne({
-        where: { email: providedEmail }
-      });
-    }
-    if (existingMemberByEmail) {
-      return res.status(400).json({
-        success: false,
-        message: 'A member with this email already exists'
-      });
-    }
-
     // Handle Firebase-authenticated users completing their profile
     if (firebaseUid) {
       // Check if this Firebase UID already has a complete member profile

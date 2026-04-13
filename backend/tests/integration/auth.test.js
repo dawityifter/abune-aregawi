@@ -58,14 +58,14 @@ describe('Authentication Endpoints', () => {
       authToken = response.body.data.token;
     });
 
-    it('should reject registration with duplicate email', async () => {
+    it('should reject registration with duplicate phone number', async () => {
       const response = await request(app)
         .post('/api/members/register')
-        .send(validMemberData)
+        .send(validMemberData)  // same phone number as first registration
         .expect(400);
 
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body.message).toContain('email');
+      expect(response.body.message).toContain('phone');
     });
 
     it('should reject registration with invalid email format', async () => {
