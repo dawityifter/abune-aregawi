@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage } from '../../contexts/LanguageContext';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../../utils/formatPhoneNumber';
@@ -196,22 +196,30 @@ const MemberRegistration: React.FC = () => {
     }
   };
 
-  const handleEmailBlur = async () => {
+  const emailBlurAbortRef = useRef<AbortController | null>(null);
+
+  const handleEmailBlur = useCallback(async () => {
     const email = formData.email.trim();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
 
+    emailBlurAbortRef.current?.abort();
+    emailBlurAbortRef.current = new AbortController();
+
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/members/check-email/${encodeURIComponent(email)}`
+        `${process.env.REACT_APP_API_URL}/api/members/check-email/${encodeURIComponent(email)}`,
+        { signal: emailBlurAbortRef.current.signal }
       );
       const data = await response.json();
       if (data.success && data.exists) {
         setWarnings((prev: any) => ({ ...prev, emailExists: true }));
       }
-    } catch {
-      // Silently ignore — this is a best-effort warning, not a hard check
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        // Silently ignore network errors — this is a best-effort warning only
+      }
     }
-  };
+  }, [formData.email]);
 
   const validateStep = async (step: number): Promise<boolean> => {
     const newErrors: any = {};
@@ -556,7 +564,7 @@ const MemberRegistration: React.FC = () => {
         <DependentsStep dependents={dependents} onDependentsChange={setDependents} errors={errors} t={t} />) });
     }
     return steps;
-  }, [formData, errors, t, dependents, isPhoneSignIn, handleInputChange]);
+  }, [formData, errors, t, dependents, isPhoneSignIn, handleInputChange, handleEmailBlur]);
 
   // Derive titles and total steps
   const stepTitles = stepConfig.map(s => t(s.titleKey));
