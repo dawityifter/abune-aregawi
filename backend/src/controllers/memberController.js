@@ -865,6 +865,26 @@ exports.checkPhoneExists = async (req, res) => {
   }
 };
 
+exports.checkEmailExists = async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    const member = await Member.findOne({ where: { email } });
+
+    return res.status(200).json({
+      success: true,
+      exists: !!member
+    });
+  } catch (error) {
+    console.error('Error checking email existence:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 // Login member
 exports.login = async (req, res) => {
   try {

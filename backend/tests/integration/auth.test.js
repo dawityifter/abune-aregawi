@@ -93,6 +93,27 @@ describe('Authentication Endpoints', () => {
     });
   });
 
+  describe('GET /api/members/check-email/:email', () => {
+    it('returns exists: false for an unknown email', async () => {
+      const response = await request(app)
+        .get('/api/members/check-email/nobody@unknown.com')
+        .expect(200);
+
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('exists', false);
+    });
+
+    it('returns exists: true for a registered email', async () => {
+      // testMember was created in the POST /register tests above
+      const response = await request(app)
+        .get(`/api/members/check-email/${testMember.email}`)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('exists', true);
+    });
+  });
+
   describe('GET /api/members/profile/jwt', () => {
     it('should get profile with valid token', async () => {
       const response = await request(app)
