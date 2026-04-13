@@ -865,6 +865,7 @@ exports.checkPhoneExists = async (req, res) => {
   }
 };
 
+// Check if an email already exists in members (used by registration form on blur)
 exports.checkEmailExists = async (req, res) => {
   try {
     const { email } = req.params;
@@ -873,7 +874,7 @@ exports.checkEmailExists = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email is required' });
     }
 
-    const member = await Member.findOne({ where: { email } });
+    const member = await Member.findOne({ where: { email }, attributes: ['id'] });
 
     return res.status(200).json({
       success: true,
