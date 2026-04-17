@@ -29,6 +29,12 @@ interface Member {
     name: string;
     abbreviation: string | null;
   };
+  // Address fields (returned by getAllMembersFirebase)
+  streetLine1?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
 }
 
 interface MemberListProps {
@@ -57,6 +63,7 @@ const MemberList: React.FC<MemberListProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [addressFilter, setAddressFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [showAddMember, setShowAddMember] = useState(false);
@@ -76,6 +83,8 @@ const MemberList: React.FC<MemberListProps> = ({
     return uniqueFamilies.size;
   }, [allMembers]);
 
+  const hasMissingAddress = (member: Member) => !member.streetLine1?.trim();
+
   // Client-side filtering and pagination
   const filteredMembers = useMemo(() => {
     return allMembers.filter(member => {
@@ -91,10 +100,14 @@ const MemberList: React.FC<MemberListProps> = ({
 
       const matchesRole = !roleFilter || member.role === roleFilter;
       const matchesStatus = !statusFilter || member.isActive.toString() === statusFilter;
+      const matchesAddress = !addressFilter ||
+        (addressFilter === 'missing' && hasMissingAddress(member)) ||
+        (addressFilter === 'has' && !hasMissingAddress(member));
 
-      return matchesSearch && matchesRole && matchesStatus;
+      return matchesSearch && matchesRole && matchesStatus && matchesAddress;
     });
-  }, [allMembers, searchTerm, roleFilter, statusFilter]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allMembers, searchTerm, roleFilter, statusFilter, addressFilter]);
 
   // Pagination
   const totalMembers = filteredMembers.length;
@@ -187,7 +200,7 @@ const MemberList: React.FC<MemberListProps> = ({
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, roleFilter, statusFilter]);
+  }, [searchTerm, roleFilter, statusFilter, addressFilter]);
 
   const handleDeleteMember = async (memberId: string) => {
     if (!window.confirm(t('admin.common.confirmDelete'))) {
@@ -372,6 +385,21 @@ const MemberList: React.FC<MemberListProps> = ({
               <option value="false">{t('admin.common.inactive')}</option>
             </select>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Address
+            </label>
+            <select
+              value={addressFilter}
+              onChange={(e) => setAddressFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">{t('admin.common.all')}</option>
+              <option value="missing">Missing address</option>
+              <option value="has">Has address</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -421,8 +449,16 @@ const MemberList: React.FC<MemberListProps> = ({
                             {String((member as any).memberId ?? (member as any).member_id ?? member.id)}
                             )</span>
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {member.dependentsCount ?? member.dependents?.length ?? 0} {t('admin.members.table.dependents')}
+                        <div className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
+                          <span>{member.dependentsCount ?? member.dependents?.length ?? 0} {t('admin.members.table.dependents')}</span>
+                          {hasMissingAddress(member) && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                              </svg>
+                              No address
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
