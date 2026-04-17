@@ -97,12 +97,18 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
     setFormData(normalized);
   }, [member]);
 
+  // Resolve the head-of-household ID: spouses store their family_id as the HoH's member id
+  const hohId = (() => {
+    const fid = member.familyId || member.family_id;
+    return fid && String(fid) !== String(member.id) ? fid : member.id;
+  })();
+
   // Fetch dependents to populate Family tab (children + spouse info)
   const refreshDependents = useCallback(async () => {
     if (!member?.id || !firebaseUser) return;
     try {
       const idToken = await firebaseUser.getIdToken(true);
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${member.id}/dependents`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${hohId}/dependents`, {
         headers: {
           'Authorization': idToken ? `Bearer ${idToken}` : '',
           'Content-Type': 'application/json'
@@ -133,9 +139,9 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
       }));
     } catch (e) {
       // Silent fail; family tab will just show none
-      console.warn('Failed to fetch dependents for member', member.id, e);
+      console.warn('Failed to fetch dependents for member', hohId, e);
     }
-  }, [member?.id, firebaseUser]);
+  }, [hohId, firebaseUser]);
 
   useEffect(() => {
     refreshDependents();
@@ -862,7 +868,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                               {t('edit') || 'Edit'}
                             </button>
                             {/* Promote button - show if has phone and either not linked OR linked to parent */}
-                            {d.phone && (!d.linkedMemberId || d.linkedMemberId === member.id) && (
+                            {d.phone && (!d.linkedMemberId || d.linkedMemberId === hohId) && (
                               <button
                                 type="button"
                                 onClick={async () => {
@@ -895,7 +901,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
                               </button>
                             )}
                             {/* Show status if already linked to a DIFFERENT member */}
-                            {d.linkedMemberId && d.linkedMemberId !== member.id && (
+                            {d.linkedMemberId && d.linkedMemberId !== hohId && (
                               <span className="text-xs text-gray-500 italic">
                                 (Has Own Account)
                               </span>
@@ -944,7 +950,7 @@ const MemberEditModal: React.FC<MemberEditModalProps> = ({
         {/* Dependent Modals */}
         {showAddDependent && (
           <AddDependentModal
-            memberId={member.id}
+            memberId={hohId}
             memberName={`${member.firstName} ${member.lastName}`}
             onClose={() => setShowAddDependent(false)}
             onCreated={async () => {
