@@ -185,7 +185,7 @@ exports.findPotentialMatches = async (bankTxn) => {
  * - Updates LedgerEntry
  * - Learns Zelle Match
  */
-exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user, existingTransactionId, forYear }) => {
+exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user, existingTransactionId, forYear, receiptNumber }) => {
     const { BankTransaction, Transaction, LedgerEntry, IncomeCategory, ZelleMemoMatch, sequelize } = require('../models');
 
     const txn = await BankTransaction.findByPk(bankTxnId);
@@ -195,6 +195,21 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
 
     if (txn.status === 'MATCHED' || txn.status === 'IGNORED') {
         throw new Error(`Transaction ${txn.description} already processed`);
+    }
+
+    const normalizedReceiptNumber = typeof receiptNumber === 'string' ? receiptNumber.trim() : receiptNumber;
+
+    if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
+        const duplicateReceipt = await Transaction.findOne({
+            where: {
+                receipt_number: normalizedReceiptNumber,
+                ...(existingTransactionId ? { id: { [Op.ne]: existingTransactionId } } : {})
+            }
+        });
+
+        if (duplicateReceipt) {
+            throw new Error(`Receipt number "${normalizedReceiptNumber}" has already been used. Please use a unique receipt number.`);
+        }
     }
 
     // 1. Create OR Link Donation (Transaction record)
@@ -209,6 +224,7 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
 
         // Link them
         donation.external_id = txn.transaction_hash;
+        donation.receipt_number = normalizedReceiptNumber || donation.receipt_number || null;
         // Optionally update status if it was pending
         if (donation.status !== 'succeeded') {
             donation.status = 'succeeded';
@@ -239,7 +255,7 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
             status: 'succeeded',
             note: txn.description,
             external_id: txn.transaction_hash,
-            receipt_number: receiptNumber,
+            receipt_number: normalizedReceiptNumber || receiptNumber,
             for_year: forYear || null
         });
     }
@@ -285,6 +301,7 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
                 entry_date: donation.payment_date,
                 member_id: donation.member_id,
                 payment_method: donation.payment_method,
+                receipt_number: donation.receipt_number || null,
                 memo: memo,
                 transaction_id: donation.id,
                 external_id: txn.transaction_hash
@@ -299,6 +316,7 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
                 entry_date: donation.payment_date,
                 member_id: donation.member_id,
                 payment_method: donation.payment_method,
+                receipt_number: donation.receipt_number || null,
                 memo: memo,
                 external_id: txn.transaction_hash
             });

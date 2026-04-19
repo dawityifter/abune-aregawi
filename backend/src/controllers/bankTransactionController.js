@@ -153,8 +153,26 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
     const { suggestMatch } = require('../services/reconciliationService');
 
     // Enrich with suggestions for Pending items
+    const matchedHashes = rows
+        .filter(txn => txn.status === 'MATCHED' && txn.transaction_hash)
+        .map(txn => txn.transaction_hash);
+
+    const matchedTransactions = matchedHashes.length > 0
+        ? await Transaction.findAll({
+            where: { external_id: matchedHashes },
+            attributes: ['external_id', 'receipt_number']
+        })
+        : [];
+
+    const receiptByHash = new Map(
+        matchedTransactions.map(tx => [tx.external_id, tx.receipt_number])
+    );
+
     const enrichedRows = await Promise.all(rows.map(async (txn) => {
         const plain = txn.get({ plain: true });
+        if (txn.status === 'MATCHED' && txn.transaction_hash) {
+            plain.receipt_number = receiptByHash.get(txn.transaction_hash) || null;
+        }
         if (txn.status === 'PENDING') {
             try {
                 // 1. Suggest Member Match
@@ -222,7 +240,7 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
  * @access  Private (Treasurer)
  */
 exports.reconcileTransaction = asyncHandler(async (req, res) => {
-    const { transaction_id, member_id, payment_type, action, existing_transaction_id } = req.body;
+    const { transaction_id, member_id, payment_type, action, existing_transaction_id, receipt_number } = req.body;
     // action: 'MATCH' (default), 'IGNORE'
 
     const txn = await BankTransaction.findByPk(transaction_id);
@@ -255,7 +273,8 @@ exports.reconcileTransaction = asyncHandler(async (req, res) => {
             paymentType: payment_type,
             user: req.user,
             existingTransactionId: existing_transaction_id,
-            forYear: req.body.for_year // Pass year override if provided
+            forYear: req.body.for_year, // Pass year override if provided
+            receiptNumber: receipt_number
         });
 
         res.json({ success: true, ...results });
@@ -298,7 +317,8 @@ exports.reconcileBulkTransactions = asyncHandler(async (req, res) => {
                 memberId: member_id,
                 paymentType: payment_type,
                 user: req.user,
-                forYear: req.body.for_year // Pass year override
+                forYear: req.body.for_year, // Pass year override
+                receiptNumber: req.body.receipt_number
             });
             results.success.push(id);
         } catch (error) {

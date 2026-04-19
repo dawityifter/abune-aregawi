@@ -173,6 +173,8 @@ export interface Dictionaries {
         receiptNumber: string;
         paymentType: string;
         paymentMethod: string;
+        minAmount: string;
+        maxAmount: string;
         dateRange: string;
         startDate: string;
         endDate: string;
@@ -180,6 +182,8 @@ export interface Dictionaries {
         placeholder: {
           search: string;
           receipt: string;
+          minAmount: string;
+          maxAmount: string;
         };
         options: {
           allTypes: string;
@@ -878,13 +882,17 @@ export const en: Dictionaries = {
         receiptNumber: "Receipt Number",
         paymentType: "Payment Type",
         paymentMethod: "Payment Method",
+        minAmount: "Min Amount",
+        maxAmount: "Max Amount",
         dateRange: "Date Range",
         startDate: "Start Date",
         endDate: "End Date",
         apply: "Apply Filters",
         placeholder: {
           search: "Search member (min 3 chars)...",
-          receipt: "Search receipt #..."
+          receipt: "Search receipt #...",
+          minAmount: "Minimum amount",
+          maxAmount: "Maximum amount"
         },
         options: {
           allTypes: "All Types",
@@ -1600,13 +1608,17 @@ export const ti: Dictionaries = {
         receiptNumber: "ቁጽሪ ቅብሊት",
         paymentType: "ዓይነት ክፍሊት",
         paymentMethod: "ገባሪ ክፍሊት",
+        minAmount: "ዝተሓተ መጠን",
+        maxAmount: "ዝለዓለ መጠን",
         dateRange: "እዋን",
         startDate: "መጀመሪ ዕለት",
         endDate: "መወዳእታ ዕለት",
         apply: "ኣጣሪ",
         placeholder: {
           search: "ኣባል ድለ (ብውሑዱ 3 ፊደላት)...",
-          receipt: "ቁጽሪ ቅብሊት ድለ..."
+          receipt: "ቁጽሪ ቅብሊት ድለ...",
+          minAmount: "ዝተሓተ መጠን",
+          maxAmount: "ዝለዓለ መጠን"
         },
         options: {
           allTypes: "ኩሉ ዓይነት",

@@ -1073,7 +1073,7 @@ const getSkippedReceipts = async (req, res) => {
 const updateTransactionPaymentType = async (req, res) => {
   try {
     const { id } = req.params;
-    const { payment_type } = req.body || {};
+    const { payment_type, receipt_number } = req.body || {};
 
     const allowed = ['membership_due', 'tithe', 'donation', 'event', 'offering', 'vow', 'building_fund', 'religious_item_sales', 'tigray_hunger_fundraiser', 'other'];
     if (!payment_type || !allowed.includes(payment_type)) {
@@ -1090,7 +1090,24 @@ const updateTransactionPaymentType = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Only Zelle transactions can be updated via this endpoint' });
     }
 
-    await tx.update({ payment_type });
+    const normalizedReceiptNumber = typeof receipt_number === 'string' ? receipt_number.trim() : receipt_number;
+    if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
+      const duplicateReceipt = await Transaction.findOne({
+        where: {
+          receipt_number: normalizedReceiptNumber,
+          id: { [Op.ne]: tx.id }
+        }
+      });
+
+      if (duplicateReceipt) {
+        return res.status(409).json({
+          success: false,
+          message: `Receipt number "${normalizedReceiptNumber}" has already been used. Please use a unique receipt number.`
+        });
+      }
+    }
+
+    await tx.update({ payment_type, receipt_number: normalizedReceiptNumber || null });
 
     // Sync corresponding LedgerEntry
     try {
@@ -1103,6 +1120,7 @@ const updateTransactionPaymentType = async (req, res) => {
         await le.update({
           type: payment_type,
           category: glCode,
+          receipt_number: tx.receipt_number || null,
           memo: `${glCode} - Zelle payment ${tx.external_id || tx.id}`
         });
         console.log(`✅ Synced ledger entry for transaction ${tx.id} to new type ${payment_type}`);
@@ -1111,7 +1129,7 @@ const updateTransactionPaymentType = async (req, res) => {
       console.warn(`⚠️ Failed to sync ledger entry for transaction ${tx.id}:`, syncErr.message);
     }
 
-    return res.json({ success: true, data: { id: tx.id, payment_type: tx.payment_type } });
+    return res.json({ success: true, data: { id: tx.id, payment_type: tx.payment_type, receipt_number: tx.receipt_number } });
   } catch (error) {
     console.error('Error updating transaction payment_type:', error);
     return res.status(500).json({ success: false, message: 'Failed to update payment_type', error: error.message });
