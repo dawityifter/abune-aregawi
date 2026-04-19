@@ -54,6 +54,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   const [receiptNumberFilter, setReceiptNumberFilter] = useState('');
   const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
+  const [minAmountFilter, setMinAmountFilter] = useState('');
+  const [maxAmountFilter, setMaxAmountFilter] = useState('');
   const [dateRangeFilter, setDateRangeFilter] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -71,7 +73,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   useEffect(() => {
     fetchTransactions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentTypeFilter, paymentMethodFilter, dateRangeFilter, customStartDate, customEndDate, receiptNumberFilter, currentPage]);
+  }, [paymentTypeFilter, paymentMethodFilter, minAmountFilter, maxAmountFilter, dateRangeFilter, customStartDate, customEndDate, receiptNumberFilter, currentPage]);
 
   // Fetch only when search is cleared or has at least 3 characters
   useEffect(() => {
@@ -121,6 +123,14 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
 
       if (receiptNumberFilter.trim()) {
         params.append('receipt_number', receiptNumberFilter.trim());
+      }
+
+      if (minAmountFilter.trim()) {
+        params.append('min_amount', minAmountFilter.trim());
+      }
+
+      if (maxAmountFilter.trim()) {
+        params.append('max_amount', maxAmountFilter.trim());
       }
 
       if (dateRangeFilter === 'custom') {
@@ -270,7 +280,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     <div className="space-y-6">
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-8 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('treasurerDashboard.transactionList.filters.memberSearch')}
@@ -334,6 +344,36 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
               <option value="ach">{t('treasurerDashboard.transactionList.methods.ach')}</option>
               <option value="other">{t('treasurerDashboard.transactionList.methods.other')}</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('treasurerDashboard.transactionList.filters.minAmount')}
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              value={minAmountFilter}
+              onChange={(e) => setMinAmountFilter(e.target.value)}
+              placeholder={t('treasurerDashboard.transactionList.filters.placeholder.minAmount')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('treasurerDashboard.transactionList.filters.maxAmount')}
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              value={maxAmountFilter}
+              onChange={(e) => setMaxAmountFilter(e.target.value)}
+              placeholder={t('treasurerDashboard.transactionList.filters.placeholder.maxAmount')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
           <div className="col-span-1 md:col-span-2 lg:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">

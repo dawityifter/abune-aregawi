@@ -25,6 +25,8 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
   firebaseUserRef.current = firebaseUser;
   const [selectedPaymentType, setSelectedPaymentType] = useState('donation');
   const [selectedForYear, setSelectedForYear] = useState<number | ''>('');
+  const [receiptNumber, setReceiptNumber] = useState('');
+  const [selectedMember, setSelectedMember] = useState<{ id: number; name: string; phoneNumber?: string | null } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
@@ -94,10 +96,18 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
     setExpError(null);
   }, [txn?.id, txn?.payer_name, txn?.description]);
 
+  useEffect(() => {
+    setReceiptNumber('');
+    setSelectedMember(null);
+    setSearchTerm('');
+    setSearchResults([]);
+  }, [txn?.id]);
+
   const handleReconcile = async (memberId: number, paymentType: string = selectedPaymentType) => {
     const token = await firebaseUser?.getIdToken();
     const payload: any = { transaction_id: txn!.id, action: 'MATCH', member_id: memberId, payment_type: paymentType };
     if (selectedForYear) payload.for_year = selectedForYear;
+    if (receiptNumber.trim()) payload.receipt_number = receiptNumber.trim();
     const res = await fetch(`${apiUrl}/api/bank/reconcile`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -228,6 +238,13 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
                 <p className="text-sm text-gray-900 font-medium">{t('check')} #{txn.check_number}</p>
               </div>
             )}
+
+            {txn.status === 'MATCHED' && txn.receipt_number && (
+              <div className="border-t border-gray-200 pt-3">
+                <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Receipt Number</p>
+                <p className="text-sm text-gray-900 font-medium">{txn.receipt_number}</p>
+              </div>
+            )}
           </div>
 
           {/* Linked member (MATCHED) */}
@@ -289,13 +306,34 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
                 </div>
               )}
 
+              <div className="mb-3">
+                <label htmlFor="detail-receipt-number" className="block text-xs font-semibold text-gray-600 mb-1">
+                  Receipt Number (Optional)
+                </label>
+                <input
+                  id="detail-receipt-number"
+                  type="text"
+                  value={receiptNumber}
+                  onChange={(e) => setReceiptNumber(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  placeholder="Enter receipt number"
+                />
+              </div>
+
               <div className="flex flex-col gap-2">
                 {txn.suggested_match && (
                   <button
-                    onClick={() => handleReconcile(txn.suggested_match!.member.id)}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white rounded-md py-2 text-sm font-semibold"
+                    onClick={() => setSelectedMember({
+                      id: txn.suggested_match!.member.id,
+                      name: `${txn.suggested_match!.member.first_name} ${txn.suggested_match!.member.last_name}`,
+                    })}
+                    className={`w-full rounded-md py-2 text-sm font-semibold ${
+                      selectedMember?.id === txn.suggested_match.member.id
+                        ? 'bg-green-700 text-white'
+                        : 'bg-green-600 hover:bg-green-700 text-white'
+                    }`}
                   >
-                    Confirm Match
+                    {selectedMember?.id === txn.suggested_match.member.id ? 'Suggested Match Selected' : 'Use Suggested Match'}
                   </button>
                 )}
 
@@ -313,7 +351,11 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
                       {searchResults.map((m) => (
                         <div
                           key={m.id}
-                          onClick={() => handleReconcile(m.id)}
+                          onClick={() => {
+                            setSelectedMember({ id: m.id, name: m.name, phoneNumber: m.phoneNumber });
+                            setSearchTerm(m.name);
+                            setSearchResults([]);
+                          }}
                           className="cursor-pointer hover:bg-gray-50 px-3 py-2 text-sm flex justify-between border-b last:border-0"
                         >
                           <span className="font-medium">{m.name}</span>
@@ -324,9 +366,27 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
                   )}
                 </div>
 
+                {selectedMember && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs text-blue-700 font-bold mb-1">Selected Member</p>
+                    <p className="text-sm font-semibold text-gray-900">{selectedMember.name}</p>
+                    {selectedMember.phoneNumber && (
+                      <p className="text-xs text-gray-500 mt-1">{selectedMember.phoneNumber}</p>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => selectedMember && handleReconcile(selectedMember.id)}
+                  disabled={!selectedMember}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-md py-2 text-sm font-semibold"
+                >
+                  Confirm Selected Member
+                </button>
+
                 <button
                   onClick={handleIgnore}
-                  className="w-full border border-gray-200 text-gray-400 hover:bg-gray-50 rounded-md py-2 text-sm"
+                  className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md py-2 text-sm font-medium"
                 >
                   Ignore Transaction
                 </button>

@@ -38,7 +38,7 @@ async function previewFromGmail(req, res) {
 module.exports.previewFromGmail = previewFromGmail;
 
 // Helper to process a single transaction creation
-async function processTransactionCreation({ external_id, amount, payment_date, note, member_id, payment_type, for_year }, user) {
+async function processTransactionCreation({ external_id, amount, payment_date, note, member_id, payment_type, for_year, receipt_number }, user) {
   if (!external_id || !amount || !payment_date) {
     throw new Error('external_id, amount, and payment_date are required');
   }
@@ -52,6 +52,14 @@ async function processTransactionCreation({ external_id, amount, payment_date, n
   const collected_by = user?.id || null;
   if (!collected_by) {
     throw new Error('Missing collector context');
+  }
+
+  const normalizedReceiptNumber = typeof receipt_number === 'string' ? receipt_number.trim() : receipt_number;
+  if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
+    const duplicateReceipt = await Transaction.findOne({ where: { receipt_number: normalizedReceiptNumber } });
+    if (duplicateReceipt) {
+      throw new Error(`Receipt number "${normalizedReceiptNumber}" has already been used. Please use a unique receipt number.`);
+    }
   }
 
   // Auto-assign income category based on payment_type
@@ -88,7 +96,7 @@ async function processTransactionCreation({ external_id, amount, payment_date, n
     payment_type: finalPaymentType,
     payment_method: 'zelle',
     status: 'succeeded',
-    receipt_number: null,
+    receipt_number: normalizedReceiptNumber || null,
     note: note || null,
     external_id,
     donation_id: null,
@@ -134,6 +142,7 @@ async function processTransactionCreation({ external_id, amount, payment_date, n
       entry_date: payment_date,
       member_id: member_id || null,
       payment_method: 'zelle',
+      receipt_number: normalizedReceiptNumber || null,
       memo: memo,
       transaction_id: tx.id
     });

@@ -115,11 +115,14 @@ describe('BankTransactionDetail — field display', () => {
       ...mockTxn,
       payer_name: 'Bank Payer Name',  // different from member name
       status: 'MATCHED' as const,
+      receipt_number: 'ZR-3001',
       member: { first_name: 'Dawit', last_name: 'Yifter' },
     };
     renderDetail(<BankTransactionDetail txn={matched} onClose={jest.fn()} onSuccess={jest.fn()} />);
     expect(screen.getByText('MATCHED')).toBeInTheDocument();
     expect(screen.getByText('Dawit Yifter')).toBeInTheDocument();
+    expect(screen.getByText('Receipt Number')).toBeInTheDocument();
+    expect(screen.getByText('ZR-3001')).toBeInTheDocument();
   });
 });
 
@@ -135,12 +138,17 @@ describe('BankTransactionDetail — PENDING income actions', () => {
   test('shows suggested match card when suggested_match is present', () => {
     renderDetail(<BankTransactionDetail txn={mockTxnWithMatch} onClose={jest.fn()} onSuccess={jest.fn()} />);
     expect(screen.getByText('Suggested Match Found')).toBeInTheDocument();
-    expect(screen.getByText('Confirm Match')).toBeInTheDocument();
+    expect(screen.getByText('Use Suggested Match')).toBeInTheDocument();
   });
 
   test('shows payment type selector for PENDING income', () => {
     renderDetail(<BankTransactionDetail txn={mockTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
     expect(screen.getByLabelText('Payment Type')).toBeInTheDocument();
+  });
+
+  test('shows optional receipt number input for PENDING income', () => {
+    renderDetail(<BankTransactionDetail txn={mockTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    expect(screen.getByLabelText('Receipt Number (Optional)')).toBeInTheDocument();
   });
 
   test('year selector hidden when payment type is not membership_due', () => {
@@ -154,14 +162,23 @@ describe('BankTransactionDetail — PENDING income actions', () => {
     expect(screen.getByLabelText('Year (Optional)')).toBeInTheDocument();
   });
 
-  test('calls /api/bank/reconcile with MATCH action on Confirm Match', async () => {
+  test('selects suggested member before confirming reconcile', () => {
+    renderDetail(<BankTransactionDetail txn={mockTxnWithMatch} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    fireEvent.click(screen.getByText('Use Suggested Match'));
+    expect(screen.getByText('Selected Member')).toBeInTheDocument();
+    expect(screen.getByText('Suggested Match Selected')).toBeInTheDocument();
+  });
+
+  test('calls /api/bank/reconcile only after explicit confirmation', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ success: true }),
     });
     const onSuccess = jest.fn();
     renderDetail(<BankTransactionDetail txn={mockTxnWithMatch} onClose={jest.fn()} onSuccess={onSuccess} />);
-    fireEvent.click(screen.getByText('Confirm Match'));
+    fireEvent.change(screen.getByLabelText('Receipt Number (Optional)'), { target: { value: 'R-1001' } });
+    fireEvent.click(screen.getByText('Use Suggested Match'));
+    fireEvent.click(screen.getByText('Confirm Selected Member'));
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/bank/reconcile'),
@@ -171,6 +188,12 @@ describe('BankTransactionDetail — PENDING income actions', () => {
     expect(body.action).toBe('MATCH');
     expect(body.transaction_id).toBe(42);
     expect(body.member_id).toBe(5);
+    expect(body.receipt_number).toBe('R-1001');
+  });
+
+  test('confirm button stays disabled until a member is selected', () => {
+    renderDetail(<BankTransactionDetail txn={mockTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    expect(screen.getByText('Confirm Selected Member')).toBeDisabled();
   });
 
   test('shows member search input', () => {

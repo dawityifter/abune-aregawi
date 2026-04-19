@@ -12,6 +12,7 @@ export interface BankTransaction {
     status: 'PENDING' | 'MATCHED' | 'IGNORED';
     payer_name: string | null;
     check_number: string | null;
+    receipt_number?: string | null;
     member?: {
         first_name: string;
         last_name: string;

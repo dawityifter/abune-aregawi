@@ -66,7 +66,8 @@ describe('Zelle Batch Ingestion', () => {
                 payment_date: '2023-01-01',
                 note: 'Donation 1',
                 member_id: donorMember.id,
-                payment_type: 'donation'
+                payment_type: 'donation',
+                receipt_number: 'ZR-1001'
             },
             {
                 external_id: 'gmail:msg2',
@@ -74,7 +75,8 @@ describe('Zelle Batch Ingestion', () => {
                 payment_date: '2023-01-02',
                 note: 'Donation 2',
                 member_id: donorMember.id,
-                payment_type: 'donation'
+                payment_type: 'donation',
+                receipt_number: 'ZR-1002'
             }
         ];
 
@@ -92,7 +94,36 @@ describe('Zelle Batch Ingestion', () => {
         const txs = await Transaction.findAll({ order: [['external_id', 'ASC']] });
         expect(txs).toHaveLength(2);
         expect(txs[0].external_id).toBe('gmail:msg1');
+        expect(txs[0].receipt_number).toBe('ZR-1001');
         expect(txs[1].external_id).toBe('gmail:msg2');
+        expect(txs[1].receipt_number).toBe('ZR-1002');
+    });
+
+    it('updates receipt number for an existing saved zelle transaction', async () => {
+        setVerifyTokenPayload({ uid: 'admin-uid', email: 'admin@example.com' });
+
+        const tx = await Transaction.create({
+            member_id: donorMember.id,
+            collected_by: adminMember.id,
+            payment_date: '2023-01-01',
+            amount: 100,
+            payment_type: 'donation',
+            payment_method: 'zelle',
+            status: 'succeeded',
+            external_id: 'gmail:existing'
+        });
+
+        const res = await request(app)
+            .patch(`/api/transactions/${tx.id}/payment-type`)
+            .set('Authorization', 'Bearer fake-token')
+            .send({ payment_type: 'donation', receipt_number: 'ZR-2001' })
+            .expect(200);
+
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.receipt_number).toBe('ZR-2001');
+
+        await tx.reload();
+        expect(tx.receipt_number).toBe('ZR-2001');
     });
 
     it('handles duplicates gracefully (idempotency)', async () => {

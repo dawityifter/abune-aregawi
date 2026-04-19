@@ -18,6 +18,7 @@ interface ZellePreviewItem {
   already_exists?: boolean;
   existing_transaction_id?: number | null;
   existing_note?: string | null;
+  existing_receipt_number?: string | null;
   payment_method?: 'zelle';
   payment_type?: string;
   status?: string;
@@ -54,6 +55,7 @@ const ZelleReview: React.FC = () => {
   // Per-row payment type (controlled) and membership year
   const [rowPaymentTypes, setRowPaymentTypes] = useState<Record<string, string>>({});
   const [rowYears, setRowYears] = useState<Record<string, string>>({});
+  const [rowReceiptNumbers, setRowReceiptNumbers] = useState<Record<string, string>>({});
   const currentYear = new Date().getFullYear();
 
   const getKey = (it: ZellePreviewItem, idx: number) => it.gmail_id || it.external_id || String(idx);
@@ -76,6 +78,16 @@ const ZelleReview: React.FC = () => {
       const data = await resp.json();
       if (data.success) {
         setItems(data.items);
+        setRowReceiptNumbers(prev => {
+          const next = { ...prev };
+          data.items.forEach((it: ZellePreviewItem, idx: number) => {
+            const key = getKey(it, idx);
+            if (it.existing_receipt_number !== undefined && it.existing_receipt_number !== null) {
+              next[key] = it.existing_receipt_number;
+            }
+          });
+          return next;
+        });
 
         // Prepopulate manual donor info and row modes from existing notes
         const newRowModes: Record<string, RowMode> = {};
@@ -174,7 +186,8 @@ const ZelleReview: React.FC = () => {
             note,
             member_id,
             payment_type,
-            for_year
+            for_year,
+            receipt_number: rowReceiptNumbers[key]?.trim() || null
           };
         });
 
@@ -253,6 +266,7 @@ const ZelleReview: React.FC = () => {
           member_id,
           payment_type,
           for_year,
+          receipt_number: rowReceiptNumbers[key]?.trim() || null,
         })
       });
       const data = await resp.json().catch(() => ({}));
@@ -266,7 +280,7 @@ const ZelleReview: React.FC = () => {
     } finally {
       setBusyIds((m) => ({ ...m, [key]: false }));
     }
-  }, [firebaseUser, fetchPreview, rowSearch, rowModes, manualDonors, rowPaymentTypes, rowYears, currentYear]);
+  }, [firebaseUser, fetchPreview, rowSearch, rowModes, manualDonors, rowPaymentTypes, rowYears, rowReceiptNumbers, currentYear]);
 
   const handleUpdatePaymentType = useCallback(async (item: ZellePreviewItem, idx?: number) => {
     if (!firebaseUser) return;
@@ -278,28 +292,32 @@ const ZelleReview: React.FC = () => {
     try {
       setBusyIds((m) => ({ ...m, [key]: true }));
       setError('');
-      const paymentTypeSelect = (document.getElementById(`paymentType-${key}`) as HTMLSelectElement | null);
-      const newType = paymentTypeSelect?.value || item.payment_type || 'donation';
+      const newType = rowPaymentTypes[key] ?? item.payment_type ?? 'donation';
+      const receiptNumber = rowReceiptNumbers[key]?.trim() || null;
       const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions/${item.existing_transaction_id}/payment-type`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
         },
-        body: JSON.stringify({ payment_type: newType })
+        body: JSON.stringify({ payment_type: newType, receipt_number: receiptNumber })
       });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) {
         throw new Error(data.message || `Update failed with status ${resp.status}`);
       }
       // optimistic update
-      setItems((prev) => prev.map((it, i) => (getKey(it, i) === key ? { ...it, payment_type: newType } : it)));
+      setItems((prev) => prev.map((it, i) => (
+        getKey(it, i) === key
+          ? { ...it, payment_type: newType, existing_receipt_number: receiptNumber }
+          : it
+      )));
     } catch (e: any) {
       setError(e.message || 'Failed to update payment type');
     } finally {
       setBusyIds((m) => ({ ...m, [key]: false }));
     }
-  }, [firebaseUser]);
+  }, [firebaseUser, rowPaymentTypes, rowReceiptNumbers]);
 
   const handleSearchChange = useCallback(async (key: string, query: string) => {
     setRowSearch((prev) => ({
@@ -605,6 +623,18 @@ const ZelleReview: React.FC = () => {
                           ))}
                         </select>
                       )}
+                      <input
+                        type="text"
+                        className="px-2 py-1 border border-gray-300 rounded"
+                        value={rowReceiptNumbers[getKey(it, items.indexOf(it))] ?? it.existing_receipt_number ?? ''}
+                        onChange={(e) => {
+                          const key = getKey(it, items.indexOf(it));
+                          setRowReceiptNumbers(prev => ({ ...prev, [key]: e.target.value }));
+                        }}
+                        disabled={!!busyIds[getKey(it, items.indexOf(it))]}
+                        placeholder="Receipt # (optional)"
+                        title="Receipt Number"
+                      />
                       {!it.already_exists ? (
                         <button
                           type="button"
