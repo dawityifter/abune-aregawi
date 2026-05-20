@@ -1,4 +1,4 @@
-const { parseChaseCSV, generateTransactionHash } = require('../src/services/bankParserService');
+const { parseChaseCSV, generateTransactionHash, extractAchIndividualName } = require('../src/services/bankParserService');
 
 describe('Bank Parser Service', () => {
     // Chase CSV already encodes correct sign in Amount column:
@@ -49,5 +49,12 @@ DEBIT,12/14/2025,GODADDY.COM REFUND,25.00,W_DRA,,
         const hash2 = generateTransactionHash(row2);
 
         expect(hash1).toBe(hash2);
+    });
+
+    test('should extract full ACH individual names before bank metadata markers', () => {
+        expect(extractAchIndividualName('ORIG CO NAME:PAYPAL IND NAME:BERHE,SELAMAWIT WEB ID:123456'))
+            .toBe('BERHE, SELAMAWIT');
+        expect(extractAchIndividualName('ORIG CO NAME:STRIPE IND NAME:SELAMAWIT BERHE CO ID:999'))
+            .toBe('SELAMAWIT BERHE');
     });
 });

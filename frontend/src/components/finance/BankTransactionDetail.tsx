@@ -65,6 +65,17 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   };
 
+  const suggestedMatches = txn?.suggested_matches?.length
+    ? txn.suggested_matches
+    : txn?.suggested_match
+      ? [txn.suggested_match]
+      : [];
+
+  const formatConfidence = (confidence?: string) => {
+    if (!confidence) return 'suggested';
+    return `${confidence.charAt(0).toUpperCase()}${confidence.slice(1)} confidence`;
+  };
+
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (!searchTerm || searchTerm.length < 3) { setSearchResults([]); return; }
@@ -274,7 +285,7 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
               <p className="text-xs text-amber-800 font-bold mb-1">Possible Existing Entry</p>
               <p className="text-xs text-amber-800 mb-3">
-                Same amount and payment date within 5 days of a transaction already entered in the system.
+                Same amount, same payment method, transaction date within 2 days, and similar payer/member name.
               </p>
               <div className="space-y-2">
                 {txn.potential_matches.map((match) => (
@@ -308,12 +319,37 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
             <div className="border-t border-gray-200 pt-4">
               <p className="text-xs text-gray-400 uppercase font-semibold mb-3">Actions</p>
 
-              {txn.suggested_match && (
+              {suggestedMatches.length > 0 && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
-                  <p className="text-xs text-green-700 font-bold mb-1">Suggested Match Found</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {txn.suggested_match.member.first_name} {txn.suggested_match.member.last_name}
-                  </p>
+                  <p className="text-xs text-green-700 font-bold mb-2">Suggested Members</p>
+                  <div className="space-y-2">
+                    {suggestedMatches.map((match) => {
+                      const memberName = `${match.member.first_name} ${match.member.last_name}`;
+                      const isSelected = selectedMember?.id === match.member.id;
+                      return (
+                        <button
+                          key={`${match.source || match.type}-${match.member.id}-${match.reason || ''}`}
+                          type="button"
+                          onClick={() => setSelectedMember({ id: match.member.id, name: memberName })}
+                          className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${
+                            isSelected
+                              ? 'border-green-700 bg-green-700 text-white'
+                              : 'border-green-200 bg-white text-gray-900 hover:bg-green-100'
+                          }`}
+                        >
+                          <span className="block text-sm font-semibold">{memberName}</span>
+                          <span className={`block text-xs ${isSelected ? 'text-green-100' : 'text-gray-600'}`}>
+                            {match.reason || 'Suggested from bank transaction history'}
+                          </span>
+                          <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            isSelected ? 'bg-white/20 text-white' : 'bg-green-100 text-green-800'
+                          }`}>
+                            {formatConfidence(match.confidence)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -367,22 +403,6 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
               </div>
 
               <div className="flex flex-col gap-2">
-                {txn.suggested_match && (
-                  <button
-                    onClick={() => setSelectedMember({
-                      id: txn.suggested_match!.member.id,
-                      name: `${txn.suggested_match!.member.first_name} ${txn.suggested_match!.member.last_name}`,
-                    })}
-                    className={`w-full rounded-md py-2 text-sm font-semibold ${
-                      selectedMember?.id === txn.suggested_match.member.id
-                        ? 'bg-green-700 text-white'
-                        : 'bg-green-600 hover:bg-green-700 text-white'
-                    }`}
-                  >
-                    {selectedMember?.id === txn.suggested_match.member.id ? 'Suggested Match Selected' : 'Use Suggested Match'}
-                  </button>
-                )}
-
                 <div>
                   <input
                     type="text"
