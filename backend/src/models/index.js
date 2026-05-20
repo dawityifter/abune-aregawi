@@ -112,6 +112,7 @@ try {
   const Voicemail = require('./Voicemail')(sequelize);
   const VolunteerRequest = require('./VolunteerRequest')(sequelize);
   const BankTransaction = require('./BankTransaction')(sequelize);
+  const BankMemoMatch = require('./BankMemoMatch')(sequelize);
   const Title = require('./Title')(sequelize);
   const Announcement = require('./Announcement')(sequelize);
   const ChurchSetting = require('./ChurchSetting')(sequelize);
@@ -143,6 +144,7 @@ try {
     Voicemail,
     VolunteerRequest,
     BankTransaction,
+    BankMemoMatch,
     Title,
     Announcement,
     ChurchSetting,

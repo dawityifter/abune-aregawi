@@ -150,7 +150,7 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
         }]
     });
 
-    const { suggestMatch } = require('../services/reconciliationService');
+    const { suggestMatch, suggestMatches } = require('../services/reconciliationService');
 
     // Enrich with suggestions for Pending items
     const matchedHashes = rows
@@ -176,9 +176,16 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
         if (txn.status === 'PENDING') {
             try {
                 // 1. Suggest Member Match
-                const suggestion = await suggestMatch(plain);
-                if (suggestion) {
-                    plain.suggested_match = suggestion;
+                const suggestions = await suggestMatches(plain);
+                if (suggestions.length > 0) {
+                    plain.suggested_matches = suggestions;
+                    plain.suggested_match = suggestions[0];
+                } else {
+                    const suggestion = await suggestMatch(plain);
+                    if (suggestion) {
+                        plain.suggested_match = suggestion;
+                        plain.suggested_matches = [suggestion];
+                    }
                 }
 
                 // 2. Find Potential System Duplicates (Matches)

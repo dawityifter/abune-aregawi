@@ -19,12 +19,26 @@ export interface BankTransaction {
     };
     suggested_match?: {
         type: string;
+        source?: string;
+        reason?: string;
+        confidence?: string;
         member: {
             id: number;
             first_name: string;
             last_name: string;
         }
     };
+    suggested_matches?: {
+        type: string;
+        source?: string;
+        reason?: string;
+        confidence?: string;
+        member: {
+            id: number;
+            first_name: string;
+            last_name: string;
+        }
+    }[];
     potential_matches?: {
         id: number;
         amount: number;
@@ -362,6 +376,9 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                             {txn.status === 'PENDING' && txn.suggested_match && (
                                                 <div className="mt-1 text-xs text-blue-600">
                                                     Suggestion: {txn.suggested_match.member.first_name} {txn.suggested_match.member.last_name}
+                                                    {txn.suggested_matches && txn.suggested_matches.length > 1 && (
+                                                        <span> +{txn.suggested_matches.length - 1} more</span>
+                                                    )}
                                                 </div>
                                             )}
                                         </td>
@@ -370,7 +387,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                             {txn.status === 'PENDING' && txn.potential_matches && txn.potential_matches.length > 0 && (
                                                 <div
                                                     className="mt-1 max-w-64 whitespace-normal text-xs font-semibold leading-4 text-amber-700"
-                                                    title="Same amount and transaction date within 5 days of an existing church transaction."
+                                                    title="Same amount, same payment method, transaction date within 2 days, and similar payer/member name."
                                                 >
                                                     Possible existing entry
                                                     <div className="font-medium text-amber-800">

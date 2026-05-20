@@ -153,6 +153,7 @@ describe('BankTransactionDetail — field display', () => {
     };
     renderDetail(<BankTransactionDetail txn={duplicateCandidate} onClose={jest.fn()} onSuccess={jest.fn()} />);
     expect(screen.getByText('Possible Existing Entry')).toBeInTheDocument();
+    expect(screen.getByText('Same amount, same payment method, transaction date within 2 days, and similar payer/member name.')).toBeInTheDocument();
     expect(screen.getByText('Entry #77 - Dawit Yifter')).toBeInTheDocument();
     expect(screen.getByText('2026-03-27 · Membership Due · Zelle')).toBeInTheDocument();
     expect(screen.getByText('Receipt: R-77')).toBeInTheDocument();
@@ -171,8 +172,8 @@ describe('BankTransactionDetail — PENDING income actions', () => {
 
   test('shows suggested match card when suggested_match is present', () => {
     renderDetail(<BankTransactionDetail txn={mockTxnWithMatch} onClose={jest.fn()} onSuccess={jest.fn()} />);
-    expect(screen.getByText('Suggested Match Found')).toBeInTheDocument();
-    expect(screen.getByText('Use Suggested Match')).toBeInTheDocument();
+    expect(screen.getByText('Suggested Members')).toBeInTheDocument();
+    expect(screen.getAllByText('Dawit Yifter').length).toBeGreaterThan(0);
   });
 
   test('shows payment type selector for PENDING income', () => {
@@ -198,9 +199,9 @@ describe('BankTransactionDetail — PENDING income actions', () => {
 
   test('selects suggested member before confirming reconcile', () => {
     renderDetail(<BankTransactionDetail txn={mockTxnWithMatch} onClose={jest.fn()} onSuccess={jest.fn()} />);
-    fireEvent.click(screen.getByText('Use Suggested Match'));
+    fireEvent.click(screen.getByRole('button', { name: /Dawit Yifter/i }));
     expect(screen.getByText('Selected Member')).toBeInTheDocument();
-    expect(screen.getByText('Suggested Match Selected')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Dawit Yifter/i })).toHaveClass('bg-green-700');
   });
 
   test('calls /api/bank/reconcile only after explicit confirmation', async () => {
@@ -211,7 +212,7 @@ describe('BankTransactionDetail — PENDING income actions', () => {
     const onSuccess = jest.fn();
     renderDetail(<BankTransactionDetail txn={mockTxnWithMatch} onClose={jest.fn()} onSuccess={onSuccess} />);
     fireEvent.change(screen.getByLabelText('Receipt Number (Optional)'), { target: { value: 'R-1001' } });
-    fireEvent.click(screen.getByText('Use Suggested Match'));
+    fireEvent.click(screen.getByRole('button', { name: /Dawit Yifter/i }));
     fireEvent.click(screen.getByText('Confirm Selected Member'));
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
     expect(global.fetch).toHaveBeenCalledWith(
@@ -223,6 +224,34 @@ describe('BankTransactionDetail — PENDING income actions', () => {
     expect(body.transaction_id).toBe(42);
     expect(body.member_id).toBe(5);
     expect(body.receipt_number).toBe('R-1001');
+  });
+
+  test('shows multiple suggested member candidates with reasons', () => {
+    const txnWithCandidates: BankTransaction = {
+      ...mockTxn,
+      suggested_matches: [
+        {
+          type: 'LEARNED_ACH',
+          source: 'LEARNED_ACH',
+          reason: 'Previously associated with this ACH payer',
+          confidence: 'high',
+          member: { id: 5, first_name: 'Learned', last_name: 'Member' },
+        },
+        {
+          type: 'FUZZY_NAME',
+          source: 'FUZZY_NAME',
+          reason: 'ACH payer name resembles this member',
+          confidence: 'medium',
+          member: { id: 6, first_name: 'Fuzzy', last_name: 'Member' },
+        },
+      ],
+    };
+
+    renderDetail(<BankTransactionDetail txn={txnWithCandidates} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    expect(screen.getByRole('button', { name: /Learned Member/i })).toBeInTheDocument();
+    expect(screen.getByText('Previously associated with this ACH payer')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Fuzzy Member/i })).toBeInTheDocument();
+    expect(screen.getByText('ACH payer name resembles this member')).toBeInTheDocument();
   });
 
   test('confirm button stays disabled until a member is selected', () => {

@@ -12,7 +12,7 @@ const PATTERNS = {
     ZELLE: /^Zelle payment from (?<name>.*?) (?<id>\w+)$/i,
 
     // "ORIG CO NAME:RAYTHEON COMPANY ... IND NAME:BERHE,SELAMAWIT ..."
-    ACH_IND_NAME: /IND NAME:(?<name>[^ ]+)/i,
+    ACH_IND_NAME: /IND NAME:(?<name>.*)$/i,
 
     // "CHECK 1582"
     CHECK: /^CHECK (?<number>\d+)/i
@@ -27,6 +27,37 @@ const generateTransactionHash = (row) => {
     // but 'Posted' ones do. Including it would cause duplicates.
     const data = `${row['Posting Date']}|${row['Description']}|${row['Amount']}`;
     return crypto.createHash('md5').update(data).digest('hex');
+};
+
+const extractAchIndividualName = (description) => {
+    const match = String(description || '').match(PATTERNS.ACH_IND_NAME);
+    if (!match) return null;
+
+    const stopMarkers = [
+        ' WEB ID:',
+        ' CO ID:',
+        ' COMPANY ID:',
+        ' IND ID:',
+        ' TRACE',
+        ' TRN',
+        ' ENTRY',
+        ' CCD',
+        ' PPD',
+        ' SEC:'
+    ];
+
+    const rawName = match.groups.name;
+    const upperName = rawName.toUpperCase();
+    const stopAt = stopMarkers
+        .map(marker => upperName.indexOf(marker))
+        .filter(index => index >= 0)
+        .sort((a, b) => a - b)[0];
+
+    const extracted = (stopAt >= 0 ? rawName.slice(0, stopAt) : rawName)
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+    return extracted ? extracted.replace(/\s*,\s*/g, ', ').trim() : null;
 };
 
 /**
@@ -62,12 +93,7 @@ const parseChaseCSV = (fileBuffer) => {
 
         // 2. Try ACH Name Parsing (if not Zelle)
         if (!payerName) {
-            const achMatch = rawDesc.match(PATTERNS.ACH_IND_NAME);
-            if (achMatch) {
-                // ACH names often come as "LAST,FIRST". We might want to normalize later, 
-                // but for now storing as is.
-                payerName = achMatch.groups.name.replace(',', ', ').trim();
-            }
+            payerName = extractAchIndividualName(rawDesc);
         }
 
         // 3. Extract Check Number if missing from column but present in desc
@@ -119,5 +145,6 @@ const parseChaseCSV = (fileBuffer) => {
 
 module.exports = {
     parseChaseCSV,
-    generateTransactionHash
+    generateTransactionHash,
+    extractAchIndividualName
 };

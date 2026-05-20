@@ -1,5 +1,12 @@
 const { Op } = require('sequelize');
 const { Member, ZelleMemoMatch, Transaction, sequelize } = require('../models');
+const {
+    extractAchIndividualName,
+    findSuggestionCandidates,
+    learnBankMemoMatch,
+    normalizeWords,
+    sourceTypeFor
+} = require('./bankMemoMatchService');
 
 /**
  * Clean up bank description to getting a learning-friendly string.
@@ -81,6 +88,11 @@ async function findMemberByFuzzyName(nameText) {
  * Main matching strategy
  */
 exports.suggestMatch = async (transaction) => {
+    const candidates = await findSuggestionCandidates(transaction);
+    if (candidates.length > 0) {
+        return candidates[0];
+    }
+
     // 1. learned match (ZelleMemoMatch)
     // Use the normalized description (e.g. "ALMAZ TESFAY")
     const cleanMemo = normalizeDescription(transaction.description, transaction.type);
@@ -128,49 +140,87 @@ exports.suggestMatch = async (transaction) => {
     return null;
 };
 
+exports.suggestMatches = async (transaction) => findSuggestionCandidates(transaction);
+
+function inferPaymentMethodFromBankTxn(bankTxn) {
+    const sourceType = sourceTypeFor(bankTxn);
+    const type = String(bankTxn?.type || '').toUpperCase();
+
+    if (sourceType === 'ZELLE') return 'zelle';
+    if (sourceType === 'ACH') return 'ach';
+    if (sourceType === 'CHECK') return 'check';
+    if (type.includes('DEBIT')) return 'debit_card';
+    if (type.includes('CREDIT_CARD') || type.includes('CARD')) return 'credit_card';
+    return null;
+}
+
+function getBankDuplicateNameText(bankTxn) {
+    const sourceType = sourceTypeFor(bankTxn);
+    if (bankTxn?.payer_name) return bankTxn.payer_name;
+    if (sourceType === 'ACH') return extractAchIndividualName(bankTxn?.description);
+    if (sourceType === 'ZELLE') return normalizeDescription(bankTxn?.description, bankTxn?.type);
+    return null;
+}
+
+function tokenSet(value) {
+    return new Set(normalizeWords(value).split(' ').filter(token => token.length > 2));
+}
+
+function memberNameLooksLikeBankName(bankName, member) {
+    if (!bankName || !member) return false;
+
+    const bankTokens = tokenSet(bankName);
+    const memberTokens = Array.from(tokenSet(`${member.first_name || ''} ${member.last_name || ''}`));
+    if (bankTokens.size === 0 || memberTokens.length === 0) return false;
+
+    const matchingMemberTokens = memberTokens.filter(token => bankTokens.has(token)).length;
+
+    // Two-token member names should both be present. For longer names, two strong
+    // token hits are enough because bank descriptions often omit middle names.
+    const requiredMatches = memberTokens.length <= 2 ? memberTokens.length : 2;
+    return matchingMemberTokens >= requiredMatches;
+}
+
+function isBankReconciliationHash(externalId) {
+    return /^[a-f0-9]{32}$/i.test(String(externalId || ''));
+}
+
 /**
  * Find potential existing system transactions that match a bank transaction.
- * Criteria: Same amount, Date +/- 5 days, Not already linked.
+ * Criteria: same amount, same inferred payment method, date +/- 2 days, and
+ * payer/member name token match. If no usable bank-side name exists, return no
+ * candidates to avoid noisy duplicate warnings.
  */
 exports.findPotentialMatches = async (bankTxn) => {
     const { amount, date, transaction_hash } = bankTxn;
+    const paymentMethod = inferPaymentMethodFromBankTxn(bankTxn);
+    const bankName = getBankDuplicateNameText(bankTxn);
 
-    // Date range: +/- 5 days
+    if (!paymentMethod || !bankName) {
+        return [];
+    }
+
+    // Date range: +/- 2 days
     const txnDate = new Date(date);
     const startDate = new Date(txnDate);
-    startDate.setDate(startDate.getDate() - 5);
+    startDate.setDate(startDate.getDate() - 2);
     const endDate = new Date(txnDate);
-    endDate.setDate(endDate.getDate() + 5);
+    endDate.setDate(endDate.getDate() + 2);
 
     // Search for transactions
     const potentials = await Transaction.findAll({
         where: {
             amount: amount, // Exact amount match
+            payment_method: paymentMethod,
             payment_date: {
                 [Op.between]: [startDate, endDate]
             },
-            status: { [Op.ne]: 'failed' },
-            // Exclude already linked transactions (heuristic: external_id is a 32-char hex hash)
-            // Or better: external_id does not equal THIS bank transaction hash (obviously)
-            // And potentially check if external_id looks like a bank hash.
-            // For now, let's just return anything that isn't confirmed as linked to another bank txn?
-            // Actually, if a transaction was manually entered, external_id is usually null or 'stripe_xxxx'.
-            // If it was created from bank reconciliation, external_id IS the hash.
-            // So we want transactions where external_id IS NULL or DOES NOT look like a bank hash.
-            // Let's filter in code or just return them and let frontend decide?
-            // Safer: Returns ones where external_id is NULL or length != 32 (md5 hash length).
-            [Op.or]: [
-                { external_id: null },
-                { external_id: { [Op.notRegexp]: '^[a-f0-9]{32}$' } } // Postgres/Sqlite dependent?
-                // Sqlite doesn't support notRegexp easily without plugin.
-                // Let's keep it simple: Just get them and filter in JS if needed.
-                // Or just don't filter external_id extensively yet.
-            ]
+            status: { [Op.ne]: 'failed' }
         },
         include: [{
             model: Member,
             as: 'member',
-            attributes: ['first_name', 'last_name'] // Use member to help identifying
+            attributes: ['id', 'first_name', 'last_name']
         }],
         attributes: [
             'id',
@@ -185,8 +235,12 @@ exports.findPotentialMatches = async (bankTxn) => {
         order: [['payment_date', 'DESC'], ['id', 'DESC']]
     });
 
-    // Filter out the one that is ALREADY linked to this hash (if we are re-processing)
-    return potentials.filter(t => t.external_id !== transaction_hash);
+    return potentials.filter((t) => {
+        if (t.external_id === transaction_hash || isBankReconciliationHash(t.external_id)) {
+            return false;
+        }
+        return memberNameLooksLikeBankName(bankName, t.member);
+    });
 };
 
 /**
@@ -276,11 +330,15 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
     txn.member_id = memberId || donation.member_id; // Use existing donation member_id if linking
     await txn.save();
 
-    // 3. Learn (Save to ZelleMemoMatch)
-    // Only learn if we have a direct member association and it's not a generic manual link
+    // 3. Learn memo/description associations for future suggestions.
+    // Only learn if we have a direct member association and it's not a generic manual link.
     let cleanMemo = normalizeDescription(txn.description, txn.type);
 
-    if (cleanMemo && cleanMemo.length > 2 && memberId) {
+    if (memberId) {
+        await learnBankMemoMatch(txn, memberId);
+    }
+
+    if (sourceTypeFor(txn) === 'ZELLE' && cleanMemo && cleanMemo.length > 2 && memberId) {
         const existingMatch = await ZelleMemoMatch.findOne({
             where: sequelize.where(sequelize.fn('lower', sequelize.col('memo')), cleanMemo.toLowerCase())
         });
