@@ -26,12 +26,12 @@ const mockTransactions = [
     },
 ];
 
-const setupFetchMock = () => {
+const setupFetchMock = (transactions = mockTransactions) => {
     (global.fetch as jest.Mock).mockResolvedValue({
         json: () =>
             Promise.resolve({
                 success: true,
-                data: { transactions: mockTransactions, pagination: { pages: 1 }, current_balance: 1000 },
+                data: { transactions, pagination: { pages: 1 }, current_balance: 1000 },
             }),
     });
 };
@@ -63,6 +63,36 @@ describe('BankTransactionList', () => {
         await waitFor(() => screen.getByText('Test Payment'));
         fireEvent.click(screen.getByText('Details →'));
         expect(screen.getByRole('dialog', { name: 'Transaction Details' })).toBeInTheDocument();
+    });
+
+    test('shows potential duplicate as the existing transaction entry', async () => {
+        setupFetchMock([
+            {
+                ...mockTransactions[0],
+                potential_matches: [
+                    {
+                        id: 77,
+                        amount: 100,
+                        payment_date: '2026-01-30',
+                        payment_type: 'donation',
+                        payment_method: 'zelle',
+                        receipt_number: 'R-77',
+                        member: { first_name: 'Jane', last_name: 'Doe' },
+                    },
+                ],
+            },
+        ]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Possible existing entry'));
+        expect(screen.getByText(/Existing entry #77: Jane Doe, 2026-01-30, receipt R-77/)).toBeInTheDocument();
+        expect(screen.queryByText('Potential Duplicate')).not.toBeInTheDocument();
+    });
+
+    test('labels ignored bank status as reconciled', async () => {
+        setupFetchMock([{ ...mockTransactions[0], status: 'IGNORED' }]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('RECONCILED'));
+        expect(screen.queryByText('IGNORED')).not.toBeInTheDocument();
     });
 
     test('closes detail panel when backdrop is clicked', async () => {

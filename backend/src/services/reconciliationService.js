@@ -171,7 +171,18 @@ exports.findPotentialMatches = async (bankTxn) => {
             model: Member,
             as: 'member',
             attributes: ['first_name', 'last_name'] // Use member to help identifying
-        }]
+        }],
+        attributes: [
+            'id',
+            'amount',
+            'payment_date',
+            'payment_type',
+            'payment_method',
+            'receipt_number',
+            'note',
+            'external_id'
+        ],
+        order: [['payment_date', 'DESC'], ['id', 'DESC']]
     });
 
     // Filter out the one that is ALREADY linked to this hash (if we are re-processing)
