@@ -53,6 +53,18 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
 
   const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
+  const formatPaymentLabel = (value?: string | null) => {
+    if (!value) return '-';
+    return value
+      .split('_')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  };
+
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (!searchTerm || searchTerm.length < 3) { setSearchResults([]); return; }
@@ -195,7 +207,7 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
             )}
             {txn.status === 'IGNORED' && (
               <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">
-                IGNORED
+                RECONCILED
               </span>
             )}
           </div>
@@ -216,7 +228,7 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
               <div>
                 <p className="text-xs text-gray-400 uppercase font-semibold mb-0.5">Amount</p>
                 <p className={`text-lg font-bold ${txn.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(txn.amount)}
+                  {formatCurrency(txn.amount)}
                 </p>
               </div>
               {txn.payer_name && (
@@ -254,6 +266,40 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
               <p className="text-sm text-gray-900 font-semibold">
                 {txn.member.first_name} {txn.member.last_name}
               </p>
+            </div>
+          )}
+
+          {/* Existing transaction candidates */}
+          {txn.status === 'PENDING' && txn.potential_matches && txn.potential_matches.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+              <p className="text-xs text-amber-800 font-bold mb-1">Possible Existing Entry</p>
+              <p className="text-xs text-amber-800 mb-3">
+                Same amount and payment date within 5 days of a transaction already entered in the system.
+              </p>
+              <div className="space-y-2">
+                {txn.potential_matches.map((match) => (
+                  <div key={match.id} className="rounded-md border border-amber-200 bg-white px-3 py-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          Entry #{match.id}
+                          {match.member && ` - ${match.member.first_name} ${match.member.last_name}`}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {match.payment_date} · {formatPaymentLabel(match.payment_type)} · {formatPaymentLabel(match.payment_method)}
+                        </p>
+                      </div>
+                      <p className="text-sm font-bold text-amber-800">{formatCurrency(Number(match.amount))}</p>
+                    </div>
+                    {match.receipt_number && (
+                      <p className="mt-1 text-xs text-gray-600">Receipt: {match.receipt_number}</p>
+                    )}
+                    {match.note && (
+                      <p className="mt-1 text-xs text-gray-600">{match.note}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -388,7 +434,7 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
                   onClick={handleIgnore}
                   className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md py-2 text-sm font-medium"
                 >
-                  Ignore Transaction
+                  Mark Reconciled
                 </button>
               </div>
             </div>

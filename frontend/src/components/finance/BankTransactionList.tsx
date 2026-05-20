@@ -29,6 +29,10 @@ export interface BankTransaction {
         id: number;
         amount: number;
         payment_date: string;
+        payment_type?: string | null;
+        payment_method?: string | null;
+        receipt_number?: string | null;
+        note?: string | null;
         member?: {
             first_name: string;
             last_name: string;
@@ -161,6 +165,21 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
     };
 
+    const formatStatusLabel = (status: BankTransaction['status']) => {
+        if (status === 'PENDING') return 'PENDING REVIEW';
+        if (status === 'MATCHED') return 'MATCHED';
+        return 'RECONCILED';
+    };
+
+    const formatPotentialMatchSummary = (txn: BankTransaction) => {
+        const match = txn.potential_matches?.[0];
+        if (!match) return null;
+        const memberName = match.member ? `${match.member.first_name} ${match.member.last_name}` : 'No member';
+        const receipt = match.receipt_number ? `, receipt ${match.receipt_number}` : '';
+        const more = txn.potential_matches && txn.potential_matches.length > 1 ? ` +${txn.potential_matches.length - 1} more` : '';
+        return `Existing entry #${match.id}: ${memberName}, ${match.payment_date}${receipt}${more}`;
+    };
+
 
     const handleBulkReconcile = async (member: any) => {
         if (selectedTxnIds.length === 0) return;
@@ -267,7 +286,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                             <option value="">All Statuses</option>
                             <option value="PENDING">Pending Review</option>
                             <option value="MATCHED">Matched</option>
-                            <option value="IGNORED">Ignored</option>
+                            <option value="IGNORED">Reconciled</option>
                         </select>
                         {selectedTxnIds.length > 0 && (
                             <button
@@ -349,8 +368,14 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         <td className={`whitespace-nowrap px-6 py-4 text-right text-sm font-semibold ${txn.amount >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                                             {formatCurrency(txn.amount)}
                                             {txn.status === 'PENDING' && txn.potential_matches && txn.potential_matches.length > 0 && (
-                                                <div className="mt-1 text-xs font-semibold text-amber-700">
-                                                    Potential Duplicate
+                                                <div
+                                                    className="mt-1 max-w-64 whitespace-normal text-xs font-semibold leading-4 text-amber-700"
+                                                    title="Same amount and transaction date within 5 days of an existing church transaction."
+                                                >
+                                                    Possible existing entry
+                                                    <div className="font-medium text-amber-800">
+                                                        {formatPotentialMatchSummary(txn)}
+                                                    </div>
                                                 </div>
                                             )}
                                         </td>
@@ -359,7 +384,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                                 ${txn.status === 'MATCHED' ? 'bg-emerald-100 text-emerald-800' :
                                                     txn.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
                                                         'bg-slate-100 text-slate-700'}`}>
-                                                {txn.status}
+                                                {formatStatusLabel(txn.status)}
                                             </span>
                                         </td>
                                         <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">

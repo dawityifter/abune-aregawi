@@ -124,6 +124,40 @@ describe('BankTransactionDetail — field display', () => {
     expect(screen.getByText('Receipt Number')).toBeInTheDocument();
     expect(screen.getByText('ZR-3001')).toBeInTheDocument();
   });
+
+  test('labels ignored bank status as reconciled', () => {
+    const reconciled = {
+      ...mockTxn,
+      status: 'IGNORED' as const,
+    };
+    renderDetail(<BankTransactionDetail txn={reconciled} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    expect(screen.getByText('RECONCILED')).toBeInTheDocument();
+    expect(screen.queryByText('IGNORED')).not.toBeInTheDocument();
+  });
+
+  test('shows possible existing entry details for potential matches', () => {
+    const duplicateCandidate: BankTransaction = {
+      ...mockTxn,
+      potential_matches: [
+        {
+          id: 77,
+          amount: 200,
+          payment_date: '2026-03-27',
+          payment_type: 'membership_due',
+          payment_method: 'zelle',
+          receipt_number: 'R-77',
+          note: 'Already entered from Sunday collection',
+          member: { first_name: 'Dawit', last_name: 'Yifter' },
+        },
+      ],
+    };
+    renderDetail(<BankTransactionDetail txn={duplicateCandidate} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    expect(screen.getByText('Possible Existing Entry')).toBeInTheDocument();
+    expect(screen.getByText('Entry #77 - Dawit Yifter')).toBeInTheDocument();
+    expect(screen.getByText('2026-03-27 · Membership Due · Zelle')).toBeInTheDocument();
+    expect(screen.getByText('Receipt: R-77')).toBeInTheDocument();
+    expect(screen.getByText('Already entered from Sunday collection')).toBeInTheDocument();
+  });
 });
 
 describe('BankTransactionDetail — PENDING income actions', () => {
@@ -201,19 +235,19 @@ describe('BankTransactionDetail — PENDING income actions', () => {
     expect(screen.getByPlaceholderText(/search member/i)).toBeInTheDocument();
   });
 
-  test('shows Ignore Transaction button for PENDING income', () => {
+  test('shows Mark Reconciled button for PENDING income', () => {
     renderDetail(<BankTransactionDetail txn={mockTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
-    expect(screen.getByText('Ignore Transaction')).toBeInTheDocument();
+    expect(screen.getByText('Mark Reconciled')).toBeInTheDocument();
   });
 
-  test('calls /api/bank/reconcile with IGNORE action on Ignore', async () => {
+  test('calls /api/bank/reconcile with IGNORE action on Mark Reconciled', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ success: true }),
     });
     const onSuccess = jest.fn();
     renderDetail(<BankTransactionDetail txn={mockTxn} onClose={jest.fn()} onSuccess={onSuccess} />);
-    fireEvent.click(screen.getByText('Ignore Transaction'));
+    fireEvent.click(screen.getByText('Mark Reconciled'));
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
     const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
     expect(body.action).toBe('IGNORE');
@@ -245,7 +279,7 @@ describe('BankTransactionDetail — PENDING expense actions', () => {
   test('does not show income action buttons for negative amount', () => {
     renderDetail(<BankTransactionDetail txn={mockExpenseTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
     expect(screen.queryByLabelText('Payment Type')).not.toBeInTheDocument();
-    expect(screen.queryByText('Ignore Transaction')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mark Reconciled')).not.toBeInTheDocument();
   });
 
   test('fetches expense categories on mount for negative-amount PENDING', async () => {
