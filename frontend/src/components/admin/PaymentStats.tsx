@@ -6,6 +6,8 @@ import { useAuth } from '../../contexts/AuthContext';
 interface PaymentStatsData {
   totalMembers: number;
   contributingMembers: number;
+  duesTrackedMembers?: number;
+  notDuesTrackedMembers?: number;
   upToDateMembers: number;
   behindMembers: number;
   totalAmountDue: number;
@@ -53,6 +55,8 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availa
   const periodTag = isCurrentYear ? 'year to date' : 'full year';
   const currentMonthAbbr = today.toLocaleDateString('en-US', { month: 'short' });
   const ytdLabel = isCurrentYear ? `Jan–${currentMonthAbbr} Net` : 'Full-Year Net';
+  const duesTrackedMembers = stats.duesTrackedMembers ?? stats.contributingMembers ?? 0;
+  const notDuesTrackedMembers = stats.notDuesTrackedMembers ?? Math.max(stats.totalMembers - duesTrackedMembers, 0);
 
   useEffect(() => {
     const fetchLoanStats = async () => {
@@ -240,12 +244,21 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availa
                 </span>
                 <span className="font-bold text-amber-700 text-base">{stats.behindMembers}</span>
               </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-1.5 text-slate-600" title="Active members with no yearly pledge or not expected to pay membership dues.">
+                  <span>-</span> Not Dues-Tracked
+                </span>
+                <span className="font-bold text-slate-700 text-base">{notDuesTrackedMembers}</span>
+              </div>
               <div className="flex items-center justify-between text-sm text-gray-500">
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5" title="Active members = fully paid + behind on dues + not dues-tracked.">
                   <span>○</span> {t(`${td}.health.activeMembers`)}
                 </span>
                 <span className="font-bold text-gray-700 text-base">{stats.totalMembers}</span>
               </div>
+              <p className="text-xs text-gray-400">
+                {stats.upToDateMembers} fully paid + {stats.behindMembers} behind + {notDuesTrackedMembers} not dues-tracked = {stats.totalMembers} active members
+              </p>
             </div>
           </div>
         </div>

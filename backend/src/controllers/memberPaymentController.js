@@ -243,16 +243,21 @@ const getPaymentStats = async (req, res) => {
     // For past years use all 12 months; for current year use months elapsed so far
     const currentMonth = year === currentYear ? now.getMonth() + 1 : 12;
 
-    // All real members
-    const totalMembers = await Member.count();
+    // Active members are the denominator for the member-status panel.
+    const activeMemberWhere = { is_active: true };
+    const totalMembers = await Member.count({ where: activeMemberWhere });
 
-    // Members with a non-zero pledge
+    // Active members with a non-zero pledge are dues-tracked.
     const contributingMembersList = await Member.findAll({
-      where: { yearly_pledge: { [Op.gt]: 0 } },
+      where: {
+        ...activeMemberWhere,
+        yearly_pledge: { [Op.gt]: 0 }
+      },
       attributes: ['id', 'yearly_pledge'],
       raw: true
     });
     const contributingMembers = contributingMembersList.length;
+    const notDuesTrackedMembers = Math.max(totalMembers - contributingMembers, 0);
 
     if (contributingMembers === 0) {
       // Even with no pledges, calculate other payments
@@ -269,6 +274,8 @@ const getPaymentStats = async (req, res) => {
         data: {
           totalMembers,
           contributingMembers: 0,
+          duesTrackedMembers: 0,
+          notDuesTrackedMembers: totalMembers,
           upToDateMembers: 0,
           behindMembers: 0,
           totalAmountDue: 0,
@@ -361,8 +368,8 @@ const getPaymentStats = async (req, res) => {
     const netIncome = totalCollected - totalExpenses;
 
     const outstandingAmount = Math.max(totalAmountDue - totalMembershipCollected, 0);
-    const collectionRate = contributingMembers > 0
-      ? Number(((upToDateMembers / contributingMembers) * 100).toFixed(2))
+    const collectionRate = totalAmountDue > 0
+      ? Number(((totalMembershipCollected / totalAmountDue) * 100).toFixed(2))
       : 0;
 
     // Fetch latest bank balance
@@ -395,6 +402,8 @@ const getPaymentStats = async (req, res) => {
     const stats = {
       totalMembers,
       contributingMembers,
+      duesTrackedMembers: contributingMembers,
+      notDuesTrackedMembers,
       upToDateMembers,
       behindMembers,
       totalAmountDue: Number((totalAmountDue || 0).toFixed(2)),
