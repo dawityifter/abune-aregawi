@@ -164,6 +164,11 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         fetchTransactions();
     }, [fetchTransactions, refreshTrigger]);
 
+    useEffect(() => {
+        setPage(1);
+        setSelectedTxnIds([]);
+    }, [filterStatus, filterType, startDate, endDate, searchDescription]);
+
     // Global refresh listener
     useEffect(() => {
         const handleRefresh = () => {
@@ -192,6 +197,23 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         const receipt = match.receipt_number ? `, receipt ${match.receipt_number}` : '';
         const more = txn.potential_matches && txn.potential_matches.length > 1 ? ` +${txn.potential_matches.length - 1} more` : '';
         return `Existing entry #${match.id}: ${memberName}, ${match.payment_date}${receipt}${more}`;
+    };
+
+    const getSharedSuggestedMember = () => {
+        const selectedTransactions = transactions.filter(txn => selectedTxnIds.includes(txn.id));
+        if (selectedTransactions.length === 0) return null;
+
+        const suggestedMembers = selectedTransactions.map(txn => txn.suggested_match?.member || txn.suggested_matches?.[0]?.member);
+        if (suggestedMembers.some(member => !member)) return null;
+
+        const firstMember = suggestedMembers[0]!;
+        const allSameMember = suggestedMembers.every(member => member!.id === firstMember.id);
+        if (!allSameMember) return null;
+
+        return {
+            id: firstMember.id,
+            name: `${firstMember.first_name} ${firstMember.last_name}`,
+        };
     };
 
 
@@ -264,7 +286,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                     <div className="flex flex-wrap gap-2 items-center">
                         <input
                             type="text"
-                            placeholder="Search description..."
+                            placeholder="Search transactions..."
                             value={searchDescription}
                             onChange={(e) => setSearchDescription(e.target.value)}
                             className="block w-40 pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
@@ -453,7 +475,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
                             <div>
                                 <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                    Link Transaction to Member
+                                    Link {selectedTxnIds.length === 1 ? 'Transaction' : 'Transactions'} to Member
                                 </h3>
                                 <div className="mt-2 text-sm text-gray-500">
                                     <div className="mb-4 text-xs bg-blue-50 p-2 rounded text-blue-700">
@@ -462,6 +484,32 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                     <p className="text-sm text-gray-500 mb-4">
                                         <strong>Linking {selectedTxnIds.length} transactions</strong>
                                     </p>
+
+                                    {(() => {
+                                        const sharedSuggestedMember = getSharedSuggestedMember();
+                                        if (!sharedSuggestedMember) return null;
+
+                                        return (
+                                            <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3">
+                                                <p className="text-xs font-bold uppercase tracking-wide text-green-700">
+                                                    Shared Suggested Member
+                                                </p>
+                                                <p className="mt-1 text-sm font-semibold text-gray-900">
+                                                    {sharedSuggestedMember.name}
+                                                </p>
+                                                <p className="mt-1 text-xs text-green-800">
+                                                    Every selected transaction suggests this member.
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleBulkReconcile(sharedSuggestedMember)}
+                                                    className="mt-3 inline-flex w-full justify-center rounded-md border border-transparent bg-green-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-800 focus:outline-none"
+                                                >
+                                                    Link {selectedTxnIds.length} Transactions to {sharedSuggestedMember.name}
+                                                </button>
+                                            </div>
+                                        );
+                                    })()}
 
                                     <div className="mb-4 grid grid-cols-2 gap-4">
                                         <div>

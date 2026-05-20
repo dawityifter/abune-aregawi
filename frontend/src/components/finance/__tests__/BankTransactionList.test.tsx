@@ -26,12 +26,12 @@ const mockTransactions = [
     },
 ];
 
-const setupFetchMock = (transactions = mockTransactions) => {
+const setupFetchMock = (transactions = mockTransactions, pages = 1) => {
     (global.fetch as jest.Mock).mockResolvedValue({
         json: () =>
             Promise.resolve({
                 success: true,
-                data: { transactions, pagination: { pages: 1 }, current_balance: 1000 },
+                data: { transactions, pagination: { pages }, current_balance: 1000 },
             }),
     });
 };
@@ -39,6 +39,11 @@ const setupFetchMock = (transactions = mockTransactions) => {
 describe('BankTransactionList', () => {
     beforeEach(() => {
         (global.fetch as jest.Mock).mockReset();
+        jest.spyOn(window, 'confirm').mockReturnValue(true);
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
     });
 
     test('shows Details button for each transaction', async () => {
@@ -93,6 +98,58 @@ describe('BankTransactionList', () => {
         render(<BankTransactionList refreshTrigger={0} />);
         await waitFor(() => screen.getByText('RECONCILED'));
         expect(screen.queryByText('IGNORED')).not.toBeInTheDocument();
+    });
+
+    test('resets pagination when search changes', async () => {
+        setupFetchMock(mockTransactions, 2);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+
+        fireEvent.click(screen.getByText('Next'));
+        await waitFor(() =>
+            expect((global.fetch as jest.Mock).mock.calls.some(([url]) => String(url).includes('page=2'))).toBe(true)
+        );
+
+        fireEvent.change(screen.getByPlaceholderText('Search transactions...'), { target: { value: 'payer' } });
+        await waitFor(() =>
+            expect((global.fetch as jest.Mock).mock.calls.some(([url]) =>
+                String(url).includes('page=1') && String(url).includes('description=payer')
+            )).toBe(true)
+        );
+    });
+
+    test('shows shared suggested member in bulk link modal when all selected transactions agree', async () => {
+        setupFetchMock([
+            {
+                ...mockTransactions[0],
+                suggested_match: {
+                    type: 'LEARNED_ACH',
+                    reason: 'Previously associated with this ACH payer',
+                    confidence: 'high',
+                    member: { id: 11, first_name: 'Shared', last_name: 'Member' },
+                },
+            },
+            {
+                ...mockTransactions[0],
+                id: 2,
+                description: 'Second Payment',
+                suggested_match: {
+                    type: 'FUZZY_NAME',
+                    reason: 'ACH payer name resembles this member',
+                    confidence: 'medium',
+                    member: { id: 11, first_name: 'Shared', last_name: 'Member' },
+                },
+            },
+        ]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Second Payment'));
+
+        fireEvent.click(screen.getAllByRole('checkbox')[0]);
+        fireEvent.click(screen.getByText('Link 2 Transactions'));
+
+        expect(screen.getByText('Shared Suggested Member')).toBeInTheDocument();
+        expect(screen.getByText('Every selected transaction suggests this member.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Link 2 Transactions to Shared Member' })).toBeInTheDocument();
     });
 
     test('closes detail panel when backdrop is clicked', async () => {
