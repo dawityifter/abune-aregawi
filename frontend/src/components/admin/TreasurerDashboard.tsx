@@ -22,6 +22,8 @@ import { useLanguage } from '../../contexts/LanguageContext';
 interface PaymentStatsData {
   totalMembers: number;
   contributingMembers: number;
+  duesTrackedMembers?: number;
+  notDuesTrackedMembers?: number;
   upToDateMembers: number;
   behindMembers: number;
   totalAmountDue: number;
