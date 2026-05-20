@@ -185,6 +185,82 @@ describe('Bank Reconciliation API', () => {
         expect(apiTxn.suggested_match.member.id).toBe(memberToLink.id);
     });
 
+    test('should search bank transactions across description, payer, check number, and member name', async () => {
+        await BankTransaction.bulkCreate([
+            {
+                date: new Date('2025-01-04'),
+                amount: 75.00,
+                description: 'Generic deposit memo',
+                type: 'ACH_CREDIT',
+                status: 'PENDING',
+                payer_name: 'Searchable ACH Payer',
+                transaction_hash: 'searchhash1',
+                raw_data: {}
+            },
+            {
+                date: new Date('2025-01-05'),
+                amount: 80.00,
+                description: 'Generic check memo',
+                type: 'CHECK',
+                status: 'MATCHED',
+                check_number: '99123',
+                member_id: memberToLink.id,
+                transaction_hash: 'searchhash2',
+                raw_data: {}
+            }
+        ]);
+
+        const byPayer = await request(app)
+            .get('/api/bank/transactions?description=searchable')
+            .set('Authorization', 'Bearer valid-token')
+            .expect(200);
+        expect(byPayer.body.data.transactions.map(txn => txn.transaction_hash)).toContain('searchhash1');
+
+        const byCheck = await request(app)
+            .get('/api/bank/transactions?description=99123')
+            .set('Authorization', 'Bearer valid-token')
+            .expect(200);
+        expect(byCheck.body.data.transactions.map(txn => txn.transaction_hash)).toContain('searchhash2');
+
+        const byMember = await request(app)
+            .get('/api/bank/transactions?description=target')
+            .set('Authorization', 'Bearer valid-token')
+            .expect(200);
+        expect(byMember.body.data.transactions.map(txn => txn.transaction_hash)).toContain('searchhash2');
+    });
+
+    test('should filter bank transaction type by contained type value', async () => {
+        await BankTransaction.bulkCreate([
+            {
+                date: new Date('2025-01-06'),
+                amount: 90.00,
+                description: 'ACH credit filter test',
+                type: 'ACH_CREDIT',
+                status: 'PENDING',
+                transaction_hash: 'typehash1',
+                raw_data: {}
+            },
+            {
+                date: new Date('2025-01-07'),
+                amount: 95.00,
+                description: 'Deposit filter test',
+                type: 'DEPOSIT',
+                status: 'PENDING',
+                transaction_hash: 'typehash2',
+                raw_data: {}
+            }
+        ]);
+
+        const response = await request(app)
+            .get('/api/bank/transactions?type=ACH')
+            .set('Authorization', 'Bearer valid-token')
+            .expect(200);
+
+        const hashes = response.body.data.transactions.map(txn => txn.transaction_hash);
+        expect(hashes).toContain('typehash1');
+        expect(hashes).not.toContain('typehash2');
+    });
+
     test('should only flag potential duplicates when amount, method, date, and fuzzy name match', async () => {
         await Transaction.create({
             member_id: memberToLink.id,

@@ -119,12 +119,25 @@ exports.uploadBankCSV = asyncHandler(async (req, res) => {
  * @access  Private
  */
 exports.getBankTransactions = asyncHandler(async (req, res) => {
-    const { status, type, startDate, endDate, description, page = 1, limit = 50 } = req.query;
+    const { status, type, startDate, endDate, description, search, page = 1, limit = 50 } = req.query;
     const { Op } = require('sequelize');
+
+    const likeOp = sequelize.getDialect() === 'postgres' ? Op.iLike : Op.like;
+    const contains = (value) => ({ [likeOp]: `%${String(value).trim()}%` });
 
     const where = {};
     if (status) where.status = status;
-    if (type) where.type = type;
+    if (type) {
+        const normalizedType = String(type).trim().toUpperCase();
+        if (normalizedType === 'DEBIT') {
+            where[Op.or] = [
+                { type: contains('DEBIT') },
+                { amount: { [Op.lt]: 0 } }
+            ];
+        } else {
+            where.type = contains(normalizedType);
+        }
+    }
 
     if (startDate || endDate) {
         where.date = {};
@@ -132,8 +145,26 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
         if (endDate) where.date[Op.lte] = new Date(endDate);
     }
 
-    if (description) {
-        where.description = { [Op.iLike]: `%${description}%` };
+    const searchTerm = String(search || description || '').trim();
+    if (searchTerm) {
+        const searchClauses = [
+            { description: contains(searchTerm) },
+            { payer_name: contains(searchTerm) },
+            { check_number: contains(searchTerm) },
+            { external_ref_id: contains(searchTerm) },
+            { '$member.first_name$': contains(searchTerm) },
+            { '$member.last_name$': contains(searchTerm) }
+        ];
+
+        if (where[Op.or]) {
+            where[Op.and] = [
+                { [Op.or]: where[Op.or] },
+                { [Op.or]: searchClauses }
+            ];
+            delete where[Op.or];
+        } else {
+            where[Op.or] = searchClauses;
+        }
     }
 
     const offset = (page - 1) * limit;
@@ -143,6 +174,7 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
         limit: parseInt(limit),
         offset: parseInt(offset),
         order: [['date', 'DESC']],
+        distinct: true,
         include: [{
             model: Member,
             as: 'member',
