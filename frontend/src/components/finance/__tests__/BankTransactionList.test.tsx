@@ -100,6 +100,19 @@ describe('BankTransactionList', () => {
         expect(screen.queryByText('IGNORED')).not.toBeInTheDocument();
     });
 
+    test('shows linked member for matched bank transactions', async () => {
+        setupFetchMock([
+            {
+                ...mockTransactions[0],
+                status: 'MATCHED',
+                member: { first_name: 'Linked', last_name: 'Member' },
+            },
+        ]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Matched: Linked Member'));
+        expect(screen.getByText('MATCHED')).toBeInTheDocument();
+    });
+
     test('resets pagination when search changes', async () => {
         setupFetchMock(mockTransactions, 2);
         render(<BankTransactionList refreshTrigger={0} />);

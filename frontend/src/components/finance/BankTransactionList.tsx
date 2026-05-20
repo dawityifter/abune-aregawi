@@ -403,6 +403,11 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                                     )}
                                                 </div>
                                             )}
+                                            {txn.status === 'MATCHED' && txn.member && (
+                                                <div className="mt-1 text-xs font-semibold text-emerald-700">
+                                                    Matched: {txn.member.first_name} {txn.member.last_name}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className={`whitespace-nowrap px-6 py-4 text-right text-sm font-semibold ${txn.amount >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                                             {formatCurrency(txn.amount)}
