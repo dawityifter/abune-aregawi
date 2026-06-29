@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { digitsOnly } from '../../utils/receiptNumber';
 
 interface LoanMember {
   id: number;
@@ -174,8 +175,10 @@ const RecordRepaymentModal: React.FC<RecordRepaymentModalProps> = ({ loan, onClo
             </label>
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={receiptNumber}
-              onChange={(e) => setReceiptNumber(e.target.value)}
+              onChange={(e) => setReceiptNumber(digitsOnly(e.target.value))}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
               placeholder={receiptRequired ? 'Required for cash/check' : 'Optional'}
             />

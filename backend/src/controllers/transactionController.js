@@ -1,6 +1,7 @@
 const { Transaction, Member, LedgerEntry, IncomeCategory, sequelize, BankTransaction } = require('../models');
 const { Op } = require('sequelize');
 const tz = require('../config/timezone');
+const { validateReceiptNumber } = require('../utils/receiptNumber');
 
 // Get all transactions with optional filtering
 const getAllTransactions = async (req, res) => {
@@ -208,8 +209,17 @@ const createTransaction = async (req, res) => {
       });
     }
 
+    const receiptValidation = validateReceiptNumber(receipt_number);
+    if (!receiptValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: receiptValidation.message
+      });
+    }
+    const normalizedReceiptNumber = receiptValidation.normalized;
+
     // Validate receipt number for cash/check payments
-    if (['cash', 'check'].includes(payment_method) && !receipt_number) {
+    if (['cash', 'check'].includes(payment_method) && !normalizedReceiptNumber) {
       return res.status(400).json({
         success: false,
         message: 'Receipt number is required for cash and check payments'
@@ -217,12 +227,12 @@ const createTransaction = async (req, res) => {
     }
 
     // Check for duplicate receipt number ('000' is allowed as a no-receipt placeholder)
-    if (receipt_number && receipt_number !== '000') {
-      const existing = await Transaction.findOne({ where: { receipt_number } });
+    if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
+      const existing = await Transaction.findOne({ where: { receipt_number: normalizedReceiptNumber } });
       if (existing) {
         return res.status(409).json({
           success: false,
-          message: `Receipt number "${receipt_number}" has already been used. Please use a unique receipt number.`
+          message: `Receipt number "${normalizedReceiptNumber}" has already been used. Please use a unique receipt number.`
         });
       }
     }
@@ -330,9 +340,8 @@ const createTransaction = async (req, res) => {
             amount: parseFloat(amount),
             payment_type,
             payment_method,
-            receipt_number,
+            receipt_number: normalizedReceiptNumber,
             note: finalNote,
-            status: txStatus,
             status: txStatus,
             donation_id: donation_id || transaction.donation_id,
             income_category_id: finalIncomeCategoryId,
@@ -356,7 +365,7 @@ const createTransaction = async (req, res) => {
           amount: parseFloat(amount),
           payment_date: payment_date ? tz.parseDate(payment_date) : tz.now(),
           payment_type,
-          receipt_number: receipt_number || null,
+          receipt_number: normalizedReceiptNumber || null,
           // Only check manual payments for logical duplicates
           payment_method: { [Op.notIn]: ['credit_card', 'ach'] },
           created_at: {
@@ -386,7 +395,7 @@ const createTransaction = async (req, res) => {
         amount: parseFloat(amount),
         payment_type,
         payment_method,
-        receipt_number,
+        receipt_number: normalizedReceiptNumber,
         note: finalNote,
         external_id: external_id || null,
         status: txStatus,
@@ -408,7 +417,7 @@ const createTransaction = async (req, res) => {
         amount: parseFloat(amount),
         entry_date: entryDate,
         payment_method,
-        receipt_number: receipt_number || null,
+        receipt_number: normalizedReceiptNumber || null,
         memo,
         collected_by,
         member_id,
@@ -501,6 +510,18 @@ const updateTransaction = async (req, res) => {
         success: false,
         message: 'Amount must be at least $1.00'
       });
+    }
+
+    if (updateData.receipt_number !== undefined) {
+      const receiptValidation = validateReceiptNumber(updateData.receipt_number);
+      if (!receiptValidation.valid) {
+        await t.rollback();
+        return res.status(400).json({
+          success: false,
+          message: receiptValidation.message
+        });
+      }
+      updateData.receipt_number = receiptValidation.normalized;
     }
 
     // Validate receipt number for cash/check payments
@@ -1090,7 +1111,11 @@ const updateTransactionPaymentType = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Only Zelle transactions can be updated via this endpoint' });
     }
 
-    const normalizedReceiptNumber = typeof receipt_number === 'string' ? receipt_number.trim() : receipt_number;
+    const receiptValidation = validateReceiptNumber(receipt_number);
+    if (!receiptValidation.valid) {
+      return res.status(400).json({ success: false, message: receiptValidation.message });
+    }
+    const normalizedReceiptNumber = receiptValidation.normalized;
     if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
       const duplicateReceipt = await Transaction.findOne({
         where: {

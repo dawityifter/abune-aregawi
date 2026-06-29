@@ -1,5 +1,6 @@
 const { syncZelleFromGmail, previewZelleFromGmail } = require('../services/gmailZelleIngest');
 const { Transaction, ZelleMemoMatch, Member, IncomeCategory, LedgerEntry } = require('../models');
+const { validateReceiptNumber } = require('../utils/receiptNumber');
 
 // Keep memo normalization consistent with the ingest service
 function sanitizeNote(input) {
@@ -54,7 +55,11 @@ async function processTransactionCreation({ external_id, amount, payment_date, n
     throw new Error('Missing collector context');
   }
 
-  const normalizedReceiptNumber = typeof receipt_number === 'string' ? receipt_number.trim() : receipt_number;
+  const receiptValidation = validateReceiptNumber(receipt_number);
+  if (!receiptValidation.valid) {
+    throw new Error(receiptValidation.message);
+  }
+  const normalizedReceiptNumber = receiptValidation.normalized;
   if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
     const duplicateReceipt = await Transaction.findOne({ where: { receipt_number: normalizedReceiptNumber } });
     if (duplicateReceipt) {

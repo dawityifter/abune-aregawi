@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { digitsOnly } from '../../utils/receiptNumber';
 
 interface ZellePreviewItem {
   gmail_id?: string;
@@ -625,11 +626,13 @@ const ZelleReview: React.FC = () => {
                       )}
                       <input
                         type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         className="px-2 py-1 border border-gray-300 rounded"
                         value={rowReceiptNumbers[getKey(it, items.indexOf(it))] ?? it.existing_receipt_number ?? ''}
                         onChange={(e) => {
                           const key = getKey(it, items.indexOf(it));
-                          setRowReceiptNumbers(prev => ({ ...prev, [key]: e.target.value }));
+                          setRowReceiptNumbers(prev => ({ ...prev, [key]: digitsOnly(e.target.value) }));
                         }}
                         disabled={!!busyIds[getKey(it, items.indexOf(it))]}
                         placeholder="Receipt # (optional)"

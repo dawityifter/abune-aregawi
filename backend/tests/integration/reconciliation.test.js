@@ -64,7 +64,7 @@ describe('Bank Reconciliation API', () => {
                 member_id: memberToLink.id,
                 action: 'MATCH',
                 payment_type: 'tithe',
-                receipt_number: 'Z-2001'
+                receipt_number: '2001'
             });
 
         if (response.status !== 200) {
@@ -88,7 +88,7 @@ describe('Bank Reconciliation API', () => {
         expect(donation.payment_type).toBe('tithe');
         expect(donation.member_id).toBe(memberToLink.id);
         expect(donation.collected_by).toBe(adminUser.id);
-        expect(donation.receipt_number).toBe('Z-2001');
+        expect(donation.receipt_number).toBe('2001');
     });
 
     test('should default to donation if no payment type provided', async () => {
