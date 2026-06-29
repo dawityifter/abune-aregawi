@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { digitsOnly } from '../../utils/receiptNumber';
 
 interface Member {
   id: string;
@@ -210,8 +211,10 @@ const AddLoanModal: React.FC<AddLoanModalProps> = ({ onClose, onLoanAdded }) => 
             </label>
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={receiptNumber}
-              onChange={(e) => setReceiptNumber(e.target.value)}
+              onChange={(e) => setReceiptNumber(digitsOnly(e.target.value))}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
               placeholder={receiptRequired ? 'Required for cash/check' : 'Optional'}
             />

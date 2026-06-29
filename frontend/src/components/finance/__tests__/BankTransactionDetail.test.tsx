@@ -223,7 +223,7 @@ describe('BankTransactionDetail — PENDING income actions', () => {
     expect(body.action).toBe('MATCH');
     expect(body.transaction_id).toBe(42);
     expect(body.member_id).toBe(5);
-    expect(body.receipt_number).toBe('R-1001');
+    expect(body.receipt_number).toBe('1001');
   });
 
   test('shows multiple suggested member candidates with reasons', () => {

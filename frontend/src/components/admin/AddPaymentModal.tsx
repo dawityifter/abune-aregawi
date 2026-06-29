@@ -6,6 +6,7 @@ import ACHPayment from '../ACHPayment';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from '../../config/stripe';
 import { fetchIncomeCategories, IncomeCategory, getIncomeCategoryByPaymentType } from '../../utils/incomeCategoryApi';
+import { digitsOnly, receiptNumberHelpText } from '../../utils/receiptNumber';
 
 interface Member {
   id: string;
@@ -901,8 +902,10 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                   </label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={receiptNumber}
-                    onChange={(e) => setReceiptNumber(e.target.value)}
+                    onChange={(e) => setReceiptNumber(digitsOnly(e.target.value))}
                     placeholder={receiptRequired ? 'Enter receipt number (required for Cash/Check)' : 'Enter receipt number (optional)'}
                     required={receiptRequired}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -914,6 +917,9 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                   )}
                   {receiptRequired && receiptNumber !== '000' && (
                     <p className="mt-1 text-xs text-gray-600">Required for Cash and Check payments.</p>
+                  )}
+                  {!receiptRequired && (
+                    <p className="mt-1 text-xs text-gray-600">{receiptNumberHelpText}</p>
                   )}
                 </div>
 

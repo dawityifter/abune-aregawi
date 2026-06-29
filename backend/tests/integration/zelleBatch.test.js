@@ -67,7 +67,7 @@ describe('Zelle Batch Ingestion', () => {
                 note: 'Donation 1',
                 member_id: donorMember.id,
                 payment_type: 'donation',
-                receipt_number: 'ZR-1001'
+                receipt_number: '1001'
             },
             {
                 external_id: 'gmail:msg2',
@@ -76,7 +76,7 @@ describe('Zelle Batch Ingestion', () => {
                 note: 'Donation 2',
                 member_id: donorMember.id,
                 payment_type: 'donation',
-                receipt_number: 'ZR-1002'
+                receipt_number: '1002'
             }
         ];
 
@@ -94,9 +94,9 @@ describe('Zelle Batch Ingestion', () => {
         const txs = await Transaction.findAll({ order: [['external_id', 'ASC']] });
         expect(txs).toHaveLength(2);
         expect(txs[0].external_id).toBe('gmail:msg1');
-        expect(txs[0].receipt_number).toBe('ZR-1001');
+        expect(txs[0].receipt_number).toBe('1001');
         expect(txs[1].external_id).toBe('gmail:msg2');
-        expect(txs[1].receipt_number).toBe('ZR-1002');
+        expect(txs[1].receipt_number).toBe('1002');
     });
 
     it('updates receipt number for an existing saved zelle transaction', async () => {
@@ -116,14 +116,14 @@ describe('Zelle Batch Ingestion', () => {
         const res = await request(app)
             .patch(`/api/transactions/${tx.id}/payment-type`)
             .set('Authorization', 'Bearer fake-token')
-            .send({ payment_type: 'donation', receipt_number: 'ZR-2001' })
+            .send({ payment_type: 'donation', receipt_number: '2001' })
             .expect(200);
 
         expect(res.body.success).toBe(true);
-        expect(res.body.data.receipt_number).toBe('ZR-2001');
+        expect(res.body.data.receipt_number).toBe('2001');
 
         await tx.reload();
-        expect(tx.receipt_number).toBe('ZR-2001');
+        expect(tx.receipt_number).toBe('2001');
     });
 
     it('handles duplicates gracefully (idempotency)', async () => {

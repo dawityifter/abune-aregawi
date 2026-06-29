@@ -5,6 +5,7 @@ const path = require('path');
 const { Op } = require('sequelize');
 const { MemberLoan, Member, Transaction, LedgerEntry, sequelize } = require('../models');
 const { logActivity } = require('../utils/activityLogger');
+const { validateReceiptNumber } = require('../utils/receiptNumber');
 
 const LOGO_PATH = path.join(__dirname, '../assets/church-logo.png');
 const VALID_PAYMENT_METHODS = ['cash', 'check', 'zelle', 'other'];
@@ -48,18 +49,25 @@ const createLoan = async (req, res) => {
       return res.status(400).json({ success: false, message: `Payment method must be one of: ${VALID_PAYMENT_METHODS.join(', ')}` });
     }
 
+    const receiptValidation = validateReceiptNumber(receipt_number);
+    if (!receiptValidation.valid) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: receiptValidation.message });
+    }
+    const normalizedReceiptNumber = receiptValidation.normalized;
+
     // Receipt number required for cash/check
-    if (['cash', 'check'].includes(payment_method.toLowerCase()) && !receipt_number) {
+    if (['cash', 'check'].includes(payment_method.toLowerCase()) && !normalizedReceiptNumber) {
       await t.rollback();
       return res.status(400).json({ success: false, message: 'Receipt number is required for cash and check payments' });
     }
 
     // Check receipt uniqueness
-    if (receipt_number && receipt_number !== '000') {
-      const existing = await Transaction.findOne({ where: { receipt_number } });
+    if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
+      const existing = await Transaction.findOne({ where: { receipt_number: normalizedReceiptNumber } });
       if (existing) {
         await t.rollback();
-        return res.status(409).json({ success: false, message: `Receipt number "${receipt_number}" has already been used. Please use a unique receipt number.` });
+        return res.status(409).json({ success: false, message: `Receipt number "${normalizedReceiptNumber}" has already been used. Please use a unique receipt number.` });
       }
     }
 
@@ -78,7 +86,7 @@ const createLoan = async (req, res) => {
       payment_type: 'loan_received',
       payment_method: payment_method.toLowerCase(),
       status: 'succeeded',
-      receipt_number: receipt_number || null,
+      receipt_number: normalizedReceiptNumber || null,
       note: notes || null
     }, { transaction: t });
 
@@ -89,7 +97,7 @@ const createLoan = async (req, res) => {
       amount: loanAmount,
       entry_date: loan_date,
       payment_method: payment_method.toLowerCase(),
-      receipt_number: receipt_number || null,
+      receipt_number: normalizedReceiptNumber || null,
       memo: `Loan received from ${member.first_name} ${member.last_name}`,
       collected_by,
       member_id,
@@ -104,7 +112,7 @@ const createLoan = async (req, res) => {
       amount: loanAmount,
       outstanding_balance: loanAmount,
       payment_method: payment_method.toLowerCase(),
-      receipt_number: receipt_number || null,
+      receipt_number: normalizedReceiptNumber || null,
       loan_date,
       status: 'ACTIVE',
       notes: notes || null,
@@ -171,17 +179,24 @@ const recordRepayment = async (req, res) => {
       return res.status(400).json({ success: false, message: `Payment method must be one of: ${VALID_PAYMENT_METHODS.join(', ')}` });
     }
 
-    if (['cash', 'check'].includes(payment_method.toLowerCase()) && !receipt_number) {
+    const receiptValidation = validateReceiptNumber(receipt_number);
+    if (!receiptValidation.valid) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: receiptValidation.message });
+    }
+    const normalizedReceiptNumber = receiptValidation.normalized;
+
+    if (['cash', 'check'].includes(payment_method.toLowerCase()) && !normalizedReceiptNumber) {
       await t.rollback();
       return res.status(400).json({ success: false, message: 'Receipt number is required for cash and check payments' });
     }
 
     // Check receipt uniqueness
-    if (receipt_number && receipt_number !== '000') {
-      const existing = await Transaction.findOne({ where: { receipt_number } });
+    if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
+      const existing = await Transaction.findOne({ where: { receipt_number: normalizedReceiptNumber } });
       if (existing) {
         await t.rollback();
-        return res.status(409).json({ success: false, message: `Receipt number "${receipt_number}" has already been used.` });
+        return res.status(409).json({ success: false, message: `Receipt number "${normalizedReceiptNumber}" has already been used.` });
       }
     }
 
@@ -202,7 +217,7 @@ const recordRepayment = async (req, res) => {
       payment_type: 'loan_repayment',
       payment_method: payment_method.toLowerCase(),
       status: 'succeeded',
-      receipt_number: receipt_number || null,
+      receipt_number: normalizedReceiptNumber || null,
       note: notes || null
     }, { transaction: t });
 
@@ -213,7 +228,7 @@ const recordRepayment = async (req, res) => {
       amount: repayAmount,
       entry_date: payDate,
       payment_method: payment_method.toLowerCase(),
-      receipt_number: receipt_number || null,
+      receipt_number: normalizedReceiptNumber || null,
       memo: `Loan repayment for loan #${loan.id}`,
       collected_by,
       member_id: loan.member_id,

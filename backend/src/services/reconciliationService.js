@@ -252,6 +252,7 @@ exports.findPotentialMatches = async (bankTxn) => {
  */
 exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user, existingTransactionId, forYear, receiptNumber }) => {
     const { BankTransaction, Transaction, LedgerEntry, IncomeCategory, ZelleMemoMatch, sequelize } = require('../models');
+    const { validateReceiptNumber } = require('../utils/receiptNumber');
 
     const txn = await BankTransaction.findByPk(bankTxnId);
     if (!txn) {
@@ -262,7 +263,11 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
         throw new Error(`Transaction ${txn.description} already processed`);
     }
 
-    const normalizedReceiptNumber = typeof receiptNumber === 'string' ? receiptNumber.trim() : receiptNumber;
+    const receiptValidation = validateReceiptNumber(receiptNumber);
+    if (!receiptValidation.valid) {
+        throw new Error(receiptValidation.message);
+    }
+    const normalizedReceiptNumber = receiptValidation.normalized;
 
     if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
         const duplicateReceipt = await Transaction.findOne({
