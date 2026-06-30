@@ -89,6 +89,11 @@ const translations = {
     'firstLoginModal.ok': 'Continue to registration',
     'firstLoginModal.cancel': 'Cancel',
 
+    // Promo Popup
+    'promo.close': 'Close',
+    'promo.previous': 'Previous Image',
+    'promo.next': 'Next Image',
+
     // Dashboard
     'member.dashboard': 'Member Dashboard',
     'welcome': 'Welcome',
@@ -684,6 +689,11 @@ const translations = {
     'firstLoginModal.body': 'እንቋዕ ብደሓን መጻእኩም! ናብ ማሕበረሰብ ቤተ ክርስቲያንና ንምጽንባር ምዝገባኹም ዛዝሙ ወይ ከም ኣጋይሽ ምርኣይ ቀጽሉ።',
     'firstLoginModal.ok': 'ናብ ምዝገባ ቀጽል',
     'firstLoginModal.cancel': 'ሰርዝ',
+
+    // Promo Popup
+    'promo.close': 'ዕጸ',
+    'promo.previous': 'ዝሓለፈ ምስሊ',
+    'promo.next': 'ቀጻሊ ምስሊ',
 
     // Sign In Page - New translations
     'welcome.back': 'እንቋዕ ብሰላም መጻእኩም',

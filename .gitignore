@@ -216,6 +216,10 @@ dist
 scripts/parsedMembers.json
 members-2024.md
 members.md
+
+# Local demo scripts
+docs/demo_script_en_v3.md
+docs/demo_script_ti_v3.md
 .DS_Store
 .DS_Store?
 ._*

@@ -9,6 +9,7 @@ import GrowSpirituallySection from './sections/GrowSpirituallySection';
 // import DashboardPreviewSection from './sections/DashboardPreviewSection';
 import Footer from './sections/Footer';
 import useServerWarmup from '../hooks/useServerWarmup';
+import PromoPopup from './PromoPopup';
 // import { Link } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
@@ -33,6 +34,7 @@ const HomePage: React.FC = () => {
       <GrowSpirituallySection />
       <WhatsHappeningSection />
       <Footer />
+      <PromoPopup />
     </div>
   );
 };
