@@ -180,6 +180,9 @@ module.exports = (sequelize) => {
       },
       {
         fields: ['donation_id']
+      },
+      {
+        fields: ['receipt_number']
       }
     ],
     hooks: {

@@ -38,7 +38,7 @@ try {
       ...config,
       dialect: 'postgres',
       pool: {
-        max: 5,
+        max: parseInt(process.env.DB_POOL_MAX || '10', 10),
         min: 0,
         acquire: 60000,
         idle: 10000,
