@@ -160,7 +160,7 @@ const getTransactionById = async (req, res) => {
 
 // Create a new transaction with dual-write to ledger_entries
 const createTransaction = async (req, res) => {
-  const t = await sequelize.transaction();
+  let t;
 
   try {
     const {
@@ -322,6 +322,10 @@ const createTransaction = async (req, res) => {
       }
     }
 
+    // Open DB transaction only after validation — avoids holding a pool
+    // connection idle while other queries run (pool max is small).
+    t = await sequelize.transaction();
+
     // 1. If external_id provided, check for existing transaction
     let transaction = null;
     if (external_id) {
@@ -433,7 +437,9 @@ const createTransaction = async (req, res) => {
       console.warn('⚠️  Could not create ledger entry (table may not exist):', ledgerError.message);
     }
 
-    // Fetch the created transaction with associations and ledger entries
+    await t.commit();
+
+    // Fetch after commit so the write transaction doesn't stay open during joins
     const createdTransaction = await Transaction.findByPk(transaction.id, {
       include: [
         {
@@ -453,12 +459,8 @@ const createTransaction = async (req, res) => {
           attributes: ['id', 'gl_code', 'name', 'description'],
           required: false
         }
-      ],
-      transaction: t
+      ]
     });
-
-    // Commit the transaction
-    await t.commit();
 
     res.status(201).json({
       success: true,
@@ -468,8 +470,13 @@ const createTransaction = async (req, res) => {
       }
     });
   } catch (error) {
-    // Rollback the transaction in case of error
-    await t.rollback();
+    if (t && !t.finished) {
+      try {
+        await t.rollback();
+      } catch (rollbackError) {
+        console.error('Transaction rollback failed:', rollbackError.message);
+      }
+    }
 
     console.error('❌ Error creating transaction:', error);
     console.error('Error details:', error.message);

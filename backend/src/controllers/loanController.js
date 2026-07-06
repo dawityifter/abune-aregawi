@@ -12,7 +12,6 @@ const VALID_PAYMENT_METHODS = ['cash', 'check', 'zelle', 'other'];
 
 // POST /api/loans
 const createLoan = async (req, res) => {
-  const t = await sequelize.transaction();
   try {
     const {
       member_id,
@@ -25,40 +24,34 @@ const createLoan = async (req, res) => {
 
     // Validate required fields
     if (!member_id || !amount || !payment_method || !loan_date) {
-      await t.rollback();
       return res.status(400).json({ success: false, message: 'Missing required fields: member_id, amount, payment_method, loan_date' });
     }
 
     // Validate member exists
     const member = await Member.findByPk(member_id);
     if (!member) {
-      await t.rollback();
       return res.status(404).json({ success: false, message: 'Member not found' });
     }
 
     // Validate amount
     const loanAmount = parseFloat(amount);
     if (!Number.isFinite(loanAmount) || loanAmount <= 0) {
-      await t.rollback();
       return res.status(400).json({ success: false, message: 'Amount must be a positive number' });
     }
 
     // Validate payment method
     if (!VALID_PAYMENT_METHODS.includes(payment_method.toLowerCase())) {
-      await t.rollback();
       return res.status(400).json({ success: false, message: `Payment method must be one of: ${VALID_PAYMENT_METHODS.join(', ')}` });
     }
 
     const receiptValidation = validateReceiptNumber(receipt_number);
     if (!receiptValidation.valid) {
-      await t.rollback();
       return res.status(400).json({ success: false, message: receiptValidation.message });
     }
     const normalizedReceiptNumber = receiptValidation.normalized;
 
     // Receipt number required for cash/check
     if (['cash', 'check'].includes(payment_method.toLowerCase()) && !normalizedReceiptNumber) {
-      await t.rollback();
       return res.status(400).json({ success: false, message: 'Receipt number is required for cash and check payments' });
     }
 
@@ -66,79 +59,83 @@ const createLoan = async (req, res) => {
     if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
       const existing = await Transaction.findOne({ where: { receipt_number: normalizedReceiptNumber } });
       if (existing) {
-        await t.rollback();
         return res.status(409).json({ success: false, message: `Receipt number "${normalizedReceiptNumber}" has already been used. Please use a unique receipt number.` });
       }
     }
 
     const collected_by = req.user?.id;
     if (!collected_by) {
-      await t.rollback();
       return res.status(401).json({ success: false, message: 'User authentication required' });
     }
 
-    // Create transaction
-    const transaction = await Transaction.create({
-      member_id,
-      collected_by,
-      payment_date: loan_date,
-      amount: loanAmount,
-      payment_type: 'loan_received',
-      payment_method: payment_method.toLowerCase(),
-      status: 'succeeded',
-      receipt_number: normalizedReceiptNumber || null,
-      note: notes || null
-    }, { transaction: t });
+    const t = await sequelize.transaction();
+    try {
+      const transaction = await Transaction.create({
+        member_id,
+        collected_by,
+        payment_date: loan_date,
+        amount: loanAmount,
+        payment_type: 'loan_received',
+        payment_method: payment_method.toLowerCase(),
+        status: 'succeeded',
+        receipt_number: normalizedReceiptNumber || null,
+        note: notes || null
+      }, { transaction: t });
 
-    // Create ledger entry
-    await LedgerEntry.create({
-      type: 'loan_received',
-      category: 'LIA001',
-      amount: loanAmount,
-      entry_date: loan_date,
-      payment_method: payment_method.toLowerCase(),
-      receipt_number: normalizedReceiptNumber || null,
-      memo: `Loan received from ${member.first_name} ${member.last_name}`,
-      collected_by,
-      member_id,
-      transaction_id: transaction.id,
-      source_system: 'manual'
-    }, { transaction: t });
+      // Create ledger entry
+      await LedgerEntry.create({
+        type: 'loan_received',
+        category: 'LIA001',
+        amount: loanAmount,
+        entry_date: loan_date,
+        payment_method: payment_method.toLowerCase(),
+        receipt_number: normalizedReceiptNumber || null,
+        memo: `Loan received from ${member.first_name} ${member.last_name}`,
+        collected_by,
+        member_id,
+        transaction_id: transaction.id,
+        source_system: 'manual'
+      }, { transaction: t });
 
-    // Create loan record
-    const loan = await MemberLoan.create({
-      member_id,
-      transaction_id: transaction.id,
-      amount: loanAmount,
-      outstanding_balance: loanAmount,
-      payment_method: payment_method.toLowerCase(),
-      receipt_number: normalizedReceiptNumber || null,
-      loan_date,
-      status: 'ACTIVE',
-      notes: notes || null,
-      collected_by
-    }, { transaction: t });
+      // Create loan record
+      const loan = await MemberLoan.create({
+        member_id,
+        transaction_id: transaction.id,
+        amount: loanAmount,
+        outstanding_balance: loanAmount,
+        payment_method: payment_method.toLowerCase(),
+        receipt_number: normalizedReceiptNumber || null,
+        loan_date,
+        status: 'ACTIVE',
+        notes: notes || null,
+        collected_by
+      }, { transaction: t });
 
-    await t.commit();
+      await t.commit();
 
-    logActivity({
-      userId: collected_by,
-      action: 'CREATE_LOAN',
-      entityType: 'MemberLoan',
-      entityId: String(loan.id),
-      details: { amount: loanAmount, memberId: member_id, loanId: loan.id },
-      req
-    });
+      logActivity({
+        userId: collected_by,
+        action: 'CREATE_LOAN',
+        entityType: 'MemberLoan',
+        entityId: String(loan.id),
+        details: { amount: loanAmount, memberId: member_id, loanId: loan.id },
+        req
+      });
 
-    const loanWithMember = await MemberLoan.findByPk(loan.id, {
-      include: [
-        { model: Member, as: 'member', attributes: ['id', 'first_name', 'last_name'] }
-      ]
-    });
+      const loanWithMember = await MemberLoan.findByPk(loan.id, {
+        include: [
+          { model: Member, as: 'member', attributes: ['id', 'first_name', 'last_name'] }
+        ]
+      });
 
-    res.status(201).json({ success: true, data: { loan: loanWithMember, transaction } });
+      res.status(201).json({ success: true, data: { loan: loanWithMember, transaction } });
+    } catch (writeError) {
+      if (!t.finished) {
+        await t.rollback();
+      }
+      throw writeError;
+    }
   } catch (error) {
-    await t.rollback();
     console.error('Error creating loan:', error);
     res.status(500).json({ success: false, message: 'Failed to create loan', error: error.message });
   }
