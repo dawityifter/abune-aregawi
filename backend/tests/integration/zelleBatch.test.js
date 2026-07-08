@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/server');
-const { Member, Transaction, IncomeCategory, LedgerEntry, Dependent, MemberPayment, Donation, Pledge, ActivityLog, Outreach, ZelleMemoMatch, sequelize } = require('../../src/models');
+const { Member, Transaction, IncomeCategory, LedgerEntry, Dependent, MemberPayment, Donation, Pledge, ActivityLog, Outreach, ZelleMemoMatch, BankMemoMatch, ZelleEmailQueue, sequelize } = require('../../src/models');
 const admin = require('firebase-admin');
 
 // Mock Firebase auth
@@ -25,6 +25,8 @@ describe('Zelle Batch Ingestion', () => {
 
     beforeEach(async () => {
         // Clear dependent tables first due to foreign key constraints
+        await BankMemoMatch.destroy({ where: {} });
+        await ZelleEmailQueue.destroy({ where: {} });
         await ZelleMemoMatch.destroy({ where: {} });
         await ActivityLog.destroy({ where: {} });
         await Outreach.destroy({ where: {} });

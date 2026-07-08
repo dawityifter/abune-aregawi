@@ -1,17 +1,9 @@
 const { syncZelleFromGmail, previewZelleFromGmail } = require('../services/gmailZelleIngest');
-const { Transaction, ZelleMemoMatch, Member, IncomeCategory, LedgerEntry } = require('../models');
-const { validateReceiptNumber } = require('../utils/receiptNumber');
-
-// Keep memo normalization consistent with the ingest service
-function sanitizeNote(input) {
-  if (!input) return input;
-  let out = String(input);
-  out = out.replace(/You received money with Zelle(?:®)?/gi, '');
-  out = out.replace(/(\s*\|\s*)?Memo N\/A/gi, '');
-  out = out.replace(/\s*is registered with a Zelle(?:®)?/gi, '');
-  out = out.replace(/\s{2,}/g, ' ').replace(/\s*\|\s*/g, ' ').trim();
-  return out;
-}
+const {
+  createZelleTransaction,
+  extractPayerName
+} = require('../services/zelleTransactionService');
+const { ZelleEmailQueue, Member, Transaction } = require('../models');
 
 async function syncFromGmail(req, res) {
   try {
@@ -24,7 +16,6 @@ async function syncFromGmail(req, res) {
   }
 }
 
-module.exports = { syncFromGmail };
 async function previewFromGmail(req, res) {
   try {
     const limit = Number(req.query.limit || 5);
@@ -36,127 +27,51 @@ async function previewFromGmail(req, res) {
   }
 }
 
-module.exports.previewFromGmail = previewFromGmail;
-
-// Helper to process a single transaction creation
-async function processTransactionCreation({ external_id, amount, payment_date, note, member_id, payment_type, for_year, receipt_number }, user) {
-  if (!external_id || !amount || !payment_date) {
-    throw new Error('external_id, amount, and payment_date are required');
-  }
-
-  // Ensure insert-only semantics
-  const existing = await Transaction.findOne({ where: { external_id } });
-  if (existing) {
-    return { success: false, message: 'Transaction already exists for this external_id', id: existing.id, code: 'EXISTS' };
-  }
+// Helper to process a single transaction creation (delegates to shared service)
+async function processTransactionCreation(item, user) {
+  const {
+    external_id, amount, payment_date, note,
+    member_id, payment_type, for_year, receipt_number, payer_name
+  } = item || {};
 
   const collected_by = user?.id || null;
   if (!collected_by) {
     throw new Error('Missing collector context');
   }
 
-  const receiptValidation = validateReceiptNumber(receipt_number);
-  if (!receiptValidation.valid) {
-    throw new Error(receiptValidation.message);
-  }
-  const normalizedReceiptNumber = receiptValidation.normalized;
-  if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
-    const duplicateReceipt = await Transaction.findOne({ where: { receipt_number: normalizedReceiptNumber } });
-    if (duplicateReceipt) {
-      throw new Error(`Receipt number "${normalizedReceiptNumber}" has already been used. Please use a unique receipt number.`);
-    }
-  }
-
-  // Auto-assign income category based on payment_type
-  const finalPaymentType = payment_type || 'donation';
-  let income_category_id = null;
-  let incomeCategory = await IncomeCategory.findOne({
-    where: { payment_type_mapping: finalPaymentType }
-  });
-
-  // Fallback mappings for payment types without direct mapping
-  if (!incomeCategory) {
-    const fallbackMappings = {
-      'tithe': 'offering',        // tithe → INC002 (Weekly Offering)
-      'building_fund': 'event'    // building_fund → INC003 (Fundraising)
-    };
-
-    const fallbackType = fallbackMappings[finalPaymentType];
-    if (fallbackType) {
-      incomeCategory = await IncomeCategory.findOne({
-        where: { payment_type_mapping: fallbackType }
-      });
-    }
-  }
-
-  if (incomeCategory) {
-    income_category_id = incomeCategory.id;
-  }
-
-  const tx = await Transaction.create({
-    member_id,
-    collected_by,
-    payment_date,
-    amount,
-    payment_type: finalPaymentType,
-    payment_method: 'zelle',
-    status: 'succeeded',
-    receipt_number: normalizedReceiptNumber || null,
-    note: note || null,
+  const result = await createZelleTransaction({
     external_id,
-    donation_id: null,
-    income_category_id,
-    for_year: for_year || null
-  });
+    amount,
+    payment_date,
+    note,
+    member_id,
+    payment_type,
+    for_year,
+    receipt_number,
+    // Fall back to extracting the payer from the note so learning still
+    // produces stable keys when the client doesn't send payer_name
+    payer_name: payer_name || extractPayerName(note || '')
+  }, collected_by);
 
-  // Persist memo -> member mapping if a member is matched
-  try {
-    const memo = sanitizeNote(note || '');
-    if (memo && member_id) {
-      const existingMemo = await ZelleMemoMatch.findOne({ where: { memo } });
-      let first_name = null;
-      let last_name = null;
-      const m = await Member.findByPk(member_id, { attributes: ['first_name', 'last_name'] });
-      if (m) {
-        first_name = m.first_name || null;
-        last_name = m.last_name || null;
-      }
-      if (!existingMemo) {
-        await ZelleMemoMatch.create({ member_id, first_name, last_name, memo });
-      } else if (existingMemo.member_id !== member_id || existingMemo.first_name !== first_name || existingMemo.last_name !== last_name) {
-        existingMemo.member_id = member_id;
-        existingMemo.first_name = first_name;
-        existingMemo.last_name = last_name;
-        await existingMemo.save();
-      }
+  // Keep the email queue in sync when the treasurer creates manually
+  if (result.success && external_id) {
+    try {
+      await ZelleEmailQueue.update(
+        {
+          status: 'CREATED',
+          transaction_id: result.id,
+          matched_member_id: member_id || null,
+          processed_at: new Date(),
+          error: null
+        },
+        { where: { external_id } }
+      );
+    } catch (e) {
+      console.warn('Zelle queue update warning:', e.message || e);
     }
-  } catch (memoErr) {
-    console.warn('Zelle memo match upsert warning:', memoErr.message || memoErr);
-    // Do not fail the transaction creation if memo upsert fails
   }
 
-  // Create corresponding ledger entry
-  try {
-    const glCode = incomeCategory?.gl_code || 'INC999';
-    const memo = `${glCode} - Zelle payment ${external_id}`;
-
-    await LedgerEntry.create({
-      type: finalPaymentType,
-      category: glCode,
-      amount: parseFloat(amount),
-      entry_date: payment_date,
-      member_id: member_id || null,
-      payment_method: 'zelle',
-      receipt_number: normalizedReceiptNumber || null,
-      memo: memo,
-      transaction_id: tx.id
-    });
-    console.log(`✅ Created ledger entry for Zelle transaction ${tx.id} with GL code ${glCode}`);
-  } catch (ledgerErr) {
-    console.error('⚠️ Failed to create ledger entry for Zelle reconciliation:', ledgerErr.message);
-  }
-
-  return { success: true, id: tx.id, data: tx };
+  return result;
 }
 
 // POST /api/zelle/reconcile/create-transaction
@@ -201,10 +116,56 @@ async function createBatchTransactions(req, res) {
   }
 }
 
+// GET /api/zelle/queue?status=AUTO_CREATED&limit=50
+// Audit/review list of processed Zelle emails
+async function getQueue(req, res) {
+  try {
+    const { status } = req.query;
+    const limit = Math.min(Number(req.query.limit || 50), 200);
+    const where = {};
+    if (status) where.status = String(status).toUpperCase();
+
+    const rows = await ZelleEmailQueue.findAll({
+      where,
+      order: [['payment_date', 'DESC'], ['created_at', 'DESC']],
+      limit,
+      include: [
+        { model: Member, as: 'matchedMember', attributes: ['id', 'first_name', 'last_name'] },
+        { model: Transaction, as: 'transaction', attributes: ['id', 'amount', 'payment_type', 'payment_date', 'receipt_number'] }
+      ]
+    });
+
+    return res.json({ success: true, count: rows.length, items: rows });
+  } catch (error) {
+    console.error('Zelle queue list error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+// POST /api/zelle/queue/:id/ignore
+async function ignoreQueueItem(req, res) {
+  try {
+    const row = await ZelleEmailQueue.findByPk(req.params.id);
+    if (!row) {
+      return res.status(404).json({ success: false, message: 'Queue item not found' });
+    }
+    if (['CREATED', 'AUTO_CREATED'].includes(row.status)) {
+      return res.status(400).json({ success: false, message: 'Cannot ignore an item that already has a transaction' });
+    }
+    await row.update({ status: 'IGNORED', processed_at: new Date() });
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Zelle queue ignore error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   syncFromGmail,
   previewFromGmail,
   createTransactionFromPreview,
   createBatchTransactions,
-  processTransactionCreation
+  processTransactionCreation,
+  getQueue,
+  ignoreQueueItem
 };

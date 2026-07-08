@@ -18,6 +18,35 @@ backend/
 └── README.md
 ```
 
+## 💸 Zelle Payment Automation
+
+Chase Zelle emails are ingested from Gmail, matched to members, and turned into transactions automatically.
+
+How it works: a background poller (or the "Sync Now" button on the Zelle Review screen) reads new Zelle emails, extracts the payer name and amount, and checks learned payer→member associations (`bank_memo_matches` + legacy `zelle_memo_matches`). If the payer was previously associated with a member — from either the Zelle Review screen or the Bank Reconciliation screen — a Transaction and LedgerEntry are auto-created using the member's last-used payment type. Everything else lands in `zelle_email_queue` with status `NEEDS_REVIEW` for the treasurer. Auto-created entries are visible on the Zelle Review screen ("Recently Auto-created") and carry no receipt number until one is added.
+
+Environment variables:
+
+```bash
+# Gmail OAuth (existing)
+GMAIL_CLIENT_ID=...
+GMAIL_CLIENT_SECRET=...
+GMAIL_REFRESH_TOKEN=...
+
+# Automated sync scheduler
+ZELLE_SYNC_ENABLED=true          # off by default
+ZELLE_SYNC_INTERVAL_MINUTES=15   # optional, min 5
+```
+
+One-time setup on an existing database:
+
+```bash
+# Create the queue table (or rely on sequelize.sync in development)
+npx sequelize-cli db:migrate
+
+# Normalize legacy memo matches and backfill shared payer keys
+node src/database/migrations/normalizeZelleMemoMatches.js
+```
+
 ## 🚀 Quick Start
 
 ### Prerequisites

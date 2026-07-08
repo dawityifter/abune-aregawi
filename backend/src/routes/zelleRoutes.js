@@ -17,4 +17,8 @@ router.get('/preview/gmail', previewFromGmail);
 router.post('/reconcile/create-transaction', createTransactionFromPreview);
 router.post('/reconcile/batch-create', require('../controllers/zelleController').createBatchTransactions);
 
+// Email queue (audit trail + review list persisted by the sync job)
+router.get('/queue', require('../controllers/zelleController').getQueue);
+router.post('/queue/:id/ignore', require('../controllers/zelleController').ignoreQueueItem);
+
 module.exports = router;
