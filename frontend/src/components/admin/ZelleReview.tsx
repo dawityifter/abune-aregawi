@@ -10,10 +10,14 @@ interface ZellePreviewItem {
   payment_date?: string | null;
   sender_email?: string | null;
   memo_phone_e164?: string | null;
+  payer_name?: string | null;
   note_preview?: string | null;
   subject?: string | null;
   matched_member_id?: number | null;
   matched_member_name?: string | null;
+  match_confidence?: string | null;
+  match_source?: string | null;
+  queue_status?: string | null;
   matched_candidates?: Array<{ id: number; name: string }>;
   would_create?: boolean;
   already_exists?: boolean;
@@ -26,12 +30,28 @@ interface ZellePreviewItem {
   error?: string;
 }
 
+interface QueueItem {
+  id: string;
+  external_id: string;
+  payer_name?: string | null;
+  amount?: number | string | null;
+  payment_date?: string | null;
+  note?: string | null;
+  status: string;
+  transaction_id?: number | null;
+  matchedMember?: { id: number; first_name?: string; last_name?: string } | null;
+  transaction?: { id: number; amount?: string; payment_type?: string; receipt_number?: string | null } | null;
+}
+
 const ZelleReview: React.FC = () => {
   const { currentUser, firebaseUser } = useAuth();
   const { t } = useLanguage();
   const [items, setItems] = useState<ZellePreviewItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [autoCreated, setAutoCreated] = useState<QueueItem[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string>('');
   const [limit, setLimit] = useState<number>(10);
   const [busyIds, setBusyIds] = useState<Record<string, boolean>>({});
   const [textFilter, setTextFilter] = useState<string>('');
@@ -122,9 +142,50 @@ const ZelleReview: React.FC = () => {
     }
   }, [firebaseUser, currentUser?.email, limit]);
 
+  const fetchAutoCreated = useCallback(async () => {
+    if (!firebaseUser) return;
+    try {
+      const url = `${process.env.REACT_APP_API_URL}/api/zelle/queue?status=AUTO_CREATED&limit=20`;
+      const resp = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` }
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && data.success) {
+        setAutoCreated(data.items || []);
+      }
+    } catch (_) {
+      // Non-fatal: panel simply stays empty
+    }
+  }, [firebaseUser]);
+
+  const handleSyncNow = useCallback(async () => {
+    if (!firebaseUser) return;
+    setSyncing(true);
+    setSyncMessage('');
+    setError('');
+    try {
+      const url = `${process.env.REACT_APP_API_URL}/api/zelle/sync/gmail`;
+      const resp = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` }
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data.success) {
+        throw new Error(data.message || `Sync failed with status ${resp.status}`);
+      }
+      const s = data.stats || {};
+      setSyncMessage(`Sync complete — auto-created: ${s.autoCreated ?? 0}, needs review: ${s.needsReview ?? 0}, skipped: ${s.skipped ?? 0}, errors: ${s.errors ?? 0}`);
+      await Promise.all([fetchPreview(), fetchAutoCreated()]);
+    } catch (e: any) {
+      setError(e.message || 'Sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  }, [firebaseUser, fetchPreview, fetchAutoCreated]);
+
   useEffect(() => {
     fetchPreview();
-  }, [fetchPreview]);
+    fetchAutoCreated();
+  }, [fetchPreview, fetchAutoCreated]);
 
   // Reset selection on items change
   useEffect(() => {
@@ -188,7 +249,8 @@ const ZelleReview: React.FC = () => {
             member_id,
             payment_type,
             for_year,
-            receipt_number: rowReceiptNumbers[key]?.trim() || null
+            receipt_number: rowReceiptNumbers[key]?.trim() || null,
+            payer_name: item.payer_name || undefined
           };
         });
 
@@ -268,6 +330,7 @@ const ZelleReview: React.FC = () => {
           payment_type,
           for_year,
           receipt_number: rowReceiptNumbers[key]?.trim() || null,
+          payer_name: item.payer_name || undefined,
         })
       });
       const data = await resp.json().catch(() => ({}));
@@ -408,6 +471,14 @@ const ZelleReview: React.FC = () => {
           >
             Refresh
           </button>
+          <button
+            onClick={handleSyncNow}
+            disabled={syncing}
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-3 py-2 rounded"
+            title="Fetch new Zelle emails and auto-create transactions for known payers"
+          >
+            {syncing ? 'Syncing…' : 'Sync Now'}
+          </button>
           {selectedIds.size > 0 && (
             <button
               onClick={handleBatchCreate}
@@ -423,6 +494,12 @@ const ZelleReview: React.FC = () => {
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
+        </div>
+      )}
+
+      {syncMessage && (
+        <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded">
+          {syncMessage}
         </div>
       )}
 
@@ -500,9 +577,15 @@ const ZelleReview: React.FC = () => {
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm">
                     {it.already_exists ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title={it.existing_transaction_id ? `TX #${it.existing_transaction_id}` : 'Already saved'}>
-                        Saved
-                      </span>
+                      it.queue_status === 'AUTO_CREATED' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title={it.existing_transaction_id ? `Auto-created TX #${it.existing_transaction_id}` : 'Auto-created'}>
+                          Auto-created
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title={it.existing_transaction_id ? `TX #${it.existing_transaction_id}` : 'Already saved'}>
+                          Saved
+                        </span>
+                      )
                     ) : (it.matched_member_id || rowSearch[getKey(it, items.indexOf(it))]?.selectedId || (rowModes[getKey(it, items.indexOf(it))] === 'manual' && manualDonors[getKey(it, items.indexOf(it))]?.name)) ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Ready</span>
                     ) : (
@@ -673,6 +756,51 @@ const ZelleReview: React.FC = () => {
         </div>
       )}
 
+      {autoCreated.length > 0 && (
+        <div className="mt-6 border-t border-gray-200 pt-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">Recently Auto-created</h3>
+          <p className="text-sm text-gray-600 mb-3">
+            Transactions created automatically from Zelle emails of previously-associated payers.
+            Change the payment type or add a receipt number from the row above or the Transactions list.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payer</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TX</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {autoCreated.map((q) => {
+                  const amt = typeof q.amount === 'number' ? q.amount : Number(q.amount);
+                  const memberName = q.matchedMember
+                    ? `${q.matchedMember.first_name || ''} ${q.matchedMember.last_name || ''}`.trim()
+                    : '-';
+                  return (
+                    <tr key={q.id}>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{q.payment_date || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{Number.isFinite(amt) ? `$${amt.toFixed(2)}` : '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{q.payer_name || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                        {q.matchedMember ? `${memberName} #${q.matchedMember.id}` : '-'}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{q.transaction?.payment_type || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                        {q.transaction_id ? `#${q.transaction_id}` : '-'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
     </div>
   );
