@@ -244,8 +244,24 @@ async function findSuggestionCandidates(transaction) {
   }
 
   const confidenceRank = { high: 0, medium: 1, low: 2 };
-  return dedupeCandidates(candidates)
-    .sort((a, b) => (confidenceRank[a.confidence] ?? 9) - (confidenceRank[b.confidence] ?? 9));
+  const learnedFirst = (source) => (String(source || '').startsWith('LEARNED') ? 0 : 1);
+  const sorted = dedupeCandidates(candidates)
+    .sort((a, b) =>
+      ((confidenceRank[a.confidence] ?? 9) - (confidenceRank[b.confidence] ?? 9))
+      || (learnedFirst(a.source) - learnedFirst(b.source))
+    );
+
+  // One suggestion per member: the same person can match through several
+  // signals (learned payer key, learned description key, fuzzy name), which
+  // would otherwise show as repeated entries in the UI. Keep only the
+  // highest-ranked suggestion for each member.
+  const seenMembers = new Set();
+  return sorted.filter((candidate) => {
+    const memberId = String(candidate.member.id);
+    if (seenMembers.has(memberId)) return false;
+    seenMembers.add(memberId);
+    return true;
+  });
 }
 
 async function learnBankMemoMatch(transaction, memberId) {

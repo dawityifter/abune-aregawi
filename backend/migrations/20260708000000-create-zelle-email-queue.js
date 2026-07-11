@@ -1,7 +1,23 @@
 'use strict';
 
+async function tableExists(queryInterface, table) {
+  try {
+    await queryInterface.describeTable(table);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 module.exports = {
   up: async (queryInterface, Sequelize) => {
+    // In development the table may already exist via sequelize.sync().
+    // Only create it (and its indexes) when absent, so this migration is
+    // safe to run against both synced local DBs and fresh production DBs.
+    if (await tableExists(queryInterface, 'zelle_email_queue')) {
+      return;
+    }
+
     await queryInterface.createTable('zelle_email_queue', {
       id: {
         type: Sequelize.UUID,
@@ -88,15 +104,15 @@ module.exports = {
       fields: ['external_id'],
       type: 'unique',
       name: 'zelle_email_queue_external_id_unique'
-    });
-    await queryInterface.addIndex('zelle_email_queue', ['status']);
-    await queryInterface.addIndex('zelle_email_queue', ['matched_member_id']);
+    }).catch(() => {});
+    await queryInterface.addIndex('zelle_email_queue', ['status']).catch(() => {});
+    await queryInterface.addIndex('zelle_email_queue', ['matched_member_id']).catch(() => {});
   },
 
   down: async (queryInterface) => {
     await queryInterface.removeConstraint('zelle_email_queue', 'zelle_email_queue_external_id_unique').catch(() => {});
     await queryInterface.removeIndex('zelle_email_queue', ['status']).catch(() => {});
     await queryInterface.removeIndex('zelle_email_queue', ['matched_member_id']).catch(() => {});
-    await queryInterface.dropTable('zelle_email_queue');
+    await queryInterface.dropTable('zelle_email_queue').catch(() => {});
   }
 };

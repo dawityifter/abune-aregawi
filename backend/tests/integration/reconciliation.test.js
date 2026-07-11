@@ -135,6 +135,55 @@ describe('Bank Reconciliation API', () => {
         expect(learned.map(match => match.match_key)).toContain('ACH:PAYER:BERHE SELAMAWIT');
     });
 
+    test('should show only ONE suggestion per member even when matched via multiple signals', async () => {
+        // Same member matches through learned PAYER key, learned DESCRIPTION
+        // key, AND fuzzy name — the UI must show a single (best) suggestion.
+        const tekea = await Member.create({
+            first_name: 'Tekea',
+            last_name: 'Beyene',
+            phone_number: '+15555550199',
+            is_active: true
+        });
+
+        const priorTxn = await BankTransaction.create({
+            date: new Date('2025-01-02'),
+            amount: 50.00,
+            description: 'Zelle payment from TEKEA BEYENE ABC1234567',
+            type: 'ZELLE_CREDIT',
+            status: 'MATCHED',
+            payer_name: 'TEKEA BEYENE',
+            transaction_hash: 'zellehash-prior',
+            raw_data: {}
+        });
+        const { learnBankMemoMatch } = require('../../src/services/bankMemoMatchService');
+        await learnBankMemoMatch(priorTxn.get({ plain: true }), tekea.id);
+
+        const pendingTxn = await BankTransaction.create({
+            date: new Date('2025-02-02'),
+            amount: 50.00,
+            description: 'Zelle payment from TEKEA BEYENE XYZ7654321',
+            type: 'ZELLE_CREDIT',
+            status: 'PENDING',
+            payer_name: 'TEKEA BEYENE',
+            transaction_hash: 'zellehash-pending',
+            raw_data: {}
+        });
+
+        const response = await request(app)
+            .get('/api/bank/transactions?status=PENDING')
+            .set('Authorization', 'Bearer valid-token')
+            .expect(200);
+
+        const apiTxn = response.body.data.transactions.find(t => t.id === pendingTxn.id);
+        expect(apiTxn).toBeDefined();
+
+        const tekeaSuggestions = (apiTxn.suggested_matches || [])
+            .filter(s => s.member?.id === tekea.id);
+        expect(tekeaSuggestions).toHaveLength(1);
+        expect(tekeaSuggestions[0].confidence).toBe('high'); // best signal wins
+        expect(String(tekeaSuggestions[0].source)).toMatch(/^LEARNED/);
+    });
+
     test('should return learned and fuzzy ACH candidates when they disagree', async () => {
         const fuzzyMember = await Member.create({
             first_name: 'Selamawit',
