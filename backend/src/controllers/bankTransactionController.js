@@ -90,10 +90,20 @@ exports.uploadBankCSV = asyncHandler(async (req, res) => {
             }
         }
 
+        // 5. Automatic reconciliation pass over ALL pending transactions
+        // (new rows + older pending ones that may now have learned matches)
+        let autoStats = null;
+        try {
+            const { autoReconcilePending } = require('../services/autoReconcileService');
+            autoStats = await autoReconcilePending({ user: req.user });
+        } catch (autoErr) {
+            console.error('Auto-reconcile pass failed (upload still succeeded):', autoErr.message);
+        }
+
         res.status(200).json({
             success: true,
             message: `Processed ${parsedTransactions.length} rows`,
-            data: results
+            data: { ...results, auto_reconcile: autoStats }
         });
 
     } catch (error) {
@@ -410,11 +420,147 @@ exports.reconcileExpense = asyncHandler(async (req, res) => {
         }, { transaction: t });
 
         bankTxn.status = 'MATCHED';
+        bankTxn.reconciled_source = 'MANUAL';
+        bankTxn.reconciled_at = new Date();
         await bankTxn.save({ transaction: t });
         await t.commit();
+
+        // Learn payee/description → GL classification for future auto-reconcile
+        try {
+            const { learnExpenseMemoMatch } = require('../services/autoReconcileService');
+            await learnExpenseMemoMatch(bankTxn, { gl_code, payee_name, vendor_id, employee_id });
+        } catch (learnErr) {
+            console.warn('Expense memo learning warning:', learnErr.message);
+        }
+
         res.status(201).json({ success: true, message: 'Expense recorded and bank transaction matched', data: expense });
     } catch (err) {
         await t.rollback();
+        throw err;
+    }
+});
+
+/**
+ * @desc    Month-by-month income/expense summary from bank transactions
+ * @route   GET /api/bank/summary/monthly
+ * @access  Private (Treasurer dashboard)
+ *
+ * Last 12 calendar months (including the current one). Ending balance is the
+ * balance reported by the chronologically last bank transaction of the month.
+ * Status reflects reconciliation progress: how many rows are still PENDING.
+ */
+exports.getMonthlySummary = asyncHandler(async (req, res) => {
+    const { Op } = require('sequelize');
+
+    // First day of the month, 11 months ago → 12 months including current.
+    // Compared as a plain 'YYYY-MM-DD' string to avoid timezone coercion
+    // against the DATEONLY column.
+    const now = new Date();
+    const startMonth = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const start = `${startMonth.getFullYear()}-${String(startMonth.getMonth() + 1).padStart(2, '0')}-01`;
+
+    const rows = await BankTransaction.findAll({
+        where: { date: { [Op.gte]: start } },
+        attributes: ['id', 'date', 'amount', 'balance', 'status'],
+        raw: true
+    });
+
+    // IMPORTANT: DATEONLY values come back as 'YYYY-MM-DD' strings. Never
+    // parse them with `new Date(str)` for grouping — that treats the string
+    // as UTC midnight, which shifts 1st-of-month transactions into the
+    // previous month for any timezone west of UTC (e.g. June 1 → May 31 7pm
+    // in Central Time).
+    const monthKey = (d) => {
+        if (d instanceof Date) {
+            return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+        }
+        return String(d).slice(0, 7); // 'YYYY-MM-DD...' → 'YYYY-MM'
+    };
+    const dayStamp = (d) => {
+        if (d instanceof Date) return d.toISOString().slice(0, 10);
+        return String(d).slice(0, 10);
+    };
+
+    const byMonth = new Map();
+    for (const row of rows) {
+        const key = monthKey(row.date);
+        if (!byMonth.has(key)) {
+            byMonth.set(key, {
+                income: 0, expense: 0,
+                pending_count: 0, transaction_count: 0,
+                endingCandidate: null
+            });
+        }
+        const m = byMonth.get(key);
+        const amount = Number(row.amount) || 0;
+        if (amount > 0) m.income += amount;
+        else m.expense += Math.abs(amount);
+        m.transaction_count += 1;
+        if (row.status === 'PENDING') m.pending_count += 1;
+
+        // Ending balance: latest date wins; for same-day rows the LOWEST id is
+        // the newest (Chase CSVs list newest first, so bulkCreate assigns
+        // ascending ids from newest to oldest) — same convention as the
+        // current-balance calculation in getBankTransactions.
+        if (row.balance !== null && row.balance !== undefined) {
+            const c = m.endingCandidate;
+            const rowDay = dayStamp(row.date); // 'YYYY-MM-DD' compares lexicographically
+            if (!c
+                || rowDay > c.day
+                || (rowDay === c.day && row.id < c.id)) {
+                m.endingCandidate = { day: rowDay, id: row.id, balance: Number(row.balance) };
+            }
+        }
+    }
+
+    // Emit all 12 months, newest first, zero-filled when no data
+    const months = [];
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+        const m = byMonth.get(key);
+        const income = m ? Number(m.income.toFixed(2)) : 0;
+        const expense = m ? Number(m.expense.toFixed(2)) : 0;
+        months.push({
+            month: key,
+            label,
+            income,
+            expense,
+            net: Number((income - expense).toFixed(2)),
+            ending_balance: m?.endingCandidate ? m.endingCandidate.balance : null,
+            pending_count: m ? m.pending_count : 0,
+            transaction_count: m ? m.transaction_count : 0
+        });
+    }
+
+    res.json({ success: true, data: { months } });
+});
+
+/**
+ * @desc    Run the automatic reconciliation pass on demand
+ * @route   POST /api/bank/auto-reconcile
+ * @access  Private (Admin/Treasurer/Bookkeeper)
+ */
+exports.runAutoReconcile = asyncHandler(async (req, res) => {
+    const { autoReconcilePending } = require('../services/autoReconcileService');
+    const stats = await autoReconcilePending({ user: req.user });
+    res.json({ success: true, data: stats });
+});
+
+/**
+ * @desc    Undo an automatic reconciliation (revert to PENDING)
+ * @route   POST /api/bank/transactions/:id/unreconcile
+ * @access  Private (Admin/Treasurer/Bookkeeper)
+ */
+exports.unreconcileTransaction = asyncHandler(async (req, res) => {
+    const { undoAutoReconciliation } = require('../services/autoReconcileService');
+    try {
+        const txn = await undoAutoReconciliation(req.params.id);
+        res.json({ success: true, message: 'Reconciliation undone', data: txn });
+    } catch (err) {
+        err.status = err.status || 400;
+        res.status(err.status);
         throw err;
     }
 });

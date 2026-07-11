@@ -307,3 +307,4 @@ contact-list*.csv
 RESTORE_DATABASE.md
 backend/restore-database.sh
 backend/restore-db-simple.sh
+.claude/
