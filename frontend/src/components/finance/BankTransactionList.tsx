@@ -13,6 +13,8 @@ export interface BankTransaction {
     payer_name: string | null;
     check_number: string | null;
     receipt_number?: string | null;
+    reconciled_source?: string | null;
+    reconciled_at?: string | null;
     member?: {
         first_name: string;
         last_name: string;
@@ -188,6 +190,36 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         if (status === 'PENDING') return 'PENDING REVIEW';
         if (status === 'MATCHED') return 'MATCHED';
         return 'RECONCILED';
+    };
+
+    const isAutoReconciled = (txn: BankTransaction) =>
+        txn.status === 'MATCHED' && !!txn.reconciled_source && txn.reconciled_source.startsWith('AUTO');
+
+    const autoReconcileTooltip = (source?: string | null) => {
+        if (source === 'AUTO_LINKED') return 'Automatically linked to an existing payment (e.g. created by the Zelle email automation)';
+        if (source === 'AUTO_MEMBER') return 'Payment automatically created for a previously-associated member';
+        if (source === 'AUTO_EXPENSE') return 'Expense automatically recorded from a previously-learned payee/GL classification';
+        return 'Automatically reconciled';
+    };
+
+    const handleUnreconcile = async (txn: BankTransaction) => {
+        if (!window.confirm('Undo this automatic reconciliation? The record it created/linked will be reverted and the row returns to Pending Review.')) return;
+        try {
+            const token = await firebaseUser?.getIdToken();
+            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+            const res = await fetch(`${apiUrl}/api/bank/transactions/${txn.id}/unreconcile`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || 'Undo failed');
+            }
+            fetchTransactions();
+            window.dispatchEvent(new CustomEvent('payments:refresh'));
+        } catch (err: any) {
+            alert(err.message || 'Error undoing reconciliation');
+        }
     };
 
     const formatPotentialMatchSummary = (txn: BankTransaction) => {
@@ -424,12 +456,20 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                             )}
                                         </td>
                                         <td className="whitespace-nowrap px-6 py-4 text-center">
-                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold 
+                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold
                                                 ${txn.status === 'MATCHED' ? 'bg-emerald-100 text-emerald-800' :
                                                     txn.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
                                                         'bg-slate-100 text-slate-700'}`}>
                                                 {formatStatusLabel(txn.status)}
                                             </span>
+                                            {isAutoReconciled(txn) && (
+                                                <span
+                                                    className="ml-1 inline-flex rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800"
+                                                    title={autoReconcileTooltip(txn.reconciled_source)}
+                                                >
+                                                    Auto
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
                                             <button
@@ -442,6 +482,15 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                             >
                                                 Details →
                                             </button>
+                                            {isAutoReconciled(txn) && (
+                                                <button
+                                                    onClick={() => handleUnreconcile(txn)}
+                                                    className="ml-2 text-xs px-3 py-1.5 rounded font-semibold border border-purple-500 bg-white text-purple-700 hover:bg-purple-50 transition-colors"
+                                                    title="Undo this automatic reconciliation"
+                                                >
+                                                    Undo
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))

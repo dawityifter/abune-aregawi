@@ -187,11 +187,14 @@ function isBankReconciliationHash(externalId) {
 
 /**
  * Find potential existing system transactions that match a bank transaction.
- * Criteria: same amount, same inferred payment method, date +/- 2 days, and
- * payer/member name token match. If no usable bank-side name exists, return no
- * candidates to avoid noisy duplicate warnings.
+ * Criteria: same amount, same inferred payment method, date +/- dayWindow
+ * days (default 2), and payer/member name token match. If no usable
+ * bank-side name exists, return no candidates to avoid noisy duplicate
+ * warnings. The auto-reconcile pass uses a wider window for Zelle because
+ * the Chase email date and the bank posting date can differ by several days
+ * over weekends/holidays.
  */
-exports.findPotentialMatches = async (bankTxn) => {
+exports.findPotentialMatches = async (bankTxn, { dayWindow = 2 } = {}) => {
     const { amount, date, transaction_hash } = bankTxn;
     const paymentMethod = inferPaymentMethodFromBankTxn(bankTxn);
     const bankName = getBankDuplicateNameText(bankTxn);
@@ -200,12 +203,12 @@ exports.findPotentialMatches = async (bankTxn) => {
         return [];
     }
 
-    // Date range: +/- 2 days
+    // Date range: +/- dayWindow days
     const txnDate = new Date(date);
     const startDate = new Date(txnDate);
-    startDate.setDate(startDate.getDate() - 2);
+    startDate.setDate(startDate.getDate() - dayWindow);
     const endDate = new Date(txnDate);
-    endDate.setDate(endDate.getDate() + 2);
+    endDate.setDate(endDate.getDate() + dayWindow);
 
     // Search for transactions
     const potentials = await Transaction.findAll({
@@ -333,6 +336,8 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
     // 2. Link BankTransaction
     txn.status = 'MATCHED';
     txn.member_id = memberId || donation.member_id; // Use existing donation member_id if linking
+    txn.reconciled_source = 'MANUAL'; // Auto pass overwrites with AUTO_* afterwards
+    txn.reconciled_at = new Date();
     await txn.save();
 
     // 3. Learn memo/description associations for future suggestions.

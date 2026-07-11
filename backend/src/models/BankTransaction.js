@@ -73,6 +73,21 @@ module.exports = (sequelize) => {
             },
             onUpdate: 'CASCADE',
             onDelete: 'SET NULL'
+        },
+        reconciled_source: {
+            // MANUAL | AUTO_LINKED | AUTO_MEMBER | AUTO_EXPENSE
+            type: DataTypes.STRING(30),
+            allowNull: true
+        },
+        reconciled_at: {
+            type: DataTypes.DATE,
+            allowNull: true
+        },
+        reconciled_meta: {
+            // Details needed to audit/undo an automatic reconciliation, e.g.
+            // { transaction_id, created, prev_external_id, ledger_entry_id, reason }
+            type: DataTypes.JSON,
+            allowNull: true
         }
     }, {
         sequelize,

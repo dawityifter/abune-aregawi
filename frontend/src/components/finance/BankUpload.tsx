@@ -105,6 +105,20 @@ const BankUpload: React.FC<BankUploadProps> = ({ onUploadSuccess }) => {
                         <li>Imported: {result.imported} new transactions</li>
                         <li>Skipped: {result.skipped} duplicates</li>
                     </ul>
+                    {result.auto_reconcile && (
+                        <div className="mt-2 pt-2 border-t border-green-200">
+                            <p className="font-bold">
+                                Auto-reconciled: {(result.auto_reconcile.autoLinked || 0) + (result.auto_reconcile.autoMember || 0) + (result.auto_reconcile.autoExpense || 0)} of {result.auto_reconcile.examined} pending
+                            </p>
+                            <ul className="list-disc pl-5 mt-1">
+                                <li>Linked to existing payments (e.g. Zelle automation): {result.auto_reconcile.autoLinked}</li>
+                                <li>Member payments created from learned payers: {result.auto_reconcile.autoMember}</li>
+                                <li>Expenses recorded from learned payees: {result.auto_reconcile.autoExpense}</li>
+                                <li>Left for review: {result.auto_reconcile.needsReview}</li>
+                                {result.auto_reconcile.errors > 0 && <li className="text-red-700">Errors: {result.auto_reconcile.errors}</li>}
+                            </ul>
+                        </div>
+                    )}
                 </div>
             )}
 

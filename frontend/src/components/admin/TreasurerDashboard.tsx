@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import BankUpload from '../finance/BankUpload';
 import BankTransactionList from '../finance/BankTransactionList';
+import MonthlyBankSummary from '../finance/MonthlyBankSummary';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMergedPermissions, UserRole } from '../../utils/roles';
 import TransactionList from './TransactionList';
@@ -532,6 +533,9 @@ const TreasurerDashboard: React.FC = () => {
                 </div>
               </div>
               <BankUpload onUploadSuccess={() => window.dispatchEvent(new CustomEvent('bank:refresh'))} />
+              <div className="mt-8">
+                <MonthlyBankSummary />
+              </div>
               <div className="mt-8">
                 <BankTransactionList refreshTrigger={0} />
               </div>
