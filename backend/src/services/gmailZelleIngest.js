@@ -1,9 +1,12 @@
 const { google } = require('googleapis');
 const moment = require('moment-timezone');
 const { Member, Transaction, ZelleEmailQueue } = require('../models');
+const { Op } = require('sequelize');
 const {
   sanitizeNote,
   extractPayerName,
+  extractZelleReference,
+  buildZelleExternalId,
   matchZelleSender,
   getDefaultPaymentType,
   createZelleTransaction
@@ -74,6 +77,11 @@ function parseCandidatesFromMessage(msg) {
   // stable across different amounts and memo texts
   const payerName = extractPayerName(`${subject}\n${bodyText}`);
 
+  // Payment-level Zelle transaction number. Used as the uniqueness key when
+  // present, so multiple Chase emails about the same payment (or the same
+  // payment arriving via bank CSV) never create duplicate transactions.
+  const zelleReference = extractZelleReference(`${subject}\n${bodyText}`);
+
   // Memo heuristics
   let note = subject;
   if (bodyText) {
@@ -86,7 +94,19 @@ function parseCandidatesFromMessage(msg) {
   const dt = internalDate ? moment(internalDate).tz(tz.TIMEZONE) : (dateHeader ? moment(new Date(dateHeader)).tz(tz.TIMEZONE) : moment().tz(tz.TIMEZONE));
   const payment_date = dt.isValid() ? dt.format('YYYY-MM-DD') : moment().tz(tz.TIMEZONE).format('YYYY-MM-DD');
 
-  return { amount, phoneE164, senderEmail, messageId, note, payment_date, subject, bodyText, payerName };
+  const externalId = buildZelleExternalId({ zelleReference, messageId });
+  const legacyExternalId = messageId ? `gmail:${messageId}` : null;
+
+  return {
+    amount, phoneE164, senderEmail, messageId, note, payment_date,
+    subject, bodyText, payerName, zelleReference, externalId, legacyExternalId
+  };
+}
+
+// All external_id values that may identify this payment (payment-level key
+// plus the legacy per-email key used before Zelle references were parsed)
+function candidateExternalIds(parsed) {
+  return [...new Set([parsed.externalId, parsed.legacyExternalId].filter(Boolean))];
 }
 
 function isIgnoredSender(parsed) {
@@ -104,7 +124,9 @@ async function findCollectorMemberId() {
 }
 
 async function upsertQueueRow(parsed, fields) {
-  const external_id = `gmail:${parsed.messageId}`;
+  // Keyed by the payment-level id, so two emails about the same payment
+  // collapse into a single queue row.
+  const external_id = parsed.externalId;
   const [row] = await ZelleEmailQueue.findOrCreate({
     where: { external_id },
     defaults: {
@@ -183,18 +205,21 @@ async function syncZelleFromGmail({ dryRun = false } = {}) {
         continue;
       }
 
-      const external_id = `gmail:${parsed.messageId}`;
+      const external_id = parsed.externalId;
+      const externalIds = candidateExternalIds(parsed);
 
       // Already in queue and finalized? Just make sure the label is set.
-      const queued = await ZelleEmailQueue.findOne({ where: { external_id } });
+      const queued = await ZelleEmailQueue.findOne({ where: { external_id: { [Op.in]: externalIds } } });
       if (queued && ['CREATED', 'AUTO_CREATED', 'IGNORED'].includes(queued.status)) {
         stats.skipped += 1;
         await addLabel(m.id, processedLabelId);
         continue;
       }
 
-      // Transaction already exists (e.g. created before the queue existed)?
-      const existingTx = await Transaction.findOne({ where: { external_id } });
+      // Transaction already exists? Checks the payment-level key AND the
+      // legacy per-email key, so a second Chase email about the same payment
+      // is recognized as a duplicate instead of creating a new transaction.
+      const existingTx = await Transaction.findOne({ where: { external_id: { [Op.in]: externalIds } } });
       if (existingTx) {
         if (!dryRun) {
           await upsertQueueRow(parsed, {
@@ -301,16 +326,18 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
       // Unified matching: learned payer keys -> legacy memo -> fuzzy
       const match = await matchZelleSender({ payerName: parsed.payerName, note: parsed.note });
       const member_id = match.member_id;
-      const external_id = parsed.messageId ? `gmail:${parsed.messageId}` : null;
+      const external_id = parsed.externalId;
+      const externalIds = candidateExternalIds(parsed);
 
-      // Check if a transaction with this external_id already exists
+      // Check if a transaction for this payment already exists (payment-level
+      // key or legacy per-email key)
       let already_exists = false;
       let existing_transaction_id = null;
       let payment_type = 'donation';
       let existing_receipt_number = null;
       let existing_note = null;
       if (external_id) {
-        const existing = await Transaction.findOne({ where: { external_id } });
+        const existing = await Transaction.findOne({ where: { external_id: { [Op.in]: externalIds } } });
         if (existing) {
           already_exists = true;
           existing_transaction_id = existing.id;
@@ -325,7 +352,10 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
       // Queue status (AUTO_CREATED etc.) for visibility in the review screen
       let queue_status = null;
       if (external_id) {
-        const queued = await ZelleEmailQueue.findOne({ where: { external_id }, attributes: ['status'] });
+        const queued = await ZelleEmailQueue.findOne({
+          where: { external_id: { [Op.in]: externalIds } },
+          attributes: ['status']
+        });
         queue_status = queued?.status || null;
       }
 
@@ -338,6 +368,7 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
         sender_email: parsed.senderEmail,
         memo_phone_e164: parsed.phoneE164,
         payer_name: parsed.payerName,
+        zelle_reference: parsed.zelleReference,
         note_preview: sanitizeNote(parsed.note),
         subject: parsed.subject,
         matched_member_id: member_id,

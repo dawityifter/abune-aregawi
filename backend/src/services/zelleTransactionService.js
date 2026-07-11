@@ -66,6 +66,43 @@ function extractPayerName(text) {
 }
 
 /**
+ * Extract the Zelle transaction/confirmation number from Chase email text.
+ * This is the payment-level identifier — unique per PAYMENT, unlike the
+ * Gmail message id which is unique per EMAIL (Chase can send several emails
+ * about the same payment). Known formats:
+ *   "Transaction number: 25891237323"
+ *   "Transaction number| CMB0K6P5R3MF"
+ *   "Confirmation number: 123456789"
+ */
+function extractZelleReference(text) {
+  if (!text) return null;
+  const raw = String(text).replace(/\s+/g, ' ');
+
+  const patterns = [
+    /transaction\s*(?:number|#|no\.?)\s*[:|\-]?\s*([A-Z0-9]{6,24})/i,
+    /confirmation\s*(?:number|#|no\.?)\s*[:|\-]?\s*([A-Z0-9]{6,24})/i,
+    /reference\s*(?:number|#|no\.?)\s*[:|\-]?\s*([A-Z0-9]{6,24})/i
+  ];
+
+  for (const re of patterns) {
+    const m = raw.match(re);
+    if (m && m[1]) {
+      return m[1].toUpperCase();
+    }
+  }
+  return null;
+}
+
+/**
+ * The canonical external_id for a Zelle payment: keyed by the payment-level
+ * Zelle reference when available, falling back to the Gmail message id.
+ */
+function buildZelleExternalId({ zelleReference, messageId }) {
+  if (zelleReference) return `zelle:${zelleReference}`;
+  return messageId ? `gmail:${messageId}` : null;
+}
+
+/**
  * Produce a stable, amount-free memo string for the legacy zelle_memo_matches
  * table. Prefer the payer name; otherwise strip amounts/boilerplate from note.
  */
@@ -319,6 +356,8 @@ async function createZelleTransaction({
 module.exports = {
   sanitizeNote,
   extractPayerName,
+  extractZelleReference,
+  buildZelleExternalId,
   cleanLegacyMemo,
   matchZelleSender,
   learnZelleAssociation,
