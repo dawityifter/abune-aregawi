@@ -443,7 +443,12 @@ const handlePaymentSucceeded = async (paymentIntent) => {
     const amount = (paymentIntent.amount_received || paymentIntent.amount) / 100.0;
     const occurredAt = new Date((paymentIntent.created || Math.floor(Date.now() / 1000)) * 1000);
 
-    // Idempotent upsert by external_id (payment_intent.id)
+    // Idempotent upsert by external_id (payment_intent.id).
+    // This handler runs from BOTH confirmPayment and the Stripe webhook, which
+    // can race. The find-then-create below is not atomic, so correctness relies
+    // on the UNIQUE index on transactions.external_id: a concurrent second
+    // create throws SequelizeUniqueConstraintError (caught by the outer try),
+    // preventing a duplicate transaction. Do not drop that unique index.
     const existing = await Transaction.findOne({ where: { external_id: paymentIntent.id } });
     if (existing) {
       // Ensure it matches succeeded status use-case; optionally update
