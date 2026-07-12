@@ -1,5 +1,44 @@
 const { MemberPayment, Member, Transaction, Dependent, LedgerEntry, Title, BankTransaction, Employee, Vendor } = require('../models');
 const { Op, literal, fn, col, where, cast } = require('sequelize');
+const { getReconcileThresholdValue } = require('./churchSettingController');
+
+// Compare the ledger totals for a year against the bank statement totals so the
+// Payment Overview can flag when reconciliation is required. Receipts compare to
+// bank deposits (amount > 0); expenses compare to bank debits (|amount < 0|).
+// When there are no bank rows for the year, both sides are reported reconciled
+// so the UI shows no (misleading) warning against a zero bank total.
+async function computeReconciliation(year, totalCollected, totalExpenses) {
+  const yearStart = `${year}-01-01`;
+  const yearEnd = `${year}-12-31`;
+
+  const depositsSum = await BankTransaction.sum('amount', {
+    where: { amount: { [Op.gt]: 0 }, date: { [Op.gte]: yearStart, [Op.lte]: yearEnd } }
+  });
+  const debitsSum = await BankTransaction.sum('amount', {
+    where: { amount: { [Op.lt]: 0 }, date: { [Op.gte]: yearStart, [Op.lte]: yearEnd } }
+  });
+  const threshold = await getReconcileThresholdValue();
+
+  const hasBankData = depositsSum != null || debitsSum != null; // sum() is null/undefined with no rows
+  const bankDeposits = Number(depositsSum || 0);
+  const bankDebits = Math.abs(Number(debitsSum || 0)); // debits are stored negative
+
+  const receiptsDifference = Number((Number(totalCollected || 0) - bankDeposits).toFixed(2));
+  const expensesDifference = Number((Number(totalExpenses || 0) - bankDebits).toFixed(2));
+  const receiptsReconciled = hasBankData ? Math.abs(receiptsDifference) <= threshold : true;
+  const expensesReconciled = hasBankData ? Math.abs(expensesDifference) <= threshold : true;
+
+  return {
+    thresholdDollars: threshold,
+    hasBankData,
+    bankDeposits: Number(bankDeposits.toFixed(2)),
+    bankDebits: Number(bankDebits.toFixed(2)),
+    receiptsReconciled,
+    receiptsDifference,
+    expensesReconciled,
+    expensesDifference,
+  };
+}
 
 // Get all member payments with pagination and filtering
 const getAllMemberPayments = async (req, res) => {
@@ -270,6 +309,7 @@ const getPaymentStats = async (req, res) => {
         }
       });
       const otherPayments = Number(otherPaymentsResult || 0);
+      const reconciliation = await computeReconciliation(year, otherPayments, 0);
 
       return res.json({
         success: true,
@@ -285,7 +325,8 @@ const getPaymentStats = async (req, res) => {
           otherPayments: Number(otherPayments.toFixed(2)),
           totalCollected: Number(otherPayments.toFixed(2)),
           outstandingAmount: 0,
-          collectionRate: 0
+          collectionRate: 0,
+          reconciliation
         }
       });
     }
@@ -402,6 +443,8 @@ const getPaymentStats = async (req, res) => {
     }
     const lastBankUpdate = latestBankTxn ? (latestBankTxn.get('createdAt') || latestBankTxn.date) : null;
 
+    const reconciliation = await computeReconciliation(year, totalCollected, totalExpenses);
+
     const stats = {
       totalMembers,
       contributingMembers,
@@ -418,7 +461,8 @@ const getPaymentStats = async (req, res) => {
       outstandingAmount: Number((outstandingAmount || 0).toFixed(2)),
       collectionRate,
       currentBankBalance,
-      lastBankUpdate
+      lastBankUpdate,
+      reconciliation
     };
 
     res.json({ success: true, data: stats });

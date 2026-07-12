@@ -35,6 +35,50 @@ const setTvRotationInterval = async (req, res) => {
   }
 };
 
+// Reconciliation threshold (dollars): the max ledger-vs-bank gap before the
+// Payment Overview flags "reconciliation required". Shared by receipts/expenses.
+const RECONCILE_THRESHOLD_KEY = 'reconcile_threshold_dollars';
+const RECONCILE_THRESHOLD_DEFAULT = 50;
+
+// Read the current threshold as a number, falling back to the default when the
+// setting is missing or invalid. Reusable from getPaymentStats.
+const getReconcileThresholdValue = async () => {
+  try {
+    const setting = await ChurchSetting.findByPk(RECONCILE_THRESHOLD_KEY);
+    const parsed = setting ? parseFloat(setting.value) : NaN;
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : RECONCILE_THRESHOLD_DEFAULT;
+  } catch (err) {
+    console.error('getReconcileThresholdValue error:', err);
+    return RECONCILE_THRESHOLD_DEFAULT;
+  }
+};
+
+// GET /api/settings/reconcile-threshold
+const getReconcileThreshold = async (req, res) => {
+  try {
+    const dollars = await getReconcileThresholdValue();
+    return res.json({ success: true, data: { dollars } });
+  } catch (err) {
+    console.error('getReconcileThreshold error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to get reconciliation threshold' });
+  }
+};
+
+// PUT /api/settings/reconcile-threshold  body: { dollars }
+const setReconcileThreshold = async (req, res) => {
+  try {
+    const dollars = parseFloat(req.body?.dollars);
+    if (!Number.isFinite(dollars) || dollars < 0 || dollars > 100000) {
+      return res.status(400).json({ success: false, message: 'dollars must be a number between 0 and 100000' });
+    }
+    await ChurchSetting.upsert({ key: RECONCILE_THRESHOLD_KEY, value: String(dollars) });
+    return res.json({ success: true, data: { dollars } });
+  } catch (err) {
+    console.error('setReconcileThreshold error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to update reconciliation threshold' });
+  }
+};
+
 const getLedgerSheetsSettings = async (req, res) => {
   try {
     const data = await getLedgerSheetsStatus();
@@ -92,6 +136,9 @@ const runLedgerSheetsSyncNow = async (req, res) => {
 module.exports = {
   getTvRotationInterval,
   setTvRotationInterval,
+  getReconcileThreshold,
+  setReconcileThreshold,
+  getReconcileThresholdValue,
   getLedgerSheetsSettings,
   updateLedgerSheetsSettings,
   runLedgerSheetsFullExport,
