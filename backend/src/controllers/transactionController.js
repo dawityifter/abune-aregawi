@@ -529,6 +529,22 @@ const updateTransaction = async (req, res) => {
         });
       }
       updateData.receipt_number = receiptValidation.normalized;
+
+      // Reject a receipt number already used by a different transaction
+      // ('000' is the shared no-receipt placeholder). Mirrors createTransaction.
+      if (updateData.receipt_number && updateData.receipt_number !== '000') {
+        const duplicateReceipt = await Transaction.findOne({
+          where: { receipt_number: updateData.receipt_number, id: { [Op.ne]: id } },
+          transaction: t
+        });
+        if (duplicateReceipt) {
+          await t.rollback();
+          return res.status(409).json({
+            success: false,
+            message: `Receipt number "${updateData.receipt_number}" has already been used. Please use a unique receipt number.`
+          });
+        }
+      }
     }
 
     // Validate receipt number for cash/check payments
@@ -537,6 +553,18 @@ const updateTransaction = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Receipt number is required for cash and check payments'
+      });
+    }
+
+    // Membership dues cannot be anonymous — enforce against the post-update state
+    // (mirrors createTransaction so an edit can't strip the member off a due).
+    const finalPaymentType = updateData.payment_type || transaction.payment_type;
+    const finalMemberId = updateData.member_id !== undefined ? updateData.member_id : transaction.member_id;
+    if (finalPaymentType === 'membership_due' && !finalMemberId) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Membership dues cannot be paid anonymously. A member must be selected.'
       });
     }
 
@@ -746,7 +774,7 @@ const getTransactionStats = async (req, res) => {
     // Total Collected (All income)
     const totalCollectedResult = await Transaction.sum('amount', {
       where: {
-        status: { [Op.notIn]: ['failed', 'cancelled'] }, // Exclude failed/cancelled
+        status: { [Op.notIn]: ['failed', 'canceled'] }, // Exclude failed/cancelled
         ...dateFilter
       }
     });
@@ -756,7 +784,7 @@ const getTransactionStats = async (req, res) => {
     const totalMembershipCollectedResult = await Transaction.sum('amount', {
       where: {
         payment_type: 'membership_due',
-        status: { [Op.notIn]: ['failed', 'cancelled'] },
+        status: { [Op.notIn]: ['failed', 'canceled'] },
         ...dateFilter
       }
     });
@@ -775,7 +803,7 @@ const getTransactionStats = async (req, res) => {
     const contributingMembersCount = await Transaction.count({
       where: {
         amount: { [Op.gt]: 0 },
-        status: { [Op.notIn]: ['failed', 'cancelled'] },
+        status: { [Op.notIn]: ['failed', 'canceled'] },
         ...dateFilter
       },
       distinct: true,
@@ -850,12 +878,16 @@ const getTransactionStats = async (req, res) => {
     }
 
     // 7. Recent Bank Balance
+    // Chase CSVs list newest transactions first, so bulkCreate assigns the
+    // LOWEST id to the NEWEST same-day transaction. Use id ASC to pick the
+    // newest row for a given date — matches the balance logic in
+    // bankTransactionController.getBankTransactions and memberPaymentController.
     console.log('--- DEBUG: Fetching Bank Balance ---');
     const latestBankTxn = await BankTransaction.findOne({
       where: {
         balance: { [Op.ne]: null }
       },
-      order: [['date', 'DESC'], ['id', 'DESC']],
+      order: [['date', 'DESC'], ['id', 'ASC']],
       attributes: ['id', 'balance', 'date', ['created_at', 'createdAt']]
     });
 
@@ -939,14 +971,15 @@ const getMemberPaymentSummaries = async (req, res) => {
         'email',
         'phone_number',
         'spouse_name',
-        'monthly_payment'
+        'monthly_payment',
+        'yearly_pledge'
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['first_name', 'ASC']]
     });
 
-    // Get transaction summaries for each member
+    // Get transaction summaries for each member (all payment types, for display)
     const memberIds = members.map(member => member.id);
     const transactionSummaries = await Transaction.findAll({
       where: {
@@ -961,6 +994,28 @@ const getMemberPaymentSummaries = async (req, res) => {
       raw: true
     });
 
+    // Membership dues collected in the current year — this is what determines
+    // whether a member is "behind" (a large one-time donation must NOT mark a
+    // member up-to-date on dues). Mirrors getPaymentStats' dues-based logic.
+    const now = new Date();
+    const yearStart = `${now.getFullYear()}-01-01`;
+    const yearEnd = `${now.getFullYear()}-12-31`;
+    const duesSummaries = await Transaction.findAll({
+      where: {
+        member_id: memberIds,
+        payment_type: 'membership_due',
+        payment_date: { [Op.gte]: yearStart, [Op.lte]: yearEnd }
+      },
+      attributes: [
+        'member_id',
+        [sequelize.fn('SUM', sequelize.col('amount')), 'duesCollected']
+      ],
+      group: ['member_id'],
+      raw: true
+    });
+    const duesMap = {};
+    duesSummaries.forEach(d => { duesMap[d.member_id] = parseFloat(d.duesCollected || 0); });
+
     // Create a map for quick lookup
     const summaryMap = {};
     transactionSummaries.forEach(summary => {
@@ -970,21 +1025,28 @@ const getMemberPaymentSummaries = async (req, res) => {
       };
     });
 
+    // Prorate the yearly pledge to months elapsed in the current year
+    const monthsElapsed = now.getMonth() + 1;
+
     // Transform the data to match the expected format
     const summaries = members.map(member => {
       const stats = summaryMap[member.id] || { totalCollected: 0, transactionCount: 0 };
+      const duesCollected = duesMap[member.id] || 0;
 
-      // Calculate status based on monthly payment vs collected
-      // This is a simplified logic - can be made more complex based on months passed
-      const currentMonth = new Date().getMonth() + 1;
-      const expectedTotal = (member.monthly_payment || 0) * currentMonth;
+      // Status is based on membership dues vs the prorated yearly pledge.
+      const yearlyPledge = Number(member.yearly_pledge || 0);
+      const expectedDuesToDate = (yearlyPledge / 12) * monthsElapsed;
 
-      let status = 'up_to_date';
-      if (stats.totalCollected < expectedTotal) {
-        status = 'behind';
-      }
-      if (stats.totalCollected === 0) {
+      let status;
+      if (yearlyPledge <= 0) {
+        // No pledge → not dues-tracked; reflect whether anything was collected
+        status = stats.totalCollected > 0 ? 'up_to_date' : 'no_payment';
+      } else if (duesCollected === 0) {
         status = 'no_payment';
+      } else if (duesCollected + 1e-6 < expectedDuesToDate) {
+        status = 'behind';
+      } else {
+        status = 'up_to_date';
       }
 
       return {
@@ -998,6 +1060,7 @@ const getMemberPaymentSummaries = async (req, res) => {
         },
         stats: {
           totalCollected: stats.totalCollected,
+          duesCollected,
           transactionCount: stats.transactionCount,
           lastPaymentDate: null, // Would need another query or subquery for this
           status
