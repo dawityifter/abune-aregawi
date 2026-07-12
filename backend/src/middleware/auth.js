@@ -121,7 +121,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
   console.log(`🔵 Request URL: ${req.method} ${req.originalUrl}`);
 
   try {
-    console.log('🔵 Request Headers:', JSON.stringify(req.headers, null, 2));
+    // NOTE: never log req.headers here — it contains the Authorization bearer token.
 
     // Check if Firebase Admin is initialized
     if (!firebaseInitialized) {
@@ -144,7 +144,6 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       });
     }
     const firebaseToken = authHeader.substring(7); // Remove 'Bearer ' prefix
-    console.log('🔵 Firebase token (first 20 chars):', firebaseToken.substring(0, 20) + '...');
 
     console.log('🔵 Verifying Firebase token...');
 
@@ -164,13 +163,6 @@ const firebaseAuthMiddleware = async (req, res, next) => {
         decodedToken = await admin.auth().verifyIdToken(firebaseToken);
         console.log('✅ Firebase token verified successfully');
       }
-      console.log('🔵 Decoded token data:', JSON.stringify({
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-        phone_number: decodedToken.phone_number,
-        phoneNumber: decodedToken.phoneNumber,
-        phone: decodedToken.phone
-      }, null, 2));
     } catch (verifyError) {
       console.error('❌ Firebase token verification failed:', verifyError.message);
       return res.status(401).json({
@@ -272,16 +264,8 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       });
     }
 
-    // Debug log the member data for troubleshooting
-    console.log('🔵 Member data from database:', JSON.stringify({
-      id: member.id,
-      email: member.email,
-      phone_number: member.phone_number,
-      role: member.role,
-      isActive: member.is_active,
-      firstName: member.first_name,
-      lastName: member.last_name
-    }, null, 2));
+    // Resolved member (avoid logging PII such as name/email/phone)
+    console.log(`🔵 Authenticated member id=${member.id} role=${member.role}`);
 
     // Sync Firebase UID if it has changed (e.g. user deleted and re-created in Firebase)
     if (member.firebase_uid !== decodedToken.uid) {
@@ -298,14 +282,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     // Note: Do not enforce admin roles here. This middleware authenticates only.
     // Route-level authorization is handled by roleMiddleware on specific routes.
 
-    const identifier = userEmail || userPhone;
-    console.log('✅ Firebase auth successful for user:', identifier, 'Role:', member.role);
-    console.log('🔍 Setting req.user with:', {
-      id: member.id,
-      email: member.email,
-      role: member.role,
-      memberId: member.memberId
-    });
+    console.log(`✅ Firebase auth successful for member id=${member.id} role=${member.role}`);
 
     req.user = {
       id: member.id,
@@ -316,7 +293,6 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       memberId: member.memberId
     };
 
-    console.log('✅ req.user set successfully:', req.user);
     next();
   } catch (error) {
     console.error('❌ Firebase auth middleware error:', error);
