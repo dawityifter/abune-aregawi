@@ -2,10 +2,28 @@ process.env.NODE_ENV = 'test';
 
 const request = require('supertest');
 
+// Mock Firebase so the dependents routes' token verification passes and the
+// caller resolves to a staff member (authorized by authorizeDependentAccess).
+jest.mock('firebase-admin', () => ({
+  apps: [{}],
+  initializeApp: jest.fn(),
+  credential: { cert: jest.fn(), applicationDefault: jest.fn() },
+  auth: () => ({
+    verifyIdToken: jest.fn().mockResolvedValue({
+      uid: 'staff-uid',
+      email: 'admin@test.com',
+      phone_number: '+15550001111',
+    }),
+    getUser: jest.fn().mockResolvedValue({ phoneNumber: '+15550001111' }),
+  }),
+}));
+
 // Mock models used by controllers
 jest.mock('../models', () => {
   const Member = {
     findByPk: jest.fn(),
+    // authorizeDependentAccess resolves the caller via findOne
+    findOne: jest.fn(),
   };
   const Dependent = {
     create: jest.fn(),
@@ -27,6 +45,8 @@ const app = require('../server');
 describe('Dependents API sanitization', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Caller is church staff → authorized to manage any household's dependents
+    Member.findOne.mockResolvedValue({ id: 999, role: 'admin', roles: ['admin'] });
   });
 
   test('POST /api/members/:memberId/dependents coerces empty email to null', async () => {
@@ -42,7 +62,8 @@ describe('Dependents API sanitization', () => {
         relationship: 'Son',
         email: '   ',
       })
-      .set('Content-Type', 'application/json');
+      .set('Content-Type', 'application/json')
+      .set('Authorization', 'Bearer testtoken');
 
     expect(res.status).toBe(201);
     expect(Dependent.create).toHaveBeenCalled();
@@ -66,7 +87,8 @@ describe('Dependents API sanitization', () => {
     const res = await request(app)
       .patch('/api/members/dependents/42')
       .send({ email: '' })
-      .set('Content-Type', 'application/json');
+      .set('Content-Type', 'application/json')
+      .set('Authorization', 'Bearer testtoken');
 
     expect(res.status).toBe(200);
     expect(Dependent.findByPk).toHaveBeenCalledWith('42');
@@ -75,5 +97,26 @@ describe('Dependents API sanitization', () => {
     expect(updates.email).toBeNull();
     expect(res.body.success).toBe(true);
     expect(res.body.data.dependent.email).toBeNull();
+  });
+
+  test('rejects unauthenticated dependent access with 401', async () => {
+    const res = await request(app)
+      .get('/api/members/1/dependents');
+
+    expect(res.status).toBe(401);
+    expect(Dependent.findByPk).not.toHaveBeenCalled();
+  });
+
+  test('rejects a caller outside the household with 403', async () => {
+    // Caller is a plain member in a different family
+    Member.findOne.mockResolvedValue({ id: 5, role: 'member', roles: ['member'], family_id: 5 });
+    // Target member (id 1) belongs to a different family
+    Member.findByPk.mockResolvedValue({ id: 1, family_id: 1 });
+
+    const res = await request(app)
+      .get('/api/members/1/dependents')
+      .set('Authorization', 'Bearer testtoken');
+
+    expect(res.status).toBe(403);
   });
 });

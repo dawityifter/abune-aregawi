@@ -21,7 +21,7 @@ const MemberRegistration: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { currentUser, getUserProfile, clearNewUserCache } = useAuth();
+  const { currentUser, firebaseUser, getUserProfile, clearNewUserCache } = useAuth();
   const { email, phone } = location.state || {};
   
   // Registration form state
@@ -480,7 +480,10 @@ const MemberRegistration: React.FC = () => {
         // This will update the user state from temporary to permanent
         try {
           // Trigger a profile check to update the user state
-          const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}&phone=${encodeURIComponent(phone || '')}`);
+          const idToken = await firebaseUser?.getIdToken();
+          const profileResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser?.uid}?email=${encodeURIComponent(currentUser?.email || '')}&phone=${encodeURIComponent(phone || '')}`, {
+            headers: idToken ? { Authorization: `Bearer ${idToken}` } : {},
+          });
           
           if (profileResponse.ok) {
             const profileData = await profileResponse.json();

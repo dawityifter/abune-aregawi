@@ -117,6 +117,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
       console.log('🔍 Backend check URL:', apiUrl);
 
+      // Attach the caller's Firebase ID token so the backend can authorize the
+      // request (the endpoint now requires a verified token bound to this uid).
+      let idToken: string | null = null;
+      try {
+        idToken = await firebaseUser.getIdToken();
+      } catch (e) {
+        console.warn('⚠️ Could not obtain Firebase ID token for profile check');
+      }
+      const authHeaders: Record<string, string> = idToken ? { Authorization: `Bearer ${idToken}` } : {};
+
       // Retry/backoff for transient errors (kept low to avoid long waits)
       const maxAttempts = 2;
       let lastError: any = null;
@@ -125,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Timeout per attempt to avoid indefinite hangs
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), PROFILE_FETCH_TIMEOUT_MS);
-          const response = await fetch(apiUrl, { signal: controller.signal });
+          const response = await fetch(apiUrl, { headers: authHeaders, signal: controller.signal });
 
           // Always clear timeout even if parsing/logic throws later
           clearTimeout(timeoutId);
@@ -370,7 +380,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
-      const res = await fetch(apiUrl);
+      const idToken = await auth.currentUser?.getIdToken();
+      const res = await fetch(apiUrl, {
+        headers: idToken ? { Authorization: `Bearer ${idToken}` } : {}
+      });
 
       if (res.status === 200) {
         return await res.json();
@@ -394,10 +407,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
+      const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch(apiUrl, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         },
         body: JSON.stringify(updates)
       });
