@@ -203,7 +203,7 @@ const resolveHouseholdMemberId = (member: any) => {
 };
 
 const Profile: React.FC = () => {
-  const { currentUser, getUserProfile, updateUserProfileData, updateUserProfile } = useAuth();
+  const { currentUser, firebaseUser, getUserProfile, updateUserProfileData, updateUserProfile } = useAuth();
   const { t } = useLanguage();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -250,10 +250,12 @@ const Profile: React.FC = () => {
             const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?${params.toString()}`;
             console.log('🔍 Making backend API call to:', apiUrl);
 
+            const idToken = await firebaseUser?.getIdToken();
             const response = await fetch(apiUrl, {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json',
+                ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
               },
             });
 
@@ -274,12 +276,14 @@ const Profile: React.FC = () => {
 
               if (householdMemberId) {
                 try {
+                  const depIdToken = await firebaseUser?.getIdToken();
                   const dependentsResponse = await fetch(
                     `${process.env.REACT_APP_API_URL}/api/members/${householdMemberId}/dependents`,
                     {
                       method: 'GET',
                       headers: {
                         'Content-Type': 'application/json',
+                        ...(depIdToken ? { Authorization: `Bearer ${depIdToken}` } : {}),
                       },
                     }
                   );
@@ -441,10 +445,12 @@ const Profile: React.FC = () => {
         params.append('phone', currentUser.phoneNumber);
       }
 
+      const idToken = await firebaseUser?.getIdToken();
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${currentUser.uid}?${params.toString()}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
         },
         body: JSON.stringify(backendUpdateData),
       });

@@ -29,7 +29,7 @@ const resolveHouseholdContext = (member: any): HouseholdContext => {
 
 
 const DependentsManagement: React.FC = () => {
-  const { currentUser, getUserProfile } = useAuth();
+  const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const [dependents, setDependents] = useState<Dependent[]>([]);
   const [householdContext, setHouseholdContext] = useState<HouseholdContext>({
     householdMemberId: undefined,
@@ -75,9 +75,11 @@ const DependentsManagement: React.FC = () => {
       if (!memberId) return;
 
       // Now fetch dependents using the resolved member ID (head of household)
+      const idToken = await firebaseUser?.getIdToken();
       const dependentsResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/members/${memberId}/dependents`, {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         }
       });
 
@@ -90,7 +92,7 @@ const DependentsManagement: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser, getUserProfile]);
+  }, [currentUser, firebaseUser, getUserProfile]);
 
   useEffect(() => {
     if (currentUser) {
@@ -116,11 +118,13 @@ const DependentsManagement: React.FC = () => {
         : `${process.env.REACT_APP_API_URL}/api/members/${memberId}/dependents`;
       
       const method = editingDependent ? 'PUT' : 'POST';
-      
+
+      const idToken = await firebaseUser?.getIdToken();
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         },
         body: JSON.stringify(formData)
       });
@@ -144,10 +148,12 @@ const DependentsManagement: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this dependent?')) return;
 
     try {
+      const idToken = await firebaseUser?.getIdToken();
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/dependents/${dependentId}`, {
         method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
         }
       });
 

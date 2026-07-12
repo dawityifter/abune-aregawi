@@ -1454,16 +1454,24 @@ exports.getMemberContributions = async (req, res) => {
 exports.getProfileByFirebaseUid = async (req, res) => {
   try {
     const { uid } = req.params;
-    const userEmail = req.query.email;
-    const userPhone = req.query.phone;
+
+    // Authorization: a caller may only fetch their OWN profile. The path :uid
+    // must match the verified token uid (set by verifyFirebaseTokenOnly), and
+    // the email/phone used for lookup come from the token — never from the
+    // client-supplied query string.
+    if (!req.firebaseUid || req.firebaseUid !== uid) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+    const userEmail = req.firebaseEmail || null;
+    const userPhone = req.firebasePhone || null;
     logger.debug('getProfileByFirebaseUid called', {
       uid,
       hasEmail: !!userEmail,
       hasPhone: !!userPhone
     });
 
-    // MAGIC DEMO BYPASS
-    if (uid === 'magic-demo-uid' || (process.env.ENABLE_DEMO_MODE === 'true' && uid === 'magic-demo-uid')) {
+    // MAGIC DEMO BYPASS — only when demo mode is explicitly enabled
+    if (process.env.ENABLE_DEMO_MODE === 'true' && uid === 'magic-demo-uid') {
       logger.info('✨ Magic Demo UID detected in getProfileByFirebaseUid - Returning mock admin profile');
       return res.json({
         success: true,
@@ -1815,42 +1823,54 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
   try {
     const { uid } = req.params;
 
-    console.log('🔍 Profile update request:', {
-      uid,
-      query: req.query,
-      body: req.body
-    });
+    // Authorization: a caller may only update their OWN profile. The path :uid
+    // must match the verified token uid (set by verifyFirebaseTokenOnly), and
+    // the record is resolved from the token identity — never from the
+    // client-supplied query string.
+    if (!req.firebaseUid || req.firebaseUid !== uid) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
 
-    // Find member by email or phone from Firebase Auth
-    const whereClause = {};
-    if (req.query.email) {
-      whereClause.email = req.query.email;
-    } else if (req.query.phone) {
-      // Normalize phone in query to E.164 for consistent lookup
-      let p = normalizePhoneNumber(req.query.phone);
-      const digits = p.replace(/[^\d]/g, '');
+    const tokenEmail = req.firebaseEmail || null;
+    let tokenPhone = null;
+    if (req.firebasePhone) {
+      let p = normalizePhoneNumber(req.firebasePhone);
+      const digits = (p || '').replace(/[^\d]/g, '');
       if (digits.length === 10) {
         p = `+1${digits}`;
       } else if (digits.length === 11 && digits.startsWith('1')) {
         p = `+${digits}`;
       }
-      whereClause.phone_number = p; // Fixed: use snake_case field name
-    } else {
+      tokenPhone = p;
+    }
+
+    if (!tokenEmail && !tokenPhone) {
       return res.status(400).json({
         success: false,
-        message: 'Email or phone query parameter required'
+        message: 'Authenticated identity is missing an email or phone number'
       });
     }
 
-    let member = await Member.findOne({ where: whereClause });
+    console.log('🔍 Profile update request:', { uid, body: req.body });
 
-    // If no member is found, try to resolve as a dependent update
+    // Resolve the caller's own member record: prefer the linked firebase_uid,
+    // then fall back to the token's verified email/phone.
+    let member = await Member.findOne({ where: { firebase_uid: uid } });
     if (!member) {
-      const depWhere = {};
-      if (whereClause.email) depWhere.email = whereClause.email;
-      if (whereClause.phone_number) depWhere.phone = whereClause.phone_number;
+      const orConds = [];
+      if (tokenEmail) orConds.push({ email: tokenEmail });
+      if (tokenPhone) orConds.push({ phone_number: tokenPhone });
+      member = await Member.findOne({ where: { [Op.or]: orConds } });
+    }
 
-      const dependent = await Dependent.findOne({ where: depWhere });
+    // If no member is found, try to resolve as a dependent update (also bound
+    // strictly to the verified token identity).
+    if (!member) {
+      const depOr = [];
+      if (tokenEmail) depOr.push({ email: tokenEmail });
+      if (tokenPhone) depOr.push({ phone: tokenPhone });
+
+      const dependent = await Dependent.findOne({ where: { [Op.or]: depOr } });
 
       if (!dependent) {
         return res.status(404).json({
