@@ -1,5 +1,5 @@
 const { MemberPayment, Member, Transaction, Dependent, LedgerEntry, Title, BankTransaction, Employee, Vendor } = require('../models');
-const { Op, literal, fn, col } = require('sequelize');
+const { Op, literal, fn, col, where, cast } = require('sequelize');
 
 // Get all member payments with pagination and filtering
 const getAllMemberPayments = async (req, res) => {
@@ -15,7 +15,8 @@ const getAllMemberPayments = async (req, res) => {
         ...whereClause,
         [Op.or]: [
           { memberName: { [Op.iLike]: `%${search}%` } },
-          literal(`CAST("member_id" AS TEXT) ILIKE '%${search}%'`)
+          // Parameterized cast+ILIKE — the search value is bound, never interpolated into SQL
+          where(cast(col('member_id'), 'text'), { [Op.iLike]: `%${search}%` })
         ]
       };
     }
