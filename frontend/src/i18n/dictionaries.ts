@@ -152,6 +152,10 @@ export interface Dictionaries {
       target: string;
       membershipDues: string;
       otherDonations: string;
+      reconcileRequired: string;
+      reconcileLedger: string;
+      reconcileBank: string;
+      reconcileDiff: string;
     };
     health: {
       title: string;
@@ -861,6 +865,10 @@ export const en: Dictionaries = {
       target: "Goal",
       membershipDues: "Membership Dues",
       otherDonations: "Other Donations",
+      reconcileRequired: "Doesn't match the bank statement — reconciliation required",
+      reconcileLedger: "Ledger",
+      reconcileBank: "Bank",
+      reconcileDiff: "Difference",
     },
     health: {
       title: "Membership Health",
@@ -1587,6 +1595,10 @@ export const ti: Dictionaries = {
       target: "ዕላማ",
       membershipDues: "ናይ ኣባልነት ክፍሊት",
       otherDonations: "ካልእ ሽልማታት",
+      reconcileRequired: "ምስ ናይ ባንኪ መግለጺ ኣይሰማምዕን — ምዕራይ የድሊ",
+      reconcileLedger: "መዝገብ",
+      reconcileBank: "ባንኪ",
+      reconcileDiff: "ፍልልይ",
     },
     health: {
       title: "ጥዕና ኣባልነት",

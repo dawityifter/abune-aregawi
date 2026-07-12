@@ -37,6 +37,16 @@ interface PaymentStatsData {
   outstandingAmount: number;
   currentBankBalance?: number;
   lastBankUpdate?: string;
+  reconciliation?: {
+    thresholdDollars: number;
+    hasBankData: boolean;
+    bankDeposits: number;
+    bankDebits: number;
+    receiptsReconciled: boolean;
+    receiptsDifference: number;
+    expensesReconciled: boolean;
+    expensesDifference: number;
+  };
 }
 
 type TreasurerTab =
@@ -372,6 +382,7 @@ const TreasurerDashboard: React.FC = () => {
                   selectedYear={selectedYear}
                   availableYears={availableYears}
                   onYearChange={setSelectedYear}
+                  onNavigateToBank={() => setActiveTab('bank')}
                 />
               )}
             </div>
