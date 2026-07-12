@@ -261,10 +261,11 @@ const getPaymentStats = async (req, res) => {
     const notDuesTrackedMembers = Math.max(totalMembers - contributingMembers, 0);
 
     if (contributingMembers === 0) {
-      // Even with no pledges, calculate other payments
+      // Even with no pledges, calculate other payments. Exclude 'expense'
+      // entries (stored as positive amounts) so they don't inflate income.
       const otherPaymentsResult = await LedgerEntry.sum('amount', {
         where: {
-          type: { [Op.ne]: 'membership_due' },
+          type: { [Op.notIn]: ['membership_due', 'expense'] },
           entry_date: { [Op.gte]: start, [Op.lte]: end }
         }
       });
@@ -337,10 +338,11 @@ const getPaymentStats = async (req, res) => {
       }
     }
 
-    // Calculate other payments (all non-membership_due payments)
+    // Calculate other payments (all non-dues INCOME). Exclude 'expense' entries
+    // (stored as positive amounts) so expenses don't inflate receipts/net.
     const otherPaymentsResult = await LedgerEntry.sum('amount', {
       where: {
-        type: { [Op.ne]: 'membership_due' },
+        type: { [Op.notIn]: ['membership_due', 'expense'] },
         entry_date: { [Op.gte]: start, [Op.lte]: end }
       }
     });
