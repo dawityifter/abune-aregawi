@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface MonthStatus {
   month: string;
@@ -42,12 +43,11 @@ interface DuesResponse {
   };
 }
 
-const monthLabel = (m: string) => m.charAt(0).toUpperCase() + m.slice(1);
-
 const currency = (n: number) => n.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
 
 const DuesPage: React.FC = () => {
   const { firebaseUser, user, authReady } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dues, setDues] = useState<DuesResponse['data'] | null>(null);
@@ -62,7 +62,7 @@ const DuesPage: React.FC = () => {
   const fetchDues = useMemo(() => async () => {
     try {
       if (!firebaseUser) {
-        setError('You must be signed in to view dues.');
+        setError(t('duesPage.signInRequired'));
         setLoading(false);
         return;
       }
@@ -74,7 +74,7 @@ const DuesPage: React.FC = () => {
       const linkedHeadId = (user as any)?.data?.member?.linkedMember?.id || (user as any)?.linkedMember?.id;
       // If dependent but no linked head, inform the user and stop
       if (isDependent && !linkedHeadId) {
-        setError('Your dependent profile is not linked to a head of household yet. Please contact the head to link your profile or use the self-claim flow.');
+        setError(t('duesPage.dependentNotLinked'));
         setLoading(false);
         return;
       }
@@ -92,16 +92,16 @@ const DuesPage: React.FC = () => {
         throw new Error(`Failed to load dues: ${res.status} ${text}`);
       }
       const json: DuesResponse = await res.json();
-      if (!json.success) throw new Error('Failed to load dues');
+      if (!json.success) throw new Error(t('duesPage.loadFailed'));
       setDues(json.data);
       setError(null);
     } catch (e: any) {
       console.error('Error loading dues', e);
-      setError(e.message || 'Failed to load dues');
+      setError(e.message || t('duesPage.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [firebaseUser, apiUrl, user, selectedYear]);
+  }, [firebaseUser, apiUrl, user, selectedYear, t]);
 
   useEffect(() => {
     // Wait for auth to be ready before attempting fetch
@@ -121,7 +121,7 @@ const DuesPage: React.FC = () => {
       );
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        throw new Error(json.message || 'Failed to generate statement');
+        throw new Error(json.message || t('duesPage.statementFailed'));
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -131,7 +131,7 @@ const DuesPage: React.FC = () => {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: any) {
-      setStatementMsg({ type: 'error', text: e.message || 'Failed to generate statement' });
+      setStatementMsg({ type: 'error', text: e.message || t('duesPage.statementFailed') });
     } finally {
       setStatementLoading(null);
     }
@@ -171,7 +171,7 @@ const DuesPage: React.FC = () => {
         <div className="max-w-xl w-full bg-white shadow rounded-xl p-6 text-center">
           <div className="text-red-600 mb-4">{error}</div>
           <button onClick={() => { setLoading(true); setError(null); fetchDues(); }} className="bg-primary-600 text-white px-4 py-2 rounded-lg">
-            Retry
+            {t('duesPage.retry')}
           </button>
         </div>
       </div>
@@ -204,13 +204,13 @@ const DuesPage: React.FC = () => {
         >
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              Member Dues
+              {t('duesPage.title')}
             </p>
             <p className="text-xl font-bold text-white mb-0.5">
               {member.firstName} {member.lastName}
             </p>
             <p className="text-xs italic" style={{ color: 'rgba(255,255,255,0.5)' }}>
-              Calculated from parish join date
+              {t('duesPage.calculatedFrom')}
             </p>
           </div>
           <div className="flex gap-2 flex-shrink-0">
@@ -233,10 +233,10 @@ const DuesPage: React.FC = () => {
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Collected',      value: payment.duesCollected   || 0, border: 'border-green-500',  text: 'text-green-700'  },
-            { label: 'Balance Due',    value: payment.outstandingDues || 0, border: 'border-red-500',    text: 'text-red-700'    },
-            { label: 'Other Payments', value: otherPaymentsTotal,            border: 'border-amber-500',  text: 'text-amber-700'  },
-            { label: 'Yearly Pledge',  value: yearlyPledge            || 0, border: 'border-violet-500', text: 'text-violet-700' },
+            { label: t('duesPage.stat.collected'),     value: payment.duesCollected   || 0, border: 'border-green-500',  text: 'text-green-700'  },
+            { label: t('duesPage.stat.balanceDue'),    value: payment.outstandingDues || 0, border: 'border-red-500',    text: 'text-red-700'    },
+            { label: t('duesPage.stat.otherPayments'), value: otherPaymentsTotal,            border: 'border-amber-500',  text: 'text-amber-700'  },
+            { label: t('duesPage.stat.yearlyPledge'),  value: yearlyPledge            || 0, border: 'border-violet-500', text: 'text-violet-700' },
           ].map(({ label, value, border, text }) => (
             <div key={label} className={`bg-white rounded-xl p-4 border-l-4 ${border} shadow-sm`}>
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{label}</p>
@@ -247,7 +247,7 @@ const DuesPage: React.FC = () => {
 
         {/* Month Grid */}
         <div className="bg-white rounded-xl p-5 shadow-sm">
-          <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-4">Monthly Status</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-4">{t('duesPage.monthlyStatus')}</p>
           <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
             {payment.monthStatuses.map((ms) => {
               const msIdx = MONTHS.indexOf(ms.month);
@@ -264,11 +264,11 @@ const DuesPage: React.FC = () => {
                 if (msIdx < curMonthIdx) {
                   tile  = 'bg-red-50 border-red-200';
                   label = 'text-red-700 font-bold';
-                  icon  = <span className="text-red-500 text-xs font-semibold">Due</span>;
+                  icon  = <span className="text-red-500 text-xs font-semibold">{t('duesPage.dueShort')}</span>;
                 } else {
                   tile  = 'bg-yellow-50 border-yellow-200';
                   label = 'text-yellow-700 font-bold';
-                  icon  = <span className="text-yellow-600 text-xs font-semibold">Due</span>;
+                  icon  = <span className="text-yellow-600 text-xs font-semibold">{t('duesPage.dueShort')}</span>;
                 }
               }
 
@@ -278,14 +278,14 @@ const DuesPage: React.FC = () => {
                   data-testid="month-tile"
                   className={`rounded-lg border px-2 py-2.5 text-center ${tile}`}
                 >
-                  <p className={`text-xs mb-1 ${label}`}>{monthLabel(ms.month).slice(0, 3)}</p>
+                  <p className={`text-xs mb-1 ${label}`}>{t(`months.short.${ms.month}`)}</p>
                   {icon}
                 </div>
               );
             })}
           </div>
           <p className="mt-4 text-xs text-gray-500">
-            Monthly commitment:{' '}
+            {t('duesPage.monthlyCommitment')}{' '}
             <strong className="text-gray-700">{currency(payment.monthlyPayment || 0)}</strong>
           </p>
         </div>
@@ -293,13 +293,21 @@ const DuesPage: React.FC = () => {
         {/* Payment History */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100">
-            <h3 className="text-base font-bold text-gray-900">Payment History</h3>
+            <h3 className="text-base font-bold text-gray-900">{t('duesPage.paymentHistory')}</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-100">
               <thead className="bg-gray-50">
                 <tr>
-                  {['Date','Amount','Type','Method','Receipt #','Note','Status'].map(h => (
+                  {[
+                    t('duesPage.col.date'),
+                    t('duesPage.col.amount'),
+                    t('duesPage.col.type'),
+                    t('duesPage.col.method'),
+                    t('duesPage.col.receipt'),
+                    t('duesPage.col.note'),
+                    t('duesPage.col.status'),
+                  ].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
@@ -307,22 +315,22 @@ const DuesPage: React.FC = () => {
               <tbody className="bg-white divide-y divide-gray-100">
                 {transactions.length === 0 && (
                   <tr>
-                    <td className="px-4 py-4 text-sm text-gray-400 italic" colSpan={7}>No payments found for this year.</td>
+                    <td className="px-4 py-4 text-sm text-gray-400 italic" colSpan={7}>{t('duesPage.noPayments')}</td>
                   </tr>
                 )}
-                {transactions.map(t => (
-                  <tr key={String(t.id)} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{new Date(t.payment_date).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">{currency(t.amount)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 capitalize">{t.payment_type.replace(/_/g, ' ')}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 capitalize">{t.payment_method.replace(/_/g, ' ')}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{t.receipt_number || '—'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{t.note || '—'}</td>
+                {transactions.map(tx => (
+                  <tr key={String(tx.id)} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{new Date(tx.payment_date).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">{currency(tx.amount)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 capitalize">{tx.payment_type.replace(/_/g, ' ')}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 capitalize">{tx.payment_method.replace(/_/g, ' ')}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{tx.receipt_number || '—'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{tx.note || '—'}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {getStatus(t) === 'Pending' ? (
-                        <span className="inline-block rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5">Pending</span>
+                      {getStatus(tx) === 'Pending' ? (
+                        <span className="inline-block rounded-full bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5">{t('duesPage.status.pending')}</span>
                       ) : (
-                        <span className="inline-block rounded-full bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5">Succeeded</span>
+                        <span className="inline-block rounded-full bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5">{t('duesPage.status.succeeded')}</span>
                       )}
                     </td>
                   </tr>
@@ -335,9 +343,9 @@ const DuesPage: React.FC = () => {
         {/* Annual Contribution Statement — prior years only */}
         {selectedYear < new Date().getFullYear() && (
           <div className="bg-white rounded-xl shadow-sm border-t-4 border-primary-600 px-5 py-4">
-            <h3 className="text-base font-semibold text-gray-900 mb-1">Annual Contribution Statement</h3>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">{t('duesPage.statement.title')}</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Generate your tax-deductible contribution statement for {selectedYear}.
+              {t('duesPage.statement.desc', { year: selectedYear })}
             </p>
             <div className="flex flex-wrap gap-3">
               <button
@@ -353,7 +361,7 @@ const DuesPage: React.FC = () => {
                       d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
                 )}
-                Print Statement
+                {t('duesPage.statement.print')}
               </button>
             </div>
             {statementMsg && (

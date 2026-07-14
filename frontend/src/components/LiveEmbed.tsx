@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 type LiveEmbedProps = {
   id?: string;
@@ -8,6 +9,7 @@ type LiveEmbedProps = {
 // Privacy-enhanced YouTube live embed with optional Unmute overlay
 // Uses youtube-nocookie.com; browsers block autoplay with sound, so we start muted and let the user unmute via a button.
 const LiveEmbed: React.FC<LiveEmbedProps> = ({ id = 'react-live-stream', className }) => {
+  const { t } = useLanguage();
   const CHANNEL_ID = 'UCvK6pJUKU2pvoX7bQ3PN2aA';
   const src = `https://www.youtube-nocookie.com/embed/live_stream?channel=${CHANNEL_ID}&autoplay=1&mute=1&modestbranding=1&rel=0&enablejsapi=1`;
 
@@ -73,7 +75,7 @@ const LiveEmbed: React.FC<LiveEmbedProps> = ({ id = 'react-live-stream', classNa
   };
 
   return (
-    <section className={className} aria-label="Live Stream">
+    <section className={className} aria-label={t('liveEmbed.liveStream')}>
       <div
         id={id}
         style={{
@@ -88,7 +90,7 @@ const LiveEmbed: React.FC<LiveEmbedProps> = ({ id = 'react-live-stream', classNa
         <iframe
           ref={iframeRef}
           src={src}
-          title="Live Stream"
+          title={t('liveEmbed.liveStream')}
           allow="autoplay; encrypted-media; picture-in-picture"
           allowFullScreen
           frameBorder={0}
@@ -97,7 +99,7 @@ const LiveEmbed: React.FC<LiveEmbedProps> = ({ id = 'react-live-stream', classNa
         {/* Mute/Unmute toggle overlay */}
         <button
           onClick={handleToggleMute}
-          aria-label={muted ? 'Unmute live stream' : 'Mute live stream'}
+          aria-label={muted ? t('liveEmbed.unmuteAria') : t('liveEmbed.muteAria')}
           aria-pressed={!muted}
           disabled={!ready}
           style={{
@@ -113,17 +115,17 @@ const LiveEmbed: React.FC<LiveEmbedProps> = ({ id = 'react-live-stream', classNa
             cursor: 'pointer',
           }}
         >
-          {muted ? 'Unmute' : 'Mute'}
+          {muted ? t('liveEmbed.unmute') : t('liveEmbed.mute')}
         </button>
       </div>
       <div style={{ marginTop: 8, fontSize: '0.9rem', color: '#555' }}>
-        If the stream doesn’t start automatically,{' '}
+        {t('liveEmbed.fallbackPrefix')}
         <a
           href="https://www.youtube.com/@debretsehayeotcdallastexas7715/live"
           target="_blank"
           rel="noopener noreferrer"
         >
-          open the live page on YouTube
+          {t('liveEmbed.openOnYouTube')}
         </a>
         .
       </div>

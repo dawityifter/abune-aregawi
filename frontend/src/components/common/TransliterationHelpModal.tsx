@@ -1,5 +1,6 @@
 import React from 'react';
 import { geezMap } from '../../utils/geezTransliteration';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface TransliterationHelpModalProps {
     isOpen: boolean;
@@ -12,6 +13,7 @@ const TransliterationHelpModal: React.FC<TransliterationHelpModalProps> = ({
     onClose,
     variant = 'modal'
 }) => {
+    const { t } = useLanguage();
     if (!isOpen && variant === 'modal') return null;
     // If embedded, we might rely on parent to hide it, or return null. 
     // Usually embedded means it's always "rendered" but maybe hidden by CSS or parent logic.
@@ -58,7 +60,7 @@ const TransliterationHelpModal: React.FC<TransliterationHelpModalProps> = ({
         <div className={`bg-white flex flex-col h-full ${variant === 'modal' ? 'rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh]' : 'w-full h-full'}`}>
             <div className="flex justify-between items-center p-4 border-b">
                 <h3 className="text-xl font-semibold text-gray-900">
-                    Ge'ez Transliteration Guide
+                    {t('transliterationHelp.title')}
                 </h3>
                 <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
                     <i className="fas fa-times text-xl"></i>
@@ -67,7 +69,7 @@ const TransliterationHelpModal: React.FC<TransliterationHelpModalProps> = ({
 
             <div className="p-6 overflow-y-auto flex-1">
                 <p className="mb-4 text-gray-600 text-sm">
-                    Type the <strong>Latin</strong> characters to get the corresponding <strong>Ge'ez</strong> symbol.
+                    {t('transliterationHelp.instruction')}
                 </p>
 
                 <div className={`grid gap-6 ${variant === 'embedded' ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
@@ -112,7 +114,7 @@ const TransliterationHelpModal: React.FC<TransliterationHelpModalProps> = ({
                         onClick={onClose}
                         className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
                     >
-                        Close
+                        {t('transliterationHelp.close')}
                     </button>
                 </div>
             )}

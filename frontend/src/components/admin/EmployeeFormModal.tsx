@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface Employee {
   id?: string;
@@ -34,6 +35,7 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
   employee 
 }) => {
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -140,19 +142,19 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
   const validateForm = (): boolean => {
     if (!formData.first_name.trim()) {
-      setError('First name is required');
+      setError(t('employeeForm.errorFirstName'));
       return false;
     }
     if (!formData.last_name.trim()) {
-      setError('Last name is required');
+      setError(t('employeeForm.errorLastName'));
       return false;
     }
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setError('Please enter a valid email address');
+      setError(t('employeeForm.errorEmail'));
       return false;
     }
     if (formData.ssn_last_four && !/^\d{4}$/.test(formData.ssn_last_four)) {
-      setError('SSN last four must be exactly 4 digits');
+      setError(t('employeeForm.errorSsn'));
       return false;
     }
     return true;
@@ -211,11 +213,11 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         onSuccess();
         onClose();
       } else {
-        setError(data.message || `Failed to ${employee?.id ? 'update' : 'create'} employee`);
+        setError(data.message || (employee?.id ? t('employeeForm.saveFailedUpdate') : t('employeeForm.saveFailedCreate')));
       }
     } catch (err) {
       console.error('Error saving employee:', err);
-      setError('An error occurred while saving the employee');
+      setError(t('employeeForm.saveError'));
     } finally {
       setLoading(false);
     }
@@ -236,10 +238,10 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
         {/* Header */}
         <div className="bg-blue-600 text-white px-6 py-4 rounded-t-lg">
           <h2 className="text-2xl font-bold">
-            {employee?.id ? 'Edit Employee' : 'Add Employee'}
+            {employee?.id ? t('employeeForm.editTitle') : t('employeeForm.addTitle')}
           </h2>
           <p className="text-blue-100 text-sm mt-1">
-            {employee?.id ? 'Update employee information' : 'Add a new employee to the system'}
+            {employee?.id ? t('employeeForm.editSubtitle') : t('employeeForm.addSubtitle')}
           </p>
         </div>
 
@@ -255,7 +257,7 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                First Name <span className="text-red-500">*</span>
+                {t('employeeForm.firstName')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -269,7 +271,7 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Last Name <span className="text-red-500">*</span>
+                {t('employeeForm.lastName')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -285,21 +287,21 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Position
+                {t('employeeForm.position')}
               </label>
               <input
                 type="text"
                 name="position"
                 value={formData.position}
                 onChange={handleChange}
-                placeholder="e.g., Priest, Deacon, Secretary"
+                placeholder={t('employeeForm.positionPlaceholder')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Employment Type <span className="text-red-500">*</span>
+                {t('employeeForm.type')} <span className="text-red-500">*</span>
               </label>
               <select
                 name="employment_type"
@@ -308,21 +310,21 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="full-time">Full-time</option>
-                <option value="part-time">Part-time</option>
-                <option value="contract">Contract</option>
-                <option value="volunteer">Volunteer</option>
+                <option value="full-time">{t('employeeList.typeFullTime')}</option>
+                <option value="part-time">{t('employeeList.typePartTime')}</option>
+                <option value="contract">{t('employeeList.typeContract')}</option>
+                <option value="volunteer">{t('employeeList.typeVolunteer')}</option>
               </select>
             </div>
           </div>
 
           {/* Contact Information */}
           <div className="border-t pt-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('employeeForm.contactInfo')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
+                  {t('employeeForm.email')}
                 </label>
                 <input
                   type="email"
@@ -335,7 +337,7 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
+                  {t('employeeForm.phone')}
                 </label>
                 <input
                   type="tel"
@@ -350,7 +352,7 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
             <div className="mt-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Address
+                {t('employeeForm.address')}
               </label>
               <textarea
                 name="address"
@@ -364,11 +366,11 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
           {/* Employment Details */}
           <div className="border-t pt-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Employment Details</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('employeeForm.employmentDetails')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hire Date
+                  {t('employeeForm.hireDate')}
                 </label>
                 <input
                   type="date"
@@ -381,7 +383,7 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Termination Date
+                  {t('employeeForm.terminationDate')}
                 </label>
                 <input
                   type="date"
@@ -402,18 +404,18 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
                   className="mr-2"
                 />
-                <span className="text-sm font-medium text-gray-700">Active Employee</span>
+                <span className="text-sm font-medium text-gray-700">{t('employeeForm.activeEmployee')}</span>
               </label>
             </div>
           </div>
 
           {/* Compensation */}
           <div className="border-t pt-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Compensation</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('employeeForm.compensation')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Salary Amount
+                  {t('employeeForm.salaryAmount')}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-2 text-gray-500">$</span>
@@ -432,7 +434,7 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Salary Frequency
+                  {t('employeeForm.salaryFrequency')}
                 </label>
                 <select
                   name="salary_frequency"
@@ -440,12 +442,12 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">-- Select Frequency --</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="bi-weekly">Bi-weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="annual">Annual</option>
-                  <option value="per-service">Per Service</option>
+                  <option value="">{t('employeeForm.selectFrequency')}</option>
+                  <option value="weekly">{t('employeeForm.freqWeekly')}</option>
+                  <option value="bi-weekly">{t('employeeForm.freqBiWeekly')}</option>
+                  <option value="monthly">{t('employeeForm.freqMonthly')}</option>
+                  <option value="annual">{t('employeeForm.freqAnnual')}</option>
+                  <option value="per-service">{t('employeeForm.freqPerService')}</option>
                 </select>
               </div>
             </div>
@@ -453,11 +455,11 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
           {/* Tax Information */}
           <div className="border-t pt-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tax Information</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('employeeForm.taxInfo')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  SSN Last Four
+                  {t('employeeForm.ssnLastFour')}
                 </label>
                 <input
                   type="text"
@@ -475,14 +477,14 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tax ID / EIN
+                  {t('employeeForm.taxId')}
                 </label>
                 <input
                   type="text"
                   name="tax_id"
                   value={formData.tax_id}
                   onChange={handleChange}
-                  placeholder="For 1099 contractors"
+                  placeholder={t('employeeForm.taxIdPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -492,14 +494,14 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
           {/* Notes */}
           <div className="border-t pt-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
+              {t('employeeForm.notes')}
             </label>
             <textarea
               name="notes"
               value={formData.notes}
               onChange={handleChange}
               rows={3}
-              placeholder="Additional notes about this employee..."
+              placeholder={t('employeeForm.notesPlaceholder')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -512,14 +514,14 @@ const EmployeeFormModal: React.FC<EmployeeFormModalProps> = ({
               disabled={loading}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
-              Cancel
+              {t('employeeForm.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Saving...' : employee?.id ? 'Update Employee' : 'Add Employee'}
+              {loading ? t('employeeForm.saving') : employee?.id ? t('employeeForm.update') : t('employeeForm.addTitle')}
             </button>
           </div>
         </form>

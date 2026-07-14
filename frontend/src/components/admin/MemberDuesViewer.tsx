@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
 import { getMergedPermissions, UserRole } from '../../utils/roles';
 import AddPaymentModal from './AddPaymentModal';
@@ -75,6 +76,7 @@ interface MemberDuesViewerProps {
 
 const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, embedded = false }) => {
   const { firebaseUser, currentUser: authUser } = useAuth();
+  const { t } = useLanguage();
   const userRoles: UserRole[] = (authUser as any)?.roles || [(authUser as any)?.role || 'member'];
   const permissions = getMergedPermissions(userRoles);
 
@@ -99,7 +101,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
       );
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        throw new Error((json as any).message || 'Failed to generate statement');
+        throw new Error((json as any).message || t('memberDues.statementFailed'));
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -109,7 +111,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: any) {
-      setStatementError(e.message || 'Failed to generate statement');
+      setStatementError(e.message || t('memberDues.statementFailed'));
     } finally {
       setStatementLoading(false);
     }
@@ -134,21 +136,22 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch member dues: ${response.status}`);
+        throw new Error(`${t('memberDues.duesFetchFailed')}: ${response.status}`);
       }
 
       const result = await response.json();
       if (result.success) {
         setDuesData(result.data);
       } else {
-        throw new Error(result.message || 'Failed to fetch member dues');
+        throw new Error(result.message || t('memberDues.duesFetchFailed'));
       }
     } catch (err) {
       console.error('Error fetching member dues:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch member dues');
+      setError(err instanceof Error ? err.message : t('memberDues.duesFetchFailed'));
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firebaseUser, memberId, selectedYear]);
 
   useEffect(() => {
@@ -175,14 +178,14 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
         <div className={`bg-white ${embedded ? 'rounded-2xl max-w-none mx-0 h-full border border-red-200 shadow-sm' : 'rounded-lg max-w-md w-full mx-4 border-t-4 shadow-2xl'} p-6 border-red-500`}>
           <div className="text-red-600 mb-6 text-center">
             <i className="fas fa-exclamation-circle text-5xl mb-4 opacity-75"></i>
-            <h3 className="text-xl font-bold">Unable to load data</h3>
+            <h3 className="text-xl font-bold">{t('memberDues.unableToLoad')}</h3>
             <p className="text-sm mt-2 text-gray-600">{error}</p>
           </div>
           <button
             onClick={onClose}
             className="w-full bg-gray-800 hover:bg-gray-900 text-white py-2.5 px-4 rounded-lg font-medium transition-colors"
           >
-            Go Back
+            {t('memberDues.goBack')}
           </button>
         </div>
       </div>
@@ -218,14 +221,14 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
                     <i className="fas fa-home text-white"></i>
                   </span>
                   <h2 className="text-2xl font-bold text-gray-900 leading-tight">
-                    Household Finances
+                    {t('memberDues.householdFinances')}
                   </h2>
                 </div>
                 <p className="text-gray-700 font-semibold text-lg">
-                  {formatMemberName(duesData.household.headOfHousehold)}'s Household
+                  {t('memberDues.householdOf', { name: formatMemberName(duesData.household.headOfHousehold) })}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  {duesData.household.totalMembers} Members: {duesData.household.headOfHousehold.firstName}{duesData.household.memberNames && `, ${duesData.household.memberNames}`}
+                  {t('memberDues.membersCount', { count: duesData.household.totalMembers })}: {duesData.household.headOfHousehold.firstName}{duesData.household.memberNames && `, ${duesData.household.memberNames}`}
                 </p>
               </>
             ) : (
@@ -234,7 +237,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
                   <span className="p-1.5 bg-indigo-600 rounded-lg mr-3 shadow-md">
                     <i className="fas fa-user text-white text-sm"></i>
                   </span>
-                  Member Financial View
+                  {t('memberDues.memberFinancialView')}
                 </h2>
                 <p className="text-gray-700 font-semibold text-lg mt-1">
                   {formatMemberName(member)}
@@ -269,14 +272,14 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
                   className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl font-bold flex items-center shadow-lg transition-transform active:scale-95"
                 >
                   <i className="fas fa-plus mr-2"></i>
-                  Add Transaction
+                  {t('memberDues.addTransaction')}
                 </button>
               )}
               <button
                 onClick={onClose}
                 className="bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 p-2 rounded-xl shadow-sm transition-colors"
-                aria-label={embedded ? 'Clear selection' : 'Close'}
-                title={embedded ? 'Clear selection' : 'Close'}
+                aria-label={embedded ? t('memberDues.clearSelection') : t('memberDues.close')}
+                title={embedded ? t('memberDues.clearSelection') : t('memberDues.close')}
               >
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -295,29 +298,29 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
             {/* Membership Dues Highlight Card */}
             <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-blue-100 shadow-sm relative overflow-hidden">
               <div className="absolute top-0 right-0 p-1 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-bl-lg">
-                Financial Year {payment.year}
+                {t('memberDues.financialYear', { year: payment.year })}
               </div>
 
               <div className="flex items-center mb-6">
                 <i className="fas fa-calendar-check text-blue-600 text-xl mr-3"></i>
-                <h3 className="text-xl font-bold text-gray-900">Membership Dues</h3>
+                <h3 className="text-xl font-bold text-gray-900">{t('memberDues.membershipDues')}</h3>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
                 <div className="space-y-1">
-                  <p className="text-xs font-bold text-gray-500 uppercase">Annual Pledge</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase">{t('memberDues.annualPledge')}</p>
                   <p className="text-2xl font-black text-gray-900">${payment.annualPledge.toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-bold text-gray-500 uppercase">Monthly Value</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase">{t('memberDues.monthlyValue')}</p>
                   <p className="text-2xl font-black text-gray-900">${payment.monthlyPayment.toFixed(2)}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-bold text-blue-600 uppercase">Paid To Date</p>
+                  <p className="text-xs font-bold text-blue-600 uppercase">{t('memberDues.paidToDate')}</p>
                   <p className="text-2xl font-black text-green-600">${payment.duesCollected.toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-bold text-gray-500 uppercase">Balance Due</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase">{t('memberDues.balanceDue')}</p>
                   <p className={`text-2xl font-black ${payment.outstandingDues > 0 ? 'text-red-600' : 'text-green-600'}`}>
                     ${payment.outstandingDues.toLocaleString()}
                   </p>
@@ -331,15 +334,15 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
                     style={{ width: `${Math.min(payment.duesProgress, 100)}%` }}
                   >
                     <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white drop-shadow-sm">
-                      {payment.duesProgress}% COMPLETE
+                      {t('memberDues.percentComplete', { percent: payment.duesProgress })}
                     </span>
                   </div>
                 </div>
               </div>
               <p className="text-center text-xs text-gray-500 mt-2 font-medium italic">
                 {payment.annualPledge > 0
-                  ? `Dues are calculated starting from ${duesData.member.firstName}'s parish join date.`
-                  : 'Calculations based on standard contribution rates'}
+                  ? t('memberDues.duesCalcFrom', { name: duesData.member.firstName })
+                  : t('memberDues.duesCalcStandard')}
               </p>
             </div>
 
@@ -347,7 +350,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
             <div className="bg-gradient-to-br from-indigo-900 to-blue-900 rounded-2xl p-6 shadow-xl flex flex-col justify-between text-white">
               <div>
                 <div className="flex justify-between items-start mb-2">
-                  <p className="text-sm font-bold opacity-75 uppercase tracking-wider">Total Received</p>
+                  <p className="text-sm font-bold opacity-75 uppercase tracking-wider">{t('memberDues.totalReceived')}</p>
                   <i className="fas fa-arrow-trend-up text-green-400 text-xl"></i>
                 </div>
                 <p className="text-5xl font-black">${payment.grandTotal.toLocaleString()}</p>
@@ -355,11 +358,11 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
 
               <div className="mt-8 pt-6 border-t border-white/10 flex justify-between items-end">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-bold opacity-60 uppercase">Year-over-Year</p>
-                  <p className="text-xs font-bold text-green-400">Stable Growth</p>
+                  <p className="text-[10px] font-bold opacity-60 uppercase">{t('memberDues.yearOverYear')}</p>
+                  <p className="text-xs font-bold text-green-400">{t('memberDues.stableGrowth')}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-bold opacity-60 uppercase">System ID</p>
+                  <p className="text-[10px] font-bold opacity-60 uppercase">{t('memberDues.systemId')}</p>
                   <p className="text-xs font-mono">FIN-0{member.id}-{payment.year}</p>
                 </div>
               </div>
@@ -370,18 +373,18 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
             <div className="flex items-center mb-6">
               <i className="fas fa-piggy-bank text-green-600 text-xl mr-3"></i>
-              <h3 className="text-xl font-bold text-gray-900">Additional Contributions Breakdown</h3>
+              <h3 className="text-xl font-bold text-gray-900">{t('memberDues.additionalContributions')}</h3>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {[
-                { label: 'Donations', value: payment.otherContributions.donation, icon: 'fa-gift', color: 'blue' },
-                { label: 'Pledges', value: payment.otherContributions.pledge_payment, icon: 'fa-handshake', color: 'indigo' },
-                { label: 'Tithes', value: payment.otherContributions.tithe, icon: 'fa-landmark', color: 'emerald' },
-                { label: 'Offerings', value: payment.otherContributions.offering, icon: 'fa-heart', color: 'rose' },
-                { label: 'Other', value: payment.otherContributions.other, icon: 'fa-plus-circle', color: 'amber' }
+                { id: 'donation', label: t('memberDues.donations'), value: payment.otherContributions.donation, icon: 'fa-gift', color: 'blue' },
+                { id: 'pledge', label: t('memberDues.pledges'), value: payment.otherContributions.pledge_payment, icon: 'fa-handshake', color: 'indigo' },
+                { id: 'tithe', label: t('memberDues.tithes'), value: payment.otherContributions.tithe, icon: 'fa-landmark', color: 'emerald' },
+                { id: 'offering', label: t('memberDues.offerings'), value: payment.otherContributions.offering, icon: 'fa-heart', color: 'rose' },
+                { id: 'other', label: t('memberDues.otherContrib'), value: payment.otherContributions.other, icon: 'fa-plus-circle', color: 'amber' }
               ].map(item => (
-                <div key={item.label} className={`p-4 rounded-xl border border-gray-100 bg-gray-50/50 flex flex-col ${item.value === 0 ? 'opacity-40 grayscale' : ''}`}>
+                <div key={item.id} className={`p-4 rounded-xl border border-gray-100 bg-gray-50/50 flex flex-col ${item.value === 0 ? 'opacity-40 grayscale' : ''}`}>
                   <div className="flex items-center space-x-2 mb-2">
                     <i className={`fas ${item.icon} text-sm`}></i>
                     <p className="text-[10px] font-black text-gray-500 uppercase">{item.label}</p>
@@ -390,7 +393,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
                 </div>
               ))}
               <div className="p-4 rounded-xl border-2 border-emerald-500 bg-emerald-50 shadow-md">
-                <p className="text-[10px] font-black text-emerald-800 uppercase mb-2">Total Additional</p>
+                <p className="text-[10px] font-black text-emerald-800 uppercase mb-2">{t('memberDues.totalAdditional')}</p>
                 <p className="text-xl font-black text-emerald-900">${payment.totalOtherContributions.toLocaleString()}</p>
               </div>
             </div>
@@ -401,12 +404,12 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-900 flex items-center">
                 <i className="fas fa-layer-group text-indigo-600 mr-3"></i>
-                Annual Distribution Timeline
+                {t('memberDues.distributionTimeline')}
               </h3>
               <div className="flex space-x-3">
-                <div className="flex items-center text-xs font-bold text-gray-500"><span className="w-3 h-3 bg-green-500 rounded-full mr-1.5"></span> Paid</div>
-                <div className="flex items-center text-xs font-bold text-gray-500"><span className="w-3 h-3 bg-red-500 rounded-full mr-1.5"></span> Pending</div>
-                <div className="flex items-center text-xs font-bold text-gray-500"><span className="w-3 h-3 bg-blue-500 rounded-full mr-1.5"></span> Upcoming</div>
+                <div className="flex items-center text-xs font-bold text-gray-500"><span className="w-3 h-3 bg-green-500 rounded-full mr-1.5"></span> {t('memberDues.legendPaid')}</div>
+                <div className="flex items-center text-xs font-bold text-gray-500"><span className="w-3 h-3 bg-red-500 rounded-full mr-1.5"></span> {t('memberDues.legendPending')}</div>
+                <div className="flex items-center text-xs font-bold text-gray-500"><span className="w-3 h-3 bg-blue-500 rounded-full mr-1.5"></span> {t('memberDues.legendUpcoming')}</div>
               </div>
             </div>
 
@@ -421,12 +424,12 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
                   </div>
 
                   <div className="mt-1 flex flex-col">
-                    <div className="text-xs font-bold opacity-60 uppercase mb-1">Received</div>
+                    <div className="text-xs font-bold opacity-60 uppercase mb-1">{t('memberDues.received')}</div>
                     <div className="text-lg font-black leading-none">${ms.paid.toLocaleString()}</div>
 
                     {ms.due > 0 && (
                       <div className="mt-3 pt-3 border-t border-red-200/50">
-                        <div className="text-[10px] font-bold text-red-600 uppercase">Required</div>
+                        <div className="text-[10px] font-bold text-red-600 uppercase">{t('memberDues.required')}</div>
                         <div className="text-sm font-black text-red-700">${ms.due.toLocaleString()}</div>
                       </div>
                     )}
@@ -439,9 +442,9 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
           {/* Detailed Transaction Ledger */}
           <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
             <div className="px-6 py-5 border-b flex justify-between items-center bg-gray-50/50">
-              <h3 className="text-lg font-bold text-gray-900">Detailed Transaction Ledger ({payment.year})</h3>
+              <h3 className="text-lg font-bold text-gray-900">{t('memberDues.ledgerTitle', { year: payment.year })}</h3>
               <div className="text-xs font-bold text-gray-500 bg-white border px-3 py-1 rounded-full uppercase">
-                {transactions.length} Records Found
+                {t('memberDues.recordsFound', { count: transactions.length })}
               </div>
             </div>
 
@@ -449,36 +452,36 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
               <table className="min-w-full divide-y divide-gray-200">
                 <thead>
                   <tr className="bg-white">
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Post Date</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Reference</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mechanism</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Origin</th>
-                    <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Amount</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('memberDues.colPostDate')}</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('memberDues.colReference')}</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('memberDues.colType')}</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('memberDues.colMechanism')}</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('memberDues.colOrigin')}</th>
+                    <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('memberDues.colAmount')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
-                  {transactions.map((t) => (
-                    <tr key={t.id} className="hover:bg-blue-50/30 transition-colors">
+                  {transactions.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-blue-50/30 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-gray-900">
-                        {formatDateForDisplay(t.payment_date)}
+                        {formatDateForDisplay(tx.payment_date)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500 font-mono">
-                        {t.receipt_number || 'GEN-TRX-' + t.id}
+                        {tx.receipt_number || 'GEN-TRX-' + tx.id}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 py-1 rounded-md text-[10px] font-black uppercase bg-gray-100 text-gray-700">
-                          {t.payment_type.replace('_', ' ')}
+                          {tx.payment_type.replace('_', ' ')}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500 capitalize">
-                        {t.payment_method.replace('_', ' ')}
+                        {tx.payment_method.replace('_', ' ')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-600 font-medium">
-                        {t.paid_by || '-'}
+                        {tx.paid_by || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <span className="text-sm font-black text-gray-900">${t.amount.toLocaleString()}</span>
+                        <span className="text-sm font-black text-gray-900">${tx.amount.toLocaleString()}</span>
                       </td>
                     </tr>
                   ))}
@@ -487,7 +490,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
               {transactions.length === 0 && (
                 <div className="text-center py-20 bg-gray-50/50 border-t">
                   <i className="fas fa-folder-open text-gray-300 text-5xl mb-4"></i>
-                  <p className="text-gray-500 font-bold uppercase tracking-wider">Historical records empty for {payment.year}</p>
+                  <p className="text-gray-500 font-bold uppercase tracking-wider">{t('memberDues.emptyLedger', { year: payment.year })}</p>
                 </div>
               )}
             </div>
@@ -497,7 +500,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
         {/* Action Bar Footer */}
         <div className="flex justify-between items-center px-8 py-5 border-t bg-gray-50">
           <p className="text-xs text-gray-400 font-medium">
-            Authorized Financial Statement • Generated {new Date().toLocaleDateString()}
+            {t('memberDues.authorizedStatement', { date: new Date().toLocaleDateString() })}
           </p>
           <div className="flex items-center space-x-3">
             {permissions.canEditFinancialRecords && selectedYear < new Date().getFullYear() && (
@@ -508,9 +511,9 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
                   className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl font-bold flex items-center shadow-lg transition-transform active:scale-95"
                 >
                   {statementLoading ? (
-                    <><i className="fas fa-spinner fa-spin mr-2"></i>Generating...</>
+                    <><i className="fas fa-spinner fa-spin mr-2"></i>{t('memberDues.generating')}</>
                   ) : (
-                    <><i className="fas fa-file-pdf mr-2"></i>Print Statement</>
+                    <><i className="fas fa-file-pdf mr-2"></i>{t('memberDues.printStatement')}</>
                   )}
                 </button>
                 {statementError && (
@@ -522,7 +525,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
               onClick={onClose}
               className="bg-gray-800 hover:bg-gray-900 text-white px-8 py-2.5 rounded-xl font-bold shadow-lg transition-transform active:scale-95"
             >
-              {embedded ? 'Clear Selection' : 'Finish Review'}
+              {embedded ? t('memberDues.clearSelectionBtn') : t('memberDues.finishReview')}
             </button>
           </div>
         </div>

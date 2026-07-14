@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { getRolePermissions } from '../../utils/roles';
 import EmployeeFormModal from './EmployeeFormModal';
 
@@ -21,6 +22,7 @@ interface Employee {
 
 const EmployeeList: React.FC = () => {
   const { firebaseUser, currentUser, getUserProfile } = useAuth();
+  const { t } = useLanguage();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +77,7 @@ const EmployeeList: React.FC = () => {
         const data = await response.json();
         setEmployees(data.data || []);
       } else {
-        setError('Failed to load employees');
+        setError(t('employeeList.loadFailed'));
       }
     } catch (err) {
       console.error('Error fetching employees:', err);
@@ -83,6 +85,7 @@ const EmployeeList: React.FC = () => {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firebaseUser, employmentTypeFilter, statusFilter]);
 
   useEffect(() => {
@@ -90,7 +93,7 @@ const EmployeeList: React.FC = () => {
   }, [fetchEmployees]);
 
   const handleDelete = async (employee: Employee) => {
-    if (!window.confirm(`Are you sure you want to delete ${employee.first_name} ${employee.last_name}?`)) {
+    if (!window.confirm(t('employeeList.confirmDelete', { name: `${employee.first_name} ${employee.last_name}` }))) {
       return;
     }
 
@@ -110,11 +113,11 @@ const EmployeeList: React.FC = () => {
         fetchEmployees();
       } else {
         const data = await response.json();
-        alert(data.message || 'Failed to delete employee');
+        alert(data.message || t('employeeList.deleteFailed'));
       }
     } catch (err) {
       console.error('Error deleting employee:', err);
-      alert('An error occurred while deleting the employee');
+      alert(t('employeeList.deleteError'));
     }
   };
 
@@ -150,6 +153,20 @@ const EmployeeList: React.FC = () => {
     });
   }, [employees, searchTerm, employmentTypeFilter, statusFilter]);
 
+  const employmentTypeLabels: Record<string, string> = {
+    'full-time': t('employeeList.typeFullTime'),
+    'part-time': t('employeeList.typePartTime'),
+    contract: t('employeeList.typeContract'),
+    volunteer: t('employeeList.typeVolunteer')
+  };
+  const salaryFrequencyLabels: Record<string, string> = {
+    weekly: t('employeeList.freqWeekly'),
+    'bi-weekly': t('employeeList.freqBiWeekly'),
+    monthly: t('employeeList.freqMonthly'),
+    annual: t('employeeList.freqAnnual'),
+    'per-service': t('employeeList.freqPerService')
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -163,8 +180,8 @@ const EmployeeList: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">Employee Management</h2>
-          <p className="text-gray-600 mt-1">Manage church employees and staff</p>
+          <h2 className="text-2xl font-semibold text-gray-900">{t('employeeList.title')}</h2>
+          <p className="text-gray-600 mt-1">{t('employeeList.subtitle')}</p>
         </div>
         {canEdit && (
           <button
@@ -172,7 +189,7 @@ const EmployeeList: React.FC = () => {
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
           >
             <i className="fas fa-plus mr-2"></i>
-            Add Employee
+            {t('employeeList.add')}
           </button>
         )}
       </div>
@@ -182,46 +199,46 @@ const EmployeeList: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Search
+              {t('employeeList.search')}
             </label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name, email, or position..."
+              placeholder={t('employeeList.searchPlaceholder')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Employment Type
+              {t('employeeList.typeLabel')}
             </label>
             <select
               value={employmentTypeFilter}
               onChange={(e) => setEmploymentTypeFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Types</option>
-              <option value="full-time">Full-time</option>
-              <option value="part-time">Part-time</option>
-              <option value="contract">Contract</option>
-              <option value="volunteer">Volunteer</option>
+              <option value="">{t('employeeList.allTypes')}</option>
+              <option value="full-time">{t('employeeList.typeFullTime')}</option>
+              <option value="part-time">{t('employeeList.typePartTime')}</option>
+              <option value="contract">{t('employeeList.typeContract')}</option>
+              <option value="volunteer">{t('employeeList.typeVolunteer')}</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status
+              {t('employeeList.statusLabel')}
             </label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Status</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
+              <option value="">{t('employeeList.allStatus')}</option>
+              <option value="true">{t('employeeList.statusActive')}</option>
+              <option value="false">{t('employeeList.statusInactive')}</option>
             </select>
           </div>
         </div>
@@ -237,7 +254,7 @@ const EmployeeList: React.FC = () => {
       {/* Employee List */}
       {filteredEmployees.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-500">No employees found</p>
+          <p className="text-gray-500">{t('employeeList.empty')}</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -245,22 +262,22 @@ const EmployeeList: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
+                  {t('employeeList.colName')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Position
+                  {t('employeeList.colPosition')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Employment Type
+                  {t('employeeList.colType')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Salary
+                  {t('employeeList.colSalary')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  {t('employeeList.colStatus')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  {t('employeeList.colActions')}
                 </th>
               </tr>
             </thead>
@@ -280,7 +297,7 @@ const EmployeeList: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {employee.employment_type}
+                      {employmentTypeLabels[employee.employment_type] || employee.employment_type}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -288,7 +305,7 @@ const EmployeeList: React.FC = () => {
                       <>
                         ${employee.salary_amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         {employee.salary_frequency && (
-                          <span className="text-gray-500"> / {employee.salary_frequency}</span>
+                          <span className="text-gray-500"> / {salaryFrequencyLabels[employee.salary_frequency] || employee.salary_frequency}</span>
                         )}
                       </>
                     ) : (
@@ -301,7 +318,7 @@ const EmployeeList: React.FC = () => {
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {employee.is_active ? 'Active' : 'Inactive'}
+                      {employee.is_active ? t('employeeList.statusActive') : t('employeeList.statusInactive')}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -311,13 +328,13 @@ const EmployeeList: React.FC = () => {
                           onClick={() => handleEdit(employee)}
                           className="text-blue-600 hover:text-blue-900"
                         >
-                          Edit
+                          {t('employeeList.edit')}
                         </button>
                         <button
                           onClick={() => handleDelete(employee)}
                           className="text-red-600 hover:text-red-900"
                         >
-                          Delete
+                          {t('employeeList.delete')}
                         </button>
                       </div>
                     )}

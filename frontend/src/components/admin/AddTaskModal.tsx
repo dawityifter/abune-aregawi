@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface Member {
     id: number;
@@ -38,6 +39,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     onSuccess
 }) => {
     const { firebaseUser } = useAuth();
+    const { t } = useLanguage();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +68,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
         // Validate rejected_date when status is rejected
         if (formData.status === 'rejected' && !formData.rejected_date) {
-            setError('Rejected date is required when status is rejected');
+            setError(t('taskModal.rejectedDateRequired'));
             setLoading(false);
             return;
         }
@@ -96,13 +98,13 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.message || 'Failed to save task');
+                throw new Error(data.message || t('taskModal.saveFailed'));
             }
 
             onSuccess();
             onClose();
         } catch (err: any) {
-            setError(err.message || 'An error occurred');
+            setError(err.message || t('taskModal.genericError'));
         } finally {
             setLoading(false);
         }
@@ -113,7 +115,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             <div className="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white mb-10">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-medium text-gray-900">
-                        {task?.id ? 'Edit Task' : 'Create New Task'}
+                        {task?.id ? t('taskModal.editTitle') : t('taskModal.createTitle')}
                     </h3>
                     <button
                         onClick={onClose}
@@ -132,27 +134,27 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Objective <span className="text-red-600">*</span>
+                            {t('taskModal.objective')} <span className="text-red-600">*</span>
                         </label>
                         <input
                             type="text"
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                             required
-                            placeholder="Brief description of the task"
+                            placeholder={t('taskModal.objectivePlaceholder')}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Description
+                            {t('taskModal.description')}
                         </label>
                         <textarea
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                             rows={3}
-                            placeholder="Detailed description..."
+                            placeholder={t('taskModal.descriptionPlaceholder')}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                     </div>
@@ -160,7 +162,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Status <span className="text-red-600">*</span>
+                                {t('taskModal.status')} <span className="text-red-600">*</span>
                             </label>
                             <select
                                 value={formData.status}
@@ -168,40 +170,40 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                                 required
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                             >
-                                <option value="pending">Not Started</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="completed">Completed</option>
-                                <option value="rejected">Rejected</option>
-                                <option value="cancelled">Cancelled</option>
+                                <option value="pending">{t('taskStatus.pending')}</option>
+                                <option value="in_progress">{t('taskStatus.in_progress')}</option>
+                                <option value="completed">{t('taskStatus.completed')}</option>
+                                <option value="rejected">{t('taskStatus.rejected')}</option>
+                                <option value="cancelled">{t('taskStatus.cancelled')}</option>
                             </select>
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Priority
+                                {t('taskModal.priority')}
                             </label>
                             <select
                                 value={formData.priority}
                                 onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                             >
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                                <option value="urgent">Urgent</option>
+                                <option value="low">{t('taskPriority.low')}</option>
+                                <option value="medium">{t('taskPriority.medium')}</option>
+                                <option value="high">{t('taskPriority.high')}</option>
+                                <option value="urgent">{t('taskPriority.urgent')}</option>
                             </select>
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Assigned To
+                                {t('taskModal.assignedTo')}
                             </label>
                             <select
                                 value={formData.assigned_to || ''}
                                 onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value ? parseInt(e.target.value) : undefined })}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                             >
-                                <option value="">Unassigned</option>
+                                <option value="">{t('taskModal.unassigned')}</option>
                                 {departmentMembers.map((member) => (
                                     <option key={member.id} value={member.id}>
                                         {member.first_name} {member.last_name}
@@ -212,7 +214,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Start Date
+                                {t('taskModal.startDate')}
                             </label>
                             <input
                                 type="date"
@@ -224,7 +226,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                End Date
+                                {t('taskModal.endDate')}
                             </label>
                             <input
                                 type="date"
@@ -237,7 +239,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                         {formData.status === 'rejected' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Rejected Date <span className="text-red-600">*</span>
+                                    {t('taskModal.rejectedDate')} <span className="text-red-600">*</span>
                                 </label>
                                 <input
                                     type="date"
@@ -252,13 +254,13 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Notes
+                            {t('taskModal.notes')}
                         </label>
                         <textarea
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                             rows={4}
-                            placeholder="Additional notes..."
+                            placeholder={t('taskModal.notesPlaceholder')}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                     </div>
@@ -269,14 +271,14 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                             onClick={onClose}
                             className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
                         >
-                            Cancel
+                            {t('taskModal.cancel')}
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
                             className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50"
                         >
-                            {loading ? 'Saving...' : (task?.id ? 'Update Task' : 'Create Task')}
+                            {loading ? t('taskModal.saving') : (task?.id ? t('taskModal.update') : t('taskModal.create'))}
                         </button>
                     </div>
                 </form>

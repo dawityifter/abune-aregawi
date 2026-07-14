@@ -85,7 +85,7 @@ const MeetingDetailsPage: React.FC = () => {
             );
 
             if (!response.ok) {
-                throw new Error('Failed to fetch meeting');
+                throw new Error(t('meeting.loadFailed'));
             }
 
             const data = await response.json();
@@ -96,6 +96,9 @@ const MeetingDetailsPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
+        // t (from LanguageContext) is intentionally omitted: it is recreated each
+        // render, and adding it would re-trigger the fetch effect on every render.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [firebaseUser, meetingId]);
 
     const fetchDepartmentMembers = useCallback(async () => {
@@ -235,13 +238,13 @@ const MeetingDetailsPage: React.FC = () => {
             <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
                 <div className="text-center">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                        {error || 'Meeting not found'}
+                        {error || t('meeting.notFound')}
                     </h2>
                     <button
                         onClick={() => navigate(`/departments/${departmentId}`)}
                         className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
                     >
-                        Back to Department
+                        {t('meeting.backToDepartment')}
                     </button>
                 </div>
             </div>
@@ -352,7 +355,7 @@ const MeetingDetailsPage: React.FC = () => {
                                 <button
                                     onClick={() => setShowEditMeetingModal(true)}
                                     className="text-primary-600 hover:text-primary-700"
-                                    title="Edit meeting"
+                                    title={t('meeting.editMeeting')}
                                 >
                                     <i className="fas fa-edit text-lg"></i>
                                 </button>
@@ -387,7 +390,7 @@ const MeetingDetailsPage: React.FC = () => {
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                             <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(task.status)}`}>
-                                                {task.status.replace('_', ' ')}
+                                                {t(`taskStatus.${task.status}`)}
                                             </span>
                                             <span className="font-medium text-gray-900">{task.title}</span>
                                         </div>
@@ -429,10 +432,10 @@ const MeetingDetailsPage: React.FC = () => {
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(task.status)}`}>
-                                                {task.status.replace('_', ' ')}
+                                                {t(`taskStatus.${task.status}`)}
                                             </span>
                                             <span className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                                                {task.priority}
+                                                {t(`taskPriority.${task.priority}`)}
                                             </span>
                                             <span className="font-medium text-gray-900">{task.title}</span>
                                         </div>
@@ -460,7 +463,7 @@ const MeetingDetailsPage: React.FC = () => {
                                             setShowAddTaskModal(true);
                                         }}
                                         className="text-primary-600 hover:text-primary-700 ml-4 print:hidden"
-                                        title="Edit task"
+                                        title={t('meeting.editTask')}
                                     >
                                         <i className="fas fa-edit"></i>
                                     </button>

@@ -3,11 +3,13 @@ import ZelleQR from '../assets/AbuneAregawiZelle.png';
 import StripePayment from './StripePayment';
 import ACHPayment from './ACHPayment';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from '../config/stripe';
 
 const DonatePage: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [donationType, setDonationType] = useState<'one-time' | 'recurring'>('one-time');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'ach'>('card');
   const [amount, setAmount] = useState('');
@@ -65,7 +67,7 @@ const DonatePage: React.FC = () => {
       setAmountError(null);
     } else {
       // Do not update amount, but show a gentle inline error
-      setAmountError('Enter a valid amount (numbers only, up to 2 decimals).');
+      setAmountError(t('donatePage.errors.amountDecimals'));
     }
   };
 
@@ -85,19 +87,19 @@ const DonatePage: React.FC = () => {
     
     // Validate form
     if (!amount || !amountPattern.test(amount)) {
-      setAmountError('Please enter a valid amount (e.g., 10 or 10.00)');
-      alert('Please enter a valid amount (numbers only, up to 2 decimals).');
+      setAmountError(t('donatePage.errors.amountExample'));
+      alert(t('donatePage.errors.amountDecimalsAlert'));
       return;
     }
     const amtValue = parseFloat(amount);
     if (!Number.isFinite(amtValue) || amtValue < 1) {
-      setAmountError('Minimum amount is $1.00');
-      alert('Please enter a valid amount (minimum $1.00)');
+      setAmountError(t('donatePage.errors.amountMin'));
+      alert(t('donatePage.errors.amountMinAlert'));
       return;
     }
 
     if (!donorInfo.firstName || !donorInfo.lastName) {
-      alert('Please fill in your first and last name');
+      alert(t('donatePage.errors.nameRequired'));
       return;
     }
 
@@ -112,17 +114,17 @@ const DonatePage: React.FC = () => {
         if (processCardPayment) {
           await processCardPayment();
         } else {
-          throw new Error('Card payment processing is not ready. Please try again.');
+          throw new Error(t('donatePage.errors.cardNotReady'));
         }
       } else if (paymentMethod === 'ach') {
         if (processACHPayment) {
           await processACHPayment();
         } else {
-          throw new Error('ACH payment processing is not ready. Please try again.');
+          throw new Error(t('donatePage.errors.achNotReady'));
         }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      const errorMessage = error instanceof Error ? error.message : t('donatePage.errors.unexpected');
       handlePaymentError(errorMessage);
     }
   };
@@ -142,7 +144,7 @@ const DonatePage: React.FC = () => {
       zipCode: ''
     });
     
-    alert(`Thank you for your donation of $${donation.amount}! Your payment has been processed successfully.`);
+    alert(t('donatePage.thankYou', { amount: donation.amount }));
   };
 
   const handlePaymentError = (error: string) => {
@@ -185,22 +187,22 @@ const DonatePage: React.FC = () => {
       <div className="min-h-screen pt-16 py-12 px-4 sm:px-6 lg:px-8" style={bgStyle}>
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Support Our Church</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">{t('donatePage.title')}</h1>
           <p className="text-lg text-gray-600">
-            Your generous donation helps us continue our mission and serve our community.
+            {t('donatePage.subtitle')}
           </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Online Donation Form */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">Online Donation</h2>
+            <h2 className="text-2xl font-semibold text-gray-800 mb-6">{t('donatePage.onlineDonation')}</h2>
             
             <form onSubmit={handleFormSubmit} className="space-y-6">
                 {/* Donation Type */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    How often would you like to donate?
+                    {t('donatePage.howOften')}
                   </label>
                   <div className="flex space-x-4">
                     <label className="flex items-center">
@@ -211,7 +213,7 @@ const DonatePage: React.FC = () => {
                         onChange={(e) => setDonationType(e.target.value as 'one-time' | 'recurring')}
                         className="mr-2"
                       />
-                      One-Time
+                      {t('donatePage.oneTime')}
                     </label>
                     <label className="flex items-center">
                       <input
@@ -221,7 +223,7 @@ const DonatePage: React.FC = () => {
                         onChange={(e) => setDonationType(e.target.value as 'one-time' | 'recurring')}
                         className="mr-2"
                       />
-                      Recurring
+                      {t('donatePage.recurring')}
                     </label>
                   </div>
                 </div>
@@ -230,17 +232,17 @@ const DonatePage: React.FC = () => {
                 {donationType === 'recurring' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Frequency
+                      {t('donatePage.frequency')}
                     </label>
                     <select
                       value={frequency}
                       onChange={(e) => setFrequency(e.target.value)}
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
                     >
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="quarterly">Quarterly</option>
-                      <option value="yearly">Yearly</option>
+                      <option value="weekly">{t('donatePage.freq.weekly')}</option>
+                      <option value="monthly">{t('donatePage.freq.monthly')}</option>
+                      <option value="quarterly">{t('donatePage.freq.quarterly')}</option>
+                      <option value="yearly">{t('donatePage.freq.yearly')}</option>
                     </select>
                   </div>
                 )}
@@ -248,7 +250,7 @@ const DonatePage: React.FC = () => {
                 {/* Amount */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Donation Amount
+                    {t('donatePage.donationAmount')}
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-2 text-gray-500">$</span>
@@ -271,7 +273,7 @@ const DonatePage: React.FC = () => {
                 {/* Payment Method */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Payment Method
+                    {t('donatePage.paymentMethod')}
                   </label>
                   <div className="flex space-x-4">
                     <label className="flex items-center">
@@ -282,7 +284,7 @@ const DonatePage: React.FC = () => {
                         onChange={(e) => setPaymentMethod(e.target.value as 'card' | 'ach')}
                         className="mr-2"
                       />
-                      Credit/Debit Card
+                      {t('donatePage.cardOption')}
                     </label>
                     <label className="flex items-center">
                       <input
@@ -292,7 +294,7 @@ const DonatePage: React.FC = () => {
                         onChange={(e) => setPaymentMethod(e.target.value as 'card' | 'ach')}
                         className="mr-2"
                       />
-                      Bank Account (ACH)
+                      {t('donatePage.achOption')}
                     </label>
                   </div>
                 </div>
@@ -300,7 +302,7 @@ const DonatePage: React.FC = () => {
                 {/* Payment Form Fields - Show inline based on payment method */}
                 {paymentMethod === 'card' && (
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Card Information</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">{t('donatePage.cardInformation')}</h3>
                     <div className="border border-gray-300 rounded-md p-3 bg-white">
                       <StripePayment
                         donationData={donationData}
@@ -316,7 +318,7 @@ const DonatePage: React.FC = () => {
 
                 {paymentMethod === 'ach' && (
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Account Information</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">{t('donatePage.bankInformation')}</h3>
                     <ACHPayment
                       donationData={donationData}
                       onSuccess={handlePaymentSuccess}
@@ -330,20 +332,20 @@ const DonatePage: React.FC = () => {
 
                 {/* Donor Information */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-800">Donor Information</h3>
-                  
+                  <h3 className="text-lg font-medium text-gray-800">{t('donatePage.donorInformation')}</h3>
+
                   {user && !user._temp && (
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
                       <div className="flex justify-between items-center">
                         <p className="text-sm text-blue-700">
-                          <strong>Note:</strong> Your information has been prefilled from your profile. You can update any fields if needed.
+                          <strong>{t('donatePage.prefillNoteLabel')}</strong> {t('donatePage.prefillNoteBody')}
                         </p>
                         <button
                           type="button"
                           onClick={resetToProfileData}
                           className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors"
                         >
-                          Reset to Profile
+                          {t('donatePage.resetToProfile')}
                         </button>
                       </div>
                     </div>
@@ -352,7 +354,7 @@ const DonatePage: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        First Name *
+                        {t('donatePage.firstName')}
                       </label>
                       <input
                         type="text"
@@ -364,7 +366,7 @@ const DonatePage: React.FC = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Last Name *
+                        {t('donatePage.lastName')}
                       </label>
                       <input
                         type="text"
@@ -377,7 +379,7 @@ const DonatePage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
+                      {t('donatePage.email')}
                     </label>
                     <input
                       type="email"
@@ -388,7 +390,7 @@ const DonatePage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone Number
+                      {t('donatePage.phoneNumber')}
                     </label>
                     <input
                       type="tel"
@@ -399,7 +401,7 @@ const DonatePage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Billing Address
+                      {t('donatePage.billingAddress')}
                     </label>
                     <input
                       type="text"
@@ -410,7 +412,7 @@ const DonatePage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Zip Code
+                      {t('donatePage.zipCode')}
                     </label>
                     <input
                       type="text"
@@ -424,9 +426,13 @@ const DonatePage: React.FC = () => {
                 {/* Authorization */}
                 <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-sm text-gray-700">
-                    I authorize this merchant or their agent to {paymentMethod === 'card' ? 'charge my credit card' : 'debit my account'} 
-                    in the amount above {donationType === 'recurring' ? `via ${frequency} recurring payments` : ''} as soon as I click the "Continue to Payment" button below. 
-                    I agree that {paymentMethod === 'card' ? 'credit card' : 'ACH'} transactions I authorize comply with all applicable law.
+                    {t('donatePage.auth.template', {
+                      action: paymentMethod === 'card' ? t('donatePage.auth.chargeCard') : t('donatePage.auth.debitAccount'),
+                      recurring: donationType === 'recurring'
+                        ? t('donatePage.auth.recurringClause', { frequency: t(`donatePage.freq.${frequency}`) })
+                        : '',
+                      method: paymentMethod === 'card' ? t('donatePage.auth.methodCard') : t('donatePage.auth.methodAch'),
+                    })}
                   </p>
                 </div>
 
@@ -436,7 +442,7 @@ const DonatePage: React.FC = () => {
                   disabled={isProcessing}
                   className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-200"
                 >
-                  {isProcessing ? 'Processing...' : `Continue to Payment - $${amount || '0.00'}`}
+                  {isProcessing ? t('donatePage.processing') : t('donatePage.continueToPayment', { amount: amount || '0.00' })}
                 </button>
               </form>
 
@@ -448,7 +454,7 @@ const DonatePage: React.FC = () => {
 
             {paymentSuccess && (
               <div className="mt-4 bg-green-50 border border-green-200 rounded-md p-3">
-                <p className="text-sm text-green-600">Payment successful! Thank you for your donation.</p>
+                <p className="text-sm text-green-600">{t('donatePage.paymentSuccessMsg')}</p>
               </div>
             )}
           </div>
@@ -457,28 +463,28 @@ const DonatePage: React.FC = () => {
           <div className="space-y-6">
             {/* Zelle */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Donate via Zelle</h3>
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">{t('donatePage.zelle.title')}</h3>
               <div className="bg-blue-50 border border-blue-200 rounded p-4">
                 <div className="text-center space-y-4">
                   {/* QR Code */}
                   <div className="flex flex-col items-center">
                     <img
                       src={ZelleQR}
-                      alt="Zelle QR code for Abune Aregawi Church"
+                      alt={t('donatePage.zelle.qrAlt')}
                       className="w-56 h-56 object-contain rounded-md border border-blue-200 bg-white"
                       loading="lazy"
                     />
                     <noscript>
                       <p className="text-xs text-blue-800">
-                        If the image does not load, <a className="underline" href={ZelleQR} target="_blank" rel="noreferrer">open the QR code</a>.
+                        {t('donatePage.zelle.imageFallbackPre')}<a className="underline" href={ZelleQR} target="_blank" rel="noreferrer">{t('donatePage.zelle.imageFallbackLink')}</a>.
                       </p>
                     </noscript>
                     <p className="mt-2 text-xs text-blue-800">
-                      Scan this QR code in your banking app to donate via Zelle.
+                      {t('donatePage.zelle.scanHint')}
                     </p>
                   </div>
                   <div>
-                    <span className="text-lg font-bold text-blue-700 block mb-2">Zelle Email Address:</span>
+                    <span className="text-lg font-bold text-blue-700 block mb-2">{t('donatePage.zelle.emailLabel')}</span>
                     <div 
                       className="bg-white border border-blue-300 rounded-lg p-3 inline-block cursor-pointer hover:bg-blue-50 transition-colors"
                       onClick={(e) => {
@@ -492,31 +498,31 @@ const DonatePage: React.FC = () => {
                           }, 200);
                         }
                       }}
-                      title="Click to copy email address"
+                      title={t('donatePage.zelle.copyTitle')}
                     >
                       <span className="text-lg text-blue-900 font-mono select-all">abunearegawitx@gmail.com</span>
                     </div>
                   </div>
                   
                   <div className="text-left space-y-3">
-                    <h4 className="font-semibold text-gray-800">How to donate via Zelle:</h4>
+                    <h4 className="font-semibold text-gray-800">{t('donatePage.zelle.howTitle')}</h4>
                     <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
-                      <li>Open your banking app or Zelle app</li>
-                      <li>Select "Send Money" or "Send with Zelle"</li>
-                      <li>Enter the email address: <span className="font-mono text-blue-600">abunearegawitx@gmail.com</span></li>
-                      <li>Enter your donation amount</li>
+                      <li>{t('donatePage.zelle.step1')}</li>
+                      <li>{t('donatePage.zelle.step2')}</li>
+                      <li>{t('donatePage.zelle.step3')} <span className="font-mono text-blue-600">abunearegawitx@gmail.com</span></li>
+                      <li>{t('donatePage.zelle.step4')}</li>
                       <li>
-                        Add a memo/note: <span className="font-medium">"[Your Phone Number] for [reason]"</span>
-                        <span className="block text-xs text-blue-800 mt-1">Please include your phone number for proper tracking.</span>
+                        {t('donatePage.zelle.step5Pre')}<span className="font-medium">{t('donatePage.zelle.step5Memo')}</span>
+                        <span className="block text-xs text-blue-800 mt-1">{t('donatePage.zelle.step5Hint')}</span>
                       </li>
-                      <li>Review and send your payment</li>
+                      <li>{t('donatePage.zelle.step6')}</li>
                     </ol>
                   </div>
                   
                   <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-xs text-green-800 font-medium mb-1">✅ Quick Copy:</p>
+                    <p className="text-xs text-green-800 font-medium mb-1">{t('donatePage.zelle.quickCopyLabel')}</p>
                     <p className="text-xs text-green-700">
-                      Click the email address above to copy it to your clipboard, then paste it directly into your Zelle app.
+                      {t('donatePage.zelle.quickCopyBody')}
                     </p>
                   </div>
                 </div>
@@ -525,18 +531,18 @@ const DonatePage: React.FC = () => {
 
             {/* Check */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Donate by Check</h3>
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">{t('donatePage.check.title')}</h3>
               <div className="bg-green-50 border border-green-200 rounded p-4 flex flex-col items-center">
-                <span className="text-lg font-bold text-green-700">Make checks payable to:</span>
-                <span className="text-lg text-green-900">Abune Aregawi Orthodox Tewahedo Church</span>
+                <span className="text-lg font-bold text-green-700">{t('donatePage.check.payableTo')}</span>
+                <span className="text-lg text-green-900">{t('donatePage.check.payee')}</span>
               </div>
             </div>
 
             {/* Contact Info */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Questions?</h3>
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">{t('donatePage.questions.title')}</h3>
               <p className="text-gray-600 mb-4">
-                For questions about donations, please contact us:
+                {t('donatePage.questions.body')}
               </p>
               <a 
                 href="mailto:abunearegawitx@gmail.com" 

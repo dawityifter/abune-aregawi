@@ -3,6 +3,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import DonatePage from '../DonatePage';
+import { I18nProvider } from '../../i18n/I18nProvider';
+import { LanguageProvider } from '../../contexts/LanguageContext';
 
 // Mock the Stripe components
 jest.mock('../StripePayment', () => {
@@ -41,7 +43,11 @@ const mockUser = {
 const renderWithProviders = (component: React.ReactElement) => {
   return render(
     <BrowserRouter>
-      {component}
+      <I18nProvider>
+        <LanguageProvider>
+          {component}
+        </LanguageProvider>
+      </I18nProvider>
     </BrowserRouter>
   );
 };
