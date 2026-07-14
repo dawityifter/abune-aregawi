@@ -266,7 +266,7 @@ const ContactAddressStep: React.FC<{
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             </svg>
             <p className="text-xs text-amber-700">
-              A member with this email already exists. You may still proceed.
+              {t('registration.emailExists')}
             </p>
           </div>
         )}
@@ -681,7 +681,7 @@ const ContributionStep: React.FC<{
 
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">
-          Yearly Membership Pledge (USD)
+          {t('registration.yearlyPledgeLabel')}
         </label>
         {(() => {
           const amountPattern = /^[0-9]*([.][0-9]{0,2})?$/;
@@ -710,7 +710,7 @@ const ContributionStep: React.FC<{
                   ? 'border-red-500 focus:ring-red-500' 
                   : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
               } focus:outline-none focus:ring-1`}
-              placeholder="e.g. 1200"
+              placeholder={t('registration.yearlyPledgePlaceholder')}
             />
           );
         })()}
@@ -719,7 +719,7 @@ const ContributionStep: React.FC<{
             {errors.yearlyPledge}
           </p>
         )}
-        <p className="text-xs text-gray-500">This helps us set your monthly dues and track payments.</p>
+        <p className="text-xs text-gray-500">{t('registration.yearlyPledgeHelp')}</p>
       </div>
     </div>
   </div>
@@ -980,7 +980,7 @@ const DependentsStep: React.FC<DependentsStepProps> = ({ dependents, onDependent
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Select Relationship</option>
+              <option value="">{t('registration.selectRelationship')}</option>
               {getRelationshipOptions().map(option => (
                 <option key={option.value} value={option.value}>
                   {option.label}

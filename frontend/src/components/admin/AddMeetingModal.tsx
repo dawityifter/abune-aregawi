@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useGeezTransliteration } from '../../hooks/useGeezTransliteration';
 import TransliterationHelpModal from '../common/TransliterationHelpModal';
 
@@ -41,6 +42,7 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
     onSuccess
 }) => {
     const { firebaseUser } = useAuth();
+    const { t } = useLanguage();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [inputMode, setInputMode] = useState<'en' | 'ti'>('en');
@@ -129,13 +131,13 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
 
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.message || 'Failed to save meeting');
+                throw new Error(data.message || t('meetingModal.saveFailed'));
             }
 
             onSuccess();
             onClose();
         } catch (err: any) {
-            setError(err.message || 'An error occurred');
+            setError(err.message || t('meetingModal.genericError'));
         } finally {
             setLoading(false);
         }
@@ -160,7 +162,7 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
                 {/* Header Section */}
                 <div className="flex justify-between items-center p-5 border-b">
                     <h3 className="text-lg font-medium text-gray-900">
-                        {meeting?.id ? 'Edit Meeting' : 'Schedule New Meeting'}
+                        {meeting?.id ? t('meetingModal.editTitle') : t('meetingModal.createTitle')}
                     </h3>
                     <button
                         onClick={onClose}
@@ -175,7 +177,7 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
                     <div className="flex-1 p-5 overflow-y-auto">
                         {/* Keyboard Toggle */}
                         <div className="flex justify-center mb-6 items-center space-x-3">
-                            <span className="text-sm font-medium text-gray-700 mr-2">Keyboard:</span>
+                            <span className="text-sm font-medium text-gray-700 mr-2">{t('meetingModal.keyboard')}</span>
                             <div className="bg-gray-100 p-1 rounded-lg inline-flex shadow-sm">
                                 <button
                                     type="button"
@@ -185,7 +187,7 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
                                             : 'text-gray-500 hover:text-gray-700'
                                         }`}
                                 >
-                                    English (Latin)
+                                    {t('meetingModal.englishLatin')}
                                 </button>
                                 <button
                                     type="button"
@@ -225,7 +227,7 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
                                 {/* Title */}
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Meeting Title <span className="text-red-600">*</span>
+                                        {t('meetingModal.title')} <span className="text-red-600">*</span>
                                     </label>
                                     <input
                                         type="text"
@@ -244,7 +246,7 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Date & Time <span className="text-red-600">*</span>
+                                        {t('meetingModal.dateTime')} <span className="text-red-600">*</span>
                                     </label>
                                     <input
                                         type="datetime-local"
@@ -257,7 +259,7 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Location
+                                        {t('meetingModal.location')}
                                     </label>
                                     <input
                                         type="text"
@@ -270,7 +272,7 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
                                 {/* Purpose */}
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Purpose
+                                        {t('meetingModal.purpose')}
                                     </label>
                                     <input
                                         type="text"
@@ -284,7 +286,7 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
                                 {/* Agenda */}
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Agenda
+                                        {t('meetingModal.agenda')}
                                     </label>
                                     <textarea
                                         value={formData.agenda || ''}
@@ -297,7 +299,7 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
 
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Attendees
+                                        {t('meetingModal.attendees')}
                                     </label>
                                     <div className="max-h-48 overflow-y-auto border border-gray-300 rounded-md p-3 space-y-2">
                                         {departmentMembers.map((member) => (
@@ -322,7 +324,7 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
                                 {/* Meeting Notes */}
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Meeting Notes / Minutes
+                                        {t('meetingModal.notes')}
                                     </label>
                                     <textarea
                                         value={formData.minutes || ''}
@@ -340,14 +342,14 @@ const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
                                     onClick={onClose}
                                     className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 bg-white"
                                 >
-                                    Cancel
+                                    {t('meetingModal.cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={loading}
                                     className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50"
                                 >
-                                    {loading ? 'Saving...' : (meeting?.id ? 'Update Meeting' : 'Create Meeting')}
+                                    {loading ? t('meetingModal.saving') : (meeting?.id ? t('meetingModal.update') : t('meetingModal.create'))}
                                 </button>
                             </div>
                         </form>

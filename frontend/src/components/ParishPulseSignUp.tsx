@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const ParishPulseSignUp: React.FC = () => {
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -9,7 +11,7 @@ const ParishPulseSignUp: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone) {
-      setError('Please enter your name and mobile number.');
+      setError(t('parishPulse.errorRequired'));
       return;
     }
     // Here you would send the data to your backend or SMS platform
@@ -22,20 +24,20 @@ const ParishPulseSignUp: React.FC = () => {
       <div className="max-w-lg w-full bg-white rounded-xl shadow-lg p-8">
         <h1 className="text-h2 font-serif text-primary-700 mb-4 text-center flex items-center justify-center gap-2">
           <i className="fas fa-bullhorn text-secondary-400"></i>
-          Parish Pulse Sign-Up
+          {t('parishPulse.title')}
         </h1>
         <p className="text-accent-700 text-center mb-6">
-          Sign up to receive important SMS messages and updates from our parish. You can opt out at any time by replying "STOP" to any message.
+          {t('parishPulse.description')}
         </p>
         {submitted ? (
           <div className="text-green-700 text-center font-semibold py-8">
-            Thank you for signing up! You will receive SMS updates soon.
+            {t('parishPulse.thankYou')}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md">{error}</div>}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-primary-700 mb-1">Full Name</label>
+              <label htmlFor="name" className="block text-sm font-medium text-primary-700 mb-1">{t('parishPulse.fullName')}</label>
               <input
                 id="name"
                 name="name"
@@ -43,12 +45,12 @@ const ParishPulseSignUp: React.FC = () => {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 className="w-full px-4 py-2 border border-accent-200 rounded-md focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Your Name"
+                placeholder={t('parishPulse.namePlaceholder')}
                 required
               />
             </div>
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-primary-700 mb-1">Mobile Number</label>
+              <label htmlFor="phone" className="block text-sm font-medium text-primary-700 mb-1">{t('parishPulse.mobileNumber')}</label>
               <input
                 id="phone"
                 name="phone"
@@ -56,13 +58,13 @@ const ParishPulseSignUp: React.FC = () => {
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
                 className="w-full px-4 py-2 border border-accent-200 rounded-md focus:ring-primary-500 focus:border-primary-500"
-                placeholder="e.g. (555) 123-4567"
+                placeholder={t('parishPulse.phonePlaceholder')}
                 required
               />
             </div>
-            <button type="submit" className="btn btn-primary w-full">Sign Up</button>
+            <button type="submit" className="btn btn-primary w-full">{t('parishPulse.submit')}</button>
             <p className="text-xs text-accent-500 text-center mt-2">
-              By submitting your mobile number, you agree to receive SMS messages from Tigray Orthodox Church. Message & data rates may apply. Reply STOP to unsubscribe.
+              {t('parishPulse.disclaimer')}
             </p>
           </form>
         )}

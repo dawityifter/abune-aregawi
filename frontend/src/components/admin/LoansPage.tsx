@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import AddLoanModal from './AddLoanModal';
 import RecordRepaymentModal from './RecordRepaymentModal';
 
@@ -49,6 +50,7 @@ const statusBadge = (status: string) => {
 
 const LoansPage: React.FC = () => {
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [stats, setStats] = useState<LoanStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -152,19 +154,19 @@ const LoansPage: React.FC = () => {
       {!statsLoading && stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="text-sm text-red-600 font-medium">Total Outstanding</div>
+            <div className="text-sm text-red-600 font-medium">{t('loansPage.statOutstanding')}</div>
             <div className="text-2xl font-bold text-red-700">{currency(stats.totalOutstandingBalance)}</div>
           </div>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="text-sm text-blue-600 font-medium">Active Loans</div>
+            <div className="text-sm text-blue-600 font-medium">{t('loansPage.statActive')}</div>
             <div className="text-2xl font-bold text-blue-700">{stats.activeLoansCount}</div>
           </div>
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="text-sm text-yellow-600 font-medium">Partially Repaid</div>
+            <div className="text-sm text-yellow-600 font-medium">{t('loansPage.statPartial')}</div>
             <div className="text-2xl font-bold text-yellow-700">{stats.partiallyRepaidCount}</div>
           </div>
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <div className="text-sm text-gray-600 font-medium">Total Loaned</div>
+            <div className="text-sm text-gray-600 font-medium">{t('loansPage.statLoaned')}</div>
             <div className="text-2xl font-bold text-gray-700">{currency(stats.totalLoanedAmount)}</div>
           </div>
         </div>
@@ -176,7 +178,7 @@ const LoansPage: React.FC = () => {
           onClick={() => setShowAddModal(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
         >
-          Record Loan
+          {t('loansPage.recordLoan')}
         </button>
 
         <select
@@ -184,10 +186,10 @@ const LoansPage: React.FC = () => {
           onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
           className="border border-gray-300 rounded-md px-3 py-2 text-sm"
         >
-          <option value="">All Statuses</option>
-          <option value="ACTIVE">Active</option>
-          <option value="PARTIALLY_REPAID">Partially Repaid</option>
-          <option value="CLOSED">Closed</option>
+          <option value="">{t('loansPage.allStatuses')}</option>
+          <option value="ACTIVE">{t('loansPage.statusActive')}</option>
+          <option value="PARTIALLY_REPAID">{t('loansPage.statusPartiallyRepaid')}</option>
+          <option value="CLOSED">{t('loansPage.statusClosed')}</option>
         </select>
 
         <input
@@ -195,23 +197,23 @@ const LoansPage: React.FC = () => {
           value={startDate}
           onChange={(e) => { setStartDate(e.target.value); setPage(0); }}
           className="border border-gray-300 rounded-md px-3 py-2 text-sm"
-          placeholder="Start Date"
+          placeholder={t('loansPage.startDate')}
         />
         <input
           type="date"
           value={endDate}
           onChange={(e) => { setEndDate(e.target.value); setPage(0); }}
           className="border border-gray-300 rounded-md px-3 py-2 text-sm"
-          placeholder="End Date"
+          placeholder={t('loansPage.endDate')}
         />
 
-        <span className="text-sm text-gray-500 ml-auto">{totalItems} loan(s)</span>
+        <span className="text-sm text-gray-500 ml-auto">{t('loansPage.loanCount', { count: totalItems })}</span>
       </div>
 
       {/* Warning banner */}
       <div className="bg-amber-50 border-l-4 border-amber-400 p-3 mb-4 rounded">
         <p className="text-sm text-amber-800 font-medium">
-          These are liability records — loans from members. They are NOT donations and NOT tax-deductible.
+          {t('loansPage.warning')}
         </p>
       </div>
 
@@ -221,24 +223,24 @@ const LoansPage: React.FC = () => {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-100/80">
               <tr>
-                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Member</th>
-                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Loan Date</th>
-                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Original Amount</th>
-                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Outstanding</th>
-                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Status</th>
-                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Payment Method</th>
-                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Receipt #</th>
-                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Actions</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t('loansPage.colMember')}</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t('loansPage.colLoanDate')}</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t('loansPage.colOriginal')}</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t('loansPage.colOutstanding')}</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t('loansPage.colStatus')}</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t('loansPage.colMethod')}</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t('loansPage.colReceipt')}</th>
+                <th className="px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t('loansPage.colActions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-8 text-center text-slate-500">Loading...</td>
+                  <td colSpan={8} className="px-5 py-8 text-center text-slate-500">{t('loansPage.loading')}</td>
                 </tr>
               ) : loans.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-8 text-center text-slate-500">No loans found</td>
+                  <td colSpan={8} className="px-5 py-8 text-center text-slate-500">{t('loansPage.empty')}</td>
                 </tr>
               ) : (
                 loans.map((loan) => (
@@ -253,7 +255,7 @@ const LoansPage: React.FC = () => {
                     <td className="px-5 py-4 whitespace-nowrap text-sm font-semibold text-red-700">{currency(loan.outstanding_balance)}</td>
                     <td className="px-5 py-4">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge(loan.status)}`}>
-                        {loan.status.replace(/_/g, ' ')}
+                        {loan.status === 'ACTIVE' ? t('loansPage.statusActive') : loan.status === 'PARTIALLY_REPAID' ? t('loansPage.statusPartiallyRepaid') : t('loansPage.statusClosed')}
                       </span>
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-600">{formatMethod(loan.payment_method)}</td>
@@ -265,14 +267,14 @@ const LoansPage: React.FC = () => {
                             onClick={() => setSelectedLoan(loan)}
                             className="rounded-md bg-blue-100 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-200"
                           >
-                            Repayment
+                            {t('loansPage.btnRepayment')}
                           </button>
                         )}
                         <button
                           onClick={() => handleDownloadReceipt(loan.id, `${loan.member?.first_name}_${loan.member?.last_name}`)}
                           className="rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
                         >
-                          Receipt
+                          {t('loansPage.btnReceipt')}
                         </button>
                       </div>
                     </td>
@@ -291,15 +293,15 @@ const LoansPage: React.FC = () => {
               disabled={page === 0}
               className="rounded-md border border-slate-300 bg-white px-3 py-1 text-sm disabled:opacity-50"
             >
-              Previous
+              {t('loansPage.previous')}
             </button>
-            <span className="text-sm text-slate-600">Page {page + 1} of {totalPages}</span>
+            <span className="text-sm text-slate-600">{t('loansPage.pageOf', { page: page + 1, total: totalPages })}</span>
             <button
               onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
               disabled={page >= totalPages - 1}
               className="rounded-md border border-slate-300 bg-white px-3 py-1 text-sm disabled:opacity-50"
             >
-              Next
+              {t('loansPage.next')}
             </button>
           </div>
         )}

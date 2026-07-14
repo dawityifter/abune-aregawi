@@ -103,13 +103,13 @@ const MeetingEmailModal: React.FC<MeetingEmailModalProps> = ({
 
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(result.message || 'Failed to send meeting email');
+        throw new Error(result.message || t('meeting.email.sendFailed'));
       }
 
       onSent(result.message || `${preview.recipientCount} email(s) sent.`);
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to send meeting email');
+      setError(err.message || t('meeting.email.sendFailed'));
     } finally {
       setSending(false);
     }
@@ -145,7 +145,7 @@ const MeetingEmailModal: React.FC<MeetingEmailModalProps> = ({
           {loading ? (
             <div className="py-12 text-center text-gray-500">
               <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-b-2 border-primary-700"></div>
-              <p>{t('meeting.email.previewFailed')}...</p>
+              <p>{t('meeting.email.loadingPreview')}</p>
             </div>
           ) : (
             <>

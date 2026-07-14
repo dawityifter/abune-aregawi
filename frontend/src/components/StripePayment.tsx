@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { createPaymentIntent, confirmPayment } from '../config/stripe';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface StripePaymentProps {
   donationData: {
@@ -67,6 +68,7 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
 }) => {
   const stripe = useStripe();
   const elements = useElements();
+  const { t } = useLanguage();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cardElementRef = useRef<HTMLDivElement>(null);
@@ -125,7 +127,7 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
   // Expose payment processing function to parent component
   const processPayment = useCallback(async () => {
     if (!stripe || !elements) {
-      const errorMsg = 'Stripe has not loaded yet. Please try again.';
+      const errorMsg = t('achPayment.errors.stripeNotLoaded');
       setError(errorMsg);
       onError(errorMsg);
       return;
@@ -177,8 +179,8 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
       });
 
       if (stripeError) {
-        setError(stripeError.message || 'Payment failed');
-        onError(stripeError.message || 'Payment failed');
+        setError(stripeError.message || t('stripePayment.errors.paymentFailed'));
+        onError(stripeError.message || t('stripePayment.errors.paymentFailed'));
       } else if (paymentIntent?.status === 'succeeded') {
         // Confirm payment on backend
         const result = await confirmPayment(payment_intent_id);
@@ -191,11 +193,11 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
           if (onRefreshHistory) onRefreshHistory();
         }, 1200);
       } else {
-        setError('Payment was not successful. Please try again.');
-        onError('Payment was not successful. Please try again.');
+        setError(t('stripePayment.errors.notSuccessful'));
+        onError(t('stripePayment.errors.notSuccessful'));
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      const errorMessage = error instanceof Error ? error.message : t('achPayment.errors.unexpected');
       setError(errorMessage);
       onError(errorMessage);
     } finally {
@@ -216,6 +218,7 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     billingState,
     billingPostal,
     billingCountry,
+    t,
   ]);
 
   // Expose the payment processing function to parent component
@@ -257,7 +260,7 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     return (
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="card-element">
-          Card Information
+          {t('stripePayment.cardInformation')}
         </label>
         <div 
           ref={cardElementRef}
@@ -265,7 +268,7 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
           role="group"
           aria-labelledby="card-element-label"
         >
-          <div id="card-element-label" className="sr-only">Credit or debit card information</div>
+          <div id="card-element-label" className="sr-only">{t('stripePayment.cardAriaLabel')}</div>
           <CardElement 
             id="card-element"
             options={cardElementOptions}
@@ -274,13 +277,13 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
         </div>
         {/* Name on card - billing address handled by parent form */}
         <div className="mt-3">
-          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="name-on-card">Name on card</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="name-on-card">{t('stripePayment.nameOnCard')}</label>
           <input
             id="name-on-card"
             type="text"
             value={nameOnCard}
             onChange={(e) => setNameOnCard(e.target.value)}
-            placeholder="Full name as shown on card"
+            placeholder={t('stripePayment.nameOnCardPlaceholder')}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -296,11 +299,11 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="bg-gray-50 p-4 rounded-lg">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Information</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">{t('stripePayment.paymentInformation')}</h3>
         
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="card-element-full">
-            Card Information
+            {t('stripePayment.cardInformation')}
           </label>
           <div 
             ref={cardElementFullRef}
@@ -308,7 +311,7 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
             role="group"
             aria-labelledby="card-element-full-label"
           >
-            <div id="card-element-full-label" className="sr-only">Credit or debit card information</div>
+            <div id="card-element-full-label" className="sr-only">{t('stripePayment.cardAriaLabel')}</div>
             <CardElement 
               id="card-element-full"
               options={cardElementOptions}
@@ -325,10 +328,10 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
 
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
           <p className="text-sm text-blue-700">
-            <strong>Amount:</strong> ${donationData.amount.toFixed(2)}
+            <strong>{t('achPayment.amountLabel')}</strong> ${donationData.amount.toFixed(2)}
           </p>
           <p className="text-sm text-blue-700">
-            <strong>Type:</strong> {donationData.donation_type === 'recurring' ? 'Recurring' : 'One-time'}
+            <strong>{t('achPayment.typeLabel')}</strong> {donationData.donation_type === 'recurring' ? t('achPayment.recurring') : t('achPayment.oneTime')}
             {donationData.donation_type === 'recurring' && donationData.frequency && (
               <span> ({donationData.frequency})</span>
             )}
@@ -343,14 +346,14 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
           disabled={isProcessing}
           className="flex-1 bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-lg transition duration-200"
         >
-          Cancel
+          {t('achPayment.cancel')}
         </button>
         <button
           type="submit"
           disabled={!stripe || isProcessing}
           className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg transition duration-200"
         >
-          {isProcessing ? 'Processing...' : `Pay $${donationData.amount.toFixed(2)}`}
+          {isProcessing ? t('achPayment.processing') : t('achPayment.pay', { amount: donationData.amount.toFixed(2) })}
         </button>
       </div>
     </form>

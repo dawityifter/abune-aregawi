@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { formatPhoneNumber } from '../utils/formatPhoneNumber';
 
 interface Member {
@@ -36,6 +37,7 @@ interface PledgeFormProps {
 
 const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName }) => {
   const { currentUser, firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [selectedMember, setSelectedMember] = useState<string>('');
@@ -121,24 +123,24 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
     const newErrors: Partial<PledgeFormData> = {};
 
     if (!formData.amount || parseFloat(formData.amount) < 1) {
-      newErrors.amount = 'Amount must be at least $1.00';
+      newErrors.amount = t('pledgeForm.errors.amountMin');
     }
 
     if (!formData.first_name.trim()) {
-      newErrors.first_name = 'First name is required';
+      newErrors.first_name = t('pledgeForm.errors.firstNameRequired');
     }
 
     if (!formData.last_name.trim()) {
-      newErrors.last_name = 'Last name is required';
+      newErrors.last_name = t('pledgeForm.errors.lastNameRequired');
     }
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = t('pledgeForm.errors.emailInvalid');
     }
 
     // Phone validation only for non-members
     if (!selectedMember && !formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required for new members';
+      newErrors.phone = t('pledgeForm.errors.phoneRequired');
     }
 
     // Address and ZIP are optional for all users now
@@ -241,8 +243,8 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
   return (
     <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Make a Pledge</h2>
-        <p className="text-gray-600">Support our church with your generous pledge</p>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('pledgeForm.title')}</h2>
+        <p className="text-gray-600">{t('pledgeForm.subtitle')}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -250,16 +252,16 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
         {isAdminOrTreasurer && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Member (Optional)
+              {t('pledgeForm.selectMember')}
             </label>
             <div className="grid grid-cols-1 gap-2 mb-2">
               <input
                 type="text"
                 value={memberSearchQuery}
                 onChange={(e) => setMemberSearchQuery(e.target.value)}
-                placeholder="Search by name or phone"
+                placeholder={t('pledgeForm.searchPlaceholder')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                aria-label="Search members by name or phone"
+                aria-label={t('pledgeForm.searchAria')}
               />
             </div>
             <select
@@ -269,10 +271,10 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
               disabled={loadingMembers}
             >
               <option value="">
-                {loadingMembers ? 'Loading members...' : (memberSearchQuery ? 'Select a matched member or clear to show all' : 'Select existing member or leave blank for new')}
+                {loadingMembers ? t('pledgeForm.loadingMembers') : (memberSearchQuery ? t('pledgeForm.selectMatched') : t('pledgeForm.selectExisting'))}
               </option>
               {filteredMembers.length === 0 && !loadingMembers && (
-                <option value="" disabled>{memberSearchQuery ? 'No matches' : 'No members found'}</option>
+                <option value="" disabled>{memberSearchQuery ? t('pledgeForm.noMatches') : t('pledgeForm.noMembers')}</option>
               )}
               {filteredMembers.map(member => (
                 <option key={member.id} value={member.id}>
@@ -286,7 +288,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
                 onClick={() => handleMemberSelect('')}
                 className="mt-2 text-sm text-blue-600 hover:text-blue-800"
               >
-                Clear selection to enter new member info
+                {t('pledgeForm.clearSelection')}
               </button>
             )}
           </div>
@@ -315,7 +317,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
         {formData.pledge_type === 'event' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Event Name *
+              {t('pledgeForm.eventName')}
             </label>
             <input
               type="text"
@@ -324,7 +326,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.event_name ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="e.g., Sunday Fundraising Event"
+              placeholder={t('pledgeForm.eventNamePlaceholder')}
             />
             {errors.event_name && (
               <p className="mt-1 text-sm text-red-600">{errors.event_name}</p>
@@ -335,7 +337,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
         {/* Amount */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Pledge Amount *
+            {t('pledgeForm.amount')}
           </label>
 
           {/* Suggested amounts */}
@@ -365,7 +367,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
               className={`w-full pl-8 pr-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.amount ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="Enter custom amount"
+              placeholder={t('pledgeForm.customAmountPlaceholder')}
             />
           </div>
           {errors.amount && (
@@ -377,7 +379,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              First Name *
+              {t('pledgeForm.firstName')}
             </label>
             <input
               type="text"
@@ -387,7 +389,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.first_name ? 'border-red-500' : 'border-gray-300'
               } ${selectedMember ? 'bg-blue-50' : ''}`}
-              title={selectedMember ? 'Auto-filled from selected member' : undefined}
+              title={selectedMember ? t('pledgeForm.autoFilledTitle') : undefined}
             />
             {errors.first_name && (
               <p className="mt-1 text-sm text-red-600">{errors.first_name}</p>
@@ -396,7 +398,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Last Name *
+              {t('pledgeForm.lastName')}
             </label>
             <input
               type="text"
@@ -406,7 +408,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.last_name ? 'border-red-500' : 'border-gray-300'
               } ${selectedMember ? 'bg-blue-50' : ''}`}
-              title={selectedMember ? 'Auto-filled from selected member' : undefined}
+              title={selectedMember ? t('pledgeForm.autoFilledTitle') : undefined}
             />
             {errors.last_name && (
               <p className="mt-1 text-sm text-red-600">{errors.last_name}</p>
@@ -418,7 +420,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+              {t('pledgeForm.email')}
             </label>
             <input
               type="email"
@@ -428,8 +430,8 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.email ? 'border-red-500' : 'border-gray-300'
               } ${selectedMember ? 'bg-blue-50' : ''}`}
-              placeholder={selectedMember ? 'Auto-filled from member' : ''}
-              title={selectedMember ? 'Auto-filled from selected member' : undefined}
+              placeholder={selectedMember ? t('pledgeForm.autoFilledPlaceholder') : ''}
+              title={selectedMember ? t('pledgeForm.autoFilledTitle') : undefined}
             />
             {errors.email && (
               <p className="mt-1 text-sm text-red-600">{errors.email}</p>
@@ -437,7 +439,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Phone {selectedMember ? '' : '*'}
+              {t('pledgeForm.phone')} {selectedMember ? '' : '*'}
             </label>
             <input
               type="tel"
@@ -447,7 +449,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.phone ? 'border-red-500' : 'border-gray-300'
               } ${selectedMember ? 'bg-blue-50' : ''}`}
-              placeholder={selectedMember ? 'Auto-filled from member' : '(555) 555-1234'}
+              placeholder={selectedMember ? t('pledgeForm.autoFilledPlaceholder') : '(555) 555-1234'}
               inputMode="tel"
               title={selectedMember ? 'Auto-filled from selected member' : undefined}
             />
@@ -460,7 +462,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
         {/* Address */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Address {selectedMember ? '(Auto-filled from member)' : '(Optional)'}
+            {t('pledgeForm.address')} {selectedMember ? t('pledgeForm.autoFilledParen') : t('pledgeForm.optionalParen')}
           </label>
           <input
             type="text"
@@ -470,15 +472,15 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
             className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
               errors.address ? 'border-red-500' : 'border-gray-300'
             } ${selectedMember ? 'bg-blue-50' : ''}`}
-            placeholder={selectedMember ? 'Auto-filled from member' : 'Street address'}
-            title={selectedMember ? 'Auto-filled from selected member' : undefined}
+            placeholder={selectedMember ? t('pledgeForm.autoFilledPlaceholder') : t('pledgeForm.streetPlaceholder')}
+            title={selectedMember ? t('pledgeForm.autoFilledTitle') : undefined}
           />
           {errors.address && (
             <p className="mt-1 text-sm text-red-600">{errors.address}</p>
           )}
           {selectedMember && (
             <p className="mt-1 text-xs text-blue-600">
-              Address from selected member - you can modify if needed
+              {t('pledgeForm.addressModifyHint')}
             </p>
           )}
         </div>
@@ -487,7 +489,7 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-1">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              ZIP Code {selectedMember ? '(Auto-filled from member)' : '(Optional)'}
+              {t('pledgeForm.zip')} {selectedMember ? t('pledgeForm.autoFilledParen') : t('pledgeForm.optionalParen')}
             </label>
             <input
               type="text"
@@ -497,8 +499,8 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.zip_code ? 'border-red-500' : 'border-gray-300'
               } ${selectedMember ? 'bg-blue-50' : ''}`}
-              placeholder={selectedMember ? 'Auto-filled from member' : '12345'}
-              title={selectedMember ? 'Auto-filled from selected member' : undefined}
+              placeholder={selectedMember ? t('pledgeForm.autoFilledPlaceholder') : '12345'}
+              title={selectedMember ? t('pledgeForm.autoFilledTitle') : undefined}
             />
             {errors.zip_code && (
               <p className="mt-1 text-sm text-red-600">{errors.zip_code}</p>
@@ -509,14 +511,14 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
         {/* Notes */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Notes (Optional)
+            {t('pledgeForm.notes')}
           </label>
           <textarea
             value={formData.notes}
             onChange={(e) => handleInputChange('notes', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             rows={3}
-            placeholder="Any additional notes or dedication..."
+            placeholder={t('pledgeForm.notesPlaceholder')}
           />
         </div>
 
@@ -537,10 +539,10 @@ const PledgeForm: React.FC<PledgeFormProps> = ({ onSubmit, loading, eventName })
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Processing...
+                {t('pledgeForm.processing')}
               </span>
             ) : (
-              `Pledge $${formData.amount || '0'}`
+              t('pledgeForm.submit', { amount: formData.amount || '0' })
             )}
           </button>
         </div>

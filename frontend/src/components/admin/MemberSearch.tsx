@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { formatMemberName } from '../../utils/formatName';
 
 interface Member {
@@ -32,6 +33,7 @@ const MemberSearch: React.FC<MemberSearchProps> = ({
   autoSelectFirst = false
 }) => {
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
@@ -127,8 +129,8 @@ const MemberSearch: React.FC<MemberSearchProps> = ({
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Search Members</h2>
-            <p className="text-gray-600 text-sm">Select a member to view their dues and payment history</p>
+            <h2 className="text-xl font-bold text-gray-900">{t('memberSearch.title')}</h2>
+            <p className="text-gray-600 text-sm">{t('memberSearch.subtitle')}</p>
           </div>
           {!embedded && onClose && (
             <button
@@ -154,7 +156,7 @@ const MemberSearch: React.FC<MemberSearchProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, email, phone, or member ID..."
+              placeholder={t('memberSearch.placeholder')}
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               autoFocus
             />
@@ -166,7 +168,7 @@ const MemberSearch: React.FC<MemberSearchProps> = ({
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">Loading members...</span>
+              <span className="ml-2 text-gray-600">{t('memberSearch.loading')}</span>
             </div>
           ) : members.length === 0 ? (
             <div className="flex items-center justify-center py-12">
@@ -174,9 +176,9 @@ const MemberSearch: React.FC<MemberSearchProps> = ({
                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No members found</h3>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">{t('memberSearch.noMembersTitle')}</h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  {searchQuery ? 'Try adjusting your search terms.' : 'No members available.'}
+                  {searchQuery ? t('memberSearch.adjustSearch') : t('memberSearch.noneAvailable')}
                 </p>
               </div>
             </div>
@@ -212,11 +214,11 @@ const MemberSearch: React.FC<MemberSearchProps> = ({
                             </p>
                             {hasNoPledge(member) ? (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                No Pledge
+                                {t('memberSearch.noPledge')}
                               </span>
                             ) : (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                ${member.yearlyPledge}/year
+                                ${member.yearlyPledge}{t('memberSearch.perYear')}
                               </span>
                             )}
                           </div>
@@ -257,14 +259,14 @@ const MemberSearch: React.FC<MemberSearchProps> = ({
         {/* Footer */}
         <div className="flex justify-between items-center p-6 border-t bg-gray-50">
           <div className="text-sm text-gray-500">
-            {members.length} member{members.length !== 1 ? 's' : ''} found
+            {t('memberSearch.found', { count: members.length })}
           </div>
           {!embedded && onClose && (
             <button
               onClick={onClose}
               className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium"
             >
-              Cancel
+              {t('memberSearch.cancel')}
             </button>
           )}
         </div>

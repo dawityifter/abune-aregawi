@@ -27,6 +27,11 @@ function getInitialLang(): Lang {
 }
 
 function getByPath(obj: any, path: string): any {
+  // Fast path: a flat key that literally contains dots (e.g. "admin.panel").
+  // Lets us store consolidated legacy keys directly in the typed dictionaries.
+  if (obj && typeof obj === 'object' && path in obj) {
+    return obj[path];
+  }
   return path.split('.').reduce((acc: any, part: string) => {
     if (acc && typeof acc === 'object' && part in acc) {
       return acc[part];

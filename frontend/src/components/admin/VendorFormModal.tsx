@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface Vendor {
   id?: string;
@@ -31,6 +32,7 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
   vendor 
 }) => {
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -120,15 +122,15 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
 
   const validateForm = (): boolean => {
     if (!formData.name.trim()) {
-      setError('Vendor name is required');
+      setError(t('vendorForm.errorNameRequired'));
       return false;
     }
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setError('Please enter a valid email address');
+      setError(t('vendorForm.errorEmail'));
       return false;
     }
     if (formData.website && !/^https?:\/\/.+/.test(formData.website)) {
-      setError('Please enter a valid website URL (starting with http:// or https://)');
+      setError(t('vendorForm.errorWebsite'));
       return false;
     }
     return true;
@@ -184,11 +186,11 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
         onSuccess();
         onClose();
       } else {
-        setError(data.message || `Failed to ${vendor?.id ? 'update' : 'create'} vendor`);
+        setError(data.message || (vendor?.id ? t('vendorForm.saveFailedUpdate') : t('vendorForm.saveFailedCreate')));
       }
     } catch (err) {
       console.error('Error saving vendor:', err);
-      setError('An error occurred while saving the vendor');
+      setError(t('vendorForm.saveError'));
     } finally {
       setLoading(false);
     }
@@ -209,10 +211,10 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
         {/* Header */}
         <div className="bg-blue-600 text-white px-6 py-4 rounded-t-lg">
           <h2 className="text-2xl font-bold">
-            {vendor?.id ? 'Edit Vendor' : 'Add Vendor'}
+            {vendor?.id ? t('vendorForm.editTitle') : t('vendorForm.addTitle')}
           </h2>
           <p className="text-blue-100 text-sm mt-1">
-            {vendor?.id ? 'Update vendor information' : 'Add a new vendor to the system'}
+            {vendor?.id ? t('vendorForm.editSubtitle') : t('vendorForm.addSubtitle')}
           </p>
         </div>
 
@@ -228,7 +230,7 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Vendor Name <span className="text-red-500">*</span>
+                {t('vendorForm.name')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -242,7 +244,7 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Vendor Type <span className="text-red-500">*</span>
+                {t('vendorForm.type')} <span className="text-red-500">*</span>
               </label>
               <select
                 name="vendor_type"
@@ -251,23 +253,23 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="utility">Utility</option>
-                <option value="supplier">Supplier</option>
-                <option value="service-provider">Service Provider</option>
-                <option value="contractor">Contractor</option>
-                <option value="lender">Lender</option>
-                <option value="other">Other</option>
+                <option value="utility">{t('vendorList.typeUtility')}</option>
+                <option value="supplier">{t('vendorList.typeSupplier')}</option>
+                <option value="service-provider">{t('vendorList.typeServiceProvider')}</option>
+                <option value="contractor">{t('vendorList.typeContractor')}</option>
+                <option value="lender">{t('vendorList.typeLender')}</option>
+                <option value="other">{t('vendorList.typeOther')}</option>
               </select>
             </div>
           </div>
 
           {/* Contact Information */}
           <div className="border-t pt-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('vendorForm.contactInfo')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact Person
+                  {t('vendorForm.contactPerson')}
                 </label>
                 <input
                   type="text"
@@ -280,7 +282,7 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
+                  {t('vendorForm.email')}
                 </label>
                 <input
                   type="email"
@@ -293,7 +295,7 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
+                  {t('vendorForm.phone')}
                 </label>
                 <input
                   type="tel"
@@ -307,7 +309,7 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Website
+                  {t('vendorForm.website')}
                 </label>
                 <input
                   type="url"
@@ -322,7 +324,7 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
 
             <div className="mt-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Address
+                {t('vendorForm.address')}
               </label>
               <textarea
                 name="address"
@@ -336,46 +338,46 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
 
           {/* Business Details */}
           <div className="border-t pt-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Details</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('vendorForm.businessDetails')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Account Number
+                  {t('vendorForm.accountNumber')}
                 </label>
                 <input
                   type="text"
                   name="account_number"
                   value={formData.account_number}
                   onChange={handleChange}
-                  placeholder="Church account number with vendor"
+                  placeholder={t('vendorForm.accountPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Payment Terms
+                  {t('vendorForm.paymentTerms')}
                 </label>
                 <input
                   type="text"
                   name="payment_terms"
                   value={formData.payment_terms}
                   onChange={handleChange}
-                  placeholder="e.g., Net 30, Due on receipt"
+                  placeholder={t('vendorForm.paymentTermsPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tax ID / EIN
+                  {t('vendorForm.taxId')}
                 </label>
                 <input
                   type="text"
                   name="tax_id"
                   value={formData.tax_id}
                   onChange={handleChange}
-                  placeholder="Vendor tax ID or EIN"
+                  placeholder={t('vendorForm.taxIdPlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -389,7 +391,7 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
                     onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
                     className="mr-2"
                   />
-                  <span className="text-sm font-medium text-gray-700">Active Vendor</span>
+                  <span className="text-sm font-medium text-gray-700">{t('vendorForm.activeVendor')}</span>
                 </label>
               </div>
             </div>
@@ -398,14 +400,14 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
           {/* Notes */}
           <div className="border-t pt-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
+              {t('vendorForm.notes')}
             </label>
             <textarea
               name="notes"
               value={formData.notes}
               onChange={handleChange}
               rows={3}
-              placeholder="Additional notes about this vendor..."
+              placeholder={t('vendorForm.notesPlaceholder')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -418,14 +420,14 @@ const VendorFormModal: React.FC<VendorFormModalProps> = ({
               disabled={loading}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
-              Cancel
+              {t('vendorForm.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Saving...' : vendor?.id ? 'Update Vendor' : 'Add Vendor'}
+              {loading ? t('vendorForm.saving') : vendor?.id ? t('vendorForm.update') : t('vendorForm.addTitle')}
             </button>
           </div>
         </form>

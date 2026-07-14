@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { getRolePermissions } from '../../utils/roles';
 import VendorFormModal from './VendorFormModal';
 
@@ -18,6 +19,7 @@ interface Vendor {
 
 const VendorList: React.FC = () => {
   const { firebaseUser, currentUser, getUserProfile } = useAuth();
+  const { t } = useLanguage();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +74,7 @@ const VendorList: React.FC = () => {
         const data = await response.json();
         setVendors(data.data || []);
       } else {
-        setError('Failed to load vendors');
+        setError(t('vendorList.loadFailed'));
       }
     } catch (err) {
       console.error('Error fetching vendors:', err);
@@ -80,6 +82,7 @@ const VendorList: React.FC = () => {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firebaseUser, vendorTypeFilter, statusFilter]);
 
   useEffect(() => {
@@ -87,7 +90,7 @@ const VendorList: React.FC = () => {
   }, [fetchVendors]);
 
   const handleDelete = async (vendor: Vendor) => {
-    if (!window.confirm(`Are you sure you want to delete ${vendor.name}?`)) {
+    if (!window.confirm(t('vendorList.confirmDelete', { name: vendor.name }))) {
       return;
     }
 
@@ -107,11 +110,11 @@ const VendorList: React.FC = () => {
         fetchVendors();
       } else {
         const data = await response.json();
-        alert(data.message || 'Failed to delete vendor');
+        alert(data.message || t('vendorList.deleteFailed'));
       }
     } catch (err) {
       console.error('Error deleting vendor:', err);
-      alert('An error occurred while deleting the vendor');
+      alert(t('vendorList.deleteError'));
     }
   };
 
@@ -147,6 +150,15 @@ const VendorList: React.FC = () => {
     });
   }, [vendors, searchTerm, vendorTypeFilter, statusFilter]);
 
+  const vendorTypeLabels: Record<string, string> = {
+    utility: t('vendorList.typeUtility'),
+    supplier: t('vendorList.typeSupplier'),
+    'service-provider': t('vendorList.typeServiceProvider'),
+    contractor: t('vendorList.typeContractor'),
+    lender: t('vendorList.typeLender'),
+    other: t('vendorList.typeOther')
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -160,8 +172,8 @@ const VendorList: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">Vendor Management</h2>
-          <p className="text-gray-600 mt-1">Manage vendors and suppliers</p>
+          <h2 className="text-2xl font-semibold text-gray-900">{t('vendorList.title')}</h2>
+          <p className="text-gray-600 mt-1">{t('vendorList.subtitle')}</p>
         </div>
         {canEdit && (
           <button
@@ -169,7 +181,7 @@ const VendorList: React.FC = () => {
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
           >
             <i className="fas fa-plus mr-2"></i>
-            Add Vendor
+            {t('vendorList.add')}
           </button>
         )}
       </div>
@@ -179,48 +191,48 @@ const VendorList: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Search
+              {t('vendorList.search')}
             </label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name, contact, or account number..."
+              placeholder={t('vendorList.searchPlaceholder')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Vendor Type
+              {t('vendorList.typeLabel')}
             </label>
             <select
               value={vendorTypeFilter}
               onChange={(e) => setVendorTypeFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Types</option>
-              <option value="utility">Utility</option>
-              <option value="supplier">Supplier</option>
-              <option value="service-provider">Service Provider</option>
-              <option value="contractor">Contractor</option>
-              <option value="lender">Lender</option>
-              <option value="other">Other</option>
+              <option value="">{t('vendorList.allTypes')}</option>
+              <option value="utility">{t('vendorList.typeUtility')}</option>
+              <option value="supplier">{t('vendorList.typeSupplier')}</option>
+              <option value="service-provider">{t('vendorList.typeServiceProvider')}</option>
+              <option value="contractor">{t('vendorList.typeContractor')}</option>
+              <option value="lender">{t('vendorList.typeLender')}</option>
+              <option value="other">{t('vendorList.typeOther')}</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status
+              {t('vendorList.statusLabel')}
             </label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Status</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
+              <option value="">{t('vendorList.allStatus')}</option>
+              <option value="true">{t('vendorList.statusActive')}</option>
+              <option value="false">{t('vendorList.statusInactive')}</option>
             </select>
           </div>
         </div>
@@ -236,7 +248,7 @@ const VendorList: React.FC = () => {
       {/* Vendor List */}
       {filteredVendors.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-500">No vendors found</p>
+          <p className="text-gray-500">{t('vendorList.empty')}</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -244,25 +256,25 @@ const VendorList: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Vendor Name
+                  {t('vendorList.colName')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
+                  {t('vendorList.colType')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact
+                  {t('vendorList.colContact')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Account Number
+                  {t('vendorList.colAccount')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Payment Terms
+                  {t('vendorList.colTerms')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  {t('vendorList.colStatus')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  {t('vendorList.colActions')}
                 </th>
               </tr>
             </thead>
@@ -277,7 +289,7 @@ const VendorList: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                      {vendor.vendor_type}
+                      {vendorTypeLabels[vendor.vendor_type] || vendor.vendor_type}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -298,7 +310,7 @@ const VendorList: React.FC = () => {
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {vendor.is_active ? 'Active' : 'Inactive'}
+                      {vendor.is_active ? t('vendorList.statusActive') : t('vendorList.statusInactive')}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -308,13 +320,13 @@ const VendorList: React.FC = () => {
                           onClick={() => handleEdit(vendor)}
                           className="text-blue-600 hover:text-blue-900"
                         >
-                          Edit
+                          {t('vendorList.edit')}
                         </button>
                         <button
                           onClick={() => handleDelete(vendor)}
                           className="text-red-600 hover:text-red-900"
                         >
-                          Delete
+                          {t('vendorList.delete')}
                         </button>
                       </div>
                     )}

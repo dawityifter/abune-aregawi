@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const team = [
   {
@@ -19,6 +20,7 @@ const team = [
 ];
 
 const CreditsPage: React.FC = () => {
+  const { t } = useLanguage();
   const bgStyle: React.CSSProperties = {
     backgroundImage: `url(${process.env.PUBLIC_URL || ''}/bylaws/TigrayOrthodox-background.png)`,
     backgroundRepeat: 'repeat',
@@ -28,7 +30,7 @@ const CreditsPage: React.FC = () => {
   return (
     <div className="min-h-screen pt-16 py-12 px-4" style={bgStyle}>
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-8">Tech Team / Credits</h1>
+        <h1 className="text-3xl font-bold text-center mb-8">{t('creditsPage.title')}</h1>
         <div className="space-y-10">
           {team.map((member, idx) => (
             <div key={member.name} className="bg-white rounded-lg shadow p-6 flex flex-col md:flex-row items-center gap-6">

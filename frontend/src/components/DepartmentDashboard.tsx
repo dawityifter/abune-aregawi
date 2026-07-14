@@ -107,7 +107,7 @@ const DepartmentDashboard: React.FC = () => {
                 if (!deptResponse.ok) {
                     const errorText = await deptResponse.text();
                     console.error('❌ Failed to fetch department:', errorText);
-                    throw new Error('Failed to fetch department');
+                    throw new Error(t('department.loadFailed'));
                 }
 
                 const deptData = await deptResponse.json();
@@ -180,13 +180,13 @@ const DepartmentDashboard: React.FC = () => {
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                        {error || 'Department not found'}
+                        {error || t('department.notFound')}
                     </h2>
                     <button
                         onClick={() => navigate('/dashboard')}
                         className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
                     >
-                        Back to Dashboard
+                        {t('department.backToDashboard')}
                     </button>
                 </div>
             </div>
@@ -223,25 +223,25 @@ const DepartmentDashboard: React.FC = () => {
                         className="text-primary-600 hover:text-primary-700 mb-4 flex items-center"
                     >
                         <i className="fas fa-arrow-left mr-2"></i>
-                        Back to Dashboard
+                        {t('department.backToDashboard')}
                     </button>
                     <div className="bg-white shadow rounded-lg p-6">
                         <div className="flex justify-between items-start">
                             <div>
                                 <h1 className="text-3xl font-bold text-gray-900">{department.name}</h1>
-                                <p className="text-sm text-gray-500 mt-1 capitalize">{department.type}</p>
+                                <p className="text-sm text-gray-500 mt-1 capitalize">{t(`departmentType.${department.type}`)}</p>
                                 {department.description && (
                                     <p className="text-gray-600 mt-2">{department.description}</p>
                                 )}
                                 {department.leader && (
                                     <p className="text-sm text-gray-500 mt-2">
-                                        <strong>Leader:</strong> {department.leader.first_name} {department.leader.last_name}
+                                        <strong>{t('department.leader')}</strong> {department.leader.first_name} {department.leader.last_name}
                                     </p>
                                 )}
                             </div>
                             <div className="text-right">
                                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
-                                    {department.role || 'Member'}
+                                    {department.role || t('department.roleMember')}
                                 </span>
                             </div>
                         </div>
@@ -349,7 +349,7 @@ const DepartmentDashboard: React.FC = () => {
                                         </div>
                                     ))
                                 ) : (
-                                    <p className="text-gray-500 text-center py-8">No members yet</p>
+                                    <p className="text-gray-500 text-center py-8">{t('department.noMembers')}</p>
                                 )}
                             </div>
                         )}
@@ -399,7 +399,7 @@ const DepartmentDashboard: React.FC = () => {
                                                     )}
                                                     <span className="flex items-center">
                                                         <i className="fas fa-users mr-1.5 text-gray-400"></i>
-                                                        {meeting.attendees?.length || 0} attendees
+                                                        {meeting.attendees?.length || 0} {t('department.attendees')}
                                                     </span>
                                                 </div>
                                             </div>
@@ -417,7 +417,7 @@ const DepartmentDashboard: React.FC = () => {
                                         <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4">
                                             <i className="fas fa-folder-open text-gray-300 text-3xl"></i>
                                         </div>
-                                        <p className="text-gray-500 font-medium">No meetings recorded yet</p>
+                                        <p className="text-gray-500 font-medium">{t('department.noMeetings')}</p>
                                         <button
                                             onClick={() => {
                                                 setSelectedMeeting(null);
@@ -425,7 +425,7 @@ const DepartmentDashboard: React.FC = () => {
                                             }}
                                             className="mt-2 text-primary-600 hover:text-primary-700 text-sm font-medium"
                                         >
-                                            Create your first meeting
+                                            {t('department.createFirstMeeting')}
                                         </button>
                                     </div>
                                 )}
@@ -447,10 +447,10 @@ const DepartmentDashboard: React.FC = () => {
                                                 </div>
                                                 <div className="flex gap-2 ml-4">
                                                     <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(task.status)}`}>
-                                                        {task.status.replace('_', ' ')}
+                                                        {t(`taskStatus.${task.status}`)}
                                                     </span>
                                                     <span className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                                                        {task.priority}
+                                                        {t(`taskPriority.${task.priority}`)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -464,7 +464,7 @@ const DepartmentDashboard: React.FC = () => {
                                                 {task.due_date && (
                                                     <span>
                                                         <i className="fas fa-calendar mr-1"></i>
-                                                        Due: {new Date(task.due_date).toLocaleDateString()}
+                                                        {t('department.due')} {new Date(task.due_date).toLocaleDateString()}
                                                     </span>
                                                 )}
                                                 <button
@@ -473,16 +473,16 @@ const DepartmentDashboard: React.FC = () => {
                                                         setShowAddTaskModal(true);
                                                     }}
                                                     className="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium ml-4"
-                                                    title="Edit Task"
+                                                    title={t('meeting.editTask')}
                                                 >
                                                     <i className="fas fa-edit mr-1"></i>
-                                                    Edit
+                                                    {t('department.edit')}
                                                 </button>
                                             </div>
                                         </div>
                                     ))
                                 ) : (
-                                    <p className="text-gray-500 text-center py-8">No tasks yet</p>
+                                    <p className="text-gray-500 text-center py-8">{t('department.noTasks')}</p>
                                 )}
                             </div>
                         )}

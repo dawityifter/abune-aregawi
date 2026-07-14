@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface BankUploadProps {
     onUploadSuccess: () => void;
@@ -7,6 +8,7 @@ interface BankUploadProps {
 
 const BankUpload: React.FC<BankUploadProps> = ({ onUploadSuccess }) => {
     const { firebaseUser } = useAuth();
+    const { t } = useLanguage();
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -44,7 +46,7 @@ const BankUpload: React.FC<BankUploadProps> = ({ onUploadSuccess }) => {
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.message || 'Upload failed');
+                throw new Error(data.message || t('bankUpload.uploadFailed'));
             }
 
             setResult(data.data);
@@ -62,12 +64,12 @@ const BankUpload: React.FC<BankUploadProps> = ({ onUploadSuccess }) => {
 
     return (
         <div className="bg-white p-6 rounded-lg shadow mb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Upload Bank Statement</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">{t('bankUpload.title')}</h3>
 
             <div className="flex items-center space-x-4">
                 <div className="flex-1">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Select Chase CSV File
+                        {t('bankUpload.selectFile')}
                     </label>
                     <input
                         type="file"
@@ -87,7 +89,7 @@ const BankUpload: React.FC<BankUploadProps> = ({ onUploadSuccess }) => {
                         disabled={!file || uploading}
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
                     >
-                        {uploading ? 'Uploading...' : 'Upload & Process'}
+                        {uploading ? t('bankUpload.uploading') : t('bankUpload.upload')}
                     </button>
                 </div>
             </div>
@@ -100,22 +102,22 @@ const BankUpload: React.FC<BankUploadProps> = ({ onUploadSuccess }) => {
 
             {result && (
                 <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md text-sm">
-                    <p className="font-bold">Upload Successful!</p>
+                    <p className="font-bold">{t('bankUpload.success')}</p>
                     <ul className="list-disc pl-5 mt-1">
-                        <li>Imported: {result.imported} new transactions</li>
-                        <li>Skipped: {result.skipped} duplicates</li>
+                        <li>{t('bankUpload.imported', { count: result.imported })}</li>
+                        <li>{t('bankUpload.skipped', { count: result.skipped })}</li>
                     </ul>
                     {result.auto_reconcile && (
                         <div className="mt-2 pt-2 border-t border-green-200">
                             <p className="font-bold">
-                                Auto-reconciled: {(result.auto_reconcile.autoLinked || 0) + (result.auto_reconcile.autoMember || 0) + (result.auto_reconcile.autoExpense || 0)} of {result.auto_reconcile.examined} pending
+                                {t('bankUpload.autoReconciled', { count: (result.auto_reconcile.autoLinked || 0) + (result.auto_reconcile.autoMember || 0) + (result.auto_reconcile.autoExpense || 0), examined: result.auto_reconcile.examined })}
                             </p>
                             <ul className="list-disc pl-5 mt-1">
-                                <li>Linked to existing payments (e.g. Zelle automation): {result.auto_reconcile.autoLinked}</li>
-                                <li>Member payments created from learned payers: {result.auto_reconcile.autoMember}</li>
-                                <li>Expenses recorded from learned payees: {result.auto_reconcile.autoExpense}</li>
-                                <li>Left for review: {result.auto_reconcile.needsReview}</li>
-                                {result.auto_reconcile.errors > 0 && <li className="text-red-700">Errors: {result.auto_reconcile.errors}</li>}
+                                <li>{t('bankUpload.autoLinked', { count: result.auto_reconcile.autoLinked })}</li>
+                                <li>{t('bankUpload.autoMember', { count: result.auto_reconcile.autoMember })}</li>
+                                <li>{t('bankUpload.autoExpense', { count: result.auto_reconcile.autoExpense })}</li>
+                                <li>{t('bankUpload.needsReview', { count: result.auto_reconcile.needsReview })}</li>
+                                {result.auto_reconcile.errors > 0 && <li className="text-red-700">{t('bankUpload.errors', { count: result.auto_reconcile.errors })}</li>}
                             </ul>
                         </div>
                     )}
@@ -123,7 +125,7 @@ const BankUpload: React.FC<BankUploadProps> = ({ onUploadSuccess }) => {
             )}
 
             <p className="mt-2 text-xs text-gray-500">
-                Supported format: Chase Activity CSV. System automatically detects Zelle donors and skips duplicate transactions.
+                {t('bankUpload.supportedFormat')}
             </p>
         </div>
     );

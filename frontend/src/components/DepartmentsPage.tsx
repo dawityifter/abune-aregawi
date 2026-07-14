@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Department {
     id: number;
@@ -20,6 +21,7 @@ interface Department {
 const DepartmentsPage: React.FC = () => {
     const navigate = useNavigate();
     const { firebaseUser, user } = useAuth();
+    const { t } = useLanguage();
 
     const [myDepartments, setMyDepartments] = useState<Department[]>([]);
     const [allDepartments, setAllDepartments] = useState<Department[]>([]);
@@ -123,11 +125,11 @@ const DepartmentsPage: React.FC = () => {
                         className="text-primary-600 hover:text-primary-700 mb-4 flex items-center"
                     >
                         <i className="fas fa-arrow-left mr-2"></i>
-                        Back to Dashboard
+                        {t('departmentsPage.backToDashboard')}
                     </button>
-                    <h1 className="text-3xl font-bold text-gray-900">Departments & Service</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">{t('departmentsPage.title')}</h1>
                     <p className="text-gray-600 mt-2">
-                        View your departments or explore opportunities to serve
+                        {t('departmentsPage.subtitle')}
                     </p>
                 </div>
 
@@ -142,7 +144,7 @@ const DepartmentsPage: React.FC = () => {
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
                             >
-                                My Departments ({myDepartments.length})
+                                {t('departmentsPage.myTab')} ({myDepartments.length})
                             </button>
                             <button
                                 onClick={() => setActiveView('all')}
@@ -151,7 +153,7 @@ const DepartmentsPage: React.FC = () => {
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
                             >
-                                Browse All ({allDepartments.length})
+                                {t('departmentsPage.browseTab')} ({allDepartments.length})
                             </button>
                         </nav>
                     </div>
@@ -226,7 +228,7 @@ const DepartmentsPage: React.FC = () => {
 
                                         <div className="mb-4">
                                             <span className={`inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full ${getTypeColor(dept.type)}`}>
-                                                {dept.type}
+                                                {t(`departmentType.${dept.type}`)}
                                             </span>
                                         </div>
 
@@ -242,11 +244,11 @@ const DepartmentsPage: React.FC = () => {
                                             {dept.member_count !== undefined && (
                                                 <span className="flex items-center">
                                                     <i className="fas fa-users mr-2 text-gray-400"></i>
-                                                    {dept.member_count} members
+                                                    {dept.member_count} {t('departmentsPage.members')}
                                                 </span>
                                             )}
                                             <span className="group-hover:translate-x-1 transition-transform duration-200 text-primary-600 font-medium text-xs uppercase tracking-wide">
-                                                View Details <i className="fas fa-arrow-right ml-1"></i>
+                                                {t('departmentsPage.viewDetails')} <i className="fas fa-arrow-right ml-1"></i>
                                             </span>
                                         </div>
                                     </div>
@@ -256,11 +258,11 @@ const DepartmentsPage: React.FC = () => {
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    alert('Request to join functionality coming soon!');
+                                                    alert(t('departmentsPage.requestComingSoon'));
                                                 }}
                                                 className="w-full bg-white border border-primary-600 text-primary-600 py-2 px-4 rounded-lg hover:bg-primary-50 transition-colors text-sm font-semibold"
                                             >
-                                                Request to Join
+                                                {t('departmentsPage.requestToJoin')}
                                             </button>
                                         </div>
                                     )}
@@ -274,19 +276,19 @@ const DepartmentsPage: React.FC = () => {
                             <i className="fas fa-layer-group text-4xl text-gray-300"></i>
                         </div>
                         <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                            {activeView === 'my' ? 'No Departments Found' : 'No Departments Available'}
+                            {activeView === 'my' ? t('departmentsPage.emptyMyTitle') : t('departmentsPage.emptyAllTitle')}
                         </h3>
                         <p className="text-gray-500 max-w-sm text-center mb-8">
                             {activeView === 'my'
-                                ? 'You haven\'t joined any departments yet. Browse the full list to find where you can serve.'
-                                : 'There are currently no active departments to join.'}
+                                ? t('departmentsPage.emptyMyDesc')
+                                : t('departmentsPage.emptyAllDesc')}
                         </p>
                         {activeView === 'my' && allDepartments.length > 0 && (
                             <button
                                 onClick={() => setActiveView('all')}
                                 className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                             >
-                                Browse Departments
+                                {t('departmentsPage.browseDepartments')}
                             </button>
                         )}
                     </div>

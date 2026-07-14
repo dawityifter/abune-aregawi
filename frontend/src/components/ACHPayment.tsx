@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStripe } from '@stripe/react-stripe-js';
 import { createPaymentIntent } from '../config/stripe';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ACHPaymentProps {
   donationData: {
@@ -36,6 +37,7 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
   onRefreshHistory
 }) => {
   const stripe = useStripe();
+  const { t } = useLanguage();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bankInfo, setBankInfo] = useState({
@@ -48,28 +50,28 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
   // Expose payment processing function to parent component
   const processPayment = useCallback(async () => {
     if (!stripe) {
-      const msg = 'Stripe has not loaded yet. Please try again.';
+      const msg = t('achPayment.errors.stripeNotLoaded');
       setError(msg);
       onError(msg);
       return;
     }
     // Validate bank information
     if (!bankInfo.accountNumber || !bankInfo.routingNumber || !bankInfo.accountHolderName) {
-      const errorMsg = 'Please fill in all required bank account information.';
+      const errorMsg = t('achPayment.errors.fillRequired');
       setError(errorMsg);
       onError(errorMsg);
       return;
     }
 
     if (bankInfo.routingNumber.length !== 9) {
-      const errorMsg = 'Routing number must be 9 digits.';
+      const errorMsg = t('achPayment.errors.routingLength');
       setError(errorMsg);
       onError(errorMsg);
       return;
     }
 
     if (bankInfo.accountNumber.length < 4) {
-      const errorMsg = 'Account number must be at least 4 digits.';
+      const errorMsg = t('achPayment.errors.accountLength');
       setError(errorMsg);
       onError(errorMsg);
       return;
@@ -123,7 +125,7 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
       } as any);
 
       if (stripeError) {
-        const msg = stripeError.message || 'ACH confirmation failed';
+        const msg = stripeError.message || t('achPayment.errors.achFailed');
         setError(msg);
         onError(msg);
         return;
@@ -140,13 +142,13 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
       if (onRefreshHistory) onRefreshHistory();
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      const errorMessage = error instanceof Error ? error.message : t('achPayment.errors.unexpected');
       setError(errorMessage);
       onError(errorMessage);
     } finally {
       setIsProcessing(false);
     }
-  }, [bankInfo, donationData, onSuccess, onError, purpose, onRefreshHistory, stripe]);
+  }, [bankInfo, donationData, onSuccess, onError, purpose, onRefreshHistory, stripe, t]);
 
   // Expose the payment processing function to parent component
   useEffect(() => {
@@ -171,12 +173,12 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
     return (
       <div className="space-y-6">
         <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Account Information</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">{t('achPayment.bankInfo')}</h3>
           
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Account Holder Name *
+                {t('achPayment.accountHolderName')}
               </label>
               <input
                 type="text"
@@ -190,7 +192,7 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Routing Number *
+                {t('achPayment.routingNumber')}
               </label>
               <input
                 type="text"
@@ -205,13 +207,13 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
                 maxLength={9}
               />
               <p className="text-xs text-gray-500 mt-1">
-                The 9-digit routing number found on your checks
+                {t('achPayment.routingHint')}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Account Number *
+                {t('achPayment.accountNumber')}
               </label>
               <input
                 type="text"
@@ -225,21 +227,21 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
                 placeholder="1234567890"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Your bank account number
+                {t('achPayment.accountNumberHint')}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Account Type *
+                {t('achPayment.accountType')}
               </label>
               <select
                 value={bankInfo.accountType}
                 onChange={(e) => handleInputChange('accountType', e.target.value)}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="checking">Checking</option>
-                <option value="savings">Savings</option>
+                <option value="checking">{t('achPayment.checking')}</option>
+                <option value="savings">{t('achPayment.savings')}</option>
               </select>
             </div>
           </div>
@@ -252,30 +254,28 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
 
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
             <p className="text-sm text-blue-700">
-              <strong>Amount:</strong> ${donationData.amount.toFixed(2)}
+              <strong>{t('achPayment.amountLabel')}</strong> ${donationData.amount.toFixed(2)}
             </p>
             <p className="text-sm text-blue-700">
-              <strong>Type:</strong> {donationData.donation_type === 'recurring' ? 'Recurring' : 'One-time'}
+              <strong>{t('achPayment.typeLabel')}</strong> {donationData.donation_type === 'recurring' ? t('achPayment.recurring') : t('achPayment.oneTime')}
               {donationData.donation_type === 'recurring' && donationData.frequency && (
                 <span> ({donationData.frequency})</span>
               )}
             </p>
             <p className="text-sm text-blue-700">
-              <strong>Payment Method:</strong> Bank Account (ACH)
+              <strong>{t('achPayment.methodLabel')}</strong> {t('achPayment.methodValue')}
             </p>
           </div>
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
             <p className="text-sm text-yellow-700">
-              <strong>Important:</strong> ACH payments typically take 3-5 business days to process. 
-              You will receive a confirmation email once the payment is processed.
+              <strong>{t('achPayment.importantLabel')}</strong> {t('achPayment.importantText')}
             </p>
           </div>
 
           <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
             <p className="text-sm text-green-700">
-              <strong>Security:</strong> Your bank account information is encrypted and securely processed. 
-              We do not store your account details on our servers.
+              <strong>{t('achPayment.securityLabel')}</strong> {t('achPayment.securityText')}
             </p>
           </div>
         </div>
@@ -286,12 +286,12 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="bg-gray-50 p-4 rounded-lg">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Account Information</h3>
-        
+        <h3 className="text-lg font-medium text-gray-900 mb-4">{t('achPayment.bankInfo')}</h3>
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Account Holder Name *
+              {t('achPayment.accountHolderName')}
             </label>
             <input
               type="text"
@@ -305,7 +305,7 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Routing Number *
+              {t('achPayment.routingNumber')}
             </label>
             <input
               type="text"
@@ -320,13 +320,13 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
               maxLength={9}
             />
             <p className="text-xs text-gray-500 mt-1">
-              The 9-digit routing number found on your checks
+              {t('achPayment.routingHint')}
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Account Number *
+              {t('achPayment.accountNumber')}
             </label>
             <input
               type="text"
@@ -340,21 +340,21 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
               placeholder="1234567890"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Your bank account number
+              {t('achPayment.accountNumberHint')}
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Account Type *
+              {t('achPayment.accountType')}
             </label>
             <select
               value={bankInfo.accountType}
               onChange={(e) => handleInputChange('accountType', e.target.value)}
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="checking">Checking</option>
-              <option value="savings">Savings</option>
+              <option value="checking">{t('achPayment.checking')}</option>
+              <option value="savings">{t('achPayment.savings')}</option>
             </select>
           </div>
         </div>
@@ -367,30 +367,28 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
 
         <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
           <p className="text-sm text-blue-700">
-            <strong>Amount:</strong> ${donationData.amount.toFixed(2)}
+            <strong>{t('achPayment.amountLabel')}</strong> ${donationData.amount.toFixed(2)}
           </p>
           <p className="text-sm text-blue-700">
-            <strong>Type:</strong> {donationData.donation_type === 'recurring' ? 'Recurring' : 'One-time'}
+            <strong>{t('achPayment.typeLabel')}</strong> {donationData.donation_type === 'recurring' ? t('achPayment.recurring') : t('achPayment.oneTime')}
             {donationData.donation_type === 'recurring' && donationData.frequency && (
               <span> ({donationData.frequency})</span>
             )}
           </p>
           <p className="text-sm text-blue-700">
-            <strong>Payment Method:</strong> Bank Account (ACH)
+            <strong>{t('achPayment.methodLabel')}</strong> {t('achPayment.methodValue')}
           </p>
         </div>
 
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
           <p className="text-sm text-yellow-700">
-            <strong>Important:</strong> ACH payments typically take 3-5 business days to process. 
-            You will receive a confirmation email once the payment is processed.
+            <strong>{t('achPayment.importantLabel')}</strong> {t('achPayment.importantText')}
           </p>
         </div>
 
         <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
           <p className="text-sm text-green-700">
-            <strong>Security:</strong> Your bank account information is encrypted and securely processed. 
-            We do not store your account details on our servers.
+            <strong>{t('achPayment.securityLabel')}</strong> {t('achPayment.securityText')}
           </p>
         </div>
       </div>
@@ -402,14 +400,14 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
           disabled={isProcessing}
           className="flex-1 bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-lg transition duration-200"
         >
-          Cancel
+          {t('achPayment.cancel')}
         </button>
         <button
           type="submit"
           disabled={isProcessing}
           className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg transition duration-200"
         >
-          {isProcessing ? 'Processing...' : `Pay $${donationData.amount.toFixed(2)}`}
+          {isProcessing ? t('achPayment.processing') : t('achPayment.pay', { amount: donationData.amount.toFixed(2) })}
         </button>
       </div>
     </form>

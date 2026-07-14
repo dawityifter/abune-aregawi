@@ -535,50 +535,7 @@ const translations = {
     'common.delete': 'Delete',
     'common.print': 'Print',
 
-    // Department Details
-    'department.tabs.meetings': 'Meetings',
-    'department.tabs.tasks': 'Tasks',
-    'department.tabs.members': 'Members',
-    'department.addMeeting': 'Add Meeting',
-    'department.addTask': 'Add Task',
-    'department.manageMembers': 'Manage Members',
-
-    // Meeting Details
-    'meeting.tasks.previous': 'Tasks from Previous Meeting',
-    'meeting.tasks.actionItems': 'Action Items from This Meeting',
-    'meeting.tasks.add': 'Add Task',
-    'meeting.tasks.none': 'No action items yet',
-    'meeting.agenda': 'Agenda',
-    'meeting.minutes': 'Meeting Notes',
-    'meeting.attendees': 'Attendees',
-    'meeting.assignedTo': 'Assigned to',
-    'meeting.due': 'Due',
-    'meeting.print.savePdf': 'Print / Save PDF',
-    'meeting.print.record': 'Meeting Record',
-    'meeting.print.overview': 'Meeting Overview',
-    'meeting.print.department': 'Department',
-    'meeting.print.date': 'Date',
-    'meeting.print.location': 'Location',
-    'meeting.print.purpose': 'Purpose',
-    'meeting.print.generated': 'Generated',
-    'meeting.print.language.english': 'English',
-    'meeting.print.language.tigrinya': 'Tigrinya',
-    'meeting.print.notProvided': 'Not provided',
-    'meeting.print.noAttendees': 'No attendees recorded',
-    'meeting.email.button': 'Email Members',
-    'meeting.email.modalTitle': 'Email Meeting Minutes',
-    'meeting.email.recipients': 'Recipients',
-    'meeting.email.skipped': 'Skipped',
-    'meeting.email.subject': 'Subject',
-    'meeting.email.body': 'Message',
-    'meeting.email.send': 'Send Email',
-    'meeting.email.sending': 'Sending...',
-    'meeting.email.cancel': 'Cancel',
-    'meeting.email.noRecipients': 'No active department members have a valid email address.',
-    'meeting.email.previewFailed': 'Failed to load email preview',
-    'meeting.email.sentSummary': 'Members without a valid email were skipped.',
-    'meeting.email.reason.missing': 'No email on file',
-    'meeting.email.reason.invalid': 'Invalid email address',
+    // Department & Meeting keys migrated to dictionaries.ts (Batch 2b)
 
     // Skipped Receipts
     'treasurer.skippedReceipts.button': 'Show Skipped Receipt Numbers',
@@ -626,21 +583,21 @@ const translations = {
     'sunday': 'ሰንበት',
     'wednesday': 'ረቡዕ',
     'friday': 'ዓርቢ',
-    'location': 'ኩነታት',
-    'get.directions': 'ኣዛምድ',
+    'location': 'ቦታ',
+    'get.directions': 'መገዲ ርኸብ',
 
     // CTA Buttons
-    'plan.visit': 'ምብጻሕ ኣዘዝምድ',
+    'plan.visit': 'ምብጻሕ መደብ',
     'church.bylaw': 'ሕጊ ቤተ ክርስቲያን',
     'watch.live': 'ብቀጥታ ርኣይ',
-    'register.member': 'ደምድም ኣኽትም',
-    'view.dues': 'ክፍሊት ርኣይ / እተኻ',
+    'register.member': 'ኣባል መዝግብ',
+    'view.dues': 'ክፍሊት ርኣይ / እቶ',
     'view.youtube.channel': 'ቻነል ዩቲዩብና ርኣይ',
 
     // Section Headers
     'whats.happening': 'ምን እዩ ዘጋጥም',
     'watch.listen': 'ርኣይ ወይ ሰምዕ',
-    'participation': 'ክፍሊት ቀሊል እዩ',
+    'participation': 'ተሳትፎ ቀሊል እዩ',
     'stay.connected': 'ተራኺልካ ክትነብር',
     'newcomer': 'ሓድሽ እኹም ኣብ ቤተ ክርስቲያንና?',
     'grow.spiritually': 'ብመንፈስ ክትሰፍሕ',
@@ -652,7 +609,7 @@ const translations = {
     'calendar.dailyBible': 'ናይ መዓልቲ ንባብ ቅዱስ መጽሓፍን ዝኽርን',
 
     // Participation Cards
-    'volunteer': 'ተጋሩ',
+    'volunteer': 'ወለንተኛ',
     'volunteer.desc': 'ኣብ ጕጅለ ኣገልግሎትና ተጸምብር እሞ ንማሕበረሰብና ኣገልግል',
     'volunteer.sign.up': 'ኣኽትም',
     'give.online.desc': 'ቤተ ክርስቲያንና ብድሕሪት ሃብ ሓጋዚ እዩ',
@@ -898,7 +855,7 @@ const translations = {
     'choir.member': 'ኣባል መደምደምታ',
     'sunday.school.teacher': 'ምሁር ትምህርቲ ሰንበት',
     'emergency.phone.number': 'ቁጽሪ ስልኪ ሓጋዚ',
-    'address': 'ኩነታት',
+    'address': 'ኣድራሻ',
     'date.joined.parish': 'ዕለተ መዓስ ቤተ ክርስቲያን',
     'baptism.name.placeholder': 'ስም ዕርድካ ኣእትው',
     'baptism.status': 'ዕርድ ምጥምታ',
@@ -1027,51 +984,8 @@ const translations = {
     'required': 'የድለ',
     'optional': 'ኣማራጺ',
 
-    // Meeting Details
-    'meeting.tasks.previous': 'ናይ ዝሓለፈ ኣኼባ ትልምታት',
-    'meeting.tasks.actionItems': 'ናይዚ ኣኼባ ትልምታት',
-    'meeting.tasks.add': 'ትልሚ ወስኽ',
-    'meeting.tasks.none': 'ገና ዝተወጠነ ትልሚ የለን',
-    'meeting.agenda': 'ኣጀንዳ',
-    'meeting.minutes': 'ቃለ ጉባኤ',
-    'meeting.attendees': 'ተሳተፍቲ',
-    'meeting.assignedTo': 'ሓላፍነት ዝወሰደ',
-    'meeting.due': 'ክዛዘም ዘለዎ',
-    'meeting.print.savePdf': 'ሕተም / PDF ኣድሕን',
-    'meeting.print.record': 'መዝገብ ኣኼባ',
-    'meeting.print.overview': 'ሓፈሻዊ ሓበሬታ ኣኼባ',
-    'meeting.print.department': 'ክፍሊ ስራሕ',
-    'meeting.print.date': 'ዕለት',
-    'meeting.print.location': 'ቦታ',
-    'meeting.print.purpose': 'ዕላማ',
-    'meeting.print.generated': 'ዝተፈጥረ',
-    'meeting.print.language.english': 'እንግሊዝኛ',
-    'meeting.print.language.tigrinya': 'ትግርኛ',
-    'meeting.print.notProvided': 'ኣይተዋህበን',
-    'meeting.print.noAttendees': 'ተሳተፍቲ ኣይተመዝገቡን',
-    'meeting.email.button': 'ንኣባላት ኢመይል ስደድ',
-    'meeting.email.modalTitle': 'ቃለ ጉባኤ ብኢመይል ስደድ',
-    'meeting.email.recipients': 'ተቐበልቲ',
-    'meeting.email.skipped': 'ዝተሓለፉ',
-    'meeting.email.subject': 'ኣርእስቲ',
-    'meeting.email.body': 'መልእኽቲ',
-    'meeting.email.send': 'ኢመይል ስደድ',
-    'meeting.email.sending': 'ይስደድ ኣሎ...',
-    'meeting.email.cancel': 'ሰርዝ',
-    'meeting.email.noRecipients': 'ኣብዚ ክፍሊ ስራሕ ዘለዉ ኣባላት ዘረጋገጸ ኢመይል የብሎምን።',
-    'meeting.email.previewFailed': 'ቅድመ እይታ ኢመይል ምጽዓን ኣይተኻእለን',
-    'meeting.email.sentSummary': 'ዘረጋገጸ ኢመይል ዘይብሎም ኣባላት ተሓሊፎም።',
-    'meeting.email.reason.missing': 'ኣብ መዝገብ ኢመይል የለን',
-    'meeting.email.reason.invalid': 'ዘይቅቡል ኣድራሻ ኢመይል',
+    // Department & Meeting keys migrated to dictionaries.ts (Batch 2b)
     'common.print': 'ሕተም',
-
-    // Department Details
-    'department.tabs.meetings': 'ኣኼባታት',
-    'department.tabs.tasks': 'ትልምታት',
-    'department.tabs.members': 'ኣባላት',
-    'department.addMeeting': 'ኣኼባ ወስኽ',
-    'department.addTask': 'ትልሚ ወስኽ',
-    'department.manageMembers': 'ኣባላት ኣመሓድር',
 
     // Form Fields
     'first.name': 'ስም ቀዳማይ',
@@ -1195,12 +1109,21 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     setLang(newLang);
   };
 
+  const interpolate = (value: string, params?: Record<string, any>): string => {
+    if (!params) return value;
+    let out = value;
+    Object.entries(params).forEach(([paramKey, paramValue]) => {
+      out = out.replace(new RegExp(`{${paramKey}}`, 'g'), String(paramValue));
+    });
+    return out;
+  };
+
   const t = (key: string, params?: Record<string, any>): string => {
     // 1. Try global dictionary (dictionaries.ts) via i18n provider
     // The i18nT function returns the key if not found.
     const globalMatch = i18nT(key);
     if (globalMatch !== key) {
-      return globalMatch;
+      return interpolate(globalMatch, params);
     }
 
     // 2. Try local translations (legacy)
