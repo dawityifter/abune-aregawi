@@ -559,4 +559,161 @@ describe('Automatic Bank Reconciliation', () => {
             expect(second.done).toBe(true);
         });
     });
+
+    describe('Targeted linking when a Zelle transaction is created (review screen)', () => {
+        test('Tier 0: creating a transaction from the Zelle review links the matching PENDING bank row immediately', async () => {
+            // Bank CSV row uploaded FIRST — sits pending, carrying the Zelle reference
+            const bankTxn = await BankTransaction.create({
+                date: new Date('2025-04-07'),
+                amount: 75.00,
+                description: 'Zelle payment from ALMAZ TESFAY TARGREF01',
+                type: 'ZELLE_CREDIT',
+                status: 'PENDING',
+                payer_name: 'ALMAZ TESFAY',
+                external_ref_id: 'TARGREF01',
+                transaction_hash: 'bankhash-target0',
+                raw_data: {}
+            });
+
+            // Treasurer matches the payment from the Zelle review screen
+            const res = await request(app)
+                .post('/api/zelle/reconcile/create-transaction')
+                .set('Authorization', 'Bearer valid-token')
+                .send({
+                    external_id: 'zelle:TARGREF01',
+                    amount: 75.00,
+                    payment_date: '2025-04-04',
+                    member_id: member.id,
+                    payment_type: 'donation',
+                    payer_name: 'ALMAZ TESFAY'
+                })
+                .expect(200);
+
+            expect(res.body.success).toBe(true);
+            expect(res.body.bank_link).toBeTruthy();
+            expect(res.body.bank_link.linked).toBe(1);
+
+            // The Bank Transactions screen must now show this row as MATCHED
+            await bankTxn.reload();
+            expect(bankTxn.status).toBe('MATCHED');
+            expect(bankTxn.reconciled_source).toBe('AUTO_LINKED');
+            expect(bankTxn.reconciled_meta.transaction_id).toBe(res.body.id);
+        });
+
+        test('Tier 1: links the pending row even when the bank reference differs from the Zelle number', async () => {
+            const bankTxn = await BankTransaction.create({
+                date: new Date('2025-04-09'),
+                amount: 60.00,
+                description: 'Zelle payment from ALMAZ TESFAY SENDERREF9',
+                type: 'ZELLE_CREDIT',
+                status: 'PENDING',
+                payer_name: 'ALMAZ TESFAY',
+                external_ref_id: 'SENDERREF9', // sender-bank ref ≠ Chase number
+                transaction_hash: 'bankhash-target1',
+                raw_data: {}
+            });
+
+            const res = await request(app)
+                .post('/api/zelle/reconcile/create-transaction')
+                .set('Authorization', 'Bearer valid-token')
+                .send({
+                    external_id: 'zelle:987654321',
+                    amount: 60.00,
+                    payment_date: '2025-04-07',
+                    member_id: member.id,
+                    payment_type: 'donation',
+                    payer_name: 'ALMAZ TESFAY'
+                })
+                .expect(200);
+
+            expect(res.body.bank_link.linked).toBe(1);
+
+            await bankTxn.reload();
+            expect(bankTxn.status).toBe('MATCHED');
+            expect(bankTxn.reconciled_source).toBe('AUTO_LINKED');
+        });
+
+        test('link-only: does NOT Tier-2 create transactions for unrelated learned payers sharing the amount', async () => {
+            // Unrelated pending row from a LEARNED payer with the same amount —
+            // the full pass would auto-create a member transaction for it (Tier 2).
+            const unrelated = await BankTransaction.create({
+                date: new Date('2025-04-08'),
+                amount: 90.00,
+                description: 'Zelle payment from BERHE KIDANE 55443322',
+                type: 'ZELLE_CREDIT',
+                status: 'PENDING',
+                payer_name: 'BERHE KIDANE',
+                transaction_hash: 'bankhash-target2',
+                raw_data: {}
+            });
+            await learnBankMemoMatch(unrelated.get({ plain: true }), member.id);
+
+            await request(app)
+                .post('/api/zelle/reconcile/create-transaction')
+                .set('Authorization', 'Bearer valid-token')
+                .send({
+                    external_id: 'zelle:111222333',
+                    amount: 90.00,
+                    payment_date: '2025-04-08',
+                    member_id: member.id,
+                    payment_type: 'donation',
+                    payer_name: 'ALMAZ TESFAY'
+                })
+                .expect(200);
+
+            // The learned-payer row must be untouched — no Tier 2 side effects
+            await unrelated.reload();
+            expect(unrelated.status).toBe('PENDING');
+            expect(unrelated.reconciled_source).toBeNull();
+            expect(await Transaction.count({ where: { external_id: 'bankhash-target2' } })).toBe(0);
+        });
+
+        test('re-creating the same Zelle payment after auto-link does NOT double post', async () => {
+            const { ZelleEmailQueue } = require('../../src/models');
+            await ZelleEmailQueue.destroy({ where: {} });
+
+            // Bank row pending with the Zelle reference
+            await BankTransaction.create({
+                date: new Date('2025-04-14'),
+                amount: 45.00,
+                description: 'Zelle payment from ALMAZ TESFAY DBLREF01',
+                type: 'ZELLE_CREDIT',
+                status: 'PENDING',
+                payer_name: 'ALMAZ TESFAY',
+                external_ref_id: 'DBLREF01',
+                transaction_hash: 'bankhash-dbl',
+                raw_data: {}
+            });
+
+            const payload = {
+                external_id: 'zelle:DBLREF01',
+                amount: 45.00,
+                payment_date: '2025-04-14',
+                member_id: member.id,
+                payment_type: 'donation',
+                payer_name: 'ALMAZ TESFAY'
+            };
+
+            // 1st create: succeeds and immediately links (which RENAMES the
+            // transaction's external_id to the bank hash)
+            const first = await request(app)
+                .post('/api/zelle/reconcile/create-transaction')
+                .set('Authorization', 'Bearer valid-token')
+                .send(payload)
+                .expect(200);
+            expect(first.body.bank_link.linked).toBe(1);
+
+            // 2nd identical create (double-click / retry / stale preview tab):
+            // must be rejected as EXISTS, not create a duplicate
+            const second = await request(app)
+                .post('/api/zelle/reconcile/create-transaction')
+                .set('Authorization', 'Bearer valid-token')
+                .send(payload);
+            expect(second.status).toBe(409);
+
+            // Exactly ONE transaction and ONE ledger entry for this payment
+            expect(await Transaction.count()).toBe(1);
+            expect(await LedgerEntry.count()).toBe(1);
+        });
+    });
 });
