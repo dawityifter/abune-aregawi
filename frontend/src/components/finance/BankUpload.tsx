@@ -121,6 +121,11 @@ const BankUpload: React.FC<BankUploadProps> = ({ onUploadSuccess }) => {
                             </ul>
                         </div>
                     )}
+                    {result.auto_reconcile_deferred && (
+                        <p className="mt-2 pt-2 border-t border-green-200 font-medium text-amber-700">
+                            {t('bankUpload.autoDeferred')}
+                        </p>
+                    )}
                 </div>
             )}
 

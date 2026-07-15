@@ -71,6 +71,10 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     const [currentBalance, setCurrentBalance] = useState<number | null>(null);
     const [selectedTxn, setSelectedTxn] = useState<BankTransaction | null>(null);
 
+    // On-demand auto-reconcile (batched sweep of the whole PENDING backlog)
+    const [autoReconciling, setAutoReconciling] = useState(false);
+    const [autoReconcileSummary, setAutoReconcileSummary] = useState<string | null>(null);
+
     // Manual Link & Payment Type Selection (bulk mode)
     const [showLinkModal, setShowLinkModal] = useState(false);
     const [selectedPaymentType, setSelectedPaymentType] = useState('donation');
@@ -298,6 +302,53 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         }
     };
 
+    // Sweep the entire PENDING backlog through the batched auto-reconcile
+    // endpoint. Each call is bounded server-side; nextAfterId cursors forward
+    // so every row is examined exactly once regardless of backlog size.
+    const handleAutoReconcile = async () => {
+        if (autoReconciling) return;
+        setAutoReconciling(true);
+        setAutoReconcileSummary(null);
+        try {
+            const token = await firebaseUser?.getIdToken();
+            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+            const totals = { examined: 0, matched: 0 };
+            let afterId: string | number | null = null;
+            let done = false;
+
+            while (!done) {
+                const res: Response = await fetch(`${apiUrl}/api/bank/auto-reconcile`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(afterId ? { afterId } : {})
+                });
+                const data: any = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    throw new Error(data?.message || t('bankTransactions.autoReconcileFailed'));
+                }
+                const s: any = data.data || {};
+                totals.examined += s.examined || 0;
+                totals.matched += (s.autoLinked || 0) + (s.autoMember || 0) + (s.autoExpense || 0);
+                afterId = s.nextAfterId ?? null;
+                done = s.done !== false || !afterId; // afterId guard prevents an infinite loop
+            }
+
+            setAutoReconcileSummary(t('bankTransactions.autoReconcileDone', {
+                examined: totals.examined,
+                matched: totals.matched
+            }));
+            window.dispatchEvent(new Event('bank:refresh'));
+            window.dispatchEvent(new Event('payments:refresh'));
+        } catch (e: any) {
+            setAutoReconcileSummary(e.message || t('bankTransactions.autoReconcileFailed'));
+        } finally {
+            setAutoReconciling(false);
+        }
+    };
+
     // --- Modal Logic ---
 
     return (
@@ -356,6 +407,16 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                             <option value="MATCHED">Matched</option>
                             <option value="IGNORED">Reconciled</option>
                         </select>
+                        <button
+                            type="button"
+                            onClick={handleAutoReconcile}
+                            disabled={autoReconciling}
+                            title={t('bankTransactions.autoReconcileHelp')}
+                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
+                        >
+                            <i className={`fas ${autoReconciling ? 'fa-spinner fa-spin' : 'fa-magic'} mr-2`}></i>
+                            {autoReconciling ? t('bankTransactions.autoReconciling') : t('bankTransactions.autoReconcile')}
+                        </button>
                         {selectedTxnIds.length > 0 && (
                             <button
                                 onClick={() => { setIsBulkMode(true); setSearchTerm(''); setSearchResults([]); setSelectedPaymentType('donation'); setSelectedForYear(''); setShowLinkModal(true); }}
@@ -366,6 +427,12 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                         )}
                     </div>
                 </div>
+
+                {autoReconcileSummary && (
+                    <div className="border-b border-slate-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+                        {autoReconcileSummary}
+                    </div>
+                )}
 
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-slate-200">

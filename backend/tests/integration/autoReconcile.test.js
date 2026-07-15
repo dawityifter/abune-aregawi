@@ -428,6 +428,44 @@ describe('Automatic Bank Reconciliation', () => {
             expect(res.body.success).toBe(true);
             expect(res.body.data.examined).toBe(1);
             expect(res.body.data.needsReview).toBe(1);
+            expect(res.body.data.done).toBe(true);
+        });
+
+        test('POST /api/bank/auto-reconcile sweeps the backlog in bounded batches via afterId cursor', async () => {
+            for (let i = 0; i < 3; i++) {
+                await BankTransaction.create({
+                    date: new Date(`2025-02-0${i + 1}`),
+                    amount: 10 + i,
+                    description: `Zelle payment from UNKNOWN PAYER ${i} 5566778${i}`,
+                    type: 'ZELLE_CREDIT',
+                    status: 'PENDING',
+                    payer_name: `UNKNOWN PAYER ${i}`,
+                    transaction_hash: `bankhash-batch-${i}`,
+                    raw_data: {}
+                });
+            }
+
+            // Batch 1 of 2
+            const first = await request(app)
+                .post('/api/bank/auto-reconcile')
+                .set('Authorization', 'Bearer valid-token')
+                .send({ limit: 2 })
+                .expect(200);
+            expect(first.body.data.examined).toBe(2);
+            expect(first.body.data.done).toBe(false);
+            expect(first.body.data.nextAfterId).toBeTruthy();
+
+            // Batch 2 continues from the cursor and finishes
+            const second = await request(app)
+                .post('/api/bank/auto-reconcile')
+                .set('Authorization', 'Bearer valid-token')
+                .send({ limit: 2, afterId: first.body.data.nextAfterId })
+                .expect(200);
+            expect(second.body.data.examined).toBe(1);
+            expect(second.body.data.done).toBe(true);
+
+            // Total coverage: every backlog row was examined exactly once
+            expect(first.body.data.examined + second.body.data.examined).toBe(3);
         });
 
         test('POST /api/bank/transactions/:id/unreconcile rejects manual reconciliations', async () => {
@@ -472,6 +510,53 @@ describe('Automatic Bank Reconciliation', () => {
 
             expect(res.status).toBe(201);
             expect(await ExpenseMemoMatch.count()).toBeGreaterThan(0);
+        });
+    });
+
+    describe('Bounded pass semantics', () => {
+        test('an explicitly-empty transactionIds list is a no-op, not a full-backlog scan', async () => {
+            await BankTransaction.create({
+                date: new Date('2025-03-01'),
+                amount: 42.00,
+                description: 'Zelle payment from STRANGER PERSON 99887766',
+                type: 'ZELLE_CREDIT',
+                status: 'PENDING',
+                payer_name: 'STRANGER PERSON',
+                transaction_hash: 'bankhash-noop',
+                raw_data: {}
+            });
+
+            const stats = await autoReconcilePending({ user: adminUser, transactionIds: [] });
+
+            // Nothing examined — the pending row must NOT be swept up by accident.
+            expect(stats.examined).toBe(0);
+            expect(stats.done).toBe(true);
+            expect(stats.nextAfterId).toBeNull();
+        });
+
+        test('limit bounds the service pass and reports an accurate cursor', async () => {
+            const created = [];
+            for (let i = 0; i < 3; i++) {
+                created.push(await BankTransaction.create({
+                    date: new Date(`2025-03-1${i}`),
+                    amount: 20 + i,
+                    description: `Zelle payment from NOBODY KNOWN ${i} 1122334${i}`,
+                    type: 'ZELLE_CREDIT',
+                    status: 'PENDING',
+                    payer_name: `NOBODY KNOWN ${i}`,
+                    transaction_hash: `bankhash-limit-${i}`,
+                    raw_data: {}
+                }));
+            }
+
+            const first = await autoReconcilePending({ user: adminUser, limit: 2 });
+            expect(first.examined).toBe(2);
+            expect(first.done).toBe(false);
+            expect(String(first.nextAfterId)).toBe(String(created[1].id));
+
+            const second = await autoReconcilePending({ user: adminUser, limit: 2, afterId: first.nextAfterId });
+            expect(second.examined).toBe(1);
+            expect(second.done).toBe(true);
         });
     });
 });
