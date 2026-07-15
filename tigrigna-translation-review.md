@@ -183,6 +183,19 @@ Added an "annual progress" headline bar (collected ÷ full-year pledged) plus an
 | onPaceHelp | (tooltip: collected vs expected to date…) | ዝተኣከበ ክፍሊት ኣንጻር ክሳብ እዚ እዋን… | ⚠️ |
 | pledged | pledged | ተማባጺዑ | ⚠️ confirm term for "pledged total" |
 
+## Bank auto-reconcile button + deferred-upload notice (new keys to review)
+Added an "Auto-reconcile pending" button in Bank Transactions (batched backlog sweep)
+and a notice when a very large upload defers the inline pass:
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| bankTransactions.autoReconcile | Auto-reconcile pending | ተጸበይቲ ኣወሃህድ | ⚠️ "reconcile" as ኣወሃህድ (harmonize/match) — verify |
+| bankTransactions.autoReconciling | Auto-reconciling… | የወሃህድ ኣሎ… | ⚠️ |
+| bankTransactions.autoReconcileHelp | (tooltip: re-check pending vs known payers/payees/Zelle refs) | ኩሎም ተጸበይቲ ልውውጣት ኣንጻር… | ⚠️ |
+| bankTransactions.autoReconcileDone | Examined {examined}…; {matched} matched or recorded | {examined} ተጸበይቲ ልውውጣት ተፈቲሾም፤… | ⚠️ |
+| bankTransactions.autoReconcileFailed | Auto-reconcile failed | ኣውቶማቲክ ዕርቂ ኣይተዓወተን | ⚠️ ዕርቂ (reconciliation/peace-making) vs ምውህሃድ — pick one term consistently |
+| bankUpload.autoDeferred | Large import: automatic reconciliation was skipped… | ዓቢ ምጽዓን፦… | ⚠️ |
+
 ## Phase 3 — pre-existing mistranslations FIXED (in legacy `LanguageContext.tsx`, please confirm)
 These legacy homepage/CTA `ti` values were semantically wrong (a different meaning, or garbled)
 and have been corrected. All are `en → old ti (meaning) → new ti`:

@@ -1938,6 +1938,14 @@ export const en: Dictionaries = {
   "bankUpload.needsReview": "Left for review: {count}",
   "bankUpload.errors": "Errors: {count}",
   "bankUpload.supportedFormat": "Supported format: Chase Activity CSV. System automatically detects Zelle donors and skips duplicate transactions.",
+  "bankUpload.autoDeferred": "Large import: automatic reconciliation was skipped to keep the upload fast. Use the \"Auto-reconcile pending\" button in Bank Transactions to run it.",
+
+  // -- Bank transactions: on-demand auto-reconcile --
+  "bankTransactions.autoReconcile": "Auto-reconcile pending",
+  "bankTransactions.autoReconciling": "Auto-reconciling…",
+  "bankTransactions.autoReconcileHelp": "Re-check all pending transactions against known payers, payees, and Zelle references. Runs in bounded batches.",
+  "bankTransactions.autoReconcileDone": "Examined {examined} pending transactions; {matched} matched or recorded automatically.",
+  "bankTransactions.autoReconcileFailed": "Auto-reconcile failed",
 
   // -- MonthlyBankSummary --
   "monthlyBankSummary.title": "Monthly Summary",
@@ -3606,6 +3614,14 @@ export const ti: Dictionaries = {
   "bankUpload.needsReview": "ንግምገማ ዝተረፉ፦ {count}",
   "bankUpload.errors": "ጌጋታት፦ {count}",
   "bankUpload.supportedFormat": "ዝድገፍ ቅርጺ፦ Chase Activity CSV። እቲ ስርዓት ብቐጥታ ናይ Zelle ወሃብቲ የለሊ ከምኡውን ዝተደገሙ ልውውጣት ይሓልፍ።",
+  "bankUpload.autoDeferred": "ዓቢ ምጽዓን፦ ምጽዓን ቅልጡፍ ንኽኸውን ኣውቶማቲክ ዕርቂ ተሓሊፉ። ኣብ ናይ ባንክ ልውውጣት ዘሎ \"ተጸበይቲ ኣወሃህድ\" መልጎም ተጠቐሙ።",
+
+  // -- Bank transactions: on-demand auto-reconcile --
+  "bankTransactions.autoReconcile": "ተጸበይቲ ኣወሃህድ",
+  "bankTransactions.autoReconciling": "የወሃህድ ኣሎ…",
+  "bankTransactions.autoReconcileHelp": "ኩሎም ተጸበይቲ ልውውጣት ኣንጻር ዝፍለጡ ከፈልቲ፡ ተቐበልትን ናይ Zelle መወከሲታትን ደጊምካ ፈትሽ። ብዝተወሰኑ ጉጅለታት ይሰርሕ።",
+  "bankTransactions.autoReconcileDone": "{examined} ተጸበይቲ ልውውጣት ተፈቲሾም፤ {matched} ብቐጥታ ተወሃሂዶም ወይ ተመዝጊቦም።",
+  "bankTransactions.autoReconcileFailed": "ኣውቶማቲክ ዕርቂ ኣይተዓወተን",
 
   // -- MonthlyBankSummary --
   "monthlyBankSummary.title": "ወርሓዊ ጽማቕ",

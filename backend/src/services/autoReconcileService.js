@@ -301,25 +301,52 @@ async function autoReconcileDebit(txn, user) {
  * Run the pass over all PENDING bank transactions (optionally restricted to
  * specific ids). Returns stats for display after upload.
  */
-async function autoReconcilePending({ user, transactionIds = null } = {}) {
-  const where = { status: 'PENDING' };
-  if (Array.isArray(transactionIds) && transactionIds.length > 0) {
-    where.id = { [Op.in]: transactionIds };
-  }
-
-  const pending = await BankTransaction.findAll({
-    where,
-    order: [['date', 'ASC'], ['id', 'ASC']]
-  });
-
+async function autoReconcilePending({ user, transactionIds = null, limit = null, afterId = null } = {}) {
   const stats = {
-    examined: pending.length,
+    examined: 0,
     autoLinked: 0,
     autoMember: 0,
     autoExpense: 0,
     needsReview: 0,
-    errors: 0
+    errors: 0,
+    // Batching cursor: when done=false, call again with afterId=nextAfterId to continue.
+    done: true,
+    nextAfterId: null
   };
+
+  const where = { status: 'PENDING' };
+  if (Array.isArray(transactionIds)) {
+    // An explicitly-empty id list means "nothing to reconcile" — never fall
+    // through to a full-backlog scan (that scan is what timed uploads out).
+    if (transactionIds.length === 0) {
+      return stats;
+    }
+    where.id = { [Op.in]: transactionIds };
+  } else if (afterId !== null && afterId !== undefined && afterId !== '') {
+    where.id = { [Op.gt]: afterId };
+  }
+
+  // Bounded batch mode: order by id so afterId is a stable cursor, and fetch
+  // one extra row to detect whether more remain without a second COUNT query.
+  const batchLimit = Number.isFinite(Number(limit)) && Number(limit) > 0
+    ? Math.floor(Number(limit))
+    : null;
+
+  const pending = await BankTransaction.findAll({
+    where,
+    order: batchLimit ? [['id', 'ASC']] : [['date', 'ASC'], ['id', 'ASC']],
+    ...(batchLimit ? { limit: batchLimit + 1 } : {})
+  });
+
+  if (batchLimit && pending.length > batchLimit) {
+    pending.length = batchLimit; // drop the extra look-ahead row
+    stats.done = false;
+  }
+
+  stats.examined = pending.length;
+  if (pending.length > 0) {
+    stats.nextAfterId = pending[pending.length - 1].id;
+  }
 
   for (const txn of pending) {
     try {

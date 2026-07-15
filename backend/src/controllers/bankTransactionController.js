@@ -67,11 +67,19 @@ exports.uploadBankCSV = asyncHandler(async (req, res) => {
         }
 
         // 3. Bulk Create New Transactions
+        let createdIds = [];
         if (toCreate.length > 0) {
             // Use chunks to avoid too large SQL queries if necessary, though 1000s is usually fine.
             // SQLite/Postgres can handle moderate batch sizes.
             await BankTransaction.bulkCreate(toCreate);
             results.imported += toCreate.length;
+            // Re-query the just-created rows by hash to get their IDs (dialect-agnostic;
+            // these hashes were not in the DB before, so they match only the new rows).
+            const createdRows = await BankTransaction.findAll({
+                where: { transaction_hash: toCreate.map(t => t.transaction_hash) },
+                attributes: ['id']
+            });
+            createdIds = createdRows.map(r => r.id);
         }
 
         // 4. Update Existing (Parallel Promises)
@@ -90,20 +98,31 @@ exports.uploadBankCSV = asyncHandler(async (req, res) => {
             }
         }
 
-        // 5. Automatic reconciliation pass over ALL pending transactions
-        // (new rows + older pending ones that may now have learned matches)
+        // 5. Automatic reconciliation pass over ONLY the newly-imported transactions.
+        // Re-scanning the entire PENDING backlog on every upload made this request grow
+        // unbounded and time out behind nginx (60s upstream read timeout -> 504, surfaced
+        // in the browser as a CORS error). Older pending rows are re-checked via the
+        // "Auto-reconcile pending" button in Bank Transactions (batched endpoint below).
+        // Very large imports skip the inline pass too (each row costs several queries);
+        // the response flags this so the UI can point at the button instead.
+        const inlineLimit = parseInt(process.env.UPLOAD_AUTO_RECONCILE_LIMIT, 10) || 200;
         let autoStats = null;
-        try {
-            const { autoReconcilePending } = require('../services/autoReconcileService');
-            autoStats = await autoReconcilePending({ user: req.user });
-        } catch (autoErr) {
-            console.error('Auto-reconcile pass failed (upload still succeeded):', autoErr.message);
+        let autoDeferred = false;
+        if (createdIds.length > 0 && createdIds.length <= inlineLimit) {
+            try {
+                const { autoReconcilePending } = require('../services/autoReconcileService');
+                autoStats = await autoReconcilePending({ user: req.user, transactionIds: createdIds });
+            } catch (autoErr) {
+                console.error('Auto-reconcile pass failed (upload still succeeded):', autoErr.message);
+            }
+        } else if (createdIds.length > inlineLimit) {
+            autoDeferred = true;
         }
 
         res.status(200).json({
             success: true,
             message: `Processed ${parsedTransactions.length} rows`,
-            data: { ...results, auto_reconcile: autoStats }
+            data: { ...results, auto_reconcile: autoStats, auto_reconcile_deferred: autoDeferred }
         });
 
     } catch (error) {
@@ -544,7 +563,17 @@ exports.getMonthlySummary = asyncHandler(async (req, res) => {
  */
 exports.runAutoReconcile = asyncHandler(async (req, res) => {
     const { autoReconcilePending } = require('../services/autoReconcileService');
-    const stats = await autoReconcilePending({ user: req.user });
+    // Bounded by default so a large PENDING backlog cannot exceed the proxy's
+    // 60s read timeout in a single request. Clients sweep the whole backlog by
+    // calling again with afterId = previous response's nextAfterId until done.
+    const DEFAULT_BATCH_LIMIT = 200;
+    const rawLimit = parseInt(req.body?.limit ?? req.query?.limit, 10);
+    const limit = Number.isFinite(rawLimit)
+        ? Math.min(Math.max(rawLimit, 1), 500)
+        : DEFAULT_BATCH_LIMIT;
+    const afterId = req.body?.afterId ?? req.query?.afterId ?? null;
+
+    const stats = await autoReconcilePending({ user: req.user, limit, afterId });
     res.json({ success: true, data: stats });
 });
 
