@@ -173,6 +173,16 @@ Legend: ✅ confident · ⚠️ please verify wording · 🔴 likely needs a bet
 | smsBroadcast.standardEncoding | Standard Encoding | ስሩዕ ኢንኮዲንግ | ⚠️ "encoding" transliterated |
 | paymentList.filterBehind | Behind on Payments | ብክፍሊት ዝደንጎየ | ⚠️ |
 
+## Treasurer dashboard — dues-progress metric (new keys to review)
+Added an "annual progress" headline bar (collected ÷ full-year pledged) plus an
+"on pace" badge (collected ÷ expected-to-date). New keys under `treasurerDashboard.stats`:
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| onPace | On pace | ፍጥነት ኣከባ | ⚠️ "pace/rate of collection" — verify |
+| onPaceHelp | (tooltip: collected vs expected to date…) | ዝተኣከበ ክፍሊት ኣንጻር ክሳብ እዚ እዋን… | ⚠️ |
+| pledged | pledged | ተማባጺዑ | ⚠️ confirm term for "pledged total" |
+
 ## Phase 3 — pre-existing mistranslations FIXED (in legacy `LanguageContext.tsx`, please confirm)
 These legacy homepage/CTA `ti` values were semantically wrong (a different meaning, or garbled)
 and have been corrected. All are `en → old ti (meaning) → new ti`:
