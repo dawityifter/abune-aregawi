@@ -14,6 +14,7 @@ const {
   Member,
   Transaction,
   ZelleMemoMatch,
+  ZelleEmailQueue,
   IncomeCategory,
   LedgerEntry,
   sequelize
@@ -296,6 +297,22 @@ async function createZelleTransaction({
     return { success: false, message: 'Transaction already exists for this external_id', id: existing.id, code: 'EXISTS' };
   }
 
+  // Rename-immune duplicate guard: when bank reconciliation links a Zelle
+  // transaction to its bank row, the transaction's external_id is RENAMED to
+  // the bank hash — so the lookup above misses on a retry/double-click and
+  // would double-post. The email queue row is keyed by the original
+  // external_id forever; if it already points at a live transaction, this
+  // payment is recorded.
+  const queued = await ZelleEmailQueue.findOne({
+    where: { external_id, transaction_id: { [Op.ne]: null } }
+  });
+  if (queued && queued.transaction_id) {
+    const linked = await Transaction.findByPk(queued.transaction_id);
+    if (linked) {
+      return { success: false, message: 'Transaction already exists for this Zelle payment', id: linked.id, code: 'EXISTS' };
+    }
+  }
+
   const receiptValidation = validateReceiptNumber(receipt_number);
   if (!receiptValidation.valid) {
     throw new Error(receiptValidation.message);
@@ -350,7 +367,19 @@ async function createZelleTransaction({
     console.error('⚠️ Failed to create ledger entry for Zelle transaction:', ledgerErr.message);
   }
 
-  return { success: true, id: tx.id, data: tx };
+  // Immediately link any matching PENDING bank rows so the Bank Transactions
+  // screen shows MATCHED without waiting for an on-demand auto-reconcile run.
+  // (Lazy require: autoReconcileService imports from this module at load time.)
+  // Never fails the creation.
+  let bankLink = null;
+  try {
+    const { linkPendingBankRowsForTransaction } = require('./autoReconcileService');
+    bankLink = await linkPendingBankRowsForTransaction(tx, { id: collectedBy });
+  } catch (linkErr) {
+    console.error('⚠️ Targeted bank-row linking failed for Zelle transaction:', linkErr.message);
+  }
+
+  return { success: true, id: tx.id, data: tx, bank_link: bankLink };
 }
 
 module.exports = {

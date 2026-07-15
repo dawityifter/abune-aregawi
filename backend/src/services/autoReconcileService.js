@@ -148,7 +148,7 @@ async function recordExpenseFromBankTxn(bankTxn, { gl_code, payee_name, vendor_i
 // The automatic pass
 // ---------------------------------------------------------------------------
 
-async function autoReconcileCredit(txn, user) {
+async function autoReconcileCredit(txn, user, { linkOnly = false } = {}) {
   const plain = txn.get({ plain: true });
   const { findPotentialMatches, processReconciliation } = require('./reconciliationService');
 
@@ -217,6 +217,13 @@ async function autoReconcileCredit(txn, user) {
   }
   if (potentials.length > 1) {
     return null; // ambiguous — treasurer decides
+  }
+
+  // Link-only mode (targeted linking after a Zelle transaction is created):
+  // never fall through to Tier 2, which would CREATE transactions for other
+  // learned payers that merely share the amount/date window.
+  if (linkOnly) {
+    return null;
   }
 
   // Tier 2: learned payer→member association, exactly one member.
@@ -301,6 +308,45 @@ async function autoReconcileDebit(txn, user) {
  * Run the pass over all PENDING bank transactions (optionally restricted to
  * specific ids). Returns stats for display after upload.
  */
+/**
+ * Targeted linking: after a Zelle transaction is created (review screen or
+ * Gmail automation), immediately try to link any matching PENDING bank rows
+ * so the Bank Transactions screen reflects the match right away instead of
+ * waiting for an on-demand auto-reconcile run.
+ *
+ * Candidates are prefiltered cheaply (PENDING credits with the same amount in
+ * a generous date window); autoReconcileCredit's Tier 0/1 then decides with
+ * its usual certainty rules. linkOnly prevents Tier 2 from creating
+ * transactions for unrelated learned payers that share the amount.
+ */
+async function linkPendingBankRowsForTransaction(tx, user, { dayWindow = 7, maxCandidates = 10 } = {}) {
+  const paymentDate = new Date(tx.payment_date);
+  if (Number.isNaN(paymentDate.getTime())) return { linked: 0, examined: 0 };
+  const start = new Date(paymentDate.getTime() - dayWindow * 24 * 60 * 60 * 1000);
+  const end = new Date(paymentDate.getTime() + dayWindow * 24 * 60 * 60 * 1000);
+
+  const candidates = await BankTransaction.findAll({
+    where: {
+      status: 'PENDING',
+      amount: Number(tx.amount),
+      date: { [Op.gte]: start, [Op.lte]: end }
+    },
+    order: [['date', 'ASC'], ['id', 'ASC']],
+    limit: maxCandidates
+  });
+
+  let linked = 0;
+  for (const row of candidates) {
+    try {
+      const result = await autoReconcileCredit(row, user, { linkOnly: true });
+      if (result === 'AUTO_LINKED') linked += 1;
+    } catch (e) {
+      console.error(`Targeted bank link failed for bank txn ${row.id}:`, e.message || e);
+    }
+  }
+  return { linked, examined: candidates.length };
+}
+
 async function autoReconcilePending({ user, transactionIds = null, limit = null, afterId = null } = {}) {
   const stats = {
     examined: 0,
@@ -445,6 +491,7 @@ async function undoAutoReconciliation(bankTxnId) {
 
 module.exports = {
   autoReconcilePending,
+  linkPendingBankRowsForTransaction,
   undoAutoReconciliation,
   learnExpenseMemoMatch,
   findLearnedExpense,

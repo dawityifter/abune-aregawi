@@ -53,19 +53,32 @@ async function processTransactionCreation(item, user) {
     payer_name: payer_name || extractPayerName(note || '')
   }, collected_by);
 
-  // Keep the email queue in sync when the treasurer creates manually
+  // Keep the email queue in sync when the treasurer creates manually.
+  // UPSERT (not update): the preview flow never persists queue rows, and this
+  // row is the rename-immune record that blocks double-posting the same
+  // payment after bank reconciliation renames the transaction's external_id.
   if (result.success && external_id) {
     try {
-      await ZelleEmailQueue.update(
-        {
-          status: 'CREATED',
-          transaction_id: result.id,
-          matched_member_id: member_id || null,
-          processed_at: new Date(),
-          error: null
-        },
-        { where: { external_id } }
-      );
+      const queueFields = {
+        status: 'CREATED',
+        transaction_id: result.id,
+        matched_member_id: member_id || null,
+        processed_at: new Date(),
+        error: null
+      };
+      const [row, created] = await ZelleEmailQueue.findOrCreate({
+        where: { external_id },
+        defaults: {
+          ...queueFields,
+          amount: amount || null,
+          payment_date: payment_date || null,
+          note: note || null,
+          payer_name: payer_name || extractPayerName(note || '') || null
+        }
+      });
+      if (!created) {
+        await row.update(queueFields);
+      }
     } catch (e) {
       console.warn('Zelle queue update warning:', e.message || e);
     }
