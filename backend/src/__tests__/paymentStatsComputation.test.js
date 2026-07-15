@@ -88,6 +88,19 @@ describe('getPaymentStats income vs expenses', () => {
   });
 });
 
+describe('getPaymentStats dues progress rates', () => {
+  it('exposes full-year pledged total and annual collection rate', async () => {
+    // Member pledged 1200/yr and has paid 600 in dues to date.
+    const d = (await invoke()).data;
+    expect(d.totalAnnualPledged).toBe(1200);
+    // Dues collected scoped to tracked members = 600 (the member's paid_to_date).
+    expect(d.trackedMembershipCollected).toBe(600);
+    // Annual progress = collected / full-year pledged = 600 / 1200 = 50% (time-independent).
+    expect(d.annualCollectionRate).toBe(50);
+    expect(d.annualOutstandingAmount).toBe(600);
+  });
+});
+
 describe('getPaymentStats reconciliation', () => {
   it('marks both sides reconciled when within the threshold', async () => {
     mockDeposits = 910;   // |900 - 910| = 10 <= 50

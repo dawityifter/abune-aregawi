@@ -153,6 +153,9 @@ export interface Dictionaries {
       lastUpdated: string;
       balanceNote: string;
       target: string;
+      onPace: string;
+      onPaceHelp: string;
+      pledged: string;
       membershipDues: string;
       otherDonations: string;
       reconcileRequired: string;
@@ -866,6 +869,9 @@ export const en: Dictionaries = {
       lastUpdated: "Updated",
       balanceNote: "Balance reflects all transactions on record, not filtered by year",
       target: "Goal",
+      onPace: "On pace",
+      onPaceHelp: "Dues collected vs. what's expected by this point in the year (partial payments count). Can exceed 100% when members pay ahead.",
+      pledged: "pledged",
       membershipDues: "Membership Dues",
       otherDonations: "Other Donations",
       reconcileRequired: "Doesn't match the bank statement — reconciliation required",
@@ -2530,6 +2536,9 @@ export const ti: Dictionaries = {
       lastUpdated: "ዝተሓደሰሉ",
       balanceNote: "ሕሳብ ኣብ መዝገብ ዘለዉ ኩሎም ንግዳት የንጸባርቕ እዩ፣ ብዓመት ኣይተፈልየን",
       target: "ዕላማ",
+      onPace: "ፍጥነት ኣከባ",
+      onPaceHelp: "ዝተኣከበ ክፍሊት ኣንጻር ክሳብ እዚ እዋን ክኽፈል ዝጽበ (ከፊላዊ ክፍሊት እውን ይቑጸር)። ኣባላት ኣቐዲሞም ምስ ዝኸፍሉ ካብ 100% ክሓልፍ ይኽእል።",
+      pledged: "ተማባጺዑ",
       membershipDues: "ናይ ኣባልነት ክፍሊት",
       otherDonations: "ካልእ ሽልማታት",
       reconcileRequired: "ምስ ናይ ባንኪ መግለጺ ኣይሰማምዕን — ምዕራይ የድሊ",

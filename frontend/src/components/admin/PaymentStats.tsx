@@ -22,13 +22,17 @@ interface PaymentStatsData {
   upToDateMembers: number;
   behindMembers: number;
   totalAmountDue: number;
+  totalAnnualPledged?: number;
   totalMembershipCollected: number;
+  trackedMembershipCollected?: number;
   otherPayments: number;
   totalCollected: number;
   totalExpenses: number;
   netIncome: number;
-  collectionRate: number;
+  collectionRate: number; // pace: collected vs expected-to-date
+  annualCollectionRate?: number; // headline: collected vs full-year pledged
   outstandingAmount: number;
+  annualOutstandingAmount?: number;
   currentBankBalance?: number;
   lastBankUpdate?: string;
   reconciliation?: Reconciliation;
@@ -86,7 +90,16 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availa
     </button>
   );
 
-  const progressPct = Math.min(parseFloat(stats.collectionRate.toString()), 100);
+  // Headline bar = annual progress (collected vs full-year pledged); clamp for the bar.
+  const annualRate = stats.annualCollectionRate ?? stats.collectionRate ?? 0;
+  const progressPct = Math.min(parseFloat(annualRate.toString()), 100);
+  // Pace badge = collected vs expected-to-date; shown uncapped (can exceed 100% = ahead).
+  const paceRate = stats.collectionRate ?? 0;
+  const paceAhead = paceRate >= 100;
+  // Dues figures scoped to tracked members so the "collected / pledged" line matches the bar.
+  const collectedForDues = stats.trackedMembershipCollected ?? stats.totalMembershipCollected;
+  const annualPledged = stats.totalAnnualPledged ?? stats.totalAmountDue;
+  const annualOutstanding = stats.annualOutstandingAmount ?? stats.outstandingAmount;
 
   const currentYear = new Date().getFullYear();
   const isCurrentYear = selectedYear === currentYear;
@@ -171,7 +184,19 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availa
             <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
               {t(`${td}.stats.annualDuesProgress`)}
             </p>
-            <span className="text-2xl font-bold text-blue-700">{progressPct}%</span>
+            <div className="flex items-center gap-2">
+              {/* Pace badge: green when on/ahead of schedule, amber when behind */}
+              <span
+                title={t(`${td}.stats.onPaceHelp`)}
+                className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  paceAhead ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                }`}
+              >
+                <span aria-hidden="true">{paceAhead ? '▲' : '▼'}</span>
+                {t(`${td}.stats.onPace`)}: {paceRate}%
+              </span>
+              <span className="text-2xl font-bold text-blue-700">{progressPct}%</span>
+            </div>
           </div>
 
           {/* Progress bar */}
@@ -184,13 +209,13 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availa
 
           <div className="flex justify-between text-sm text-gray-600 mb-4">
             <span>
-              <span className="font-semibold text-gray-900">{fmt(stats.totalMembershipCollected)}</span>
+              <span className="font-semibold text-gray-900">{fmt(collectedForDues)}</span>
               {' '}{t(`${td}.stats.collectedOf`)}{' '}
-              <span className="font-semibold text-gray-900">{fmt(stats.totalAmountDue)}</span>
-              {' '}{t(`${td}.stats.target`)}
+              <span className="font-semibold text-gray-900">{fmt(annualPledged)}</span>
+              {' '}{t(`${td}.stats.pledged`)}
             </span>
             <span className="text-red-600 font-medium">
-              {fmt(stats.outstandingAmount)} {t(`${td}.stats.stillOutstanding`)}
+              {fmt(annualOutstanding)} {t(`${td}.stats.stillOutstanding`)}
             </span>
           </div>
 

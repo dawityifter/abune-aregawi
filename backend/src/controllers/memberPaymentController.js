@@ -321,11 +321,15 @@ const getPaymentStats = async (req, res) => {
           upToDateMembers: 0,
           behindMembers: 0,
           totalAmountDue: 0,
+          totalAnnualPledged: 0,
           totalMembershipCollected: 0,
+          trackedMembershipCollected: 0,
           otherPayments: Number(otherPayments.toFixed(2)),
           totalCollected: Number(otherPayments.toFixed(2)),
           outstandingAmount: 0,
+          annualOutstandingAmount: 0,
           collectionRate: 0,
+          annualCollectionRate: 0,
           reconciliation
         }
       });
@@ -363,7 +367,12 @@ const getPaymentStats = async (req, res) => {
 
     let upToDateMembers = 0;
     let behindMembers = 0;
-    let totalAmountDue = 0; // expected-to-date total across contributing members
+    let totalAmountDue = 0;       // expected-TO-DATE total (pro-rated by month elapsed)
+    let totalAnnualPledged = 0;   // full-year pledged total across dues-tracked members
+    // Dues collected scoped to dues-tracked members only, so the progress ratios
+    // reconcile with the member counts. (totalMembershipCollected below stays the
+    // ALL-dues figure used for receipts / net income / reconciliation.)
+    let trackedMembershipCollected = 0;
 
     for (const m of contributingMembersList) {
       const pledge = Number(m.yearly_pledge || 0);
@@ -372,6 +381,8 @@ const getPaymentStats = async (req, res) => {
       const paidToDate = paidMap.get(String(m.id)) || 0;
 
       totalAmountDue += expectedToDate;
+      totalAnnualPledged += pledge;
+      trackedMembershipCollected += paidToDate;
       if (paidToDate + 1e-6 >= expectedToDate) {
         upToDateMembers += 1;
       } else {
@@ -411,9 +422,17 @@ const getPaymentStats = async (req, res) => {
     // Calculate net income
     const netIncome = totalCollected - totalExpenses;
 
-    const outstandingAmount = Math.max(totalAmountDue - totalMembershipCollected, 0);
+    // Pace (are we keeping up month-to-month?): collected vs expected-to-date.
+    // Numerator scoped to dues-tracked members. Can exceed 100% when members pay ahead.
+    const outstandingAmount = Math.max(totalAmountDue - trackedMembershipCollected, 0);
     const collectionRate = totalAmountDue > 0
-      ? Number(((totalMembershipCollected / totalAmountDue) * 100).toFixed(2))
+      ? Number(((trackedMembershipCollected / totalAmountDue) * 100).toFixed(2))
+      : 0;
+    // Annual progress (how much of the year's committed dues is in?):
+    // collected vs full-year pledged. Climbs steadily and is the headline bar.
+    const annualOutstandingAmount = Math.max(totalAnnualPledged - trackedMembershipCollected, 0);
+    const annualCollectionRate = totalAnnualPledged > 0
+      ? Number(((trackedMembershipCollected / totalAnnualPledged) * 100).toFixed(2))
       : 0;
 
     // Fetch latest bank balance
@@ -453,13 +472,17 @@ const getPaymentStats = async (req, res) => {
       upToDateMembers,
       behindMembers,
       totalAmountDue: Number((totalAmountDue || 0).toFixed(2)),
+      totalAnnualPledged: Number((totalAnnualPledged || 0).toFixed(2)),
       totalMembershipCollected: Number((totalMembershipCollected || 0).toFixed(2)),
+      trackedMembershipCollected: Number((trackedMembershipCollected || 0).toFixed(2)),
       otherPayments: Number((otherPayments || 0).toFixed(2)),
       totalCollected: Number((totalCollected || 0).toFixed(2)),
       totalExpenses: Number((totalExpenses || 0).toFixed(2)),
       netIncome: Number((netIncome || 0).toFixed(2)),
       outstandingAmount: Number((outstandingAmount || 0).toFixed(2)),
+      annualOutstandingAmount: Number((annualOutstandingAmount || 0).toFixed(2)),
       collectionRate,
+      annualCollectionRate,
       currentBankBalance,
       lastBankUpdate,
       reconciliation
