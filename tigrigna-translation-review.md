@@ -196,6 +196,18 @@ and a notice when a very large upload defers the inline pass:
 | bankTransactions.autoReconcileFailed | Auto-reconcile failed | ኣውቶማቲክ ዕርቂ ኣይተዓወተን | ⚠️ ዕርቂ (reconciliation/peace-making) vs ምውህሃድ — pick one term consistently |
 | bankUpload.autoDeferred | Large import: automatic reconciliation was skipped… | ዓቢ ምጽዓን፦… | ⚠️ |
 
+## Member Information report (new keys to review)
+New "Member Information" report type in the Payment Reports dropdown (active member
+directory with spouse contact, printable with the church heading):
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| memberInfoReport.type | Member Information | ሓበሬታ ኣባላት | ✅ |
+| memberInfoReport.title | Member Information Report | ጸብጻብ ሓበሬታ ኣባላት | ⚠️ |
+| memberInfoReport.colSpouseFirst | Spouse First | ስም መጻምዲ | ⚠️ "spouse first name" compressed |
+| memberInfoReport.colSpouseLast | Spouse Last | ስም ኣቦ መጻምዲ | ⚠️ "father name of spouse" — verify convention |
+| memberInfoReport.colSpousePhone | Spouse Phone | ስልኪ መጻምዲ | ✅ |
+
 ## Phase 3 — pre-existing mistranslations FIXED (in legacy `LanguageContext.tsx`, please confirm)
 These legacy homepage/CTA `ti` values were semantically wrong (a different meaning, or garbled)
 and have been corrected. All are `en → old ti (meaning) → new ti`:

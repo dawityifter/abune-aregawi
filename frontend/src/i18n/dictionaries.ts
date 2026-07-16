@@ -1947,6 +1947,19 @@ export const en: Dictionaries = {
   "bankTransactions.autoReconcileDone": "Examined {examined} pending transactions; {matched} matched or recorded automatically.",
   "bankTransactions.autoReconcileFailed": "Auto-reconcile failed",
 
+  // -- Member Information report (Payment Reports tab) --
+  "memberInfoReport.type": "Member Information",
+  "memberInfoReport.title": "Member Information Report",
+  "memberInfoReport.generated": "Generated",
+  "memberInfoReport.activeMembers": "Active members",
+  "memberInfoReport.colId": "ID",
+  "memberInfoReport.colFirstName": "First Name",
+  "memberInfoReport.colLastName": "Last Name",
+  "memberInfoReport.colPhone": "Phone",
+  "memberInfoReport.colSpouseFirst": "Spouse First",
+  "memberInfoReport.colSpouseLast": "Spouse Last",
+  "memberInfoReport.colSpousePhone": "Spouse Phone",
+
   // -- MonthlyBankSummary --
   "monthlyBankSummary.title": "Monthly Summary",
   "monthlyBankSummary.subtitle": "Income and expenses from bank activity, last {count} months",
@@ -3622,6 +3635,19 @@ export const ti: Dictionaries = {
   "bankTransactions.autoReconcileHelp": "ኩሎም ተጸበይቲ ልውውጣት ኣንጻር ዝፍለጡ ከፈልቲ፡ ተቐበልትን ናይ Zelle መወከሲታትን ደጊምካ ፈትሽ። ብዝተወሰኑ ጉጅለታት ይሰርሕ።",
   "bankTransactions.autoReconcileDone": "{examined} ተጸበይቲ ልውውጣት ተፈቲሾም፤ {matched} ብቐጥታ ተወሃሂዶም ወይ ተመዝጊቦም።",
   "bankTransactions.autoReconcileFailed": "ኣውቶማቲክ ዕርቂ ኣይተዓወተን",
+
+  // -- Member Information report (Payment Reports tab) --
+  "memberInfoReport.type": "ሓበሬታ ኣባላት",
+  "memberInfoReport.title": "ጸብጻብ ሓበሬታ ኣባላት",
+  "memberInfoReport.generated": "ዝተፈጥረ",
+  "memberInfoReport.activeMembers": "ንጡፋት ኣባላት",
+  "memberInfoReport.colId": "መለለዪ",
+  "memberInfoReport.colFirstName": "ስም ቀዳማይ",
+  "memberInfoReport.colLastName": "ስም ኣቦ",
+  "memberInfoReport.colPhone": "ስልኪ",
+  "memberInfoReport.colSpouseFirst": "ስም መጻምዲ",
+  "memberInfoReport.colSpouseLast": "ስም ኣቦ መጻምዲ",
+  "memberInfoReport.colSpousePhone": "ስልኪ መጻምዲ",
 
   // -- MonthlyBankSummary --
   "monthlyBankSummary.title": "ወርሓዊ ጽማቕ",
