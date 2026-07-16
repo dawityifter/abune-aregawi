@@ -715,5 +715,118 @@ describe('Automatic Bank Reconciliation', () => {
             expect(await Transaction.count()).toBe(1);
             expect(await LedgerEntry.count()).toBe(1);
         });
+
+        test('memo anchor: links and learns when the Zelle sender name differs from the member name (MULUBIRHAN repro)', async () => {
+            // Real production case: sender "MULUBIRHAN REDA" pays for member
+            // "Mulubirhan Zerihun" — surname differs, so Tier 1's name rule
+            // fails; the email had no parseable payer, only the memo.
+            const zerihun = await Member.create({
+                first_name: 'Mulubirhan',
+                last_name: 'Zerihun',
+                phone_number: '+1444555666',
+                is_active: true
+            });
+
+            const rowA = await BankTransaction.create({
+                date: new Date('2026-07-13'),
+                amount: 300.00,
+                description: 'Zelle payment from MULUBIRHAN REDA BACgp9am05vo',
+                type: 'ZELLE_CREDIT',
+                status: 'PENDING',
+                payer_name: 'MULUBIRHAN REDA',
+                external_ref_id: 'BACgp9am05vo',
+                transaction_hash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                raw_data: {}
+            });
+            const rowB = await BankTransaction.create({
+                date: new Date('2026-07-13'),
+                amount: 300.00,
+                description: 'Zelle payment from MULUBIRHAN REDA BACd624fssr9',
+                type: 'ZELLE_CREDIT',
+                status: 'PENDING',
+                payer_name: 'MULUBIRHAN REDA',
+                external_ref_id: 'BACd624fssr9',
+                transaction_hash: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+                raw_data: {}
+            });
+
+            // Treasurer matches the payment in the Zelle review screen; the
+            // memo contains the bank payer string.
+            const res = await request(app)
+                .post('/api/zelle/reconcile/create-transaction')
+                .set('Authorization', 'Bearer valid-token')
+                .send({
+                    external_id: 'zelle:29979684657',
+                    amount: 300.00,
+                    payment_date: '2026-07-12',
+                    member_id: zerihun.id,
+                    payment_type: 'donation',
+                    note: 'MULUBIRHAN REDA member bank'
+                })
+                .expect(200);
+
+            // The memo-anchored link matched the OLDEST pending row
+            expect(res.body.bank_link.linked).toBe(1);
+            await rowA.reload();
+            expect(rowA.status).toBe('MATCHED');
+            expect(rowA.reconciled_source).toBe('AUTO_LINKED');
+            expect(rowA.reconciled_meta.reason).toMatch(/memo contains/i);
+
+            // And the payer→member association was learned from the bank row
+            const learnedKey = await BankMemoMatch.findOne({
+                where: { match_key: 'ZELLE:PAYER:MULUBIRHAN REDA' }
+            });
+            expect(learnedKey).not.toBeNull();
+            expect(String(learnedKey.member_id)).toBe(String(zerihun.id));
+
+            // The second $300 payment (a genuinely separate one) now
+            // auto-creates for the right member on the next full pass
+            const stats = await autoReconcilePending({ user: adminUser });
+            expect(stats.autoMember).toBe(1);
+            await rowB.reload();
+            expect(rowB.status).toBe('MATCHED');
+            expect(String(rowB.member_id)).toBe(String(zerihun.id));
+        });
+
+        test('Tier 2 links an existing unlinked member transaction instead of creating a duplicate', async () => {
+            // A transaction already recorded from the Zelle review (unlinked,
+            // and invisible to Tier 1 because the sender name differs from
+            // the member's registered name)
+            const existingTx = await Transaction.create({
+                member_id: member.id, // Almaz Tesfay
+                collected_by: adminUser.id,
+                payment_date: '2026-07-10',
+                amount: 120.00,
+                payment_type: 'donation',
+                payment_method: 'zelle',
+                status: 'succeeded',
+                external_id: 'zelle:55511122'
+            });
+
+            const bankTxn = await BankTransaction.create({
+                date: new Date('2026-07-11'),
+                amount: 120.00,
+                description: 'Zelle payment from BERHE KIDANE 77665544',
+                type: 'ZELLE_CREDIT',
+                status: 'PENDING',
+                payer_name: 'BERHE KIDANE', // ≠ "Almaz Tesfay" → Tier 1 misses
+                transaction_hash: 'bankhash-linkfirst',
+                raw_data: {}
+            });
+            // Learned association: BERHE KIDANE pays for Almaz
+            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id);
+
+            const stats = await autoReconcilePending({ user: adminUser });
+
+            // Must LINK the existing transaction, not create a second one
+            expect(stats.autoLinked).toBe(1);
+            expect(stats.autoMember).toBe(0);
+            await bankTxn.reload();
+            expect(bankTxn.status).toBe('MATCHED');
+            expect(bankTxn.reconciled_source).toBe('AUTO_LINKED');
+            expect(bankTxn.reconciled_meta.transaction_id).toBe(existingTx.id);
+            expect(bankTxn.reconciled_meta.reason).toMatch(/linked existing/i);
+            expect(await Transaction.count()).toBe(1); // no duplicate
+        });
     });
 });

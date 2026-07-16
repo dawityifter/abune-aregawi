@@ -35,7 +35,9 @@ const {
 const {
   findSuggestionCandidates,
   getBankMatchKeys,
+  learnBankMemoMatch,
   normalizeDescriptionForKey,
+  normalizeWords,
   sourceTypeFor
 } = require('./bankMemoMatchService');
 const { getDefaultPaymentType } = require('./zelleTransactionService');
@@ -237,6 +239,52 @@ async function autoReconcileCredit(txn, user, { linkOnly = false } = {}) {
   }
 
   const memberId = learned[0].member.id;
+
+  // Link-first: if this learned member already has an unlinked transaction
+  // matching this row's amount and date window, LINK it instead of creating.
+  // Tier 1 can't see such transactions when the bank payer's name differs
+  // from the member's registered name (family members often send from
+  // accounts under other names) — creating here would double-post the
+  // payment the treasurer already recorded from the Zelle review screen.
+  {
+    const rowDate = new Date(plain.date);
+    const startDate = new Date(rowDate); startDate.setDate(startDate.getDate() - dayWindow);
+    const endDate = new Date(rowDate); endDate.setDate(endDate.getDate() + dayWindow);
+    const unlinkedForMember = (await Transaction.findAll({
+      where: {
+        member_id: memberId,
+        amount: plain.amount,
+        payment_method: sourceTypeFor(plain).toLowerCase(),
+        payment_date: { [Op.between]: [startDate, endDate] },
+        status: { [Op.ne]: 'failed' }
+      },
+      order: [['payment_date', 'ASC'], ['id', 'ASC']]
+    })).filter((t) => t.external_id !== plain.transaction_hash && !/^[a-f0-9]{32}$/i.test(String(t.external_id || '')));
+
+    if (unlinkedForMember.length > 0) {
+      const existing = unlinkedForMember[0]; // oldest first: double payments consume in order
+      const prevExternalId = existing.external_id || null;
+      await processReconciliation({
+        bankTxnId: txn.id,
+        memberId: null,
+        user,
+        existingTransactionId: existing.id
+      });
+      await txn.update({
+        reconciled_source: 'AUTO_LINKED',
+        reconciled_at: new Date(),
+        reconciled_meta: {
+          transaction_id: existing.id,
+          created: false,
+          prev_external_id: prevExternalId,
+          member_id: memberId,
+          reason: 'Learned payer; linked existing unlinked transaction for the member'
+        }
+      });
+      return 'AUTO_LINKED';
+    }
+  }
+
   const { payment_type, for_year } = await getDefaultPaymentType(memberId, txn.date);
 
   const { donation } = await processReconciliation({
@@ -319,7 +367,7 @@ async function autoReconcileDebit(txn, user) {
  * its usual certainty rules. linkOnly prevents Tier 2 from creating
  * transactions for unrelated learned payers that share the amount.
  */
-async function linkPendingBankRowsForTransaction(tx, user, { dayWindow = 7, maxCandidates = 10 } = {}) {
+async function linkPendingBankRowsForTransaction(tx, user, { dayWindow = 7, maxCandidates = 10, payerName = null } = {}) {
   const paymentDate = new Date(tx.payment_date);
   if (Number.isNaN(paymentDate.getTime())) return { linked: 0, examined: 0 };
   const start = new Date(paymentDate.getTime() - dayWindow * 24 * 60 * 60 * 1000);
@@ -336,14 +384,72 @@ async function linkPendingBankRowsForTransaction(tx, user, { dayWindow = 7, maxC
   });
 
   let linked = 0;
+  let linkedRow = null;
   for (const row of candidates) {
     try {
       const result = await autoReconcileCredit(row, user, { linkOnly: true });
-      if (result === 'AUTO_LINKED') linked += 1;
+      if (result === 'AUTO_LINKED') {
+        linked += 1;
+        if (!linkedRow) linkedRow = row;
+      }
     } catch (e) {
       console.error(`Targeted bank link failed for bank txn ${row.id}:`, e.message || e);
     }
   }
+
+  // Tier 1.5 (targeted only): the treasurer explicitly matched THIS payment.
+  // When the Zelle memo (or parsed payer) CONTAINS a candidate row's payer
+  // name, that row is this payment — even though the sender's bank name
+  // doesn't match the member's registered name (family members often send
+  // from accounts under other names), which makes Tier 1's name rule fail.
+  if (linked === 0) {
+    const anchorText = ` ${normalizeWords(`${payerName || ''} ${tx.note || ''}`)} `;
+    if (anchorText.trim()) {
+      const anchored = candidates.filter((row) => {
+        if (row.status !== 'PENDING') return false;
+        const rowPayer = normalizeWords(row.payer_name || '');
+        return rowPayer.length >= 5 && anchorText.includes(` ${rowPayer} `);
+      });
+      if (anchored.length > 0) {
+        const row = anchored[0]; // oldest first
+        try {
+          const { processReconciliation } = require('./reconciliationService');
+          const prevExternalId = tx.external_id || null;
+          await processReconciliation({
+            bankTxnId: row.id,
+            memberId: null,
+            user,
+            existingTransactionId: tx.id
+          });
+          await row.update({
+            reconciled_source: 'AUTO_LINKED',
+            reconciled_at: new Date(),
+            reconciled_meta: {
+              transaction_id: tx.id,
+              created: false,
+              prev_external_id: prevExternalId,
+              reason: 'Zelle memo contains the bank payer name'
+            }
+          });
+          linked += 1;
+          linkedRow = row;
+        } catch (e) {
+          console.error(`Anchored bank link failed for bank txn ${row.id}:`, e.message || e);
+        }
+      }
+    }
+  }
+
+  // Learn payer → member from the row we actually linked, so the payer's
+  // remaining and future rows surface suggestions / Tier-2 auto-creation.
+  if (linkedRow && tx.member_id) {
+    try {
+      await learnBankMemoMatch(linkedRow.get({ plain: true }), tx.member_id);
+    } catch (e) {
+      console.warn('Targeted link learning warning:', e.message || e);
+    }
+  }
+
   return { linked, examined: candidates.length };
 }
 

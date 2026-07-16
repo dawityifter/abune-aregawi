@@ -374,7 +374,7 @@ async function createZelleTransaction({
   let bankLink = null;
   try {
     const { linkPendingBankRowsForTransaction } = require('./autoReconcileService');
-    bankLink = await linkPendingBankRowsForTransaction(tx, { id: collectedBy });
+    bankLink = await linkPendingBankRowsForTransaction(tx, { id: collectedBy }, { payerName: payer_name || null });
   } catch (linkErr) {
     console.error('⚠️ Targeted bank-row linking failed for Zelle transaction:', linkErr.message);
   }
