@@ -191,6 +191,58 @@ const generatePaymentReport = async (req, res) => {
   try {
     const reportType = req.params.reportType || req.query.reportType || 'summary';
 
+    // Member Information report: active member directory with spouse contact
+    // details, printed with the church heading from the treasurer dashboard.
+    // Spouse first/last/phone come from the dependents table (relationship =
+    // 'Spouse'); members.spouse_name is only a display fallback for members
+    // registered before spouse dependents existed.
+    if (reportType === 'member_information') {
+      const members = await Member.findAll({
+        where: { is_active: true },
+        attributes: ['id', 'first_name', 'last_name', 'phone_number', 'spouse_name'],
+        order: [['id', 'ASC']],
+        raw: true
+      });
+
+      const spouseRows = members.length > 0 ? await Dependent.findAll({
+        where: { relationship: 'Spouse', memberId: members.map((m) => m.id) },
+        attributes: ['memberId', 'firstName', 'lastName', 'phone'],
+        raw: true
+      }) : [];
+      const spouseByMember = new Map(spouseRows.map((s) => [String(s.memberId), s]));
+
+      const rows = members.map((m) => {
+        const spouse = spouseByMember.get(String(m.id));
+        let spouseFirst = spouse?.firstName || '';
+        let spouseLast = spouse?.lastName || '';
+        if (!spouse && m.spouse_name) {
+          const s = String(m.spouse_name).trim();
+          const i = s.indexOf(' ');
+          spouseFirst = i < 0 ? s : s.slice(0, i);
+          spouseLast = i < 0 ? '' : s.slice(i + 1);
+        }
+        return {
+          id: m.id,
+          first_name: m.first_name,
+          last_name: m.last_name,
+          phone_number: m.phone_number,
+          spouse_first_name: spouseFirst || null,
+          spouse_last_name: spouseLast || null,
+          spouse_phone: spouse?.phone || null
+        };
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          reportType: 'member_information',
+          generatedAt: new Date().toISOString(),
+          totalActiveMembers: rows.length,
+          members: rows
+        }
+      });
+    }
+
     if (reportType !== 'summary') {
       return res.status(400).json({ success: false, message: 'Only summary report is supported currently' });
     }
