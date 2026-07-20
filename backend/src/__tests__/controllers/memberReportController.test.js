@@ -134,3 +134,21 @@ describe('memberReportController.getHouseholdDirectoryReport', () => {
     expect(data.summary.totalSpouses).toBe(0);
   });
 });
+
+describe('admin-only role gate for member reports', () => {
+  const roleMiddleware = require('../../middleware/role');
+
+  it('rejects non-admin roles with 403 and accepts admin', () => {
+    const gate = roleMiddleware(['admin']);
+    const next = jest.fn();
+
+    const resDenied = mockRes();
+    gate({ user: { role: 'treasurer', roles: ['treasurer'] }, originalUrl: '/api/members/reports/household-directory' }, resDenied, next);
+    expect(resDenied.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
+
+    const resAllowed = mockRes();
+    gate({ user: { role: 'admin', roles: ['admin'] }, originalUrl: '/api/members/reports/household-directory' }, resAllowed, next);
+    expect(next).toHaveBeenCalled();
+  });
+});

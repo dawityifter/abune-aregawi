@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const memberController = require('../controllers/memberController');
 const memberPaymentController = require('../controllers/memberPaymentController');
+const memberReportController = require('../controllers/memberReportController');
 const {
   validateMemberRegistration,
   validateLogin,
@@ -243,6 +244,17 @@ router.post('/:id/mark-welcomed',
   validateMemberId,
   activityLoggerMiddleware('Member'),
   memberController.markWelcomed
+);
+
+// Member reports (admin only) — must be registered before '/:id'
+router.get('/reports/member-information',
+  roleMiddleware(['admin']),
+  memberReportController.getMemberInformationReport
+);
+
+router.get('/reports/household-directory',
+  roleMiddleware(['admin']),
+  memberReportController.getHouseholdDirectoryReport
 );
 
 // Admin routes (require admin role)
