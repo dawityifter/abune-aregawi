@@ -27,8 +27,11 @@ const householdPayload = {
       householdName: 'Abraham & Hana Tesfaye Household',
       head: { name: 'Abraham Tesfaye', phone: '+19725551234' },
       spouse: { name: 'Hana Tesfaye', phone: null },
-      dependents: [{ name: 'Samuel Tesfaye', relationship: 'Son', phone: null }],
-      otherFamilyMembers: []
+      dependents: [
+        { name: 'Samuel Tesfaye', relationship: 'Son', phone: null, age: 16 },
+        { name: 'Ruth Tesfaye', relationship: 'Daughter', phone: null, age: null }
+      ],
+      otherFamilyMembers: [{ name: 'Noah Yifter', phone: null, age: 16 }]
     }]
   }
 };
@@ -53,7 +56,15 @@ test('renders household directory with summary and hides missing phones', async 
   expect(screen.getByText(/\(972\) 555-1234/)).toBeInTheDocument();
   // Spouse has no phone: exactly one Mobile line in the household block
   expect(screen.getAllByText(/householdReport\.mobile/)).toHaveLength(1);
-  // Dependent with relationship
+  // Dependent with relationship + age -> "(Son, 16)"
   expect(screen.getByText(/Samuel Tesfaye/)).toBeInTheDocument();
-  expect(screen.getByText(/\(Son\)/)).toBeInTheDocument();
+  expect(screen.getByText(/\(Son, 16\)/)).toBeInTheDocument();
+  // Dependent with relationship only, no DOB on file -> "(Daughter)"
+  expect(screen.getByText(/Ruth Tesfaye/)).toBeInTheDocument();
+  expect(screen.getByText(/\(Daughter\)/)).toBeInTheDocument();
+  // Linked household member (age only, no relationship) renders under the
+  // Dependents section as "(16)" — the separate "Household Members" section is gone
+  expect(screen.getByText(/Noah Yifter/)).toBeInTheDocument();
+  expect(screen.getByText(/\(16\)/)).toBeInTheDocument();
+  expect(screen.queryByText('householdReport.householdMembers')).not.toBeInTheDocument();
 });
