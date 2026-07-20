@@ -40,19 +40,6 @@ interface ReportData {
     november: number;
     december: number;
   };
-  // member_information report (flat payload from /api/payments/reports)
-  reportType?: string;
-  generatedAt?: string;
-  totalActiveMembers?: number;
-  members?: Array<{
-    id: number | string;
-    first_name: string;
-    last_name: string;
-    phone_number?: string | null;
-    spouse_first_name?: string | null;
-    spouse_last_name?: string | null;
-    spouse_phone?: string | null;
-  }>;
   fundraiser?: {
     transactions: Array<{
       id: number;
@@ -83,18 +70,14 @@ interface PaymentReportsProps {
 const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
   const { currentUser, firebaseUser } = useAuth();
   const { t } = useLanguage();
-  const [reportType, setReportType] = useState<'summary' | 'behind_payments' | 'monthly_breakdown' | 'fundraiser' | 'member_information'>('summary');
+  const [reportType, setReportType] = useState<'summary' | 'behind_payments' | 'monthly_breakdown' | 'fundraiser'>('summary');
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
-      // Use different endpoints based on the selected view. Member information
-      // is view-independent and only implemented on /api/payments.
-      const baseEndpoint = reportType === 'member_information'
-        ? '/api/payments'
-        : (paymentView === 'new' ? '/api/transactions' : '/api/payments');
+      const baseEndpoint = paymentView === 'new' ? '/api/transactions' : '/api/payments';
       const response = await fetch(`${process.env.REACT_APP_API_URL}${baseEndpoint}/reports/${reportType}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
@@ -373,51 +356,6 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
     );
   };
 
-  const renderMemberInfoReport = () => {
-    if (!reportData?.members) return null;
-    const mi = 'memberInfoReport';
-    return (
-      <div className="bg-white rounded-lg shadow-md overflow-hidden print:shadow-none print:rounded-none">
-        <div className="px-6 py-4 border-b border-gray-200 print:border-gray-800 print:text-center">
-          <h3 className="text-lg font-bold text-gray-900 print:font-serif print:text-xl">{t(`${mi}.title`)}</h3>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {t(`${mi}.generated`)}: {reportData.generatedAt ? new Date(reportData.generatedAt).toLocaleDateString() : new Date().toLocaleDateString()}
-            {' · '}
-            {t(`${mi}.activeMembers`)}: {reportData.totalActiveMembers ?? reportData.members.length}
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 print:text-xs">
-            <thead className="bg-gray-50 print:bg-white">
-              <tr>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider print:border-b print:border-gray-700">{t(`${mi}.colId`)}</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider print:border-b print:border-gray-700">{t(`${mi}.colFirstName`)}</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider print:border-b print:border-gray-700">{t(`${mi}.colLastName`)}</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider print:border-b print:border-gray-700">{t(`${mi}.colPhone`)}</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider print:border-b print:border-gray-700">{t(`${mi}.colSpouseFirst`)}</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider print:border-b print:border-gray-700">{t(`${mi}.colSpouseLast`)}</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider print:border-b print:border-gray-700">{t(`${mi}.colSpousePhone`)}</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {reportData.members.map((m) => (
-                <tr key={String(m.id)} className="even:bg-gray-50 print:even:bg-white print:break-inside-avoid">
-                  <td className="px-4 py-2 text-right text-sm text-gray-900 tabular-nums whitespace-nowrap">{m.id}</td>
-                  <td className="px-4 py-2 text-sm text-gray-900 whitespace-nowrap">{m.first_name}</td>
-                  <td className="px-4 py-2 text-sm text-gray-900 whitespace-nowrap">{m.last_name}</td>
-                  <td className="px-4 py-2 text-sm text-gray-900 tabular-nums whitespace-nowrap">{m.phone_number || '—'}</td>
-                  <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{m.spouse_first_name || '—'}</td>
-                  <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{m.spouse_last_name || '—'}</td>
-                  <td className="px-4 py-2 text-sm text-gray-700 tabular-nums whitespace-nowrap">{m.spouse_phone || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6 print:space-y-0">
       {/* Print Header */}
@@ -439,7 +377,6 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
             <option value="behind_payments">{t('treasurerDashboard.reportTabs.paymentReports.types.behind')}</option>
             <option value="monthly_breakdown">{t('treasurerDashboard.reportTabs.paymentReports.types.monthly')}</option>
             <option value="fundraiser">{t('treasurerDashboard.reportTabs.paymentReports.types.fundraiser')}</option>
-            <option value="member_information">{t('memberInfoReport.type')}</option>
           </select>
           <button
             onClick={fetchReport}
@@ -470,7 +407,6 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
           {reportType === 'behind_payments' && renderBehindPaymentsReport()}
           {reportType === 'monthly_breakdown' && renderMonthlyBreakdownReport()}
           {reportType === 'fundraiser' && renderFundraiserReport()}
-          {reportType === 'member_information' && renderMemberInfoReport()}
         </div>
       )}
 
