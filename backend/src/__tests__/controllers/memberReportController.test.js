@@ -9,13 +9,16 @@ const { Member, Dependent } = require('../../models');
 const controller = require('../../controllers/memberReportController');
 
 // Mirrors the controller's age formula so expected ages never go stale —
-// computed relative to whatever "today" the test actually runs on.
+// computed relative to whatever "today" the test actually runs on. Parses
+// the YYYY-MM-DD components directly (no `new Date(dob)` + local getters)
+// so this can't hide the same UTC-offset-shifts-the-day bug it's meant to
+// catch.
 const expectedAge = (dob) => {
-  const d = new Date(dob);
+  const [year, month, day] = String(dob).slice(0, 10).split('-').map(Number);
   const today = new Date();
-  let age = today.getFullYear() - d.getFullYear();
-  const monthDiff = today.getMonth() - d.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d.getDate())) age--;
+  let age = today.getFullYear() - year;
+  const monthDiff = (today.getMonth() + 1) - month;
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < day)) age--;
   return age;
 };
 

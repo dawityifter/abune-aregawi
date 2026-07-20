@@ -16,9 +16,9 @@ const householdPayload = {
     generatedAt: '2026-07-18T19:45:00.000Z',
     generatedBy: 'Admin User',
     summary: {
-      totalHouseholds: 1,
-      totalParishMembers: 3,
-      totalHeads: 1,
+      totalHouseholds: 2,
+      totalParishMembers: 5,
+      totalHeads: 2,
       totalSpouses: 1,
       totalDependents: 1
     },
@@ -32,6 +32,15 @@ const householdPayload = {
         { name: 'Ruth Tesfaye', relationship: 'Daughter', phone: null, age: null }
       ],
       otherFamilyMembers: [{ name: 'Noah Yifter', phone: null, age: 16 }]
+    }, {
+      // No dependent rows at all — only a linked member. The Dependents
+      // section header must still render (folded-in otherFamilyMembers).
+      headId: 8,
+      householdName: 'Yonas Gebre Household',
+      head: { name: 'Yonas Gebre', phone: null },
+      spouse: null,
+      dependents: [],
+      otherFamilyMembers: [{ name: 'Dawit Gebre', phone: null, age: 20 }]
     }]
   }
 };
@@ -67,4 +76,12 @@ test('renders household directory with summary and hides missing phones', async 
   expect(screen.getByText(/Noah Yifter/)).toBeInTheDocument();
   expect(screen.getByText(/\(16\)/)).toBeInTheDocument();
   expect(screen.queryByText('householdReport.householdMembers')).not.toBeInTheDocument();
+
+  // Household with no dependent rows, only a linked member: the Dependents
+  // section header still renders (not skipped just because there are no
+  // dependent rows), and the linked member's age-only detail shows as "(20)".
+  expect(screen.getByText('Yonas Gebre Household')).toBeInTheDocument();
+  expect(screen.getByText(/Dawit Gebre/)).toBeInTheDocument();
+  expect(screen.getByText(/\(20\)/)).toBeInTheDocument();
+  expect(screen.getAllByText('householdReport.dependentsSection')).toHaveLength(2);
 });

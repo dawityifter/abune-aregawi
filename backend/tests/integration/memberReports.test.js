@@ -186,11 +186,15 @@ describe('Member reports', () => {
       expect(household.spouse).toMatchObject({ name: 'Senait Reda', phone: '+14695550170' });
 
       // Age is computed relative to "today", not hardcoded, so it never goes stale.
-      const nardosDob = new Date('2015-04-01');
+      // Parse the DOB components directly (no `new Date('2015-04-01')` + local
+      // getters) — that combination reads UTC midnight back in local time and
+      // shifts the date a day earlier in negative-UTC-offset zones, which would
+      // mask an off-by-one-year bug on the day before the birthday.
+      const [nardosYear, nardosMonth, nardosDay] = '2015-04-01'.split('-').map(Number);
       const today = new Date();
-      let expectedNardosAge = today.getFullYear() - nardosDob.getFullYear();
-      const monthDiff = today.getMonth() - nardosDob.getMonth();
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < nardosDob.getDate())) expectedNardosAge--;
+      let expectedNardosAge = today.getFullYear() - nardosYear;
+      const monthDiff = (today.getMonth() + 1) - nardosMonth;
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < nardosDay)) expectedNardosAge--;
 
       expect(household.dependents).toEqual([
         { name: 'Nardos Zerihun', relationship: 'Daughter', phone: null, age: expectedNardosAge }

@@ -69,15 +69,20 @@ const compareNames = (a, b) =>
 const sameName = (a, b) => compareNames(a, b) === 0;
 
 // Age as of today, decremented if this year's birthday hasn't happened yet.
-// Returns null for missing/invalid dates — never leaks the raw DOB.
+// Parses the YYYY-MM-DD components directly rather than `new Date(dob)` +
+// local getters — that combination reads midnight UTC back in local time,
+// which shifts the DOB a day earlier in any negative-UTC-offset timezone
+// (e.g. America/Chicago) and reports the age one year too high on the day
+// before the birthday. Returns null for missing/malformed dates — never
+// leaks the raw DOB.
 const calculateAge = (dateOfBirth) => {
   if (!dateOfBirth) return null;
-  const dob = new Date(dateOfBirth);
-  if (Number.isNaN(dob.getTime())) return null;
+  const [year, month, day] = String(dateOfBirth).slice(0, 10).split('-').map(Number);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
   const today = new Date();
-  let age = today.getFullYear() - dob.getFullYear();
-  const monthDiff = today.getMonth() - dob.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+  let age = today.getFullYear() - year;
+  const monthDiff = (today.getMonth() + 1) - month;
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < day)) {
     age--;
   }
   return age;
