@@ -184,9 +184,20 @@ describe('Member reports', () => {
       const household = data.households.find((h) => String(h.headId) === String(head.id));
       expect(household).toBeTruthy();
       expect(household.spouse).toMatchObject({ name: 'Senait Reda', phone: '+14695550170' });
+
+      // Age is computed relative to "today", not hardcoded, so it never goes stale.
+      const nardosDob = new Date('2015-04-01');
+      const today = new Date();
+      let expectedNardosAge = today.getFullYear() - nardosDob.getFullYear();
+      const monthDiff = today.getMonth() - nardosDob.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < nardosDob.getDate())) expectedNardosAge--;
+
       expect(household.dependents).toEqual([
-        { name: 'Nardos Zerihun', relationship: 'Daughter', phone: null }
+        { name: 'Nardos Zerihun', relationship: 'Daughter', phone: null, age: expectedNardosAge }
       ]);
+
+      // PII rule: no raw date of birth anywhere in the response payload
+      expect(JSON.stringify(data)).not.toMatch(/dateOfBirth|date_of_birth/);
     });
   });
 });

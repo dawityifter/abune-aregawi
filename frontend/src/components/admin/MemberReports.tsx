@@ -18,8 +18,8 @@ interface MemberInfoData {
   members: MemberInfoRow[];
 }
 
-interface HouseholdDependent { name: string; relationship?: string | null; phone?: string | null }
-interface HouseholdPerson { name: string; phone?: string | null }
+interface HouseholdDependent { name: string; relationship?: string | null; phone?: string | null; age?: number | null }
+interface HouseholdPerson { name: string; phone?: string | null; age?: number | null }
 interface Household {
   headId: number | string;
   householdName: string;
@@ -48,6 +48,15 @@ const formatPhone = (phone?: string | null): string | null => {
   if (!phone) return null;
   const m = phone.match(/^\+1(\d{3})(\d{3})(\d{4})$/);
   return m ? `(${m[1]}) ${m[2]}-${m[3]}` : phone;
+};
+
+// Parenthetical after a person's name: relationship and age joined with ", ".
+// (Son, 16) / (Daughter) / (16) / undefined -> no parentheses.
+const personDetail = (relationship?: string | null, age?: number | null): string | undefined => {
+  const parts = [relationship || null, age === null || age === undefined ? null : String(age)].filter(
+    (p): p is string => Boolean(p)
+  );
+  return parts.length > 0 ? parts.join(', ') : undefined;
 };
 
 const MemberReports: React.FC = () => {
@@ -147,25 +156,34 @@ const MemberReports: React.FC = () => {
     </div>
   );
 
-  const renderHousehold = (h: Household, onPage: boolean) => (
-    <div
-      key={String(h.headId)}
-      className={`border border-gray-200 rounded-lg p-4 print:border-0 print:border-b print:border-gray-300 print:rounded-none ${onPage ? '' : 'hidden print:block'}`}
-      style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}
-    >
-      <div className="flex items-baseline justify-between border-b border-gray-100 pb-1 print:border-gray-300">
-        <h4 className="font-bold text-gray-900">{h.householdName}</h4>
-        <span className="text-xs text-gray-500">{t('householdReport.memberId')}: {h.headId}</span>
+  const renderHousehold = (h: Household, onPage: boolean) => {
+    const dependentEntries = [
+      ...h.dependents.map((d) => ({ name: d.name, detail: personDetail(d.relationship, d.age), phone: d.phone })),
+      ...h.otherFamilyMembers.map((m) => ({ name: m.name, detail: personDetail(null, m.age), phone: m.phone }))
+    ];
+
+    return (
+      <div
+        key={String(h.headId)}
+        className={`border border-gray-200 rounded-lg p-4 print:border-0 print:border-b print:border-gray-300 print:rounded-none ${onPage ? '' : 'hidden print:block'}`}
+        style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}
+      >
+        <div className="flex items-baseline justify-between border-b border-gray-100 pb-1 print:border-gray-300">
+          <h4 className="font-bold text-gray-900">{h.householdName}</h4>
+          <span className="text-xs text-gray-500">{t('householdReport.memberId')}: {h.headId}</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-x-6">
+          <div>
+            {renderPerson(t('householdReport.headOfHousehold'), [h.head])}
+            {h.spouse && renderPerson(t('householdReport.spouse'), [h.spouse])}
+          </div>
+          <div>
+            {dependentEntries.length > 0 && renderPerson(t('householdReport.dependentsSection'), dependentEntries)}
+          </div>
+        </div>
       </div>
-      {renderPerson(t('householdReport.headOfHousehold'), [h.head])}
-      {h.spouse && renderPerson(t('householdReport.spouse'), [h.spouse])}
-      {h.dependents.length > 0 && renderPerson(
-        t('householdReport.dependentsSection'),
-        h.dependents.map((d) => ({ name: d.name, detail: d.relationship, phone: d.phone }))
-      )}
-      {h.otherFamilyMembers.length > 0 && renderPerson(t('householdReport.householdMembers'), h.otherFamilyMembers)}
-    </div>
-  );
+    );
+  };
 
   const renderHouseholdReport = () => {
     if (!householdData) return null;

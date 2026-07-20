@@ -66,6 +66,23 @@ const fullName = (first, last) => [first, last].filter(Boolean).join(' ');
 const compareNames = (a, b) =>
   String(a || '').localeCompare(String(b || ''), undefined, { sensitivity: 'base' });
 
+const sameName = (a, b) => compareNames(a, b) === 0;
+
+// Age as of today, decremented if this year's birthday hasn't happened yet.
+// Returns null for missing/invalid dates — never leaks the raw DOB.
+const calculateAge = (dateOfBirth) => {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthDiff = today.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age;
+};
+
 // Household Membership Directory: households grouped under each head of
 // household (family_id null or = own id), with spouse from the dependents
 // table (spouse_name as legacy fallback), dependents oldest-first, and any
@@ -90,7 +107,7 @@ const getHouseholdDirectoryReport = async (req, res) => {
 
     const members = await Member.findAll({
       where,
-      attributes: ['id', 'first_name', 'last_name', 'phone_number', 'spouse_name', 'family_id', 'city'],
+      attributes: ['id', 'first_name', 'last_name', 'phone_number', 'spouse_name', 'family_id', 'city', 'date_of_birth'],
       raw: true
     });
 
@@ -154,12 +171,21 @@ const getHouseholdDirectoryReport = async (req, res) => {
           .map((d) => ({
             name: fullName(d.firstName, d.lastName),
             relationship: d.relationship || null,
-            phone: d.phone || null
+            phone: d.phone || null,
+            age: calculateAge(d.dateOfBirth)
           }));
 
+        // A spouse can also exist as a registered member linked via family_id
+        // (e.g. both partners registered separately). If someone is already
+        // shown as the spouse, don't list them again as a household member.
         const otherFamilyMembers = (linkedByHead.get(String(head.id)) || [])
+          .filter((m) => !spouse || !sameName(fullName(m.first_name, m.last_name), spouse.name))
           .sort((a, b) => compareNames(fullName(a.first_name, a.last_name), fullName(b.first_name, b.last_name)))
-          .map((m) => ({ name: fullName(m.first_name, m.last_name), phone: m.phone_number || null }));
+          .map((m) => ({
+            name: fullName(m.first_name, m.last_name),
+            phone: m.phone_number || null,
+            age: calculateAge(m.date_of_birth)
+          }));
 
         totalSpouses += spouse ? 1 : 0;
         totalDependents += dependents.length;

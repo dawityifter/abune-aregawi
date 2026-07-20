@@ -8,6 +8,17 @@ jest.mock('../../models', () => ({
 const { Member, Dependent } = require('../../models');
 const controller = require('../../controllers/memberReportController');
 
+// Mirrors the controller's age formula so expected ages never go stale —
+// computed relative to whatever "today" the test actually runs on.
+const expectedAge = (dob) => {
+  const d = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  const monthDiff = today.getMonth() - d.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d.getDate())) age--;
+  return age;
+};
+
 const mockRes = () => {
   const res = {};
   res.status = jest.fn().mockReturnValue(res);
@@ -56,10 +67,12 @@ describe('memberReportController.getHouseholdDirectoryReport', () => {
 
   it('groups households, sorts by head last/first name, and builds names', async () => {
     Member.findAll.mockResolvedValue([
-      { id: 1, first_name: 'Abraham', last_name: 'Tesfaye', phone_number: '+19725551234', spouse_name: null, family_id: 1, city: 'Dallas' },
-      { id: 2, first_name: 'Yonas', last_name: 'Gebre', phone_number: null, spouse_name: 'Selam Haile', family_id: null, city: 'Garland' },
-      // linked member (adult child registered as member) in Abraham's household
-      { id: 3, first_name: 'Dawit', last_name: 'Tesfaye', phone_number: '+14695550000', spouse_name: null, family_id: 1, city: 'Dallas' }
+      { id: 1, first_name: 'Abraham', last_name: 'Tesfaye', phone_number: '+19725551234', spouse_name: null, family_id: 1, city: 'Dallas', date_of_birth: null },
+      { id: 2, first_name: 'Yonas', last_name: 'Gebre', phone_number: null, spouse_name: 'Selam Haile', family_id: null, city: 'Garland', date_of_birth: null },
+      // linked member (adult child registered as member) in Abraham's household, with a DOB on file
+      { id: 3, first_name: 'Dawit', last_name: 'Tesfaye', phone_number: '+14695550000', spouse_name: null, family_id: 1, city: 'Dallas', date_of_birth: '2005-09-10' },
+      // registered separately but also recorded as Yonas's spouse -> must not double-list
+      { id: 4, first_name: 'selam', last_name: 'HAILE', phone_number: '+19725550001', spouse_name: null, family_id: 2, city: 'Garland', date_of_birth: null }
     ]);
     Dependent.findAll.mockResolvedValue([
       { memberId: 1, firstName: 'Hana', lastName: 'Tesfaye', relationship: 'Spouse', phone: null, dateOfBirth: null },
@@ -81,23 +94,35 @@ describe('memberReportController.getHouseholdDirectoryReport', () => {
     expect(tesfaye.spouse).toEqual({ name: 'Hana Tesfaye', phone: null });
     // Dependents: DOB ascending (oldest first), missing DOB last alphabetically
     expect(tesfaye.dependents.map((d) => d.name)).toEqual(['Samuel Tesfaye', 'Ruth Tesfaye', 'Zara Tesfaye']);
-    expect(tesfaye.dependents[0]).toEqual({ name: 'Samuel Tesfaye', relationship: 'Son', phone: '+14695559876' });
-    // Linked member listed under the household
-    expect(tesfaye.otherFamilyMembers).toEqual([{ name: 'Dawit Tesfaye', phone: '+14695550000' }]);
+    expect(tesfaye.dependents[0]).toEqual({
+      name: 'Samuel Tesfaye', relationship: 'Son', phone: '+14695559876', age: expectedAge('2008-03-02')
+    });
+    // Dependent with no DOB on file -> age is null, never omitted
+    expect(tesfaye.dependents[2]).toEqual({ name: 'Zara Tesfaye', relationship: 'Daughter', phone: null, age: null });
+    // Linked member listed under the household, with computed age from their DOB
+    expect(tesfaye.otherFamilyMembers).toEqual([
+      { name: 'Dawit Tesfaye', phone: '+14695550000', age: expectedAge('2005-09-10') }
+    ]);
 
     const gebre = data.households[0];
     // Spouse from legacy spouse_name, different last name -> full names joined
     expect(gebre.householdName).toBe('Yonas Gebre & Selam Haile Household');
     expect(gebre.spouse).toEqual({ name: 'Selam Haile', phone: null });
+    // Member 4 ("selam HAILE") is a case-insensitive name match for the spouse
+    // ("Selam Haile") -> excluded from otherFamilyMembers, not double-listed
+    expect(gebre.otherFamilyMembers).toEqual([]);
 
     expect(data.summary).toEqual({
       totalHouseholds: 2,
       totalHeads: 2,
       totalSpouses: 2,
       totalDependents: 3,
-      totalParishMembers: 2 + 2 + 3 + 1 // heads + spouses + dependents + linked member
+      totalParishMembers: 2 + 2 + 3 + 1 // heads + spouses + dependents + linked member (spouse duplicate excluded)
     });
     expect(data.generatedBy).toBe('Admin User');
+
+    // PII rule: no raw date of birth anywhere in the response payload
+    expect(JSON.stringify(data)).not.toMatch(/dateOfBirth|date_of_birth/);
   });
 
   it('applies filters: active-only default, membership_status in query, head last_name/city in JS', async () => {
