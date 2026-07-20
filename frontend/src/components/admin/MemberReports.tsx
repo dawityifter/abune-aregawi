@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -70,6 +70,10 @@ const MemberReports: React.FC = () => {
 
   const [sortBy, setSortBy] = useState<'last_name' | 'first_name'>('last_name');
   const [page, setPage] = useState(1);
+  // Tracks the sortBy value the currently-loaded householdData was fetched
+  // with, so switching report type back to household_directory reuses the
+  // cached data instead of refetching when the sort hasn't changed.
+  const lastFetchedSortBy = useRef<'last_name' | 'first_name' | null>(null);
 
   const fetchMemberInfo = useCallback(async () => {
     setLoading(true);
@@ -100,6 +104,7 @@ const MemberReports: React.FC = () => {
         const data = await response.json();
         setHouseholdData(data.data);
         setPage(1);
+        lastFetchedSortBy.current = sortBy;
       }
     } catch (error) {
       console.error('Error fetching household directory report:', error);
@@ -108,13 +113,23 @@ const MemberReports: React.FC = () => {
     }
   }, [firebaseUser, sortBy]);
 
-  // Re-run only when reportType or sortBy actually change (not on every
-  // render) — fetchHouseholds/fetchMemberInfo aren't in the dep list on
-  // purpose, since their identity is tied to firebaseUser/sortBy already.
+  // Deliberately keyed on the primitives (reportType, sortBy) rather than on
+  // fetchHouseholds/fetchMemberInfo/memberInfo/householdData: those values are
+  // still read fresh inside the effect (via closure) to decide whether to
+  // fetch, but including them in the dep array would re-run this effect on
+  // every state change the fetch itself causes (loading/data/page), which —
+  // combined with fetchHouseholds/fetchMemberInfo's identities changing
+  // whenever firebaseUser's reference changes — can retrigger fetches whose
+  // previous call hasn't resolved yet. Keying on the primitives means this
+  // only re-runs on an actual report-type switch or sort change.
   useEffect(() => {
     if (reportType === 'member_information' && !memberInfo) {
       fetchMemberInfo();
-    } else if (reportType === 'household_directory') {
+    } else if (reportType === 'household_directory' && (!householdData || lastFetchedSortBy.current !== sortBy)) {
+      // Skips the fetch when switching back to household_directory with an
+      // unchanged sortBy (reuses cached householdData + current page);
+      // fetches on initial mount (no householdData yet) and whenever sortBy
+      // changes from what the cached data was fetched with.
       fetchHouseholds();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -288,8 +303,9 @@ const MemberReports: React.FC = () => {
       {/* Report selector + actions */}
       <div className="bg-white rounded-lg shadow-md p-6 print:hidden">
         <div className="flex flex-wrap items-center gap-4">
-          <label className="text-sm font-medium text-gray-700">{t('memberReports.selectLabel')}</label>
+          <label htmlFor="memberReportType" className="text-sm font-medium text-gray-700">{t('memberReports.selectLabel')}</label>
           <select
+            id="memberReportType"
             value={reportType}
             onChange={(e) => setReportType(e.target.value as 'household_directory' | 'member_information')}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

@@ -99,4 +99,12 @@ test('fetches with sort_by=last_name by default and refetches with sort_by=first
   await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
   const secondCallUrl = (global.fetch as jest.Mock).mock.calls[1][0] as string;
   expect(secondCallUrl).toContain('sort_by=first_name');
+
+  // Toggling away to Member Information and back to Household Directory,
+  // with sortBy unchanged, must reuse the cached data — no extra fetch.
+  fireEvent.change(screen.getByLabelText('memberReports.selectLabel'), { target: { value: 'member_information' } });
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(3));
+
+  fireEvent.change(screen.getByLabelText('memberReports.selectLabel'), { target: { value: 'household_directory' } });
+  expect(global.fetch).toHaveBeenCalledTimes(3);
 });
