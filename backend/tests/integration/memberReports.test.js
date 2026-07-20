@@ -133,16 +133,43 @@ describe('Member reports', () => {
       expect(res.body.success).toBe(false);
     });
 
-    it('returns 400 for an invalid membership_status (admin caller)', async () => {
+    it('returns 400 for an invalid sort_by (admin caller)', async () => {
       await createCaller('admin');
 
       const res = await request(app)
         .get('/api/members/reports/household-directory')
-        .query({ membership_status: 'bogus' })
+        .query({ sort_by: 'bogus' })
         .set('Authorization', 'Bearer valid-token')
         .expect(400);
 
-      expect(res.body).toMatchObject({ success: false, message: 'Invalid membership_status' });
+      expect(res.body).toMatchObject({ success: false, message: 'Invalid sort_by' });
+    });
+
+    it('orders households by head first name when sort_by=first_name', async () => {
+      await createCaller('admin');
+
+      // Last-name order would be Gebre, Zerihun — first-name order flips it
+      await Member.create({
+        first_name: 'Abraham',
+        last_name: 'Zerihun',
+        phone_number: '+12145550109',
+        is_active: true
+      });
+      await Member.create({
+        first_name: 'Yonas',
+        last_name: 'Gebre',
+        phone_number: '+12145550110',
+        is_active: true
+      });
+
+      const res = await request(app)
+        .get('/api/members/reports/household-directory')
+        .query({ sort_by: 'first_name' })
+        .set('Authorization', 'Bearer valid-token')
+        .expect(200);
+
+      const names = res.body.data.households.map((h) => h.head.name);
+      expect(names.indexOf('Abraham Zerihun')).toBeLessThan(names.indexOf('Yonas Gebre'));
     });
 
     it('returns 200 for an admin caller with a household summary', async () => {

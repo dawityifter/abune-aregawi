@@ -128,38 +128,44 @@ describe('memberReportController.getHouseholdDirectoryReport', () => {
     expect(JSON.stringify(data)).not.toMatch(/dateOfBirth|date_of_birth/);
   });
 
-  it('applies filters: active-only default, membership_status in query, head last_name/city in JS', async () => {
+  it('always queries active members only and handles a head with no spouse', async () => {
     Member.findAll.mockResolvedValue([
-      { id: 1, first_name: 'Abraham', last_name: 'Tesfaye', phone_number: null, spouse_name: null, family_id: null, city: 'Dallas' },
-      { id: 2, first_name: 'Yonas', last_name: 'Gebre', phone_number: null, spouse_name: null, family_id: null, city: 'Garland' }
+      { id: 1, first_name: 'Abraham', last_name: 'Tesfaye', phone_number: null, spouse_name: null, family_id: null, date_of_birth: null }
     ]);
     Dependent.findAll.mockResolvedValue([]);
 
     const res = mockRes();
-    await controller.getHouseholdDirectoryReport(req({ last_name: 'tes', city: 'dal', membership_status: 'complete' }), res);
+    await controller.getHouseholdDirectoryReport(req(), res);
 
-    expect(Member.findAll).toHaveBeenCalledWith(expect.objectContaining({
-      where: { is_active: true, registration_status: 'complete' }
-    }));
-    const { data } = res.json.mock.calls[0][0];
-    expect(data.households).toHaveLength(1);
-    expect(data.households[0].headId).toBe(1);
-  });
-
-  it('omits the is_active filter when include_inactive=true and handles no spouse', async () => {
-    Member.findAll.mockResolvedValue([
-      { id: 1, first_name: 'Abraham', last_name: 'Tesfaye', phone_number: null, spouse_name: null, family_id: null, city: null }
-    ]);
-    Dependent.findAll.mockResolvedValue([]);
-
-    const res = mockRes();
-    await controller.getHouseholdDirectoryReport(req({ include_inactive: 'true' }), res);
-
-    expect(Member.findAll).toHaveBeenCalledWith(expect.objectContaining({ where: {} }));
+    expect(Member.findAll).toHaveBeenCalledWith(expect.objectContaining({ where: { is_active: true } }));
     const { data } = res.json.mock.calls[0][0];
     expect(data.households[0].householdName).toBe('Abraham Tesfaye Household');
     expect(data.households[0].spouse).toBeNull();
     expect(data.summary.totalSpouses).toBe(0);
+  });
+
+  it('sort_by=first_name orders households by head first name, tie-breaking on last name', async () => {
+    Member.findAll.mockResolvedValue([
+      // Last-name order would be Gebre, Tesfaye — first-name order flips it: Abraham before Yonas
+      { id: 1, first_name: 'Abraham', last_name: 'Zewde', phone_number: null, spouse_name: null, family_id: null, date_of_birth: null },
+      { id: 2, first_name: 'Yonas', last_name: 'Gebre', phone_number: null, spouse_name: null, family_id: null, date_of_birth: null }
+    ]);
+    Dependent.findAll.mockResolvedValue([]);
+
+    const res = mockRes();
+    await controller.getHouseholdDirectoryReport(req({ sort_by: 'first_name' }), res);
+
+    const { data } = res.json.mock.calls[0][0];
+    expect(data.households.map((h) => h.headId)).toEqual([1, 2]);
+  });
+
+  it('rejects an invalid sort_by with 400', async () => {
+    const res = mockRes();
+    await controller.getHouseholdDirectoryReport(req({ sort_by: 'bogus' }), res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ success: false, message: 'Invalid sort_by' });
+    expect(Member.findAll).not.toHaveBeenCalled();
   });
 });
 
