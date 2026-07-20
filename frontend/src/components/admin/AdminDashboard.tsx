@@ -136,7 +136,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 print:hidden">
         <h1 className="text-3xl font-bold text-gray-900">{t('admin.dashboard')}</h1>
         <p className="mt-2 text-gray-600">
           {t('admin.welcome')}, <span className="font-semibold">{currentUser?.displayName || currentUser?.email}</span> ({userRoles.join(', ')})
@@ -144,7 +144,7 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-8">
+      <div className="border-b border-gray-200 mb-8 print:hidden">
         <div className="-mb-px flex items-center justify-between overflow-x-auto">
           <nav className="flex space-x-8">
             <button
