@@ -68,11 +68,7 @@ const MemberReports: React.FC = () => {
   const [householdData, setHouseholdData] = useState<HouseholdData | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Household filters
-  const [includeInactive, setIncludeInactive] = useState(false);
-  const [lastName, setLastName] = useState('');
-  const [city, setCity] = useState('');
-  const [membershipStatus, setMembershipStatus] = useState('');
+  const [sortBy, setSortBy] = useState<'last_name' | 'first_name'>('last_name');
   const [page, setPage] = useState(1);
 
   const fetchMemberInfo = useCallback(async () => {
@@ -95,11 +91,7 @@ const MemberReports: React.FC = () => {
   const fetchHouseholds = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (includeInactive) params.set('include_inactive', 'true');
-      if (lastName.trim()) params.set('last_name', lastName.trim());
-      if (city.trim()) params.set('city', city.trim());
-      if (membershipStatus) params.set('membership_status', membershipStatus);
+      const params = new URLSearchParams({ sort_by: sortBy });
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/api/members/reports/household-directory?${params.toString()}`,
         { headers: { Authorization: `Bearer ${await firebaseUser?.getIdToken()}` } }
@@ -114,15 +106,19 @@ const MemberReports: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [firebaseUser, includeInactive, lastName, city, membershipStatus]);
+  }, [firebaseUser, sortBy]);
 
+  // Re-run only when reportType or sortBy actually change (not on every
+  // render) — fetchHouseholds/fetchMemberInfo aren't in the dep list on
+  // purpose, since their identity is tied to firebaseUser/sortBy already.
   useEffect(() => {
     if (reportType === 'member_information' && !memberInfo) {
       fetchMemberInfo();
-    } else if (reportType === 'household_directory' && !householdData) {
+    } else if (reportType === 'household_directory') {
       fetchHouseholds();
     }
-  }, [reportType, memberInfo, householdData, fetchMemberInfo, fetchHouseholds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportType, sortBy]);
 
   const renderSummary = (data: HouseholdData) => (
     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 print:bg-white print:border-gray-400" style={{ breakInside: 'avoid' }}>
@@ -301,6 +297,20 @@ const MemberReports: React.FC = () => {
             <option value="household_directory">{t('memberReports.householdDirectory')}</option>
             <option value="member_information">{t('memberReports.memberInformation')}</option>
           </select>
+          {reportType === 'household_directory' && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="householdSortBy" className="text-sm font-medium text-gray-700">{t('householdReport.sortBy')}</label>
+              <select
+                id="householdSortBy"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'last_name' | 'first_name')}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="last_name">{t('householdReport.sortLastName')}</option>
+                <option value="first_name">{t('householdReport.sortFirstName')}</option>
+              </select>
+            </div>
+          )}
           <button
             onClick={() => window.print()}
             disabled={loading || (reportType === 'household_directory' ? !householdData : !memberInfo)}
@@ -318,59 +328,6 @@ const MemberReports: React.FC = () => {
             {t('householdReport.savePdf')}
           </button>
         </div>
-
-        {/* Household filters */}
-        {reportType === 'household_directory' && (
-          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-end gap-4">
-            <label className="flex items-center text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={includeInactive}
-                onChange={(e) => setIncludeInactive(e.target.checked)}
-                className="mr-2 rounded border-gray-300"
-              />
-              {t('householdReport.includeInactive')}
-            </label>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">{t('householdReport.lastName')}</label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">{t('householdReport.city')}</label>
-              <input
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">{t('householdReport.membershipStatus')}</label>
-              <select
-                value={membershipStatus}
-                onChange={(e) => setMembershipStatus(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="">{t('householdReport.anyStatus')}</option>
-                <option value="pending">{t('householdReport.statusPending')}</option>
-                <option value="complete">{t('householdReport.statusComplete')}</option>
-                <option value="incomplete">{t('householdReport.statusIncomplete')}</option>
-              </select>
-            </div>
-            <button
-              onClick={fetchHouseholds}
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-1.5 rounded-md text-sm font-medium"
-            >
-              {t('householdReport.generate')}
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Report body */}

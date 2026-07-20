@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import MemberReports from '../MemberReports';
 
 jest.mock('../../../contexts/AuthContext', () => ({
@@ -84,4 +84,19 @@ test('renders household directory with summary and hides missing phones', async 
   expect(screen.getByText(/Dawit Gebre/)).toBeInTheDocument();
   expect(screen.getByText(/\(20\)/)).toBeInTheDocument();
   expect(screen.getAllByText('householdReport.dependentsSection')).toHaveLength(2);
+});
+
+test('fetches with sort_by=last_name by default and refetches with sort_by=first_name on change', async () => {
+  render(<MemberReports />);
+
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+  const firstCallUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+  expect(firstCallUrl).toContain('/api/members/reports/household-directory');
+  expect(firstCallUrl).toContain('sort_by=last_name');
+
+  fireEvent.change(screen.getByLabelText('householdReport.sortBy'), { target: { value: 'first_name' } });
+
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  const secondCallUrl = (global.fetch as jest.Mock).mock.calls[1][0] as string;
+  expect(secondCallUrl).toContain('sort_by=first_name');
 });

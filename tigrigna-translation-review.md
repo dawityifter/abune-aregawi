@@ -215,6 +215,12 @@ summary statistics, and household member details. New keys under `memberReports.
 use `ጽግዕተኛታት` (an alternative term to the existing `ተደገፍቲ` at line 2809).
 Verify which term is preferred for this context.
 
+**Task 9 update:** the report-generation filter panel (include-inactive/last-name/city/
+membership-status + Generate button) was replaced with a "Sort by" (last name / first
+name) control. The rows below marked REMOVED were deleted from `en`/`ti` in
+`dictionaries.ts` (no remaining consumer); three new `sortBy`/`sortLastName`/`sortFirstName`
+rows were added, `sortBy`'s draft still needs a native check.
+
 Legend: ✅ confident · ⚠️ please verify wording · 🔴 likely needs a better term
 
 | Key | English | Tigrigna (draft) | Flag |
@@ -224,16 +230,19 @@ Legend: ✅ confident · ⚠️ please verify wording · 🔴 likely needs a bet
 | memberReports.memberInformation | Member Information | ሓበሬታ ኣባላት | ✅ |
 | memberReports.householdDirectory | Household Membership Directory | መዝገብ ኣባልነት ስድራቤት | ⚠️ |
 | householdReport.title | Household Membership Directory | መዝገብ ኣባልነት ስድራቤት | ⚠️ |
-| householdReport.filters | Filters | መጻረዪታት | ✅ |
-| householdReport.includeInactive | Include inactive members | ዘይንጡፋት ኣባላት ኣካትት | ⚠️ |
-| householdReport.lastName | Last name | ስም ኣቦ | ✅ |
-| householdReport.city | City | ከተማ | ✅ |
-| householdReport.membershipStatus | Membership status | ኩነታት ኣባልነት | ✅ |
-| householdReport.anyStatus | Any | ኩሉ | ✅ |
-| householdReport.statusPending | Pending | ዝጽበ | ⚠️ |
-| householdReport.statusComplete | Complete | ዝተዛዘመ | ⚠️ |
-| householdReport.statusIncomplete | Incomplete | ዘይተዛዘመ | ⚠️ |
-| householdReport.generate | Generate | ኣውጽእ | ✅ |
+| ~~householdReport.filters~~ | ~~Filters~~ | ~~መጻረዪታት~~ | REMOVED (Task 9) — filter panel dropped |
+| ~~householdReport.includeInactive~~ | ~~Include inactive members~~ | ~~ዘይንጡፋት ኣባላት ኣካትት~~ | REMOVED (Task 9) |
+| ~~householdReport.lastName~~ | ~~Last name~~ | ~~ስም ኣቦ~~ | REMOVED (Task 9) — superseded by `sortLastName` |
+| ~~householdReport.city~~ | ~~City~~ | ~~ከተማ~~ | REMOVED (Task 9) |
+| ~~householdReport.membershipStatus~~ | ~~Membership status~~ | ~~ኩነታት ኣባልነት~~ | REMOVED (Task 9) |
+| ~~householdReport.anyStatus~~ | ~~Any~~ | ~~ኩሉ~~ | REMOVED (Task 9) |
+| ~~householdReport.statusPending~~ | ~~Pending~~ | ~~ዝጽበ~~ | REMOVED (Task 9) |
+| ~~householdReport.statusComplete~~ | ~~Complete~~ | ~~ዝተዛዘመ~~ | REMOVED (Task 9) |
+| ~~householdReport.statusIncomplete~~ | ~~Incomplete~~ | ~~ዘይተዛዘመ~~ | REMOVED (Task 9) |
+| ~~householdReport.generate~~ | ~~Generate~~ | ~~ኣውጽእ~~ | REMOVED (Task 9) |
+| householdReport.sortBy | Sort by | ብ... ሰርዕ | ⚠️ new (Task 9) — please verify wording, feels incomplete on its own |
+| householdReport.sortLastName | Last name | ስም ኣቦ | ✅ new (Task 9) — reuses the previous `lastName` draft |
+| householdReport.sortFirstName | First name | ቀዳማይ ስም | ⚠️ new (Task 9) |
 | householdReport.savePdf | Save as PDF | ከም PDF ኣቐምጥ | ⚠️ |
 | householdReport.summaryTitle | Membership Summary | ጽማቕ ኣባልነት | ✅ |
 | householdReport.totalFamilies | Total Families | ጠቕላላ ስድራቤታት | ✅ |
@@ -249,12 +258,12 @@ Legend: ✅ confident · ⚠️ please verify wording · 🔴 likely needs a bet
 | householdReport.householdMembers | Household Members | ኣባላት ስድራቤት | ✅ |
 | householdReport.mobile | Mobile | ሞባይል | ⚠️ transliteration |
 | householdReport.memberId | Member ID | መለለዪ ኣባል | ✅ |
-| householdReport.noResults | No households match the selected filters. | ምስ መጻረዪታት ዝሰማማዕ ስድራቤት የለን። | ⚠️ |
+| householdReport.noResults | No households found. | ስድራቤት ኣይተረኽበን። | ⚠️ reworded (Task 9) — no longer references "filters" |
 | householdReport.page | Page | ገጽ | ✅ |
 | householdReport.of | of | ካብ | ⚠️ "of" in pagination context; verify idiom |
 | householdReport.previous | Previous | ዝሓለፈ | ✅ |
 | householdReport.next | Next | ቀጻሊ | ✅ |
-| householdReport.loading | Loading... | ይጽዕን ኣሎ... | ✅ |
+| ~~householdReport.loading~~ | ~~Loading...~~ | ~~ይጽዕን ኣሎ...~~ | REMOVED (Task 9) — no remaining consumer |
 
 ## Phase 3 — pre-existing mistranslations FIXED (in legacy `LanguageContext.tsx`, please confirm)
 These legacy homepage/CTA `ti` values were semantically wrong (a different meaning, or garbled)

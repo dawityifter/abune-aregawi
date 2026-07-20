@@ -93,38 +93,25 @@ const calculateAge = (dateOfBirth) => {
 // table (spouse_name as legacy fallback), dependents oldest-first, and any
 // other registered members linked via family_id. No DOBs, emails, or
 // financial data in the payload — this prints as a public-facing directory.
-const VALID_MEMBERSHIP_STATUSES = ['pending', 'complete', 'incomplete'];
+const VALID_SORT_BY = ['last_name', 'first_name'];
 
 const getHouseholdDirectoryReport = async (req, res) => {
   try {
-    const includeInactive = String(req.query.include_inactive) === 'true';
-    const lastNameFilter = String(req.query.last_name || '').trim().toLowerCase();
-    const cityFilter = String(req.query.city || '').trim().toLowerCase();
-    const membershipStatus = String(req.query.membership_status || '').trim();
+    const sortBy = String(req.query.sort_by || '').trim() || 'last_name';
 
-    if (membershipStatus && !VALID_MEMBERSHIP_STATUSES.includes(membershipStatus)) {
-      return res.status(400).json({ success: false, message: 'Invalid membership_status' });
+    if (!VALID_SORT_BY.includes(sortBy)) {
+      return res.status(400).json({ success: false, message: 'Invalid sort_by' });
     }
 
-    const where = {};
-    if (!includeInactive) where.is_active = true;
-    if (membershipStatus) where.registration_status = membershipStatus;
-
     const members = await Member.findAll({
-      where,
-      attributes: ['id', 'first_name', 'last_name', 'phone_number', 'spouse_name', 'family_id', 'city', 'date_of_birth'],
+      where: { is_active: true },
+      attributes: ['id', 'first_name', 'last_name', 'phone_number', 'spouse_name', 'family_id', 'date_of_birth'],
       raw: true
     });
 
     const isHead = (m) => !m.family_id || String(m.family_id) === String(m.id);
 
-    // Head-level filters run in JS so they stay dialect-safe (sqlite tests,
-    // Postgres prod) — member volume is small enough for this.
-    const heads = members.filter(isHead).filter((m) => {
-      if (lastNameFilter && !String(m.last_name || '').toLowerCase().includes(lastNameFilter)) return false;
-      if (cityFilter && !String(m.city || '').toLowerCase().includes(cityFilter)) return false;
-      return true;
-    });
+    const heads = members.filter(isHead);
 
     const linkedByHead = new Map();
     for (const m of members) {
@@ -152,7 +139,9 @@ const getHouseholdDirectoryReport = async (req, res) => {
 
     const households = heads
       .slice()
-      .sort((a, b) => compareNames(a.last_name, b.last_name) || compareNames(a.first_name, b.first_name))
+      .sort((a, b) => sortBy === 'first_name'
+        ? compareNames(a.first_name, b.first_name) || compareNames(a.last_name, b.last_name)
+        : compareNames(a.last_name, b.last_name) || compareNames(a.first_name, b.first_name))
       .map((head) => {
         const deps = dependentsByHead.get(String(head.id)) || [];
 
