@@ -71,12 +71,18 @@ const compareNames = (a, b) =>
 // table (spouse_name as legacy fallback), dependents oldest-first, and any
 // other registered members linked via family_id. No DOBs, emails, or
 // financial data in the payload — this prints as a public-facing directory.
+const VALID_MEMBERSHIP_STATUSES = ['pending', 'complete', 'incomplete'];
+
 const getHouseholdDirectoryReport = async (req, res) => {
   try {
     const includeInactive = String(req.query.include_inactive) === 'true';
     const lastNameFilter = String(req.query.last_name || '').trim().toLowerCase();
     const cityFilter = String(req.query.city || '').trim().toLowerCase();
     const membershipStatus = String(req.query.membership_status || '').trim();
+
+    if (membershipStatus && !VALID_MEMBERSHIP_STATUSES.includes(membershipStatus)) {
+      return res.status(400).json({ success: false, message: 'Invalid membership_status' });
+    }
 
     const where = {};
     if (!includeInactive) where.is_active = true;
