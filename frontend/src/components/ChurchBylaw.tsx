@@ -3,19 +3,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-
-// Helper interface for TOC items
-interface TocItem {
-  id: string;
-  text: string;
-  level: number;
-}
-
-const slugifyHeading = (value: string) =>
-  value.toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
+import { TocItem, buildHeadingIndex, slugifyHeading } from '../utils/bylawSlugs';
 
 const getNodeText = (children: React.ReactNode): string =>
   React.Children.toArray(children)
@@ -39,6 +27,7 @@ const ChurchBylaw: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [toc, setToc] = useState<TocItem[]>([]);
+  const [idByLine, setIdByLine] = useState<Record<number, string>>({});
   const [activeId, setActiveId] = useState<string>('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar toggle
 
@@ -59,33 +48,12 @@ const ChurchBylaw: React.FC = () => {
       })
       .then((text) => {
         setMarkdownContent(text);
-        // Generate TOC from text content (rough regex approach is faster than parsing AST client-side for this scale)
-        const lines = text.split('\n');
-        const extractedToc: TocItem[] = [];
-        const slugCounts: Record<string, number> = {};
-
-        lines.forEach(line => {
-          // Match H1 (# ) and H2 (## )
-          const h1Match = line.match(/^#\s+(.+)$/);
-          const h2Match = line.match(/^##\s+(.+)$/);
-
-          if (h1Match || h2Match) {
-            const text = h1Match ? h1Match[1].trim() : h2Match![1].trim();
-            const level = h1Match ? 1 : 2;
-
-            // Generate ID
-            let baseSlug = slugifyHeading(text);
-
-            // Handle Duplicate IDs
-            slugCounts[baseSlug] = (slugCounts[baseSlug] || 0) + 1;
-            if (slugCounts[baseSlug] > 1) {
-              baseSlug = `${baseSlug}-${slugCounts[baseSlug] - 1}`;
-            }
-
-            extractedToc.push({ id: baseSlug, text, level });
-          }
-        });
+        // Build the TOC and the per-source-line id map in one pass. The render
+        // layer looks up each heading's id by its source line (see h1/h2 below),
+        // so the rendered `id` and the TOC anchor can never diverge.
+        const { toc: extractedToc, idByLine: lineIds } = buildHeadingIndex(text);
         setToc(extractedToc);
+        setIdByLine(lineIds);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -118,6 +86,18 @@ const ChurchBylaw: React.FC = () => {
       setActiveId(id);
       setIsSidebarOpen(false); // Close mobile sidebar on selection
     }
+  };
+
+  // Resolve a rendered heading's anchor id. Prefer the de-duped id computed for
+  // the heading's markdown source line so it always matches the TOC anchor; fall
+  // back to a raw slug only if the AST somehow lacks position data.
+  const headingId = (
+    node: { position?: { start?: { line?: number } } } | undefined,
+    children: React.ReactNode
+  ): string => {
+    const line = node?.position?.start?.line;
+    const mapped = line != null ? idByLine[line] : undefined;
+    return mapped ?? slugifyHeading(getNodeText(children));
   };
 
   const title = selectedLanguage === 'en' ? 'Church Bylaws' : 'ሕጊ ቤተ ክርስቲያን';
@@ -294,9 +274,7 @@ const ChurchBylaw: React.FC = () => {
                   rehypePlugins={[rehypeRaw]}
                   components={{
                     h1: ({ node, ...props }) => {
-                      // Generate ID for auto-linking
-                      const text = getNodeText(props.children);
-                      const id = slugifyHeading(text);
+                      const id = headingId(node, props.children);
                       return (
                         <h1 id={id || undefined} className="scroll-mt-24 text-primary-800 border-b-2 border-primary-100 pb-4 mb-8 mt-12">
                           {props.children}
@@ -304,8 +282,7 @@ const ChurchBylaw: React.FC = () => {
                       );
                     },
                     h2: ({ node, ...props }) => {
-                      const text = getNodeText(props.children);
-                      const id = slugifyHeading(text);
+                      const id = headingId(node, props.children);
                       return (
                         <h2 id={id || undefined} className="scroll-mt-24 text-primary-700 mt-10 mb-6">
                           {props.children}
@@ -328,15 +305,25 @@ const ChurchBylaw: React.FC = () => {
                         <img {...props} className="max-h-96 rounded shadow-lg border" alt={props.alt || 'Bylaw illustration'} />
                       </div>
                     ),
-                    a: ({ node, ...props }) => (
-                      <a
-                        {...props}
-                        className="text-primary-600 hover:text-primary-800 hover:underline"
-                        aria-label={getNodeText(props.children) || props.href || 'Bylaw link'}
-                      >
-                        {props.children || props.href}
-                      </a>
-                    )
+                    a: ({ node, ...props }) => {
+                      const href = props.href || '';
+                      // In-page TOC links: reuse the sidebar's smooth-scroll (and
+                      // close the mobile sidebar) instead of a native jump.
+                      const isInPage = href.startsWith('#');
+                      return (
+                        <a
+                          {...props}
+                          onClick={isInPage ? (e) => {
+                            e.preventDefault();
+                            scrollToSection(decodeURIComponent(href.slice(1)));
+                          } : props.onClick}
+                          className="text-primary-600 hover:text-primary-800 hover:underline"
+                          aria-label={getNodeText(props.children) || href || 'Bylaw link'}
+                        >
+                          {props.children || href}
+                        </a>
+                      );
+                    }
                   }}
                 >
                   {markdownContent}
