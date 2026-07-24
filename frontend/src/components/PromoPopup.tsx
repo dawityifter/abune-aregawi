@@ -11,27 +11,6 @@ interface Promo {
 
 const PROMOS: Promo[] = [
   {
-    id: 'bible-camp',
-    src: '/images/promo/bible-camp-july4.jpeg',
-    alt: 'Bible Camp July 4',
-    // July 4, 2026 at 20:00 CST (Daylight time CDT is UTC-5)
-    expiry: new Date('2026-07-04T20:00:00-05:00').getTime()
-  },
-  {
-    id: 'garage-sale',
-    src: '/images/promo/garage-Sell-July12-14.jpeg',
-    alt: 'Garage Sale July 12-14',
-    // July 14, 2026 at 20:00 CST (Daylight time CDT is UTC-5)
-    expiry: new Date('2026-07-14T20:00:00-05:00').getTime()
-  },
-  {
-    id: 'summer-camp',
-    src: '/images/promo/summer-camp-Jun16-July24.jpeg',
-    alt: 'Summer Camp June 16 - July 24',
-    // July 24, 2026 at 20:00 CST (Daylight time CDT is UTC-5)
-    expiry: new Date('2026-07-24T20:00:00-05:00').getTime()
-  },
-  {
     id: 'graduation',
     src: '/images/promo/july26-graduation.jpeg',
     alt: 'Graduation July 26',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import PromoPopup from '../PromoPopup';
 import { LanguageProvider } from '../../contexts/LanguageContext';
 import { I18nProvider } from '../../i18n/I18nProvider';
@@ -79,9 +79,9 @@ describe('PromoPopup', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('renders active promos and allows manual navigation', () => {
-    // June 29, 2026: all four promos active
-    const testDate = new Date('2026-06-29T15:15:43-05:00').getTime();
+  it('renders the single active promo without navigation controls', () => {
+    // July 20, 2026: the graduation promo is active
+    const testDate = new Date('2026-07-20T10:00:00-05:00').getTime();
     dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(testDate);
 
     renderWithProviders(<PromoPopup />);
@@ -89,24 +89,11 @@ describe('PromoPopup', () => {
     const dialog = screen.getByRole('dialog');
     expect(dialog).toBeInTheDocument();
 
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/bible-camp-july4.jpeg');
-
-    const nextBtn = screen.getByTitle('Next Image');
-    fireEvent.click(nextBtn);
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/garage-Sell-July12-14.jpeg');
-
-    fireEvent.click(nextBtn);
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/summer-camp-Jun16-July24.jpeg');
-
-    fireEvent.click(nextBtn);
     expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/july26-graduation.jpeg');
 
-    fireEvent.click(nextBtn);
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/bible-camp-july4.jpeg');
-
-    const prevBtn = screen.getByTitle('Previous Image');
-    fireEvent.click(prevBtn);
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/july26-graduation.jpeg');
+    // With only one active promo, the carousel controls are not rendered.
+    expect(screen.queryByTitle('Next Image')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Previous Image')).not.toBeInTheDocument();
   });
 
   it('honors daily frequency capping using localStorage', () => {
@@ -135,25 +122,21 @@ describe('PromoPopup', () => {
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     const img = screen.getByRole('img');
-    expect(img).toHaveAttribute('src', '/images/promo/bible-camp-july4.jpeg');
+    expect(img).toHaveAttribute('src', '/images/promo/july26-graduation.jpeg');
   });
 
-  it('automatically rotates slides every 5 seconds', () => {
+  it('does not auto-rotate when only one promo is active', () => {
     jest.useFakeTimers();
-    const testDate = new Date('2026-06-29T15:15:43-05:00').getTime();
+    const testDate = new Date('2026-07-20T10:00:00-05:00').getTime();
     dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(testDate);
 
     renderWithProviders(<PromoPopup />);
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/bible-camp-july4.jpeg');
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/july26-graduation.jpeg');
 
     act(() => {
-      jest.advanceTimersByTime(5000);
+      jest.advanceTimersByTime(15000);
     });
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/garage-Sell-July12-14.jpeg');
-
-    act(() => {
-      jest.advanceTimersByTime(5000);
-    });
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/summer-camp-Jun16-July24.jpeg');
+    // A single promo has nothing to rotate to; it stays put.
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/july26-graduation.jpeg');
   });
 });
