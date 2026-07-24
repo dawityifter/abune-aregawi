@@ -30,6 +30,13 @@ const PROMOS: Promo[] = [
     alt: 'Summer Camp June 16 - July 24',
     // July 24, 2026 at 20:00 CST (Daylight time CDT is UTC-5)
     expiry: new Date('2026-07-24T20:00:00-05:00').getTime()
+  },
+  {
+    id: 'graduation',
+    src: '/images/promo/july26-graduation.jpeg',
+    alt: 'Graduation July 26',
+    // July 26, 2026 at 12:00 PM CST (Daylight time CDT is UTC-5)
+    expiry: new Date('2026-07-26T12:00:00-05:00').getTime()
   }
 ];
 

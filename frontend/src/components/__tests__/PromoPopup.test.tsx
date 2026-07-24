@@ -80,7 +80,7 @@ describe('PromoPopup', () => {
   });
 
   it('renders active promos and allows manual navigation', () => {
-    // June 29, 2026: all three promos active
+    // June 29, 2026: all four promos active
     const testDate = new Date('2026-06-29T15:15:43-05:00').getTime();
     dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(testDate);
 
@@ -99,11 +99,14 @@ describe('PromoPopup', () => {
     expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/summer-camp-Jun16-July24.jpeg');
 
     fireEvent.click(nextBtn);
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/july26-graduation.jpeg');
+
+    fireEvent.click(nextBtn);
     expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/bible-camp-july4.jpeg');
 
     const prevBtn = screen.getByTitle('Previous Image');
     fireEvent.click(prevBtn);
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/summer-camp-Jun16-July24.jpeg');
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/july26-graduation.jpeg');
   });
 
   it('honors daily frequency capping using localStorage', () => {
