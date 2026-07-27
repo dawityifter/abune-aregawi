@@ -22,6 +22,7 @@
     "db:migrate:ledger-enum": "node src/database/migrations/updateLedgerEntryTypeEnum.js",
     "db:migrate:income": "node src/database/migrations/addIncomeCategorySupport.js",
     "db:migrate:ledger-types": "node src/database/migrations/addNewPaymentTypesToLedgerEnum.js",
+    "db:migrate:square": "node src/database/migrations/createSquarePayments.js",
     "db:seed:expenses": "node src/database/seedExpenseCategories.js",
     "db:seed:income": "node src/database/seedIncomeCategories.js",
     "export:ledger:sheets:preflight": "node src/scripts/preflight-ledger-sheets.js",
