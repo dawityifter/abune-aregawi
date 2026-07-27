@@ -391,5 +391,6 @@ module.exports = {
   matchZelleSender,
   learnZelleAssociation,
   getDefaultPaymentType,
-  createZelleTransaction
+  createZelleTransaction,
+  resolveIncomeCategory
 };
