@@ -38,6 +38,7 @@ const smsRoutes = require('./routes/smsRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const departmentRoutes = require('./routes/departmentRoutes');
 const zelleRoutes = require('./routes/zelleRoutes');
+const squareRoutes = require('./routes/squareRoutes');
 const pledgeRoutes = require('./routes/pledgeRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const galleryRoutes = require('./routes/galleryRoutes');
@@ -139,6 +140,9 @@ app.use('/api/', limiter);
 
 // Mount Stripe webhook BEFORE body parsers to preserve raw body for signature verification
 app.post('/api/donations/webhook', express.raw({ type: 'application/json' }), donationController.handleWebhook);
+
+// Mount Square webhook BEFORE body parsers to preserve raw body for signature verification
+app.post('/api/square/webhook', express.raw({ type: 'application/json' }), require('./controllers/squareController').handleWebhook);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -255,6 +259,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/zelle', zelleRoutes);
+app.use('/api/square', squareRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/pledges', pledgeRoutes);
