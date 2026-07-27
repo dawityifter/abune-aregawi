@@ -155,8 +155,11 @@ Status lifecycle:
   - Insert-only by `external_id='square:<id>'` (returns `EXISTS`/`409` on a duplicate).
   - Creates `Transaction` (`payment_method='credit_card'`, `status='succeeded'`) and a
     `LedgerEntry` (income category resolved from payment type, same as Zelle).
-  - Learns the buyer→member association via `learnBankMemoMatch` so future Square (and
-    bank/Zelle) payments from the same buyer auto-match.
+  - Learns the buyer→member association via `learnBankMemoMatch` so future **Square**
+    payments from the same buyer auto-match. Note: the learned keys are namespaced by
+    source (`SQUARE:PAYER:…` / `SQUARE:DESCRIPTION:…`), so a Square confirmation does
+    **not** train bank/Zelle matching (and vice-versa) — deliberate, to avoid
+    cross-source contamination.
   - Sets `transaction_id` on the `square_payments` row and flips `status='CREATED'`.
 - **Ignore** → `status='IGNORED'` (only allowed when no transaction exists yet).
 
