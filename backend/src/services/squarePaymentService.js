@@ -3,9 +3,8 @@
  * but for Square: rides on transactions as payment_method='credit_card' with
  * external_id='square:<square_payment_id>'.
  */
-const { Op } = require('sequelize');
 const {
-  Member, Transaction, SquarePayment, LedgerEntry
+  Member, Transaction, SquarePayment, LedgerEntry, sequelize
 } = require('../models');
 const { normalizeSquarePayment } = require('./squareClient');
 const { findSuggestionCandidates, learnBankMemoMatch } = require('./bankMemoMatchService');
@@ -18,25 +17,31 @@ function externalIdFor(squarePaymentId) {
 
 /**
  * Match a Square buyer to a member.
- * 1. Exact email match on Member.email (high confidence).
+ * 1. Exact (case-insensitive, trimmed) email match on Member.email — only
+ *    auto-matched when the email uniquely identifies ONE member; a shared
+ *    family email that matches multiple members falls through to the
+ *    name-based path instead of guessing (high confidence).
  * 2. Learned/fuzzy name match via the shared bank/Zelle suggestion engine.
  * Returns { member_id, member_name, confidence, source }.
  */
-async function matchSquareBuyer({ buyer_name, buyer_email, note }) {
+async function matchSquareBuyer({ buyer_name, buyer_email }) {
   const result = { member_id: null, member_name: null, confidence: null, source: null };
 
-  if (buyer_email) {
-    const byEmail = await Member.findOne({
-      where: { email: buyer_email },
+  const normalizedEmail = buyer_email ? String(buyer_email).trim().toLowerCase() : null;
+  if (normalizedEmail) {
+    const byEmail = await Member.findAll({
+      where: sequelize.where(sequelize.fn('lower', sequelize.fn('trim', sequelize.col('email'))), normalizedEmail),
       attributes: ['id', 'first_name', 'last_name']
     });
-    if (byEmail) {
-      result.member_id = byEmail.id;
-      result.member_name = `${byEmail.first_name || ''} ${byEmail.last_name || ''}`.trim();
+    if (byEmail.length === 1) {
+      result.member_id = byEmail[0].id;
+      result.member_name = `${byEmail[0].first_name || ''} ${byEmail[0].last_name || ''}`.trim();
       result.confidence = 'high';
       result.source = 'SQUARE_EMAIL';
       return result;
     }
+    // Zero or multiple matches (e.g. a shared family email): don't guess —
+    // fall through to the name-based fuzzy/learned path below.
   }
 
   if (buyer_name) {
@@ -149,21 +154,38 @@ async function createSquareTransaction({
   const finalPaymentType = payment_type || 'donation';
   const incomeCategory = await resolveIncomeCategory(finalPaymentType);
 
-  const tx = await Transaction.create({
-    member_id: member_id || null,
-    collected_by: collectedBy,
-    payment_date,
-    amount,
-    payment_type: finalPaymentType,
-    payment_method: 'credit_card',
-    status: 'succeeded',
-    receipt_number: normalizedReceiptNumber || null,
-    note: note || null,
-    external_id,
-    donation_id: null,
-    income_category_id: incomeCategory?.id || null,
-    for_year: for_year || null
-  });
+  let tx;
+  try {
+    tx = await Transaction.create({
+      member_id: member_id || null,
+      collected_by: collectedBy,
+      payment_date,
+      amount,
+      payment_type: finalPaymentType,
+      payment_method: 'credit_card',
+      status: 'succeeded',
+      receipt_number: normalizedReceiptNumber || null,
+      note: note || null,
+      external_id,
+      donation_id: null,
+      income_category_id: incomeCategory?.id || null,
+      for_year: for_year || null
+    });
+  } catch (createErr) {
+    if (createErr.name === 'SequelizeUniqueConstraintError') {
+      // Concurrent double-confirm on the same square_payment_id raced us
+      // past the pre-check above; treat it the same as the up-front EXISTS
+      // path instead of surfacing a raw 500.
+      const dup = await Transaction.findOne({ where: { external_id } });
+      return {
+        success: false,
+        message: 'Transaction already exists for this Square payment',
+        id: dup?.id || null,
+        code: 'EXISTS'
+      };
+    }
+    throw createErr;
+  }
 
   if (member_id && buyer_name) {
     try {

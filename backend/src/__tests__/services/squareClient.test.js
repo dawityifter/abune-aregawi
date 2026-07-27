@@ -66,3 +66,45 @@ describe('squareClient.normalizeSquarePayment', () => {
     expect(normalizeSquarePayment({ status: 'COMPLETED' })).toBeNull();
   });
 });
+
+describe('squareClient.listSquarePayments', () => {
+  const realFetch = global.fetch;
+  afterEach(() => { global.fetch = realFetch; });
+
+  it('stops after a bounded number of pages even if the API keeps returning a cursor', async () => {
+    process.env.SQUARE_ACCESS_TOKEN = 'test_token';
+    let calls = 0;
+    global.fetch = jest.fn(async () => {
+      calls += 1;
+      return {
+        ok: true,
+        json: async () => ({ payments: [{ id: `p${calls}` }], cursor: 'keep-going-forever' })
+      };
+    });
+    const { listSquarePayments } = require('../../services/squareClient');
+    const results = await listSquarePayments({});
+
+    // An API that never stops handing back a cursor must not cause an
+    // unbounded loop — the pagination cap should kick in well short of
+    // thousands of requests.
+    expect(calls).toBeLessThanOrEqual(50);
+    expect(calls).toBeGreaterThan(1);
+    expect(results.length).toBe(calls);
+  });
+
+  it('stops naturally once the API omits a cursor (no cap needed)', async () => {
+    process.env.SQUARE_ACCESS_TOKEN = 'test_token';
+    let calls = 0;
+    global.fetch = jest.fn(async () => {
+      calls += 1;
+      return {
+        ok: true,
+        json: async () => ({ payments: [{ id: `p${calls}` }], cursor: calls < 3 ? 'more' : null })
+      };
+    });
+    const { listSquarePayments } = require('../../services/squareClient');
+    const results = await listSquarePayments({});
+    expect(calls).toBe(3);
+    expect(results.length).toBe(3);
+  });
+});

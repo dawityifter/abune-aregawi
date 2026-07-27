@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const {
   isSquareConfigured, verifySquareSignature, listSquarePayments
 } = require('../services/squareClient');
@@ -63,9 +64,16 @@ async function getQueue(req, res) {
     const { status } = req.query;
     const limit = Math.min(Number(req.query.limit || 50), 200);
     const where = {};
-    if (status) where.status = String(status).toUpperCase();
+    if (status) {
+      where.status = String(status).toUpperCase();
+    } else {
+      // No explicit status requested: default to the review queue (pending
+      // items only) rather than returning every row ever ingested.
+      where.status = { [Op.in]: ['NEEDS_REVIEW', 'AUTO_MATCHED'] };
+    }
     const rows = await SquarePayment.findAll({
       where,
+      attributes: { exclude: ['raw'] },
       order: [['square_created_at', 'DESC'], ['created_at', 'DESC']],
       limit,
       include: [
@@ -82,29 +90,42 @@ async function getQueue(req, res) {
 
 async function processReview(item, user) {
   const {
-    square_payment_id, amount, payment_date, note,
+    square_payment_id, note,
     member_id, payment_type, for_year, receipt_number, buyer_name
   } = item || {};
   const collected_by = user?.id || null;
   if (!collected_by) throw new Error('Missing collector context');
+
+  // Server-authoritative amount/date: never trust the client's amount or
+  // payment_date for what actually gets recorded — pull them from the
+  // ingested SquarePayment row instead. This closes the gap where a
+  // tampered review-form POST could record a different amount/date than
+  // what Square actually reported for the payment.
+  const squarePaymentRow = square_payment_id
+    ? await SquarePayment.findOne({ where: { square_payment_id } })
+    : null;
+  if (!squarePaymentRow) {
+    return { success: false, message: 'Unknown Square payment' };
+  }
+  const amount = squarePaymentRow.amount;
+  const payment_date = squarePaymentRow.square_created_at
+    ? new Date(squarePaymentRow.square_created_at).toISOString().slice(0, 10)
+    : null;
 
   const result = await createSquareTransaction({
     square_payment_id, amount, payment_date, note,
     member_id, payment_type, for_year, receipt_number, buyer_name
   }, collected_by);
 
-  if (result.success && square_payment_id) {
+  if (result.success) {
     try {
-      const row = await SquarePayment.findOne({ where: { square_payment_id } });
-      if (row) {
-        await row.update({
-          status: 'CREATED',
-          transaction_id: result.id,
-          matched_member_id: member_id || null,
-          processed_at: new Date(),
-          error: null
-        });
-      }
+      await squarePaymentRow.update({
+        status: 'CREATED',
+        transaction_id: result.id,
+        matched_member_id: member_id || null,
+        processed_at: new Date(),
+        error: null
+      });
     } catch (e) {
       console.warn('Square queue update warning:', e.message || e);
     }

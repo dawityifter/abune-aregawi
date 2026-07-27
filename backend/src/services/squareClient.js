@@ -73,8 +73,11 @@ async function listSquarePayments({ beginTime, endTime }) {
   const token = process.env.SQUARE_ACCESS_TOKEN;
   if (!token) throw new Error('SQUARE_ACCESS_TOKEN is not configured');
 
+  const MAX_PAGES = 50; // safety cap against an unbounded loop if Square keeps returning a cursor
+
   const results = [];
   let cursor = null;
+  let page = 0;
   do {
     const params = new URLSearchParams();
     if (beginTime) params.set('begin_time', beginTime);
@@ -95,7 +98,8 @@ async function listSquarePayments({ beginTime, endTime }) {
     const data = await resp.json();
     if (Array.isArray(data.payments)) results.push(...data.payments);
     cursor = data.cursor || null;
-  } while (cursor);
+    page += 1;
+  } while (cursor && page < MAX_PAGES);
 
   return results;
 }

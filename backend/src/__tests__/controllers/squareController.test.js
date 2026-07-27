@@ -5,13 +5,24 @@ const express = require('express');
 process.env.SQUARE_WEBHOOK_SIGNATURE_KEY = 'test_key';
 process.env.SQUARE_WEBHOOK_URL = 'https://example.org/api/square/webhook';
 
-const { sequelize, SquarePayment } = require('../../models');
+const { sequelize, SquarePayment, Member, Transaction } = require('../../models');
 const squareController = require('../../controllers/squareController');
 
 function buildApp() {
   const app = express();
   // Mirror server.js: raw body for the webhook, before any json parser.
   app.post('/api/square/webhook', express.raw({ type: 'application/json' }), squareController.handleWebhook);
+  return app;
+}
+
+// Reconcile routes require auth in production (see routes/squareRoutes.js);
+// tests inject req.user directly instead of exercising firebase middleware.
+function buildReconcileApp(user) {
+  const app = express();
+  app.use(express.json());
+  app.use((req, res, next) => { req.user = user; next(); });
+  app.post('/api/square/reconcile/create-transaction', squareController.createTransactionFromReview);
+  app.get('/api/square/queue', squareController.getQueue);
   return app;
 }
 
@@ -69,5 +80,98 @@ describe('POST /api/square/webhook', () => {
       .send(body)
       .expect(200);
     expect(await SquarePayment.count({ where: { square_payment_id: 'ref_1' } })).toBe(0);
+  });
+});
+
+describe('POST /api/square/reconcile/create-transaction (server-authoritative amount/date)', () => {
+  it('ignores a tampered client amount/payment_date and records the STORED SquarePayment values', async () => {
+    const collector = await Member.create({
+      first_name: 'Rev', last_name: 'Iewer', phone_number: '+15550009001', role: 'treasurer'
+    });
+    const member = await Member.create({
+      first_name: 'Pay', last_name: 'Er', phone_number: '+15550009002', role: 'member'
+    });
+    await SquarePayment.create({
+      square_payment_id: 'sqpmt_TAMPER',
+      amount: 55.00,
+      currency: 'USD',
+      status: 'NEEDS_REVIEW',
+      square_created_at: new Date('2026-07-20T10:00:00Z')
+    });
+
+    const app = buildReconcileApp({ id: collector.id });
+    const res = await request(app)
+      .post('/api/square/reconcile/create-transaction')
+      .send({
+        square_payment_id: 'sqpmt_TAMPER',
+        amount: 999999.99, // tampered — must be ignored
+        payment_date: '2099-01-01', // tampered — must be ignored
+        member_id: member.id,
+        payment_type: 'donation',
+        receipt_number: '000'
+      })
+      .expect(200);
+
+    expect(res.body.success).toBe(true);
+    const tx = await Transaction.findByPk(res.body.id);
+    expect(Number(tx.amount)).toBe(55.00);
+    expect(tx.payment_date).toBe('2026-07-20');
+
+    const row = await SquarePayment.findOne({ where: { square_payment_id: 'sqpmt_TAMPER' } });
+    expect(row.status).toBe('CREATED');
+    expect(row.transaction_id).toBe(tx.id);
+  });
+
+  it('refuses to reconcile a square_payment_id with no ingested SquarePayment row', async () => {
+    const collector = await Member.create({
+      first_name: 'Rev2', last_name: 'Iewer2', phone_number: '+15550009003', role: 'treasurer'
+    });
+    const app = buildReconcileApp({ id: collector.id });
+    const res = await request(app)
+      .post('/api/square/reconcile/create-transaction')
+      .send({
+        square_payment_id: 'sqpmt_NEVER_INGESTED',
+        amount: 10,
+        payment_date: '2026-07-20',
+        payment_type: 'donation',
+        receipt_number: '000'
+      })
+      .expect(200);
+
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe('Unknown Square payment');
+    expect(await Transaction.count({ where: { external_id: 'square:sqpmt_NEVER_INGESTED' } })).toBe(0);
+  });
+});
+
+describe('GET /api/square/queue (defaults + raw exclusion)', () => {
+  it('defaults to NEEDS_REVIEW/AUTO_MATCHED only and omits the raw column when no status is passed', async () => {
+    await SquarePayment.create({
+      square_payment_id: 'sqpmt_Q_REVIEW', amount: 10, status: 'NEEDS_REVIEW', raw: { foo: 'bar' }
+    });
+    await SquarePayment.create({
+      square_payment_id: 'sqpmt_Q_AUTO', amount: 10, status: 'AUTO_MATCHED', raw: { foo: 'bar' }
+    });
+    await SquarePayment.create({
+      square_payment_id: 'sqpmt_Q_IGNORED', amount: 10, status: 'IGNORED', raw: { foo: 'bar' }
+    });
+    await SquarePayment.create({
+      square_payment_id: 'sqpmt_Q_CREATED', amount: 10, status: 'CREATED', raw: { foo: 'bar' }
+    });
+
+    const app = buildReconcileApp({ id: null });
+    const res = await request(app).get('/api/square/queue').expect(200);
+
+    const ids = res.body.items.map(i => i.square_payment_id);
+    expect(ids).toEqual(expect.arrayContaining(['sqpmt_Q_REVIEW', 'sqpmt_Q_AUTO']));
+    expect(ids).not.toEqual(expect.arrayContaining(['sqpmt_Q_IGNORED', 'sqpmt_Q_CREATED']));
+    expect(res.body.items[0].raw).toBeUndefined();
+  });
+
+  it('returns the explicit status when one is passed, ignoring the default filter', async () => {
+    const app = buildReconcileApp({ id: null });
+    const res = await request(app).get('/api/square/queue?status=IGNORED').expect(200);
+    const ids = res.body.items.map(i => i.square_payment_id);
+    expect(ids).toEqual(['sqpmt_Q_IGNORED']);
   });
 });
