@@ -12,6 +12,7 @@ import AddExpenseModal from './AddExpenseModal';
 import ExpenseList from './ExpenseList';
 import WeeklyCollectionReport from './WeeklyCollectionReport';
 import ZelleReview from './ZelleReview';
+import SquareReview from './SquareReview';
 import MemberSearch from './MemberSearch';
 import MemberDuesViewer from './MemberDuesViewer';
 import EmployeeList from './EmployeeList';
@@ -60,6 +61,7 @@ type TreasurerTab =
   | 'employees'
   | 'vendors'
   | 'zelle'
+  | 'square'
   | 'backups';
 
 const TreasurerDashboard: React.FC = () => {
@@ -106,6 +108,7 @@ const TreasurerDashboard: React.FC = () => {
     { id: 'employees', label: t('treasurerDashboard.tabs.employees'), icon: 'fas fa-id-badge' },
     { id: 'vendors', label: t('treasurerDashboard.tabs.vendors'), icon: 'fas fa-store' },
     { id: 'zelle', label: t('treasurerDashboard.tabs.zelle'), icon: 'fas fa-mobile-alt' },
+    { id: 'square', label: t('treasurerDashboard.tabs.square'), icon: 'fas fa-square' },
     { id: 'backups', label: t('treasurerDashboard.tabs.backups'), icon: 'fas fa-database' }
   ];
 
@@ -489,6 +492,12 @@ const TreasurerDashboard: React.FC = () => {
           {activeTab === 'zelle' && (
             <div>
               <ZelleReview />
+            </div>
+          )}
+
+          {activeTab === 'square' && (
+            <div>
+              <SquareReview />
             </div>
           )}
 

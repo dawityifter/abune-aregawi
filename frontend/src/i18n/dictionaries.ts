@@ -99,6 +99,7 @@ export interface Dictionaries {
       expenses: string;
       reports: string;
       zelle: string;
+      square?: string;
       memberDues: string;
       employees: string;
       vendors: string;
@@ -815,6 +816,7 @@ export const en: Dictionaries = {
       expenses: "Expenses",
       reports: "Reports",
       zelle: "Zelle Review",
+      square: "Square Review",
       memberDues: "Member Dues",
       employees: "Employees",
       vendors: "Vendors"
@@ -2369,7 +2371,27 @@ export const en: Dictionaries = {
   "smsBroadcast.includeFooter": "Include automated footer",
   "smsBroadcast.footerHelp": "Uncheck to remove the standard compliance message. Please ensure you still identify the sender manually.",
   "smsBroadcast.sending": "Sending…",
-  "smsBroadcast.sendSms": "Send SMS"
+  "smsBroadcast.sendSms": "Send SMS",
+  square: {
+    title: 'Square Payments',
+    sync: 'Sync from Square',
+    from: 'From',
+    to: 'To',
+    status: 'Status',
+    amount: 'Amount',
+    buyer: 'Buyer',
+    note: 'Note',
+    matchedMember: 'Matched member',
+    searchMember: 'Search member…',
+    paymentType: 'Payment type',
+    year: 'Year',
+    receipt: 'Receipt #',
+    confirm: 'Confirm',
+    ignore: 'Ignore',
+    noneToReview: 'No Square payments to review.',
+    createdOk: 'Transaction created.',
+    ignoredOk: 'Payment ignored.'
+  }
 
 };
 
@@ -2535,6 +2557,7 @@ export const ti: Dictionaries = {
       expenses: "ወጪታት",
       reports: "ጸብጻባት",
       zelle: "ዜል ክፍሊታት",
+      square: "ስኴር ግምጋም",
       memberDues: "ወርሓዊ ክፍሊት",
       employees: "ሰራሕተኛታት",
       vendors: "ሻየጥቲ"
@@ -4090,7 +4113,27 @@ export const ti: Dictionaries = {
   "smsBroadcast.includeFooter": "ኣውቶማቲክ ፉተር ኣካትት",
   "smsBroadcast.footerHelp": "ስሩዕ ናይ ተኣዛዝነት መልእኽቲ ንምውጋድ ኣይትሓርዩ። በጃኹም ንልኣኺ ባዕልኹም ከተለልዩ ኣረጋግጹ።",
   "smsBroadcast.sending": "ይስደድ ኣሎ…",
-  "smsBroadcast.sendSms": "SMS ስደድ"
+  "smsBroadcast.sendSms": "SMS ስደድ",
+  square: {
+    title: 'ክፍሊት ስኴር',
+    sync: 'ካብ ስኴር ኣምጽእ',
+    from: 'ካብ',
+    to: 'ናብ',
+    status: 'ኩነታት',
+    amount: 'መጠን',
+    buyer: 'ገዛኢ',
+    note: 'መዘኻኸሪ',
+    matchedMember: 'እተዛመደ ኣባል',
+    searchMember: 'ኣባል ድለ…',
+    paymentType: 'ዓይነት ክፍሊት',
+    year: 'ዓመት',
+    receipt: 'ቁ. ደረሰ',
+    confirm: 'ኣረጋግጽ',
+    ignore: 'ሸለል በል',
+    noneToReview: 'ንግምጋም ዝኸውን ክፍሊት ስኴር የለን።',
+    createdOk: 'ሸማ ተፈጢሩ።',
+    ignoredOk: 'ክፍሊት ተሸለለ።'
+  }
 };
 
 // Convenience export for provider lookup
