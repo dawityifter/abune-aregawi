@@ -15,6 +15,8 @@ interface Transaction {
   receipt_number?: string;
   note?: string;
   income_category_id?: number | null;
+  external_id?: string | null;
+  donation_id?: number | null;
   created_at: string;
   updated_at: string;
   member?: {
@@ -54,6 +56,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   const [receiptNumberFilter, setReceiptNumberFilter] = useState('');
   const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
+  const [cardSourceFilter, setCardSourceFilter] = useState('all');
   const [minAmountFilter, setMinAmountFilter] = useState('');
   const [maxAmountFilter, setMaxAmountFilter] = useState('');
   const [dateRangeFilter, setDateRangeFilter] = useState('all');
@@ -73,7 +76,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   useEffect(() => {
     fetchTransactions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentTypeFilter, paymentMethodFilter, minAmountFilter, maxAmountFilter, dateRangeFilter, customStartDate, customEndDate, receiptNumberFilter, currentPage]);
+  }, [paymentTypeFilter, paymentMethodFilter, cardSourceFilter, minAmountFilter, maxAmountFilter, dateRangeFilter, customStartDate, customEndDate, receiptNumberFilter, currentPage]);
 
   // Fetch only when search is cleared or has at least 3 characters
   useEffect(() => {
@@ -119,6 +122,10 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
 
       if (paymentMethodFilter !== 'all') {
         params.append('payment_method', paymentMethodFilter);
+      }
+
+      if (cardSourceFilter !== 'all') {
+        params.append('card_source', cardSourceFilter);
       }
 
       if (receiptNumberFilter.trim()) {
@@ -223,6 +230,20 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     };
     return labels[method as keyof typeof labels] || method;
   };
+
+  // Which processor a card payment came through, derived from external_id.
+  // Square rides on 'square:<id>'; Stripe uses a payment_intent id and/or a
+  // donation link; a manually keyed card has neither. Kept in sync with the
+  // backend card_source filter. Returns null for non-card payments.
+  const deriveCardSource = (transaction: Transaction): 'square' | 'stripe' | 'manual' | null => {
+    if (!['credit_card', 'debit_card'].includes(transaction.payment_method)) return null;
+    if (transaction.external_id?.startsWith('square:')) return 'square';
+    if (transaction.external_id || transaction.donation_id) return 'stripe';
+    return 'manual';
+  };
+
+  const getCardSourceLabel = (source: 'square' | 'stripe' | 'manual') =>
+    t(`treasurerDashboard.transactionList.source.${source}`);
 
   const renderStatusBadge = (status?: string) => {
     if (!status) return null;
@@ -343,6 +364,21 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
               <option value="debit_card">{t('treasurerDashboard.transactionList.methods.debit_card')}</option>
               <option value="ach">{t('treasurerDashboard.transactionList.methods.ach')}</option>
               <option value="other">{t('treasurerDashboard.transactionList.methods.other')}</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('treasurerDashboard.transactionList.filters.cardSource')}
+            </label>
+            <select
+              value={cardSourceFilter}
+              onChange={(e) => { setCardSourceFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">{t('treasurerDashboard.transactionList.filters.options.allSources')}</option>
+              <option value="stripe">{t('treasurerDashboard.transactionList.source.stripe')}</option>
+              <option value="square">{t('treasurerDashboard.transactionList.source.square')}</option>
+              <option value="manual">{t('treasurerDashboard.transactionList.source.manual')}</option>
             </select>
           </div>
           <div>
@@ -630,6 +666,18 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                       </span>
                     </div>
                   </div>
+                  {deriveCardSource(selectedTransaction) && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                        {t('treasurerDashboard.transactionList.source.label')}
+                      </p>
+                      <div className="mt-1">
+                        <span className="inline-flex rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-800">
+                          {getCardSourceLabel(deriveCardSource(selectedTransaction)!)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

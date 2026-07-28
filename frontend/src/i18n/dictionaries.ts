@@ -184,6 +184,7 @@ export interface Dictionaries {
         receiptNumber: string;
         paymentType: string;
         paymentMethod: string;
+        cardSource: string;
         minAmount: string;
         maxAmount: string;
         dateRange: string;
@@ -199,6 +200,7 @@ export interface Dictionaries {
         options: {
           allTypes: string;
           allMethods: string;
+          allSources: string;
           allTime: string;
           today: string;
           week: string;
@@ -237,6 +239,12 @@ export interface Dictionaries {
         debit_card: string;
         ach: string;
         other: string;
+      };
+      source: {
+        label: string;
+        square: string;
+        stripe: string;
+        manual: string;
       };
       status: {
         pending: string;
@@ -901,6 +909,7 @@ export const en: Dictionaries = {
         receiptNumber: "Receipt Number",
         paymentType: "Payment Type",
         paymentMethod: "Payment Method",
+        cardSource: "Card Source",
         minAmount: "Min Amount",
         maxAmount: "Max Amount",
         dateRange: "Date Range",
@@ -916,6 +925,7 @@ export const en: Dictionaries = {
         options: {
           allTypes: "All Types",
           allMethods: "All Methods",
+          allSources: "All Sources",
           allTime: "All Time",
           today: "Today",
           week: "Last 7 Days",
@@ -954,6 +964,12 @@ export const en: Dictionaries = {
         debit_card: "Debit Card",
         ach: "ACH",
         other: "Other"
+      },
+      source: {
+        label: "Source",
+        square: "Square",
+        stripe: "Stripe",
+        manual: "Manual"
       },
       status: {
         pending: "Pending",
@@ -2643,6 +2659,7 @@ export const ti: Dictionaries = {
         receiptNumber: "ቁጽሪ ቅብሊት",
         paymentType: "ዓይነት ክፍሊት",
         paymentMethod: "ገባሪ ክፍሊት",
+        cardSource: "ምንጪ ካርድ",
         minAmount: "ዝተሓተ መጠን",
         maxAmount: "ዝለዓለ መጠን",
         dateRange: "እዋን",
@@ -2658,6 +2675,7 @@ export const ti: Dictionaries = {
         options: {
           allTypes: "ኩሉ ዓይነት",
           allMethods: "ኩሉ ገባሪ",
+          allSources: "ኩሉ ምንጪ",
           allTime: "ኩሉ ግዜ",
           today: "ሎሚ",
           week: "ዝሓለፈ 7 መዓልታት",
@@ -2696,6 +2714,12 @@ export const ti: Dictionaries = {
         debit_card: "Debit Card",
         ach: "ACH",
         other: "ካልእ"
+      },
+      source: {
+        label: "ምንጪ",
+        square: "Square",
+        stripe: "Stripe",
+        manual: "ብኢድ ዝኣተወ"
       },
       status: {
         pending: "Pending",

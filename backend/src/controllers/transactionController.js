@@ -17,7 +17,8 @@ const getAllTransactions = async (req, res) => {
       min_amount,
       max_amount,
       search,
-      receipt_number
+      receipt_number,
+      card_source
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -27,6 +28,31 @@ const getAllTransactions = async (req, res) => {
     if (member_id) whereClause.member_id = member_id;
     if (payment_type) whereClause.payment_type = payment_type;
     if (payment_method) whereClause.payment_method = payment_method;
+
+    // Card-source filter (Square vs Stripe vs manual), derived from external_id.
+    // Square rides on external_id 'square:<id>'; Stripe uses its payment_intent
+    // id and/or a donation_id; a manually keyed card has neither. Kept in sync
+    // with the frontend deriveCardSource() so filter and label agree.
+    if (card_source && card_source !== 'all') {
+      const cardMethods = ['credit_card', 'debit_card'];
+      if (card_source === 'square') {
+        whereClause[Op.and] = [{ external_id: { [Op.like]: 'square:%' } }];
+      } else if (card_source === 'stripe') {
+        whereClause[Op.and] = [
+          { payment_method: { [Op.in]: cardMethods } },
+          { [Op.or]: [
+            { external_id: { [Op.ne]: null, [Op.notLike]: 'square:%' } },
+            { donation_id: { [Op.ne]: null } }
+          ] }
+        ];
+      } else if (card_source === 'manual') {
+        whereClause[Op.and] = [
+          { payment_method: { [Op.in]: cardMethods } },
+          { external_id: null },
+          { donation_id: null }
+        ];
+      }
+    }
     if (receipt_number) {
       whereClause.receipt_number = { [Op.iLike]: `%${receipt_number}%` };
     }
