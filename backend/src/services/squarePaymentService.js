@@ -80,6 +80,7 @@ async function matchSquareBuyer({ buyer_name, buyer_email }) {
 async function upsertSquarePayment(paymentObj) {
   const fields = normalizeSquarePayment(paymentObj);
   if (!fields || fields.status !== 'COMPLETED') {
+    console.log(`Square upsert skipped: id=${paymentObj?.id} normalizedStatus=${fields?.status ?? 'null'}`);
     return { row: null, created: false };
   }
 

@@ -26,7 +26,11 @@ async function handleWebhook(req, res) {
   try {
     if (event.type === 'payment.created' || event.type === 'payment.updated') {
       const payment = event?.data?.object?.payment;
-      if (payment) await upsertSquarePayment(payment);
+      console.log(`Square webhook: type=${event.type} id=${payment?.id} status=${payment?.status}`);
+      if (payment) {
+        const result = await upsertSquarePayment(payment);
+        console.log(`Square webhook upsert: id=${payment?.id} stored=${!!result.row} created=${result.created}`);
+      }
     } else {
       // refunds, disputes, etc. — acknowledged, no action in v1
       console.log(`Unhandled Square event type: ${event.type}`);
