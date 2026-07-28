@@ -2390,6 +2390,7 @@ export const en: Dictionaries = {
     ignore: 'Ignore',
     noneToReview: 'No Square payments to review.',
     createdOk: 'Transaction created.',
+    alreadyRecorded: 'This payment was already recorded; the row has been linked to its existing transaction.',
     ignoredOk: 'Payment ignored.'
   }
 
@@ -4132,6 +4133,7 @@ export const ti: Dictionaries = {
     ignore: 'ሸለል በል',
     noneToReview: 'ንግምጋም ዝኸውን ክፍሊት ስኴር የለን።',
     createdOk: 'ሸማ ተፈጢሩ።',
+    alreadyRecorded: 'እዚ ክፍሊት ድሮ ተመዝጊቡ ኣሎ፤ እታ መስመር ምስ ዘሎ ሸማ ተኣሳሲራ።',
     ignoredOk: 'ክፍሊት ተሸለለ።'
   }
 };

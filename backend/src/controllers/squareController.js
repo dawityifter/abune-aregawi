@@ -117,18 +117,38 @@ async function processReview(item, user) {
     member_id, payment_type, for_year, receipt_number, buyer_name
   }, collected_by);
 
-  if (result.success) {
+  // Resolve the queue row to CREATED on success, OR self-heal when a
+  // transaction already exists for this payment (code EXISTS): in both cases
+  // the payment is recorded (result.id is the transaction id), so link the row
+  // instead of stranding it in the pending list where a repeat confirm would
+  // 409 forever.
+  const alreadyExisted = !result.success && result.code === 'EXISTS' && result.id;
+  if ((result.success || alreadyExisted) && squarePaymentRow.status !== 'CREATED') {
     try {
+      // On self-heal, reflect the member the existing transaction was recorded
+      // to (which may differ from the client's pick), not the review form's.
+      let resolvedMemberId = member_id || null;
+      if (alreadyExisted) {
+        const existingTx = await Transaction.findByPk(result.id, { attributes: ['member_id'] });
+        resolvedMemberId = existingTx ? existingTx.member_id : null;
+      }
       await squarePaymentRow.update({
         status: 'CREATED',
         transaction_id: result.id,
-        matched_member_id: member_id || null,
+        matched_member_id: resolvedMemberId,
         processed_at: new Date(),
         error: null
       });
     } catch (e) {
       console.warn('Square queue update warning:', e.message || e);
     }
+  }
+
+  // Report a pre-existing transaction as a resolved success so the client shows
+  // "already recorded" and refreshes the now-non-pending row, rather than
+  // hitting a silent 409 dead-end.
+  if (alreadyExisted) {
+    return { success: true, id: result.id, alreadyExisted: true, message: result.message };
   }
   return result;
 }

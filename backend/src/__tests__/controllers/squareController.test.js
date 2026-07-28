@@ -144,6 +144,56 @@ describe('POST /api/square/reconcile/create-transaction (server-authoritative am
   });
 });
 
+describe('POST /api/square/reconcile/create-transaction (self-heal on pre-existing transaction)', () => {
+  it('links a stranded pending row to its existing transaction and reports alreadyExisted instead of a 409 dead-end', async () => {
+    const collector = await Member.create({
+      first_name: 'Rev3', last_name: 'Iewer3', phone_number: '+15550009004', role: 'treasurer'
+    });
+    const member = await Member.create({
+      first_name: 'Self', last_name: 'Heal', phone_number: '+15550009005', role: 'member'
+    });
+    await SquarePayment.create({
+      square_payment_id: 'sqpmt_SELFHEAL',
+      amount: 40.00,
+      currency: 'USD',
+      status: 'NEEDS_REVIEW',
+      square_created_at: new Date('2026-07-21T10:00:00Z')
+    });
+
+    const app = buildReconcileApp({ id: collector.id });
+
+    // First confirm: creates the transaction and marks the row CREATED.
+    const first = await request(app)
+      .post('/api/square/reconcile/create-transaction')
+      .send({ square_payment_id: 'sqpmt_SELFHEAL', member_id: member.id, payment_type: 'donation', receipt_number: '000' })
+      .expect(200);
+    expect(first.body.success).toBe(true);
+    const txId = first.body.id;
+
+    // Simulate a stranded state: the transaction still exists, but the queue
+    // row got reset back to pending (e.g. manual DB surgery, or a re-ingest).
+    await SquarePayment.update(
+      { status: 'NEEDS_REVIEW', transaction_id: null },
+      { where: { square_payment_id: 'sqpmt_SELFHEAL' } }
+    );
+
+    // Second confirm: must self-heal, not 409-dead-end.
+    const second = await request(app)
+      .post('/api/square/reconcile/create-transaction')
+      .send({ square_payment_id: 'sqpmt_SELFHEAL', member_id: member.id, payment_type: 'donation', receipt_number: '000' })
+      .expect(200);
+    expect(second.body.success).toBe(true);
+    expect(second.body.alreadyExisted).toBe(true);
+    expect(second.body.id).toBe(txId);
+
+    // Row is re-linked to the SAME transaction; no duplicate transaction created.
+    const row = await SquarePayment.findOne({ where: { square_payment_id: 'sqpmt_SELFHEAL' } });
+    expect(row.status).toBe('CREATED');
+    expect(row.transaction_id).toBe(txId);
+    expect(await Transaction.count({ where: { external_id: 'square:sqpmt_SELFHEAL' } })).toBe(1);
+  });
+});
+
 describe('GET /api/square/queue (defaults + raw exclusion)', () => {
   it('defaults to NEEDS_REVIEW/AUTO_MATCHED only and omits the raw column when no status is passed', async () => {
     await SquarePayment.create({

@@ -24,6 +24,7 @@ const SquareReview: React.FC = () => {
   const [rows, setRows] = useState<SquareRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [busyIds, setBusyIds] = useState<Record<string, boolean>>({});
   const [beginTime, setBeginTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -88,6 +89,7 @@ const SquareReview: React.FC = () => {
     const rs = rowSearch[row.id];
     const memberId = rs?.selectedId ?? row.matched_member_id ?? undefined;
     setBusyIds(b => ({ ...b, [row.id]: true }));
+    setError(''); setNotice('');
     try {
       const headers = await authHeader();
       const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/square/reconcile/create-transaction`, {
@@ -105,6 +107,7 @@ const SquareReview: React.FC = () => {
       });
       const data = await resp.json();
       if (!data.success && data.code !== 'EXISTS') throw new Error(data.message || 'Failed');
+      setNotice(data.alreadyExisted ? t('square.alreadyRecorded') : t('square.createdOk'));
       await fetchQueue();
     } catch (e: any) {
       setError(e.message || 'Failed to create transaction');
@@ -146,6 +149,7 @@ const SquareReview: React.FC = () => {
       </div>
 
       {error && <div className="text-red-600 text-sm">{error}</div>}
+      {notice && <div className="text-green-600 text-sm">{notice}</div>}
       {!loading && pending.length === 0 && <div className="text-gray-500">{t('square.noneToReview')}</div>}
 
       <div className="space-y-3">
