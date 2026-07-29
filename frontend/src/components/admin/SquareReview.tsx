@@ -35,6 +35,8 @@ const SquareReview: React.FC = () => {
   const [rowType, setRowType] = useState<Record<string, string>>({});
   const [rowYear, setRowYear] = useState<Record<string, string>>({});
   const [rowReceipt, setRowReceipt] = useState<Record<string, string>>({});
+  const [rowAnonymous, setRowAnonymous] = useState<Record<string, boolean>>({});
+  const [tab, setTab] = useState<'review' | 'ignored'>('review');
   const currentYear = new Date().getFullYear();
 
   // Auth-header pattern copied verbatim from ZelleReview.tsx (Authorization: Bearer <idToken>,
@@ -49,14 +51,16 @@ const SquareReview: React.FC = () => {
     setLoading(true); setError('');
     try {
       const headers = await authHeader();
-      const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/square/queue?limit=100`, { headers });
+      // Review tab uses the default (pending) filter; Ignored tab requests IGNORED.
+      const statusParam = tab === 'ignored' ? '&status=IGNORED' : '';
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/square/queue?limit=100${statusParam}`, { headers });
       const data = await resp.json();
       if (!data.success) throw new Error(data.message || 'Failed to load queue');
       setRows(data.items || []);
     } catch (e: any) {
       setError(e.message || 'Failed to load Square payments');
     } finally { setLoading(false); }
-  }, [firebaseUser, currentUser, authHeader]);
+  }, [firebaseUser, currentUser, authHeader, tab]);
 
   useEffect(() => { fetchQueue(); }, [fetchQueue]);
 
@@ -89,7 +93,8 @@ const SquareReview: React.FC = () => {
 
   const confirmRow = async (row: SquareRow) => {
     const rs = rowSearch[row.id];
-    const memberId = rs?.selectedId ?? row.matched_member_id ?? undefined;
+    const isAnon = !!rowAnonymous[row.id];
+    const memberId = isAnon ? null : (rs?.selectedId ?? row.matched_member_id ?? null);
     setBusyIds(b => ({ ...b, [row.id]: true }));
     setError(''); setNotice('');
     try {
@@ -120,6 +125,7 @@ const SquareReview: React.FC = () => {
 
   const ignoreRow = async (row: SquareRow) => {
     setBusyIds(b => ({ ...b, [row.id]: true }));
+    setError(''); setNotice('');
     try {
       const headers = await authHeader();
       await fetch(`${process.env.REACT_APP_API_URL}/api/square/queue/${row.id}/ignore`, { method: 'POST', headers });
@@ -131,10 +137,29 @@ const SquareReview: React.FC = () => {
     }
   };
 
-  const pending = rows
-    .filter(r => r.status === 'NEEDS_REVIEW' || r.status === 'AUTO_MATCHED')
-    // Newest payment first. The backend already orders by square_created_at
-    // DESC; this guarantees it client-side regardless of fetch order.
+  const restoreRow = async (row: SquareRow) => {
+    setBusyIds(b => ({ ...b, [row.id]: true }));
+    setError(''); setNotice('');
+    try {
+      const headers = await authHeader();
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/square/queue/${row.id}/restore`, { method: 'POST', headers });
+      const data = await resp.json().catch(() => ({}));
+      if (!data.success) throw new Error(data.message || 'Restore failed');
+      setNotice(t('square.restoredOk'));
+      await fetchQueue();
+    } catch (e: any) {
+      setError(e.message || 'Failed to restore');
+    } finally {
+      setBusyIds(b => ({ ...b, [row.id]: false }));
+    }
+  };
+
+  // Rows for the active tab, newest payment first. The backend already orders by
+  // square_created_at DESC; the client sort guarantees it regardless of fetch order.
+  const visibleRows = rows
+    .filter(r => tab === 'ignored'
+      ? r.status === 'IGNORED'
+      : (r.status === 'NEEDS_REVIEW' || r.status === 'AUTO_MATCHED'))
     .sort((a, b) => new Date(b.square_created_at || 0).getTime() - new Date(a.square_created_at || 0).getTime());
 
   const fmtAmount = (a?: string | number | null) =>
@@ -160,13 +185,19 @@ const SquareReview: React.FC = () => {
 
   const prettyType = (pt: string) => pt.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-  const statusMeta = (status: string) =>
-    status === 'AUTO_MATCHED'
-      ? { label: t('square.autoMatched'), cls: 'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200' }
-      : { label: t('square.needsReview'), cls: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200' };
+  const statusMeta = (status: string) => {
+    if (status === 'AUTO_MATCHED') return { label: t('square.autoMatched'), cls: 'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200' };
+    if (status === 'IGNORED') return { label: t('square.ignoredTab'), cls: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200' };
+    return { label: t('square.needsReview'), cls: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200' };
+  };
 
   const inputCls =
     'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200';
+
+  // Confirm is only allowed once the payment is attributed: either a member is
+  // chosen/auto-matched, or the treasurer has explicitly marked it anonymous.
+  const canConfirm = (row: SquareRow) =>
+    (rowSearch[row.id]?.selectedId ?? row.matched_member_id) != null || !!rowAnonymous[row.id];
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -178,7 +209,11 @@ const SquareReview: React.FC = () => {
             <h2 className="text-lg font-semibold text-slate-900">{t('square.title')}</h2>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            {loading ? t('square.loading') : `${pending.length} ${t('square.awaitingReview')}`}
+            {loading
+              ? t('square.loading')
+              : tab === 'ignored'
+                ? `${visibleRows.length} ${t('square.ignoredCountLabel')}`
+                : `${visibleRows.length} ${t('square.awaitingReview')}`}
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -216,7 +251,18 @@ const SquareReview: React.FC = () => {
 
       {/* Body */}
       <div className="p-5">
-        {loading && pending.length === 0 ? (
+        <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-sm">
+          <button type="button" onClick={() => setTab('review')}
+            className={`rounded-md px-3 py-1.5 font-medium transition ${tab === 'review' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+            {t('square.review')}
+          </button>
+          <button type="button" onClick={() => setTab('ignored')}
+            className={`rounded-md px-3 py-1.5 font-medium transition ${tab === 'ignored' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+            {t('square.ignoredTab')}
+          </button>
+        </div>
+
+        {loading && visibleRows.length === 0 ? (
           <div className="flex items-center justify-center gap-2 py-14 text-sm text-slate-500">
             <svg className="h-5 w-5 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -224,19 +270,21 @@ const SquareReview: React.FC = () => {
             </svg>
             {t('square.loading')}
           </div>
-        ) : pending.length === 0 ? (
+        ) : visibleRows.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 py-14 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-500">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <p className="mt-3 text-sm font-medium text-slate-700">{t('square.allCaughtUp')}</p>
-            <p className="mt-1 text-sm text-slate-500">{t('square.noneToReview')}</p>
+            <p className="mt-3 text-sm font-medium text-slate-700">
+              {tab === 'ignored' ? t('square.noneIgnored') : t('square.allCaughtUp')}
+            </p>
+            {tab !== 'ignored' && <p className="mt-1 text-sm text-slate-500">{t('square.noneToReview')}</p>}
           </div>
         ) : (
           <div className="space-y-3">
-            {pending.map(row => (
+            {visibleRows.map(row => (
               <div key={row.id} className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm">
                 {/* Amount + status + card */}
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -281,18 +329,43 @@ const SquareReview: React.FC = () => {
                 )}
 
                 {/* Action row */}
+                {tab === 'ignored' ? (
+                  <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+                    <button disabled={busyIds[row.id]} onClick={() => restoreRow(row)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a5 5 0 015 5v1M3 10l4-4M3 10l4 4" />
+                      </svg>
+                      {t('square.restore')}
+                    </button>
+                  </div>
+                ) : (
                 <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-                  <input className={`${inputCls} w-full sm:w-48`} placeholder={t('square.searchMember')}
+                  <input className={`${inputCls} w-full sm:w-48 disabled:bg-slate-100 disabled:text-slate-400`}
+                    placeholder={t('square.searchMember')}
+                    disabled={!!rowAnonymous[row.id]}
                     value={rowSearch[row.id]?.query || ''}
                     onChange={e => searchMember(row.id, e.target.value)} />
                   {rowSearch[row.id]?.results?.length ? (
-                    <select className={inputCls}
+                    <select className={`${inputCls} disabled:bg-slate-100 disabled:text-slate-400`}
+                      disabled={!!rowAnonymous[row.id]}
                       value={rowSearch[row.id]?.selectedId || ''}
-                      onChange={e => setRowSearch(s => ({ ...s, [row.id]: { ...(s[row.id]!), selectedId: Number(e.target.value) } }))}>
+                      onChange={e => {
+                        const selectedId = Number(e.target.value);
+                        setRowSearch(s => ({ ...s, [row.id]: { ...(s[row.id]!), selectedId } }));
+                        if (selectedId) setRowAnonymous(a => ({ ...a, [row.id]: false }));
+                      }}>
                       <option value="">{t('square.selectMember')}</option>
                       {rowSearch[row.id]!.results.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                     </select>
                   ) : null}
+                  <label className="inline-flex items-center gap-1.5 text-sm text-slate-600">
+                    <input type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      checked={!!rowAnonymous[row.id]}
+                      onChange={e => setRowAnonymous(a => ({ ...a, [row.id]: e.target.checked }))} />
+                    {t('square.anonymous')}
+                  </label>
 
                   <select className={inputCls} value={rowType[row.id] || 'donation'}
                     onChange={e => setRowType(s => ({ ...s, [row.id]: e.target.value }))}>
@@ -308,8 +381,9 @@ const SquareReview: React.FC = () => {
                     onChange={e => setRowReceipt(s => ({ ...s, [row.id]: e.target.value }))} />
 
                   <div className="ml-auto flex items-center gap-2">
-                    <button disabled={busyIds[row.id]} onClick={() => confirmRow(row)}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50">
+                    <button disabled={busyIds[row.id] || !canConfirm(row)} onClick={() => confirmRow(row)}
+                      title={!canConfirm(row) ? t('square.confirmHint') : undefined}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
                       {busyIds[row.id] ? (
                         <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -328,6 +402,7 @@ const SquareReview: React.FC = () => {
                     </button>
                   </div>
                 </div>
+                )}
               </div>
             ))}
           </div>

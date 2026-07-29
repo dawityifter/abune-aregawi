@@ -2414,9 +2414,17 @@ export const en: Dictionaries = {
     loading: 'Loading…',
     allCaughtUp: 'All caught up',
     selectMember: 'Select member',
+    anonymous: 'Anonymous donor',
+    confirmHint: 'Select a member or mark as anonymous first',
     createdOk: 'Transaction created.',
     alreadyRecorded: 'This payment was already recorded; the row has been linked to its existing transaction.',
-    ignoredOk: 'Payment ignored.'
+    ignoredOk: 'Payment ignored.',
+    review: 'To review',
+    ignoredTab: 'Ignored',
+    ignoredCountLabel: 'ignored',
+    restore: 'Restore',
+    restoredOk: 'Payment restored to review.',
+    noneIgnored: 'No ignored payments.'
   }
 
 };
@@ -4174,9 +4182,17 @@ export const ti: Dictionaries = {
     loading: 'ይጽዓን…',
     allCaughtUp: 'ኩሉ ተወዲኡ',
     selectMember: 'ኣባል ምረጽ',
+    anonymous: 'ስሙ ዘይተፈልጠ ወሃቢ',
+    confirmHint: 'ቅድም ኣባል ምረጽ ወይ ስሙ ዘይተፈልጠ ኢልካ ምልክት ግበር',
     createdOk: 'ሸማ ተፈጢሩ።',
     alreadyRecorded: 'እዚ ክፍሊት ድሮ ተመዝጊቡ ኣሎ፤ እታ መስመር ምስ ዘሎ ሸማ ተኣሳሲራ።',
-    ignoredOk: 'ክፍሊት ተሸለለ።'
+    ignoredOk: 'ክፍሊት ተሸለለ።',
+    review: 'ንግምጋም',
+    ignoredTab: 'እተሸለሉ',
+    ignoredCountLabel: 'እተሸለሉ',
+    restore: 'መልስ',
+    restoredOk: 'ክፍሊት ናብ ግምጋም ተመሊሱ።',
+    noneIgnored: 'እተሸለሉ ክፍሊታት የለዉን።'
   }
 };
 

@@ -194,6 +194,60 @@ describe('POST /api/square/reconcile/create-transaction (self-heal on pre-existi
   });
 });
 
+function buildQueueApp(user) {
+  const app = express();
+  app.use(express.json());
+  app.use((req, res, next) => { req.user = user; next(); });
+  app.post('/api/square/queue/:id/ignore', squareController.ignoreQueueItem);
+  app.post('/api/square/queue/:id/restore', squareController.restoreQueueItem);
+  return app;
+}
+
+describe('POST /api/square/queue/:id/restore (un-ignore)', () => {
+  it('ignores then restores a payment back to a pending status', async () => {
+    const collector = await Member.create({
+      first_name: 'Rev4', last_name: 'Iewer4', phone_number: '+15550009006', role: 'treasurer'
+    });
+    const row = await SquarePayment.create({
+      square_payment_id: 'sqpmt_RESTORE', amount: 15, currency: 'USD', status: 'NEEDS_REVIEW'
+    });
+    const app = buildQueueApp({ id: collector.id });
+
+    await request(app).post(`/api/square/queue/${row.id}/ignore`).expect(200);
+    expect((await SquarePayment.findByPk(row.id)).status).toBe('IGNORED');
+
+    const res = await request(app).post(`/api/square/queue/${row.id}/restore`).expect(200);
+    expect(res.body.success).toBe(true);
+    const restored = await SquarePayment.findByPk(row.id);
+    expect(restored.status).toBe('NEEDS_REVIEW');
+    expect(restored.processed_at).toBeNull();
+  });
+
+  it('restores a matched payment to AUTO_MATCHED', async () => {
+    const member = await Member.create({
+      first_name: 'Mem', last_name: 'Atched', phone_number: '+15550009007', role: 'member'
+    });
+    const row = await SquarePayment.create({
+      square_payment_id: 'sqpmt_RESTORE_MATCH', amount: 20, currency: 'USD',
+      status: 'IGNORED', matched_member_id: member.id
+    });
+    const app = buildQueueApp({ id: 1 });
+    const res = await request(app).post(`/api/square/queue/${row.id}/restore`).expect(200);
+    expect(res.body.status).toBe('AUTO_MATCHED');
+    expect((await SquarePayment.findByPk(row.id)).status).toBe('AUTO_MATCHED');
+  });
+
+  it('refuses to restore a payment that is not ignored', async () => {
+    const row = await SquarePayment.create({
+      square_payment_id: 'sqpmt_NOT_IGNORED', amount: 30, currency: 'USD', status: 'NEEDS_REVIEW'
+    });
+    const app = buildQueueApp({ id: 1 });
+    const res = await request(app).post(`/api/square/queue/${row.id}/restore`).expect(400);
+    expect(res.body.success).toBe(false);
+    expect((await SquarePayment.findByPk(row.id)).status).toBe('NEEDS_REVIEW');
+  });
+});
+
 describe('GET /api/square/queue (defaults + raw exclusion)', () => {
   it('defaults to NEEDS_REVIEW/AUTO_MATCHED only and omits the raw column when no status is passed', async () => {
     await SquarePayment.create({

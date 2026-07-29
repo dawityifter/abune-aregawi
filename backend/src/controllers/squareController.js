@@ -208,11 +208,31 @@ async function ignoreQueueItem(req, res) {
   }
 }
 
+// POST /api/square/queue/:id/restore
+// Reverse an ignore: move the payment back into the review queue.
+async function restoreQueueItem(req, res) {
+  try {
+    const row = await SquarePayment.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ success: false, message: 'Queue item not found' });
+    if (row.status !== 'IGNORED') {
+      return res.status(400).json({ success: false, message: 'Only ignored payments can be restored' });
+    }
+    // Return to a pending state, preferring AUTO_MATCHED when a match survives.
+    const status = row.matched_member_id ? 'AUTO_MATCHED' : 'NEEDS_REVIEW';
+    await row.update({ status, processed_at: null });
+    return res.json({ success: true, status });
+  } catch (error) {
+    console.error('Square queue restore error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   handleWebhook,
   syncFromSquare,
   getQueue,
   createTransactionFromReview,
   createBatchTransactions,
-  ignoreQueueItem
+  ignoreQueueItem,
+  restoreQueueItem
 };
