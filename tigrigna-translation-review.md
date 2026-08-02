@@ -281,3 +281,37 @@ and have been corrected. All are `en → old ti (meaning) → new ti`:
 | participation | Participation Made Easy | ክፍሊት ቀሊል እዩ ("Payment is easy") | ተሳትፎ ቀሊል እዩ | ⚠️ if section is about giving, old wording may be intentional |
 
 Note: `volunteer.desc` was already correct (ኣብ ጕጅለ ኣገልግሎትና ተጸምብር…), only the label was wrong.
+
+## 2026-08-02 — Expense editing + skipped check numbers (NEW drafts, please review)
+New `ti` strings added alongside the expense-flow work. All are first drafts by a
+non-native speaker and need confirmation.
+
+### `treasurer.skippedChecks.*` (legacy `LanguageContext.tsx`) — modeled on the existing `skippedReceipts` block
+
+| Key | English | ti draft | Confidence |
+|-----|---------|----------|------------|
+| skippedChecks.button | Show Skipped Check Numbers | ዝተዘለሉ ቁጽሪ ቼክ ርኣይ | ⚠️ mirrors receipts wording |
+| skippedChecks.title | Missing Check Numbers | ዝጠፍኡ ቁጽሪ ቼክ | ⚠️ |
+| skippedChecks.warning | Please check your checkbook… | በጃኹም መዝገብ ቼክኩም ተወከሱ። እዞም ዝስዕቡ ቁጽሪ ቼክ ኣብ መዝገብ የለውን። | ⚠️ "checkbook" rendered as መዝገብ ቼክ |
+| skippedChecks.range | Checked range | ዝተረጋገፀ ካብ | ⚠️ copied from receipts |
+| skippedChecks.noneFound | No skipped check numbers found… | ኣብዚ ዝተረጋገፀ ቁጽሪ ዝተዘለለ ቼክ የለን! | ⚠️ |
+| skippedChecks.note | It is important to record every check… | ልክዕ ዝኾነ ፋይናንስ መዝገብ ንምሓዝ ኩሉ ቼክ ክምዝገብ ኣገዳሲ እዩ። | ⚠️ |
+| skippedChecks.close | Close | ዕጸ | ✅ matches existing usage |
+
+### `treasurerDashboard.expenses.*` (`dictionaries.ts`)
+
+| Key | English | ti draft | Confidence |
+|-----|---------|----------|------------|
+| addModal.checkNumberRequired | Check number is required for check payments | ንክፍሊት ብቼክ ቁጽሪ ቼክ ኣድላዪ እዩ | ⚠️ phrasing |
+| invoiceNumber | Invoice Number | ቁጽሪ ኢንቮይስ | ⚠️ transliteration — is there a native term? |
+| missingCheckNumber | No check # | ቁጽሪ ቼክ የለን | ✅ |
+| edit.edit | Edit | ኣርም | ⚠️ confirm vs. ኣስተኻኽል |
+| edit.save | Save Changes | ለውጥታት ኣቐምጥ | ⚠️ |
+| edit.saving | Saving... | የቐምጥ ኣሎ... | ✅ matches addModal.saving pattern |
+| edit.cancel | Cancel | ሰርዝ | ✅ existing usage |
+| edit.saveFailed | Failed to save changes | ለውጥታት ምቕማጥ ኣይተኻእለን | ⚠️ |
+| edit.payeeReadOnly | Payee cannot be changed after an expense is recorded. | ወጪ ድሕሪ ምምዝጋቡ ተቀባሊ ክቕየር ኣይክእልን። | ⚠️ |
+| edit.categoryRequired | Please select an expense category | በጃኹም ዓይነት ወጪ ምረጹ | ✅ |
+| edit.amountInvalid | Please enter a valid amount greater than $0.00 | በጃኹም ካብ $0.00 ዝዓቢ ቅኑዕ መጠን ኣእትዉ | ⚠️ |
+| edit.dateRequired | Please select an expense date | በጃኹም ዕለት ወጪ ምረጹ | ✅ |
+| edit.dateFuture | Expense date cannot be in the future | ዕለት ወጪ ኣብ መጻኢ ክኸውን ኣይክእልን | ⚠️ |

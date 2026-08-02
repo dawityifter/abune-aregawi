@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getRolePermissions } from '../../utils/roles';
 import EmployeeFormModal from './EmployeeFormModal';
+import { invalidateCached, CACHE_KEYS } from '../../utils/referenceDataCache';
 
 interface Employee {
   id: string;
@@ -110,6 +111,7 @@ const EmployeeList: React.FC = () => {
       );
 
       if (response.ok) {
+        invalidateCached(CACHE_KEYS.employees);
         fetchEmployees();
       } else {
         const data = await response.json();
@@ -132,6 +134,8 @@ const EmployeeList: React.FC = () => {
   };
 
   const handleFormSuccess = () => {
+    // Drop the cached list so the Add Expense dropdown picks up the change
+    invalidateCached(CACHE_KEYS.employees);
     fetchEmployees();
     setShowFormModal(false);
     setSelectedEmployee(null);

@@ -2,6 +2,43 @@ const { ExpenseCategory, LedgerEntry, Member, Employee, Vendor, sequelize } = re
 const { Op } = require('sequelize');
 const tz = require('../config/timezone');
 
+// Check-method expenses must carry a unique check number. Enforcement is
+// application-level (no DB constraint), so both the create and the update path
+// have to run this — an edit that changes a check number would otherwise slip a
+// duplicate past the check done at insert time.
+// Returns { ok: true, value } or { ok: false, status, message }.
+async function validateCheckNumber({ paymentMethod, checkNumber, excludeId = null }) {
+  if (paymentMethod !== 'check') {
+    // Cash expenses never keep a check number, so a method switch clears it.
+    return { ok: true, value: null };
+  }
+
+  const value = (checkNumber || '').trim();
+  if (!value) {
+    return {
+      ok: false,
+      status: 400,
+      message: 'Check number is required for check payments'
+    };
+  }
+
+  const where = { check_number: value };
+  if (excludeId) {
+    where.id = { [Op.ne]: excludeId };
+  }
+
+  const existing = await LedgerEntry.findOne({ where });
+  if (existing) {
+    return {
+      ok: false,
+      status: 409,
+      message: `Check number "${value}" has already been used. Please use a unique check number.`
+    };
+  }
+
+  return { ok: true, value };
+}
+
 // Get all expense categories (active only by default)
 const getExpenseCategories = async (req, res) => {
   try {
@@ -106,16 +143,17 @@ const createExpense = async (req, res) => {
       });
     }
 
-    // Check for duplicate check number
-    if (check_number) {
-      const existing = await LedgerEntry.findOne({ where: { check_number } });
-      if (existing) {
-        await t.rollback();
-        return res.status(409).json({
-          success: false,
-          message: `Check number "${check_number}" has already been used. Please use a unique check number.`
-        });
-      }
+    // Check number is required and must be unique for check payments
+    const checkResult = await validateCheckNumber({
+      paymentMethod: payment_method.toLowerCase(),
+      checkNumber: check_number
+    });
+    if (!checkResult.ok) {
+      await t.rollback();
+      return res.status(checkResult.status).json({
+        success: false,
+        message: checkResult.message
+      });
     }
 
     // Get collector (the logged-in user)
@@ -150,7 +188,7 @@ const createExpense = async (req, res) => {
         employee_id: employee_id || null,
         vendor_id: vendor_id || null,
         payee_name: payee_name || null,
-        check_number: check_number || null,
+        check_number: checkResult.value,
         invoice_number: invoice_number || null
       }, { transaction: t });
     } catch (ledgerError) {
@@ -380,7 +418,9 @@ const updateExpense = async (req, res) => {
       expense_date,
       payment_method,
       receipt_number,
-      memo
+      memo,
+      check_number,
+      invoice_number
     } = req.body;
 
     // Find the expense
@@ -467,6 +507,29 @@ const updateExpense = async (req, res) => {
     if (memo !== undefined) {
       updateData.memo = memo || null;
     }
+
+    if (invoice_number !== undefined) {
+      updateData.invoice_number = invoice_number || null;
+    }
+
+    // The request may change the method, the check number, or neither, so resolve
+    // the effective values before validating. Always run this: switching to check
+    // without supplying a number has to fail even when check_number is absent.
+    const effectiveMethod = updateData.payment_method || expense.payment_method;
+    const effectiveCheckNumber = check_number !== undefined ? check_number : expense.check_number;
+    const checkResult = await validateCheckNumber({
+      paymentMethod: effectiveMethod,
+      checkNumber: effectiveCheckNumber,
+      excludeId: expense.id
+    });
+    if (!checkResult.ok) {
+      await t.rollback();
+      return res.status(checkResult.status).json({
+        success: false,
+        message: checkResult.message
+      });
+    }
+    updateData.check_number = checkResult.value;
 
     // Update the expense
     await expense.update(updateData, { transaction: t });
@@ -662,6 +725,70 @@ const getExpenseStats = async (req, res) => {
   }
 };
 
+// Identify gaps in the check number sequence so the treasurer can audit the
+// checkbook the same way skipped receipt numbers are audited on the payments side.
+const getSkippedChecks = async (req, res) => {
+  try {
+    const rows = await LedgerEntry.findAll({
+      attributes: ['check_number'],
+      where: { check_number: { [Op.ne]: null } },
+      raw: true
+    });
+
+    // check_number is free text, so "CHK-1042", "#1042" and "1042" are the same
+    // check. Strip everything that isn't a digit and parse what's left.
+    let ignoredNonNumeric = 0;
+    const numbers = [];
+    for (const row of rows) {
+      const digits = String(row.check_number).replace(/\D/g, '');
+      if (!digits) {
+        ignoredNonNumeric += 1;
+        continue;
+      }
+      numbers.push(parseInt(digits, 10));
+    }
+
+    if (numbers.length === 0) {
+      return res.json({
+        success: true,
+        data: { skippedChecks: [], range: null, ignoredNonNumeric }
+      });
+    }
+
+    const checkSet = new Set(numbers);
+    const maxCheck = Math.max(...numbers);
+
+    // Receipts anchor to a hardcoded START_RECEIPT_NUMBER. Checks have no such
+    // known starting point, so default to the lowest check on record — anchoring
+    // any lower would report every number below the first recorded check as a gap.
+    const envStart = parseInt(process.env.START_CHECK_NUMBER, 10);
+    const startCheck = Number.isFinite(envStart) ? envStart : Math.min(...numbers);
+
+    const skippedChecks = [];
+    for (let i = startCheck; i < maxCheck; i++) {
+      if (!checkSet.has(i)) {
+        skippedChecks.push(i);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        skippedChecks,
+        range: { start: startCheck, end: maxCheck },
+        ignoredNonNumeric
+      }
+    });
+  } catch (error) {
+    console.error('Error checking skipped check numbers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check skipped check numbers',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getExpenseCategories,
   createExpense,
@@ -669,5 +796,6 @@ module.exports = {
   getExpenseById,
   updateExpense,
   deleteExpense,
-  getExpenseStats
+  getExpenseStats,
+  getSkippedChecks
 };

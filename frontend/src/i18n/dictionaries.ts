@@ -302,6 +302,7 @@ export interface Dictionaries {
         payeeType: string;
         paymentMethod: string;
         checkNumber: string;
+        checkNumberRequired: string;
         receiptNumber: string;
         memo: string;
         cancel: string;
@@ -313,6 +314,20 @@ export interface Dictionaries {
           vendor: string;
           other: string;
         };
+      };
+      invoiceNumber: string;
+      missingCheckNumber: string;
+      edit: {
+        edit: string;
+        save: string;
+        saving: string;
+        cancel: string;
+        saveFailed: string;
+        payeeReadOnly: string;
+        categoryRequired: string;
+        amountInvalid: string;
+        dateRequired: string;
+        dateFuture: string;
       };
     };
     reportTabs: {
@@ -1032,6 +1047,7 @@ export const en: Dictionaries = {
         payeeType: "Payee Type",
         paymentMethod: "Payment Method",
         checkNumber: "Check Number",
+        checkNumberRequired: "Check number is required for check payments",
         receiptNumber: "Receipt Number",
         memo: "Memo",
         cancel: "Cancel",
@@ -1043,6 +1059,20 @@ export const en: Dictionaries = {
           vendor: "Vendor",
           other: "Other"
         }
+      },
+      invoiceNumber: "Invoice Number",
+      missingCheckNumber: "No check #",
+      edit: {
+        edit: "Edit",
+        save: "Save Changes",
+        saving: "Saving...",
+        cancel: "Cancel",
+        saveFailed: "Failed to save changes",
+        payeeReadOnly: "Payee cannot be changed after an expense is recorded.",
+        categoryRequired: "Please select an expense category",
+        amountInvalid: "Please enter a valid amount greater than $0.00",
+        dateRequired: "Please select an expense date",
+        dateFuture: "Expense date cannot be in the future"
       }
     },
     reportTabs: {
@@ -2804,6 +2834,7 @@ export const ti: Dictionaries = {
         payeeType: "ዓይነት ተቀባሊ",
         paymentMethod: "ኣገባብ ክፍሊት",
         checkNumber: "ቁጽሪ ቼክ",
+        checkNumberRequired: "ንክፍሊት ብቼክ ቁጽሪ ቼክ ኣድላዪ እዩ",
         receiptNumber: "ቁጽሪ ቅብሊት",
         memo: "መዘኻኸሪ",
         cancel: "ሰርዝ",
@@ -2815,6 +2846,20 @@ export const ti: Dictionaries = {
           vendor: "ሻያጣይ",
           other: "ካልእ"
         }
+      },
+      invoiceNumber: "ቁጽሪ ኢንቮይስ",
+      missingCheckNumber: "ቁጽሪ ቼክ የለን",
+      edit: {
+        edit: "ኣርም",
+        save: "ለውጥታት ኣቐምጥ",
+        saving: "የቐምጥ ኣሎ...",
+        cancel: "ሰርዝ",
+        saveFailed: "ለውጥታት ምቕማጥ ኣይተኻእለን",
+        payeeReadOnly: "ወጪ ድሕሪ ምምዝጋቡ ተቀባሊ ክቕየር ኣይክእልን።",
+        categoryRequired: "በጃኹም ዓይነት ወጪ ምረጹ",
+        amountInvalid: "በጃኹም ካብ $0.00 ዝዓቢ ቅኑዕ መጠን ኣእትዉ",
+        dateRequired: "በጃኹም ዕለት ወጪ ምረጹ",
+        dateFuture: "ዕለት ወጪ ኣብ መጻኢ ክኸውን ኣይክእልን"
       }
     },
     reportTabs: {

@@ -545,6 +545,13 @@ const translations = {
     'treasurer.skippedReceipts.noneFound': 'No skipped receipt numbers found in this range!',
     'treasurer.skippedReceipts.note': 'It is important to enter every receipt to maintain accurate financial records.',
     'treasurer.skippedReceipts.close': 'Close',
+    'treasurer.skippedChecks.button': 'Show Skipped Check Numbers',
+    'treasurer.skippedChecks.title': 'Missing Check Numbers',
+    'treasurer.skippedChecks.warning': 'Please check your checkbook. The following check numbers appear to be skipped or missing from the system.',
+    'treasurer.skippedChecks.range': 'Checked range',
+    'treasurer.skippedChecks.noneFound': 'No skipped check numbers found in this range!',
+    'treasurer.skippedChecks.note': 'It is important to record every check to maintain accurate financial records.',
+    'treasurer.skippedChecks.close': 'Close',
 
     // Treasurer Stats
     'treasurerDashboard.stats.currentBalance': 'Current Bank Balance',
@@ -962,6 +969,14 @@ const translations = {
     'treasurer.skippedReceipts.noneFound': 'ኣብዚ ዝተረጋገፀ ቁጽሪ ዝተዘለለ ቅብሊት የለን!',
     'treasurer.skippedReceipts.note': 'ልክዕ ዝኾነ ፋይናንስ መዝገብ ንምሓዝ ኩሉ ቅብሊት ክምዝገብ ኣገዳሲ እዩ።',
     'treasurer.skippedReceipts.close': 'ዕጸ',
+    // Skipped Check Numbers
+    'treasurer.skippedChecks.button': 'ዝተዘለሉ ቁጽሪ ቼክ ርኣይ',
+    'treasurer.skippedChecks.title': 'ዝጠፍኡ ቁጽሪ ቼክ',
+    'treasurer.skippedChecks.warning': 'በጃኹም መዝገብ ቼክኩም ተወከሱ። እዞም ዝስዕቡ ቁጽሪ ቼክ ኣብ መዝገብ የለውን።',
+    'treasurer.skippedChecks.range': 'ዝተረጋገፀ ካብ',
+    'treasurer.skippedChecks.noneFound': 'ኣብዚ ዝተረጋገፀ ቁጽሪ ዝተዘለለ ቼክ የለን!',
+    'treasurer.skippedChecks.note': 'ልክዕ ዝኾነ ፋይናንስ መዝገብ ንምሓዝ ኩሉ ቼክ ክምዝገብ ኣገዳሲ እዩ።',
+    'treasurer.skippedChecks.close': 'ዕጸ',
     'admin.no.new.requests': 'ሓድሽ ናይ ተወፉይነት ጠለብ የለን',
     'admin.voicemail.inbox': 'መልእኽቲ ድምጺ',
     'admin.refresh': 'ኣሐድስ',

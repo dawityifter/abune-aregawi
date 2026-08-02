@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import BankUpload from '../finance/BankUpload';
 import BankTransactionList from '../finance/BankTransactionList';
 import MonthlyBankSummary from '../finance/MonthlyBankSummary';
@@ -19,6 +19,7 @@ import EmployeeList from './EmployeeList';
 import VendorList from './VendorList';
 import LoansPage from './LoansPage';
 import LedgerSheetsPanel from './LedgerSheetsPanel';
+import SkippedNumbersModal from './SkippedNumbersModal';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PaymentStatsData {
@@ -84,7 +85,18 @@ const TreasurerDashboard: React.FC = () => {
   const [showSkippedReceiptsModal, setShowSkippedReceiptsModal] = useState(false);
   const [skippedReceipts, setSkippedReceipts] = useState<number[]>([]);
   const [receiptRange, setReceiptRange] = useState<{ start: number; end: number } | null>(null);
-  console.log('🏦 Firebase user:', firebaseUser);
+
+  // State for skipped check numbers modal
+  const [showSkippedChecksModal, setShowSkippedChecksModal] = useState(false);
+  const [skippedChecks, setSkippedChecks] = useState<number[]>([]);
+  const [checkRange, setCheckRange] = useState<{ start: number; end: number } | null>(null);
+
+  // Stats are only rendered on the Overview tab. When something changes them
+  // while another tab is open, flag them instead of paying for a fetch nobody sees.
+  const [statsStale, setStatsStale] = useState(false);
+  const statsRequestId = useRef(0);
+  const hasFetchedReceipts = useRef(false);
+  const hasFetchedChecks = useRef(false);
 
   // Check user permissions
   const memberData = userProfile?.data?.member || userProfile || currentUser;
@@ -133,14 +145,45 @@ const TreasurerDashboard: React.FC = () => {
     }
   }, [firebaseUser]);
 
+  const fetchSkippedChecks = useCallback(async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/expenses/skipped-checks`, {
+        headers: {
+          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSkippedChecks(data.data.skippedChecks || []);
+        setCheckRange(data.data.range);
+      } else {
+        console.error('Failed to fetch skipped checks');
+      }
+    } catch (error) {
+      console.error('Error checking skipped checks:', error);
+    }
+  }, [firebaseUser]);
+
+  // Fetch the gap lists when their tab is first opened rather than on mount —
+  // a treasurer who never visits a tab shouldn't pay for its scan.
   useEffect(() => {
-    if (permissions.canEditFinancialRecords) {
+    if (activeTab === 'payments' && permissions.canEditFinancialRecords && !hasFetchedReceipts.current) {
+      hasFetchedReceipts.current = true;
       fetchSkippedReceipts();
     }
-  }, [permissions.canEditFinancialRecords, fetchSkippedReceipts]);
+    if (activeTab === 'expenses' && permissions.canViewExpenses && !hasFetchedChecks.current) {
+      hasFetchedChecks.current = true;
+      fetchSkippedChecks();
+    }
+  }, [activeTab, permissions.canEditFinancialRecords, permissions.canViewExpenses, fetchSkippedReceipts, fetchSkippedChecks]);
 
   const openSkippedReceiptsModal = () => {
     setShowSkippedReceiptsModal(true);
+  };
+
+  const openSkippedChecksModal = () => {
+    setShowSkippedChecksModal(true);
   };
 
   useEffect(() => {
@@ -195,47 +238,36 @@ const TreasurerDashboard: React.FC = () => {
   }, [selectedYear]);
 
   const fetchPaymentStats = async () => {
+    // Keep the previous numbers on screen while refetching. Blanking them made
+    // every refresh look like a full page reload.
+    const requestId = ++statsRequestId.current;
     try {
-      console.log('🔍 Fetching payment stats...');
-      console.log('🔍 Current user:', currentUser);
-      console.log('🔍 Firebase user:', firebaseUser);
-
-      // Clear existing stats
-      setStats(null);
       setLoading(true);
 
-      // Fetch pledge/ledger-based stats
       const endpoint = `/api/payments/stats?year=${selectedYear}`;
-
-      console.log('🔍 Using endpoint:', endpoint);
-
       const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
       });
 
-      console.log('🔍 Response status:', response.status);
-      console.log('🔍 Response ok:', response.ok);
+      // A slower earlier request must not overwrite a newer one (e.g. rapid
+      // year-selector changes).
+      if (requestId !== statsRequestId.current) return;
 
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 Payment stats data received:', data);
-        if (data.data) {
-          console.log('🔍 Data payload:', data.data);
-          console.log('🔍 Bank Balance:', data.data.currentBankBalance);
-          console.log('🔍 Last Update:', data.data.lastBankUpdate);
-        }
         setStats(data.data);
+        setStatsStale(false);
       } else {
         console.error('❌ Payment stats API error:', response.status, response.statusText);
-        const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Error data:', errorData);
       }
     } catch (error) {
       console.error('❌ Error fetching payment stats:', error);
     } finally {
-      setLoading(false);
+      if (requestId === statsRequestId.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -252,11 +284,40 @@ const TreasurerDashboard: React.FC = () => {
     } catch { /* non-critical */ }
   };
 
+  // Stats only exist on the Overview tab, so refetch them there and otherwise
+  // just mark them stale — the tab-change effect below picks them up on arrival.
+  const refreshStats = useCallback(() => {
+    if (activeTab === 'overview') {
+      fetchPaymentStats();
+    } else {
+      setStatsStale(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedYear, firebaseUser]);
+
+  useEffect(() => {
+    if (activeTab === 'overview' && statsStale && hasFinancialAccess) {
+      fetchPaymentStats();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, statsStale, hasFinancialAccess]);
+
+  // A payment changes both the stats and the receipt sequence.
   const refreshFinancialData = () => {
-    fetchPaymentStats();
-    if (permissions.canEditFinancialRecords) {
+    refreshStats();
+    if (permissions.canEditFinancialRecords && hasFetchedReceipts.current) {
       fetchSkippedReceipts();
     }
+  };
+
+  // An expense changes the stats and the check sequence — never the receipt
+  // sequence, which is derived from transactions.
+  const refreshAfterExpenseChange = () => {
+    refreshStats();
+    if (permissions.canViewExpenses) {
+      fetchSkippedChecks();
+    }
+    window.dispatchEvent(new CustomEvent('expenses:refresh'));
   };
 
   const handleMemberDuesSelect = (memberId: string) => {
@@ -427,16 +488,30 @@ const TreasurerDashboard: React.FC = () => {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.tabs.expenses')}</h2>
-                {permissions.canAddExpenses && (
-                  <button
-                    onClick={() => setShowAddExpenseModal(true)}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
-                  >
-                    {t('treasurerDashboard.actions.addExpense')}
-                  </button>
-                )}
+                <div className="flex space-x-3">
+                  {skippedChecks.length > 0 && (
+                    <button
+                      onClick={openSkippedChecksModal}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md font-medium flex items-center"
+                    >
+                      <i className="fas fa-exclamation-triangle mr-2"></i>
+                      {t('treasurer.skippedChecks.button')}
+                    </button>
+                  )}
+                  {permissions.canAddExpenses && (
+                    <button
+                      onClick={() => setShowAddExpenseModal(true)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
+                    >
+                      {t('treasurerDashboard.actions.addExpense')}
+                    </button>
+                  )}
+                </div>
               </div>
-              <ExpenseList />
+              <ExpenseList
+                canEdit={permissions.canAddExpenses}
+                onExpenseChanged={refreshAfterExpenseChange}
+              />
             </div>
           )}
 
@@ -598,80 +673,39 @@ const TreasurerDashboard: React.FC = () => {
             onClose={() => setShowAddExpenseModal(false)}
             onSuccess={() => {
               setShowAddExpenseModal(false);
-              refreshFinancialData();
-              // Trigger refresh for expense list if on that tab
-              window.dispatchEvent(new CustomEvent('expenses:refresh'));
+              refreshAfterExpenseChange();
             }}
           />
         )}
 
         {/* Skipped Receipts Modal */}
         {showSkippedReceiptsModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full m-4">
-              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900 flex items-center text-yellow-600">
-                  <i className="fas fa-exclamation-triangle mr-2"></i>
-                  {t('treasurer.skippedReceipts.title')}
-                </h3>
-                <button
-                  onClick={() => setShowSkippedReceiptsModal(false)}
-                  className="text-gray-400 hover:text-gray-500"
-                >
-                  <span className="sr-only">Close</span>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="px-6 py-4">
-                <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                  <div className="flex">
-                    <div className="ml-3">
-                      <p className="text-sm text-yellow-700">
-                        {t('treasurer.skippedReceipts.warning')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+          <SkippedNumbersModal
+            title={t('treasurer.skippedReceipts.title')}
+            warning={t('treasurer.skippedReceipts.warning')}
+            note={t('treasurer.skippedReceipts.note')}
+            rangeLabel={t('treasurer.skippedReceipts.range')}
+            noneFoundLabel={t('treasurer.skippedReceipts.noneFound')}
+            closeLabel={t('treasurer.skippedReceipts.close')}
+            numbers={skippedReceipts}
+            range={receiptRange}
+            onClose={() => setShowSkippedReceiptsModal(false)}
+          />
+        )}
 
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">
-                    {t('treasurer.skippedReceipts.range')}: <span className="font-semibold">{receiptRange?.start} - {receiptRange?.end}</span>
-                  </p>
-
-                  {skippedReceipts.length > 0 ? (
-                    <div className="bg-gray-50 rounded-md p-3 max-h-60 overflow-y-auto border border-gray-200">
-                      <div className="flex flex-wrap gap-2">
-                        {skippedReceipts.map(num => (
-                          <span key={num} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            #{num}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-4 text-green-600">
-                      <i className="fas fa-check-circle text-2xl mb-2"></i>
-                      <p>{t('treasurer.skippedReceipts.noneFound')}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 text-sm text-gray-500">
-                  <p>{t('treasurer.skippedReceipts.note')}</p>
-                </div>
-              </div>
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-                <button
-                  onClick={() => setShowSkippedReceiptsModal(false)}
-                  className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  {t('treasurer.skippedReceipts.close')}
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* Skipped Check Numbers Modal */}
+        {showSkippedChecksModal && (
+          <SkippedNumbersModal
+            title={t('treasurer.skippedChecks.title')}
+            warning={t('treasurer.skippedChecks.warning')}
+            note={t('treasurer.skippedChecks.note')}
+            rangeLabel={t('treasurer.skippedChecks.range')}
+            noneFoundLabel={t('treasurer.skippedChecks.noneFound')}
+            closeLabel={t('treasurer.skippedChecks.close')}
+            numbers={skippedChecks}
+            range={checkRange}
+            onClose={() => setShowSkippedChecksModal(false)}
+          />
         )}
       </div>
     </div>

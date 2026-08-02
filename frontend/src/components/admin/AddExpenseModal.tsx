@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getCurrentDateCST } from '../../utils/dateUtils';
+import { getCached, setCached, CACHE_KEYS } from '../../utils/referenceDataCache';
 
 interface ExpenseCategory {
   id: string;
@@ -62,9 +63,20 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
   // Error states
   const [error, setError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
+  const [checkNumberError, setCheckNumberError] = useState<string | null>(null);
 
-  // Fetch expense categories, employees, and vendors
+  // Fetch expense categories, employees, and vendors.
+  // These change rarely, so they're cached for the life of the page — reopening
+  // the modal then costs no requests. Mutating screens (VendorList, EmployeeList)
+  // invalidate their key so a newly added payee still shows up immediately.
   const fetchCategories = useCallback(async () => {
+    const cached = getCached<ExpenseCategory[]>(CACHE_KEYS.expenseCategories);
+    if (cached) {
+      setCategories(cached);
+      setLoadingCategories(false);
+      return;
+    }
+
     try {
       setLoadingCategories(true);
       const token = await firebaseUser?.getIdToken();
@@ -76,7 +88,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
 
       if (response.ok) {
         const data = await response.json();
-        setCategories(data.data || []);
+        const list = data.data || [];
+        setCached(CACHE_KEYS.expenseCategories, list);
+        setCategories(list);
       } else {
         setError('Failed to load expense categories');
       }
@@ -89,6 +103,12 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
   }, [firebaseUser]);
 
   const fetchEmployees = useCallback(async () => {
+    const cached = getCached<Employee[]>(CACHE_KEYS.employees);
+    if (cached) {
+      setEmployees(cached);
+      return;
+    }
+
     try {
       setLoadingEmployees(true);
       const token = await firebaseUser?.getIdToken();
@@ -100,7 +120,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
 
       if (response.ok) {
         const data = await response.json();
-        setEmployees(data.data || []);
+        const list = data.data || [];
+        setCached(CACHE_KEYS.employees, list);
+        setEmployees(list);
       }
     } catch (err) {
       console.error('Error fetching employees:', err);
@@ -111,6 +133,12 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
   }, [firebaseUser]);
 
   const fetchVendors = useCallback(async () => {
+    const cached = getCached<Vendor[]>(CACHE_KEYS.vendors);
+    if (cached) {
+      setVendors(cached);
+      return;
+    }
+
     try {
       setLoadingVendors(true);
       const token = await firebaseUser?.getIdToken();
@@ -122,7 +150,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
 
       if (response.ok) {
         const data = await response.json();
-        setVendors(data.data || []);
+        const list = data.data || [];
+        setCached(CACHE_KEYS.vendors, list);
+        setVendors(list);
       }
     } catch (err) {
       console.error('Error fetching vendors:', err);
@@ -178,6 +208,12 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
       return false;
     }
 
+    // Check payments must carry a check number so the checkbook stays auditable
+    if (paymentMethod === 'check' && !checkNumber.trim()) {
+      setCheckNumberError(t('treasurerDashboard.expenses.addModal.checkNumberRequired'));
+      return false;
+    }
+
     return true;
   };
 
@@ -185,6 +221,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     e.preventDefault();
     setError(null);
     setAmountError(null);
+    setCheckNumberError(null);
 
     if (!validateForm()) {
       return;
@@ -212,9 +249,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
         requestBody.payee_name = payeeName;
       }
 
-      // Add check number if payment method is check
-      if (paymentMethod === 'check' && checkNumber) {
-        requestBody.check_number = checkNumber;
+      // Always send the check number for check payments so the server-side
+      // required/unique validation is reachable rather than shadowed by an
+      // omitted field.
+      if (paymentMethod === 'check') {
+        requestBody.check_number = checkNumber.trim();
       }
 
       // Add invoice number if provided
@@ -264,6 +303,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     if (!loading) {
       setError(null);
       setAmountError(null);
+      setCheckNumberError(null);
       // Reset form
       setGlCode('');
       setAmount('');
@@ -529,19 +569,26 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
             </div>
           </div>
 
-          {/* Check Number (only for check payments) */}
+          {/* Check Number (required for check payments) */}
           {paymentMethod === 'check' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('treasurerDashboard.expenses.addModal.checkNumber')}
+                {t('treasurerDashboard.expenses.addModal.checkNumber')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={checkNumber}
-                onChange={(e) => setCheckNumber(e.target.value)}
+                onChange={(e) => {
+                  setCheckNumber(e.target.value);
+                  setCheckNumberError(null);
+                }}
                 placeholder="CHK-1234"
+                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {checkNumberError && (
+                <p className="mt-1 text-xs text-red-600">{checkNumberError}</p>
+              )}
             </div>
           )}
 

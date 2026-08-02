@@ -13,6 +13,7 @@ interface Expense {
   payment_method: string;
   receipt_number: string;
   check_number: string;
+  invoice_number?: string;
   memo: string;
   payee_name?: string;
   employee?: {
@@ -41,12 +42,34 @@ interface ExpenseCategory {
   name: string;
 }
 
-const ExpenseList: React.FC = () => {
+interface ExpenseListProps {
+  /** Shows the Edit control in the details drawer. The API is guarded separately. */
+  canEdit?: boolean;
+  /** Called after a successful edit so the dashboard can refresh stats/check gaps. */
+  onExpenseChanged?: () => void;
+}
+
+interface EditForm {
+  gl_code: string;
+  amount: string;
+  entry_date: string;
+  payment_method: 'cash' | 'check';
+  check_number: string;
+  receipt_number: string;
+  invoice_number: string;
+  memo: string;
+}
+
+const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseChanged }) => {
   const { firebaseUser } = useAuth();
   const { t } = useLanguage();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -184,7 +207,12 @@ const ExpenseList: React.FC = () => {
     setPage(1);
   };
 
-  const closeDetails = () => setSelectedExpense(null);
+  const closeDetails = () => {
+    setSelectedExpense(null);
+    setIsEditing(false);
+    setEditForm(null);
+    setEditError(null);
+  };
 
   useEffect(() => {
     if (!selectedExpense) return;
@@ -194,6 +222,123 @@ const ExpenseList: React.FC = () => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectedExpense]);
+
+  const startEditing = () => {
+    if (!selectedExpense) return;
+    setEditForm({
+      gl_code: selectedExpense.category || '',
+      amount: String(selectedExpense.amount ?? ''),
+      // entry_date can arrive as a full ISO timestamp; the date input needs YYYY-MM-DD
+      entry_date: (selectedExpense.entry_date || '').split('T')[0],
+      payment_method: selectedExpense.payment_method === 'cash' ? 'cash' : 'check',
+      check_number: selectedExpense.check_number || '',
+      receipt_number: selectedExpense.receipt_number || '',
+      invoice_number: selectedExpense.invoice_number || '',
+      memo: selectedExpense.memo || ''
+    });
+    setEditError(null);
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditForm(null);
+    setEditError(null);
+  };
+
+  const updateEditField = <K extends keyof EditForm>(field: K, value: EditForm[K]) => {
+    setEditForm(prev => (prev ? { ...prev, [field]: value } : prev));
+    setEditError(null);
+  };
+
+  const validateEdit = (form: EditForm): string | null => {
+    if (!form.gl_code) return t('treasurerDashboard.expenses.edit.categoryRequired');
+
+    const amountValue = parseFloat(form.amount);
+    if (!form.amount || !Number.isFinite(amountValue) || amountValue <= 0) {
+      return t('treasurerDashboard.expenses.edit.amountInvalid');
+    }
+
+    if (!form.entry_date) return t('treasurerDashboard.expenses.edit.dateRequired');
+    const selected = new Date(form.entry_date + 'T00:00:00');
+    const todayCST = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    todayCST.setHours(23, 59, 59, 999);
+    if (selected > todayCST) return t('treasurerDashboard.expenses.edit.dateFuture');
+
+    if (form.payment_method === 'check' && !form.check_number.trim()) {
+      return t('treasurerDashboard.expenses.addModal.checkNumberRequired');
+    }
+
+    return null;
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedExpense || !editForm) return;
+
+    const validationError = validateEdit(editForm);
+    if (validationError) {
+      setEditError(validationError);
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setEditError(null);
+      const token = await firebaseUser?.getIdToken();
+
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/expenses/${selectedExpense.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            gl_code: editForm.gl_code,
+            amount: parseFloat(editForm.amount),
+            expense_date: editForm.entry_date,
+            payment_method: editForm.payment_method,
+            check_number: editForm.payment_method === 'check' ? editForm.check_number.trim() : null,
+            receipt_number: editForm.receipt_number.trim() || null,
+            invoice_number: editForm.invoice_number.trim() || null,
+            memo: editForm.memo.trim() || null
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const category = categories.find(c => c.gl_code === editForm.gl_code);
+        const updated: Expense = {
+          ...selectedExpense,
+          ...data.data,
+          category: editForm.gl_code,
+          category_name: category?.name || selectedExpense.category_name
+        };
+        setSelectedExpense(updated);
+        setExpenses(prev => prev.map(e => (e.id === updated.id ? updated : e)));
+        setIsEditing(false);
+        setEditForm(null);
+        // Re-run the query so filters, ordering and totals stay consistent
+        fetchExpenses();
+        onExpenseChanged?.();
+      } else {
+        // Keeps the form open with the user's input so a 409 can be corrected
+        setEditError(data.message || t('treasurerDashboard.expenses.edit.saveFailed'));
+      }
+    } catch (err) {
+      console.error('Error updating expense:', err);
+      setEditError(t('treasurerDashboard.expenses.edit.saveFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /** Check payments recorded before the check number became mandatory. */
+  const isMissingCheckNumber = (expense: Expense) =>
+    expense.payment_method === 'check' && !expense.check_number;
 
   return (
     <div className="space-y-6">
@@ -356,6 +501,18 @@ const ExpenseList: React.FC = () => {
                           }`}>
                           {expense.payment_method.toUpperCase()}
                         </span>
+                        {expense.payment_method === 'check' && (
+                          expense.check_number ? (
+                            <span className="ml-2 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                              #{expense.check_number}
+                            </span>
+                          ) : (
+                            <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                              <i className="fas fa-exclamation-triangle mr-1"></i>
+                              {t('treasurerDashboard.expenses.missingCheckNumber')}
+                            </span>
+                          )
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
                         <button
@@ -412,16 +569,205 @@ const ExpenseList: React.FC = () => {
                 <p className="text-sm font-bold text-white">Expense Details</p>
                 <p className="mt-1 text-xs text-slate-300">Expense #{selectedExpense.id}</p>
               </div>
-              <button
-                onClick={closeDetails}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
-                aria-label="Close details"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                {canEdit && !isEditing && (
+                  <button
+                    onClick={startEditing}
+                    className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20"
+                  >
+                    {t('treasurerDashboard.expenses.edit.edit')}
+                  </button>
+                )}
+                <button
+                  onClick={closeDetails}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+                  aria-label="Close details"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 space-y-4 overflow-y-auto p-5">
+              {isEditing && editForm ? (
+                <>
+                  {editError && (
+                    <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {editError}
+                    </div>
+                  )}
+
+                  <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t('treasurerDashboard.expenses.addModal.category')} <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={editForm.gl_code}
+                        onChange={(e) => updateEditField('gl_code', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.gl_code}>
+                            {cat.gl_code} - {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t('treasurerDashboard.expenses.addModal.amount')} <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-gray-500">$</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={editForm.amount}
+                          onChange={(e) => {
+                            if (e.target.value === '' || /^\d*\.?\d{0,2}$/.test(e.target.value)) {
+                              updateEditField('amount', e.target.value);
+                            }
+                          }}
+                          className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t('treasurerDashboard.expenses.addModal.date')} <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={editForm.entry_date}
+                        max={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => updateEditField('entry_date', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t('treasurerDashboard.expenses.addModal.paymentMethod')} <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex space-x-4">
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            checked={editForm.payment_method === 'cash'}
+                            onChange={() => updateEditField('payment_method', 'cash')}
+                            className="mr-2"
+                          />
+                          {t('treasurerDashboard.transactionList.methods.cash')}
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            checked={editForm.payment_method === 'check'}
+                            onChange={() => updateEditField('payment_method', 'check')}
+                            className="mr-2"
+                          />
+                          {t('treasurerDashboard.transactionList.methods.check')}
+                        </label>
+                      </div>
+                    </div>
+
+                    {editForm.payment_method === 'check' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {t('treasurerDashboard.expenses.addModal.checkNumber')} <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.check_number}
+                          onChange={(e) => updateEditField('check_number', e.target.value)}
+                          placeholder="CHK-1234"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t('treasurerDashboard.expenses.addModal.receiptNumber')}
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.receipt_number}
+                        onChange={(e) => updateEditField('receipt_number', e.target.value)}
+                        placeholder="REC-1234"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t('treasurerDashboard.expenses.invoiceNumber')}
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.invoice_number}
+                        onChange={(e) => updateEditField('invoice_number', e.target.value)}
+                        placeholder="INV-2024-001"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t('treasurerDashboard.expenses.addModal.memo')}
+                      </label>
+                      <textarea
+                        value={editForm.memo}
+                        onChange={(e) => updateEditField('memo', e.target.value)}
+                        maxLength={500}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Payee is deliberately not editable — changing who was paid is
+                      a delete-and-recreate, not an edit. */}
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Payee</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">
+                      {selectedExpense.employee
+                        ? `${selectedExpense.employee.first_name} ${selectedExpense.employee.last_name}`
+                        : selectedExpense.vendor
+                          ? selectedExpense.vendor.name
+                          : selectedExpense.payee_name || '-'}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {t('treasurerDashboard.expenses.edit.payeeReadOnly')}
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 border-t border-slate-200 pt-4">
+                    <button
+                      type="button"
+                      onClick={cancelEditing}
+                      disabled={saving}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      {t('treasurerDashboard.expenses.edit.cancel')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveEdit}
+                      disabled={saving}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {saving
+                        ? t('treasurerDashboard.expenses.edit.saving')
+                        : t('treasurerDashboard.expenses.edit.save')}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -475,9 +821,26 @@ const ExpenseList: React.FC = () => {
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Record Info</p>
                 <dl className="mt-3 space-y-3">
+                  {selectedExpense.payment_method === 'check' && (
+                    <div>
+                      <dt className="text-xs font-medium text-slate-500">
+                        {t('treasurerDashboard.expenses.addModal.checkNumber')}
+                      </dt>
+                      <dd className="mt-1 text-sm text-slate-900">
+                        {selectedExpense.check_number || (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                            <i className="fas fa-exclamation-triangle mr-1"></i>
+                            {t('treasurerDashboard.expenses.missingCheckNumber')}
+                          </span>
+                        )}
+                      </dd>
+                    </div>
+                  )}
                   <div>
-                    <dt className="text-xs font-medium text-slate-500">{t('check')} / {t('treasurerDashboard.transactionList.table.receipt')}</dt>
-                    <dd className="mt-1 text-sm text-slate-900">{selectedExpense.check_number || selectedExpense.receipt_number || '-'}</dd>
+                    <dt className="text-xs font-medium text-slate-500">
+                      {t('treasurerDashboard.expenses.invoiceNumber')}
+                    </dt>
+                    <dd className="mt-1 text-sm text-slate-900">{selectedExpense.invoice_number || '-'}</dd>
                   </div>
                   <div>
                     <dt className="text-xs font-medium text-slate-500">Category Description</dt>
@@ -497,6 +860,8 @@ const ExpenseList: React.FC = () => {
                   </div>
                 </dl>
               </div>
+                </>
+              )}
             </div>
           </div>
         </>

@@ -7,18 +7,26 @@ const { getReconcileThresholdValue } = require('./churchSettingController');
 // bank deposits (amount > 0); expenses compare to bank debits (|amount < 0|).
 // When there are no bank rows for the year, both sides are reported reconciled
 // so the UI shows no (misleading) warning against a zero bank total.
-async function computeReconciliation(year, totalCollected, totalExpenses) {
+// Split into a fetch half and a pure half so callers that already run a batch of
+// queries can issue these alongside the rest instead of serially after them.
+async function fetchReconciliationInputs(year) {
   const yearStart = `${year}-01-01`;
   const yearEnd = `${year}-12-31`;
 
-  const depositsSum = await BankTransaction.sum('amount', {
-    where: { amount: { [Op.gt]: 0 }, date: { [Op.gte]: yearStart, [Op.lte]: yearEnd } }
-  });
-  const debitsSum = await BankTransaction.sum('amount', {
-    where: { amount: { [Op.lt]: 0 }, date: { [Op.gte]: yearStart, [Op.lte]: yearEnd } }
-  });
-  const threshold = await getReconcileThresholdValue();
+  const [depositsSum, debitsSum, threshold] = await Promise.all([
+    BankTransaction.sum('amount', {
+      where: { amount: { [Op.gt]: 0 }, date: { [Op.gte]: yearStart, [Op.lte]: yearEnd } }
+    }),
+    BankTransaction.sum('amount', {
+      where: { amount: { [Op.lt]: 0 }, date: { [Op.gte]: yearStart, [Op.lte]: yearEnd } }
+    }),
+    getReconcileThresholdValue()
+  ]);
 
+  return { depositsSum, debitsSum, threshold };
+}
+
+function buildReconciliation({ depositsSum, debitsSum, threshold }, totalCollected, totalExpenses) {
   const hasBankData = depositsSum != null || debitsSum != null; // sum() is null/undefined with no rows
   const bankDeposits = Number(depositsSum || 0);
   const bankDebits = Math.abs(Number(debitsSum || 0)); // debits are stored negative
@@ -38,6 +46,11 @@ async function computeReconciliation(year, totalCollected, totalExpenses) {
     expensesReconciled,
     expensesDifference,
   };
+}
+
+async function computeReconciliation(year, totalCollected, totalExpenses) {
+  const inputs = await fetchReconciliationInputs(year);
+  return buildReconciliation(inputs, totalCollected, totalExpenses);
 }
 
 // Get all member payments with pagination and filtering
@@ -285,31 +298,72 @@ const getPaymentStats = async (req, res) => {
 
     // Active members are the denominator for the member-status panel.
     const activeMemberWhere = { is_active: true };
-    const totalMembers = await Member.count({ where: activeMemberWhere });
+    const membershipDueWhere = {
+      type: 'membership_due',
+      entry_date: { [Op.gte]: start, [Op.lte]: end }
+    };
 
-    // Active members with a non-zero pledge are dues-tracked.
-    const contributingMembersList = await Member.findAll({
-      where: {
-        ...activeMemberWhere,
-        yearly_pledge: { [Op.gt]: 0 }
-      },
-      attributes: ['id', 'yearly_pledge'],
-      raw: true
-    });
-    const contributingMembers = contributingMembersList.length;
-    const notDuesTrackedMembers = Math.max(totalMembers - contributingMembers, 0);
-
-    if (contributingMembers === 0) {
-      // Even with no pledges, calculate other payments. Exclude 'expense'
-      // entries (stored as positive amounts) so they don't inflate income.
-      const otherPaymentsResult = await LedgerEntry.sum('amount', {
+    // None of these depend on one another, so issue them as a single wave instead
+    // of ~10 sequential round trips. Against a remote Postgres the serial version
+    // costs the sum of every query's latency; this costs the slowest one.
+    const [
+      totalMembers,
+      contributingMembersList,
+      totalMembershipCollectedResult,
+      paidRows,
+      otherPaymentsResult,
+      totalExpensesResult,
+      latestBankTxn,
+      reconciliationInputs
+    ] = await Promise.all([
+      Member.count({ where: activeMemberWhere }),
+      // Active members with a non-zero pledge are dues-tracked.
+      Member.findAll({
+        where: {
+          ...activeMemberWhere,
+          yearly_pledge: { [Op.gt]: 0 }
+        },
+        attributes: ['id', 'yearly_pledge'],
+        raw: true
+      }),
+      // Total membership collected from ALL ledger_entries with type='membership_due' in the year
+      LedgerEntry.sum('amount', { where: membershipDueWhere }),
+      // Per-member totals, for up-to-date vs behind
+      LedgerEntry.findAll({
+        where: membershipDueWhere,
+        attributes: ['member_id', [literal('SUM("amount")'), 'paid_to_date']],
+        group: ['member_id'],
+        raw: true
+      }),
+      // All non-dues INCOME. Exclude 'expense' entries (stored as positive
+      // amounts) so expenses don't inflate receipts/net.
+      LedgerEntry.sum('amount', {
         where: {
           type: { [Op.notIn]: ['membership_due', 'expense'] },
           entry_date: { [Op.gte]: start, [Op.lte]: end }
         }
-      });
+      }),
+      LedgerEntry.sum('amount', {
+        where: {
+          type: 'expense',
+          entry_date: { [Op.gte]: start, [Op.lte]: end }
+        }
+      }),
+      // We use id ASC because newest transactions get inserted first in bulk creation from Top-To-Bottom CSVs
+      BankTransaction.findOne({
+        where: { balance: { [Op.ne]: null } },
+        order: [['date', 'DESC'], ['id', 'ASC']],
+        attributes: ['id', 'balance', 'date', ['created_at', 'createdAt']]
+      }),
+      fetchReconciliationInputs(year)
+    ]);
+
+    const contributingMembers = contributingMembersList.length;
+    const notDuesTrackedMembers = Math.max(totalMembers - contributingMembers, 0);
+
+    if (contributingMembers === 0) {
       const otherPayments = Number(otherPaymentsResult || 0);
-      const reconciliation = await computeReconciliation(year, otherPayments, 0);
+      const reconciliation = buildReconciliation(reconciliationInputs, otherPayments, 0);
 
       return res.json({
         success: true,
@@ -335,29 +389,11 @@ const getPaymentStats = async (req, res) => {
       });
     }
 
-    // Calculate total membership collected from ALL ledger_entries with type='membership_due' in current year
-    const totalMembershipCollectedResult = await LedgerEntry.sum('amount', {
-      where: {
-        type: 'membership_due',
-        entry_date: { [Op.gte]: start, [Op.lte]: end }
-      }
-    });
     let totalMembershipCollected = parseFloat(totalMembershipCollectedResult) || 0;
     // Ensure it's a valid number
     if (!Number.isFinite(totalMembershipCollected)) {
       totalMembershipCollected = 0;
     }
-
-    // For calculating up-to-date vs behind members, we need per-member totals
-    const paidRows = await LedgerEntry.findAll({
-      where: {
-        type: 'membership_due',
-        entry_date: { [Op.gte]: start, [Op.lte]: end }
-      },
-      attributes: ['member_id', [literal('SUM("amount")'), 'paid_to_date']],
-      group: ['member_id'],
-      raw: true
-    });
 
     const paidMap = new Map();
     for (const r of paidRows) {
@@ -390,14 +426,6 @@ const getPaymentStats = async (req, res) => {
       }
     }
 
-    // Calculate other payments (all non-dues INCOME). Exclude 'expense' entries
-    // (stored as positive amounts) so expenses don't inflate receipts/net.
-    const otherPaymentsResult = await LedgerEntry.sum('amount', {
-      where: {
-        type: { [Op.notIn]: ['membership_due', 'expense'] },
-        entry_date: { [Op.gte]: start, [Op.lte]: end }
-      }
-    });
     let otherPayments = parseFloat(otherPaymentsResult) || 0;
     // Ensure it's a valid number
     if (!Number.isFinite(otherPayments)) {
@@ -407,13 +435,6 @@ const getPaymentStats = async (req, res) => {
     // Total collected = membership + other payments
     const totalCollected = totalMembershipCollected + otherPayments;
 
-    // Calculate total expenses for the year
-    const totalExpensesResult = await LedgerEntry.sum('amount', {
-      where: {
-        type: 'expense',
-        entry_date: { [Op.gte]: start, [Op.lte]: end }
-      }
-    });
     let totalExpenses = parseFloat(totalExpensesResult) || 0;
     if (!Number.isFinite(totalExpenses)) {
       totalExpenses = 0;
@@ -435,16 +456,8 @@ const getPaymentStats = async (req, res) => {
       ? Number(((trackedMembershipCollected / totalAnnualPledged) * 100).toFixed(2))
       : 0;
 
-    // Fetch latest bank balance
-    console.log('--- DEBUG: Fetching Bank Balance in memberPaymentController ---');
-    
-    // We use id ASC because newest transactions get inserted first in bulk creation from Top-To-Bottom CSVs
-    const latestBankTxn = await BankTransaction.findOne({
-      where: { balance: { [Op.ne]: null } },
-      order: [['date', 'DESC'], ['id', 'ASC']],
-      attributes: ['id', 'balance', 'date', ['created_at', 'createdAt']]
-    });
-
+    // Bank balance: the latest row came from the wave above; only the "newer than
+    // it" sum has to wait on that result.
     let currentBankBalance = 0;
     if (latestBankTxn) {
       currentBankBalance = parseFloat(latestBankTxn.balance) || 0;
@@ -462,7 +475,7 @@ const getPaymentStats = async (req, res) => {
     }
     const lastBankUpdate = latestBankTxn ? (latestBankTxn.get('createdAt') || latestBankTxn.date) : null;
 
-    const reconciliation = await computeReconciliation(year, totalCollected, totalExpenses);
+    const reconciliation = buildReconciliation(reconciliationInputs, totalCollected, totalExpenses);
 
     const stats = {
       totalMembers,

@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getRolePermissions } from '../../utils/roles';
 import VendorFormModal from './VendorFormModal';
+import { invalidateCached, CACHE_KEYS } from '../../utils/referenceDataCache';
 
 interface Vendor {
   id: string;
@@ -107,6 +108,7 @@ const VendorList: React.FC = () => {
       );
 
       if (response.ok) {
+        invalidateCached(CACHE_KEYS.vendors);
         fetchVendors();
       } else {
         const data = await response.json();
@@ -129,6 +131,8 @@ const VendorList: React.FC = () => {
   };
 
   const handleFormSuccess = () => {
+    // Drop the cached list so the Add Expense dropdown picks up the change
+    invalidateCached(CACHE_KEYS.vendors);
     fetchVendors();
     setShowFormModal(false);
     setSelectedVendor(null);

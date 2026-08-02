@@ -18,6 +18,10 @@ router.get('/categories', roleMiddleware(viewRoles), expenseController.getExpens
 // Get expense statistics (READ-ONLY)
 router.get('/stats', roleMiddleware(viewRoles), expenseController.getExpenseStats);
 
+// Gaps in the check number sequence (READ-ONLY).
+// MUST stay above '/:id' or that route swallows it as an expense lookup.
+router.get('/skipped-checks', roleMiddleware(viewRoles), expenseController.getSkippedChecks);
+
 // Get all expenses (READ-ONLY)
 router.get('/', roleMiddleware(viewRoles), expenseController.getExpenses);
 
