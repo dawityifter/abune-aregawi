@@ -246,6 +246,11 @@ export interface Dictionaries {
         stripe: string;
         manual: string;
       };
+      edit: {
+        edit: string;
+        save: string;
+        cancel: string;
+      };
       status: {
         pending: string;
         succeeded: string;
@@ -970,6 +975,11 @@ export const en: Dictionaries = {
         square: "Square",
         stripe: "Stripe",
         manual: "Manual"
+      },
+      edit: {
+        edit: "Edit",
+        save: "Save",
+        cancel: "Cancel"
       },
       status: {
         pending: "Pending",
@@ -2737,6 +2747,11 @@ export const ti: Dictionaries = {
         square: "Square",
         stripe: "Stripe",
         manual: "ብኢድ ዝኣተወ"
+      },
+      edit: {
+        edit: "ኣርም",
+        save: "ኣቐምጥ",
+        cancel: "ሰርዝ"
       },
       status: {
         pending: "Pending",

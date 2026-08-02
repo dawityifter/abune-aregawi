@@ -241,6 +241,7 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
                 </h2>
                 <p className="text-gray-700 font-semibold text-lg mt-1">
                   {formatMemberName(member)}
+                  <span className="ml-2 text-sm font-normal text-gray-400">(#{member.id})</span>
                 </p>
                 <p className="text-sm text-gray-500">
                   {member.email} {member.phoneNumber && `• ${member.phoneNumber}`}

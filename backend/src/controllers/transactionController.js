@@ -617,6 +617,27 @@ const updateTransaction = async (req, res) => {
       }
     }
 
+    // Resolve the income category for the (possibly changed) payment type so the
+    // transaction's income_category_id and the ledger GL code stay aligned with the
+    // type — mirrors createTransaction and the Zelle payment-type patch. Without
+    // this, editing a type would leave GL-code income reports pointing at the old
+    // category.
+    let incomeCategory = await IncomeCategory.findOne({
+      where: { payment_type_mapping: finalPaymentType },
+      transaction: t
+    });
+    if (!incomeCategory) {
+      const fallbackType = { tithe: 'offering', building_fund: 'event' }[finalPaymentType];
+      if (fallbackType) {
+        incomeCategory = await IncomeCategory.findOne({
+          where: { payment_type_mapping: fallbackType },
+          transaction: t
+        });
+      }
+    }
+    const glCode = incomeCategory ? incomeCategory.gl_code : 'INC999';
+    updateData.income_category_id = incomeCategory ? incomeCategory.id : null;
+
     // Update the transaction
     await transaction.update(updateData, { transaction: t });
 
@@ -635,14 +656,14 @@ const updateTransaction = async (req, res) => {
     const collectedById = updateData.collected_by || transaction.collected_by;
     const receiptNumber = updateData.receipt_number || transaction.receipt_number || null;
     const note = updateData.note || transaction.note || '';
-    const memo = `${paymentType} - ${note || 'No description'}`;
+    const memo = `${glCode} - ${note || 'No description'}`;
 
     // Create ledger entry using Sequelize (avoids enum issues)
     // Wrapped in try-catch to make ledger entries optional
     try {
       await LedgerEntry.create({
         type: paymentType, // Use paymentType directly - Sequelize handles it as STRING
-        category: paymentType,
+        category: glCode,
         amount: amount,
         entry_date: entryDate,
         payment_method: paymentMethod,
