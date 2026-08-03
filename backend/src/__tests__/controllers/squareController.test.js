@@ -5,7 +5,14 @@ const express = require('express');
 process.env.SQUARE_WEBHOOK_SIGNATURE_KEY = 'test_key';
 process.env.SQUARE_WEBHOOK_URL = 'https://example.org/api/square/webhook';
 
-const { sequelize, SquarePayment, Member, Transaction } = require('../../models');
+// Keep the real matching engine, but make the learning call observable so we can
+// assert a non-member donor never trains it.
+jest.mock('../../services/bankMemoMatchService', () => ({
+  ...jest.requireActual('../../services/bankMemoMatchService'),
+  learnBankMemoMatch: jest.fn()
+}));
+
+const { sequelize, SquarePayment, Member, Transaction, LedgerEntry } = require('../../models');
 const squareController = require('../../controllers/squareController');
 
 function buildApp() {
@@ -277,5 +284,167 @@ describe('GET /api/square/queue (defaults + raw exclusion)', () => {
     const res = await request(app).get('/api/square/queue?status=IGNORED').expect(200);
     const ids = res.body.items.map(i => i.square_payment_id);
     expect(ids).toEqual(['sqpmt_Q_IGNORED']);
+  });
+});
+
+describe('POST /api/square/reconcile/create-transaction (non-member donor)', () => {
+  const makeCollector = (n) => Member.create({
+    first_name: 'Don', last_name: `Coll${n}`, phone_number: `+1555001${n}`, role: 'treasurer'
+  });
+
+  const ingest = (id) => SquarePayment.create({
+    square_payment_id: id,
+    amount: 25.00,
+    currency: 'USD',
+    status: 'NEEDS_REVIEW',
+    buyer_name: 'Square Buyer',
+    square_created_at: new Date('2026-07-22T10:00:00Z')
+  });
+
+  it('stores the donor name on the transaction and ledger entry', async () => {
+    const collector = await makeCollector(1001);
+    await ingest('sqpmt_DONOR_OK');
+
+    const app = buildReconcileApp({ id: collector.id });
+    const res = await request(app)
+      .post('/api/square/reconcile/create-transaction')
+      .send({
+        square_payment_id: 'sqpmt_DONOR_OK',
+        payment_type: 'donation',
+        donor_name: 'Jane Visitor',
+        receipt_number: '000'
+      })
+      .expect(200);
+
+    expect(res.body.success).toBe(true);
+    const tx = await Transaction.findByPk(res.body.id);
+    expect(tx.member_id).toBeNull();
+    expect(tx.donor_name).toBe('Jane Visitor');
+
+    const entry = await LedgerEntry.findOne({ where: { transaction_id: tx.id } });
+    expect(entry.donor_name).toBe('Jane Visitor');
+  });
+
+  it('rejects an unattributed payment with no donor name', async () => {
+    const collector = await makeCollector(1002);
+    await ingest('sqpmt_DONOR_MISSING');
+
+    const app = buildReconcileApp({ id: collector.id });
+    const res = await request(app)
+      .post('/api/square/reconcile/create-transaction')
+      .send({ square_payment_id: 'sqpmt_DONOR_MISSING', payment_type: 'donation', receipt_number: '000' })
+      .expect(400);
+
+    expect(res.body.code).toBe('DONOR_REQUIRED');
+    expect(await Transaction.count({ where: { external_id: 'square:sqpmt_DONOR_MISSING' } })).toBe(0);
+  });
+
+  it('treats a whitespace-only donor name as blank', async () => {
+    const collector = await makeCollector(1003);
+    await ingest('sqpmt_DONOR_BLANK');
+
+    const app = buildReconcileApp({ id: collector.id });
+    const res = await request(app)
+      .post('/api/square/reconcile/create-transaction')
+      .send({
+        square_payment_id: 'sqpmt_DONOR_BLANK', payment_type: 'donation',
+        donor_name: '   ', receipt_number: '000'
+      })
+      .expect(400);
+
+    expect(res.body.code).toBe('DONOR_REQUIRED');
+  });
+
+  it('rejects a donor name longer than 255 characters', async () => {
+    const collector = await makeCollector(1004);
+    await ingest('sqpmt_DONOR_LONG');
+
+    const app = buildReconcileApp({ id: collector.id });
+    const res = await request(app)
+      .post('/api/square/reconcile/create-transaction')
+      .send({
+        square_payment_id: 'sqpmt_DONOR_LONG', payment_type: 'donation',
+        donor_name: 'x'.repeat(256), receipt_number: '000'
+      })
+      .expect(400);
+
+    expect(res.body.code).toBe('DONOR_TOO_LONG');
+    expect(await Transaction.count({ where: { external_id: 'square:sqpmt_DONOR_LONG' } })).toBe(0);
+  });
+
+  it('does not store a donor name when the payment is attributed to a member', async () => {
+    const collector = await makeCollector(1005);
+    const member = await Member.create({
+      first_name: 'Real', last_name: 'Member', phone_number: '+15550019999', role: 'member'
+    });
+    await ingest('sqpmt_DONOR_WITH_MEMBER');
+
+    const app = buildReconcileApp({ id: collector.id });
+    const res = await request(app)
+      .post('/api/square/reconcile/create-transaction')
+      .send({
+        square_payment_id: 'sqpmt_DONOR_WITH_MEMBER', payment_type: 'donation',
+        member_id: member.id, donor_name: 'Should Be Ignored', receipt_number: '000'
+      })
+      .expect(200);
+
+    const tx = await Transaction.findByPk(res.body.id);
+    expect(Number(tx.member_id)).toBe(Number(member.id));
+    // The member link IS the attribution; a name alongside it could disagree
+    expect(tx.donor_name).toBeNull();
+  });
+});
+
+describe('non-member attribution must not train the matcher', () => {
+  // Earlier tests in this file confirm member-matched payments, which do learn.
+  beforeEach(() => {
+    require('../../services/bankMemoMatchService').learnBankMemoMatch.mockClear();
+  });
+
+  it('does not learn an association for a non-member donor', async () => {
+    const { learnBankMemoMatch } = require('../../services/bankMemoMatchService');
+    const collector = await Member.create({
+      first_name: 'NoLearn', last_name: 'Coll', phone_number: '+15550029001', role: 'treasurer'
+    });
+    await SquarePayment.create({
+      square_payment_id: 'sqpmt_NO_LEARN', amount: 40, status: 'NEEDS_REVIEW',
+      buyer_name: 'Recurring Visitor', square_created_at: new Date('2026-07-23T10:00:00Z')
+    });
+
+    const app = buildReconcileApp({ id: collector.id });
+    await request(app)
+      .post('/api/square/reconcile/create-transaction')
+      .send({
+        square_payment_id: 'sqpmt_NO_LEARN', payment_type: 'donation',
+        buyer_name: 'Recurring Visitor', donor_name: 'Recurring Visitor', receipt_number: '000'
+      })
+      .expect(200);
+
+    expect(learnBankMemoMatch).not.toHaveBeenCalled();
+  });
+
+  it('still learns an association for a member-matched payment', async () => {
+    const { learnBankMemoMatch } = require('../../services/bankMemoMatchService');
+    const collector = await Member.create({
+      first_name: 'Learn', last_name: 'Coll', phone_number: '+15550029002', role: 'treasurer'
+    });
+    const member = await Member.create({
+      first_name: 'Known', last_name: 'Giver', phone_number: '+15550029003', role: 'member'
+    });
+    await SquarePayment.create({
+      square_payment_id: 'sqpmt_DO_LEARN', amount: 40, status: 'NEEDS_REVIEW',
+      buyer_name: 'Known Giver', square_created_at: new Date('2026-07-23T11:00:00Z')
+    });
+
+    const app = buildReconcileApp({ id: collector.id });
+    await request(app)
+      .post('/api/square/reconcile/create-transaction')
+      .send({
+        square_payment_id: 'sqpmt_DO_LEARN', payment_type: 'donation',
+        member_id: member.id, buyer_name: 'Known Giver', receipt_number: '000'
+      })
+      .expect(200);
+
+    expect(learnBankMemoMatch).toHaveBeenCalled();
   });
 });

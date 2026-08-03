@@ -95,10 +95,12 @@ async function getQueue(req, res) {
 async function processReview(item, user) {
   const {
     square_payment_id, note,
-    member_id, payment_type, for_year, receipt_number, buyer_name
+    member_id, payment_type, for_year, receipt_number, buyer_name, donor_name
   } = item || {};
   const collected_by = user?.id || null;
   if (!collected_by) throw new Error('Missing collector context');
+
+  const trimmedDonorName = (donor_name || '').trim();
 
   // Server-authoritative amount/date: never trust the client's amount or
   // payment_date for what actually gets recorded — pull them from the
@@ -111,6 +113,25 @@ async function processReview(item, user) {
   if (!squarePaymentRow) {
     return { success: false, message: 'Unknown Square payment' };
   }
+
+  // A payment must be attributed to somebody: either a member, or a named
+  // non-member donor. Validated here as well as client-side because this
+  // endpoint is reachable directly. Runs after the payment-exists check so an
+  // unknown square_payment_id reports the more fundamental error.
+  if (!member_id && !trimmedDonorName) {
+    return {
+      success: false,
+      code: 'DONOR_REQUIRED',
+      message: 'A donor name is required when the payment is not attributed to a member'
+    };
+  }
+  if (trimmedDonorName.length > 255) {
+    return {
+      success: false,
+      code: 'DONOR_TOO_LONG',
+      message: 'Donor name must be 255 characters or fewer'
+    };
+  }
   const amount = squarePaymentRow.amount;
   const payment_date = squarePaymentRow.square_created_at
     ? new Date(squarePaymentRow.square_created_at).toISOString().slice(0, 10)
@@ -118,7 +139,8 @@ async function processReview(item, user) {
 
   const result = await createSquareTransaction({
     square_payment_id, amount, payment_date, note,
-    member_id, payment_type, for_year, receipt_number, buyer_name
+    member_id, payment_type, for_year, receipt_number, buyer_name,
+    donor_name: trimmedDonorName
   }, collected_by);
 
   // Resolve the queue row to CREATED on success, OR self-heal when a
@@ -162,6 +184,9 @@ async function createTransactionFromReview(req, res) {
   try {
     const result = await processReview(req.body || {}, req.user);
     if (!result.success && result.code === 'EXISTS') return res.status(409).json(result);
+    if (!result.success && ['DONOR_REQUIRED', 'DONOR_TOO_LONG'].includes(result.code)) {
+      return res.status(400).json(result);
+    }
     return res.json(result);
   } catch (error) {
     console.error('Square create-transaction error:', error);

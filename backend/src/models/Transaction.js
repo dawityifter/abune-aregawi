@@ -105,6 +105,11 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'Additional notes about the payment'
     },
+    donor_name: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Name of a non-member donor. Only set when member_id is null — a member-linked payment is attributed by member_id, not by name.'
+    },
     external_id: {
       type: DataTypes.STRING(191),
       allowNull: true,

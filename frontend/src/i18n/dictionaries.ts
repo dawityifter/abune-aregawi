@@ -2454,8 +2454,10 @@ export const en: Dictionaries = {
     loading: 'Loading…',
     allCaughtUp: 'All caught up',
     selectMember: 'Select member',
-    anonymous: 'Anonymous donor',
-    confirmHint: 'Select a member or mark as anonymous first',
+    nonMemberDonor: 'Non-member donor',
+    donorName: 'Donor name',
+    donorNameRequired: 'Enter the donor name',
+    confirmHint: 'Select a member, or mark as a non-member donor and enter a name',
     createdOk: 'Transaction created.',
     alreadyRecorded: 'This payment was already recorded; the row has been linked to its existing transaction.',
     ignoredOk: 'Payment ignored.',
@@ -2464,7 +2466,14 @@ export const en: Dictionaries = {
     ignoredCountLabel: 'ignored',
     restore: 'Restore',
     restoredOk: 'Payment restored to review.',
-    noneIgnored: 'No ignored payments.'
+    noneIgnored: 'No ignored payments.',
+    selectAll: 'Select all',
+    selectedCount: 'selected',
+    bulkConfirm: 'Confirm',
+    clearSelection: 'Clear',
+    bulkDonorHint: 'All selected payments will be recorded under this donor name.',
+    bulkResult: 'confirmed',
+    bulkFailed: 'failed'
   }
 
 };
@@ -4242,8 +4251,10 @@ export const ti: Dictionaries = {
     loading: 'ይጽዓን…',
     allCaughtUp: 'ኩሉ ተወዲኡ',
     selectMember: 'ኣባል ምረጽ',
-    anonymous: 'ስሙ ዘይተፈልጠ ወሃቢ',
-    confirmHint: 'ቅድም ኣባል ምረጽ ወይ ስሙ ዘይተፈልጠ ኢልካ ምልክት ግበር',
+    nonMemberDonor: 'ኣባል ዘይኮነ ወሃቢ',
+    donorName: 'ስም ወሃቢ',
+    donorNameRequired: 'ስም ወሃቢ ኣእትዉ',
+    confirmHint: 'ኣባል ምረጽ፡ ወይ ኣባል ዘይኮነ ወሃቢ ኢልካ ምልክት ገይርካ ስም ኣእትው',
     createdOk: 'ሸማ ተፈጢሩ።',
     alreadyRecorded: 'እዚ ክፍሊት ድሮ ተመዝጊቡ ኣሎ፤ እታ መስመር ምስ ዘሎ ሸማ ተኣሳሲራ።',
     ignoredOk: 'ክፍሊት ተሸለለ።',
@@ -4252,7 +4263,14 @@ export const ti: Dictionaries = {
     ignoredCountLabel: 'እተሸለሉ',
     restore: 'መልስ',
     restoredOk: 'ክፍሊት ናብ ግምጋም ተመሊሱ።',
-    noneIgnored: 'እተሸለሉ ክፍሊታት የለዉን።'
+    noneIgnored: 'እተሸለሉ ክፍሊታት የለዉን።',
+    selectAll: 'ኩሉ ምረጽ',
+    selectedCount: 'ተመሪጹ',
+    bulkConfirm: 'ኣረጋግጽ',
+    clearSelection: 'ኣጽሪ',
+    bulkDonorHint: 'ኩሎም እተመረጹ ክፍሊታት ብዚ ስም ወሃቢ ክምዝገቡ እዮም።',
+    bulkResult: 'ተረጋጊጹ',
+    bulkFailed: 'ኣይተሳኸዐን'
   }
 };
 

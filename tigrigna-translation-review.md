@@ -315,3 +315,22 @@ non-native speaker and need confirmation.
 | edit.amountInvalid | Please enter a valid amount greater than $0.00 | በጃኹም ካብ $0.00 ዝዓቢ ቅኑዕ መጠን ኣእትዉ | ⚠️ |
 | edit.dateRequired | Please select an expense date | በጃኹም ዕለት ወጪ ምረጹ | ✅ |
 | edit.dateFuture | Expense date cannot be in the future | ዕለት ወጪ ኣብ መጻኢ ክኸውን ኣይክእልን | ⚠️ |
+
+## 2026-08-02 — Square non-member donor + bulk attribution (NEW drafts, please review)
+New/changed `ti` strings in the `square:` block of `dictionaries.ts`.
+
+| Key | English | ti draft | Confidence |
+|-----|---------|----------|------------|
+| square.nonMemberDonor | Non-member donor | ኣባል ዘይኮነ ወሃቢ | ⚠️ replaces old `anonymous` ("ስሙ ዘይተፈልጠ ወሃቢ" = "donor whose name is unknown"), which no longer fits now that a name is required |
+| square.donorName | Donor name | ስም ወሃቢ | ✅ |
+| square.donorNameRequired | Enter the donor name | ስም ወሃቢ ኣእትዉ | ✅ |
+| square.confirmHint | Select a member, or mark as a non-member donor and enter a name | ኣባል ምረጽ፡ ወይ ኣባል ዘይኮነ ወሃቢ ኢልካ ምልክት ገይርካ ስም ኣእትው | ⚠️ long sentence, confirm phrasing |
+| square.selectAll | Select all | ኩሉ ምረጽ | ✅ |
+| square.selectedCount | selected | ተመሪጹ | ⚠️ used as "N ተመሪጹ" — confirm number agreement |
+| square.bulkConfirm | Confirm | ኣረጋግጽ | ✅ |
+| square.clearSelection | Clear | ኣጽሪ | ⚠️ |
+| square.bulkDonorHint | All selected payments will be recorded under this donor name. | ኩሎም እተመረጹ ክፍሊታት ብዚ ስም ወሃቢ ክምዝገቡ እዮም። | ⚠️ |
+| square.bulkResult | confirmed | ተረጋጊጹ | ⚠️ used as "N ተረጋጊጹ" |
+| square.bulkFailed | failed | ኣይተሳኸዐን | ⚠️ |
+
+Removed: `square.anonymous` (both `en` and `ti`) — no remaining consumer.

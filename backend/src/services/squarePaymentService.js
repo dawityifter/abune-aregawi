@@ -128,7 +128,7 @@ async function upsertSquarePayment(paymentObj) {
  */
 async function createSquareTransaction({
   square_payment_id, amount, payment_date, note,
-  member_id, payment_type, for_year, receipt_number, buyer_name
+  member_id, payment_type, for_year, receipt_number, buyer_name, donor_name
 }, collectedBy) {
   if (!square_payment_id || !amount || !payment_date) {
     throw new Error('square_payment_id, amount, and payment_date are required');
@@ -155,6 +155,10 @@ async function createSquareTransaction({
   const finalPaymentType = payment_type || 'donation';
   const incomeCategory = await resolveIncomeCategory(finalPaymentType);
 
+  // A member-linked payment is attributed by member_id; storing a name as well
+  // would let the two disagree about who gave. Only non-member gifts carry one.
+  const resolvedDonorName = member_id ? null : ((donor_name || '').trim() || null);
+
   let tx;
   try {
     tx = await Transaction.create({
@@ -167,6 +171,7 @@ async function createSquareTransaction({
       status: 'succeeded',
       receipt_number: normalizedReceiptNumber || null,
       note: note || null,
+      donor_name: resolvedDonorName,
       external_id,
       donation_id: null,
       income_category_id: incomeCategory?.id || null,
@@ -188,6 +193,11 @@ async function createSquareTransaction({
     throw createErr;
   }
 
+  // Deliberately gated on member_id: a non-member gift must NEVER train the
+  // matcher. Learning a buyer_name -> donor association would make future
+  // payments from that name auto-attribute themselves, which is exactly the
+  // behavior we don't want for named non-member donors. Covered by test
+  // "does not learn an association for a non-member donor".
   if (member_id && buyer_name) {
     try {
       await learnBankMemoMatch(
@@ -209,6 +219,7 @@ async function createSquareTransaction({
       member_id: member_id || null,
       payment_method: 'credit_card',
       receipt_number: normalizedReceiptNumber || null,
+      donor_name: resolvedDonorName,
       memo: `${glCode} - Square payment ${external_id}`,
       transaction_id: tx.id
     });
