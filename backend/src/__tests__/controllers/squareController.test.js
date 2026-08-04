@@ -448,3 +448,91 @@ describe('non-member attribution must not train the matcher', () => {
     expect(learnBankMemoMatch).toHaveBeenCalled();
   });
 });
+
+describe('non-member donor is recorded in the transaction note', () => {
+  const makeCollector = (n) => Member.create({
+    first_name: 'Note', last_name: `Coll${n}`, phone_number: `+1555003${n}`, role: 'treasurer'
+  });
+
+  const ingest = (id, note = null) => SquarePayment.create({
+    square_payment_id: id,
+    amount: 25.00,
+    currency: 'USD',
+    status: 'NEEDS_REVIEW',
+    note,
+    square_created_at: new Date('2026-07-24T10:00:00Z')
+  });
+
+  const confirm = async (collector, body) => {
+    const app = buildReconcileApp({ id: collector.id });
+    return request(app).post('/api/square/reconcile/create-transaction').send(body);
+  };
+
+  it('prepends the [Anonymous Donor] block so the dashboard can show the giver', async () => {
+    const collector = await makeCollector(101);
+    await ingest('sqpmt_NOTE_1');
+
+    const res = await confirm(collector, {
+      square_payment_id: 'sqpmt_NOTE_1',
+      payment_type: 'donation',
+      donor_name: 'newaye kidusan',
+      receipt_number: '000'
+    });
+
+    const tx = await Transaction.findByPk(res.body.id);
+    expect(tx.note).toBe('[Anonymous Donor]\nName: newaye kidusan');
+  });
+
+  it('keeps any note Square supplied beneath the donor block', async () => {
+    const collector = await makeCollector(102);
+    await ingest('sqpmt_NOTE_2', 'Sunday plate');
+
+    const res = await confirm(collector, {
+      square_payment_id: 'sqpmt_NOTE_2',
+      payment_type: 'donation',
+      note: 'Sunday plate',
+      donor_name: 'Jane Visitor',
+      receipt_number: '000'
+    });
+
+    const tx = await Transaction.findByPk(res.body.id);
+    expect(tx.note).toBe('[Anonymous Donor]\nName: Jane Visitor\n\nSunday plate');
+  });
+
+  it('writes no donor block for a member-attributed payment', async () => {
+    const collector = await makeCollector(103);
+    const member = await Member.create({
+      first_name: 'Noted', last_name: 'Member', phone_number: '+15550039999', role: 'member'
+    });
+    await ingest('sqpmt_NOTE_3', 'Sunday plate');
+
+    const res = await confirm(collector, {
+      square_payment_id: 'sqpmt_NOTE_3',
+      payment_type: 'donation',
+      note: 'Sunday plate',
+      member_id: member.id,
+      donor_name: 'Should Be Ignored',
+      receipt_number: '000'
+    });
+
+    const tx = await Transaction.findByPk(res.body.id);
+    expect(tx.note).toBe('Sunday plate');
+    expect(tx.note).not.toContain('[Anonymous Donor]');
+  });
+
+  it('keeps the donor_name column and the note block in agreement', async () => {
+    const collector = await makeCollector(104);
+    await ingest('sqpmt_NOTE_4');
+
+    const res = await confirm(collector, {
+      square_payment_id: 'sqpmt_NOTE_4',
+      payment_type: 'donation',
+      donor_name: '  Trimmed Donor  ',
+      receipt_number: '000'
+    });
+
+    const tx = await Transaction.findByPk(res.body.id);
+    expect(tx.donor_name).toBe('Trimmed Donor');
+    expect(tx.note).toContain('Name: Trimmed Donor');
+  });
+});

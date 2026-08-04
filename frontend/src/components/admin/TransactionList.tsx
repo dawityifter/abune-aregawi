@@ -14,6 +14,8 @@ interface Transaction {
   status?: 'pending' | 'succeeded' | 'failed' | 'canceled';
   receipt_number?: string;
   note?: string;
+  /** Set for non-member gifts. Authoritative over the note's donor block. */
+  donor_name?: string | null;
   income_category_id?: number | null;
   external_id?: string | null;
   donation_id?: number | null;
@@ -282,6 +284,13 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
 
     return donorInfo;
   };
+
+  // The donor name lives in two places: the donor_name column (authoritative,
+  // set on newer non-member gifts) and the note's [Anonymous Donor] block
+  // (human-readable, and the only source on older manually-entered rows).
+  // The note is editable in the drawer, so prefer the column where it exists.
+  const donorDisplayName = (transaction: Transaction) =>
+    transaction.donor_name || parseDonorInfo(transaction.note)?.name || 'Anonymous Donor';
 
   const closeDetails = () => { setSelectedTransaction(null); setIsEditing(false); setEditError(''); };
 
@@ -593,7 +602,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                       <>
                         <div className="flex items-center">
                           <span className="text-sm font-semibold text-slate-900">
-                            {parseDonorInfo(transaction.note)?.name || 'Anonymous Donor'}
+                            {donorDisplayName(transaction)}
                           </span>
                           <span className="ml-2 inline-flex rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-800">
                             Non-Member
@@ -771,7 +780,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                   </>
                 ) : (
                   <>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">{parseDonorInfo(selectedTransaction.note)?.name || 'Anonymous Donor'}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{donorDisplayName(selectedTransaction)}</p>
                     <p className="mt-1 text-sm text-slate-500">Anonymous / non-member payment</p>
                     {parseDonorInfo(selectedTransaction.note)?.email && (
                       <p className="mt-1 text-sm text-slate-500">{parseDonorInfo(selectedTransaction.note)?.email}</p>

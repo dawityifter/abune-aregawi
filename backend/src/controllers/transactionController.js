@@ -2,6 +2,7 @@ const { Transaction, Member, LedgerEntry, IncomeCategory, sequelize, BankTransac
 const { Op } = require('sequelize');
 const tz = require('../config/timezone');
 const { validateReceiptNumber } = require('../utils/receiptNumber');
+const { buildDonorNote } = require('../utils/donorNote');
 
 // Get all transactions with optional filtering
 const getAllTransactions = async (req, res) => {
@@ -305,19 +306,11 @@ const createTransaction = async (req, res) => {
       }
     }
 
-    // Build donor info note if anonymous donation
-    let finalNote = note || '';
-    if (!member_id && (donor_name || donor_email || donor_phone || donor_memo || donor_type)) {
-      const donorInfo = [];
-      if (donor_type) donorInfo.push(`Type: ${donor_type}`);
-      if (donor_name) donorInfo.push(`Name: ${donor_name}`);
-      if (donor_email) donorInfo.push(`Email: ${donor_email}`);
-      if (donor_phone) donorInfo.push(`Phone: ${donor_phone}`);
-      if (donor_memo) donorInfo.push(`Memo: ${donor_memo}`);
-
-      const donorSection = `[Anonymous Donor]\n${donorInfo.join('\n')}`;
-      finalNote = finalNote ? `${donorSection}\n\n${finalNote}` : donorSection;
-    }
+    // Build donor info note if anonymous donation. Member-linked gifts are
+    // attributed by member_id, so they never get a donor block.
+    const finalNote = member_id
+      ? (note || '')
+      : buildDonorNote(note, { donor_type, donor_name, donor_email, donor_phone, donor_memo });
 
     // Normalize and map statuses between transactions and ledger entries
     const txStatus = status === 'completed'

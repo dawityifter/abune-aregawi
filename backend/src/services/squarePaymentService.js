@@ -10,6 +10,7 @@ const { normalizeSquarePayment } = require('./squareClient');
 const { findSuggestionCandidates, learnBankMemoMatch } = require('./bankMemoMatchService');
 const { resolveIncomeCategory } = require('./zelleTransactionService');
 const { validateReceiptNumber } = require('../utils/receiptNumber');
+const { buildDonorNote } = require('../utils/donorNote');
 
 function externalIdFor(squarePaymentId) {
   return `square:${squarePaymentId}`;
@@ -159,6 +160,11 @@ async function createSquareTransaction({
   // would let the two disagree about who gave. Only non-member gifts carry one.
   const resolvedDonorName = member_id ? null : ((donor_name || '').trim() || null);
 
+  // Mirror the manual-entry path: record the donor as a structured block at the
+  // top of the note so the Member Payments dashboard shows the giver. Any note
+  // Square supplied is preserved beneath it.
+  const finalNote = buildDonorNote(note, { donor_name: resolvedDonorName });
+
   let tx;
   try {
     tx = await Transaction.create({
@@ -170,7 +176,7 @@ async function createSquareTransaction({
       payment_method: 'credit_card',
       status: 'succeeded',
       receipt_number: normalizedReceiptNumber || null,
-      note: note || null,
+      note: finalNote || null,
       donor_name: resolvedDonorName,
       external_id,
       donation_id: null,
