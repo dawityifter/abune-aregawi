@@ -260,7 +260,7 @@ const WeeklyCollectionReport: React.FC = () => {
     <div className="space-y-6 print:space-y-0">
       {/* Print Header */}
       <div className="hidden print:block text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 font-serif">Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church</h1>
+        <h1 className="text-2xl font-bold text-gray-900 font-serif">Debre Tsehay Abune Aregawi Orthodox Tewahedo Church</h1>
         <p className="text-sm text-gray-500 mt-1">{new Date().toLocaleDateString()}</p>
       </div>
 

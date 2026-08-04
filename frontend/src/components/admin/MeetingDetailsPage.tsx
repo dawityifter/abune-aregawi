@@ -257,7 +257,7 @@ const MeetingDetailsPage: React.FC = () => {
                 <div className="hidden print:block mb-8 border-b-2 border-gray-900 pb-5">
                     <div className="text-center">
                         <p className="text-xs font-semibold uppercase tracking-[0.35em] text-gray-500">
-                            Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church
+                            Debre Tsehay Abune Aregawi Orthodox Tewahedo Church
                         </p>
                         <h1 className="mt-3 text-3xl font-bold text-gray-900 font-serif">
                             {meeting.title}

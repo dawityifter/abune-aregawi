@@ -293,7 +293,7 @@ const MemberReports: React.FC = () => {
           className="mx-auto mb-2"
           style={{ width: '64px', height: '64px' }}
         />
-        <h1 className="text-2xl font-bold text-gray-900 font-serif">Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church</h1>
+        <h1 className="text-2xl font-bold text-gray-900 font-serif">Debre Tsehay Abune Aregawi Orthodox Tewahedo Church</h1>
         <h2 className="text-lg font-semibold text-gray-800 mt-1">
           {reportType === 'household_directory' ? t('householdReport.title') : t('memberInfoReport.title')}
         </h2>

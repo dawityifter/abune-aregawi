@@ -63,6 +63,12 @@ export interface Dictionaries {
       culture: { title: string; desc: string };
     };
   };
+  docViewer?: {
+    openInNewTab: string;
+    download: string;
+    close: string;
+    unavailable: string;
+  };
   quicklinks: {
     priest: string;
     serviceTimes: string;
@@ -717,7 +723,15 @@ export const en: Dictionaries = {
     welcomeBack: "Welcome Back",
     loginSubtitle: "Sign in to access your community account",
   },
+  docViewer: {
+    openInNewTab: "Open in new tab",
+    download: "Download slides (.pptx)",
+    close: "Close",
+    unavailable: "If the document does not appear, open it in a new tab or download the slides."
+  },
   language: "Language",
+  // Full church name shown in the top navigation bar.
+  'church.name': 'Debre Tsehay Abune Aregawi Orthodox Tewahedo Church',
   hero: {
     title: "Welcome to Abune Aregawi Orthodox Tewahedo Church",
     subtitle: "Join us for worship, fellowship, and service. English & ትግርኛ",
@@ -752,8 +766,8 @@ export const en: Dictionaries = {
         desc: "Join us in supporting our community through outreach and charity programs."
       },
       teachings: {
-        title: "Tigray Orthodox Faith Teachings",
-        desc: "Explore the rich traditions and teachings of the Tigray Orthodox faith."
+        title: "Raising Children in the Orthodox Tewahedo Faith",
+        desc: "A guide for parents — helping children know, love, and live for God through prayer, worship, Scripture, and the life of the Church."
       },
       culture: {
         title: "Cultural Celebrations",
@@ -2508,7 +2522,15 @@ export const ti: Dictionaries = {
     welcomeBack: "እንኳዕ ብደሓን መጻእኩም",
     loginSubtitle: "ናብ ማሕበረሰብ ኣካውንትኩም ንምእታው እተኻ",
   },
+  docViewer: {
+    openInNewTab: "ኣብ ሓድሽ ታብ ክፈት",
+    download: "ስላይዳት ኣውርድ (.pptx)",
+    close: "ዕጸ",
+    unavailable: "እቲ ሰነድ እንተዘይተራእየ፡ ኣብ ሓድሽ ታብ ክፈትዎ ወይ ስላይዳት ኣውርዱ።"
+  },
   language: "ቋንቋ",
+  // Full church name shown in the top navigation bar.
+  'church.name': 'ደብረ ጸሓይ ኣቡነ ኣረጋዊ ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን',
   hero: {
     // እንኳዕ ብደሓን መጻእኩም = “Welcome”
     // ቤ/ክ = ቤተ ክርስቲያን (shorthand)

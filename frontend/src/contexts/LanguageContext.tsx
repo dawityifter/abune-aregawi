@@ -16,9 +16,9 @@ export const LanguageContext = createContext<LanguageContextType | undefined>(un
 const translations = {
   en: {
     // Hero Section
-    'church.name': 'Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church',
+    // 'church.name' migrated to dictionaries.ts (used by Navigation via useI18n)
     'welcome.headline': 'Welcome to Our Spiritual Home',
-    'welcome.subtitle': 'Welcome to Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church',
+    'welcome.subtitle': 'Welcome to Debre Tsehay Abune Aregawi Orthodox Tewahedo Church',
 
     // Service Times
     'service.times': 'Service Times',
@@ -518,7 +518,7 @@ const translations = {
     'emergency.contact.phone.required': 'Emergency contact phone is required',
 
     // Gallery
-    'gallery.title': 'Abune Aregawi Tigray Orthodox Church Gallery',
+    'gallery.title': 'Abune Aregawi Orthodox Tewahedo Church Gallery',
     'gallery.subtitle': 'Capturing moments of faith, community, and celebration',
     'gallery.upload': 'Upload Photo',
     'gallery.uploading': 'Uploading...',
@@ -581,9 +581,9 @@ const translations = {
   },
   ti: {
     // Hero Section
-    'church.name': 'ደብረ ጸሓይ አቡነ አረጋዊ ትግራይ ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን',
+    // 'church.name' migrated to dictionaries.ts (used by Navigation via useI18n)
     'welcome.headline': 'ናብ መንበረ ስፍሓትና ብደሓን መጻእኩም',
-    'welcome.subtitle': 'እንኳዕ ናብ ቤተ ክርስትያን ኦርቶዶክስ ትግራይ ኣቡነ ኣረጋዊ ብደሓን መጻእኩም!',
+    'welcome.subtitle': 'እንኳዕ ናብ ቤተ ክርስትያን ኦርቶዶክስ ኣቡነ ኣረጋዊ ብደሓን መጻእኩም!',
 
     // Service Times
     'service.times': 'ግዜ ኣገልግሎት',

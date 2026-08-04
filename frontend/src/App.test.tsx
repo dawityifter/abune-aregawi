@@ -64,7 +64,7 @@ const renderApp = (initialEntries = ['/']) => {
 
 // Mock the components that are rendered by the routes
 jest.mock('./components/HomePage', () => () => (
-  <div>Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church</div>
+  <div>Debre Tsehay Abune Aregawi Orthodox Tewahedo Church</div>
 ));
 
 describe('App', () => {

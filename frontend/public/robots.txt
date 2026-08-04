@@ -1,5 +1,5 @@
 # https://www.robotstxt.org/robotstxt.html
-# Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church
+# Debre Tsehay Abune Aregawi Orthodox Tewahedo Church
 # Ethiopian Orthodox Church - Dallas, Texas
 
 User-agent: *

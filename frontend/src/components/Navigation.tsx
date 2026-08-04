@@ -90,7 +90,7 @@ const Navigation: React.FC = () => {
             <Link to="/" className="flex items-center space-x-2 hover:opacity-90 transition-opacity" onClick={() => setIsMenuOpen(false)}>
               <i className="fas fa-church text-2xl text-white"></i>
               <span className="text-lg md:text-xl font-bold text-white hidden sm:inline-block ml-2">
-                Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church
+                {t('church.name')}
               </span>
             </Link>
           </div>
