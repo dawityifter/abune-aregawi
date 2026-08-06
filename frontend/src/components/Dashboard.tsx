@@ -5,6 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { getMergedPermissions, UserRole } from '../utils/roles';
 import { getDisplayEmail } from '../utils/email';
 import { formatMemberName } from '../utils/formatName';
+import ParishAnnouncements from './ParishAnnouncements';
 
 interface UserProfile {
   success: boolean;
@@ -240,6 +241,7 @@ const Dashboard: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
+          <ParishAnnouncements variant="dashboard" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Profile Card */}
             <div className="bg-white overflow-hidden shadow rounded-lg">

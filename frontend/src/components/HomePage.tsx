@@ -3,6 +3,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import Hero from './Hero';
 import LiveStreamBanner from './LiveStreamBanner';
 import QuickLinks from './QuickLinks';
+import ParishAnnouncements from './ParishAnnouncements';
 import WhatsHappeningSection from './sections/WhatsHappeningSection';
 import CalendarSection from './sections/CalendarSection';
 import GrowSpirituallySection from './sections/GrowSpirituallySection';
@@ -30,6 +31,7 @@ const HomePage: React.FC = () => {
       <Hero />
       <LiveStreamBanner />
       <QuickLinks />
+      <ParishAnnouncements />
       <CalendarSection />
       <GrowSpirituallySection />
       <WhatsHappeningSection />

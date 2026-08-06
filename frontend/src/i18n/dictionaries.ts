@@ -63,6 +63,12 @@ export interface Dictionaries {
       culture: { title: string; desc: string };
     };
   };
+  parishNews?: {
+    title: string;
+    dashboardTitle: string;
+    through: string;
+    loadError: string;
+  };
   docViewer?: {
     openInNewTab: string;
     download: string;
@@ -774,6 +780,12 @@ export const en: Dictionaries = {
         desc: "Experience our heritage through festivals and community gatherings."
       }
     },
+  },
+  parishNews: {
+    title: "From the Parish",
+    dashboardTitle: "Parish News",
+    through: "Through",
+    loadError: "Announcements are unavailable right now.",
   },
   quicklinks: {
     priest: "Priest",
@@ -2578,6 +2590,12 @@ export const ti: Dictionaries = {
         desc: "ባህልናን ውርስናን ብበዓላትን ማሕበራዊ ምትእኽኻብን ኣስተማቕሩ።"
       }
     },
+  },
+  parishNews: {
+    title: "ካብ ቤተ ክርስቲያን",
+    dashboardTitle: "ዜና ቤተ ክርስቲያን",
+    through: "ክሳብ",
+    loadError: "ሕጂ ሓበሬታታት ክቐርብ ኣይክእልን።",
   },
   quicklinks: {
     priest: "ካህን",

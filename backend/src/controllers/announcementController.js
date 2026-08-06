@@ -26,11 +26,20 @@ const listAnnouncements = async (req, res) => {
   }
 };
 
-// GET /api/announcements/active — TV feed
+// Announcements are parish notices meant to be read, so /active is public — it
+// backs the lobby TV, the home page, and the member dashboard. Fields are
+// projected explicitly rather than returning whole rows: created_by_member_id
+// identifies staff and has no business leaving the building.
+const PUBLIC_ANNOUNCEMENT_FIELDS = [
+  'id', 'title', 'description', 'title_ti', 'description_ti', 'start_date', 'end_date'
+];
+
+// GET /api/announcements/active — public feed (TV, home page, dashboard)
 const getActiveAnnouncements = async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const announcements = await Announcement.findAll({
+      attributes: PUBLIC_ANNOUNCEMENT_FIELDS,
       where: { status: 'active', start_date: { [Op.lte]: today }, end_date: { [Op.gte]: today } },
       order: [['start_date', 'DESC']]
     });
