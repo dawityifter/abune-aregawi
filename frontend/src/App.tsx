@@ -1,40 +1,56 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { AuthProvider } from './contexts/AuthContext';
+
+// Eager: everything on the first paint of the two paths almost all traffic
+// takes — arriving at the home page, or signing in and landing on the
+// dashboard. Splitting these would add a spinner to the common case and save
+// nothing, since they are needed immediately.
 import HomePage from './components/HomePage';
-import MemberRegistration from './components/auth/MemberRegistration';
 import SignIn from './components/auth/SignIn';
 import Dashboard from './components/Dashboard';
-import AdminDashboard from './components/admin/AdminDashboard';
-import OutreachDashboard from './components/admin/OutreachDashboard';
-import TreasurerDashboard from './components/admin/TreasurerDashboard';
-import SmsBroadcast from './components/admin/SmsBroadcast';
-import Profile from './components/Profile';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Navigation from './components/Navigation';
 import ErrorBoundary from './components/ErrorBoundary';
-import CreditsPage from './components/CreditsPage';
-import DonatePage from './components/DonatePage';
-import DuesPage from './components/DuesPage';
-import DependentsManagement from './components/DependentsManagement';
-import ChurchBylaw from './components/ChurchBylaw';
-import ParishPulseSignUp from './components/ParishPulseSignUp';
-import PledgePage from './pages/PledgePage';
-import ThankYouPage from './pages/ThankYouPage';
-import PrivacyPage from './pages/PrivacyPage';
-import DepartmentsPage from './components/DepartmentsPage';
-import DepartmentDashboard from './components/DepartmentDashboard';
-import MeetingDetailsPage from './components/admin/MeetingDetailsPage';
-import VoicemailInbox from './components/admin/VoicemailInbox';
-import BoardMembers from './components/board/BoardMembers';
-import GalleryPage from './components/GalleryPage';
-import './index.css';
 import DevBanner from './components/DevBanner';
-import { isFeatureEnabled } from './config/featureFlags';
 import FirstLoginModal from './components/auth/FirstLoginModal';
 import ChatWidget from './components/ChatWidget';
 import AnalyticsTracker from './components/AnalyticsTracker';
+import RouteFallback from './components/RouteFallback';
+import { isFeatureEnabled } from './config/featureFlags';
+import './index.css';
+
+// Lazy: routes a given member may never open. Before this, every member
+// downloaded the treasurer's reconciliation tables, the admin panel, the
+// TipTap editor, and Stripe Elements just to read today's fasting status on a
+// phone. Each of these is now fetched only when someone actually navigates to
+// it — which, for the roles they belong to, is rarely and on a real connection.
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
+const TreasurerDashboard = lazy(() => import('./components/admin/TreasurerDashboard'));
+const OutreachDashboard = lazy(() => import('./components/admin/OutreachDashboard'));
+const SmsBroadcast = lazy(() => import('./components/admin/SmsBroadcast'));
+const VoicemailInbox = lazy(() => import('./components/admin/VoicemailInbox'));
+const MeetingDetailsPage = lazy(() => import('./components/admin/MeetingDetailsPage'));
+
+const MemberRegistration = lazy(() => import('./components/auth/MemberRegistration'));
+const Profile = lazy(() => import('./components/Profile'));
+const DuesPage = lazy(() => import('./components/DuesPage'));
+const DependentsManagement = lazy(() => import('./components/DependentsManagement'));
+
+// Stripe Elements and the payment flows live behind these two.
+const DonatePage = lazy(() => import('./components/DonatePage'));
+const PledgePage = lazy(() => import('./pages/PledgePage'));
+
+const DepartmentsPage = lazy(() => import('./components/DepartmentsPage'));
+const DepartmentDashboard = lazy(() => import('./components/DepartmentDashboard'));
+const BoardMembers = lazy(() => import('./components/board/BoardMembers'));
+const GalleryPage = lazy(() => import('./components/GalleryPage'));
+const ChurchBylaw = lazy(() => import('./components/ChurchBylaw'));
+const CreditsPage = lazy(() => import('./components/CreditsPage'));
+const ParishPulseSignUp = lazy(() => import('./components/ParishPulseSignUp'));
+const ThankYouPage = lazy(() => import('./pages/ThankYouPage'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 
 function App() {
   return (
@@ -49,82 +65,86 @@ function App() {
             <ChatWidget />
             {/* Global first-time sign-in modal (shows once per session) */}
             <FirstLoginModal />
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<SignIn />} />
-              <Route path="/register" element={<ErrorBoundary><MemberRegistration /></ErrorBoundary>} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute allowTempUser={true}>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
+            {/* One boundary around all routes: a member only ever waits for the
+                single chunk they navigated to. */}
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/login" element={<SignIn />} />
+                <Route path="/register" element={<ErrorBoundary><MemberRegistration /></ErrorBoundary>} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute allowTempUser={true}>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/treasurer"
+                  element={
+                    <ProtectedRoute>
+                      <TreasurerDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/outreach"
+                  element={
+                    <ProtectedRoute>
+                      <OutreachDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/sms"
+                  element={
+                    <ProtectedRoute>
+                      <SmsBroadcast />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/credits" element={<CreditsPage />} />
+                <Route path="/donate" element={<DonatePage />} />
+                <Route path="/dues" element={<ProtectedRoute><DuesPage /></ProtectedRoute>} />
+                <Route path="/church-bylaw" element={<ChurchBylaw />} />
+                <Route path="/dependents" element={<ProtectedRoute><DependentsManagement /></ProtectedRoute>} />
+                <Route path="/parish-pulse-sign-up" element={<ParishPulseSignUp />} />
+                <Route path="/pledge" element={<PledgePage />} />
+                <Route path="/thank-you" element={<ThankYouPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/departments" element={<ProtectedRoute><DepartmentsPage /></ProtectedRoute>} />
+                <Route path="/departments/:id" element={<ProtectedRoute><DepartmentDashboard /></ProtectedRoute>} />
+                <Route path="/departments/:departmentId/meetings/:meetingId" element={<ProtectedRoute><MeetingDetailsPage /></ProtectedRoute>} />
+                <Route path="/admin/voicemails" element={<ProtectedRoute><VoicemailInbox /></ProtectedRoute>} />
+                <Route path="/board-members" element={
                   <ProtectedRoute>
-                    <AdminDashboard />
+                    <ErrorBoundary>
+                      <BoardMembers />
+                    </ErrorBoundary>
                   </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/treasurer"
-                element={
-                  <ProtectedRoute>
-                    <TreasurerDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/outreach"
-                element={
-                  <ProtectedRoute>
-                    <OutreachDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/sms"
-                element={
-                  <ProtectedRoute>
-                    <SmsBroadcast />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/credits" element={<CreditsPage />} />
-              <Route path="/donate" element={<DonatePage />} />
-              <Route path="/dues" element={<ProtectedRoute><DuesPage /></ProtectedRoute>} />
-              <Route path="/church-bylaw" element={<ChurchBylaw />} />
-              <Route path="/dependents" element={<ProtectedRoute><DependentsManagement /></ProtectedRoute>} />
-              <Route path="/parish-pulse-sign-up" element={<ParishPulseSignUp />} />
-              <Route path="/pledge" element={<PledgePage />} />
-              <Route path="/thank-you" element={<ThankYouPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/departments" element={<ProtectedRoute><DepartmentsPage /></ProtectedRoute>} />
-              <Route path="/departments/:id" element={<ProtectedRoute><DepartmentDashboard /></ProtectedRoute>} />
-              <Route path="/departments/:departmentId/meetings/:meetingId" element={<ProtectedRoute><MeetingDetailsPage /></ProtectedRoute>} />
-              <Route path="/admin/voicemails" element={<ProtectedRoute><VoicemailInbox /></ProtectedRoute>} />
-              <Route path="/board-members" element={
-                <ProtectedRoute>
-                  <ErrorBoundary>
-                    <BoardMembers />
-                  </ErrorBoundary>
-                </ProtectedRoute>
-              } />
-              <Route path="/gallery" element={<ProtectedRoute><GalleryPage /></ProtectedRoute>} />
-              <Route path="/gallery/:folderId" element={<ProtectedRoute><GalleryPage /></ProtectedRoute>} />
-              {/* Add more routes here as we build them */}
-            </Routes>
+                } />
+                <Route path="/gallery" element={<ProtectedRoute><GalleryPage /></ProtectedRoute>} />
+                <Route path="/gallery/:folderId" element={<ProtectedRoute><GalleryPage /></ProtectedRoute>} />
+                {/* Add more routes here as we build them */}
+              </Routes>
+            </Suspense>
           </div>
         </AuthProvider>
       </Router>
