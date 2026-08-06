@@ -6,6 +6,7 @@ const { sanitizeInput } = require('../utils/sanitize');
 const { newMemberRegistered } = require('../utils/notifications');
 const logger = require('../utils/logger');
 const { logActivity } = require('../utils/activityLogger');
+const { isDemoUid, DEMO_PHONE, DEMO_EMAIL } = require('../config/demoMode');
 
 const buildHeadOfHouseholdSummary = (member) => {
   if (!member?.family_head) return null;
@@ -1470,9 +1471,9 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       hasPhone: !!userPhone
     });
 
-    // MAGIC DEMO BYPASS — only when demo mode is explicitly enabled
-    if (process.env.ENABLE_DEMO_MODE === 'true' && uid === 'magic-demo-uid') {
-      logger.info('✨ Magic Demo UID detected in getProfileByFirebaseUid - Returning mock admin profile');
+    // Demo bypass — never honored in production, see config/demoMode.js
+    if (isDemoUid(uid)) {
+      logger.info('Demo mode: returning mock admin profile');
       return res.json({
         success: true,
         data: {
@@ -1480,8 +1481,8 @@ exports.getProfileByFirebaseUid = async (req, res) => {
             id: 999999,
             firstName: 'Demo',
             lastName: 'Admin',
-            email: 'demo@admin.com',
-            phoneNumber: '+14699078229',
+            email: DEMO_EMAIL,
+            phoneNumber: DEMO_PHONE,
             role: 'admin',
             isActive: true,
             firebaseUid: 'magic-demo-uid',

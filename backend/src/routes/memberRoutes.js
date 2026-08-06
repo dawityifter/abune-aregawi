@@ -22,6 +22,7 @@ const roleMiddleware = require('../middleware/role');
 const activityLoggerMiddleware = require('../middleware/activityLog');
 const admin = require('firebase-admin');
 const outreachController = require('../controllers/outreachController');
+const { isDemoToken, DEMO_UID, DEMO_PHONE, DEMO_EMAIL } = require('../config/demoMode');
 const { Member, Dependent } = require('../models');
 
 // Only verifies Firebase ID token, does not check DB
@@ -33,11 +34,11 @@ const verifyFirebaseTokenOnly = async (req, res, next) => {
     }
     const firebaseToken = authHeader.substring(7);
 
-    // Demo bypass — only honored when demo mode is explicitly enabled
-    if (process.env.ENABLE_DEMO_MODE === 'true' && firebaseToken === 'MAGIC_DEMO_TOKEN') {
-      req.firebaseUid = 'magic-demo-uid';
-      req.firebaseEmail = 'demo@admin.com';
-      req.firebasePhone = '+14699078229';
+    // Demo bypass — never honored in production, see config/demoMode.js
+    if (isDemoToken(firebaseToken)) {
+      req.firebaseUid = DEMO_UID;
+      req.firebaseEmail = DEMO_EMAIL;
+      req.firebasePhone = DEMO_PHONE;
       return next();
     }
 

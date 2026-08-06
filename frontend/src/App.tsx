@@ -15,7 +15,6 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import Navigation from './components/Navigation';
 import ErrorBoundary from './components/ErrorBoundary';
 import CreditsPage from './components/CreditsPage';
-import MemberStatus from './components/MemberStatus';
 import DonatePage from './components/DonatePage';
 import DuesPage from './components/DuesPage';
 import DependentsManagement from './components/DependentsManagement';
@@ -100,7 +99,6 @@ function App() {
                 }
               />
               <Route path="/credits" element={<CreditsPage />} />
-              <Route path="/member-status" element={<MemberStatus />} />
               <Route path="/donate" element={<DonatePage />} />
               <Route path="/dues" element={<ProtectedRoute><DuesPage /></ProtectedRoute>} />
               <Route path="/church-bylaw" element={<ChurchBylaw />} />

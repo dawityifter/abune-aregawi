@@ -216,6 +216,9 @@ dist
 scripts/parsedMembers.json
 members-2024.md
 members.md
+# Member exports: name/phone/spouse rosters. Never commit these.
+members-info-*.csv
+members-*.csv
 
 # Local demo scripts
 docs/demo_script_en_v3.md

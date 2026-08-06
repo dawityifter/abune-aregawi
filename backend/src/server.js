@@ -54,6 +54,7 @@ const announcementRoutes = require('./routes/announcementRoutes');
 const settingRoutes = require('./routes/settingRoutes');
 const statementRoutes = require('./routes/statementRoutes');
 const loanRoutes = require('./routes/loanRoutes');
+const { assertDemoModeNotEnabledInProduction } = require('./config/demoMode');
 const { startLedgerSheetsScheduler } = require('./jobs/ledgerSheets/scheduler');
 const { startZelleSyncScheduler } = require('./jobs/zelleSyncScheduler');
 const donationController = require('./controllers/donationController');
@@ -300,6 +301,10 @@ app.use((error, req, res, next) => {
 const startServer = async () => {
   try {
     console.log('🚀 Starting server...');
+
+    // Fail before binding a port rather than serving traffic with a bypass the
+    // operator believes is off.
+    assertDemoModeNotEnabledInProduction();
 
     // Debug environment variables
     console.log('🔍 Server Environment Debug:');

@@ -450,8 +450,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleAuthStateChange = async (firebaseUser: User | null) => {
       if (!isActive) return;
 
-      // Magic Demo Mode Bypass
-      if ((localStorage.getItem('magic_demo_mode') === 'true' || localStorage.getItem('magic_new_user_mode') === 'true') && process.env.REACT_APP_ENABLE_DEMO_MODE === 'true') {
+      // Demo mode bypass. Gated on NODE_ENV as well as the flag so a production
+      // build can never honor it, even if the flag leaks into the build env.
+      const demoModeAvailable =
+        process.env.NODE_ENV !== 'production' && process.env.REACT_APP_ENABLE_DEMO_MODE === 'true';
+      if ((localStorage.getItem('magic_demo_mode') === 'true' || localStorage.getItem('magic_new_user_mode') === 'true') && demoModeAvailable) {
         console.log('✨ Magic Demo Mode Active');
         const isNewUser = localStorage.getItem('magic_new_user_mode') === 'true';
         const magicPhone = isNewUser ? '+14699078230' : '+14699078229';
@@ -534,7 +537,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             '/credits',
             '/church-bylaw',
             '/donate',
-            '/member-status',
             '/parish-pulse-sign-up',
           ]);
           const currentPath = window.location.pathname;
@@ -570,7 +572,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
             // Only navigate to dashboard if on login page or public pages
             const REDIRECT_TO_DASHBOARD_PATHS = new Set<string>([
-              '/login', '/credits', '/church-bylaw', '/donate', '/member-status', '/parish-pulse-sign-up',
+              '/login', '/credits', '/church-bylaw', '/donate', '/parish-pulse-sign-up',
             ]);
             const currentPath = window.location.pathname;
             if (REDIRECT_TO_DASHBOARD_PATHS.has(currentPath)) {
