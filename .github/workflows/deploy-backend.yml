@@ -14,6 +14,10 @@ jobs:
       - name: Deploy to OCI
         uses: appleboy/ssh-action@master
         env:
+          # Automatically provided by Actions and scoped to this run, so the
+          # server needs no stored credential and nothing long-lived is created.
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           FIREBASE_SERVICE_ACCOUNT_BASE64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BASE64 }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
@@ -59,14 +63,27 @@ jobs:
           host: ${{ secrets.OCI_HOST }}
           username: ${{ secrets.OCI_USERNAME }}
           key: ${{ secrets.OCI_SSH_KEY }}
-          envs: DATABASE_URL,FIREBASE_SERVICE_ACCOUNT_BASE64,FRONTEND_URL,GMAIL_CLIENT_ID,GMAIL_CLIENT_SECRET,GMAIL_REFRESH_TOKEN,GMAIL_USER,MAILER_GMAIL_CLIENT_ID,MAILER_GMAIL_CLIENT_SECRET,MAILER_GMAIL_REFRESH_TOKEN,MAILER_GMAIL_USER,GALLERY_DRIVE_CLIENT_ID,GALLERY_DRIVE_CLIENT_SECRET,GALLERY_DRIVE_REFRESH_TOKEN,REACT_APP_GALLERY_FOLDER_ID,JWT_SECRET,NODE_ENV,PORT,TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_DRY_RUN,TWILIO_PHONE_NUMBER,STRIPE_WEBHOOK_SECRET,STRIPE_SECRET_KEY,SQUARE_ENV,SQUARE_ACCESS_TOKEN,SQUARE_WEBHOOK_SIGNATURE_KEY,SQUARE_WEBHOOK_URL,YOUTUBE_API_KEY,YOUTUBE_CHANNEL_ID,YOUTUBE_SPIRITUAL_CHANNEL_ID,OVERRIDE_YOUTUBE_LIVE_FLAG,START_RECEIPT_NUMBER,CHURCH_EIN,LEDGER_SHEETS_EXPORT_ENABLED,LEDGER_SHEETS_ENV,LEDGER_SHEETS_FOLDER_ID,LEDGER_SHEETS_SPREADSHEET_NAME,LEDGER_SHEETS_SPREADSHEET_ID,LEDGER_SHEETS_SYNC_PREVIOUS_YEAR,LEDGER_SHEETS_DEFAULT_PERIOD
+          envs: GH_TOKEN,GH_REPOSITORY,DATABASE_URL,FIREBASE_SERVICE_ACCOUNT_BASE64,FRONTEND_URL,GMAIL_CLIENT_ID,GMAIL_CLIENT_SECRET,GMAIL_REFRESH_TOKEN,GMAIL_USER,MAILER_GMAIL_CLIENT_ID,MAILER_GMAIL_CLIENT_SECRET,MAILER_GMAIL_REFRESH_TOKEN,MAILER_GMAIL_USER,GALLERY_DRIVE_CLIENT_ID,GALLERY_DRIVE_CLIENT_SECRET,GALLERY_DRIVE_REFRESH_TOKEN,REACT_APP_GALLERY_FOLDER_ID,JWT_SECRET,NODE_ENV,PORT,TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_DRY_RUN,TWILIO_PHONE_NUMBER,STRIPE_WEBHOOK_SECRET,STRIPE_SECRET_KEY,SQUARE_ENV,SQUARE_ACCESS_TOKEN,SQUARE_WEBHOOK_SIGNATURE_KEY,SQUARE_WEBHOOK_URL,YOUTUBE_API_KEY,YOUTUBE_CHANNEL_ID,YOUTUBE_SPIRITUAL_CHANNEL_ID,OVERRIDE_YOUTUBE_LIVE_FLAG,START_RECEIPT_NUMBER,CHURCH_EIN,LEDGER_SHEETS_EXPORT_ENABLED,LEDGER_SHEETS_ENV,LEDGER_SHEETS_FOLDER_ID,LEDGER_SHEETS_SPREADSHEET_NAME,LEDGER_SHEETS_SPREADSHEET_ID,LEDGER_SHEETS_SYNC_PREVIOUS_YEAR,LEDGER_SHEETS_DEFAULT_PERIOD
           script: |
             # Navigate to project directory
             cd /var/www/repo
             
-            # Force update contents
-            sudo git fetch --all
-            sudo git reset --hard origin/main
+            # Fetch with an authenticated URL. The server's clone uses
+            # anonymous HTTPS, which stopped working the moment this repository
+            # was made private: fetch failed, `reset --hard origin/main` reset
+            # to the server's stale cached ref, and the deploy reported success
+            # while shipping nothing. The token is passed on the command line
+            # rather than via `remote set-url` so it is never written to the
+            # server's .git/config.
+            if ! sudo git fetch "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPOSITORY}.git" main; then
+              echo "::error::git fetch failed. Deploy aborted; server left running $(git rev-parse --short HEAD)."
+              exit 1
+            fi
+
+            # Reset to what was just fetched, not to a cached remote ref, so a
+            # silent fetch failure can never again look like a successful deploy.
+            sudo git reset --hard FETCH_HEAD
+            echo "Deployed commit: $(git rev-parse --short HEAD) $(git log -1 --format=%s)"
             
             # Install backend dependencies
             cd backend
