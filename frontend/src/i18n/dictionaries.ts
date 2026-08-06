@@ -69,6 +69,17 @@ export interface Dictionaries {
     through: string;
     loadError: string;
   };
+  liturgical?: {
+    heading: string;
+    feast: string;
+    fast: string;
+    ordinary: string;
+    dayOf: string;
+    commemoration: string;
+    nextFeast: string;
+    tomorrow: string;
+    inDays: string;
+  };
   docViewer?: {
     openInNewTab: string;
     download: string;
@@ -786,6 +797,17 @@ export const en: Dictionaries = {
     dashboardTitle: "Parish News",
     through: "Through",
     loadError: "Announcements are unavailable right now.",
+  },
+  liturgical: {
+    heading: "Today in the Church",
+    feast: "Feast",
+    fast: "Fast",
+    ordinary: "An ordinary day",
+    dayOf: "Day {day} of {total}",
+    commemoration: "Commemoration",
+    nextFeast: "Next feast",
+    tomorrow: "tomorrow",
+    inDays: "in {days} days",
   },
   quicklinks: {
     priest: "Priest",
@@ -2596,6 +2618,17 @@ export const ti: Dictionaries = {
     dashboardTitle: "ዜና ቤተ ክርስቲያን",
     through: "ክሳብ",
     loadError: "ሕጂ ሓበሬታታት ክቐርብ ኣይክእልን።",
+  },
+  liturgical: {
+    heading: "ሎሚ ኣብ ቤተ ክርስቲያን",
+    feast: "በዓል",
+    fast: "ጾም",
+    ordinary: "ንቡር መዓልቲ",
+    dayOf: "{day} መዓልቲ ካብ {total}",
+    commemoration: "ዝኽሪ",
+    nextFeast: "ዝቕጽል በዓል",
+    tomorrow: "ጽባሕ",
+    inDays: "ድሕሪ {days} መዓልታት",
   },
   quicklinks: {
     priest: "ካህን",

@@ -4,6 +4,7 @@ import Hero from './Hero';
 import LiveStreamBanner from './LiveStreamBanner';
 import QuickLinks from './QuickLinks';
 import ParishAnnouncements from './ParishAnnouncements';
+import LiturgicalToday from './LiturgicalToday';
 import WhatsHappeningSection from './sections/WhatsHappeningSection';
 import CalendarSection from './sections/CalendarSection';
 import GrowSpirituallySection from './sections/GrowSpirituallySection';
@@ -31,6 +32,11 @@ const HomePage: React.FC = () => {
       <Hero />
       <LiveStreamBanner />
       <QuickLinks />
+      {/* Above the calendar: a visitor should learn what today is without
+          having to read a grid. */}
+      <div className="container mx-auto px-4 pt-8">
+        <LiturgicalToday variant="home" />
+      </div>
       <ParishAnnouncements />
       <CalendarSection />
       <GrowSpirituallySection />

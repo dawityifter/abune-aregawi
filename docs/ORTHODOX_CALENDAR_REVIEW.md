@@ -63,6 +63,37 @@ the two deviations are declared explicitly in `REVIEWED_CORRECTIONS_2025` in the
 golden test, so the difference stays visible and auditable rather than
 disappearing into a silent edit.
 
+### STILL OPEN — where does each fast season end?
+
+The dashboard now shows a band saying what today is in the church, including
+which fast season is running and which day of it today is. Season *starts* are
+the dates the parish published and are already checked by the golden test.
+Season *ends* are not — the published calendar names a start and a feast, and
+where the last fasting day falls between them is a judgement. Here is what the
+code currently assumes:
+
+| Fast | Last fasting day used | Why |
+|---|---|---|
+| Tsome Nebiyat | Gahad of Gena (Tahsas 28) | The 2025 calendar marks Tahsas 28 as a fast; Gena on 29 is a feast |
+| Nineveh | 3rd day | Exactly the three days printed |
+| Abiy Tsom | day before Fasika | Fasika is a feast |
+| Apostles' Fast | Hamle 5 | The 2025 calendar types "End of Apostles' Fast (Hamle 5)" as a **fast**, so it is treated as the last fasting day rather than the first day after |
+| Filseta | Nehasse 15 | Ends the day before the Assumption (Nehasse 16). **Some reckonings fast through the 16th itself** — this is the one most likely to be wrong |
+
+Please confirm, particularly Filseta and the Apostles' Fast.
+
+### ALSO NOT YET MODELLED — Wednesday and Friday fasting
+
+Ordinary Wed/Fri fasting is deliberately **not** shown. It is kept year-round
+except during fast-free periods whose boundaries the code has no authority to
+assert, and marking an ordinary Wednesday as a fast when the Church does not
+would be worse than saying nothing. The band currently says "an ordinary day"
+on those days.
+
+To switch it on, the fast-free windows need to be stated — at minimum the
+period after Fasika, and the days between Gena and Timket. Once those are
+written down, it is a small addition to `frontend/src/data/fastingSeasons.ts`.
+
 ### STILL OPEN — when does Abiy Tsom begin?
 
 The published 2025 calendar starts Great Lent on 17 February 2025, which is 62

@@ -6,6 +6,7 @@ import { getMergedPermissions, UserRole } from '../utils/roles';
 import { getDisplayEmail } from '../utils/email';
 import { formatMemberName } from '../utils/formatName';
 import ParishAnnouncements from './ParishAnnouncements';
+import LiturgicalToday from './LiturgicalToday';
 
 interface UserProfile {
   success: boolean;
@@ -241,6 +242,9 @@ const Dashboard: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
+          {/* First thing on the page, because it is the one thing that is
+              different every time the member opens it. */}
+          <LiturgicalToday variant="dashboard" />
           <ParishAnnouncements variant="dashboard" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Profile Card */}
