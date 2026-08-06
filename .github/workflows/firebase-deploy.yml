@@ -45,6 +45,12 @@ jobs:
           REACT_APP_ENABLE_PHONE_AUTH: ${{ secrets.REACT_APP_ENABLE_PHONE_AUTH }}
           REACT_APP_YOUTUBE_SPIRITUAL_CHANNEL_ID: ${{ secrets.REACT_APP_YOUTUBE_SPIRITUAL_CHANNEL_ID }}
           REACT_APP_GALLERY_FOLDER_ID: ${{ secrets.REACT_APP_GALLERY_FOLDER_ID }}
+          # Self-hosted Umami. Create React App inlines REACT_APP_* at build
+          # time, so these must be present here rather than set on the server.
+          # Absent or empty means the tracker never loads and the app behaves
+          # exactly as it did before.
+          REACT_APP_UMAMI_SRC: ${{ secrets.REACT_APP_UMAMI_SRC }}
+          REACT_APP_UMAMI_WEBSITE_ID: ${{ secrets.REACT_APP_UMAMI_WEBSITE_ID }}
       
       - name: Deploy to Firebase
         working-directory: ./frontend
