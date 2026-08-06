@@ -18,7 +18,11 @@ const APP = path.join(SRC, 'App.tsx');
 
 const lazyImportPaths = (): string[] => {
   const source = fs.readFileSync(APP, 'utf8');
-  const matches = [...source.matchAll(/lazy\(\s*\(\)\s*=>\s*import\(\s*['"](.+?)['"]\s*\)/g)];
+  // Array.from rather than spread: the tsconfig target predates
+  // downlevelIteration, so spreading an iterator fails typecheck.
+  const matches = Array.from(
+    source.matchAll(/lazy\(\s*\(\)\s*=>\s*import\(\s*['"](.+?)['"]\s*\)/g)
+  );
   return matches.map((m) => m[1]);
 };
 

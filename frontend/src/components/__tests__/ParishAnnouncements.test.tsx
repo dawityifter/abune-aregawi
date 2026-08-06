@@ -91,3 +91,79 @@ describe('ParishAnnouncements', () => {
     expect(screen.queryByText('Parish meeting')).not.toBeInTheDocument();
   });
 });
+
+describe('rich text from the admin editor', () => {
+  // The composer uses TipTap for the English description, so what arrives is
+  // HTML. It was previously rendered as plain text and members saw the tags.
+  const RICH =
+    '<p>We joyfully invite all faithful members to observe the ' +
+    '<strong>Fast of the Assumption</strong>, Nehase 1–15.</p>' +
+    '<p>May God bless you and your family.</p>';
+
+  it('renders HTML as formatted text, not as visible tags', async () => {
+    mockFetch({ success: true, data: [announcement({ description: RICH })] });
+    renderWithI18n(<ParishAnnouncements />);
+
+    expect(await screen.findByText(/We joyfully invite all faithful members/)).toBeInTheDocument();
+    // The markup must not appear literally anywhere on the page.
+    expect(document.body.textContent).not.toContain('<p>');
+    expect(document.body.textContent).not.toContain('<strong>');
+  });
+
+  it('preserves the emphasis the author applied', async () => {
+    mockFetch({ success: true, data: [announcement({ description: RICH })] });
+    const { container } = renderWithI18n(<ParishAnnouncements />);
+
+    await screen.findByText(/We joyfully invite/);
+    const strong = container.querySelector('strong');
+    expect(strong).not.toBeNull();
+    expect(strong!.textContent).toBe('Fast of the Assumption');
+    expect(container.querySelectorAll('p').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('strips scripts and event handlers before rendering', async () => {
+    mockFetch({
+      success: true,
+      data: [announcement({
+        description:
+          '<p>Safe text</p><script>window.__pwned = true;</script>' +
+          '<img src=x onerror="window.__pwned = true">'
+      })]
+    });
+    const { container } = renderWithI18n(<ParishAnnouncements />);
+
+    await screen.findByText('Safe text');
+    expect(container.querySelector('script')).toBeNull();
+    expect(container.querySelector('[onerror]')).toBeNull();
+    expect((window as unknown as Record<string, unknown>).__pwned).toBeUndefined();
+  });
+
+  it('treats the Tigrigna description as plain text, since it comes from a textarea', async () => {
+    localStorage.setItem('app.lang', 'ti');
+    mockFetch({
+      success: true,
+      data: [announcement({
+        description: '<p>English rich text</p>',
+        // A textarea value that happens to contain angle brackets must be shown
+        // literally rather than interpreted as markup.
+        description_ti: 'ጾመ ፍልሰታ <ካብ ነሓሰ 1-15>'
+      })]
+    });
+    const { container } = renderWithI18n(<ParishAnnouncements />);
+
+    expect(await screen.findByText(/ጾመ ፍልሰታ <ካብ ነሓሰ 1-15>/)).toBeInTheDocument();
+    expect(container.querySelector('strong')).toBeNull();
+  });
+
+  it('uses the HTML path when a Tigrigna reader falls back to English', async () => {
+    localStorage.setItem('app.lang', 'ti');
+    mockFetch({
+      success: true,
+      data: [announcement({ description: RICH, description_ti: null })]
+    });
+    const { container } = renderWithI18n(<ParishAnnouncements />);
+
+    await screen.findByText(/We joyfully invite/);
+    expect(container.querySelector('strong')).not.toBeNull();
+  });
+});

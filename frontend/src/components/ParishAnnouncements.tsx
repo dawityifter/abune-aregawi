@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DOMPurify from 'dompurify';
 import { useI18n } from '../i18n/I18nProvider';
 
 /**
@@ -69,6 +70,22 @@ const ParishAnnouncements: React.FC<{ variant?: Variant }> = ({ variant = 'home'
   const pick = (en: string | null, ti: string | null) =>
     (lang === 'ti' ? ti || en : en) || '';
 
+  /**
+   * The two description fields are not the same format. English is authored in
+   * the TipTap editor and arrives as HTML; Tigrigna is a plain textarea and
+   * arrives as text. So the rendering depends on which field was actually used,
+   * not on the display language — a Tigrigna reader falling back to English
+   * still needs the HTML path.
+   */
+  const describe = (a: Announcement): { body: string; isHtml: boolean } | null => {
+    if (lang === 'ti' && a.description_ti) {
+      return { body: a.description_ti, isHtml: false };
+    }
+    if (a.description) return { body: a.description, isHtml: true };
+    if (a.description_ti) return { body: a.description_ti, isHtml: false };
+    return null;
+  };
+
   // A parish with nothing to announce should show nothing at all, not an empty
   // heading — and a fetch failure is not worth interrupting the page for.
   if (!loaded || failed || announcements.length === 0) return null;
@@ -96,7 +113,7 @@ const ParishAnnouncements: React.FC<{ variant?: Variant }> = ({ variant = 'home'
           <ul className="grid gap-4 md:grid-cols-2 list-none p-0 m-0">
             {announcements.map((a) => {
               const title = pick(a.title, a.title_ti);
-              const description = pick(a.description, a.description_ti);
+              const described = describe(a);
               return (
                 <li
                   key={a.id}
@@ -105,11 +122,20 @@ const ParishAnnouncements: React.FC<{ variant?: Variant }> = ({ variant = 'home'
                   <h3 className="text-base font-semibold text-primary-800">
                     {title}
                   </h3>
-                  {description && (
+                  {described && (described.isHtml ? (
+                    // Sanitized because this is admin-authored rich text on a
+                    // public page: the editor only emits safe markup, but the
+                    // stored value is not something this component should trust
+                    // on that basis alone.
+                    <div
+                      className="mt-2 text-sm text-gray-700 prose prose-sm max-w-none prose-p:my-2 prose-strong:text-gray-900"
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(described.body) }}
+                    />
+                  ) : (
                     <p className="mt-2 text-sm text-gray-700 whitespace-pre-line">
-                      {description}
+                      {described.body}
                     </p>
-                  )}
+                  ))}
                   <p className="mt-3 text-xs text-gray-500">
                     {t('parishNews.through')} {formatEndDate(a.end_date, lang)}
                   </p>
