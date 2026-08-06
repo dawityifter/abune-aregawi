@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
-    ORTHODOX_EVENTS_2025,
+    ORTHODOX_EVENTS,
     CalendarEvent,
     MAJOR_FASTS_LIST,
     MAJOR_FEASTS_LIST,
@@ -76,7 +76,7 @@ const OrthodoxCalendar: React.FC = () => {
 
     const selectedEvent = useMemo(() => {
         if (!selectedDate) return null;
-        return ORTHODOX_EVENTS_2025.find(e => e.date === selectedDate);
+        return ORTHODOX_EVENTS.find(e => e.date === selectedDate);
     }, [selectedDate]);
 
     const prevMonth = () => {
@@ -119,7 +119,7 @@ const OrthodoxCalendar: React.FC = () => {
                         const startGC = parseLocalISO(currentEthMonth.startGC);
                         const gcDate = new Date(startGC.getTime() + i * 24 * 60 * 60 * 1000);
                         const dateStr = formatLocalDate(gcDate);
-                        const event = ORTHODOX_EVENTS_2025.find(e => e.date === dateStr);
+                        const event = ORTHODOX_EVENTS.find(e => e.date === dateStr);
                         const isSelected = selectedDate === dateStr;
                         const isCurrent = isToday(dateStr);
 
@@ -150,7 +150,7 @@ const OrthodoxCalendar: React.FC = () => {
                         const day = i + 1;
                         const dateObj = new Date(displayedGCYear, displayedGCMonth, day);
                         const dateStr = formatLocalDate(dateObj);
-                        const event = ORTHODOX_EVENTS_2025.find(e => e.date === dateStr);
+                        const event = ORTHODOX_EVENTS.find(e => e.date === dateStr);
                         const isSelected = selectedDate === dateStr;
                         const isCurrent = isToday(dateStr);
                         const dayEthInfo = getEthiopianDate(dateObj);
@@ -309,16 +309,15 @@ const CalendarSidebar: React.FC<{ title: string; icon: string; items: any[]; lan
                     </li>
                 ))}
             </ul>
+            {/* The PDF download previously offered here served the 2025
+                calendar regardless of the year on screen. The grid is now
+                generated, so a member gets the current year either way and a
+                stale download would only mislead. The attribution stays: the
+                2025 calendar is what the generator's rules were derived from. */}
             {!isPurple && (
                 <div className="mt-auto pt-8">
-                    <a href={`${process.env.PUBLIC_URL || ''}/Orthodox Calendar 2025.pdf`} target="_blank" rel="noopener noreferrer" className="group flex flex-col items-center gap-3 p-4 bg-white rounded-2xl border border-amber-200 shadow-sm hover:shadow-md transition-all">
-                        <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center group-hover:rotate-12 transition-transform">
-                            <i className="fas fa-file-pdf"></i>
-                        </div>
-                        <span className="text-[10px] font-black text-accent-900 uppercase tracking-widest text-center">PDF Calendar</span>
-                    </a>
-                    <p className="mt-4 text-[10px] font-medium text-amber-900/60 italic text-center leading-relaxed">
-                        Acknowledging ቦክረ ሊቃዉንት መምህር አፈወርቅ for the 2025 Orthodox Calendar
+                    <p className="text-[10px] font-medium text-amber-900/60 italic text-center leading-relaxed">
+                        Acknowledging ቦክረ ሊቃዉንት መምህር አፈወርቅ, whose Orthodox Calendar these dates follow
                     </p>
                 </div>
             )}

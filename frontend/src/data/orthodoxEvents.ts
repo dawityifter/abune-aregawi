@@ -1,3 +1,15 @@
+import {
+  ETH_MONTH_NAMES,
+  ETH_MONTH_NAMES_TI,
+  EthMonthIndex,
+  ethiopianMonthLength,
+  ethiopianToJdn,
+  gregorianToJdn,
+  jdnToEthiopian,
+  jdnToIso
+} from './ethiopianCalendar';
+import { generateOrthodoxEventsForRange } from './orthodoxEventRules';
+
 export interface CalendarEvent {
     date: string; // ISO format YYYY-MM-DD
     title: string;
@@ -71,8 +83,55 @@ export interface EthMonthInfo {
     days: number;
 }
 
-// Ethiopian Month metadata for 2025 Gregorian Year
-export const ETH_MONTHS_METADATA: EthMonthInfo[] = [
+/**
+ * Every Ethiopian month whose first day falls between 1 Jan `fromGY` and
+ * 31 Dec `toGY`, in order. The calendar component indexes into this array, so
+ * it must be contiguous and sorted.
+ */
+export function buildEthMonthsMetadata(fromGY: number, toGY: number): EthMonthInfo[] {
+    const first = gregorianToJdn(fromGY, 1, 1);
+    const last = gregorianToJdn(toGY, 12, 31);
+    const months: EthMonthInfo[] = [];
+
+    // Start from the Ethiopian month containing the window's first day, then
+    // walk forward a month at a time.
+    const start = jdnToEthiopian(first);
+    let year = start.year;
+    let month = start.month as EthMonthIndex;
+
+    for (;;) {
+        const jdn = ethiopianToJdn(year, month, 1);
+        if (jdn > last) break;
+        if (jdn >= first) {
+            months.push({
+                name: ETH_MONTH_NAMES[month - 1],
+                nameTi: ETH_MONTH_NAMES_TI[month - 1],
+                year,
+                startGC: jdnToIso(jdn),
+                days: ethiopianMonthLength(year, month)
+            });
+        }
+        if (month === 13) { month = 1; year += 1; } else { month = (month + 1) as EthMonthIndex; }
+    }
+
+    return months;
+}
+
+/**
+ * Ethiopian month metadata, generated for a window around the current year.
+ *
+ * This used to be a hand-written table that stopped at January 2027; it is now
+ * derived, so the calendar cannot silently run out of months again. The old
+ * table is kept below as ETH_MONTHS_METADATA_2025_FIXTURE purely so tests can
+ * assert the generated values still match what the parish has been seeing.
+ */
+export const ETH_MONTHS_METADATA: EthMonthInfo[] = buildEthMonthsMetadata(
+  new Date().getFullYear() - 1,
+  new Date().getFullYear() + 2
+);
+
+// Retained as a test fixture — see orthodoxEvents.golden.test.ts.
+export const ETH_MONTHS_METADATA_2025_FIXTURE: EthMonthInfo[] = [
     { name: 'Tir', nameTi: 'ጥሪ', year: 2017, startGC: '2025-01-09', days: 30 },
     { name: 'Yekatit', nameTi: 'ለካቲት', year: 2017, startGC: '2025-02-08', days: 30 },
     { name: 'Megabit', nameTi: 'መጋቢት', year: 2017, startGC: '2025-03-10', days: 30 },
@@ -330,3 +389,16 @@ export const ORTHODOX_EVENTS_2025: CalendarEvent[] = [
         type: 'major_feast',
     },
 ];
+
+/**
+ * The events the calendar actually renders: generated for a window around the
+ * current year, so the parish never again opens a January to an empty grid.
+ *
+ * ORTHODOX_EVENTS_2025 above is retained as the golden fixture the generator is
+ * validated against — see `__tests__/orthodoxEvents.golden.test.ts`. It is no
+ * longer what the UI reads.
+ */
+export const ORTHODOX_EVENTS: CalendarEvent[] = generateOrthodoxEventsForRange(
+    new Date().getFullYear() - 1,
+    new Date().getFullYear() + 2
+);
