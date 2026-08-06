@@ -52,6 +52,31 @@ jobs:
           REACT_APP_UMAMI_SRC: ${{ secrets.REACT_APP_UMAMI_SRC }}
           REACT_APP_UMAMI_WEBSITE_ID: ${{ secrets.REACT_APP_UMAMI_WEBSITE_ID }}
       
+      # A build missing its secrets does not fail — Create React App simply
+      # inlines whatever it finds, so a development .env produces a bundle that
+      # looks fine and points at localhost. That shipped to members once; this
+      # is the check that would have stopped it.
+      - name: Verify this is a production build
+        working-directory: ./frontend
+        run: |
+          MAIN=$(ls build/static/js/main.*.js)
+          echo "checking $MAIN"
+          fail=0
+          if grep -q "localhost:5001" "$MAIN"; then
+            echo "::error::Bundle points at localhost — REACT_APP_API_URL was missing at build time."; fail=1
+          fi
+          if ! grep -q "api.abunearegawi.church" "$MAIN"; then
+            echo "::error::Production API URL absent from bundle."; fail=1
+          fi
+          if ! grep -q "pk_live" "$MAIN"; then
+            echo "::error::No live Stripe key — REACT_APP_STRIPE_PUBLISHABLE_KEY was missing or is a test key."; fail=1
+          fi
+          if ! grep -q "analytics.abunearegawi.church" "$MAIN"; then
+            echo "::error::Umami config absent — analytics would silently stop recording."; fail=1
+          fi
+          [ $fail -eq 0 ] && echo "production build confirmed"
+          exit $fail
+
       - name: Deploy to Firebase
         working-directory: ./frontend
         run: npx firebase-tools deploy --only hosting --token "${{ secrets.FIREBASE_TOKEN }}"
