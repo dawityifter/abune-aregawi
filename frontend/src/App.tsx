@@ -34,6 +34,7 @@ import DevBanner from './components/DevBanner';
 import { isFeatureEnabled } from './config/featureFlags';
 import FirstLoginModal from './components/auth/FirstLoginModal';
 import ChatWidget from './components/ChatWidget';
+import AnalyticsTracker from './components/AnalyticsTracker';
 
 function App() {
   return (
@@ -42,6 +43,8 @@ function App() {
         <AuthProvider>
           <div className="App">
             {isFeatureEnabled('enableDevBanner') && <DevBanner />}
+            {/* Inside Router so it can see route changes; renders nothing. */}
+            <AnalyticsTracker />
             <Navigation />
             <ChatWidget />
             {/* Global first-time sign-in modal (shows once per session) */}

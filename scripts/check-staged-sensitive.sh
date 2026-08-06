@@ -41,6 +41,10 @@ done <<< "$staged"
 # ── 2. Content that looks like a member roster or a live credential ────────────
 # Header shapes come from the two files that actually leaked.
 content_re='(phone_number.*first_name|first_name.*last_name.*phone|repentance_father|baptism_name.*membership_status)'
+
+# Values that are self-evidently not real. Kept deliberately narrow: anything
+# looser starts excusing actual secrets.
+PLACEHOLDER_RE='(CHANGE_?ME|YOUR_|your_|<[a-z-]+>|xxxx|placeholder|example\.com|EXAMPLE|dummy|REPLACE|\.\.\.)'
 secret_re='(BEGIN [A-Z ]*PRIVATE KEY|sk_live_|rk_live_|AKIA[0-9A-Z]{16}|xox[baprs]-|postgres(ql)?://[^:]+:[^@]{8,}@|AIza[0-9A-Za-z_-]{35})'
 
 while IFS= read -r f; do
@@ -54,7 +58,12 @@ while IFS= read -r f; do
     note "$f  (matched a member-roster column header)"
     fail=1
   fi
-  if echo "$added" | grep -qE "$secret_re"; then
+  # Setup docs and compose files legitimately contain connection strings with
+  # obvious placeholders in them. Drop those lines before the secret scan so
+  # writing a runbook does not require bypassing the guard — which is how
+  # guards get switched off for real.
+  real=$(echo "$added" | grep -viE "$PLACEHOLDER_RE")
+  if echo "$real" | grep -qE "$secret_re"; then
     [ $fail -eq 0 ] && echo "🛑 Blocked — staged content looks like a live credential:"
     note "$f  (matched a private key / API key / connection string)"
     fail=1
