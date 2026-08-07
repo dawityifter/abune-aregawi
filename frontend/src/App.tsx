@@ -12,6 +12,7 @@ import SignIn from './components/auth/SignIn';
 import Dashboard from './components/Dashboard';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Navigation from './components/Navigation';
+import BottomNav from './components/mobile/BottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
 import DevBanner from './components/DevBanner';
 import FirstLoginModal from './components/auth/FirstLoginModal';
@@ -58,11 +59,14 @@ function App() {
     <LanguageProvider>
       <Router>
         <AuthProvider>
-          <div className="App">
+          <div className="App pb-bottom-nav md:pb-0">
             {isFeatureEnabled('enableDevBanner') && <DevBanner />}
             {/* Inside Router so it can see route changes; renders nothing. */}
             <AnalyticsTracker />
             <Navigation />
+            {/* Task 5 wires this to real state and adds the MoreSheet; until
+                then the tap target is present but does nothing. */}
+            <BottomNav onMoreClick={() => {}} />
             <ChatWidget />
             {/* Global first-time sign-in modal (shows once per session) */}
             <FirstLoginModal />

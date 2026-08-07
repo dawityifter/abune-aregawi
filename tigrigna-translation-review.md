@@ -390,3 +390,20 @@ Three ways out, for a native speaker to choose between:
 
 This is a language judgement, not a technical one. Until it is resolved, the
 masculine forms ship — which is worth knowing rather than discovering.
+
+## Mobile bottom navigation bar (Aug 2026)
+
+New `mobileNav.*` keys for the four-tab bottom bar shown to phone visitors
+(Today / Calendar / Give / More), plus the bar's accessible label and the
+close label for the More sheet arriving in Task 5. Drafts by a non-native
+speaker; these render on every page for the majority of the congregation, so
+they are high-visibility.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| mobileNav.today | Today | ሎሚ | ✅ |
+| mobileNav.calendar | Calendar | ዘመን መጽሓፍ | ⚠️ literally "calendar book"; confirm this is the term used for the liturgical calendar elsewhere in the app vs. a shorter word |
+| mobileNav.give | Give | ወፈያ | ⚠️ noun "a donation/offering" standing in for the imperative "Give"; confirm it reads right as a tab label |
+| mobileNav.more | More | ተወሳኺ | ✅ |
+| mobileNav.label | Main | ቀንዲ | ⚠️ used only as the nav's aria-label ("main navigation"); not visible to sighted users, but confirm it doesn't read oddly to a screen reader |
+| mobileNav.closeMore | Close | ዕጸው | ✅ matches existing `skippedChecks.close` (ዕጸ) closely; confirm ዕጸው vs ዕጸ is the right form here |

@@ -2545,7 +2545,15 @@ export const en: Dictionaries = {
     bulkDonorHint: 'All selected payments will be recorded under this donor name.',
     bulkResult: 'confirmed',
     bulkFailed: 'failed'
-  }
+  },
+  mobileNav: {
+    today: 'Today',
+    calendar: 'Calendar',
+    give: 'Give',
+    more: 'More',
+    label: 'Main',
+    closeMore: 'Close',
+  },
 
 };
 
@@ -4380,6 +4388,14 @@ export const ti: Dictionaries = {
     bulkDonorHint: 'ኩሎም እተመረጹ ክፍሊታት ብዚ ስም ወሃቢ ክምዝገቡ እዮም።',
     bulkResult: 'ተረጋጊጹ',
     bulkFailed: 'ኣይተሳኸዐን'
+  },
+  mobileNav: {
+    today: 'ሎሚ',
+    calendar: 'ዘመን መጽሓፍ',
+    give: 'ወፈያ',
+    more: 'ተወሳኺ',
+    label: 'ቀንዲ',
+    closeMore: 'ዕጸው',
   }
 };
 

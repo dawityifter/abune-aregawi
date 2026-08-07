@@ -67,6 +67,12 @@ module.exports = {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
+      spacing: {
+        'safe-b': 'env(safe-area-inset-bottom)',
+        // Bar height (4rem) plus the home-indicator inset. Used as bottom
+        // padding on page content so the bar never covers the last element.
+        'bottom-nav': 'calc(4rem + env(safe-area-inset-bottom))',
+      },
       animation: {
         shimmer: 'shimmer 1.5s infinite',
       },
