@@ -42,7 +42,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "prebuild": "node ./scripts/generate-og.mjs",
+    "prebuild": "node ./scripts/generate-og.mjs && node ./scripts/generate-icons.mjs",
     "generate:og": "node ./scripts/generate-og.mjs",
     "build:ci": "CI=false react-scripts build",
     "test": "react-scripts test",
