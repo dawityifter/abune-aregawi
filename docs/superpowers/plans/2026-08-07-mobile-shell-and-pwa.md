@@ -43,11 +43,21 @@
 
 ---
 
-## ⚠️ Blocking asset dependency (Task 1)
+## Icon source (resolved)
 
-**There is no church logo above 192×192 anywhere in the repo.** `frontend/public/logo512.png` is the stock Create React App React-atom logo, not the church's. `frontend/src/assets/logo.svg` is a five-pointed star, not the church mark. The only church raster is `cropped-AbuneAregawi-192x192.png` (192×192), duplicated at `backend/src/assets/church-logo.png`.
+The icon is generated from `frontend/public/abune_aregawi.jpg` — a 1280×1457 photograph of a traditional icon painting of Abune Aregawi with the serpent of Debre Damo, supplied by Dawit.
 
-Task 1 needs a source image of **512×512 or larger**. Ask Dawit for it before starting. If none is available, the documented fallback is a `sharp` upscale from the 192px file, which produces a visibly soft icon — acceptable to unblock, but it should be replaced.
+The crop geometry below was chosen by rendering candidates at the size a launcher actually draws them (~96px) and comparing. **Do not change these numbers without repeating that check.** Two findings drove them:
+
+- **The full scene is illegible small.** At 96px the whole painting reads as a dark rectangle. The "any purpose" icons therefore crop tightly to the saint's head — hat, white cross, face, beard — which stays readable.
+- **Maskable needs bleed, not padding.** Android crops to a circle. Padding a photograph with flat red bars looks broken, so the maskable crop is the tight crop expanded by 1/0.8 about the same centre. The subject then lands inside the 80% safe circle and the mask cuts into background instead.
+
+A modest `saturation: 1.15` / `linear(1.12, -10)` lift is applied because the source is a photograph of a dim wall painting.
+
+| Output | Crop from source | Purpose |
+|---|---|---|
+| `icon-192.png`, `icon-512.png` | `left:155, top:95, 520×520` | `any` |
+| `icon-512-maskable.png` | `left:90, top:30, 650×650` | `maskable` |
 
 ---
 
@@ -135,38 +145,39 @@ Expected: FAIL. `manifest.id` is undefined, `theme_color` is `#000000`, and the 
 Create `frontend/scripts/generate-icons.mjs`. `sharp` is already a dependency (`frontend/package.json`), and this mirrors the existing `scripts/generate-og.mjs` prebuild step.
 
 ```js
-// Generates the PWA icon set from a single source image.
+// Generates the PWA icon set from the parish's icon painting of Abune Aregawi.
 //
-// SOURCE must be at least 512x512. The repo's only church raster is 192x192,
-// so if that is still the source the output will be soft — replace SOURCE with
-// a high-resolution logo when one is available.
+// The crops are not arbitrary. The source is a photograph of a whole painted
+// scene, and a whole scene is unreadable at the ~48px a launcher draws. Both
+// boxes were chosen by rendering candidates at that size and comparing; see the
+// "Icon source" section of the plan before changing them.
 import sharp from 'sharp';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, '..', 'public');
-const SOURCE = path.join(PUBLIC, 'cropped-AbuneAregawi-192x192.png');
+const SOURCE = path.join(PUBLIC, 'abune_aregawi.jpg');
 
-const PARISH_RED = { r: 0x99, g: 0x1b, b: 0x1b, alpha: 1 };
+// Tight on the saint's head: hat, white cross, face, beard. What survives small.
+const SUBJECT = { left: 155, top: 95, width: 520, height: 520 };
+
+// The same centre, widened by 1/0.8, so SUBJECT lands inside the maskable safe
+// circle and Android's mask crops background rather than the face.
+const SUBJECT_WITH_BLEED = { left: 90, top: 30, width: 650, height: 650 };
+
+// The source is a photograph of a dim wall painting; this lifts it just enough.
+const enhance = (pipeline) => pipeline.modulate({ saturation: 1.15 }).linear(1.12, -10);
 
 const run = async () => {
-  // Standard "any purpose" icons: the mark, edge to edge.
-  await sharp(SOURCE).resize(512, 512, { fit: 'contain', background: PARISH_RED })
+  await enhance(sharp(SOURCE).extract(SUBJECT).resize(512, 512))
     .png().toFile(path.join(PUBLIC, 'icon-512.png'));
 
-  await sharp(SOURCE).resize(192, 192, { fit: 'contain', background: PARISH_RED })
+  await enhance(sharp(SOURCE).extract(SUBJECT).resize(192, 192))
     .png().toFile(path.join(PUBLIC, 'icon-192.png'));
 
-  // Maskable: Android crops to a circle or squircle, so the mark must sit
-  // inside the 80% safe zone with the parish red filling the bleed.
-  const inner = Math.round(512 * 0.8);
-  const pad = Math.round((512 - inner) / 2);
-  await sharp(SOURCE)
-    .resize(inner, inner, { fit: 'contain', background: PARISH_RED })
-    .extend({ top: pad, bottom: pad, left: pad, right: pad, background: PARISH_RED })
-    .png()
-    .toFile(path.join(PUBLIC, 'icon-512-maskable.png'));
+  await enhance(sharp(SOURCE).extract(SUBJECT_WITH_BLEED).resize(512, 512))
+    .png().toFile(path.join(PUBLIC, 'icon-512-maskable.png'));
 
   console.log('PWA icons written to public/');
 };
@@ -242,6 +253,7 @@ Expected: PASS, 6 tests.
 ```bash
 git add frontend/public/manifest.json frontend/public/index.html \
         frontend/scripts/generate-icons.mjs frontend/package.json \
+        frontend/public/abune_aregawi.jpg \
         frontend/public/icon-192.png frontend/public/icon-512.png \
         frontend/public/icon-512-maskable.png \
         frontend/src/__tests__/manifest.test.ts
