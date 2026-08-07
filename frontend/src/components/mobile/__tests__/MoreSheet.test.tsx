@@ -30,8 +30,19 @@ jest.mock('../../../contexts/AuthContext', () => ({
   })
 }));
 
-const renderSheet = () =>
-  render(<MemoryRouter><MoreSheet open onClose={jest.fn()} /></MemoryRouter>);
+const defaultInstallProps = {
+  canInstall: false,
+  isIos: false,
+  onInstall: jest.fn(),
+  onDismissInstall: jest.fn(),
+};
+
+const renderSheet = (installProps: Partial<typeof defaultInstallProps> = {}) =>
+  render(
+    <MemoryRouter>
+      <MoreSheet open onClose={jest.fn()} {...defaultInstallProps} {...installProps} />
+    </MemoryRouter>
+  );
 
 afterEach(() => {
   mockCurrentUser = null;
@@ -42,7 +53,9 @@ afterEach(() => {
 describe('MoreSheet', () => {
   it('renders nothing when closed', () => {
     const { container } = render(
-      <MemoryRouter><MoreSheet open={false} onClose={jest.fn()} /></MemoryRouter>
+      <MemoryRouter>
+        <MoreSheet open={false} onClose={jest.fn()} {...defaultInstallProps} />
+      </MemoryRouter>
     );
     expect(container).toBeEmptyDOMElement();
   });
@@ -115,7 +128,7 @@ describe('MoreSheet', () => {
       return (
         <MemoryRouter>
           <button onClick={() => setOpen(true)}>open-more</button>
-          <MoreSheet open={open} onClose={() => setOpen(false)} />
+          <MoreSheet open={open} onClose={() => setOpen(false)} {...defaultInstallProps} />
         </MemoryRouter>
       );
     };
@@ -150,15 +163,51 @@ describe('MoreSheet', () => {
       document.body.style.overflow = 'auto';
       const onClose = jest.fn();
       const { rerender } = render(
-        <MemoryRouter><MoreSheet open={false} onClose={onClose} /></MemoryRouter>
+        <MemoryRouter><MoreSheet open={false} onClose={onClose} {...defaultInstallProps} /></MemoryRouter>
       );
       expect(document.body.style.overflow).toBe('auto');
 
-      rerender(<MemoryRouter><MoreSheet open onClose={onClose} /></MemoryRouter>);
+      rerender(<MemoryRouter><MoreSheet open onClose={onClose} {...defaultInstallProps} /></MemoryRouter>);
       expect(document.body.style.overflow).toBe('hidden');
 
-      rerender(<MemoryRouter><MoreSheet open={false} onClose={onClose} /></MemoryRouter>);
+      rerender(<MemoryRouter><MoreSheet open={false} onClose={onClose} {...defaultInstallProps} /></MemoryRouter>);
       expect(document.body.style.overflow).toBe('auto');
+    });
+  });
+
+  // The install card itself is driven entirely by props now — App.tsx owns the
+  // single useServiceWorker() call and passes canInstall/isIos/onInstall/
+  // onDismissInstall down, so MoreSheet has no hook of its own to fake here.
+  describe('install offer', () => {
+    it('is absent when installation is not offered and the device is not iOS', () => {
+      renderSheet();
+      expect(screen.queryByText((en as any).pwa.installTitle)).not.toBeInTheDocument();
+    });
+
+    it('offers Install and Not now when the browser can install, and wires them to the callbacks', async () => {
+      const onInstall = jest.fn();
+      const onDismissInstall = jest.fn();
+      renderSheet({ canInstall: true, isIos: false, onInstall, onDismissInstall });
+
+      expect(screen.getByText((en as any).pwa.installTitle)).toBeInTheDocument();
+      expect(screen.getByText((en as any).pwa.installBody)).toBeInTheDocument();
+
+      const installButton = screen.getByRole('button', { name: (en as any).pwa.install });
+      const dismissButton = screen.getByRole('button', { name: (en as any).pwa.installDismiss });
+
+      await userEvent.click(installButton);
+      expect(onInstall).toHaveBeenCalledTimes(1);
+
+      await userEvent.click(dismissButton);
+      expect(onDismissInstall).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows the Share-sheet instructions and no Install button on iOS', () => {
+      renderSheet({ canInstall: false, isIos: true });
+
+      expect(screen.getByText((en as any).pwa.installTitle)).toBeInTheDocument();
+      expect(screen.getByText((en as any).pwa.iosInstallBody)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: (en as any).pwa.install })).not.toBeInTheDocument();
     });
   });
 });

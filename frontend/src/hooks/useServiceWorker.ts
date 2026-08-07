@@ -1,5 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+const DISMISS_KEY = 'pwa.installDismissed';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+const detectIos = (): boolean => {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
+  const isIosDevice = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  // Already installed: nothing to prompt.
+  const standalone = window.matchMedia?.('(display-mode: standalone)')?.matches;
+  return isIosDevice && !standalone;
+};
+
 /**
  * Owns the service worker lifecycle so no other module has to know about it.
  *
@@ -10,6 +25,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export const useServiceWorker = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const waitingRef = useRef<ServiceWorker | null>(null);
+  const [canInstall, setCanInstall] = useState(false);
+  const [isIos] = useState(detectIos);
+  const installEventRef = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
     // Checked by value, not `'serviceWorker' in navigator`: a test double (or a
@@ -65,5 +83,32 @@ export const useServiceWorker = () => {
     waiting.postMessage({ type: 'SKIP_WAITING' });
   }, []);
 
-  return { updateAvailable, applyUpdate };
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onBeforeInstallPrompt = (e: Event) => {
+      // Without this the browser shows its own mini-infobar and we lose the
+      // ability to place the offer where it makes sense.
+      e.preventDefault();
+      installEventRef.current = e as BeforeInstallPromptEvent;
+      if (localStorage.getItem(DISMISS_KEY) !== 'true') setCanInstall(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+  }, []);
+
+  const promptInstall = useCallback(() => {
+    const event = installEventRef.current;
+    if (!event) return;
+    event.prompt();
+    setCanInstall(false);
+  }, []);
+
+  const dismissInstall = useCallback(() => {
+    try { localStorage.setItem(DISMISS_KEY, 'true'); } catch { /* private mode */ }
+    setCanInstall(false);
+  }, []);
+
+  return { updateAvailable, applyUpdate, canInstall, isIos, promptInstall, dismissInstall };
 };

@@ -73,7 +73,7 @@ const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 
 function App() {
   const [moreOpen, setMoreOpen] = useState(false);
-  const { updateAvailable, applyUpdate } = useServiceWorker();
+  const { updateAvailable, applyUpdate, canInstall, isIos, promptInstall, dismissInstall } = useServiceWorker();
 
   return (
     <LanguageProvider>
@@ -85,7 +85,14 @@ function App() {
             <AnalyticsTracker />
             <Navigation />
             <BottomNav onMoreClick={() => setMoreOpen(true)} />
-            <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
+            <MoreSheet
+              open={moreOpen}
+              onClose={() => setMoreOpen(false)}
+              canInstall={canInstall}
+              isIos={isIos}
+              onInstall={promptInstall}
+              onDismissInstall={dismissInstall}
+            />
             <UpdateToast show={updateAvailable} onRefresh={applyUpdate} />
             <ChatWidget />
             {/* Global first-time sign-in modal (shows once per session) */}

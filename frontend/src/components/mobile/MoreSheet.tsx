@@ -7,6 +7,10 @@ import { UserRole, getMergedPermissions } from '../../utils/roles';
 interface MoreSheetProps {
   open: boolean;
   onClose: () => void;
+  canInstall: boolean;
+  isIos: boolean;
+  onInstall: () => void;
+  onDismissInstall: () => void;
 }
 
 interface SheetLink {
@@ -28,7 +32,9 @@ const getFocusableElements = (container: HTMLElement | null): HTMLElement[] =>
  * from getMergedPermissions() rather than keeping a second list, so a
  * permission change in roles.ts reaches the phone without a second edit.
  */
-const MoreSheet: React.FC<MoreSheetProps> = ({ open, onClose }) => {
+const MoreSheet: React.FC<MoreSheetProps> = ({
+  open, onClose, canInstall, isIos, onInstall, onDismissInstall
+}) => {
   const { t } = useI18n();
   const { currentUser, logout, getUserProfile } = useAuth();
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -167,6 +173,33 @@ const MoreSheet: React.FC<MoreSheetProps> = ({ open, onClose }) => {
             {t('mobileNav.closeMore')}
           </button>
         </div>
+
+        {(canInstall || isIos) && (
+          <div className="mx-4 mb-2 rounded-lg bg-accent-50 border border-accent-200 p-3">
+            <p className="text-sm font-semibold text-gray-900">{t('pwa.installTitle')}</p>
+            <p className="mt-1 text-sm text-gray-600">
+              {isIos ? t('pwa.iosInstallBody') : t('pwa.installBody')}
+            </p>
+            {!isIos && (
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={onInstall}
+                  className="min-h-[44px] px-3 rounded-md bg-primary-700 text-white text-sm font-medium"
+                >
+                  {t('pwa.install')}
+                </button>
+                <button
+                  type="button"
+                  onClick={onDismissInstall}
+                  className="min-h-[44px] px-3 text-sm text-gray-500"
+                >
+                  {t('pwa.installDismiss')}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="px-2 pb-4">
           {links.map((l) => (
