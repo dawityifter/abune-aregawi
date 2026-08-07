@@ -156,6 +156,60 @@ describe('MoreSheet', () => {
       await userEvent.click(closeButton);
       expect(opener).toHaveFocus();
     });
+
+    // Regression guard: getFocusableElements() is queried fresh on every Tab
+    // keystroke (see onKeyDown in MoreSheet.tsx), so adding the install card's
+    // buttons should extend the wrap order automatically. Nothing above proves
+    // that — every prior test in this describe renders with canInstall: false,
+    // isIos: false, so the trap is only ever exercised over the original
+    // link list. If a future change "optimised" the trap to two refs captured
+    // once at mount instead of a fresh query, every test above would still
+    // pass; this one would not.
+    it('includes the install card buttons in the Tab wrap order when the offer is showing', async () => {
+      const InstallHarness: React.FC = () => {
+        const [open, setOpen] = React.useState(false);
+        return (
+          <MemoryRouter>
+            <button onClick={() => setOpen(true)}>open-more</button>
+            <MoreSheet
+              open={open}
+              onClose={() => setOpen(false)}
+              {...defaultInstallProps}
+              canInstall
+            />
+          </MemoryRouter>
+        );
+      };
+
+      render(<InstallHarness />);
+      await userEvent.click(screen.getByRole('button', { name: 'open-more' }));
+
+      const closeButton = screen.getByRole('button', { name: (en as any).mobileNav.closeMore });
+      expect(closeButton).toHaveFocus();
+
+      // The install card renders above the link list, so its "Install"
+      // button — not the close button — is now first in DOM order after the
+      // close button, and "Not now" sits right after it.
+      const installButton = screen.getByRole('button', { name: (en as any).pwa.install });
+      const dismissInstallButton = screen.getByRole('button', { name: (en as any).pwa.installDismiss });
+      const signInLink = screen.getByText((en as any).sign.in).closest('a') as HTMLElement;
+
+      await userEvent.tab();
+      expect(installButton).toHaveFocus();
+      await userEvent.tab();
+      expect(dismissInstallButton).toHaveFocus();
+
+      // Forward wrap still lands back on the close button from the true last
+      // element (sign in), proving the trap recomputed its set rather than
+      // stopping at a stale boundary.
+      signInLink.focus();
+      await userEvent.tab();
+      expect(closeButton).toHaveFocus();
+
+      // Backward wrap from the first element goes to the true last element.
+      await userEvent.tab({ shift: true });
+      expect(signInLink).toHaveFocus();
+    });
   });
 
   describe('body scroll lock', () => {
@@ -202,12 +256,19 @@ describe('MoreSheet', () => {
       expect(onDismissInstall).toHaveBeenCalledTimes(1);
     });
 
-    it('shows the Share-sheet instructions and no Install button on iOS', () => {
-      renderSheet({ canInstall: false, isIos: true });
+    it('shows the Share-sheet instructions and no Install button on iOS, but still offers Not now', async () => {
+      const onDismissInstall = jest.fn();
+      renderSheet({ canInstall: false, isIos: true, onDismissInstall });
 
       expect(screen.getByText((en as any).pwa.installTitle)).toBeInTheDocument();
       expect(screen.getByText((en as any).pwa.iosInstallBody)).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: (en as any).pwa.install })).not.toBeInTheDocument();
+
+      // iOS can never be prompted programmatically, but the card must still be
+      // dismissible — otherwise it is a permanent nag in the app's main menu.
+      const dismissButton = screen.getByRole('button', { name: (en as any).pwa.installDismiss });
+      await userEvent.click(dismissButton);
+      expect(onDismissInstall).toHaveBeenCalledTimes(1);
     });
   });
 });

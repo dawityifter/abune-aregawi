@@ -180,8 +180,8 @@ const MoreSheet: React.FC<MoreSheetProps> = ({
             <p className="mt-1 text-sm text-gray-600">
               {isIos ? t('pwa.iosInstallBody') : t('pwa.installBody')}
             </p>
-            {!isIos && (
-              <div className="mt-2 flex gap-2">
+            <div className="mt-2 flex gap-2">
+              {!isIos && (
                 <button
                   type="button"
                   onClick={onInstall}
@@ -189,15 +189,15 @@ const MoreSheet: React.FC<MoreSheetProps> = ({
                 >
                   {t('pwa.install')}
                 </button>
-                <button
-                  type="button"
-                  onClick={onDismissInstall}
-                  className="min-h-[44px] px-3 text-sm text-gray-500"
-                >
-                  {t('pwa.installDismiss')}
-                </button>
-              </div>
-            )}
+              )}
+              <button
+                type="button"
+                onClick={onDismissInstall}
+                className="min-h-[44px] px-3 text-sm text-gray-500"
+              >
+                {t('pwa.installDismiss')}
+              </button>
+            </div>
           </div>
         )}
 

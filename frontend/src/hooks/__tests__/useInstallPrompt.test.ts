@@ -17,6 +17,15 @@ const setUserAgent = (ua: string) =>
     value: ua, configurable: true, writable: true
   });
 
+const setPlatform = (platform: string, maxTouchPoints: number) => {
+  Object.defineProperty(global.navigator, 'platform', {
+    value: platform, configurable: true, writable: true
+  });
+  Object.defineProperty(global.navigator, 'maxTouchPoints', {
+    value: maxTouchPoints, configurable: true, writable: true
+  });
+};
+
 describe('install prompt', () => {
   const originalNodeEnv = process.env.NODE_ENV;
 
@@ -35,6 +44,9 @@ describe('install prompt', () => {
     });
     localStorage.clear();
     setUserAgent('Mozilla/5.0 (Linux; Android 14) Chrome/120 Mobile Safari/537.36');
+    // Reset every time: a test that sets platform/maxTouchPoints to look like
+    // an iPad (see below) must not leak that into later tests in this file.
+    setPlatform('Linux armv8l', 5);
     (window as any).matchMedia = jest.fn().mockReturnValue({ matches: false });
   });
 
@@ -87,5 +99,38 @@ describe('install prompt', () => {
     (window as any).matchMedia = jest.fn().mockReturnValue({ matches: true });
     const { result } = renderHook(() => useServiceWorker());
     expect(result.current.isIos).toBe(false);
+  });
+
+  it('detects iPadOS 13+, which reports a desktop Safari user agent with no "ipad" substring', () => {
+    // iPadOS 13+ Safari identifies itself exactly like Mac Safari. The only
+    // way to tell an iPad apart from a real Mac is that a Mac reports
+    // maxTouchPoints === 0.
+    setUserAgent(
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15'
+    );
+    setPlatform('MacIntel', 5);
+    const { result } = renderHook(() => useServiceWorker());
+    expect(result.current.isIos).toBe(true);
+  });
+
+  it('does not flag desktop Safari on a real Mac as iOS', () => {
+    setUserAgent(
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15'
+    );
+    setPlatform('MacIntel', 0);
+    const { result } = renderHook(() => useServiceWorker());
+    expect(result.current.isIos).toBe(false);
+  });
+
+  it('dismissing on iOS hides the instructions, and that survives a reload', () => {
+    setUserAgent(IOS_UA);
+    const first = renderHook(() => useServiceWorker());
+    expect(first.result.current.isIos).toBe(true);
+
+    act(() => { first.result.current.dismissInstall(); });
+    expect(first.result.current.isIos).toBe(false);
+
+    const second = renderHook(() => useServiceWorker());
+    expect(second.result.current.isIos).toBe(false);
   });
 });

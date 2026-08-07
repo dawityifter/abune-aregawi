@@ -9,10 +9,26 @@ interface BeforeInstallPromptEvent extends Event {
 
 const detectIos = (): boolean => {
   if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
-  const isIosDevice = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isIosUa = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  // iPadOS 13+ Safari reports a desktop Mac user agent with no "ipad"
+  // substring at all. A Mac reports maxTouchPoints === 0, so pairing the
+  // platform string with a touch point count distinguishes a real iPad from
+  // desktop Safari without misfiring on a Mac with a touchscreen-less trackpad.
+  const isIpadOs = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  const isIosDevice = isIosUa || isIpadOs;
   // Already installed: nothing to prompt.
   const standalone = window.matchMedia?.('(display-mode: standalone)')?.matches;
   return isIosDevice && !standalone;
+};
+
+const readDismissed = (): boolean => {
+  try {
+    return localStorage.getItem(DISMISS_KEY) === 'true';
+  } catch {
+    // Safari private mode can throw on localStorage access, same as the write
+    // side below. A throwing read at mount must not take the hook down.
+    return false;
+  }
 };
 
 /**
@@ -25,8 +41,12 @@ const detectIos = (): boolean => {
 export const useServiceWorker = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const waitingRef = useRef<ServiceWorker | null>(null);
-  const [canInstall, setCanInstall] = useState(false);
-  const [isIos] = useState(detectIos);
+  const [rawCanInstall, setRawCanInstall] = useState(false);
+  const [isIosDevice] = useState(detectIos);
+  // Single source of truth for "the member asked not to see this again",
+  // shared by both the Android offer and the iOS instructions so dismissing
+  // either one suppresses both, on this mount and every mount after it.
+  const [dismissed, setDismissed] = useState(readDismissed);
   const installEventRef = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
@@ -91,7 +111,10 @@ export const useServiceWorker = () => {
       // ability to place the offer where it makes sense.
       e.preventDefault();
       installEventRef.current = e as BeforeInstallPromptEvent;
-      if (localStorage.getItem(DISMISS_KEY) !== 'true') setCanInstall(true);
+      // Dismissal is applied uniformly below (canInstall = rawCanInstall &&
+      // !dismissed), not here, so there is exactly one place that decides
+      // whether a dismissed member sees the offer again.
+      setRawCanInstall(true);
     };
 
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
@@ -102,13 +125,16 @@ export const useServiceWorker = () => {
     const event = installEventRef.current;
     if (!event) return;
     event.prompt();
-    setCanInstall(false);
+    setRawCanInstall(false);
   }, []);
 
   const dismissInstall = useCallback(() => {
     try { localStorage.setItem(DISMISS_KEY, 'true'); } catch { /* private mode */ }
-    setCanInstall(false);
+    setDismissed(true);
   }, []);
+
+  const canInstall = rawCanInstall && !dismissed;
+  const isIos = isIosDevice && !dismissed;
 
   return { updateAvailable, applyUpdate, canInstall, isIos, promptInstall, dismissInstall };
 };
