@@ -1,4 +1,4 @@
-import { isCacheableApiRequest, CACHEABLE_API_PATH } from '../cachePolicy';
+import { isCacheableApiRequest, isCacheableApiRequestSafe, CACHEABLE_API_PATH } from '../cachePolicy';
 
 /**
  * These phones are frequently shared within a household, and CacheStorage
@@ -21,6 +21,18 @@ describe('isCacheableApiRequest', () => {
     expect(isCacheableApiRequest(authed)).toBe(false);
   });
 
+  it('never caches a request carrying an empty Authorization header', () => {
+    // Several call sites in this codebase build auth headers as
+    // `idToken ? `Bearer ${idToken}` : ''` (e.g. MemberList.tsx). Headers.get()
+    // returns '' — not null — for a present-but-empty header, so a truthy check
+    // would let this slip past the guard. The header being present at all,
+    // regardless of value, must refuse the cache.
+    const emptyAuth = req(`https://api.example.org${CACHEABLE_API_PATH}`, {
+      Authorization: ''
+    });
+    expect(isCacheableApiRequest(emptyAuth)).toBe(false);
+  });
+
   it.each([
     '/api/members/123',
     '/api/payments/stats',
@@ -38,5 +50,20 @@ describe('isCacheableApiRequest', () => {
 
   it('does not treat a path that merely starts with the allowlisted one as a match', () => {
     expect(isCacheableApiRequest(req('https://api.example.org/api/announcements/active-drafts'))).toBe(false);
+  });
+});
+
+describe('isCacheableApiRequestSafe', () => {
+  it('fails closed when isCacheableApiRequest throws', () => {
+    // A malformed url reaching `new URL()` throws; the route matcher must treat
+    // that as "not cacheable" rather than letting the exception escape and skip
+    // the check entirely.
+    const malformed = { headers: { get: () => null }, method: 'GET', url: 'not a valid url' } as unknown as Request;
+    expect(() => isCacheableApiRequest(malformed)).toThrow();
+    expect(isCacheableApiRequestSafe(malformed)).toBe(false);
+  });
+
+  it('agrees with isCacheableApiRequest on the happy path', () => {
+    expect(isCacheableApiRequestSafe(req(`https://api.example.org${CACHEABLE_API_PATH}`))).toBe(true);
   });
 });

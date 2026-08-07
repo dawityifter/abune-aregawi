@@ -21,6 +21,7 @@ import ChatWidget from './components/ChatWidget';
 import AnalyticsTracker from './components/AnalyticsTracker';
 import RouteFallback from './components/RouteFallback';
 import { isFeatureEnabled } from './config/featureFlags';
+import { useServiceWorker } from './hooks/useServiceWorker';
 import './index.css';
 
 // Lazy: routes a given member may never open. Before this, every member
@@ -28,11 +29,24 @@ import './index.css';
 // TipTap editor, and Stripe Elements just to read today's fasting status on a
 // phone. Each of these is now fetched only when someone actually navigates to
 // it — which, for the roles they belong to, is rarely and on a real connection.
-const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
-const TreasurerDashboard = lazy(() => import('./components/admin/TreasurerDashboard'));
-const OutreachDashboard = lazy(() => import('./components/admin/OutreachDashboard'));
-const SmsBroadcast = lazy(() => import('./components/admin/SmsBroadcast'));
-const VoicemailInbox = lazy(() => import('./components/admin/VoicemailInbox'));
+//
+// The five staff-only routes below carry an explicit webpackChunkName. That name
+// is not cosmetic: frontend/src/service-worker.js filters the service worker's
+// precache manifest by matching /(admin|treasurer|outreach|sms)/ against each
+// chunk's URL. Webpack's default production chunk names are hashed numeric ids
+// (e.g. "172.fa105aaf.chunk.js") with no relation to the source path, so an
+// unnamed chunk matches nothing and silently re-enters the precache — i.e. gets
+// downloaded onto every member's phone on install, which is the exact problem
+// this code-splitting exists to avoid. If you add another staff-only lazy
+// route, give it a matching chunk name or it will bypass the filter.
+const AdminDashboard = lazy(() => import(/* webpackChunkName: "admin" */ './components/admin/AdminDashboard'));
+const TreasurerDashboard = lazy(() => import(/* webpackChunkName: "treasurer" */ './components/admin/TreasurerDashboard'));
+const OutreachDashboard = lazy(() => import(/* webpackChunkName: "outreach" */ './components/admin/OutreachDashboard'));
+const SmsBroadcast = lazy(() => import(/* webpackChunkName: "sms" */ './components/admin/SmsBroadcast'));
+const VoicemailInbox = lazy(() => import(/* webpackChunkName: "admin-voicemails" */ './components/admin/VoicemailInbox'));
+// Lives under components/admin/ but its route (/departments/:id/meetings/:id) is a
+// department-member feature, not staff-only — deliberately left unnamed so it stays
+// in the precache and works offline.
 const MeetingDetailsPage = lazy(() => import('./components/admin/MeetingDetailsPage'));
 
 const MemberRegistration = lazy(() => import('./components/auth/MemberRegistration'));
@@ -57,6 +71,7 @@ const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 
 function App() {
   const [moreOpen, setMoreOpen] = useState(false);
+  const { updateAvailable, applyUpdate } = useServiceWorker();
 
   return (
     <LanguageProvider>
