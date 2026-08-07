@@ -472,7 +472,7 @@ const SignIn: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-4 md:mt-6 sticky md:static bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur supports-backdrop-blur:bg-white/80 py-2">
+              <div className="mt-4 md:mt-6 sticky md:static bottom-above-nav md:bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur supports-backdrop-blur:bg-white/80 py-2">
                 <button
                   type="submit"
                   disabled={loading || !isValidPhoneNumber(phone) || !recaptchaSolved}

@@ -1002,7 +1002,7 @@ const Profile: React.FC = () => {
       </main>
 
       {!editing && (
-        <div className="fixed bottom-6 right-6 sm:hidden">
+        <div className="fixed bottom-above-nav right-6 sm:hidden md:bottom-6">
           <button
             onClick={() => setEditing(true)}
             className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-600 text-white shadow-lg transition hover:bg-primary-700"
