@@ -819,6 +819,9 @@ export const en: Dictionaries = {
     tomorrow: "tomorrow",
     inDays: "in {days} days",
   },
+  calendar: {
+    title: "Orthodox Calendar",
+  },
   baptismalName: {
     title: "What is your baptismal name?",
     why: "Your baptismal name connects you to a saint and to a day in the church year. We would like to know it, so the parish can mark your name day.",
@@ -2649,6 +2652,9 @@ export const ti: Dictionaries = {
     nextFeast: "ዝቕጽል በዓል",
     tomorrow: "ጽባሕ",
     inDays: "ድሕሪ {days} መዓልታት",
+  },
+  calendar: {
+    title: "ዓውደ ኣዋርሕ ኦርቶዶክስ",
   },
   baptismalName: {
     title: "ስመ ጥምቀትካ እንታይ እዩ?",

@@ -51,6 +51,7 @@ const CreditsPage = lazy(() => import('./components/CreditsPage'));
 const ParishPulseSignUp = lazy(() => import('./components/ParishPulseSignUp'));
 const ThankYouPage = lazy(() => import('./pages/ThankYouPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 
 function App() {
   return (
@@ -129,6 +130,7 @@ function App() {
                 <Route path="/pledge" element={<PledgePage />} />
                 <Route path="/thank-you" element={<ThankYouPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/departments" element={<ProtectedRoute><DepartmentsPage /></ProtectedRoute>} />
                 <Route path="/departments/:id" element={<ProtectedRoute><DepartmentDashboard /></ProtectedRoute>} />
                 <Route path="/departments/:departmentId/meetings/:meetingId" element={<ProtectedRoute><MeetingDetailsPage /></ProtectedRoute>} />

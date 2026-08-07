@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useI18n } from '../i18n/I18nProvider';
 import Hero from './Hero';
 import LiveStreamBanner from './LiveStreamBanner';
@@ -16,8 +17,16 @@ import PromoPopup from './PromoPopup';
 
 const HomePage: React.FC = () => {
   const { lang } = useI18n();
+  const { hash } = useLocation();
 
   useServerWarmup();
+
+  // React Router v6 does not scroll to hash fragments on its own.
+  useEffect(() => {
+    if (!hash) return;
+    const el = document.getElementById(hash.slice(1));
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [hash]);
 
   return (
     <div
