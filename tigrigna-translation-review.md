@@ -334,3 +334,59 @@ New/changed `ti` strings in the `square:` block of `dictionaries.ts`.
 | square.bulkFailed | failed | ኣይተሳኸዐን | ⚠️ |
 
 Removed: `square.anonymous` (both `en` and `ti`) — no remaining consumer.
+
+---
+
+## Phase 4 — member-facing additions (Aug 2026)
+
+New keys written for the liturgical band, parish announcements, and the
+baptismal-name prompt. These are **drafts by a non-native speaker** and reach
+members directly on the dashboard and home page, so they matter more than the
+admin strings above.
+
+The baptismal-name copy is the one to read most carefully: it asks a personal
+question, and the tone in Tigrigna needs to sound like the parish wanting to
+know someone rather than a form collecting a field.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| liturgical.heading | Today in the Church | ሎሚ ኣብ ቤተ ክርስቲያን | ⚠️ |
+| liturgical.feast | Feast | በዓል | ✅ |
+| liturgical.fast | Fast | ጾም | ✅ |
+| liturgical.ordinary | An ordinary day | ንቡር መዓልቲ | ⚠️ |
+| liturgical.dayOf | Day {day} of {total} | {day} መዓልቲ ካብ {total} | ⚠️ word order |
+| liturgical.commemoration | Commemoration | ዝኽሪ | ✅ |
+| liturgical.nextFeast | Next feast | ዝቕጽል በዓል | ✅ |
+| liturgical.tomorrow | tomorrow | ጽባሕ | ✅ |
+| liturgical.inDays | in {days} days | ድሕሪ {days} መዓልታት | ✅ |
+| parishNews.title | From the Parish | ካብ ቤተ ክርስቲያን | ⚠️ |
+| parishNews.dashboardTitle | Parish News | ዜና ቤተ ክርስቲያን | ✅ |
+| parishNews.through | Through | ክሳብ | ✅ |
+| parishNews.loadError | Announcements are unavailable right now. | ሕጂ ሓበሬታታት ክቐርብ ኣይክእልን። | ⚠️ |
+| baptismalName.title | What is your baptismal name? | ስመ ጥምቀትካ እንታይ እዩ? | 🔴 gendered form — see note |
+| baptismalName.why | Your baptismal name connects you to a saint and to a day in the church year… | ስመ ጥምቀትካ ምስ ሓደ ቅዱስን ምስ ሓደ መዓልቲ ናይ ዓውደ ኣዋርሕ ቤተ ክርስቲያንን የተኣሳስረካ። ንክንፈልጦ ንደሊ፡ ማሕበር ንመዓልቲ ስምካ ክዝክሮ። | 🔴 |
+| baptismalName.label | Baptismal name | ስመ ጥምቀት | ✅ |
+| baptismalName.placeholder | In Ge'ez or English — e.g. Welde Mariam | ብግእዝ ወይ ብእንግሊዝኛ — ኣብነት፡ ወልደ ማርያም | ⚠️ |
+| baptismalName.save | Save | ዕቀብ | ✅ |
+| baptismalName.saving | Saving… | ይዕቀብ ኣሎ… | ⚠️ |
+| baptismalName.notNow | Not now | ሕጂ ኣይኮነን | ⚠️ |
+| baptismalName.error | That did not save. Please try again. | ኣይተዓቀበን። በጃኻ እንደገና ፈትን። | ⚠️ |
+
+### Known problem: grammatical gender
+
+Tigrigna marks gender on second-person forms, and these drafts use the
+**masculine** throughout — ስመ ጥምቀት**ካ**, በጃ**ኻ**, ፈት**ን**. Addressing every
+member as masculine is wrong for roughly half the parish.
+
+Three ways out, for a native speaker to choose between:
+
+1. **A neutral rephrasing** that avoids second person entirely — e.g. framing
+   the question as "ስመ ጥምቀት" with no possessive. Usually the cleanest.
+2. **Gendered strings selected from `Member.gender`**, which is already on the
+   record. Correct, but doubles these keys and fails for members with no gender
+   recorded.
+3. **Plural/formal address**, if that reads naturally as respectful here rather
+   than distant.
+
+This is a language judgement, not a technical one. Until it is resolved, the
+masculine forms ship — which is worth knowing rather than discovering.

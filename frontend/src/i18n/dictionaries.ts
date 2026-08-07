@@ -80,6 +80,16 @@ export interface Dictionaries {
     tomorrow: string;
     inDays: string;
   };
+  baptismalName?: {
+    title: string;
+    why: string;
+    label: string;
+    placeholder: string;
+    save: string;
+    saving: string;
+    notNow: string;
+    error: string;
+  };
   docViewer?: {
     openInNewTab: string;
     download: string;
@@ -808,6 +818,16 @@ export const en: Dictionaries = {
     nextFeast: "Next feast",
     tomorrow: "tomorrow",
     inDays: "in {days} days",
+  },
+  baptismalName: {
+    title: "What is your baptismal name?",
+    why: "Your baptismal name connects you to a saint and to a day in the church year. We would like to know it, so the parish can mark your name day.",
+    label: "Baptismal name",
+    placeholder: "In Ge'ez or English — e.g. Welde Mariam",
+    save: "Save",
+    saving: "Saving…",
+    notNow: "Not now",
+    error: "That did not save. Please try again.",
   },
   quicklinks: {
     priest: "Priest",
@@ -2629,6 +2649,16 @@ export const ti: Dictionaries = {
     nextFeast: "ዝቕጽል በዓል",
     tomorrow: "ጽባሕ",
     inDays: "ድሕሪ {days} መዓልታት",
+  },
+  baptismalName: {
+    title: "ስመ ጥምቀትካ እንታይ እዩ?",
+    why: "ስመ ጥምቀትካ ምስ ሓደ ቅዱስን ምስ ሓደ መዓልቲ ናይ ዓውደ ኣዋርሕ ቤተ ክርስቲያንን የተኣሳስረካ። ንክንፈልጦ ንደሊ፡ ማሕበር ንመዓልቲ ስምካ ክዝክሮ።",
+    label: "ስመ ጥምቀት",
+    placeholder: "ብግእዝ ወይ ብእንግሊዝኛ — ኣብነት፡ ወልደ ማርያም",
+    save: "ዕቀብ",
+    saving: "ይዕቀብ ኣሎ…",
+    notNow: "ሕጂ ኣይኮነን",
+    error: "ኣይተዓቀበን። በጃኻ እንደገና ፈትን።",
   },
   quicklinks: {
     priest: "ካህን",

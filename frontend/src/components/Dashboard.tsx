@@ -7,6 +7,7 @@ import { getDisplayEmail } from '../utils/email';
 import { formatMemberName } from '../utils/formatName';
 import ParishAnnouncements from './ParishAnnouncements';
 import LiturgicalToday from './LiturgicalToday';
+import BaptismalNamePrompt from './BaptismalNamePrompt';
 
 interface UserProfile {
   success: boolean;
@@ -245,6 +246,10 @@ const Dashboard: React.FC = () => {
           {/* First thing on the page, because it is the one thing that is
               different every time the member opens it. */}
           <LiturgicalToday variant="dashboard" />
+          {/* Below the liturgical band, so the member is given something before
+              being asked for something. Renders nothing once answered or
+              declined. */}
+          <BaptismalNamePrompt />
           <ParishAnnouncements variant="dashboard" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Profile Card */}
