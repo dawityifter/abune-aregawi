@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,6 +14,15 @@ interface SheetLink {
   labelKey: string;
 }
 
+// Everything in the sheet a keyboard user can land on: the close button and
+// every link (member links, staff links, sign in/out). Queried fresh rather
+// than tracked with individual refs, since the link list is data-driven and
+// its length varies by role.
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled])';
+
+const getFocusableElements = (container: HTMLElement | null): HTMLElement[] =>
+  container ? Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)) : [];
+
 /**
  * The overflow destination for the bottom bar. Draws its role-gated entries
  * from getMergedPermissions() rather than keeping a second list, so a
@@ -23,6 +32,8 @@ const MoreSheet: React.FC<MoreSheetProps> = ({ open, onClose }) => {
   const { t } = useI18n();
   const { currentUser, logout, getUserProfile } = useAuth();
   const [userProfile, setUserProfile] = useState<any>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!currentUser || !open) return;
@@ -50,6 +61,51 @@ const MoreSheet: React.FC<MoreSheetProps> = ({ open, onClose }) => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
+
+  // Same shape as FirstLoginModal (src/components/auth/FirstLoginModal.tsx:59-71):
+  // focus the first actionable element and lock background scroll while open,
+  // restoring both on close. Additionally captures whatever had focus when the
+  // sheet opened — for the bottom bar that's the "More" tab button in
+  // BottomNav.tsx, which stays mounted behind the sheet the whole time — and
+  // restores focus to it on close, since (unlike FirstLoginModal, which always
+  // navigates away on dismiss) closing this sheet just returns to the same page.
+  useEffect(() => {
+    if (!open) return;
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+
+    const focusable = getFocusableElements(panelRef.current);
+    (focusable[0] ?? panelRef.current)?.focus();
+
+    const { overflow } = document.body.style;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = overflow;
+      previouslyFocusedRef.current?.focus?.();
+    };
+  }, [open]);
+
+  // Basic Tab/Shift+Tab focus trap between the sheet's first and last
+  // focusable elements, matching FirstLoginModal's onKeyDown (lines 88-111)
+  // but querying the current focusable set instead of two fixed refs, since
+  // the sheet's link list varies by role.
+  const onKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
+    if (e.key !== 'Tab') return;
+    const focusable = getFocusableElements(panelRef.current);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (e.shiftKey) {
+      if (active === first || !focusable.includes(active as HTMLElement)) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else if (active === last || !focusable.includes(active as HTMLElement)) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   if (!open) return null;
 
@@ -93,10 +149,13 @@ const MoreSheet: React.FC<MoreSheetProps> = ({ open, onClose }) => {
         aria-hidden="true"
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={t('mobileNav.menuTitle')}
-        className="absolute bottom-0 inset-x-0 bg-white rounded-t-2xl max-h-[80vh] overflow-y-auto pb-safe-b"
+        tabIndex={-1}
+        onKeyDown={onKeyDown}
+        className="absolute bottom-0 inset-x-0 bg-white rounded-t-2xl max-h-[80vh] overflow-y-auto pb-safe-b focus:outline-none"
       >
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <h2 className="text-lg font-semibold text-gray-900">{t('mobileNav.menuTitle')}</h2>

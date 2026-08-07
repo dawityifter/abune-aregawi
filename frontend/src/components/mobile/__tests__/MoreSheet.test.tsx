@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import MoreSheet from '../MoreSheet';
@@ -32,7 +33,11 @@ jest.mock('../../../contexts/AuthContext', () => ({
 const renderSheet = () =>
   render(<MemoryRouter><MoreSheet open onClose={jest.fn()} /></MemoryRouter>);
 
-afterEach(() => { mockCurrentUser = null; mockProfile = null; });
+afterEach(() => {
+  mockCurrentUser = null;
+  mockProfile = null;
+  document.body.style.overflow = '';
+});
 
 describe('MoreSheet', () => {
   it('renders nothing when closed', () => {
@@ -99,6 +104,61 @@ describe('MoreSheet', () => {
       renderSheet();
       expect(await screen.findByText((en as any).mobileNav.treasurer)).toBeInTheDocument();
       expect(screen.getByText((en as any).mobileNav.profile)).toBeInTheDocument();
+    });
+  });
+
+  describe('focus management', () => {
+    // Mirrors real usage: BottomNav's "More" button opens the sheet, so it
+    // is what has focus at the moment the sheet mounts.
+    const Harness: React.FC = () => {
+      const [open, setOpen] = React.useState(false);
+      return (
+        <MemoryRouter>
+          <button onClick={() => setOpen(true)}>open-more</button>
+          <MoreSheet open={open} onClose={() => setOpen(false)} />
+        </MemoryRouter>
+      );
+    };
+
+    it('moves initial focus into the sheet, traps Tab at the edges, and restores focus to the opener on close', async () => {
+      render(<Harness />);
+      const opener = screen.getByRole('button', { name: 'open-more' });
+      await userEvent.click(opener);
+
+      // Initial focus: the close button, first in DOM order.
+      const closeButton = screen.getByRole('button', { name: (en as any).mobileNav.closeMore });
+      expect(closeButton).toHaveFocus();
+
+      // Forward wrap: Tab from the last focusable element returns to the first.
+      const signInLink = screen.getByText((en as any).sign.in).closest('a') as HTMLElement;
+      signInLink.focus();
+      await userEvent.tab();
+      expect(closeButton).toHaveFocus();
+
+      // Backward wrap: Shift+Tab from the first focusable element goes to the last.
+      await userEvent.tab({ shift: true });
+      expect(signInLink).toHaveFocus();
+
+      // Closing returns focus to whatever opened the sheet.
+      await userEvent.click(closeButton);
+      expect(opener).toHaveFocus();
+    });
+  });
+
+  describe('body scroll lock', () => {
+    it('locks body scroll while open and restores the previous value after', () => {
+      document.body.style.overflow = 'auto';
+      const onClose = jest.fn();
+      const { rerender } = render(
+        <MemoryRouter><MoreSheet open={false} onClose={onClose} /></MemoryRouter>
+      );
+      expect(document.body.style.overflow).toBe('auto');
+
+      rerender(<MemoryRouter><MoreSheet open onClose={onClose} /></MemoryRouter>);
+      expect(document.body.style.overflow).toBe('hidden');
+
+      rerender(<MemoryRouter><MoreSheet open={false} onClose={onClose} /></MemoryRouter>);
+      expect(document.body.style.overflow).toBe('auto');
     });
   });
 });
