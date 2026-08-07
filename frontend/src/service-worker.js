@@ -25,6 +25,16 @@ clientsClaim();
  * member's phone. Verify with a real build after touching either file —
  * `grep` the source for these words proves nothing; only inspecting the
  * compiled manifest in build/service-worker.js does.
+ *
+ * Known limitation, accepted rather than fixed: filename matching cannot see
+ * inside webpack's *shared* chunks. A module imported by both a staff route and
+ * a member route (e.g. MemberDuesViewer/AddPaymentModal, currently bundled
+ * together into a numeric-named chunk shared with a staff screen) keeps a
+ * numeric name and is precached even though part of what it pulls in is
+ * staff-adjacent. Splitting shared chunks out would need webpack config this
+ * project is constrained from touching (no eject, no CRACO). Don't read the
+ * absence of "admin"/"treasurer"/etc. in a chunk's name as proof it contains
+ * nothing staff-related — it only proves it isn't *exclusively* a staff route.
  */
 precacheAndRoute(
   self.__WB_MANIFEST.filter((entry) => !/(admin|treasurer|outreach|sms)/.test(entry.url))
@@ -32,9 +42,29 @@ precacheAndRoute(
 
 // Navigations render from the precached shell, so a cold offline launch shows
 // the app rather than the browser's error page.
+//
+// Workbox's NavigationRoute matches any request with `mode: 'navigate'` —
+// that includes iframes and target="_blank" links, not just address-bar loads.
+// This app serves real documents that way (see
+// components/sections/WhatsHappeningSection.tsx: a teaching PDF in an
+// <iframe>, and PDF/PPTX links opened with target="_blank" or download).
+// Without a file-extension denylist, an installed worker would hand back the
+// cached index.html for those requests instead of the actual document. CRA's
+// own PWA template carries this same denylist for the same reason.
 registerRoute(
   new NavigationRoute(createHandlerBoundToURL(`${process.env.PUBLIC_URL || ''}/index.html`), {
-    denylist: [/^\/api\//],
+    denylist: [
+      // Any URL that looks like a file, e.g. /docs/bylaws.pdf — the real guard.
+      new RegExp('/[^/?]+\\.[^/]+$'),
+      // Anything under a leading-underscore path (e.g. Firebase's /__/auth handlers).
+      /^\/_/,
+      // Cheap insurance, not a working guard today: the API lives on a
+      // different origin, and Firebase Hosting's rewrite to index.html plus
+      // NavigationRoute never writing to cache mean this never actually
+      // triggers in the current deployment. Kept in case the API is ever
+      // proxied same-origin.
+      /^\/api\//,
+    ],
   })
 );
 

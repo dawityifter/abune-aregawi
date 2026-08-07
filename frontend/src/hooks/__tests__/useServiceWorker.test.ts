@@ -11,18 +11,55 @@ import { useServiceWorker } from '../useServiceWorker';
  * assignment can leak NODE_ENV into unrelated suites that run in the same worker.
  */
 
-const makeRegistration = () => {
-  const waiting = { postMessage: jest.fn() };
+/** A minimal EventTarget-like double: records listeners and lets a test fire them. */
+const fakeEmitter = () => {
+  const listeners: Record<string, Array<() => void>> = {};
   return {
-    waiting: null as any,
-    installing: null as any,
-    addEventListener: jest.fn(),
-    _waiting: waiting
+    addEventListener: jest.fn((event: string, cb: () => void) => {
+      (listeners[event] ||= []).push(cb);
+    }),
+    fire: (event: string) => {
+      (listeners[event] || []).forEach((cb) => cb());
+    },
+  };
+};
+
+const makeWorker = () => ({
+  state: 'installing' as string,
+  postMessage: jest.fn(),
+  ...fakeEmitter(),
+});
+
+const makeRegistration = (overrides: { waiting?: any; installing?: any } = {}) => ({
+  waiting: overrides.waiting ?? null,
+  installing: overrides.installing ?? null,
+  ...fakeEmitter(),
+});
+
+/**
+ * Swaps window.location for a double whose reload() is a spy, and restores the
+ * original afterward. jsdom's real reload() throws "not implemented", and
+ * jest.spyOn can't attach to it on every jsdom version, so this replaces the
+ * whole object for the duration of one test.
+ */
+const withMockedReload = () => {
+  const original = window.location;
+  const reload = jest.fn();
+  // @ts-expect-error - deliberately reassigning a normally-readonly global for the test
+  delete window.location;
+  // @ts-expect-error
+  window.location = { ...original, reload };
+  return {
+    reload,
+    restore: () => {
+      // @ts-expect-error
+      window.location = original;
+    },
   };
 };
 
 describe('useServiceWorker', () => {
-  const original = (global as any).navigator.serviceWorker;
+  const originalServiceWorker = (global as any).navigator.serviceWorker;
   const originalNodeEnv = process.env.NODE_ENV;
 
   beforeAll(() => {
@@ -35,18 +72,25 @@ describe('useServiceWorker', () => {
 
   afterEach(() => {
     Object.defineProperty(global.navigator, 'serviceWorker', {
-      value: original, configurable: true, writable: true
+      value: originalServiceWorker, configurable: true, writable: true
     });
     jest.restoreAllMocks();
   });
 
-  it('reports no update available before anything registers', () => {
+  it('never registers outside production', () => {
+    const register = jest.fn().mockResolvedValue(makeRegistration());
     Object.defineProperty(global.navigator, 'serviceWorker', {
-      value: { register: jest.fn().mockResolvedValue(makeRegistration()), addEventListener: jest.fn() },
+      value: { register, addEventListener: jest.fn() },
       configurable: true, writable: true
     });
-    const { result } = renderHook(() => useServiceWorker());
-    expect(result.current.updateAvailable).toBe(false);
+    const restoreEnv = process.env.NODE_ENV;
+    (process.env as any).NODE_ENV = 'development';
+    try {
+      renderHook(() => useServiceWorker());
+      expect(register).not.toHaveBeenCalled();
+    } finally {
+      (process.env as any).NODE_ENV = restoreEnv;
+    }
   });
 
   it('does not throw when the browser has no service worker support', () => {
@@ -56,7 +100,7 @@ describe('useServiceWorker', () => {
     expect(() => renderHook(() => useServiceWorker())).not.toThrow();
   });
 
-  it('does not throw when registration rejects', async () => {
+  it('does not throw when registration rejects, and reports no update', async () => {
     Object.defineProperty(global.navigator, 'serviceWorker', {
       value: { register: jest.fn().mockRejectedValue(new Error('nope')), addEventListener: jest.fn() },
       configurable: true, writable: true
@@ -66,11 +110,23 @@ describe('useServiceWorker', () => {
     expect(result.current.updateAvailable).toBe(false);
   });
 
-  it('surfaces an update when a worker is already waiting', async () => {
+  it('registers the compiled worker script and reports no update when nothing is waiting', async () => {
+    const register = jest.fn().mockResolvedValue(makeRegistration());
+    Object.defineProperty(global.navigator, 'serviceWorker', {
+      value: { register, addEventListener: jest.fn() },
+      configurable: true, writable: true
+    });
+    const { result } = renderHook(() => useServiceWorker());
+    await act(async () => { await Promise.resolve(); });
+    expect(register).toHaveBeenCalledWith(expect.stringContaining('/service-worker.js'));
+    expect(result.current.updateAvailable).toBe(false);
+  });
+
+  it('surfaces an update when a worker is already waiting from a previous visit', async () => {
     const waiting = { postMessage: jest.fn() };
     Object.defineProperty(global.navigator, 'serviceWorker', {
       value: {
-        register: jest.fn().mockResolvedValue({ waiting, addEventListener: jest.fn() }),
+        register: jest.fn().mockResolvedValue(makeRegistration({ waiting })),
         addEventListener: jest.fn()
       },
       configurable: true, writable: true
@@ -80,18 +136,90 @@ describe('useServiceWorker', () => {
     expect(result.current.updateAvailable).toBe(true);
   });
 
-  it('tells the waiting worker to take over when the update is applied', async () => {
-    const waiting = { postMessage: jest.fn() };
+  it('flips updateAvailable when an installing worker finishes installing over an existing controller', async () => {
+    const registration = makeRegistration();
     Object.defineProperty(global.navigator, 'serviceWorker', {
       value: {
-        register: jest.fn().mockResolvedValue({ waiting, addEventListener: jest.fn() }),
-        addEventListener: jest.fn()
+        register: jest.fn().mockResolvedValue(registration),
+        addEventListener: jest.fn(),
+        controller: {} // a controller is already active: this is an update, not a first install
       },
       configurable: true, writable: true
     });
     const { result } = renderHook(() => useServiceWorker());
     await act(async () => { await Promise.resolve(); });
-    act(() => { result.current.applyUpdate(); });
-    expect(waiting.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+    expect(result.current.updateAvailable).toBe(false);
+
+    // Simulate the browser: a new worker starts installing...
+    const installing = makeWorker();
+    registration.installing = installing;
+    act(() => { registration.fire('updatefound'); });
+
+    // ...and finishes.
+    installing.state = 'installed';
+    act(() => { installing.fire('statechange'); });
+
+    expect(result.current.updateAvailable).toBe(true);
+  });
+
+  it('does not surface an update when the installing worker is a first install (no existing controller)', async () => {
+    const registration = makeRegistration();
+    Object.defineProperty(global.navigator, 'serviceWorker', {
+      value: {
+        register: jest.fn().mockResolvedValue(registration),
+        addEventListener: jest.fn(),
+        controller: null // nothing controls this page yet: first install, not an update
+      },
+      configurable: true, writable: true
+    });
+    const { result } = renderHook(() => useServiceWorker());
+    await act(async () => { await Promise.resolve(); });
+
+    const installing = makeWorker();
+    registration.installing = installing;
+    act(() => { registration.fire('updatefound'); });
+
+    installing.state = 'installed';
+    act(() => { installing.fire('statechange'); });
+
+    expect(result.current.updateAvailable).toBe(false);
+  });
+
+  it('applyUpdate tells the waiting worker to take over, and reloads only after the browser confirms the takeover', async () => {
+    const waiting = { postMessage: jest.fn() };
+    const swAddEventListener = jest.fn();
+    Object.defineProperty(global.navigator, 'serviceWorker', {
+      value: {
+        register: jest.fn().mockResolvedValue(makeRegistration({ waiting })),
+        addEventListener: swAddEventListener
+      },
+      configurable: true, writable: true
+    });
+    const { reload, restore } = withMockedReload();
+    try {
+      const { result } = renderHook(() => useServiceWorker());
+      await act(async () => { await Promise.resolve(); });
+      expect(result.current.updateAvailable).toBe(true);
+
+      act(() => { result.current.applyUpdate(); });
+
+      expect(waiting.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+
+      const controllerChangeCall = swAddEventListener.mock.calls.find(
+        ([event]) => event === 'controllerchange'
+      );
+      expect(controllerChangeCall).toBeDefined();
+      expect(controllerChangeCall![2]).toEqual({ once: true });
+
+      // The bug this ordering guards against: reloading before the new worker
+      // has actually taken control, which would drop whatever the member was
+      // doing (mid-payment-form is the case the hook's own comment calls out).
+      expect(reload).not.toHaveBeenCalled();
+
+      act(() => { controllerChangeCall![1](); });
+      expect(reload).toHaveBeenCalledTimes(1);
+    } finally {
+      restore();
+    }
   });
 });
