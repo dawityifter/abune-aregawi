@@ -407,3 +407,26 @@ they are high-visibility.
 | mobileNav.more | More | ተወሳኺ | ✅ |
 | mobileNav.label | Main | ቀንዲ | ⚠️ used only as the nav's aria-label ("main navigation"); not visible to sighted users, but confirm it doesn't read oddly to a screen reader |
 | mobileNav.closeMore | Close | ዕጸው | ✅ matches existing `skippedChecks.close` (ዕጸ) closely; confirm ዕጸው vs ዕጸ is the right form here |
+
+## More sheet (Aug 2026, Task 5)
+
+New `mobileNav.*` keys for the overflow sheet the bottom bar's fourth tab
+opens (signed-out homepage links, member links, and the role-gated staff
+links). Drafts by a non-native speaker.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| mobileNav.serviceTimes | Service Times | ሰዓታት ኣገልግሎት | ✅ |
+| mobileNav.watch | Watch Live | ብቐጥታ ተኸታተል | ⚠️ literally "follow along live"; confirm this is the natural phrase for a livestream link vs. a shorter imperative |
+| mobileNav.profile | My Profile | መለለዪየይ | ⚠️ literally "my identifier"; confirm this reads as "my profile" and not something more like "my ID" |
+| mobileNav.dependents | My Family | ስድራይ | ✅ |
+| mobileNav.departments | Departments | ክፍልታት | ⚠️ generic "sections/divisions"; confirm this matches how church departments/committees are named elsewhere in the app |
+| mobileNav.gallery | Photo Gallery | ኣልበም ስእሊ | ⚠️ "ኣልበም" is a direct loanword for "album"; confirm there's no preferred native term |
+| mobileNav.board | Board Members | ኣባላት ቦርድ | ⚠️ "ቦርድ" is a direct loanword for "board", consistent with the existing loanword `ዳሽቦርድ` ("dashboard") elsewhere in this file — but confirm that's actually the intended pattern and not just convenient |
+| mobileNav.bylaw | Church Bylaw | ሕገ ደንቢ ቤተ ክርስቲያን | 🔴 inconsistent with the existing translation for the *same* Church Bylaw page (`board.tabs.bylaw` / church-bylaw route), which already uses `ሕጊ ቤተ ክርስቲያን` ("church law/rule") elsewhere in this dictionary. Pick one term for both. |
+| mobileNav.privacy | Privacy | ውልቃዊ ሓበሬታ | ⚠️ literally "personal information" rather than the abstract "privacy"; no existing translation elsewhere to check against |
+| mobileNav.admin | Admin Panel | መሐደሪ ክፍሊ | 🔴 inconsistent with the existing translation for the admin dashboard elsewhere in this file, which uses the loanword `ኣድሚን` (e.g. `ኣድሚን ዳሽቦርድ`). This draft instead translates "admin" natively as "administrative office/department" — pick one term for both. |
+| mobileNav.treasurer | Treasurer | ሓላዊ ገንዘብ | 🔴 inconsistent with the existing translation used three times elsewhere in this file for treasurer/treasurer dashboard, which is `ተሓዝ ገንዘብ` ("holder of money") — this draft uses `ሓላዊ ገንዘብ` ("guardian/keeper of money") instead. Pick one term for both. |
+| mobileNav.outreach | Outreach | ምብጻሕ | ⚠️ literally "a visit"; confirm this is the term used for the outreach/new-member ministry vs. a different word |
+| mobileNav.sms | SMS Broadcast | መልእኽቲ ምዝርጋሕ | ⚠️ literally "message distribution"; confirm this reads as an SMS broadcast specifically |
+| mobileNav.menuTitle | More | ተወሳኺ | ✅ same as the existing `mobileNav.more` tab label, reused as the sheet's dialog title |
