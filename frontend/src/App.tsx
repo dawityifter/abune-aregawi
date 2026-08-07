@@ -1,7 +1,8 @@
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { AuthProvider } from './contexts/AuthContext';
+import { lazyWithRecovery as lazy } from './utils/lazyWithRecovery';
 
 // Eager: everything on the first paint of the two paths almost all traffic
 // takes — arriving at the home page, or signing in and landing on the
@@ -14,6 +15,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import Navigation from './components/Navigation';
 import BottomNav from './components/mobile/BottomNav';
 import MoreSheet from './components/mobile/MoreSheet';
+import UpdateToast from './components/mobile/UpdateToast';
 import ErrorBoundary from './components/ErrorBoundary';
 import DevBanner from './components/DevBanner';
 import FirstLoginModal from './components/auth/FirstLoginModal';
@@ -84,6 +86,7 @@ function App() {
             <Navigation />
             <BottomNav onMoreClick={() => setMoreOpen(true)} />
             <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
+            <UpdateToast show={updateAvailable} onRefresh={applyUpdate} />
             <ChatWidget />
             {/* Global first-time sign-in modal (shows once per session) */}
             <FirstLoginModal />

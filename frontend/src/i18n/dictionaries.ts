@@ -2568,6 +2568,15 @@ export const en: Dictionaries = {
     sms: 'SMS Broadcast',
     menuTitle: 'More',
   },
+  pwa: {
+    updateAvailable: 'A new version is available.',
+    refresh: 'Refresh',
+    installTitle: 'Add to Home Screen',
+    installBody: 'Install the parish app for faster access.',
+    install: 'Install',
+    installDismiss: 'Not now',
+    iosInstallBody: 'Tap Share, then "Add to Home Screen".',
+  },
 
 };
 
@@ -4424,6 +4433,15 @@ export const ti: Dictionaries = {
     outreach: 'ምብጻሕ',
     sms: 'መልእኽቲ ምዝርጋሕ',
     menuTitle: 'ተወሳኺ',
+  },
+  pwa: {
+    updateAvailable: 'ሓድሽ ዝተመሓየሸ ወጺኡ ኣሎ።',
+    refresh: 'ኣሐድስ',
+    installTitle: 'ናብ መተግበሪ ገጽ ወስኽ',
+    installBody: 'ቀልጢፍካ ንምእታው ናይ ቤተ ክርስቲያን መተግበሪ ኣውርድ።',
+    install: 'ኣውርድ',
+    installDismiss: 'ሕጂ ኣይኮነን',
+    iosInstallBody: 'Share ጠውቕ፡ ደሓር "Add to Home Screen" ምረጽ።',
   }
 };
 

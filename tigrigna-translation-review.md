@@ -429,4 +429,21 @@ links). Drafts by a non-native speaker.
 | mobileNav.treasurer | Treasurer | ሓላዊ ገንዘብ | 🔴 inconsistent with the existing translation used three times elsewhere in this file for treasurer/treasurer dashboard, which is `ተሓዝ ገንዘብ` ("holder of money") — this draft uses `ሓላዊ ገንዘብ` ("guardian/keeper of money") instead. Pick one term for both. |
 | mobileNav.outreach | Outreach | ምብጻሕ | ⚠️ literally "a visit"; confirm this is the term used for the outreach/new-member ministry vs. a different word |
 | mobileNav.sms | SMS Broadcast | መልእኽቲ ምዝርጋሕ | ⚠️ literally "message distribution"; confirm this reads as an SMS broadcast specifically |
+
+## Update toast and install prompt (Aug 2026, Task 7)
+
+New `pwa.*` keys for the "a new version is available" refresh toast (Task 7)
+and the upcoming add-to-home-screen install prompt. Drafts by a non-native
+speaker. `pwa.updateAvailable` and `pwa.refresh` are live now; the rest are
+drafted ahead of the task that renders them so both ship together.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| pwa.updateAvailable | A new version is available. | ሓድሽ ዝተመሓየሸ ወጺኡ ኣሎ። | ⚠️ literally "a new, improved [one] has come out"; confirm this reads naturally as a software-update notice rather than something else that "came out" |
+| pwa.refresh | Refresh | ኣሐድስ | ✅ |
+| pwa.installTitle | Add to Home Screen | ናብ መተግበሪ ገጽ ወስኽ | ⚠️ literally "add to app page"; "home screen" is rendered as "app page" rather than a phone's actual home/start screen — confirm there isn't a more precise existing term |
+| pwa.installBody | Install the parish app for faster access. | ቀልጢፍካ ንምእታው ናይ ቤተ ክርስቲያን መተግበሪ ኣውርድ። | ⚠️ "ኣውርድ" is "download" rather than "install"; confirm that distinction doesn't matter here or pick the more precise term |
+| pwa.install | Install | ኣውርድ | ⚠️ same download-vs-install note as `pwa.installBody`; confirm consistency is intended |
+| pwa.installDismiss | Not now | ሕጂ ኣይኮነን | ✅ matches the existing `baptismalName.notNow` string exactly |
+| pwa.iosInstallBody | Tap Share, then "Add to Home Screen". | Share ጠውቕ፡ ደሓር "Add to Home Screen" ምረጽ። | ✅ intentionally leaves "Share" and "Add to Home Screen" in English — those are iOS's actual (English-only) button labels, not translatable UI chrome |
 | mobileNav.menuTitle | More | ተወሳኺ | ✅ same as the existing `mobileNav.more` tab label, reused as the sheet's dialog title |
