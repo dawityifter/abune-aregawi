@@ -30,8 +30,8 @@ const enhance = (pipeline) => pipeline.modulate({ saturation: 1.15 }).linear(1.1
 // at generation time, not by a member's phone. Measured on this artwork,
 // adaptiveFiltering is the one that actually matters: compressionLevel alone
 // only trims ~2% off the source photograph, but adding adaptiveFiltering
-// takes the 512px icon from ~706KB to ~544KB (~23% further, ~32% off the
-// original). sharp/libvips also supports a lossy indexed-palette PNG mode
+// takes the 512px icon from ~706KB to ~544KB (~23% further, ~24.2% off the
+// original 718KB). sharp/libvips also supports a lossy indexed-palette PNG mode
 // (`palette: true`, ~167KB here) and WebP (lossless ~420KB, lossy ~100KB at
 // q90) — both meaningfully smaller still, but palette mode discards colour
 // precision and WebP is a different file type than the `image/png` the

@@ -49,7 +49,87 @@ images, `manifest.json`, the YouTube live-status API, Chatbase's remote script)
 — all handled gracefully (e.g. "Error checking live status: TypeError: Failed to
 fetch" logged and swallowed, no crash, no error boundary triggered).
 
-### 3. Bottom bar never covers content at 390px width
+### 3. Update flow — waits for Refresh rather than silently taking over
+
+This matters because members fill in payment forms on this site; a build that
+swapped out from under someone mid-form would be actively harmful. Verified
+end to end, in two separate `npm run build:ci` builds served from the same
+`serve -s build -l 3100`, with a real Playwright tab kept open across both:
+
+1. Built and served v1. Loaded `/`, waited for the service worker to install
+   and take control: `swInfo.controlled: true`,
+   `swInfo.activeState: "activated"`, `swInfo.scriptURL:
+   "http://localhost:3100/service-worker.js"`.
+2. Made a visible one-line change (a marker string appended to the footer's
+   copyright text in `Footer.tsx`, reverted immediately after this test —
+   `git diff -- frontend/src/components/sections/Footer.tsx` is empty) and
+   ran `npm run build:ci` again into the same `build/` directory, changing
+   the JS bundle hash and, downstream, the service worker's own content
+   (confirmed the marker string landed in the new `main.*.js`:
+   `grep -c "UPDATE-FLOW-TEST-V2" build/static/js/main.*.js` → `1`).
+3. Reloaded the **already-open tab** once (`page.reload()`), same origin,
+   same tab — not a fresh navigation. Immediately after that reload:
+
+   ```
+   footerTextRightAfterReload:
+     "© 2026 ... All rights reserved."          <- OLD text, no marker
+   swState: { activeState: "activated", waitingState: "installed", hasWaiting: true }
+   bodySample: "... A new version is available.\nRefresh ..."
+   ```
+
+   **The page kept showing the old build and the new worker sat in
+   `installed`/waiting — it did not take over on its own.** The toast ("A new
+   version is available." + a "Refresh" button) was present in the DOM,
+   confirmed both via `page.evaluate` text search and an accessibility
+   snapshot showing `status: { generic: "A new version is available.",
+   button: "Refresh" }`.
+
+4. Clicked the "Refresh" button (`page.getByRole('button', { name: 'Refresh'
+   }).click()`) and waited ~2.5s:
+
+   ```
+   footerTextAfterRefresh:
+     "© 2026 ... All rights reserved. [UPDATE-FLOW-TEST-V2]"   <- NEW text
+   swState: { activeState: "activated", hasWaiting: false,
+              controllerScriptURL: "http://localhost:3100/service-worker.js" }
+   ```
+
+   The new version actually loaded — footer shows the marker, the new worker
+   is `activated` and controlling, no worker left waiting.
+
+**Result: PASS.** The update toast appears and waits for an explicit tap
+rather than silently swapping the build under the member; tapping Refresh
+reliably activates and loads the new version.
+
+### 4. Dashboard card density at 390px
+
+Brief step 3: `Dashboard.tsx`'s card grid (`src/components/Dashboard.tsx:254`)
+changed from a flat `gap-6` to `gap-3 sm:gap-6`, so phones get a tighter
+12px gap between cards instead of desktop's 24px, while `sm:` (≥640px) and
+up — which covers `md:`/`lg:`'s column-count breakpoints — keeps the original
+24px untouched.
+
+Confirmed compiled correctly rather than just trusting the source edit:
+
+```
+$ grep -o "\.gap-3{[^}]*}" build/static/css/main.*.css
+.gap-3{gap:.75rem}
+$ grep -o "sm\\:gap-6[^}]*}" build/static/css/main.*.css
+sm\:gap-6{gap:1.5rem}
+```
+
+`.75rem` = 12px below the `sm` breakpoint, `1.5rem` = 24px (the original
+value) at and above it — so tablet/desktop are unaffected and only phones get
+the tighter grid, matching the brief's intent.
+
+**Not independently re-verified with a live signed-in screenshot**: `/dashboard`
+requires Firebase phone-OTP with no bypass in this environment (see item 6
+below), so the actual card list at 390px was confirmed via the compiled CSS
+rule, not a rendered screenshot of the real dashboard. This is a narrower
+verification than the other items in this document — flagging it rather than
+presenting it as equivalent.
+
+### 5. Bottom bar never covers content at 390px width
 
 Scrolled each page to `document.body.scrollHeight` at a 390×844 viewport and
 measured the gap between the last content element and the bottom nav's `top`:
@@ -65,14 +145,14 @@ measured the gap between the last content element and the bottom nav's `top`:
 clear (screenshot confirms "Garland, Texas" fully readable above the bar, no
 overlap).
 
-### 4. `/profile` and `/dashboard` are unreachable
+### 6. `/profile` and `/dashboard` are unreachable
 
 **Confirmed, not skipped.** Both routes redirect to `/login` (phone-number SMS
 form). There is no Firebase phone-OTP test bypass in this environment, so a
 signed-in pass on `/profile`/`/dashboard` could not be exercised here — see the
 human section below.
 
-### 5. Lighthouse PWA/installability audit
+### 7. Lighthouse PWA/installability audit
 
 Ran `npx lighthouse http://localhost:3100/ --form-factor=mobile
 --screenEmulation.mobile=true` at v13.4.1 (the version `npx` resolved).
