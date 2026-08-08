@@ -212,16 +212,29 @@
   }
 }
 
-/* Chatbase's floating bubble (#chatbase-bubble-button, injected by the
-   third-party embed script in ChatWidget.tsx) sits at a fixed bottom offset
-   that overlaps BottomNav's "More" tab at phone widths — the entry point to
-   all secondary navigation. It's plain light-DOM with a stable id (verified
-   with Playwright at 390px), so it can be repositioned from here even though
-   this repo doesn't own the widget itself. Matches the "above-nav" spacing
-   token (bottom nav height + safe-area inset + a gap) used elsewhere for
-   fixed chrome that needs to clear the bottom bar. */
+/* Chatbase (third-party embed script in ChatWidget.tsx, mounted globally) is
+   hidden below the md breakpoint entirely — the owner's decision, not a
+   layout tweak. It was first just offset upward to clear BottomNav's "More"
+   tab, but at phone width the offset moved it to sit on top of UpdateToast's
+   Refresh button instead (Chatbase's z-index, 2147483645, beats everything
+   else in the app), leaving the only in-app control for accepting a
+   service-worker update untappable. The owner is considering replacing the
+   widget on mobile; until then it's just off. Don't delete this rule as
+   dead/unexplained CSS — it's intentional, re-evaluate it when Chatbase is
+   replaced or redesigned for mobile.
+   Covers every top-level element the embed script injects into <body>, not
+   just the button: #chatbase-message-bubbles (an auto-popup bubble container,
+   currently suppressed by showFloatingInitialMessages: false in ChatWidget.tsx
+   but still present in the DOM), and #chatbase-bubble-window (the chat panel,
+   which also contains Chatbase's iframe once opened — hiding the container
+   hides the iframe with it, so it isn't listed separately). All three are
+   fixed-position siblings of #chatbase-bubble-button appended straight to
+   <body> (verified with Playwright at 390px); Chatbase sets a non-!important
+   inline `display` on each via JS, so this needs !important to win. */
 @media (max-width: 767px) {
-  #chatbase-bubble-button {
-    bottom: calc(4.5rem + env(safe-area-inset-bottom)) !important;
+  #chatbase-bubble-button,
+  #chatbase-message-bubbles,
+  #chatbase-bubble-window {
+    display: none !important;
   }
 }

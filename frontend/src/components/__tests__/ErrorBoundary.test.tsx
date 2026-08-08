@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ErrorBoundary from '../ErrorBoundary';
+import { en, ti } from '../../i18n/dictionaries';
 
 /**
  * React.lazy() permanently caches a rejected factory on the component
@@ -87,5 +88,70 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
     expect(screen.getByText('all good')).toBeInTheDocument();
+  });
+
+  // The fallback is a class component reachable when other things (possibly
+  // including I18nProvider itself) have already broken, so it reads the
+  // persisted language directly out of localStorage rather than via
+  // useI18n. These pin that it actually renders both languages' strings,
+  // not just English by coincidence of the other tests' default jsdom state.
+  describe('bilingual fallback copy', () => {
+    const Boom: React.FC = () => {
+      throw new Error('boom');
+    };
+
+    afterEach(() => {
+      window.localStorage.clear();
+    });
+
+    it('renders the English fallback copy when app.lang is "en"', () => {
+      window.localStorage.setItem('app.lang', 'en');
+      render(
+        <ErrorBoundary>
+          <Boom />
+        </ErrorBoundary>
+      );
+      expect(screen.getByText(en.errorBoundary.title)).toBeInTheDocument();
+      expect(screen.getByText(en.errorBoundary.body)).toBeInTheDocument();
+      expect(screen.getByText(en.errorBoundary.retry)).toBeInTheDocument();
+    });
+
+    it('renders the Tigrigna fallback copy when app.lang is "ti"', () => {
+      window.localStorage.setItem('app.lang', 'ti');
+      render(
+        <ErrorBoundary>
+          <Boom />
+        </ErrorBoundary>
+      );
+      expect(screen.getByText(ti.errorBoundary.title)).toBeInTheDocument();
+      expect(screen.getByText(ti.errorBoundary.body)).toBeInTheDocument();
+      expect(screen.getByText(ti.errorBoundary.retry)).toBeInTheDocument();
+    });
+
+    it('falls back to English when localStorage throws (e.g. Safari private mode)', () => {
+      const getItemSpy = jest
+        .spyOn(window.localStorage.__proto__, 'getItem')
+        .mockImplementation(() => {
+          throw new Error('SecurityError');
+        });
+
+      render(
+        <ErrorBoundary>
+          <Boom />
+        </ErrorBoundary>
+      );
+      expect(screen.getByText(en.errorBoundary.title)).toBeInTheDocument();
+
+      getItemSpy.mockRestore();
+    });
+
+    it('falls back to English when app.lang is unset', () => {
+      render(
+        <ErrorBoundary>
+          <Boom />
+        </ErrorBoundary>
+      );
+      expect(screen.getByText(en.errorBoundary.title)).toBeInTheDocument();
+    });
   });
 });

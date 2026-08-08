@@ -2577,6 +2577,16 @@ export const en: Dictionaries = {
     installDismiss: 'Not now',
     iosInstallBody: 'Tap Share, then "Add to Home Screen".',
   },
+  // ErrorBoundary's fallback UI. This is a class component reachable when
+  // other things have already broken (see ErrorBoundary.tsx), so it reads
+  // localStorage directly rather than via useI18n/useContext — it must not
+  // depend on any provider that might itself be implicated in the error.
+  errorBoundary: {
+    title: 'Something went wrong',
+    body: 'An error occurred. Please try refreshing the page.',
+    retry: 'Try Again',
+    detailsLabel: 'Error details',
+  },
 
 };
 
@@ -4442,6 +4452,12 @@ export const ti: Dictionaries = {
     install: 'ኣውርድ',
     installDismiss: 'ሕጂ ኣይኮነን',
     iosInstallBody: 'Share ጠውቕ፡ ደሓር "Add to Home Screen" ምረጽ።',
+  },
+  errorBoundary: {
+    title: 'ገለ ጸገም ኣጋጢሙ',
+    body: 'ጌጋ ኣጋጢሙ። በጃኹም ገጹ ኣሐድሱ።',
+    retry: 'ዳግማይ ፈትን',
+    detailsLabel: 'ዝርዝር ጌጋ',
   }
 };
 

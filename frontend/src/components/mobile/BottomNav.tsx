@@ -16,20 +16,37 @@ const ICONS: Record<string, React.ReactElement> = {
   more: <path d="M4 7h16M4 12h16M4 17h16" />,
 };
 
-const Icon: React.FC<{ id: string; active: boolean }> = ({ id, active }) => (
-  <svg
-    className="h-6 w-6"
-    viewBox="0 0 24 24"
-    fill={active ? 'currentColor' : 'none'}
-    stroke="currentColor"
-    strokeWidth={1.8}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    {ICONS[id]}
-  </svg>
-);
+// "today" and "give" are single closed silhouettes (a star, a heart) — filling
+// them solid on the active tab reads cleanly. "calendar" and "more" are not:
+// calendar's outline is a closed body rect *plus* open interior strokes (the
+// binder ticks, the header divider) drawn in the same currentColor, so a
+// solid fill paints over its own interior lines and leaves an unreadable
+// blob; "more" is three open line segments with no enclosed area at all, so
+// filling it does nothing either way. Rather than special-case calendar
+// alone, both non-silhouette icons share one rule: no fill, ever — active
+// state is instead a bolder stroke (plus the existing text-primary-700 color
+// change on the wrapping Link/button, which currentColor already inherits).
+// That keeps a single active-state rule with two icon categories, not one
+// rule for three tabs and a special case for the fourth.
+const SILHOUETTE_ICONS = new Set(['today', 'give']);
+
+const Icon: React.FC<{ id: string; active: boolean }> = ({ id, active }) => {
+  const silhouette = SILHOUETTE_ICONS.has(id);
+  return (
+    <svg
+      className="h-6 w-6"
+      viewBox="0 0 24 24"
+      fill={active && silhouette ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth={active && !silhouette ? 2.5 : 1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {ICONS[id]}
+    </svg>
+  );
+};
 
 /**
  * Phone-only chrome. The congregation is overwhelmingly mobile, and the only

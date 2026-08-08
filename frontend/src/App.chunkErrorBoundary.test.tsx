@@ -22,9 +22,17 @@ import { lazyWithRecovery as lazy } from './utils/lazyWithRecovery';
  * wholesale, which would test those mocks more than it tests the wrapping
  * structure this file actually cares about.
  *
- * This test was written to fail against the pre-fix App.tsx (no
- * ErrorBoundary above Suspense/Routes) and pass against the fixed one — see
- * the fix report for both captured outputs.
+ * This file renders AppRouteTree, its own local stand-in for App.tsx's route
+ * tree — it does not import App.tsx, so it cannot regress if App.tsx's real
+ * ErrorBoundary wrap is ever removed; that ErrorBoundary in App.tsx is
+ * imported directly here only for AppRouteTree's own inner boundary. The
+ * actual regression guard on App.tsx's structure lives in
+ * src/__tests__/lazyRoutes.test.ts ("wraps Suspense/Routes in an
+ * ErrorBoundary"), which parses App.tsx's source. What this file does verify
+ * — against a real ErrorBoundary -> Suspense -> Routes nesting — is the
+ * *behavior* that structure is there to produce: an unrecoverable chunk-load
+ * rejection renders fallback UI and leaves sibling chrome (<nav>) mounted,
+ * instead of unmounting the whole tree.
  */
 const FailingRoute = lazy(() => {
   const error = new Error('Loading chunk 7 failed.');

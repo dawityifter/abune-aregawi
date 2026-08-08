@@ -447,3 +447,19 @@ drafted ahead of the task that renders them so both ship together.
 | pwa.installDismiss | Not now | ሕጂ ኣይኮነን | ✅ matches the existing `baptismalName.notNow` string exactly |
 | pwa.iosInstallBody | Tap Share, then "Add to Home Screen". | Share ጠውቕ፡ ደሓር "Add to Home Screen" ምረጽ። | ✅ intentionally leaves "Share" and "Add to Home Screen" in English — those are iOS's actual (English-only) button labels, not translatable UI chrome |
 | mobileNav.menuTitle | More | ተወሳኺ | ✅ same as the existing `mobileNav.more` tab label, reused as the sheet's dialog title |
+
+## ErrorBoundary fallback copy (Aug 2026, final-blockers pass)
+
+New `errorBoundary.*` keys. Previously hardcoded English in `ErrorBoundary.tsx`,
+which is a class component (no `useI18n`) that reads `localStorage['app.lang']`
+directly instead. It was reachable from 2 routes before this branch wrapped
+`<Suspense>/<Routes>` in an `ErrorBoundary` in `App.tsx`; now it is the
+fallback for ~22 routes, so a Tigrigna-only member is far more likely to
+actually see this screen. Drafts by a non-native speaker.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| errorBoundary.title | Something went wrong | ገለ ጸገም ኣጋጢሙ | ⚠️ literally "some problem has occurred"; confirm this is the natural heading for a generic app crash screen |
+| errorBoundary.body | An error occurred. Please try refreshing the page. | ጌጋ ኣጋጢሙ። በጃኹም ገጹ ኣሐድሱ። | ⚠️ "በጃኹም" is the formal/plural "please" used elsewhere in this file; confirm that register is right for an error screen rather than something gentler |
+| errorBoundary.retry | Try Again | ዳግማይ ፈትን | ✅ matches the existing `pledgeTracker.tryAgain` string exactly |
+| errorBoundary.detailsLabel | Error details | ዝርዝር ጌጋ | ⚠️ literally "error's details/list"; confirm this reads naturally as the label on a collapsed `<details>` disclosure |

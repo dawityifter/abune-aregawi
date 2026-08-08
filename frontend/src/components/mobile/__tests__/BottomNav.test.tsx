@@ -49,21 +49,34 @@ describe('BottomNav', () => {
     expect(active).toHaveTextContent((en as any).mobileNav.calendar);
   });
 
-  // Previously only the "today" icon filled solid when active; calendar/give
-  // stayed outline-only, so the active state read inconsistently between
-  // tabs. Every tab's icon should fill the same way when it's the active one.
-  it('fills the active tab icon solid, regardless of which tab it is', () => {
-    renderBar('/calendar');
+  // "today" (star) and "give" (heart) are single closed silhouettes, so
+  // filling them solid on the active tab reads cleanly.
+  it('fills the active tab icon solid when it is a silhouette icon (today, give)', () => {
+    renderBar('/');
     const active = screen.getByRole('link', { current: 'page' });
     const svg = active.querySelector('svg');
     expect(svg).toHaveAttribute('fill', 'currentColor');
   });
 
-  it('leaves inactive tab icons unfilled', () => {
+  // calendar's outline path has interior strokes (binder ticks, header
+  // divider) drawn in the same currentColor as its body — filling the body
+  // solid paints over those lines and leaves an unreadable blob. So calendar
+  // (and "more", which has no enclosed area to fill anyway) never fill; the
+  // active tab is instead a bolder stroke on the same outline glyph.
+  it('never fills calendar or more solid, even when active — uses a bolder stroke instead', () => {
+    renderBar('/calendar');
+    const active = screen.getByRole('link', { current: 'page' });
+    const activeSvg = active.querySelector('svg');
+    expect(activeSvg).toHaveAttribute('fill', 'none');
+    expect(activeSvg).toHaveAttribute('stroke-width', '2.5');
+  });
+
+  it('leaves inactive tab icons unfilled with the resting stroke weight', () => {
     renderBar('/calendar');
     const inactive = screen.getByText((en as any).mobileNav.today).closest('a');
     const svg = inactive?.querySelector('svg');
     expect(svg).toHaveAttribute('fill', 'none');
+    expect(svg).toHaveAttribute('stroke-width', '1.8');
   });
 
   it('points Today at the home page for a signed-out visitor', () => {

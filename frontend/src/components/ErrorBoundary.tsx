@@ -1,5 +1,38 @@
 import React from 'react';
 import { isChunkLoadError } from '../utils/lazyWithRecovery';
+import { dictionaries, type Lang } from '../i18n/dictionaries';
+
+const LANG_STORAGE_KEY = 'app.lang';
+
+// This is the fallback for when other things have already broken, so it
+// cannot depend on I18nProvider/useI18n (a class component can't use hooks
+// anyway, and if the provider tree itself is implicated in the crash this
+// still has to render). It reads the same localStorage key I18nProvider
+// persists to directly, and falls back to English on anything unexpected —
+// a missing/corrupt key, localStorage throwing (Safari private mode), or a
+// dictionary missing the string — because a fallback UI that itself throws
+// defeats the entire point of this component.
+function getFallbackStrings() {
+  const en = dictionaries.en.errorBoundary as {
+    title: string;
+    body: string;
+    retry: string;
+    detailsLabel: string;
+  };
+  try {
+    const stored = localStorage.getItem(LANG_STORAGE_KEY) as Lang | null;
+    const lang: Lang = stored === 'ti' ? 'ti' : 'en';
+    const dict = dictionaries[lang]?.errorBoundary;
+    return {
+      title: dict?.title || en.title,
+      body: dict?.body || en.body,
+      retry: dict?.retry || en.retry,
+      detailsLabel: dict?.detailsLabel || en.detailsLabel,
+    };
+  } catch {
+    return en;
+  }
+}
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -53,19 +86,20 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
   render() {
     if (this.state.hasError) {
+      const strings = getFallbackStrings();
       return this.props.fallback || (
-        <div style={{ 
-          padding: '20px', 
-          border: '1px solid #dc2626', 
-          borderRadius: '8px', 
+        <div style={{
+          padding: '20px',
+          border: '1px solid #dc2626',
+          borderRadius: '8px',
           backgroundColor: '#fef2f2',
           color: '#dc2626',
           margin: '20px'
         }}>
-          <h3>Something went wrong</h3>
-          <p>An error occurred. Please try refreshing the page.</p>
+          <h3>{strings.title}</h3>
+          <p>{strings.body}</p>
           <details style={{ marginTop: '10px' }}>
-            <summary>Error details</summary>
+            <summary>{strings.detailsLabel}</summary>
             <pre style={{ fontSize: '12px', marginTop: '10px' }}>
               {this.state.error?.message}
             </pre>
@@ -82,7 +116,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               cursor: 'pointer'
             }}
           >
-            Try Again
+            {strings.retry}
           </button>
         </div>
       );

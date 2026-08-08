@@ -82,4 +82,17 @@ describe('lazily-loaded routes', () => {
     const source = fs.readFileSync(APP, 'utf8');
     expect(source).toMatch(/<Suspense[\s\S]*<Routes>/);
   });
+
+  it('wraps Suspense/Routes in an ErrorBoundary', () => {
+    // A rejected React.lazy() factory (e.g. a chunk failing to load offline)
+    // propagates past Suspense as a thrown error. With no ErrorBoundary above
+    // it, React unmounts the *entire* tree, not just the route content —
+    // taking Navigation/BottomNav down with it and leaving a blank #root.
+    // That's especially bad on an installed PWA: no browser chrome, no
+    // address bar, no back button, just a white screen. This asserts the
+    // boundary sits outside Suspense/Routes, not merely present somewhere
+    // in the file.
+    const source = fs.readFileSync(APP, 'utf8');
+    expect(source).toMatch(/<ErrorBoundary>[\s\S]*<Suspense[\s\S]*<Routes>/);
+  });
 });
