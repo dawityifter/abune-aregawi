@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { CONTROLLER_CHANGE_TIMEOUT_MS } from '../utils/lazyWithRecovery';
 
 const DISMISS_KEY = 'pwa.installDismissed';
 
@@ -96,7 +97,22 @@ export const useServiceWorker = () => {
     if (!waiting) return;
 
     // Reload once the new worker has actually taken control, not before.
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      // controllerchange never fired (mirrors lazyWithRecovery's own
+      // skipWaitingAndReload guard, same constant). Leaving the member on a
+      // Refresh button that silently does nothing is worse than reloading
+      // onto whatever build is currently active, so that is the fallback
+      // here rather than doing nothing.
+      window.location.reload();
+    }, CONTROLLER_CHANGE_TIMEOUT_MS);
+
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       window.location.reload();
     }, { once: true });
 

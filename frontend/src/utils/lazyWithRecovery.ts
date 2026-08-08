@@ -45,9 +45,14 @@ const RECOVERY_ATTEMPTED_KEY = 'app.chunkLoadRecoveryAttempted';
 // route stuck on its Suspense fallback forever. Applied independently at
 // each step, so activating a freshly-installed worker can take up to
 // roughly 2x this value end to end.
-const CONTROLLER_CHANGE_TIMEOUT_MS = 8000;
+// Exported so useServiceWorker's applyUpdate can guard its own
+// controllerchange wait with the same value instead of a second hardcoded
+// number drifting out of sync with this one.
+export const CONTROLLER_CHANGE_TIMEOUT_MS = 8000;
 
-function isChunkLoadError(error: unknown): boolean {
+// Exported so ErrorBoundary can tell a chunk-load failure apart from any
+// other render error without duplicating the detection rule.
+export function isChunkLoadError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   // Webpack 5 (react-scripts 5) names this error "ChunkLoadError" and puts
   // "Loading chunk N failed" in the message. Both are checked so a bundler

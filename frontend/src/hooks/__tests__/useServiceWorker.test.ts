@@ -47,12 +47,10 @@ const withMockedReload = () => {
   const reload = jest.fn();
   // @ts-expect-error - deliberately reassigning a normally-readonly global for the test
   delete window.location;
-  // @ts-expect-error
   window.location = { ...original, reload };
   return {
     reload,
     restore: () => {
-      // @ts-expect-error
       window.location = original;
     },
   };
@@ -220,6 +218,48 @@ describe('useServiceWorker', () => {
       expect(reload).toHaveBeenCalledTimes(1);
     } finally {
       restore();
+    }
+  });
+
+  it('applyUpdate reloads anyway if controllerchange never fires, instead of hanging forever', async () => {
+    jest.useFakeTimers('modern');
+    const waiting = { postMessage: jest.fn() };
+    const swAddEventListener = jest.fn();
+    Object.defineProperty(global.navigator, 'serviceWorker', {
+      value: {
+        register: jest.fn().mockResolvedValue(makeRegistration({ waiting })),
+        addEventListener: swAddEventListener
+      },
+      configurable: true, writable: true
+    });
+    const { reload, restore } = withMockedReload();
+    try {
+      const { result } = renderHook(() => useServiceWorker());
+      await act(async () => { await Promise.resolve(); });
+      expect(result.current.updateAvailable).toBe(true);
+
+      act(() => { result.current.applyUpdate(); });
+      expect(waiting.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+
+      // Not yet: proves the assertion below is actually exercising the
+      // timeout, not a fallback that fires immediately regardless of delay.
+      expect(reload).not.toHaveBeenCalled();
+      act(() => { jest.advanceTimersByTime(7999); });
+      expect(reload).not.toHaveBeenCalled();
+
+      act(() => { jest.advanceTimersByTime(1); });
+      expect(reload).toHaveBeenCalledTimes(1);
+
+      // A controllerchange arriving late, after the timeout already resolved
+      // things, must not trigger a second reload.
+      const controllerChangeCall = swAddEventListener.mock.calls.find(
+        ([event]) => event === 'controllerchange'
+      );
+      act(() => { controllerChangeCall![1](); });
+      expect(reload).toHaveBeenCalledTimes(1);
+    } finally {
+      restore();
+      jest.useRealTimers();
     }
   });
 });

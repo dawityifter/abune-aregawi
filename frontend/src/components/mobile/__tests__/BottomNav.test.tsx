@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import BottomNav from '../BottomNav';
@@ -73,5 +73,28 @@ describe('BottomNav', () => {
     renderBar('/');
     expect(screen.getByRole('button', { name: (en as any).mobileNav.more }))
       .toBeInTheDocument();
+  });
+
+  // iOS Safari does not move focus to a tapped <button> the way a mouse click
+  // does, so MoreSheet's "capture document.activeElement when it opens"
+  // focus-restore would capture document.body and silently no-op on a real
+  // phone. fireEvent.click (unlike userEvent.click) does not simulate the
+  // browser's own focus-on-click behavior, so it stands in here for a raw
+  // touch tap: if this test passes, focus came from BottomNav's own explicit
+  // call, not from a testing-library default that iOS doesn't actually have.
+  it('explicitly focuses the More button on click, so a tap-only activation still leaves it focused', () => {
+    const onMoreClick = jest.fn();
+    render(
+      <MemoryRouter>
+        <BottomNav onMoreClick={onMoreClick} />
+      </MemoryRouter>
+    );
+    const moreButton = screen.getByRole('button', { name: (en as any).mobileNav.more });
+    expect(moreButton).not.toHaveFocus();
+
+    fireEvent.click(moreButton);
+
+    expect(moreButton).toHaveFocus();
+    expect(onMoreClick).toHaveBeenCalledTimes(1);
   });
 });

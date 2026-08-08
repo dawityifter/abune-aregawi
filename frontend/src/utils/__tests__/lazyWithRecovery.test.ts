@@ -113,7 +113,6 @@ describe('loadWithRecovery', () => {
       configurable: true,
       value: originalLocation,
     });
-    // @ts-expect-error - test-only cleanup of a property we defined ourselves
     delete (navigator as any).serviceWorker;
     jest.useRealTimers();
   });
@@ -240,37 +239,104 @@ describe('loadWithRecovery', () => {
 
     const error = chunkLoadError();
     const promise = loadWithRecovery(jest.fn().mockRejectedValue(error));
+    // Tracked independently of the `rejects` assertion below, so we can
+    // check settlement mid-test without consuming the promise the assertion
+    // still needs to observe.
+    let settled = false;
+    promise.catch(() => { settled = true; });
     const assertion = expect(promise).rejects.toBe(error);
 
     // Let getRegistration()/update() resolve and waitForInstalled's timeout
-    // get scheduled, then fire it. Never call installing.setState(...): the
-    // worker hangs in 'installing' the whole time.
+    // get scheduled. Never call installing.setState(...): the worker hangs
+    // in 'installing' the whole time.
     await flushMicrotasks();
-    jest.advanceTimersByTime(8000);
+    expect(settled).toBe(false);
+
+    // One tick short of the timeout: must still be pending. Without this, a
+    // timeout accidentally shortened from 8000ms to (say) 800ms would pass
+    // this test just as well.
+    jest.advanceTimersByTime(7999);
     await flushMicrotasks();
+    expect(settled).toBe(false);
+
+    jest.advanceTimersByTime(1);
+    await flushMicrotasks();
+    expect(settled).toBe(true);
 
     await assertion;
     expect(installing.postMessage).not.toHaveBeenCalled();
     expect(reloadSpy).not.toHaveBeenCalled();
+
+    // A statechange arriving after the timeout already gave up must be a
+    // no-op — proof waitForInstalled's `settled` guard (and its
+    // removeEventListener) actually took effect, not just that nothing
+    // happened to fire in this test.
+    installing.setState('installed');
+    await flushMicrotasks();
+    expect(installing.postMessage).not.toHaveBeenCalled();
   });
 
   it('gives up and rethrows if a waiting worker never takes control (controllerchange never fires)', async () => {
     jest.useFakeTimers('modern');
     const waiting = createWorker();
-    installMockServiceWorker({ waiting });
+    const sw = installMockServiceWorker({ waiting });
+
+    const error = chunkLoadError();
+    const promise = loadWithRecovery(jest.fn().mockRejectedValue(error));
+    let settled = false;
+    promise.catch(() => { settled = true; });
+    const assertion = expect(promise).rejects.toBe(error);
+
+    // Let postMessage go out and skipWaitingAndReload's timeout get
+    // scheduled. The test never fires controllerchange on its own.
+    await flushMicrotasks();
+    expect(waiting.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+    expect(settled).toBe(false);
+
+    // One tick short of the timeout: still pending, guarding against a
+    // silently-shortened timeout constant.
+    jest.advanceTimersByTime(7999);
+    await flushMicrotasks();
+    expect(settled).toBe(false);
+    expect(reloadSpy).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(1);
+    await flushMicrotasks();
+    expect(settled).toBe(true);
+
+    await assertion;
+    expect(reloadSpy).not.toHaveBeenCalled();
+
+    // A controllerchange arriving late, after the timeout already gave up,
+    // must not reload after the fact — proof of the `settled` guard inside
+    // skipWaitingAndReload, not just an absence of any late event in this test.
+    sw.fireControllerChange();
+    await flushMicrotasks();
+    expect(reloadSpy).not.toHaveBeenCalled();
+  });
+
+  it('rethrows if an installing worker becomes redundant (its install was superseded) rather than waiting forever', async () => {
+    const installing = createInstallingWorker();
+    const update = jest.fn().mockResolvedValue(undefined);
+    installMockServiceWorker({ installing, update });
 
     const error = chunkLoadError();
     const promise = loadWithRecovery(jest.fn().mockRejectedValue(error));
     const assertion = expect(promise).rejects.toBe(error);
 
-    // Let postMessage go out and skipWaitingAndReload's timeout get
-    // scheduled, then fire it. The test never fires controllerchange.
-    await flushMicrotasks();
-    jest.advanceTimersByTime(8000);
-    await flushMicrotasks();
+    await tick();
+    await tick();
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(installing.postMessage).not.toHaveBeenCalled();
+
+    // The browser can supersede an in-progress install (e.g. a second,
+    // newer worker starts installing before this one finishes) — the
+    // installing worker's state goes to 'redundant', not 'installed'.
+    installing.setState('redundant');
+    await tick();
 
     await assertion;
-    expect(waiting.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+    expect(installing.postMessage).not.toHaveBeenCalled();
     expect(reloadSpy).not.toHaveBeenCalled();
   });
 });

@@ -22,11 +22,26 @@ jest.mock('../../../i18n/I18nProvider', () => ({
 
 let mockCurrentUser: any = null;
 let mockProfile: any = null;
+// A level of indirection over plain `jest.fn().mockResolvedValue(mockProfile)`:
+// most tests just want the default (resolve immediately to whatever
+// mockProfile currently is), but one test below needs to hold the promise
+// open so it can resolve it manually after the sheet has already mounted —
+// reassigning this per-test is how that stays controllable without touching
+// every other call site.
+//
+// The default implementation is (re)installed in beforeEach, not just here
+// at module scope. CRA's jest preset sets `resetMocks: true`, which runs
+// jest.resetAllMocks() before every test — that strips the .mockImplementation
+// off this jest.fn() (leaving it returning undefined) right after it's set,
+// module-scope assignments and afterEach reassignments alike don't survive
+// it. beforeEach runs after Jest's own automatic reset, so it's the only
+// place a reassignment here actually sticks for the test that follows.
+let mockGetUserProfile = jest.fn();
 jest.mock('../../../contexts/AuthContext', () => ({
   useAuth: () => ({
     currentUser: mockCurrentUser,
     logout: jest.fn(),
-    getUserProfile: jest.fn().mockResolvedValue(mockProfile)
+    getUserProfile: (...args: any[]) => mockGetUserProfile(...args)
   })
 }));
 
@@ -43,6 +58,10 @@ const renderSheet = (installProps: Partial<typeof defaultInstallProps> = {}) =>
       <MoreSheet open onClose={jest.fn()} {...defaultInstallProps} {...installProps} />
     </MemoryRouter>
   );
+
+beforeEach(() => {
+  mockGetUserProfile = jest.fn().mockImplementation(() => Promise.resolve(mockProfile));
+});
 
 afterEach(() => {
   mockCurrentUser = null;
@@ -157,58 +176,75 @@ describe('MoreSheet', () => {
       expect(opener).toHaveFocus();
     });
 
-    // Regression guard: getFocusableElements() is queried fresh on every Tab
-    // keystroke (see onKeyDown in MoreSheet.tsx), so adding the install card's
-    // buttons should extend the wrap order automatically. Nothing above proves
-    // that — every prior test in this describe renders with canInstall: false,
-    // isIos: false, so the trap is only ever exercised over the original
-    // link list. If a future change "optimised" the trap to two refs captured
-    // once at mount instead of a fresh query, every test above would still
-    // pass; this one would not.
-    it('includes the install card buttons in the Tab wrap order when the offer is showing', async () => {
-      const InstallHarness: React.FC = () => {
+    // Regression guard: getFocusableElements() must be queried fresh on every
+    // Tab keystroke (see onKeyDown in MoreSheet.tsx), not captured once into
+    // first/last refs when the sheet mounts.
+    //
+    // This used to be tested by rendering with canInstall from the start and
+    // checking the install card's buttons were reachable — but canInstall is
+    // a prop present from the very first render, so the focusable set never
+    // actually *changes* between the mount effect and the Tab press; a
+    // first/last-refs-cached-at-mount implementation captures the right
+    // elements by coincidence and passes just as well as the correct one.
+    // The real dynamic case is the staff links, which arrive asynchronously
+    // from getUserProfile() *after* the sheet (and its mount-time focus
+    // effect) has already rendered — deferring that resolution here, past
+    // the initial-focus assertion, is what actually exercises the
+    // fresh-query requirement.
+    it('includes staff links that resolve after the sheet is already open in the Tab wrap order', async () => {
+      mockCurrentUser = { uid: 'abc' };
+      let resolveProfile!: (value: any) => void;
+      mockGetUserProfile = jest.fn().mockImplementation(
+        () => new Promise((resolve) => { resolveProfile = resolve; })
+      );
+
+      const Harness: React.FC = () => {
         const [open, setOpen] = React.useState(false);
         return (
           <MemoryRouter>
             <button onClick={() => setOpen(true)}>open-more</button>
-            <MoreSheet
-              open={open}
-              onClose={() => setOpen(false)}
-              {...defaultInstallProps}
-              canInstall
-            />
+            <MoreSheet open={open} onClose={() => setOpen(false)} {...defaultInstallProps} />
           </MemoryRouter>
         );
       };
 
-      render(<InstallHarness />);
+      render(<Harness />);
       await userEvent.click(screen.getByRole('button', { name: 'open-more' }));
 
+      // Mount-time focus effect has already run. The profile fetch is still
+      // pending, so at this instant the sheet only has the member-only link
+      // list — no staff links exist in the DOM yet.
       const closeButton = screen.getByRole('button', { name: (en as any).mobileNav.closeMore });
       expect(closeButton).toHaveFocus();
+      expect(screen.queryByText((en as any).mobileNav.treasurer)).not.toBeInTheDocument();
 
-      // The install card renders above the link list, so its "Install"
-      // button — not the close button — is now first in DOM order after the
-      // close button, and "Not now" sits right after it.
-      const installButton = screen.getByRole('button', { name: (en as any).pwa.install });
-      const dismissInstallButton = screen.getByRole('button', { name: (en as any).pwa.installDismiss });
-      const signInLink = screen.getByText((en as any).sign.in).closest('a') as HTMLElement;
+      // Now resolve it, with a role that adds staff links (admin + treasurer,
+      // per the "treasurer" tests above) — this changes the sheet's
+      // focusable set well after mount, and before any Tab key is pressed.
+      resolveProfile({ data: { member: { roles: ['treasurer'] } } });
+      const treasurerLink = (await screen.findByText((en as any).mobileNav.treasurer)).closest('a') as HTMLElement;
 
+      // The true last focusable element is still "Sign out" (staff links sit
+      // above it), so simple forward/backward wrap alone can't tell a fresh
+      // query apart from stale-but-lucky cached refs here. The real tell:
+      // Tab from the treasurer link — new, mid-list, not first or last —
+      // must behave like an ordinary Tab press to the next element (Sign
+      // out), not get treated as "focus escaped the trap" and yanked back to
+      // the close button, which is what happens if the trap's `focusable`
+      // array was snapshotted at mount and simply doesn't contain this node.
+      const signOutButton = screen.getByRole('button', { name: (en as any).sign.out });
+      treasurerLink.focus();
       await userEvent.tab();
-      expect(installButton).toHaveFocus();
-      await userEvent.tab();
-      expect(dismissInstallButton).toHaveFocus();
+      expect(signOutButton).toHaveFocus();
+      expect(closeButton).not.toHaveFocus();
 
-      // Forward wrap still lands back on the close button from the true last
-      // element (sign in), proving the trap recomputed its set rather than
-      // stopping at a stale boundary.
-      signInLink.focus();
+      // Forward wrap from the true last element still returns to the close
+      // button, and backward wrap from the close button still reaches the
+      // true last element — both now including the staff links in between.
       await userEvent.tab();
       expect(closeButton).toHaveFocus();
-
-      // Backward wrap from the first element goes to the true last element.
       await userEvent.tab({ shift: true });
-      expect(signInLink).toHaveFocus();
+      expect(signOutButton).toHaveFocus();
     });
   });
 

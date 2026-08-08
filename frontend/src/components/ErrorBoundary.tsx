@@ -1,4 +1,5 @@
 import React from 'react';
+import { isChunkLoadError } from '../utils/lazyWithRecovery';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -26,12 +27,29 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('🚨 ErrorBoundary componentDidCatch:', error, errorInfo);
-    
+
     // Check if this is the timeout error we're looking for
     if (error.message && (error.message.includes('Timeout') || error.message.includes('timeout'))) {
       console.error('🎯 Found the timeout error!', error);
     }
   }
+
+  // Re-rendering children by clearing hasError is a no-op for a chunk-load
+  // failure: React permanently caches a rejected React.lazy() factory on the
+  // component reference (lazyWithRecovery.ts already tried its own one-shot
+  // recovery and gave up before this boundary ever saw the error), so the
+  // exact same rejection would just throw again on the next render. A real
+  // reload is the only thing that actually gets a fresh chunk manifest, so
+  // that's what this does when the caught error looks like one. Any other
+  // error is presumed to be a one-off render failure, where clearing the
+  // boundary's state and letting children re-render is still worth trying.
+  private handleRetry = (): void => {
+    if (isChunkLoadError(this.state.error)) {
+      window.location.reload();
+      return;
+    }
+    this.setState({ hasError: false, error: undefined });
+  };
 
   render() {
     if (this.state.hasError) {
@@ -52,8 +70,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               {this.state.error?.message}
             </pre>
           </details>
-          <button 
-            onClick={() => this.setState({ hasError: false, error: undefined })}
+          <button
+            onClick={this.handleRetry}
             style={{
               marginTop: '10px',
               padding: '8px 16px',

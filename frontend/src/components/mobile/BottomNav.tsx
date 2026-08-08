@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useAuth } from '../../contexts/AuthContext';
@@ -41,8 +41,21 @@ const BottomNav: React.FC<BottomNavProps> = ({ onMoreClick }) => {
   const { currentUser } = useAuth();
   const { pathname } = useLocation();
   const active = resolveActiveTab(pathname);
+  const moreButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const pathFor = (tab: TabDef) => (currentUser ? tab.authedPath : tab.publicPath);
+
+  // iOS Safari does not move focus to a tapped <button> the way a mouse click
+  // or keyboard activation does, so MoreSheet's "capture document.activeElement
+  // when it opens" focus-restore (MoreSheet.tsx) would capture document.body on
+  // a real phone and silently no-op when the sheet closes. Focusing the button
+  // explicitly, synchronously, before telling the parent to open the sheet
+  // guarantees there is something real for MoreSheet to restore focus to,
+  // regardless of how the tap itself was handled.
+  const handleMoreClick = () => {
+    moreButtonRef.current?.focus();
+    onMoreClick();
+  };
 
   const itemClass = (isActive: boolean) =>
     [
@@ -62,8 +75,9 @@ const BottomNav: React.FC<BottomNavProps> = ({ onMoreClick }) => {
           tab.id === 'more' ? (
             <button
               key={tab.id}
+              ref={moreButtonRef}
               type="button"
-              onClick={onMoreClick}
+              onClick={handleMoreClick}
               className={itemClass(active === tab.id)}
               aria-haspopup="dialog"
             >
