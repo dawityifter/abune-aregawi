@@ -207,7 +207,7 @@ const ChurchBylaw: React.FC = () => {
         {/* Sidebar (Desktop: Sticky, Mobile: Fixed Overlay) */}
         <aside
           className={`
-                    fixed md:sticky top-16 left-0 h-[calc(100vh-4rem)] w-72 bg-white border-r border-gray-200 overflow-y-auto z-20 transition-transform duration-300 ease-in-out
+                    fixed md:sticky top-16 bottom-bottom-nav md:bottom-auto left-0 md:h-[calc(100vh-4rem)] w-72 bg-white border-r border-gray-200 overflow-y-auto z-20 transition-transform duration-300 ease-in-out
                     ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
                  `}
         >

@@ -390,3 +390,76 @@ Three ways out, for a native speaker to choose between:
 
 This is a language judgement, not a technical one. Until it is resolved, the
 masculine forms ship — which is worth knowing rather than discovering.
+
+## Mobile bottom navigation bar (Aug 2026)
+
+New `mobileNav.*` keys for the four-tab bottom bar shown to phone visitors
+(Today / Calendar / Give / More), plus the bar's accessible label and the
+close label for the More sheet arriving in Task 5. Drafts by a non-native
+speaker; these render on every page for the majority of the congregation, so
+they are high-visibility.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| mobileNav.today | Today | ሎሚ | ✅ |
+| mobileNav.calendar | Calendar | ዘመን መጽሓፍ | ⚠️ literally "calendar book"; confirm this is the term used for the liturgical calendar elsewhere in the app vs. a shorter word |
+| mobileNav.give | Give | ወፈያ | ⚠️ noun "a donation/offering" standing in for the imperative "Give"; confirm it reads right as a tab label |
+| mobileNav.more | More | ተወሳኺ | ✅ |
+| mobileNav.label | Main | ቀንዲ | ⚠️ used only as the nav's aria-label ("main navigation"); not visible to sighted users, but confirm it doesn't read oddly to a screen reader |
+| mobileNav.closeMore | Close | ዕጸው | ✅ matches existing `skippedChecks.close` (ዕጸ) closely; confirm ዕጸው vs ዕጸ is the right form here |
+
+## More sheet (Aug 2026, Task 5)
+
+New `mobileNav.*` keys for the overflow sheet the bottom bar's fourth tab
+opens (signed-out homepage links, member links, and the role-gated staff
+links). Drafts by a non-native speaker.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| mobileNav.serviceTimes | Service Times | ሰዓታት ኣገልግሎት | ✅ |
+| mobileNav.watch | Watch Live | ብቐጥታ ተኸታተል | ⚠️ literally "follow along live"; confirm this is the natural phrase for a livestream link vs. a shorter imperative |
+| mobileNav.profile | My Profile | መለለዪየይ | ⚠️ literally "my identifier"; confirm this reads as "my profile" and not something more like "my ID" |
+| mobileNav.dependents | My Family | ስድራይ | ✅ |
+| mobileNav.departments | Departments | ክፍልታት | ⚠️ generic "sections/divisions"; confirm this matches how church departments/committees are named elsewhere in the app |
+| mobileNav.gallery | Photo Gallery | ኣልበም ስእሊ | ⚠️ "ኣልበም" is a direct loanword for "album"; confirm there's no preferred native term |
+| mobileNav.board | Board Members | ኣባላት ቦርድ | ⚠️ "ቦርድ" is a direct loanword for "board", consistent with the existing loanword `ዳሽቦርድ` ("dashboard") elsewhere in this file — but confirm that's actually the intended pattern and not just convenient |
+| mobileNav.bylaw | Church Bylaw | ሕገ ደንቢ ቤተ ክርስቲያን | 🔴 inconsistent with the existing translation for the *same* Church Bylaw page (`board.tabs.bylaw` / church-bylaw route), which already uses `ሕጊ ቤተ ክርስቲያን` ("church law/rule") elsewhere in this dictionary. Pick one term for both. |
+| mobileNav.privacy | Privacy | ውልቃዊ ሓበሬታ | ⚠️ literally "personal information" rather than the abstract "privacy"; no existing translation elsewhere to check against |
+| mobileNav.admin | Admin Panel | መሐደሪ ክፍሊ | 🔴 inconsistent with the existing translation for the admin dashboard elsewhere in this file, which uses the loanword `ኣድሚን` (e.g. `ኣድሚን ዳሽቦርድ`). This draft instead translates "admin" natively as "administrative office/department" — pick one term for both. |
+| mobileNav.treasurer | Treasurer | ሓላዊ ገንዘብ | 🔴 inconsistent with the existing translation used three times elsewhere in this file for treasurer/treasurer dashboard, which is `ተሓዝ ገንዘብ` ("holder of money") — this draft uses `ሓላዊ ገንዘብ` ("guardian/keeper of money") instead. Pick one term for both. |
+| mobileNav.outreach | Outreach | ምብጻሕ | ⚠️ literally "a visit"; confirm this is the term used for the outreach/new-member ministry vs. a different word |
+| mobileNav.sms | SMS Broadcast | መልእኽቲ ምዝርጋሕ | ⚠️ literally "message distribution"; confirm this reads as an SMS broadcast specifically |
+
+## Update toast and install prompt (Aug 2026, Task 7)
+
+New `pwa.*` keys for the "a new version is available" refresh toast (Task 7)
+and the upcoming add-to-home-screen install prompt. Drafts by a non-native
+speaker. `pwa.updateAvailable` and `pwa.refresh` are live now; the rest are
+drafted ahead of the task that renders them so both ship together.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| pwa.updateAvailable | A new version is available. | ሓድሽ ዝተመሓየሸ ወጺኡ ኣሎ። | ⚠️ literally "a new, improved [one] has come out"; confirm this reads naturally as a software-update notice rather than something else that "came out" |
+| pwa.refresh | Refresh | ኣሐድስ | ✅ |
+| pwa.installTitle | Add to Home Screen | ናብ መተግበሪ ገጽ ወስኽ | ⚠️ literally "add to app page"; "home screen" is rendered as "app page" rather than a phone's actual home/start screen — confirm there isn't a more precise existing term |
+| pwa.installBody | Install the parish app for faster access. | ቀልጢፍካ ንምእታው ናይ ቤተ ክርስቲያን መተግበሪ ኣውርድ። | ⚠️ "ኣውርድ" is "download" rather than "install"; confirm that distinction doesn't matter here or pick the more precise term |
+| pwa.install | Install | ኣውርድ | ⚠️ same download-vs-install note as `pwa.installBody`; confirm consistency is intended |
+| pwa.installDismiss | Not now | ሕጂ ኣይኮነን | ✅ matches the existing `baptismalName.notNow` string exactly |
+| pwa.iosInstallBody | Tap Share, then "Add to Home Screen". | Share ጠውቕ፡ ደሓር "Add to Home Screen" ምረጽ። | ✅ intentionally leaves "Share" and "Add to Home Screen" in English — those are iOS's actual (English-only) button labels, not translatable UI chrome |
+| mobileNav.menuTitle | More | ተወሳኺ | ✅ same as the existing `mobileNav.more` tab label, reused as the sheet's dialog title |
+
+## ErrorBoundary fallback copy (Aug 2026, final-blockers pass)
+
+New `errorBoundary.*` keys. Previously hardcoded English in `ErrorBoundary.tsx`,
+which is a class component (no `useI18n`) that reads `localStorage['app.lang']`
+directly instead. It was reachable from 2 routes before this branch wrapped
+`<Suspense>/<Routes>` in an `ErrorBoundary` in `App.tsx`; now it is the
+fallback for ~22 routes, so a Tigrigna-only member is far more likely to
+actually see this screen. Drafts by a non-native speaker.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| errorBoundary.title | Something went wrong | ገለ ጸገም ኣጋጢሙ | ⚠️ literally "some problem has occurred"; confirm this is the natural heading for a generic app crash screen |
+| errorBoundary.body | An error occurred. Please try refreshing the page. | ጌጋ ኣጋጢሙ። በጃኹም ገጹ ኣሐድሱ። | ⚠️ "በጃኹም" is the formal/plural "please" used elsewhere in this file; confirm that register is right for an error screen rather than something gentler |
+| errorBoundary.retry | Try Again | ዳግማይ ፈትን | ✅ matches the existing `pledgeTracker.tryAgain` string exactly |
+| errorBoundary.detailsLabel | Error details | ዝርዝር ጌጋ | ⚠️ literally "error's details/list"; confirm this reads naturally as the label on a collapsed `<details>` disclosure |

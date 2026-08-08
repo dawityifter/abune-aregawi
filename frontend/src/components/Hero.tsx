@@ -32,6 +32,7 @@ const Hero: React.FC = () => {
 
   return (
     <header
+      id="service-times"
       className={`relative overflow-hidden hero-gradient text-white ${hasBg ? 'bg-cover bg-center' : 'bg-cross-lattice'
         }`}
       style={hasBg ? { backgroundImage: `url(${bgUrl})`, backgroundPosition: bgPosition } : undefined}

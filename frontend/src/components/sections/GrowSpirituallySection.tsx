@@ -7,7 +7,7 @@ const GrowSpirituallySection: React.FC = () => {
   const { t } = useLanguage();
 
   return (
-    <section className="py-16">
+    <section id="watch" className="py-16">
       <div className="container mx-auto px-4">
         <h2 className="section-title flex items-center justify-center gap-3">
           {t('grow.spiritually')}

@@ -20,8 +20,14 @@ const lazyImportPaths = (): string[] => {
   const source = fs.readFileSync(APP, 'utf8');
   // Array.from rather than spread: the tsconfig target predates
   // downlevelIteration, so spreading an iterator fails typecheck.
+  // Tolerates an optional /* webpackChunkName: "..." */ between `import(` and
+  // the quote: the five staff-only routes carry one so the service worker's
+  // precache filter can exclude their chunks by name (see service-worker.js).
+  // Without this, those five routes silently drop out of every check below
+  // while the suite stays green — exactly the failure mode this file exists
+  // to catch.
   const matches = Array.from(
-    source.matchAll(/lazy\(\s*\(\)\s*=>\s*import\(\s*['"](.+?)['"]\s*\)/g)
+    source.matchAll(/lazy\(\s*\(\)\s*=>\s*import\(\s*(?:\/\*.*?\*\/\s*)?['"](.+?)['"]\s*\)/g)
   );
   return matches.map((m) => m[1]);
 };
@@ -43,8 +49,11 @@ describe('lazily-loaded routes', () => {
 
   it('finds the lazy imports in App.tsx', () => {
     // Guards the regex itself: if App.tsx is reformatted so this stops matching,
-    // the checks below would silently pass over an empty list.
-    expect(paths.length).toBeGreaterThanOrEqual(15);
+    // the checks below would silently pass over an empty list. Pinned to the
+    // real current count (22), not a loose lower bound — a loose bound is how
+    // the five webpackChunkName-commented staff routes silently dropped out of
+    // this suite the first time around while it kept reporting green.
+    expect(paths.length).toBe(22);
   });
 
   it.each(lazyImportPaths())('%s resolves to a real file', (rel) => {
@@ -72,5 +81,18 @@ describe('lazily-loaded routes', () => {
     // lazy() without Suspense throws on first navigation.
     const source = fs.readFileSync(APP, 'utf8');
     expect(source).toMatch(/<Suspense[\s\S]*<Routes>/);
+  });
+
+  it('wraps Suspense/Routes in an ErrorBoundary', () => {
+    // A rejected React.lazy() factory (e.g. a chunk failing to load offline)
+    // propagates past Suspense as a thrown error. With no ErrorBoundary above
+    // it, React unmounts the *entire* tree, not just the route content —
+    // taking Navigation/BottomNav down with it and leaving a blank #root.
+    // That's especially bad on an installed PWA: no browser chrome, no
+    // address bar, no back button, just a white screen. This asserts the
+    // boundary sits outside Suspense/Routes, not merely present somewhere
+    // in the file.
+    const source = fs.readFileSync(APP, 'utf8');
+    expect(source).toMatch(/<ErrorBoundary>[\s\S]*<Suspense[\s\S]*<Routes>/);
   });
 });

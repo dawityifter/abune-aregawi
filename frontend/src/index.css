@@ -211,3 +211,30 @@
     background-position: 0 0, 0 10px, 10px -10px, -10px 0;
   }
 }
+
+/* Chatbase (third-party embed script in ChatWidget.tsx, mounted globally) is
+   hidden below the md breakpoint entirely — the owner's decision, not a
+   layout tweak. It was first just offset upward to clear BottomNav's "More"
+   tab, but at phone width the offset moved it to sit on top of UpdateToast's
+   Refresh button instead (Chatbase's z-index, 2147483645, beats everything
+   else in the app), leaving the only in-app control for accepting a
+   service-worker update untappable. The owner is considering replacing the
+   widget on mobile; until then it's just off. Don't delete this rule as
+   dead/unexplained CSS — it's intentional, re-evaluate it when Chatbase is
+   replaced or redesigned for mobile.
+   Covers every top-level element the embed script injects into <body>, not
+   just the button: #chatbase-message-bubbles (an auto-popup bubble container,
+   currently suppressed by showFloatingInitialMessages: false in ChatWidget.tsx
+   but still present in the DOM), and #chatbase-bubble-window (the chat panel,
+   which also contains Chatbase's iframe once opened — hiding the container
+   hides the iframe with it, so it isn't listed separately). All three are
+   fixed-position siblings of #chatbase-bubble-button appended straight to
+   <body> (verified with Playwright at 390px); Chatbase sets a non-!important
+   inline `display` on each via JS, so this needs !important to win. */
+@media (max-width: 767px) {
+  #chatbase-bubble-button,
+  #chatbase-message-bubbles,
+  #chatbase-bubble-window {
+    display: none !important;
+  }
+}

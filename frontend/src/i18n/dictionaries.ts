@@ -819,6 +819,9 @@ export const en: Dictionaries = {
     tomorrow: "tomorrow",
     inDays: "in {days} days",
   },
+  calendar: {
+    title: "Orthodox Calendar",
+  },
   baptismalName: {
     title: "What is your baptismal name?",
     why: "Your baptismal name connects you to a saint and to a day in the church year. We would like to know it, so the parish can mark your name day.",
@@ -2542,7 +2545,48 @@ export const en: Dictionaries = {
     bulkDonorHint: 'All selected payments will be recorded under this donor name.',
     bulkResult: 'confirmed',
     bulkFailed: 'failed'
-  }
+  },
+  mobileNav: {
+    today: 'Today',
+    calendar: 'Calendar',
+    give: 'Give',
+    more: 'More',
+    label: 'Main',
+    closeMore: 'Close',
+    serviceTimes: 'Service Times',
+    watch: 'Watch Live',
+    profile: 'My Profile',
+    dependents: 'My Family',
+    departments: 'Departments',
+    gallery: 'Photo Gallery',
+    board: 'Board Members',
+    bylaw: 'Church Bylaw',
+    privacy: 'Privacy',
+    admin: 'Admin Panel',
+    treasurer: 'Treasurer',
+    outreach: 'Outreach',
+    sms: 'SMS Broadcast',
+    menuTitle: 'More',
+  },
+  pwa: {
+    updateAvailable: 'A new version is available.',
+    refresh: 'Refresh',
+    installTitle: 'Add to Home Screen',
+    installBody: 'Install the parish app for faster access.',
+    install: 'Install',
+    installDismiss: 'Not now',
+    iosInstallBody: 'Tap Share, then "Add to Home Screen".',
+  },
+  // ErrorBoundary's fallback UI. This is a class component reachable when
+  // other things have already broken (see ErrorBoundary.tsx), so it reads
+  // localStorage directly rather than via useI18n/useContext — it must not
+  // depend on any provider that might itself be implicated in the error.
+  errorBoundary: {
+    title: 'Something went wrong',
+    body: 'An error occurred. Please try refreshing the page.',
+    retry: 'Try Again',
+    detailsLabel: 'Error details',
+  },
 
 };
 
@@ -2649,6 +2693,9 @@ export const ti: Dictionaries = {
     nextFeast: "ዝቕጽል በዓል",
     tomorrow: "ጽባሕ",
     inDays: "ድሕሪ {days} መዓልታት",
+  },
+  calendar: {
+    title: "ዓውደ ኣዋርሕ ኦርቶዶክስ",
   },
   baptismalName: {
     title: "ስመ ጥምቀትካ እንታይ እዩ?",
@@ -4374,6 +4421,43 @@ export const ti: Dictionaries = {
     bulkDonorHint: 'ኩሎም እተመረጹ ክፍሊታት ብዚ ስም ወሃቢ ክምዝገቡ እዮም።',
     bulkResult: 'ተረጋጊጹ',
     bulkFailed: 'ኣይተሳኸዐን'
+  },
+  mobileNav: {
+    today: 'ሎሚ',
+    calendar: 'ዘመን መጽሓፍ',
+    give: 'ወፈያ',
+    more: 'ተወሳኺ',
+    label: 'ቀንዲ',
+    closeMore: 'ዕጸው',
+    serviceTimes: 'ሰዓታት ኣገልግሎት',
+    watch: 'ብቐጥታ ተኸታተል',
+    profile: 'መለለዪየይ',
+    dependents: 'ስድራይ',
+    departments: 'ክፍልታት',
+    gallery: 'ኣልበም ስእሊ',
+    board: 'ኣባላት ቦርድ',
+    bylaw: 'ሕገ ደንቢ ቤተ ክርስቲያን',
+    privacy: 'ውልቃዊ ሓበሬታ',
+    admin: 'መሐደሪ ክፍሊ',
+    treasurer: 'ሓላዊ ገንዘብ',
+    outreach: 'ምብጻሕ',
+    sms: 'መልእኽቲ ምዝርጋሕ',
+    menuTitle: 'ተወሳኺ',
+  },
+  pwa: {
+    updateAvailable: 'ሓድሽ ዝተመሓየሸ ወጺኡ ኣሎ።',
+    refresh: 'ኣሐድስ',
+    installTitle: 'ናብ መተግበሪ ገጽ ወስኽ',
+    installBody: 'ቀልጢፍካ ንምእታው ናይ ቤተ ክርስቲያን መተግበሪ ኣውርድ።',
+    install: 'ኣውርድ',
+    installDismiss: 'ሕጂ ኣይኮነን',
+    iosInstallBody: 'Share ጠውቕ፡ ደሓር "Add to Home Screen" ምረጽ።',
+  },
+  errorBoundary: {
+    title: 'ገለ ጸገም ኣጋጢሙ',
+    body: 'ጌጋ ኣጋጢሙ። በጃኹም ገጹ ኣሐድሱ።',
+    retry: 'ዳግማይ ፈትን',
+    detailsLabel: 'ዝርዝር ጌጋ',
   }
 };
 
