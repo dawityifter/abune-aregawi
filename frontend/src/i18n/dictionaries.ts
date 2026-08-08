@@ -4436,10 +4436,13 @@ export const ti: Dictionaries = {
     departments: 'ክፍልታት',
     gallery: 'ኣልበም ስእሊ',
     board: 'ኣባላት ቦርድ',
-    bylaw: 'ሕገ ደንቢ ቤተ ክርስቲያን',
+    // The next three reuse the terms this app already established elsewhere,
+    // rather than fresh translations. A member should not meet the same thing
+    // named two ways depending on which screen they are on.
+    bylaw: 'ሕጊ ቤተ ክርስቲያን',
     privacy: 'ውልቃዊ ሓበሬታ',
-    admin: 'መሐደሪ ክፍሊ',
-    treasurer: 'ሓላዊ ገንዘብ',
+    admin: 'ኣድሚን ዳሽቦርድ',
+    treasurer: 'ተሓዝ ገንዘብ',
     outreach: 'ምብጻሕ',
     sms: 'መልእኽቲ ምዝርጋሕ',
     menuTitle: 'ተወሳኺ',

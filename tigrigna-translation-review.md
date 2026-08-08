@@ -1,3 +1,32 @@
+## START HERE — what is live and unreviewed (updated 8 Aug 2026)
+
+This file has grown by accretion since March; each batch was appended as it was
+built, so opening it cold gives no sense of what is urgent. This is that sense.
+
+**Highest priority — shipped to production on 8 Aug 2026 in the mobile/PWA
+release (`df904c2`) and visible to every phone user:**
+
+| Section | What it covers | Why it matters |
+|---|---|---|
+| [Mobile bottom navigation bar](#mobile-bottom-navigation-bar-aug-2026) | The four tab labels | On **every page**, for the majority of the congregation |
+| [More sheet](#more-sheet-aug-2026-task-5) | The whole secondary menu | Every navigation destination a phone user has |
+| [Update toast and install prompt](#update-toast-and-install-prompt-aug-2026-task-7) | "New version available", install offer | Rare but high-stakes — this is how someone accepts an update |
+| [ErrorBoundary fallback copy](#errorboundary-fallback-copy-aug-2026-final-blockers-pass) | The crash screen | Now the fallback for ~22 routes, up from 2 |
+
+The four tab labels are the single highest-value thing to review: they are
+permanently on screen, so a wrong word there is read hundreds of times a week.
+
+**Three 🔴 items in those sections have already been resolved** — see
+"Resolved" notes inline. They were not translation questions but internal
+inconsistencies, where a draft coined a new term for something this app had
+already named elsewhere. Each now reuses the established term. Everything still
+carrying ⚠️ is a genuine judgement call and needs a native speaker.
+
+Earlier sections below are still open but are mostly admin- and finance-facing,
+seen by a handful of staff rather than the congregation.
+
+---
+
 # Tigrigna Translation Review — Phase 1 (admin / stats / roles)
 
 These 61 keys were migrated from the legacy `LanguageContext` object into
@@ -423,10 +452,10 @@ links). Drafts by a non-native speaker.
 | mobileNav.departments | Departments | ክፍልታት | ⚠️ generic "sections/divisions"; confirm this matches how church departments/committees are named elsewhere in the app |
 | mobileNav.gallery | Photo Gallery | ኣልበም ስእሊ | ⚠️ "ኣልበም" is a direct loanword for "album"; confirm there's no preferred native term |
 | mobileNav.board | Board Members | ኣባላት ቦርድ | ⚠️ "ቦርድ" is a direct loanword for "board", consistent with the existing loanword `ዳሽቦርድ` ("dashboard") elsewhere in this file — but confirm that's actually the intended pattern and not just convenient |
-| mobileNav.bylaw | Church Bylaw | ሕገ ደንቢ ቤተ ክርስቲያን | 🔴 inconsistent with the existing translation for the *same* Church Bylaw page (`board.tabs.bylaw` / church-bylaw route), which already uses `ሕጊ ቤተ ክርስቲያን` ("church law/rule") elsewhere in this dictionary. Pick one term for both. |
+| mobileNav.bylaw | Church Bylaw | ሕጊ ቤተ ክርስቲያን | ✅ **Resolved 8 Aug 2026.** Draft was `ሕገ ደንቢ ቤተ ክርስቲያን`, which coined a second term for a page this app already names `ሕጊ ቤተ ክርስቲያን` in 4 places (`dictionaries.ts:2733-2734`, `LanguageContext.tsx:598,708`). Now reuses the established term. |
 | mobileNav.privacy | Privacy | ውልቃዊ ሓበሬታ | ⚠️ literally "personal information" rather than the abstract "privacy"; no existing translation elsewhere to check against |
-| mobileNav.admin | Admin Panel | መሐደሪ ክፍሊ | 🔴 inconsistent with the existing translation for the admin dashboard elsewhere in this file, which uses the loanword `ኣድሚን` (e.g. `ኣድሚን ዳሽቦርድ`). This draft instead translates "admin" natively as "administrative office/department" — pick one term for both. |
-| mobileNav.treasurer | Treasurer | ሓላዊ ገንዘብ | 🔴 inconsistent with the existing translation used three times elsewhere in this file for treasurer/treasurer dashboard, which is `ተሓዝ ገንዘብ` ("holder of money") — this draft uses `ሓላዊ ገንዘብ` ("guardian/keeper of money") instead. Pick one term for both. |
+| mobileNav.admin | Admin Panel | ኣድሚን ዳሽቦርድ | ✅ **Resolved 8 Aug 2026.** Draft was `መሐደሪ ክፍሊ` ("administrative office"), which abandoned the loanword pattern this app already uses at `dictionaries.ts:3072`. The link goes to the AdminDashboard, so the established `ኣድሚን ዳሽቦርድ` is both consistent and accurate. Still worth a native speaker's view on whether the loanword pattern is right *in general* — but if it changes, it should change everywhere at once. |
+| mobileNav.treasurer | Treasurer | ተሓዝ ገንዘብ | ✅ **Resolved 8 Aug 2026.** Draft was `ሓላዊ ገንዘብ` ("guardian of money"), against the established `ተሓዝ ገንዘብ` ("holder of money") used 4 times at `dictionaries.ts:2774,2785,2819,3137` — including the treasurer's own dashboard title. Now reuses the established term. |
 | mobileNav.outreach | Outreach | ምብጻሕ | ⚠️ literally "a visit"; confirm this is the term used for the outreach/new-member ministry vs. a different word |
 | mobileNav.sms | SMS Broadcast | መልእኽቲ ምዝርጋሕ | ⚠️ literally "message distribution"; confirm this reads as an SMS broadcast specifically |
 
