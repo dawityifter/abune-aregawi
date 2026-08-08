@@ -160,6 +160,32 @@ describe('useServiceWorker', () => {
     expect(result.current.updateAvailable).toBe(true);
   });
 
+  it('surfaces an update when a worker is already installing by the time register() resolves (updatefound already fired)', async () => {
+    // Simulates the browser's own navigation-triggered update check having
+    // already kicked off an install before this hook's .then() callback ran:
+    // registration.waiting is still null, but registration.installing is
+    // already non-null — and no 'updatefound' event is coming, because it
+    // already fired before anything here was listening for it.
+    const installing = makeWorker();
+    const registration = makeRegistration({ installing });
+    Object.defineProperty(global.navigator, 'serviceWorker', {
+      value: {
+        register: jest.fn().mockResolvedValue(registration),
+        addEventListener: jest.fn(),
+        controller: {} // a controller is already active: this is an update
+      },
+      configurable: true, writable: true
+    });
+    const { result } = renderHook(() => useServiceWorker());
+    await act(async () => { await Promise.resolve(); });
+    expect(result.current.updateAvailable).toBe(false);
+
+    installing.state = 'installed';
+    act(() => { installing.fire('statechange'); });
+
+    expect(result.current.updateAvailable).toBe(true);
+  });
+
   it('does not surface an update when the installing worker is a first install (no existing controller)', async () => {
     const registration = makeRegistration();
     Object.defineProperty(global.navigator, 'serviceWorker', {

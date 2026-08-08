@@ -68,6 +68,7 @@ function installMockServiceWorker(registration: {
   waiting?: any;
   installing?: any;
   update?: jest.Mock;
+  controller?: any;
 } = {}) {
   const reg: any = {
     waiting: registration.waiting ?? null,
@@ -76,6 +77,7 @@ function installMockServiceWorker(registration: {
   };
   const listeners: Record<string, Array<() => void>> = {};
   const container = {
+    controller: registration.controller ?? null,
     getRegistration: jest.fn().mockResolvedValue(reg),
     addEventListener: jest.fn((event: string, cb: () => void) => {
       (listeners[event] = listeners[event] || []).push(cb);
@@ -169,6 +171,62 @@ describe('loadWithRecovery', () => {
   it('resolves normally when the factory succeeds', async () => {
     const mod = { default: () => null };
     await expect(loadWithRecovery(jest.fn().mockResolvedValue(mod))).resolves.toBe(mod);
+  });
+
+  it('clears the one-shot recovery guard on a successful load, so a later unrelated failure can recover again', async () => {
+    sessionStorage.setItem(RECOVERY_KEY, '1');
+    const mod = { default: () => null };
+    await expect(loadWithRecovery(jest.fn().mockResolvedValue(mod))).resolves.toBe(mod);
+    expect(sessionStorage.getItem(RECOVERY_KEY)).toBeNull();
+  });
+
+  it('does not clear the recovery guard when the factory fails', async () => {
+    const waiting = createWorker();
+    installMockServiceWorker({ waiting });
+
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    loadWithRecovery(jest.fn().mockRejectedValue(chunkLoadError()));
+    await tick();
+    await tick();
+    expect(sessionStorage.getItem(RECOVERY_KEY)).toBe('1');
+  });
+
+  it('falls back to a plain reload when no new worker turns up but a controller already exists (multi-tab clientsClaim case)', async () => {
+    // No waiting/installing worker, and update() finds nothing new either —
+    // but a service worker already controls this tab, e.g. because a sibling
+    // tab's clientsClaim() activated a new worker without this tab reloading.
+    const controller = {};
+    installMockServiceWorker({ controller });
+
+    const error = chunkLoadError();
+    // Recovery succeeds here (a reload is triggered), so — same as the
+    // already-waiting-worker case — the promise deliberately never settles.
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    loadWithRecovery(jest.fn().mockRejectedValue(error));
+
+    await flushMicrotasks();
+    expect(reloadSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('still rethrows when no worker turns up and there is no controller at all (first-ever load)', async () => {
+    installMockServiceWorker({});
+    const error = chunkLoadError();
+    await expect(loadWithRecovery(jest.fn().mockRejectedValue(error))).rejects.toBe(error);
+    expect(reloadSpy).not.toHaveBeenCalled();
+  });
+
+  it('falls back to a plain reload when registration.update() rejects but a controller already exists', async () => {
+    const controller = {};
+    const update = jest.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    installMockServiceWorker({ update, controller });
+
+    const error = chunkLoadError();
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    loadWithRecovery(jest.fn().mockRejectedValue(error));
+
+    await flushMicrotasks();
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(reloadSpy).toHaveBeenCalledTimes(1);
   });
 
   it('rethrows a chunk-load error when update() finds nothing new (no waiting, no installing)', async () => {

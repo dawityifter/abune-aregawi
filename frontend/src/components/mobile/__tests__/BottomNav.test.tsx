@@ -49,6 +49,23 @@ describe('BottomNav', () => {
     expect(active).toHaveTextContent((en as any).mobileNav.calendar);
   });
 
+  // Previously only the "today" icon filled solid when active; calendar/give
+  // stayed outline-only, so the active state read inconsistently between
+  // tabs. Every tab's icon should fill the same way when it's the active one.
+  it('fills the active tab icon solid, regardless of which tab it is', () => {
+    renderBar('/calendar');
+    const active = screen.getByRole('link', { current: 'page' });
+    const svg = active.querySelector('svg');
+    expect(svg).toHaveAttribute('fill', 'currentColor');
+  });
+
+  it('leaves inactive tab icons unfilled', () => {
+    renderBar('/calendar');
+    const inactive = screen.getByText((en as any).mobileNav.today).closest('a');
+    const svg = inactive?.querySelector('svg');
+    expect(svg).toHaveAttribute('fill', 'none');
+  });
+
   it('points Today at the home page for a signed-out visitor', () => {
     renderBar('/');
     expect(screen.getByText((en as any).mobileNav.today).closest('a'))

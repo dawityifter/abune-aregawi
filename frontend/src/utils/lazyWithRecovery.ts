@@ -31,11 +31,16 @@ type LazyFactory<T extends ComponentType<any>> = () => Promise<{ default: T }>;
  * to install, with a timeout backstop at each waiting step so a member is
  * never left on the Suspense fallback forever.
  *
- * One-shot per tab via sessionStorage: if recovery has already been
- * attempted once this session and the chunk still fails, we rethrow instead
- * of trying again, so a genuinely broken chunk shows ErrorBoundary's normal
- * error rather than cycling reloads forever. The guard covers this entire
- * longer path (forced update check included), not just the skip-waiting step.
+ * One-shot per *incident*, not per session: if recovery has already been
+ * attempted and the chunk still fails, we rethrow instead of trying again,
+ * so a genuinely broken chunk shows ErrorBoundary's normal error rather than
+ * cycling reloads forever. The guard covers this entire longer path (forced
+ * update check included), not just the skip-waiting step. It is cleared the
+ * next time any lazy factory resolves successfully — a working load means
+ * the member is no longer stuck on the build that caused the failure, so a
+ * later, unrelated chunk failure (e.g. from the *next* deploy) should get
+ * its own recovery attempt rather than being silently skipped for the rest
+ * of the session.
  */
 const RECOVERY_ATTEMPTED_KEY = 'app.chunkLoadRecoveryAttempted';
 
@@ -76,6 +81,15 @@ function markRecoveryAttempted(): void {
   } catch {
     // Nothing we can do; recoveryAlreadyAttempted()'s catch-branch above
     // still keeps a storage failure on the safe (non-looping) side.
+  }
+}
+
+function clearRecoveryAttempted(): void {
+  try {
+    sessionStorage.removeItem(RECOVERY_ATTEMPTED_KEY);
+  } catch {
+    // Nothing we can do; worst case the one-shot guard stays set and a
+    // later incident just doesn't get an automatic recovery attempt.
   }
 }
 
@@ -149,13 +163,26 @@ function skipWaitingAndReload(waiting: ServiceWorker): Promise<boolean> {
  * ran — forces one with registration.update() and waits for the resulting
  * worker to install before activating it.
  *
- * Resolves `true` once the reload has been triggered. Resolves `false` if
- * there is nothing to activate: no service worker, no registration, the
- * member is offline (registration.update() rejects — treated the same as
- * "no new worker" rather than surfaced as its own error), or a worker never
- * finished installing/activating within the timeout. The caller falls back
- * to rethrowing the *original* chunk-load error in every `false` case, so a
- * network hiccup during the update check never masks the real failure.
+ * Resolves `true` once a reload has been triggered — either by activating a
+ * newly-found worker, or (see below) a plain reload. Resolves `false` only
+ * when there is truly nothing to gain from reloading: no service worker, no
+ * registration, or no worker *and* no existing controller. The caller falls
+ * back to rethrowing the *original* chunk-load error in every `false` case,
+ * so a network hiccup during the update check never masks the real failure.
+ *
+ * When no new worker turns up (offline, registration.update() rejects, or it
+ * resolves but nothing is installing/waiting), a plain window.location.reload()
+ * is still attempted as long as a controller already exists. This is the
+ * multi-tab case: a sibling tab's clientsClaim() can activate a new worker
+ * and take control of *this* tab too without this tab ever reloading, which
+ * purges v1's entries from the precache this tab's chunk request just missed
+ * in. The module-level comment above about "a plain reload would be served
+ * the exact same precached index.html" only holds when the controller is
+ * unchanged from the one that produced the failure — which this can't tell
+ * apart from the multi-tab case, so it errs toward attempting the reload
+ * rather than leaving the member stuck. Reloading with no controller at all
+ * (the very first load, before any worker has taken over) would replay the
+ * identical failure, so that one case still returns `false`.
  */
 async function activateWaitingWorkerAndReload(): Promise<boolean> {
   if (typeof navigator === 'undefined' || !navigator.serviceWorker) {
@@ -170,20 +197,28 @@ async function activateWaitingWorkerAndReload(): Promise<boolean> {
   if (!worker) {
     try {
       await registration.update();
+      worker = registration.waiting || undefined;
+      if (!worker && registration.installing) {
+        worker = await waitForInstalled(registration.installing);
+      }
     } catch {
-      // Offline, or the update check failed outright — nothing to activate.
-      return false;
-    }
-
-    worker = registration.waiting || undefined;
-    if (!worker && registration.installing) {
-      worker = await waitForInstalled(registration.installing);
+      // Offline, or the update check failed outright. Fall through to the
+      // controller check below rather than returning immediately: it's the
+      // same "nothing new to activate" state as the update() call
+      // succeeding but finding no worker.
     }
   }
 
-  if (!worker) return false;
+  if (worker) {
+    return skipWaitingAndReload(worker);
+  }
 
-  return skipWaitingAndReload(worker);
+  if (navigator.serviceWorker.controller) {
+    window.location.reload();
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -196,7 +231,12 @@ export async function loadWithRecovery<T extends ComponentType<any>>(
   factory: LazyFactory<T>
 ): Promise<{ default: T }> {
   try {
-    return await factory();
+    const module = await factory();
+    // A successful load means this device is no longer stuck on the build
+    // that would have caused a chunk-load failure, so the one-shot guard
+    // should not carry forward to an unrelated future incident.
+    clearRecoveryAttempted();
+    return module;
   } catch (error) {
     if (!isChunkLoadError(error) || recoveryAlreadyAttempted()) {
       throw error;

@@ -49,4 +49,14 @@ describe('PWA manifest', () => {
     expect(manifest.display).toBe('standalone');
     expect(manifest.start_url).toBe('/');
   });
+
+  // A locked "portrait" orientation briefly entered the manifest from
+  // unreviewed plan text (never an approved product decision) and would lock
+  // an installed Android app so it can't rotate — e.g. a treasurer trying to
+  // read a reconciliation table landscape. The default (any orientation) is
+  // the less restrictive, reversible choice, so `orientation` should stay
+  // absent unless someone deliberately adds it back.
+  it('does not lock the installed app to a fixed orientation', () => {
+    expect(manifest.orientation).toBeUndefined();
+  });
 });

@@ -20,7 +20,7 @@ const Icon: React.FC<{ id: string; active: boolean }> = ({ id, active }) => (
   <svg
     className="h-6 w-6"
     viewBox="0 0 24 24"
-    fill={active && id === 'today' ? 'currentColor' : 'none'}
+    fill={active ? 'currentColor' : 'none'}
     stroke="currentColor"
     strokeWidth={1.8}
     strokeLinecap="round"

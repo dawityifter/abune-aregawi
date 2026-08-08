@@ -93,12 +93,28 @@ function App() {
               onInstall={promptInstall}
               onDismissInstall={dismissInstall}
             />
-            <UpdateToast show={updateAvailable} onRefresh={applyUpdate} />
+            {/* Both are z-50, and the toast renders after the sheet here, so
+                with the sheet open it would paint over the sheet panel —
+                including the sign-out button — and put an actionable Refresh
+                button outside the sheet's aria-modal="true" container,
+                unreachable by a screen-reader user inside it. Suppressed
+                while the sheet is open; updateAvailable itself is untouched,
+                so the toast reappears as soon as the sheet closes. */}
+            <UpdateToast show={updateAvailable && !moreOpen} onRefresh={applyUpdate} />
             <ChatWidget />
             {/* Global first-time sign-in modal (shows once per session) */}
             <FirstLoginModal />
             {/* One boundary around all routes: a member only ever waits for the
-                single chunk they navigated to. */}
+                single chunk they navigated to. Also the backstop for
+                lazyWithRecovery's one-shot chunk-load recovery — when that
+                gives up (or can't run at all, e.g. offline), the rejection
+                propagates up through Suspense and must land on an
+                ErrorBoundary or React unmounts the whole tree, including the
+                sibling <nav> below, leaving a blank #root. Per-route
+                boundaries further down (register, board-members) catch
+                first for those two chunks specifically; this one is what
+                catches for the other ~20. */}
+            <ErrorBoundary>
             <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/" element={<HomePage />} />
@@ -178,6 +194,7 @@ function App() {
                 {/* Add more routes here as we build them */}
               </Routes>
             </Suspense>
+            </ErrorBoundary>
           </div>
         </AuthProvider>
       </Router>

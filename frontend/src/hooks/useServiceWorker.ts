@@ -65,6 +65,19 @@ export const useServiceWorker = () => {
       setUpdateAvailable(true);
     };
 
+    // Watches an installing worker for the same 'installed' + existing
+    // controller condition, wherever that worker came from.
+    const watchInstalling = (installing: ServiceWorker | null) => {
+      if (!installing || cancelled) return;
+      installing.addEventListener('statechange', () => {
+        // 'installed' with an existing controller means an update, not a
+        // first install.
+        if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+          track(installing);
+        }
+      });
+    };
+
     navigator.serviceWorker
       .register(`${process.env.PUBLIC_URL || ''}/service-worker.js`)
       .then((registration) => {
@@ -73,16 +86,18 @@ export const useServiceWorker = () => {
         // A worker may already be waiting from a previous visit.
         track(registration.waiting);
 
+        // The browser can run its own update check (e.g. on navigation)
+        // before this .then() callback attaches the 'updatefound' listener
+        // below — in which case registration.waiting is still null but
+        // registration.installing is already non-null, and the 'updatefound'
+        // event that would have told us about it already fired and is gone.
+        // Without this, that install finishes silently and the toast never
+        // appears this session. Watch whatever is already installing
+        // directly, in addition to future installs via 'updatefound'.
+        watchInstalling(registration.installing);
+
         registration.addEventListener('updatefound', () => {
-          const installing = registration.installing;
-          if (!installing) return;
-          installing.addEventListener('statechange', () => {
-            // 'installed' with an existing controller means an update, not a
-            // first install.
-            if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-              track(installing);
-            }
-          });
+          watchInstalling(registration.installing);
         });
       })
       .catch(() => {
