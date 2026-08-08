@@ -2,151 +2,160 @@ const { google } = require('googleapis');
 
 const youtube = google.youtube('v3');
 
-// Cache configuration
-const cache = new Map();
-const CACHE_TTL = 2 * 60 * 1000; // 2 minutes (Very responsive during active hours)
-const LONG_CACHE_TTL = 60 * 60 * 1000; // 1 hour (Low frequency check outside core hours)
-// Outside core hours, isLive: true results still expire quickly so a stream that
-// ends near a core-hours boundary doesn't stay "live" for up to an hour (which
-// would cause YouTube to show "This video is private" inside the embed).
-const LIVE_CACHE_TTL_OUTSIDE_CORE = 5 * 60 * 1000; // 5 minutes
+// YouTube Data API v3 quota: 10,000 units/day by default.
+//   search.list        = 100 units   <- avoid; 100 checks/day exhausts the quota
+//   channels.list      =   1 unit    <- once per channel, uploads playlist id never changes
+//   playlistItems.list =   1 unit
+//   videos.list        =   1 unit
+// Steady-state cost is 2 units per channel per check, so two channels polled every
+// 60s costs 2 * 2 * 1440 = 5,760 units/day and stays inside the quota around the clock.
+// That is why there is no "core broadcasting hours" throttle here: the cheap path is
+// affordable all week, and time-window throttling only ever delayed detection.
+const DEFAULT_CACHE_TTL = 60 * 1000;
 
-/**
- * Check if the current time is within core broadcasting hours (CST)
- * Thursday: 7PM - 10PM (19 - 22)
- * Friday: 7PM - 10PM (19 - 22)
- * Sunday: 4AM - 2PM (4 - 14) // Extended until 2PM
- */
-const isCoreHour = () => {
-    const now = new Date();
-    // Use America/Chicago for CST/CDT
-    const options = { timeZone: 'America/Chicago', hour12: false, weekday: 'long', hour: 'numeric' };
-    const formatter = new Intl.DateTimeFormat('en-US', options);
-    const parts = formatter.formatToParts(now);
+// How many recent uploads to inspect. A live broadcast appears at the head of the
+// uploads playlist, but a few scheduled/premiere entries can sit above it.
+const RECENT_UPLOADS_TO_INSPECT = 5;
 
-    const day = parts.find(p => p.type === 'weekday').value;
-    const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
+const cache = new Map();          // channelId -> { data, lastComputed }
+const inFlight = new Map();       // channelId -> Promise, single-flight guard
+const uploadsPlaylists = new Map(); // channelId -> uploads playlist id
 
-    let result = false;
-    if (day === 'Thursday' && hour >= 18 && hour < 22) result = true; // Start an hour earlier
-    if (day === 'Friday' && hour >= 18 && hour < 22) result = true;   // Start an hour earlier
-    if (day === 'Saturday' && hour >= 17 && hour < 21) result = true; // Added Saturday
-    if (day === 'Sunday' && hour >= 4 && hour < 16) result = true;    // Extended until 4PM
+const cacheTtl = () => {
+    const configured = parseInt(process.env.YOUTUBE_CACHE_TTL_MS, 10);
+    return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_CACHE_TTL;
+};
 
-    console.log(`[YouTube] Core Hour Check: ${day} at ${hour}:00 CST/CDT -> ${result ? 'YES' : 'NO'}`);
-    return result;
+// The API key is referrer-restricted in Google Cloud Console, so requests must carry a
+// Referer the key accepts.
+const requestOptions = () => ({
+    headers: {
+        Referer: (process.env.FRONTEND_URL || 'https://abunearegawi.church').split(',')[0].trim()
+    }
+});
+
+const getUploadsPlaylistId = async (channelId, apiKey) => {
+    if (uploadsPlaylists.has(channelId)) {
+        return uploadsPlaylists.get(channelId);
+    }
+
+    const response = await youtube.channels.list({
+        key: apiKey,
+        id: channelId,
+        part: 'contentDetails'
+    }, requestOptions());
+
+    const playlistId = response.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads || null;
+    if (playlistId) {
+        uploadsPlaylists.set(channelId, playlistId);
+    }
+    return playlistId;
+};
+
+const findLiveBroadcast = async (channelId, apiKey) => {
+    const playlistId = await getUploadsPlaylistId(channelId, apiKey);
+    if (!playlistId) {
+        console.warn(`[YouTube] No uploads playlist for channel ${channelId}`);
+        return null;
+    }
+
+    const playlistResponse = await youtube.playlistItems.list({
+        key: apiKey,
+        playlistId,
+        part: 'contentDetails',
+        maxResults: RECENT_UPLOADS_TO_INSPECT
+    }, requestOptions());
+
+    const videoIds = (playlistResponse.data.items || [])
+        .map(item => item.contentDetails?.videoId)
+        .filter(Boolean);
+
+    if (videoIds.length === 0) {
+        return null;
+    }
+
+    const videosResponse = await youtube.videos.list({
+        key: apiKey,
+        id: videoIds.join(','),
+        part: 'snippet,liveStreamingDetails'
+    }, requestOptions());
+
+    // liveBroadcastContent can still read 'live' for a short window after a stream ends,
+    // which is what made ended streams show as a private/dead embed on the homepage.
+    // actualEndTime is authoritative.
+    return (videosResponse.data.items || []).find(item =>
+        item.snippet?.liveBroadcastContent === 'live' && !item.liveStreamingDetails?.actualEndTime
+    ) || null;
+};
+
+const fetchLiveStatus = async (channelId, apiKey) => {
+    console.log(`[YouTube] Fetching fresh live status for ${channelId}...`);
+    const live = await findLiveBroadcast(channelId, apiKey);
+
+    return {
+        isLive: !!live,
+        videoId: live ? live.id : null,
+        title: live ? live.snippet.title : null,
+        thumbnail: live ? live.snippet.thumbnails?.high?.url || null : null,
+        lastChecked: new Date().toISOString()
+    };
 };
 
 /**
- * Check if a channel is currently live
- * Uses caching to avoid YouTube API quota limits
- * @param {string} channelId 
- * @param {boolean} forceCheck
- * @returns {Promise<Object>} Status object { isLive: boolean, videoId: string | null }
+ * Check if a channel is currently live.
+ * Results are cached per channel, and concurrent misses share one API round trip.
+ * @param {string} channelId
+ * @param {boolean} forceCheck bypass the cache (quota-expensive; keep admin-only)
+ * @returns {Promise<Object>} { isLive, videoId, title, thumbnail, lastChecked }
  */
 const checkYouTubeLiveStatus = async (channelId, forceCheck = false) => {
-    // Check if check is forced or if we have an API key (regardless of NODE_ENV)
-    const canCheck = !!process.env.YOUTUBE_API_KEY || process.env.FORCE_YOUTUBE_CHECK === 'true';
+    const apiKey = process.env.YOUTUBE_API_KEY;
 
-    if (!canCheck) {
+    if (!apiKey) {
         return { isLive: false, skipped: 'configuration_missing' };
     }
 
-    const isCore = isCoreHour();
-    const bypassCore = process.env.FORCE_YOUTUBE_CHECK === 'true' || process.env.NODE_ENV === 'development' || forceCheck;
-
-    // Return cached data if valid (unless forced)
     const now = Date.now();
     const cachedItem = cache.get(channelId);
 
-    if (!forceCheck) {
-        // If outside core hours AND not bypassing
-        if (!isCore && !bypassCore) {
-            if (cachedItem) {
-                const age = now - cachedItem.lastComputed;
-                // Use a short TTL for isLive: true — an ended stream becomes private on
-                // YouTube within minutes, so we must not serve a stale "live" result for
-                // the full 1-hour LONG_CACHE_TTL.  isLive: false is safe to cache longer.
-                const ttl = cachedItem.data.isLive ? LIVE_CACHE_TTL_OUTSIDE_CORE : LONG_CACHE_TTL;
-                if (age < ttl) {
-                    console.log(`[YouTube] Outside core hours: Serving cached status for ${channelId} (Last checked ${Math.round(age / 60000)}m ago)`);
-                    return cachedItem.data;
-                }
-            }
-            console.log(`[YouTube] Outside core hours, but cache is stale. Fetching fresh status for ${channelId}...`);
-        } else {
-            // Within core hours or bypassing: use standard CACHE_TTL
-            if (cachedItem && (now - cachedItem.lastComputed < CACHE_TTL)) {
-                console.log(`[YouTube] Within core/bypass hours: Serving cached status for ${channelId}`);
-                return cachedItem.data;
-            }
-        }
-    } else {
-        console.log(`[YouTube] Force check requested. Bypassing cache for ${channelId}...`);
+    if (!forceCheck && cachedItem && (now - cachedItem.lastComputed < cacheTtl())) {
+        return cachedItem.data;
     }
 
-    try {
-        const apiKey = process.env.YOUTUBE_API_KEY;
-
-        if (!apiKey) {
-            console.warn('[YouTube] API key not set. Skipping live check.');
-            return { isLive: false };
-        }
-
-        console.log(`[YouTube] Fetching fresh live status for ${channelId} from API...`);
-        const response = await youtube.search.list({
-            key: apiKey,
-            channelId: channelId,
-            part: 'snippet',
-            type: 'video',
-            eventType: 'live',
-            maxResults: 1
-        }, {
-            headers: {
-                Referer: (process.env.FRONTEND_URL || 'https://abunearegawi.church').split(',')[0].trim()
-            }
-        });
-
-        const items = response.data.items || [];
-        const isLive = items.length > 0;
-
-        const result = {
-            isLive,
-            videoId: isLive ? items[0].id.videoId : null,
-            title: isLive ? items[0].snippet.title : null,
-            thumbnail: isLive ? items[0].snippet.thumbnails.high.url : null,
-            lastChecked: new Date().toISOString()
-        };
-
-        // Update cache
-        cache.set(channelId, {
-            data: result,
-            lastComputed: now
-        });
-
-        return result;
-    } catch (error) {
-        // Handle Quota errors specifically
-        const isQuotaError = error.errors?.some(e => e.reason === 'quotaExceeded' || e.reason === 'rateLimitExceeded');
-
-        if (isQuotaError) {
-            console.error('[YouTube] CRITICAL: API Quota exceeded or rate limited.');
-        }
-
-        // If we have stale cache, return it rather than failing
-        const staleItem = cache.get(channelId);
-        if (staleItem) {
-            console.warn('[YouTube] API error, serving stale cache:', error.message);
-            return {
-                ...staleItem.data,
-                isStale: true,
-                error: error.message
-            };
-        }
-
-        console.error('[YouTube] API request failed:', error.message);
-        throw error;
+    // Single-flight: without this, every poll that lands after the TTL expires fires
+    // its own set of API calls, so quota burn scales with visitors instead of time.
+    const pending = inFlight.get(channelId);
+    if (pending) {
+        return pending;
     }
+
+    const request = fetchLiveStatus(channelId, apiKey)
+        .then((result) => {
+            cache.set(channelId, { data: result, lastComputed: Date.now() });
+            return result;
+        })
+        .catch((error) => {
+            const isQuotaError = error.errors?.some(e => e.reason === 'quotaExceeded' || e.reason === 'rateLimitExceeded');
+            if (isQuotaError) {
+                console.error('[YouTube] CRITICAL: API quota exceeded or rate limited.');
+            }
+
+            // Stale data beats no data for a banner that is usually "not live".
+            const staleItem = cache.get(channelId);
+            if (staleItem) {
+                console.warn('[YouTube] API error, serving stale cache:', error.message);
+                return { ...staleItem.data, isStale: true, error: error.message };
+            }
+
+            console.error('[YouTube] API request failed:', error.message);
+            throw error;
+        })
+        .finally(() => {
+            inFlight.delete(channelId);
+        });
+
+    inFlight.set(channelId, request);
+    return request;
 };
 
 module.exports = {

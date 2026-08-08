@@ -108,21 +108,65 @@ npm start
 
 ## 📊 How It Works
 
-1. **Frontend** calls `/api/youtube/live-status` every 5 minutes
-2. **Backend** uses YouTube API key to check channel status
-3. **YouTube API** returns live broadcast info
-4. **Banner** shows/hides automatically based on response
+1. **Frontend** polls `/api/youtube/multi-live-status` every 2 minutes — but only while
+   the tab is visible. Hiding the tab stops the polling; revealing it triggers an
+   immediate check.
+2. **Backend** serves a 60s cached status. Concurrent misses share one API round trip
+   (single-flight), so quota burn scales with time, not with visitor count.
+3. **On a cache miss** the service resolves the uploads playlist, lists recent uploads,
+   and asks `videos.list` which of them has `liveBroadcastContent === 'live'` with no
+   `actualEndTime`.
+4. **Banner** shows/hides automatically based on the response.
+
+Responses carry `Cache-Control: public, max-age=30` so repeat polls from the same
+browser need not reach the origin at all.
+
+### Endpoints
+
+| Route | Access | Notes |
+|---|---|---|
+| `GET /api/youtube/multi-live-status` | Public | What the homepage banner polls |
+| `GET /api/youtube/live-status` | Public | First live channel, or the main channel |
+| `GET /api/youtube/config` | Public | Channel IDs |
+| `POST /api/youtube/refresh` | **Admin** | Bypasses the cache |
+
+`force` is deliberately not readable from the query string on the public routes: a
+public cache bypass lets any caller spend quota on demand and take the banner down for
+everyone. Use the admin `POST /api/youtube/refresh` route instead.
+
+### If a live stream is not detected
+
+A broadcast is found through the channel's uploads playlist, which is how "go live"
+streams appear. If a stream is live on YouTube but the banner stays hidden, check that
+the broadcast is public (unlisted/private streams are not in the uploads feed) and hit
+`POST /api/youtube/refresh` as an admin to skip the cache.
 
 ---
 
 ## 🎯 YouTube API Quota Usage
 
-- **Cost per check**: 1 unit (very cheap!)
-- **Checks per day**: ~288 (every 5 minutes)
-- **Daily quota**: 10,000 units
-- **Usage**: Only 2.88% of daily quota
+Quota is the binding constraint on this feature. Costs per call:
 
-You have plenty of quota headroom!
+| Endpoint | Cost | Used for |
+|---|---|---|
+| `search.list` | **100 units** | ❌ not used — 100 checks would exhaust the day |
+| `channels.list` | 1 unit | uploads playlist id, resolved once per channel per process |
+| `playlistItems.list` | 1 unit | most recent uploads |
+| `videos.list` | 1 unit | live status of those uploads |
+
+Detection reads the channel's uploads playlist rather than searching, so a check costs
+**2 units** in steady state instead of 100.
+
+- **Cost per check**: 2 units per channel
+- **Cache TTL**: 60s (override with `YOUTUBE_CACHE_TTL_MS`)
+- **Worst case**: 2 channels × 2 units × 1,440 checks = **5,760 units/day**
+- **Daily quota**: 10,000 units
+
+An earlier version used `search.list` on a 2-minute cache during "core broadcasting
+hours." That cost 6,000 units/hour and drained the daily quota in under two hours,
+after which every check failed and the banner stayed hidden during the actual service.
+The core-hours throttle existed only to ration that expense and has been removed —
+the cheap path is affordable 24/7, so a stream is detected whenever it starts.
 
 ---
 
