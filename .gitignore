@@ -311,3 +311,7 @@ RESTORE_DATABASE.md
 backend/restore-database.sh
 backend/restore-db-simple.sh
 .claude/
+
+# Playwright MCP scratch output (screenshots/console logs from browsing the local
+# app — screenshots can capture real member data, so never commit these)
+.playwright-mcp/
