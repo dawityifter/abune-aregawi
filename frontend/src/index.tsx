@@ -4,23 +4,23 @@ import './index.css';
 import App from './App';
 import { I18nProvider } from './i18n/I18nProvider';
 import reportWebVitals from './reportWebVitals';
-import { initErrorTracking, reportError } from './lib/errorTracking';
+import { initErrorTracking } from './lib/errorTracking';
 
 // No-ops without REACT_APP_SENTRY_DSN, outside production, or under Do Not
 // Track — see lib/errorTracking.ts. Safe to call unconditionally here.
 initErrorTracking();
 
-// Promise rejections never reach an ErrorBoundary, so without this listener
-// they would be invisible to error tracking — and this app's data fetching
-// is promise-based throughout. Kept separate from the reCAPTCHA-suppression
-// listener below: that one only quiets a known-benign console message, it
-// does not stop this listener (or any other) from also seeing the event.
-window.addEventListener('unhandledrejection', (event) => {
-  const reason = event.reason;
-  reportError(reason instanceof Error ? reason : new Error(String(reason)), {
-    component: 'unhandledrejection',
-  });
-});
+// No app-level 'unhandledrejection' listener here: @sentry/browser's
+// globalHandlersIntegration is on by default and already captures
+// unhandled promise rejections (and uncaught errors) without one. An
+// earlier version of this file added its own listener that called
+// reportError with `new Error(String(reason))` — which double-reported
+// every rejection (once via globalHandlersIntegration, once via the app
+// listener) and the synthesized wrapper defeated Sentry's dedupe on top of
+// that. Removed rather than fixed in place. Left alone: the
+// reCAPTCHA/Firebase timeout-suppression listener below, which is
+// unrelated (it only quiets a known-benign console message) and does not
+// stop globalHandlersIntegration's own listener from also seeing the event.
 
 // Suppress noisy reCAPTCHA timeouts that can occur after navigation
 // when Firebase's reCAPTCHA script rejects internally. We ignore only

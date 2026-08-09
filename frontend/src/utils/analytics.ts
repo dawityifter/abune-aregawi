@@ -99,6 +99,24 @@ export function trackEvent(name: string, data?: Record<string, unknown>): void {
 }
 
 /**
+ * Catches opaque high-entropy identifiers that are neither numeric nor
+ * UUID-shaped — a Firebase UID (e.g. `Xk3mZq9LpR2sTuVwYz01AbCdEf23`) being
+ * the motivating case: AuthContext hits
+ * `/api/members/profile/firebase/<uid>` on every sign-in, and that uid is a
+ * stable, unique per-member identifier that joins to both the parish DB and
+ * Firebase Auth. Deliberately narrow — length >= 20, alphanumeric only, and
+ * mixed case — so it can't fire on this app's real route slugs, which are
+ * all lowercase-with-hyphens (e.g. `parish-pulse-sign-up`, `church-bylaw`):
+ * hyphens fail the alphanumeric-only check, and single-case words fail the
+ * mixed-case check. See frontend/src/App.tsx for the full route list this
+ * was checked against.
+ *
+ * Mirrored in backend/src/utils/telemetry.js's stripUrl — keep the two in
+ * sync; see the comment there.
+ */
+const HIGH_ENTROPY_SEGMENT = /^(?=.*[a-z])(?=.*[A-Z])[0-9a-zA-Z]{20,}$/;
+
+/**
  * Query strings and path segments in this app carry member ids
  * (/departments/:id, ?memberId=, ?phone=). Analytics has no use for them and
  * every reason not to store them.
@@ -107,6 +125,10 @@ export function stripIdentifiers(path: string): string {
   const [pathname] = path.split('?');
   return pathname
     .split('/')
-    .map((seg) => (/^\d+$/.test(seg) || /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(seg) ? ':id' : seg))
+    .map((seg) =>
+      /^\d+$/.test(seg) || /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(seg) || HIGH_ENTROPY_SEGMENT.test(seg)
+        ? ':id'
+        : seg
+    )
     .join('/');
 }

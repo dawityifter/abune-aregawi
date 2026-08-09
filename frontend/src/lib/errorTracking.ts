@@ -1,4 +1,7 @@
-import * as Sentry from '@sentry/react';
+// Type-only import: erased at compile time, so it carries none of the
+// ~29 kB gzip the real @sentry/react module costs. That module is loaded
+// dynamically in initErrorTracking() below, only once a DSN is confirmed
+// configured — see the comment there for why.
 import type { Breadcrumb, ErrorEvent as SentryEvent } from '@sentry/react';
 import { stripIdentifiers } from '../utils/analytics';
 
@@ -9,6 +12,15 @@ import { stripIdentifiers } from '../utils/analytics';
  */
 
 const DSN = process.env.REACT_APP_SENTRY_DSN;
+
+/**
+ * Set once initErrorTracking()'s dynamic import resolves. Module-level for
+ * the same reason analytics.ts's roleGroup is: exactly one place calls
+ * initErrorTracking (index.tsx, once, at startup), and reportError needs
+ * somewhere to find the loaded module without threading it through every
+ * call site.
+ */
+let sentryModule: typeof import('@sentry/react') | null = null;
 
 /**
  * Runs a URL through the same "what counts as an identifier" logic used for
@@ -55,20 +67,25 @@ const scrubBreadcrumb = (breadcrumb: Breadcrumb): Breadcrumb => {
   const { category } = breadcrumb;
 
   if (category === 'xhr' || category === 'fetch') {
-    const data = breadcrumb.data as HttpBreadcrumbData | undefined;
+    // Destructure out data AND message (mirrors backend/src/utils/telemetry.js's
+    // http branch): spreading `...breadcrumb` alone would carry `message`
+    // through untouched, and Sentry's fetch/xhr integrations can set it.
+    const { data: rawData, message, ...safe } = breadcrumb;
+    const data = rawData as HttpBreadcrumbData | undefined;
     const scrubbedData: HttpBreadcrumbData = {};
     if (data?.method) scrubbedData.method = data.method;
     if (typeof data?.status_code === 'number') scrubbedData.status_code = data.status_code;
     if (data?.url) scrubbedData.url = scrubUrlString(data.url);
-    return { ...breadcrumb, data: scrubbedData };
+    return { ...safe, data: scrubbedData };
   }
 
   if (category === 'navigation') {
-    const data = breadcrumb.data as NavigationBreadcrumbData | undefined;
+    const { data: rawData, message, ...safe } = breadcrumb;
+    const data = rawData as NavigationBreadcrumbData | undefined;
     const scrubbedData: NavigationBreadcrumbData = {};
     if (data?.from) scrubbedData.from = scrubUrlString(data.from);
     if (data?.to) scrubbedData.to = scrubUrlString(data.to);
-    return { ...breadcrumb, data: scrubbedData };
+    return { ...safe, data: scrubbedData };
   }
 
   const { data, message, ...safe } = breadcrumb;
@@ -98,6 +115,32 @@ const ALLOWED_TAG_KEYS = new Set(['component', 'boundary', 'phase']);
 const EMAIL_PATTERN = /\S+@\S+\.\S+/;
 const PHONE_PATTERN = /\+?\d[\d\-\s().]{6,}\d/;
 const looksLikePii = (value: string): boolean => EMAIL_PATTERN.test(value) || PHONE_PATTERN.test(value);
+
+/**
+ * Global-flagged twins of EMAIL_PATTERN/PHONE_PATTERN above, needed because
+ * String.replace has to find every occurrence, not just test for one.
+ * Deliberately separate objects rather than adding /g to EMAIL_PATTERN and
+ * reusing it here: a global regex is stateful (lastIndex), and sharing one
+ * instance between a .test() call site and a .replace() call site is how
+ * you get a regex that silently alternates true/false on repeated calls.
+ * Two objects, two purposes, no shared state to reason about. Deliberately
+ * the same pattern *source* as backend/src/utils/telemetry.js's
+ * EMAIL_PATTERN/PHONE_PATTERN so the two runtimes don't quietly diverge on
+ * what counts as PII — see the comment there.
+ */
+const EMAIL_PATTERN_GLOBAL = /\S+@\S+\.\S+/g;
+const PHONE_PATTERN_GLOBAL = /\+?\d[\d\-\s().]{6,}\d/g;
+
+/**
+ * Redacts email/phone-shaped substrings out of a free-text string without
+ * discarding the rest of it. Used only for fields whose *value* is
+ * unstructured prose we still want the shape of (an exception message or
+ * event.message) — everywhere else in this module we can and do delete the
+ * field outright, which is the stronger guarantee. Mirrors
+ * backend/src/utils/telemetry.js's redactPiiSubstrings.
+ */
+const redactPiiSubstrings = (text: string): string =>
+  text.replace(EMAIL_PATTERN_GLOBAL, '[redacted-email]').replace(PHONE_PATTERN_GLOBAL, '[redacted-phone]');
 
 export const isErrorTrackingEnabled = (): boolean => {
   if (!DSN) return false;
@@ -136,6 +179,27 @@ export const scrubEvent = (event: SentryEvent): SentryEvent | null => {
 
   delete event.extra;
 
+  // Pattern-redact rather than delete: the exception value is the single
+  // most useful field in the Sentry UI for triage, so gutting it entirely
+  // would defeat the point of shipping this at all. globalHandlersIntegration
+  // is on by default in @sentry/browser, so this runs over EVERY uncaught
+  // error and unhandled rejection, not just explicit reportError calls —
+  // e.g. `throw new Error(data.message)` where a backend error message
+  // embeds a member phone number. Mirrors
+  // backend/src/utils/telemetry.js's scrubEvent, which does the same to
+  // exception.values and event.message.
+  if (event.exception?.values) {
+    event.exception.values = event.exception.values.map((value) =>
+      value && typeof value.value === 'string'
+        ? { ...value, value: redactPiiSubstrings(value.value) }
+        : value
+    );
+  }
+
+  if (typeof event.message === 'string') {
+    event.message = redactPiiSubstrings(event.message);
+  }
+
   // See scrubBreadcrumb above: this is a second, independent path PII can
   // take to Sentry, via auto-recorded fetch/XHR/navigation breadcrumbs that
   // never touch event.request.
@@ -158,28 +222,67 @@ export const scrubEvent = (event: SentryEvent): SentryEvent | null => {
   return event;
 };
 
+/**
+ * A DSN-less build merges with error tracking dark-shipped — no DSN is
+ * configured in production yet — and @sentry/react is ~29 kB gzip. This
+ * congregation is overwhelmingly on phones (see the code-splitting comment
+ * in App.tsx for the same reasoning applied to the admin/treasurer routes),
+ * so a static `import * as Sentry` would tax every member's initial bundle
+ * for a library guaranteed to do nothing. The gating condition for a
+ * dynamic import (DSN present) is identical to the dark-ship condition
+ * (DSN absent), so isErrorTrackingEnabled() below doubles as the fetch
+ * gate: the chunk is only requested once a DSN is actually configured.
+ *
+ * scrubEvent above stays synchronous and independently testable either way
+ * — it doesn't touch the Sentry module at all, it only shapes plain
+ * objects.
+ */
 export const initErrorTracking = (): void => {
   if (!isErrorTrackingEnabled()) return;
-  Sentry.init({
-    dsn: DSN,
-    environment: process.env.NODE_ENV,
-    sendDefaultPii: false,
-    // Errors only. Performance tracing would sample real navigations and is not
-    // what this work is for.
-    tracesSampleRate: 0,
-    beforeSend: scrubEvent,
-  });
+  // webpackChunkName is load-bearing, not cosmetic: frontend/src/service-worker.js
+  // filters the precache manifest by matching /(admin|treasurer|outreach|sms|sentry)/
+  // against each chunk's URL, because webpack's default production chunk names
+  // are hashed numeric ids with no relation to the source (e.g.
+  // "172.fa105aaf.chunk.js"). An unnamed chunk here would match nothing, silently
+  // re-enter the precache, and get downloaded onto every member's phone on
+  // install — exactly the outcome this dynamic import exists to avoid. See the
+  // App.tsx comment above the staff-only lazy() routes for the same reasoning.
+  import(/* webpackChunkName: "sentry" */ '@sentry/react')
+    .then((Sentry) => {
+      sentryModule = Sentry;
+      Sentry.init({
+        dsn: DSN,
+        environment: process.env.NODE_ENV,
+        sendDefaultPii: false,
+        // Errors only. Performance tracing would sample real navigations and is not
+        // what this work is for.
+        tracesSampleRate: 0,
+        beforeSend: scrubEvent,
+      });
+    })
+    .catch(() => {
+      // Best-effort: if the chunk fails to load (offline, blocked by an
+      // extension, CDN hiccup), error tracking silently stays off rather
+      // than breaking app startup.
+    });
 };
 
 /**
  * Report a caught error. Wrapped so a failure inside error *reporting* can
  * never break error *display* — ErrorBoundary is the app's crash fallback and
  * must not throw.
+ *
+ * Best-effort in a second sense now too: until initErrorTracking()'s dynamic
+ * import resolves, sentryModule is null and this is a no-op. A crash in the
+ * brief window before the chunk loads goes unreported rather than throwing
+ * or queuing — consistent with the rest of this module's stance that error
+ * *reporting* must never risk error *display*.
  */
 export const reportError = (error: Error, context?: Record<string, unknown>): void => {
   if (!isErrorTrackingEnabled()) return;
+  if (!sentryModule) return;
   try {
-    Sentry.captureException(error, context ? { tags: context as Record<string, string> } : undefined);
+    sentryModule.captureException(error, context ? { tags: context as Record<string, string> } : undefined);
   } catch {
     // Reporting is best-effort by definition.
   }

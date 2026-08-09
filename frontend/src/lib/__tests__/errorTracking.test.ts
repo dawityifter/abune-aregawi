@@ -1,4 +1,4 @@
-import { scrubEvent, isErrorTrackingEnabled } from '../errorTracking';
+import { scrubEvent } from '../errorTracking';
 
 describe('scrubEvent', () => {
   it('drops ChunkLoadError, which every deploy produces and the app self-heals', () => {
@@ -25,11 +25,43 @@ describe('scrubEvent', () => {
       request: { url: 'https://example.org/profile', headers: { Cookie: 'session=abc' } },
       user: { email: 'someone@example.com', id: '482' },
       extra: { phone: '+14695550111' },
+      // globalHandlersIntegration is on by default, so every uncaught error
+      // and unhandled rejection goes through scrubEvent — not just explicit
+      // reportError calls. A message field with no coverage here would let
+      // this test's name overclaim what it actually checks.
+      exception: {
+        values: [{ type: 'Error', value: 'Duplicate phone +14695550111 for someone@example.com' }],
+      },
+      message: 'Failed for someone@example.com / +14695550111',
     };
     const serialized = JSON.stringify(scrubEvent(event as any) ?? {});
     expect(serialized).not.toMatch(/someone@example\.com/);
     expect(serialized).not.toMatch(/4695550111/);
     expect(serialized).not.toMatch(/session=abc/);
+  });
+
+  it('redacts an email or phone embedded in the exception message rather than leaving it intact', () => {
+    const event = {
+      exception: { values: [{ type: 'Error', value: 'Duplicate phone +14695550111 for someone@example.com' }] },
+    };
+    const scrubbed = scrubEvent(event as any);
+    expect(scrubbed!.exception!.values![0].value).not.toMatch(/4695550111/);
+    expect(scrubbed!.exception!.values![0].value).not.toMatch(/someone@example\.com/);
+    // Pattern-redacted, not deleted: the field survives with the PII removed,
+    // since it's the single most useful field in the Sentry UI for triage.
+    expect(scrubbed!.exception!.values![0].value).toBe('Duplicate phone [redacted-phone] for [redacted-email]');
+  });
+
+  it('leaves a PII-free exception message untouched', () => {
+    const event = { exception: { values: [{ type: 'TypeError', value: 'Cannot read properties of undefined' }] } };
+    expect(scrubEvent(event as any)!.exception!.values![0].value).toBe('Cannot read properties of undefined');
+  });
+
+  it('redacts an email or phone embedded in event.message', () => {
+    const event = { message: 'Failed for someone@example.com / +14695550111' };
+    const scrubbed = scrubEvent(event as any);
+    expect(scrubbed!.message).not.toMatch(/someone@example\.com/);
+    expect(scrubbed!.message).not.toMatch(/4695550111/);
   });
 
   it('reports nothing when the member has asked not to be tracked', () => {
@@ -78,7 +110,11 @@ describe('scrubEvent breadcrumbs', () => {
           type: 'http',
           data: {
             method: 'GET',
-            url: 'https://example.org/api/members/profile/firebase/482?email=someone%40example.com&phone=%2B14695550111',
+            // A realistic Firebase UID, not a numeric stand-in: AuthContext hits this
+            // exact route on every sign-in, and a numeric fixture here would pass even
+            // if stripIdentifiers only ever masked digits, hiding the real leak (see
+            // Finding 1 in the final review).
+            url: 'https://example.org/api/members/profile/firebase/Xk3mZq9LpR2sTuVwYz01AbCdEf23?email=someone%40example.com&phone=%2B14695550111',
             status_code: 200,
           },
         },
@@ -94,12 +130,41 @@ describe('scrubEvent breadcrumbs', () => {
     expect(serialized).not.toMatch(/someone@example\.com/);
     expect(serialized).not.toMatch(/4695550111/);
     expect(serialized).not.toMatch(/"482"|\/482|memberId/);
+    expect(serialized).not.toMatch(/Xk3mZq9LpR2sTuVwYz01AbCdEf23/);
     expect(scrubbed!.breadcrumbs![0].data).toEqual({
       method: 'GET',
       status_code: 200,
       url: '/api/members/profile/firebase/:id',
     });
     expect(scrubbed!.breadcrumbs![1].data).toEqual({ from: '/dashboard', to: '/departments/:id/meetings/:id' });
+  });
+
+  it('drops the message field on xhr/fetch/navigation breadcrumbs too, not just unvetted categories', () => {
+    // Sentry's fetch/xhr/navigation integrations can set breadcrumb.message
+    // alongside .data; the fields this module doesn't explicitly vet get
+    // dropped everywhere else in scrubBreadcrumb (see the 'console' case
+    // below), and the http-shaped branches must not be the one exception —
+    // mirrors backend/src/utils/telemetry.js's http branch, which
+    // destructures `message` out for the same reason.
+    const event = {
+      breadcrumbs: [
+        {
+          category: 'fetch',
+          data: { method: 'GET', url: '/api/members', status_code: 200 },
+          message: 'someone@example.com fetch failed',
+        },
+        {
+          category: 'navigation',
+          data: { from: '/a', to: '/b' },
+          message: '+14695550111 navigated',
+        },
+      ],
+    };
+    const scrubbed = scrubEvent(event as any);
+    expect(scrubbed!.breadcrumbs![0]).not.toHaveProperty('message');
+    expect(scrubbed!.breadcrumbs![1]).not.toHaveProperty('message');
+    expect(JSON.stringify(scrubbed)).not.toMatch(/someone@example\.com/);
+    expect(JSON.stringify(scrubbed)).not.toMatch(/4695550111/);
   });
 
   it('drops data and message from breadcrumb categories with no vetted shape, e.g. console logs', () => {

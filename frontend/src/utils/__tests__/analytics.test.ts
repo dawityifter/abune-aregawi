@@ -20,8 +20,43 @@ describe('stripIdentifiers', () => {
       .toBe('/gallery/:id');
   });
 
-  it('leaves ordinary routes intact so the data is still useful', () => {
-    ['/', '/dashboard', '/donate', '/church-bylaw', '/board-members'].forEach((p) => {
+  it('replaces opaque high-entropy segments, e.g. a Firebase UID, which are neither numeric nor UUID-shaped', () => {
+    // Real shape: AuthContext hits this route on every sign-in.
+    expect(stripIdentifiers('/api/members/profile/firebase/Xk3mZq9LpR2sTuVwYz01AbCdEf23'))
+      .toBe('/api/members/profile/firebase/:id');
+  });
+
+  it('does not mask a short mixed-case segment, which a Firebase UID would never be', () => {
+    // Guards against the high-entropy rule swallowing ordinary short segments.
+    expect(stripIdentifiers('/aB3')).toBe('/aB3');
+  });
+
+  it('leaves every real app route intact (frontend/src/App.tsx), so the high-entropy rule cannot over-mask real routes', () => {
+    [
+      '/',
+      '/login',
+      '/register',
+      '/dashboard',
+      '/admin',
+      '/treasurer',
+      '/outreach',
+      '/sms',
+      '/profile',
+      '/credits',
+      '/donate',
+      '/dues',
+      '/church-bylaw',
+      '/dependents',
+      '/parish-pulse-sign-up',
+      '/pledge',
+      '/thank-you',
+      '/privacy',
+      '/calendar',
+      '/departments',
+      '/admin/voicemails',
+      '/board-members',
+      '/gallery',
+    ].forEach((p) => {
       expect(stripIdentifiers(p)).toBe(p);
     });
   });
