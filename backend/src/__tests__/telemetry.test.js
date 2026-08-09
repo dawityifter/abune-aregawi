@@ -29,6 +29,30 @@ describe('scrubEvent', () => {
     expect(scrubEvent(event).request.url).not.toMatch(/phone|4695550111/);
   });
 
+  describe('id-shaped path segments (mirrors frontend/src/utils/analytics.ts stripIdentifiers)', () => {
+    it('masks a numeric id segment', () => {
+      const event = { request: { url: 'https://api.example.org/api/members/482/dues' } };
+      expect(scrubEvent(event).request.url).toBe('/api/members/:id/dues');
+    });
+
+    it('masks a uuid segment', () => {
+      const event = { request: { url: 'https://api.example.org/api/gallery/3f2504e0-4f89-11d3-9a0c-0305e82c3301' } };
+      expect(scrubEvent(event).request.url).toBe('/api/gallery/:id');
+    });
+
+    it('masks an opaque high-entropy segment, e.g. a Firebase UID, on the profile lookup route', () => {
+      const event = {
+        request: { url: 'https://api.example.org/api/members/profile/firebase/Xk3mZq9LpR2sTuVwYz01AbCdEf23' },
+      };
+      expect(scrubEvent(event).request.url).toBe('/api/members/profile/firebase/:id');
+    });
+
+    it('leaves ordinary route segments intact', () => {
+      const event = { request: { url: 'https://api.example.org/api/members/profile/firebase' } };
+      expect(scrubEvent(event).request.url).toBe('/api/members/profile/firebase');
+    });
+  });
+
   it('keeps the diagnostic fields worth having', () => {
     const event = { request: { url: 'https://api.example.org/api/members', method: 'POST' } };
     const scrubbed = scrubEvent(event);
@@ -129,6 +153,19 @@ describe('scrubEvent', () => {
       expect(serialized).not.toMatch(/someone@example\.com/);
       expect(serialized).not.toMatch(/4695550111/);
       expect(scrubbed.breadcrumbs[0].data.status_code).toBe(200);
+    });
+
+    it('masks a Firebase-UID-shaped path segment in an http breadcrumb url, not just the query string', () => {
+      const event = {
+        breadcrumbs: [
+          {
+            category: 'http',
+            data: { url: 'https://api.example.org/api/members/profile/firebase/Xk3mZq9LpR2sTuVwYz01AbCdEf23' },
+          },
+        ],
+      };
+      const scrubbed = scrubEvent(event);
+      expect(scrubbed.breadcrumbs[0].data.url).toBe('/api/members/profile/firebase/:id');
     });
   });
 

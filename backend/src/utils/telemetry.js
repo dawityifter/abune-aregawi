@@ -32,15 +32,42 @@ const DSN = process.env.SENTRY_DSN;
 const isEnabled = () => Boolean(DSN);
 
 /**
- * Strips a URL down to its path. Several routes carry ?email= and ?phone=
- * (the Firebase profile lookup among them).
+ * Masks numeric ids, UUIDs, and opaque high-entropy segments (e.g. a
+ * Firebase UID) out of a path so a scrubbed URL can't be joined back to a
+ * specific member. Deliberately the same three rules, in the same order, as
+ * frontend/src/utils/analytics.ts's stripIdentifiers — the two runtimes
+ * can't share a module (separate packages, no shared lib in this monorepo),
+ * so this is a mirror, not a reference; if you change the masking rules on
+ * one side, change them here too or the two will quietly drift.
+ */
+const ID_SEGMENT_PATTERNS = [
+  /^\d+$/,
+  /^[0-9a-f]{8}-[0-9a-f]{4}/i,
+  // Opaque high-entropy segment: length >= 20, alphanumeric only, mixed
+  // case. Narrow on purpose so it can't fire on an ordinary lowercase route
+  // segment like "members" or "profile".
+  /^(?=.*[a-z])(?=.*[A-Z])[0-9a-zA-Z]{20,}$/,
+];
+const maskIdSegments = (pathname) =>
+  pathname
+    .split('/')
+    .map((seg) => (ID_SEGMENT_PATTERNS.some((re) => re.test(seg)) ? ':id' : seg))
+    .join('/');
+
+/**
+ * Strips a URL down to its path, with id-shaped segments masked. Several
+ * routes carry ?email= and ?phone= (the Firebase profile lookup among them)
+ * — the query string is dropped entirely by new URL(...).pathname / the
+ * split('?') fallback — and the Firebase profile route itself carries the
+ * member's Firebase UID as a *path* segment
+ * (/api/members/profile/firebase/<uid>), which maskIdSegments catches.
  */
 const stripUrl = (url) => {
   if (typeof url !== 'string') return url;
   try {
-    return new URL(url).pathname;
+    return maskIdSegments(new URL(url).pathname);
   } catch (_) {
-    return url.split('?')[0];
+    return maskIdSegments(url.split('?')[0]);
   }
 };
 
@@ -168,10 +195,15 @@ const scrubTags = (tags) => {
  *                      integration populates this independently of
  *                      request.url, so stripping the URL's query string
  *                      does not cover this field.
- *   - request.env       deleted outright. Can carry REMOTE_ADDR (client IP)
- *                      and other server env vars; sendDefaultPii:false
- *                      should keep this unpopulated already, but there is
- *                      no reason to trust that instead of just deleting it.
+ *   - request.env       deleted outright. Documented by Sentry as able to
+ *                      carry REMOTE_ADDR (client IP) and other server env
+ *                      vars, though the installed @sentry/node@10.69.0 does
+ *                      not appear to populate it in practice — client IP
+ *                      instead lands on event.user.ip_address, which is
+ *                      deleted unconditionally above. The deletion here is
+ *                      defensive insurance against a future SDK version (or
+ *                      an integration this app adds later) starting to
+ *                      populate it, not a fix for a live leak.
  *   - breadcrumbs      scrubbed per-breadcrumb; see scrubBreadcrumb above.
  *   - tags             filtered through a closed allowlist; see scrubTags.
  *   - contexts         left alone deliberately, not by omission: this app
