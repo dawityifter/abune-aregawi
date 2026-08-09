@@ -10,9 +10,38 @@
  * build without them behaves exactly as before.
  */
 
+import type { RoleGroup } from './roleGroup';
+
 const SRC = process.env.REACT_APP_UMAMI_SRC;
 const WEBSITE_ID = process.env.REACT_APP_UMAMI_WEBSITE_ID;
 const SCRIPT_ID = 'umami-analytics';
+
+/**
+ * Set once by AnalyticsTracker whenever auth state changes. Module-level
+ * because exactly one tracker is mounted for the app's lifetime, and because
+ * this module deliberately has no React dependency.
+ *
+ * A group, never an identity: three coarse buckets cannot single out a member,
+ * which keeps the Umami dataset as anonymous as it is today.
+ */
+let roleGroup: RoleGroup = 'visitor';
+
+export const setRoleGroup = (group: RoleGroup): void => {
+  roleGroup = group;
+};
+
+/**
+ * Builds the payload for an outgoing event.
+ *
+ * Exported for testing, and worth keeping that way: isAnalyticsEnabled() is
+ * false outside production, so a test that called trackEvent and inspected
+ * window.umami.track would assert over an empty call list and pass no matter
+ * what this code did. This is the part with actual behaviour in it.
+ */
+export const buildEventData = (data?: Record<string, unknown>): Record<string, unknown> => ({
+  ...data,
+  role_group: roleGroup,
+});
 
 declare global {
   interface Window {
@@ -57,7 +86,7 @@ export function initAnalytics(): void {
  */
 export function trackPageView(path: string): void {
   if (!isAnalyticsEnabled()) return;
-  window.umami?.track('pageview', { url: stripIdentifiers(path) });
+  window.umami?.track('pageview', buildEventData({ url: stripIdentifiers(path) }));
 }
 
 /**
@@ -66,7 +95,7 @@ export function trackPageView(path: string): void {
  */
 export function trackEvent(name: string, data?: Record<string, unknown>): void {
   if (!isAnalyticsEnabled()) return;
-  window.umami?.track(name, data);
+  window.umami?.track(name, buildEventData(data));
 }
 
 /**
