@@ -1,6 +1,7 @@
 import React from 'react';
 import { isChunkLoadError } from '../utils/lazyWithRecovery';
 import { dictionaries, type Lang } from '../i18n/dictionaries';
+import { reportError } from '../lib/errorTracking';
 
 const LANG_STORAGE_KEY = 'app.lang';
 
@@ -60,6 +61,11 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('🚨 ErrorBoundary componentDidCatch:', error, errorInfo);
+
+    // reportError swallows its own failures: this component is the crash
+    // fallback, and a throw inside error reporting would defeat the entire
+    // point of the boundary.
+    reportError(error, { component: 'ErrorBoundary' });
 
     // Check if this is the timeout error we're looking for
     if (error.message && (error.message.includes('Timeout') || error.message.includes('timeout'))) {

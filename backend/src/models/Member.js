@@ -283,6 +283,10 @@ module.exports = (sequelize) => {
       defaultValue: 'maybe',
       comment: 'Whether the member is interested in serving in ministries',
       field: 'interested_in_serving'
+    },
+    lastSeenAt: {
+      type: DataTypes.DATE,
+      allowNull: true
     }
   }, {
     sequelize,

@@ -26,6 +26,15 @@ clientsClaim();
  * `grep` the source for these words proves nothing; only inspecting the
  * compiled manifest in build/service-worker.js does.
  *
+ * "sentry" is in this list for the same reason, not a staff-route reason:
+ * lib/errorTracking.ts loads @sentry/react via a dynamic import specifically
+ * so a build with no DSN configured (true today) never makes a member
+ * download it. That import carries a matching webpackChunkName. Without it
+ * here too, the chunk would fall back to an unnamed numeric id, match
+ * nothing below, and get precached onto every phone regardless of whether
+ * error tracking is even turned on — silently defeating the point of
+ * dynamic-importing it in the first place.
+ *
  * Known limitation, accepted rather than fixed: filename matching cannot see
  * inside webpack's *shared* chunks. A module imported by both a staff route and
  * a member route (e.g. MemberDuesViewer/AddPaymentModal, currently bundled
@@ -37,7 +46,7 @@ clientsClaim();
  * nothing staff-related — it only proves it isn't *exclusively* a staff route.
  */
 precacheAndRoute(
-  self.__WB_MANIFEST.filter((entry) => !/(admin|treasurer|outreach|sms)/.test(entry.url))
+  self.__WB_MANIFEST.filter((entry) => !/(admin|treasurer|outreach|sms|sentry)/.test(entry.url))
 );
 
 // Navigations render from the precached shell, so a cold offline launch shows

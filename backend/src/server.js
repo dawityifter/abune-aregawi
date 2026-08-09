@@ -1,4 +1,10 @@
 require('dotenv').config();
+
+// Must run before express (or anything express pulls in, like http) is
+// required below — see the comment in instrument.js for why order here is
+// load-bearing, not stylistic.
+require('./instrument');
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -55,6 +61,7 @@ const settingRoutes = require('./routes/settingRoutes');
 const statementRoutes = require('./routes/statementRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const { assertDemoModeNotEnabledInProduction } = require('./config/demoMode');
+const { reportError } = require('./utils/telemetry');
 const { startLedgerSheetsScheduler } = require('./jobs/ledgerSheets/scheduler');
 const { startZelleSyncScheduler } = require('./jobs/zelleSyncScheduler');
 const donationController = require('./controllers/donationController');
@@ -290,6 +297,10 @@ app.use('*', (req, res) => {
 app.use((error, req, res, next) => {
   console.error('Global error handler:', error);
 
+  // Best-effort; reportError swallows its own failures so a telemetry outage
+  // cannot turn a 500 into a hang.
+  reportError(error, { route: req.route?.path || 'unknown', method: req.method });
+
   res.status(error.status || 500).json({
     success: false,
     message: error.message || 'Internal server error',
@@ -303,7 +314,11 @@ const startServer = async () => {
     console.log('🚀 Starting server...');
 
     // Fail before binding a port rather than serving traffic with a bypass the
-    // operator believes is off.
+    // operator believes is off. (Telemetry is already initialized by this
+    // point — require('./instrument') above runs at module load, before this
+    // function is even called — but that has no bearing on this check: it
+    // still runs, and still exits the process the same way, regardless of
+    // what ran before it.)
     assertDemoModeNotEnabledInProduction();
 
     // Debug environment variables

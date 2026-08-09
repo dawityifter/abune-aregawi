@@ -193,4 +193,14 @@ const logger = {
   }
 };
 
+// redactSensitive is exported alongside the logger so telemetry.js can use the
+// same redaction rules rather than growing a second, divergent copy. Note it
+// only redacts a fixed list of *known field names* (email, phone, address,
+// ...) wherever they appear in the object tree — it recurses into nested
+// objects/arrays re-checking that same fixed list at every level, but it has
+// no idea what a "phone number" looks like by shape or value, and it does
+// nothing for a field name it doesn't recognize (e.g. `amount_due`, or a PII
+// value embedded inside a free-text string like an Error message). See
+// telemetry.js for what that implies for a Sentry event.
 module.exports = logger;
+module.exports.redactSensitive = redactSensitive;

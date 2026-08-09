@@ -4,6 +4,7 @@
   "private": true,
   "homepage": "https://abune-aregawi-church-dallas.web.app",
   "dependencies": {
+    "@sentry/react": "^10.69.0",
     "@stripe/react-stripe-js": "^3.9.0",
     "@stripe/stripe-js": "^7.8.0",
     "@tailwindcss/forms": "^0.5.10",

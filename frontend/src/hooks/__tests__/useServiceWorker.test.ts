@@ -1,5 +1,10 @@
 import { renderHook, act } from '@testing-library/react';
 import { useServiceWorker } from '../useServiceWorker';
+import { trackEvent } from '../../utils/analytics';
+
+jest.mock('../../utils/analytics', () => ({
+  trackEvent: jest.fn(),
+}));
 
 /**
  * The hook is the only thing the app talks to. Registration failing must never
@@ -287,5 +292,40 @@ describe('useServiceWorker', () => {
       restore();
       jest.useRealTimers();
     }
+  });
+});
+
+describe('PWA analytics events', () => {
+  beforeEach(() => {
+    (trackEvent as jest.Mock).mockClear();
+    sessionStorage.clear();
+  });
+
+  it('reports a standalone session exactly once per session', () => {
+    window.matchMedia = jest.fn().mockReturnValue({ matches: true }) as any;
+
+    const { unmount } = renderHook(() => useServiceWorker());
+    unmount();
+    renderHook(() => useServiceWorker());
+
+    const standalone = (trackEvent as jest.Mock).mock.calls
+      .filter(([name]) => name === 'pwa_standalone_session');
+    expect(standalone).toHaveLength(1);
+  });
+
+  it('does not report a standalone session in a browser tab', () => {
+    window.matchMedia = jest.fn().mockReturnValue({ matches: false }) as any;
+
+    renderHook(() => useServiceWorker());
+
+    expect((trackEvent as jest.Mock).mock.calls
+      .filter(([name]) => name === 'pwa_standalone_session')).toHaveLength(0);
+  });
+
+  it('reports the outcome when a member dismisses the install offer', () => {
+    const { result } = renderHook(() => useServiceWorker());
+    act(() => { result.current.dismissInstall(); });
+
+    expect(trackEvent).toHaveBeenCalledWith('pwa_install_prompt', { outcome: 'dismissed' });
   });
 });
