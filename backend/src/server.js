@@ -55,6 +55,7 @@ const settingRoutes = require('./routes/settingRoutes');
 const statementRoutes = require('./routes/statementRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const { assertDemoModeNotEnabledInProduction } = require('./config/demoMode');
+const { initTelemetry, reportError } = require('./utils/telemetry');
 const { startLedgerSheetsScheduler } = require('./jobs/ledgerSheets/scheduler');
 const { startZelleSyncScheduler } = require('./jobs/zelleSyncScheduler');
 const donationController = require('./controllers/donationController');
@@ -290,6 +291,10 @@ app.use('*', (req, res) => {
 app.use((error, req, res, next) => {
   console.error('Global error handler:', error);
 
+  // Best-effort; reportError swallows its own failures so a telemetry outage
+  // cannot turn a 500 into a hang.
+  reportError(error, { route: req.route?.path || 'unknown', method: req.method });
+
   res.status(error.status || 500).json({
     success: false,
     message: error.message || 'Internal server error',
@@ -305,6 +310,9 @@ const startServer = async () => {
     // Fail before binding a port rather than serving traffic with a bypass the
     // operator believes is off.
     assertDemoModeNotEnabledInProduction();
+
+    // Inert without SENTRY_DSN — a deploy without it behaves exactly as before.
+    initTelemetry();
 
     // Debug environment variables
     console.log('🔍 Server Environment Debug:');
