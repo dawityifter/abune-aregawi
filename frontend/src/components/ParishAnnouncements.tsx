@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
 import { useI18n } from '../i18n/I18nProvider';
+import { trackEvent } from '../utils/analytics';
 
 /**
  * The parish already stores announcements — bilingual, date-bounded, editable
@@ -64,6 +65,17 @@ const ParishAnnouncements: React.FC<{ variant?: Variant }> = ({ variant = 'home'
       active = false;
     };
   }, []);
+
+  // Fires only when items actually rendered — the early return below means a
+  // failed fetch or an empty parish reports nothing at all.
+  //
+  // "rendered", not "seen": there is no IntersectionObserver here and this makes
+  // no claim about the member's viewport. It answers reach, not readership;
+  // readership needs an affordance announcements do not currently have.
+  useEffect(() => {
+    if (!loaded || failed || announcements.length === 0) return;
+    trackEvent('announcement_block_rendered', { count: announcements.length });
+  }, [loaded, failed, announcements.length]);
 
   // Choose the member's language, falling back to English rather than showing
   // an empty card when a translation has not been written yet.
