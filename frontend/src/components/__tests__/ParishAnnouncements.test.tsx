@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import ParishAnnouncements from '../ParishAnnouncements';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { trackEvent } from '../../utils/analytics';
@@ -29,6 +29,17 @@ const mockFetch = (body: unknown, ok = true) => {
     json: async () => body,
   }) as unknown as typeof fetch;
 };
+
+/**
+ * Drains the fetch → json() → setState promise chain in the component's
+ * effect. A `setTimeout(0)` macrotask only runs after the JS engine has
+ * exhausted every currently-queued microtask, so this settles the chain
+ * regardless of how many `.then` hops it has — unlike `waitFor`, whose
+ * callback is checked immediately and would pass on a "not yet called"
+ * assertion before the fetch promise ever resolves.
+ */
+const flushEffects = () =>
+  act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
 describe('ParishAnnouncements', () => {
   afterEach(() => {
@@ -194,13 +205,17 @@ describe('announcement reach reporting', () => {
     mockFetch({ success: true, data: [] });
     renderWithI18n(<ParishAnnouncements />);
 
-    await waitFor(() => expect(trackEvent).not.toHaveBeenCalled());
+    // Must wait for the fetch → setState chain to actually settle before
+    // asserting a negative — see flushEffects above.
+    await flushEffects();
+    expect(trackEvent).not.toHaveBeenCalled();
   });
 
   it('reports nothing when the fetch fails', async () => {
     mockFetch({}, false);
     renderWithI18n(<ParishAnnouncements />);
 
-    await waitFor(() => expect(trackEvent).not.toHaveBeenCalled());
+    await flushEffects();
+    expect(trackEvent).not.toHaveBeenCalled();
   });
 });
