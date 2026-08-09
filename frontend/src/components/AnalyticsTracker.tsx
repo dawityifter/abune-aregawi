@@ -31,9 +31,21 @@ const AnalyticsTracker: React.FC = () => {
     setRoleGroup(resolveRoleGroup(roles));
   }, [user]);
 
+  // Deliberately no `user` dependency here, even though the pageview should
+  // be tagged with the right role_group. That tagging already happens: the
+  // setRoleGroup effect above is DECLARED FIRST, so on any render where both
+  // effects' deps changed (e.g. a route change that follows a sign-in),
+  // React runs setRoleGroup before this one and trackPageView reads the
+  // already-updated module-level roleGroup. Adding `user` here buys nothing
+  // and actively hurts: on a cold load by a signed-in member, this effect
+  // fires once on mount (user === null, tagged 'visitor') and again the
+  // moment the profile fetch resolves (user set, tagged 'member'/'staff') —
+  // the same URL counted twice, with the second count polluting the
+  // 'visitor' bucket with authenticated traffic. Do not add `user` back.
   useEffect(() => {
     trackPageView(location.pathname + location.search);
-  }, [location.pathname, location.search, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search]);
 
   return null;
 };

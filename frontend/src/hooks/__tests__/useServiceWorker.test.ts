@@ -1,5 +1,10 @@
 import { renderHook, act } from '@testing-library/react';
 import { useServiceWorker } from '../useServiceWorker';
+import { trackEvent } from '../../utils/analytics';
+
+jest.mock('../../utils/analytics', () => ({
+  trackEvent: jest.fn(),
+}));
 
 /**
  * The hook is the only thing the app talks to. Registration failing must never
@@ -289,12 +294,6 @@ describe('useServiceWorker', () => {
     }
   });
 });
-
-import { trackEvent } from '../../utils/analytics';
-
-jest.mock('../../utils/analytics', () => ({
-  trackEvent: jest.fn(),
-}));
 
 describe('PWA analytics events', () => {
   beforeEach(() => {
