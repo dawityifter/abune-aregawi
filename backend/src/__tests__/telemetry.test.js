@@ -151,6 +151,19 @@ describe('scrubEvent', () => {
       const scrubbed = scrubEvent(event);
       expect(scrubbed.tags.route).toBeUndefined();
     });
+
+    it('drops a non-allowlisted key even when its value is not PII-shaped', () => {
+      // Isolates the allowlist from the PII-value check. The two tests above
+      // both use PII-shaped values (an email address), so either control
+      // alone would make them pass — they don't prove the allowlist itself
+      // is doing anything. A value like '482' matches neither EMAIL_PATTERN
+      // nor PHONE_PATTERN, so the PII-value check has nothing to catch here;
+      // this only passes if ALLOWED_TAG_KEYS.has(key) is actually filtering.
+      const event = { tags: { route: '/api/members/:id', memberId: '482' } };
+      const scrubbed = scrubEvent(event);
+      expect(scrubbed.tags.memberId).toBeUndefined();
+      expect(scrubbed.tags.route).toBe('/api/members/:id');
+    });
   });
 
   describe('exception message', () => {
