@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CONTROLLER_CHANGE_TIMEOUT_MS } from '../utils/lazyWithRecovery';
+import { trackEvent } from '../utils/analytics';
 
 const DISMISS_KEY = 'pwa.installDismissed';
+const STANDALONE_REPORTED_KEY = 'pwa.standaloneReported';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -146,10 +148,26 @@ export const useServiceWorker = () => {
       // !dismissed), not here, so there is exactly one place that decides
       // whether a dismissed member sees the offer again.
       setRawCanInstall(true);
+      trackEvent('pwa_install_prompt', { outcome: 'shown' });
     };
 
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+  }, []);
+
+  // Reported once per session, not per page: a member navigating ten screens
+  // inside the installed app is one standalone session, not ten.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!window.matchMedia?.('(display-mode: standalone)')?.matches) return;
+    try {
+      if (sessionStorage.getItem(STANDALONE_REPORTED_KEY) === 'true') return;
+      sessionStorage.setItem(STANDALONE_REPORTED_KEY, 'true');
+    } catch {
+      // Safari private mode throws on sessionStorage; reporting twice is a far
+      // smaller problem than the hook throwing, so fall through and report.
+    }
+    trackEvent('pwa_standalone_session');
   }, []);
 
   const promptInstall = useCallback(() => {
@@ -157,11 +175,18 @@ export const useServiceWorker = () => {
     if (!event) return;
     event.prompt();
     setRawCanInstall(false);
+    // userChoice is the only way to distinguish an install from a decline.
+    // A rejection here means the browser dismissed the prompt without telling
+    // us how, which is not worth surfacing to the member.
+    event.userChoice
+      .then(({ outcome }) => trackEvent('pwa_install_prompt', { outcome }))
+      .catch(() => {});
   }, []);
 
   const dismissInstall = useCallback(() => {
     try { localStorage.setItem(DISMISS_KEY, 'true'); } catch { /* private mode */ }
     setDismissed(true);
+    trackEvent('pwa_install_prompt', { outcome: 'dismissed' });
   }, []);
 
   const canInstall = rawCanInstall && !dismissed;
