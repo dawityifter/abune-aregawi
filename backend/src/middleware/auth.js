@@ -5,6 +5,7 @@ const { Member } = require('../models');
 const logger = require('../utils/logger');
 const path = require('path');
 const { isDemoToken, DEMO_UID, DEMO_PHONE, DEMO_EMAIL } = require('../config/demoMode');
+const { recordLastSeen } = require('../utils/recordLastSeen');
 
 // Initialize Firebase Admin with better error handling
 let firebaseInitialized = false;
@@ -285,6 +286,11 @@ const firebaseAuthMiddleware = async (req, res, next) => {
 
     // Resolved member (avoid logging PII such as name/email/phone)
     console.log(`🔵 Authenticated member id=${member.id} role=${member.role}`);
+
+    // Fire-and-forget: throttled internally, never awaited, never throws.
+    // Runs once here regardless of which branch above resolved `member`, so
+    // "did this member come back" is measured on every authenticated request.
+    recordLastSeen(member);
 
     // Sync Firebase UID if it has changed (e.g. user deleted and re-created in Firebase)
     if (member.firebase_uid !== decodedToken.uid) {
