@@ -3,7 +3,9 @@
 React 19 + TypeScript 4.9 app built on Create React App (react-scripts 5). Tailwind CSS
 (+ forms/typography plugins), react-router v6, axios (dev proxy to `http://localhost:5001`),
 Firebase Auth (client SDK), Stripe React elements for giving, TipTap rich text,
-react-markdown. Deployed to Firebase Hosting (abune-aregawi-church-dallas.web.app).
+react-markdown. Deployed to Firebase Hosting — project `abune-aregawi-church-app`
+(see `frontend/.firebaserc`), served at abune-aregawi-church-app.web.app. The API
+lives on a different host, https://api.abunearegawi.church.
 
 ## Folder map (src/)
 
