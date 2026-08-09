@@ -51,6 +51,14 @@ jobs:
           # exactly as it did before.
           REACT_APP_UMAMI_SRC: ${{ secrets.REACT_APP_UMAMI_SRC }}
           REACT_APP_UMAMI_WEBSITE_ID: ${{ secrets.REACT_APP_UMAMI_WEBSITE_ID }}
+          # Sentry error tracking. Inlined at build time for the same reason as
+          # the Umami vars above. Absent or empty means the Sentry chunk is
+          # never even fetched, so members pay nothing for it.
+          #
+          # Not a confidentiality risk: a DSN is a write-only ingest key and
+          # ends up readable in the published bundle by design. It lives in
+          # secrets for consistency with everything else here, not secrecy.
+          REACT_APP_SENTRY_DSN: ${{ secrets.REACT_APP_SENTRY_DSN }}
       
       # A build missing its secrets does not fail — Create React App simply
       # inlines whatever it finds, so a development .env produces a bundle that
