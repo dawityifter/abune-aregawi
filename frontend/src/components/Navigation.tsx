@@ -81,8 +81,14 @@ const Navigation: React.FC = () => {
 
   // Show navigation on all pages including home page
 
+  // pt-safe-t, not a fixed offset: the bar's gradient fills the status-bar
+  // area (so it reads as one deliberate surface rather than a gap), while the
+  // h-16 content row below it stays reachable. Without it the whole row —
+  // hamburger, home link, Sign In — renders under the status bar in the
+  // installed PWA and is invisible, because index.html pairs viewport-fit=cover
+  // with a black-translucent status bar. Mirrors BottomNav's pb-safe-b.
   return (
-    <nav className="bg-gradient-to-r from-primary-700 to-primary-800 shadow-lg fixed w-full z-50 print:hidden">
+    <nav className="bg-gradient-to-r from-primary-700 to-primary-800 shadow-lg fixed w-full z-50 print:hidden pt-safe-t">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           {/* Church Name - Home Link */}

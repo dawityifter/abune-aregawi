@@ -227,7 +227,7 @@ const MeetingDetailsPage: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 pt-top-nav flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
             </div>
         );
@@ -235,7 +235,7 @@ const MeetingDetailsPage: React.FC = () => {
 
     if (error || !meeting) {
         return (
-            <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 pt-top-nav flex items-center justify-center">
                 <div className="text-center">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">
                         {error || t('meeting.notFound')}
@@ -252,7 +252,7 @@ const MeetingDetailsPage: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pt-16">
+        <div className="min-h-screen bg-gray-50 pt-top-nav">
             <main className="max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8 print:max-w-none print:py-0 print:px-0">
                 <div className="hidden print:block mb-8 border-b-2 border-gray-900 pb-5">
                     <div className="text-center">

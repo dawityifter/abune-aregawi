@@ -139,7 +139,7 @@ const DuesPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-16 bg-gray-100" data-testid="dues-skeleton">
+      <div className="min-h-screen pt-top-nav bg-gray-100" data-testid="dues-skeleton">
         <div className="max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-4">
           <div className="h-24 rounded-xl bg-gray-200 overflow-hidden relative">
             <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/60 to-transparent" />
@@ -167,7 +167,7 @@ const DuesPage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen pt-16 bg-gray-100 flex items-center justify-center p-6">
+      <div className="min-h-screen pt-top-nav bg-gray-100 flex items-center justify-center p-6">
         <div className="max-w-xl w-full bg-white shadow rounded-xl p-6 text-center">
           <div className="text-red-600 mb-4">{error}</div>
           <button onClick={() => { setLoading(true); setError(null); fetchDues(); }} className="bg-primary-600 text-white px-4 py-2 rounded-lg">
@@ -193,7 +193,7 @@ const DuesPage: React.FC = () => {
   const curMonthIdx = new Date().getMonth();
 
   return (
-    <div className="min-h-screen pt-16 bg-gray-100">
+    <div className="min-h-screen pt-top-nav bg-gray-100">
       <main className="max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-4">
 
         {/* Red Header Banner */}

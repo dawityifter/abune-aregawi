@@ -239,7 +239,7 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16" style={bgStyle}>
+    <div className="min-h-screen bg-gray-50 pt-top-nav" style={bgStyle}>
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">

@@ -208,7 +208,7 @@ const DependentsManagement: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen bg-gray-50 pt-top-nav">
       <div className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">{t('dependentsPage.title')}</h2>

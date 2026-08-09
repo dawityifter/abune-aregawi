@@ -69,6 +69,17 @@ module.exports = {
       },
       spacing: {
         'safe-b': 'env(safe-area-inset-bottom)',
+        // The status-bar/Dynamic Island inset. index.html sets
+        // viewport-fit=cover with a black-translucent status bar, so in the
+        // installed PWA the page renders UNDERNEATH it — a fixed bar at top:0
+        // is simply not visible. Mobile Safari hides this, because its own
+        // chrome pushes content down; only a real notched device in
+        // standalone mode shows it.
+        'safe-t': 'env(safe-area-inset-top)',
+        // Top nav height (4rem) plus that inset. Page wrappers use this to
+        // clear the fixed nav; a literal pt-16 leaves their first 47-59px
+        // hidden behind it on a notched phone.
+        'top-nav': 'calc(4rem + env(safe-area-inset-top))',
         // Bar height (4rem) plus the home-indicator inset. Used as bottom
         // padding on page content so the bar never covers the last element.
         'bottom-nav': 'calc(4rem + env(safe-area-inset-bottom))',
