@@ -4,6 +4,23 @@ import './index.css';
 import App from './App';
 import { I18nProvider } from './i18n/I18nProvider';
 import reportWebVitals from './reportWebVitals';
+import { initErrorTracking, reportError } from './lib/errorTracking';
+
+// No-ops without REACT_APP_SENTRY_DSN, outside production, or under Do Not
+// Track — see lib/errorTracking.ts. Safe to call unconditionally here.
+initErrorTracking();
+
+// Promise rejections never reach an ErrorBoundary, so without this listener
+// they would be invisible to error tracking — and this app's data fetching
+// is promise-based throughout. Kept separate from the reCAPTCHA-suppression
+// listener below: that one only quiets a known-benign console message, it
+// does not stop this listener (or any other) from also seeing the event.
+window.addEventListener('unhandledrejection', (event) => {
+  const reason = event.reason;
+  reportError(reason instanceof Error ? reason : new Error(String(reason)), {
+    component: 'unhandledrejection',
+  });
+});
 
 // Suppress noisy reCAPTCHA timeouts that can occur after navigation
 // when Firebase's reCAPTCHA script rejects internally. We ignore only
