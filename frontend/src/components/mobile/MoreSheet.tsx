@@ -35,7 +35,7 @@ const getFocusableElements = (container: HTMLElement | null): HTMLElement[] =>
 const MoreSheet: React.FC<MoreSheetProps> = ({
   open, onClose, canInstall, isIos, onInstall, onDismissInstall
 }) => {
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const { currentUser, logout, getUserProfile } = useAuth();
   const [userProfile, setUserProfile] = useState<any>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -172,6 +172,45 @@ const MoreSheet: React.FC<MoreSheetProps> = ({
           >
             {t('mobileNav.closeMore')}
           </button>
+        </div>
+
+        {/* First item in the sheet, deliberately. This is the one control a
+            member may need BEFORE they can read anything else here: someone
+            who reads only Tigrigna cannot navigate an English menu to find
+            the language setting. Both options stay in their own script and
+            are never translated, so ትግርኛ is recognisable without reading the
+            surrounding UI.
+
+            The sheet does not close on selection. Every label in it re-renders
+            in the new language, and that is the confirmation the tap worked —
+            closing would hide the only feedback there is. */}
+        <div className="px-4 pb-3">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+            {t('language')}
+          </p>
+          <div className="flex rounded-lg overflow-hidden border border-gray-300">
+            <button
+              type="button"
+              aria-pressed={lang === 'en'}
+              onClick={() => setLang('en')}
+              className={`flex-1 min-h-[44px] px-4 text-sm font-medium ${
+                lang === 'en' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'
+              }`}
+            >
+              English
+            </button>
+            <div className="w-px bg-gray-300" aria-hidden="true" />
+            <button
+              type="button"
+              aria-pressed={lang === 'ti'}
+              onClick={() => setLang('ti')}
+              className={`flex-1 min-h-[44px] px-4 text-sm font-medium ${
+                lang === 'ti' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'
+              }`}
+            >
+              ትግርኛ
+            </button>
+          </div>
         </div>
 
         {(canInstall || isIos) && (

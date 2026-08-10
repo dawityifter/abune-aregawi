@@ -6,12 +6,19 @@ import { MemoryRouter } from 'react-router-dom';
 import MoreSheet from '../MoreSheet';
 import { en } from '../../../i18n/dictionaries';
 
+// `lang` and `setLang` are reachable from the tests, unlike the inline
+// jest.fn() this replaced: the language control asserts on which language is
+// marked current and on what a tap requests, and neither is observable when
+// the mock mints a fresh spy per render.
+let mockLang: 'en' | 'ti' = 'en';
+const mockSetLang = jest.fn();
+
 jest.mock('../../../i18n/I18nProvider', () => ({
   useI18n: () => {
     const dicts = jest.requireActual('../../../i18n/dictionaries');
     return {
-      lang: 'en',
-      setLang: jest.fn(),
+      get lang() { return mockLang; },
+      setLang: (...args: any[]) => mockSetLang(...args),
       t: (key: string) => {
         const walk = (o: any) => key.split('.').reduce((acc: any, k) => acc?.[k], o);
         return dicts.en[key] ?? walk(dicts.en) ?? key;
@@ -66,7 +73,52 @@ beforeEach(() => {
 afterEach(() => {
   mockCurrentUser = null;
   mockProfile = null;
+  mockLang = 'en';
   document.body.style.overflow = '';
+});
+
+describe('MoreSheet language control', () => {
+  /**
+   * The bottom sheet is the menu members actually reach for once the app is
+   * installed — the top bar's hamburger is the older, less obvious path. The
+   * switcher lived only in that hamburger, so for a parish that is half
+   * Tigrigna-speaking the language control was effectively missing from the
+   * app's primary menu.
+   */
+
+  it('offers both languages in their own scripts', () => {
+    renderSheet();
+    // Not translated strings: a member who reads only Tigrigna has to be able
+    // to recognise ትግርኛ without first being able to read the English UI.
+    expect(screen.getByRole('button', { name: 'English' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ትግርኛ' })).toBeInTheDocument();
+  });
+
+  it('marks the active language so the current choice is visible', () => {
+    mockLang = 'ti';
+    renderSheet();
+    expect(screen.getByRole('button', { name: 'ትግርኛ' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('switches the language when tapped', async () => {
+    renderSheet();
+    await userEvent.click(screen.getByRole('button', { name: 'ትግርኛ' }));
+    expect(mockSetLang).toHaveBeenCalledWith('ti');
+  });
+
+  it('stays open after switching, so the relabelled sheet is the confirmation', async () => {
+    const onClose = jest.fn();
+    render(
+      <MemoryRouter>
+        <MoreSheet open onClose={onClose} {...defaultInstallProps} />
+      </MemoryRouter>
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'ትግርኛ' }));
+    // Closing would hide the one piece of feedback that the tap worked: every
+    // label in this sheet re-rendering in the new language.
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });
 
 describe('MoreSheet', () => {
