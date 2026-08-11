@@ -46,7 +46,16 @@ export const buildEventData = (data?: Record<string, unknown>): Record<string, u
 declare global {
   interface Window {
     umami?: {
-      track: (event: string, data?: Record<string, unknown>) => void;
+      // Two call shapes: a named custom event (`track('name', data)`), or a
+      // callback that receives and returns the tracker's auto-collected
+      // payload — the form trackPageView uses so a hit is stored as a
+      // native page view rather than a same-named custom event.
+      track: {
+        (event: string, data?: Record<string, unknown>): void;
+        (
+          callback: (props: Record<string, unknown>) => Record<string, unknown>
+        ): void;
+      };
     };
   }
 }
@@ -83,10 +92,29 @@ export function initAnalytics(): void {
  * Records a page view. The path is passed through untouched apart from
  * stripping query strings, which can carry a member id or an email on the
  * registration and reconciliation flows.
+ *
+ * Deliberately NOT `window.umami.track('pageview', data)`. Passing a string
+ * as the first argument makes Umami store the hit as a *custom event* named
+ * "pageview" (event_type 2) rather than a native page view (event_type 1) —
+ * it does not special-case the literal string "pageview". That mistake is
+ * why the Umami dashboard's Views/Pages/Referrers/Sources panels stayed
+ * empty even while real traffic was landing: every hit was filed as a
+ * same-named custom event instead. The callback form below receives the
+ * tracker's auto-collected payload (url, referrer, hostname, screen,
+ * language, title — no `name` field), and returning it without adding a
+ * `name` is what tells Umami this is a genuine page view. Overriding `url`
+ * on that payload (rather than nesting it inside `data`, as the old code
+ * did) is what makes the *stripped* path the one Umami stores and shows in
+ * Pages/Referrers, instead of the raw unstripped URL the script would have
+ * collected automatically.
  */
 export function trackPageView(path: string): void {
   if (!isAnalyticsEnabled()) return;
-  window.umami?.track('pageview', buildEventData({ url: stripIdentifiers(path) }));
+  window.umami?.track((props) => ({
+    ...props,
+    url: stripIdentifiers(path),
+    data: buildEventData(),
+  }));
 }
 
 /**

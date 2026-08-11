@@ -92,3 +92,60 @@ describe('role_group tagging', () => {
     expect(Object.keys(buildEventData())).toEqual(['role_group']);
   });
 });
+
+describe('trackPageView', () => {
+  // isAnalyticsEnabled() is false in the test environment (no
+  // REACT_APP_UMAMI_SRC/WEBSITE_ID, NODE_ENV !== 'production'), so a plain
+  // import of trackPageView would no-op and prove nothing about what it
+  // sends. Re-import the module with that gate deliberately open, same
+  // pattern as errorTracking.test.ts, so window.umami.track's call shape is
+  // the thing under test.
+  const originalSrc = process.env.REACT_APP_UMAMI_SRC;
+  const originalWebsiteId = process.env.REACT_APP_UMAMI_WEBSITE_ID;
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  let withUmami: typeof import('../analytics');
+  let track: jest.Mock;
+
+  beforeEach(() => {
+    jest.resetModules();
+    process.env.REACT_APP_UMAMI_SRC = 'https://analytics.example.church/script.js';
+    process.env.REACT_APP_UMAMI_WEBSITE_ID = 'test-website-id';
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    withUmami = require('../analytics') as typeof import('../analytics');
+    process.env.NODE_ENV = 'production';
+    track = jest.fn();
+    window.umami = { track: track as unknown as NonNullable<Window['umami']>['track'] };
+  });
+
+  afterEach(() => {
+    delete window.umami;
+    process.env.REACT_APP_UMAMI_SRC = originalSrc;
+    process.env.REACT_APP_UMAMI_WEBSITE_ID = originalWebsiteId;
+    process.env.NODE_ENV = originalNodeEnv;
+    jest.resetModules();
+  });
+
+  it('calls track with a callback, never a string, so Umami never files the hit as a custom event named "pageview"', () => {
+    withUmami.trackPageView('/dues?memberId=482');
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(typeof track.mock.calls[0][0]).toBe('function');
+  });
+
+  it('overrides url on the auto-collected payload with the stripped path, and adds no `name` field', () => {
+    withUmami.trackPageView('/departments/17?memberId=482');
+    const callback = track.mock.calls[0][0];
+    const result = callback({ url: '/departments/17?memberId=482', referrer: '', hostname: 'x' });
+    expect(result.url).toBe('/departments/:id');
+    expect(result.name).toBeUndefined();
+    expect(result.hostname).toBe('x'); // rest of the auto-collected payload passes through untouched
+  });
+
+  it('still tags the page view with role_group via the data field', () => {
+    withUmami.setRoleGroup('staff');
+    withUmami.trackPageView('/dashboard');
+    const callback = track.mock.calls[0][0];
+    const result = callback({ url: '/dashboard' });
+    expect(result.data).toEqual({ role_group: 'staff' });
+  });
+});
