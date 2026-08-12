@@ -1,6 +1,8 @@
 # Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church
 
-A modern, bilingual church management system built with React, Node.js, and Firebase, featuring member registration, children management, and online giving capabilities.
+A modern, bilingual (English/Tigrigna) church management system built with React, Node.js/Express, Firebase, and PostgreSQL. Features comprehensive member registration, financial tracking, role-based access control, SMS communications, and department management for church operations.
+
+**Status**: ✅ Production-Ready | **Frontend**: Firebase Hosting | **Backend**: OCI Compute | **Database**: Supabase PostgreSQL
 
 ## 🎯 Project Objectives
 
@@ -9,273 +11,409 @@ This application is designed to address the comprehensive needs of church manage
 The system aims to:
 - Centralize leadership activities and documentation
 - Streamline membership and contribution tracking  
-- Digitize financial tracking and reporting
-- Enhance communication and engagement
-- Provide secure role-based access control
-- Foster accountability through clear visibility
-- Support bilingual operations (English/Tigrigna)
+- Digitize financial tracking and reporting with granular role-based permissions
+- Enhance communication and engagement through SMS and department management
+- Provide secure role-based access control (7+ specialized roles)
+- Foster accountability through clear visibility and audit trails
+- Support bilingual operations (English/Tigrigna) with proper internationalization
 
 ## 🏗️ Architecture Overview
 
+### System Architecture Diagram
 ```mermaid
 graph TB
-    subgraph "Frontend (Firebase Hosting)"
-        A[React App] --> B[Firebase Auth]
-        A --> C[API Calls]
+    User["👤 User"]
+    
+    subgraph "Frontend Layer"
+        FE["React 18 + TypeScript<br/>TailwindCSS<br/>Firebase Auth"]
+        i18n["i18n Context<br/>English/Tigrigna"]
     end
     
-    subgraph "Backend (OCI Compute)"
-        D[Node.js/Express] --> E[Sequelize ORM]
-        E --> F[PostgreSQL Database]
+    subgraph "Authentication"
+        FB["Firebase Auth<br/>Phone + Email"]
+        JWT["JWT Tokens<br/>Dual Verification"]
     end
     
-    subgraph ex["External Services"]
-        B --> G[Firebase Auth Service]
-        F --> H[Supabase PostgreSQL]
-        I[Firebase CDN] --> A
+    subgraph "Backend Layer"
+        API["Express.js API<br/>Controllers + Routes"]
+        Services["Service Layer<br/>Business Logic<br/>GL Codes, Payments,<br/>Reconciliation"]
+        Models["Sequelize Models<br/>33 Models,<br/>67+ Migrations"]
     end
     
-    C --> D
-    style A fill:#61dafb
-    style D fill:#68a063
-    style F fill:#336791
-    style G fill:#ffca28
-    style H fill:#3ecf8e
-    style ex fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    subgraph "External Services"
+        Twilio["Twilio<br/>SMS Broadcasting"]
+        Stripe["Stripe<br/>Payments"]
+        Sheets["Google Sheets<br/>Ledger Export"]
+    end
+    
+    subgraph "Data Layer"
+        PG["PostgreSQL 17.4<br/>Supabase"]
+    end
+    
+    User -->|HTTPS| FE
+    FE -->|Auth Flow| FB
+    FE -->|getIdToken| JWT
+    FE -->|API Calls| API
+    FE <-->|Language| i18n
+    
+    API -->|Verify JWT| JWT
+    API -->|Business Rules| Services
+    API -->|Query/Write| Models
+    
+    Services -->|Send SMS| Twilio
+    Services -->|Process Payments| Stripe
+    Services -->|Export Ledger| Sheets
+    
+    Models -->|SQL Queries| PG
+    
+    style FE fill:#61a0d4
+    style Services fill:#8ec5fc
+    style JWT fill:#90EE90
+    style Twilio fill:#FFB6C1
 ```
+
+### Deployment Architecture
+```mermaid
+graph LR
+    Internet["🌐 Internet"]
+    
+    subgraph "Firebase Hosting"
+        FE_PROD["React App<br/>abune-aregawi-church-app.web.app"]
+    end
+    
+    subgraph "OCI Compute (Always-Free)"
+        BE_PROD["Express.js Backend<br/>api.abunearegawi.church<br/>Port 10000"]
+    end
+    
+    subgraph "Supabase"
+        DB_PROD["PostgreSQL 17.4<br/>Free Tier<br/>500MB Storage"]
+    end
+    
+    subgraph "CI/CD"
+        GH["GitHub Actions<br/>on push → main"]
+    end
+    
+    Internet -->|DNS: abune-aregawi-church-app.web.app| FE_PROD
+    FE_PROD -->|HTTPS| BE_PROD
+    BE_PROD -->|TCP 6543<br/>Connection Pool| DB_PROD
+    GH -->|Deploy| FE_PROD
+    GH -->|Deploy SSH| BE_PROD
+    
+    style FE_PROD fill:#FFD700
+    style BE_PROD fill:#90EE90
+    style DB_PROD fill:#87CEEB
+```
+
+### Role-Based Access Control (RBAC)
+
+The system implements 7+ specialized roles with granular permissions:
+
+| Role | Tier | Permissions | Use Case |
+|------|------|-------------|----------|
+| **Guest** | 0 | View-only public content | Non-members, visitors |
+| **Member** | 1 | Profile, personal info, payment history | All registered members (auto-assigned) |
+| **Treasurer** | 2 | All financial operations (legacy, being phased out) | Department heads, finance team |
+| **Bookkeeper** | 3 | Daily financial ops, income/expense recording, bank reconciliation | Finance operations |
+| **AR Team** | 4 | Income/donations only (read/write) | Accounts receivable staff |
+| **AP Team** | 5 | Expenses/vendor payments only (read/write) | Accounts payable staff |
+| **Budget Committee** | 6 | Financial read-only + budget approval authority | Leadership, planning committee |
+| **Auditor** | 7 | Financial and system audit read-only access | External/internal auditors |
+| **Church Leadership** | 8 | Department management, limited financial visibility, SMS access | Pastors, elders, deacons |
+| **Admin** | 9 | Full system access (users, roles, configuration) | System administrators |
+| **Secretary** | 10 | SMS/communication access, member search, basic reporting | Administrative support |
+| **Onboarding Coordinator** | 11 | New member workflow management | Membership intake |
+
+**Permission Categories**:
+- `canManageMembers`: Create/edit member profiles
+- `canManageIncome`: Record donations, pledges, tithes
+- `canManageExpenses`: Record vendor payments, reimbursements
+- `canApprovePayments`: Approve payment requests
+- `canAccessFinancialReports`: View financial dashboards and reports
+- `canManageDepartments`: Create/edit departments and assignments
+- `canSendCommunications`: Send SMS broadcasts
+- `canAccessAuditLogs`: View system audit trails
+- `canManageRoles`: Assign/modify user roles (Admin only)
+
+### Database Schema Overview
+
+**33 Sequelize Models** across key domains:
+
+**Membership**
+- `Member` (id, firebaseUid, firstName, middleName, lastName, email, phoneNumber, status, rolesJson, etc.)
+- `Dependent` (memberId, firstName, relationship, dateOfBirth, etc.)
+- `MemberNote` (memberId, content, createdBy, createdAt, etc.)
+
+**Organization**  
+- `Department` (id, name, type, description, leaderId, parentDepartmentId, isActive, isPublic, etc.)
+- `DepartmentMember` (departmentId, memberId, role, etc.)
+
+**Financial**
+- `Transaction` (id, memberId, amount, type, method, paymentDate, reference, etc.)
+- `LedgerEntry` (id, transactionId, glCode, accountName, amount, description, etc.)
+- `GLCode` (code, name, category, type, isActive, etc.)
+- `MemberLoan` (memberId, amount, disbursedDate, dueDate, status, etc.)
+- `Vendor` (id, name, email, phone, address, paymentTerms, etc.)
+- `ExpenseRequest` (vendorId, amount, description, status, approvedBy, etc.)
+
+**Communication**
+- `SMSLog` (id, senderId, recipientId, departmentId, message, status, sentAt, etc.)
+- `EmailLog` (id, senderId, recipientId, subject, body, status, sentAt, etc.)
+
+**Configuration & Audit**
+- `Role` (name, displayName, permissions, tier, createdAt, etc.)
+- `SystemAuditLog` (userId, action, resourceType, resourceId, changes, ipAddress, timestamp, etc.)
+- `SystemConfig` (key, value, description, updatedBy, updatedAt, etc.)
+
+Plus 10+ other models for payments, pledges, expenses, budget tracking, etc.
+
+**Migration Strategy**:
+- Primary: `backend/migrations/` (sequelize-cli tracked in SequelizeMeta table)
+- Legacy: `backend/src/database/migrations/` (manual ad-hoc scripts for complex operations)
+- See [db-migrations SKILL.md](./.claude/skills/db-migrations/SKILL.md) for detailed procedures
 
 ## 🚀 Deployment Status
 
- | Service | Platform | Status | URL |
- |---------|----------|--------|-----|
- | **Frontend** | Firebase Hosting | ✅ Deployed | [Live Site](https://abune-aregawi-church-app.web.app) |
- | **Backend API** | OCI Compute | 🔄 Deploying | [API Endpoint](https://api.abunearegawi.church) |
- | **Database** | Supabase | ✅ Connected | PostgreSQL Cloud (Free Tier) |
- | **Authentication** | Firebase | ✅ Active | Phone + Email Auth |
+| Service | Platform | Status | URL |
+|---------|----------|--------|-----|
+| **Frontend** | Firebase Hosting | ✅ Active | [abune-aregawi-church-app.web.app](https://abune-aregawi-church-app.web.app) |
+| **Backend API** | OCI Compute | ✅ Active | [api.abunearegawi.church](https://api.abunearegawi.church) |
+| **Database** | Supabase PostgreSQL | ✅ Connected | PostgreSQL 17.4 (Free Tier) |
+| **Authentication** | Firebase | ✅ Active | Phone + Email Auth |
+| **CI/CD** | GitHub Actions | ✅ Automated | Auto-deploys on push to main |
 
-### 📊 Current Status
-- ✅ **Frontend**: Successfully deployed to Firebase Hosting with asset fixes
-- 🔄 **Backend**: Deploying to OCI with enhanced SSL configuration for Supabase
-- ✅ **Database**: Supabase PostgreSQL connected and tested locally
-- ✅ **Authentication**: Firebase Auth with feature flags for email/phone methods
-- 🔄 **Integration**: Pending backend deployment completion
+### 📊 System Status
+- ✅ **Frontend**: Successfully deployed to Firebase Hosting with auto CI/CD
+- ✅ **Backend**: Deployed to OCI Compute with Supabase PostgreSQL integration
+- ✅ **Database**: Supabase connected with enhanced SSL configuration
+- ✅ **Authentication**: Firebase Auth with phone and email methods
+- ✅ **Integration**: Frontend ↔ Backend ↔ Database fully operational
+- ✅ **SMS Gateway**: Twilio SMS system operational for communications and broadcasts
+
+## 📋 Implementation & Development
+
+### 11-Agent Specialized Suite (August 2026)
+✅ **Multi-Agent Architecture**: Deployed 11 specialized sub-agents for solo development
+- **Tier 1 (Opus)**: Backend API Layer, Business Logic & Services, Database & ORM, Java Migration Lead
+- **Tier 2 (Sonnet)**: Security & Vulnerabilities, UI/UX & Design System  
+- **Tier 3-4 (Haiku)**: Auth Specialist, External Integrations, Frontend Component Developer, Testing & QA, Documentation Specialist
+- **Benefits**: Parallel async work, embedded code quality review, clear domain boundaries, skill library for reusable procedures
+- **Skills Library**: db-migrations, payment-reconciliation, ledger-sheets-export (+ framework for adding more)
+- **Use**: Agents automatically route user requests to appropriate specialist; coordinate complex multi-domain features
 
 ## 🆕 Recent Improvements
 
-### SMS & Communications (October 2025)
-- ✅ **Department SMS Broadcasting**: Send messages to entire departments
-  - Target all members of a ministry, committee, or service team
-  - Department dropdown shows name, type, and member count
-  - Batch sending with rate limiting to prevent Twilio errors
-  - Success tracking with detailed delivery counts
-  - All SMS logged with department tracking
-- ✅ **Enhanced SMS System**: Multi-target messaging (individual, group, department, all)
-  - Real-time member search with filtering
-  - Role-based access control (Admin, Church Leadership, Secretary)
-  - Comprehensive logging and error handling
+### Financial Management Enhancements (January 2026 – August 2026)
+- ✅ **Granular Financial Roles**: Expanded Treasurer role into specialized functions
+  - **Bookkeeper**: Daily financial operations, income/expense recording, bank reconciliation
+  - **AR Team** (Accounts Receivable): Income/donations focus with dedicated dashboard
+  - **AP Team** (Accounts Payable): Expenses/vendor payments focus with vendor tracking
+  - **Budget Committee**: Read-only oversight with budget approval authority
+  - **Auditor**: Strict read-only access for financial and system log auditing
+- ✅ **Enhanced RBAC**: Fine-grained permissions (canManageIncome, canManageExpenses, canApprovePayments)
+- ✅ **Payment Validation**: Minimum $1.00 payment amounts enforced across all payment types
+- ✅ **GL Code System**: Income and expense GL codes with hierarchical categorization
+- ✅ **Expense Tracking**: Complete expense workflow (vendor management, reimbursement requests, approval chains)
+- ✅ **Ledger System**: Dual-write architecture (Transactions + Ledger Entries) for complete financial audit trail
+- ✅ **Bank Reconciliation**: Zelle email integration, automatic transaction matching to members
+- ✅ **Anonymous Donations**: Full support for non-member and truly anonymous donations with optional donor information
 
-### Department Management (October 2025)
-- ✅ **Complete Department System**: Full CRUD operations for church departments
-  - Create, edit, and manage departments (ministries, committees, services, etc.)
-  - Assign department leaders with enhanced member selection (ID, phone display)
-  - Track member count and department hierarchy (parent/sub-departments)
-  - Active/inactive status management and public visibility control
-- ✅ **Member Management**: Assign and manage department members
-  - Add multiple members to departments with role assignment
-  - Remove members and update their department roles
-  - Search functionality by name, ID, phone, or email
-  - Visual member list with contact information
+### SMS & Communications (October 2025 – Present)
+- ✅ **Department SMS Broadcasting**: Send messages to entire departments via Twilio
+  - Target all members of a ministry, committee, or service team
+  - Department dropdown with filtering and member count
+  - Batch sending with rate limiting (20 concurrent, 1s delay)
+  - Success tracking with detailed delivery counts and logs
+- ✅ **Multi-Target Messaging**: Individual, group, department, or broadcast-to-all
+  - Real-time member search with filtering by name, ID, phone, email
+  - Role-based access control (Admin, Church Leadership, Secretary with canSendCommunications permission)
+  - Comprehensive logging to sms_logs table with sender, recipient, status
+- ✅ **Communications Dashboard**: Cards visible to authorized roles with quick links to SMS/Outreach features
+
+### Department Management (October 2025 – Present)
+- ✅ **Complete Department System**: Full CRUD operations with hierarchy support
+  - Create, edit, delete departments (ministries, committees, service teams, etc.)
+  - Assign department leaders with enhanced member selection (displays ID, phone, email)
+  - Parent/sub-department relationships for organizational hierarchy
+  - Active/inactive status and public visibility toggling
+  - Department member tracking with member count
+- ✅ **Member Department Assignment**: Manage department memberships
+  - Add multiple members with role assignment (Leader, Coordinator, Member)
+  - Remove members and update department roles
+  - Search members by name, ID, phone, email with instant filtering
+  - Visual member list with contact information display
 - ✅ **Enhanced Search & Filtering**: Improved UX for large member lists
-  - Real-time search in leader selection dropdowns
-  - Filter by name, member ID, phone number, or email
-  - Search in "Manage Members" modal with instant results
-  - Clear visual feedback with filtered count display
-- ✅ **Route Preservation**: Better navigation experience
-  - Page refresh maintains current route (e.g., /admin, /treasurer)
+  - Real-time search in leader selection dropdowns and member search modals
+  - Filter by name, member ID, phone, email with filtered count display
+  - Fast performance even with 500+ member records
+- ✅ **Route Preservation**: Improved navigation experience
+  - Page refresh maintains current route (e.g., /admin, /treasurer, /dashboard)
   - No unwanted redirects to dashboard on refresh
   - Proper login flow with intended route preservation
-- ✅ **API Optimization**: Reduced payload size for member list endpoints
-  - 66% reduction in data transfer (from 30+ to 10 essential fields)
-  - Faster page loads and better mobile performance
+- ✅ **API Optimization**: Significant reduction in API payload size
+  - 66% reduction in member list data transfer (30+ → 10 essential fields)
+  - Faster page loads and improved mobile performance
   - Only returns fields actually used by frontend components
 
-### Financial Management (October 2025)
+### Financial Management (October 2025 – August 2026)
 - ✅ **Payment Overview Dashboard**: Pledge-based statistics with real-time metrics
   - Computes member payment status from `yearly_pledge` and actual payments
-  - New "Contributing Members" metric shows members with active pledges
+  - "Contributing Members" metric shows members with active pledges
   - Up-to-date vs Behind tracking based on expected-to-date calculations
   - Uses normalized `ledger_entries` table for consistent reporting
 - ✅ **Anonymous Payment Support**: Full treasurer capability for non-member donations
-  - Accept payments from truly anonymous donors, named non-members, or groups
+  - Accept payments from truly anonymous donors, named non-members, or organizations
   - Separate donor fields: type (Individual/Organization), name, email, phone, memo
-  - All payment methods supported (cash, check, card, ACH)
+  - All payment methods supported (cash, check, card, ACH, online)
   - Business rule: Membership dues require a member (cannot be anonymous)
   - Transaction list displays anonymous donations with "Non-Member" badge
 - ✅ **Payment Validation**: Minimum payment amount of $1.00 enforced
   - Frontend validation with clear error messages
-  - Backend validation at controller and model levels
-    - Applied to all payment types and methods
-  
-  ### Financial Roles Expansion (January 2026)
-  - ✅ **Granular Financial Roles**: Expanded Treasurer role into specialized functions
-    - **Bookkeeper**: Daily financial operations, income/expense recording, and bank reconciliation
-    - **AR Team**: Accounts Receivable focus (income/donations only)
-    - **AP Team**: Accounts Payable focus (expenses/vendor payments only)
-    - **Budget Committee**: Read-only oversight with budget approval authority
-    - **Auditor**: Strict read-only access for financial and system log auditing
-  - ✅ **Enhanced RBAC**: Fine-grained permissions (e.g., `canManageIncome`, `canManageExpenses`)
-  - ✅ **Role Persistence**: Automatic enforcement of `Member` role for all users
-  - ✅ **UI Updates**: Admin role management updated with new roles and color coding
+  - Backend validation at controller and model levels (applied to all payment types)
+- ✅ **Expense & Income GL Codes**: Hierarchical categorization system
+  - Income GL codes (100-199 range) with types: Tithes, Offerings, Pledges, Special Collections
+  - Expense GL codes (500-599 range) with types: Salaries, Utilities, Supplies, Maintenance
+  - GL code allocation during transaction creation with validation
+- ✅ **Dual-Write Architecture**: Transactional consistency
+  - Every transaction creates matching ledger entry for audit trail
+  - Transactions table for operational queries
+  - Ledger entries for financial reporting and reconciliation
+  - Consistent payment method and fund categorization
 
-### Deployment & Infrastructure
-- ✅ **Firebase Hosting**: Migrated from Vercel to Firebase Hosting with asset path fixes
-- ✅ **Supabase Integration**: Switched from Neon to Supabase for free PostgreSQL hosting
-- ✅ **Enhanced SSL Configuration**: Production-ready SSL config for external database connections
-- ✅ **Feature Flags System**: Environment-based toggles for authentication methods
-- ✅ **Error Boundaries**: Comprehensive error handling with user-friendly messages
-
-### Authentication & UX
-- ✅ **Phone Authentication**: reCAPTCHA Enterprise with test number bypass logic
-- ✅ **Bilingual UI**: English default with improved Tigrinya translations
-- ✅ **Church Theme**: Custom gradient theme with traditional church styling
-- ✅ **Admin Access**: Fixed role extraction and admin panel access issues
-- ✅ **Profile Management**: Separate name fields with proper backend synchronization
-
-### Code Quality & Testing
-- ✅ **TypeScript Fixes**: Resolved duplicate translation keys and type errors
-- ✅ **Debug Cleanup**: Removed all console.log statements for production readiness
-- ✅ **Test Infrastructure**: Enhanced backend testing with Jest integration
-- ✅ **Phone Number Formatting**: Comprehensive E.164 normalization throughout app
-
-### Frontend Testing Utilities
-- ✅ Added reusable auth testing utilities at `frontend/src/testUtils/authTestUtils.ts`
-  - `setFirebaseUserToken(firebaseUser, token)`: standardize mocking of `firebaseUser.getIdToken()`
-  - `extractHeader(headers, key)`: safely read headers from `Headers` or plain objects
-- Example usage in `frontend/src/components/admin/__tests__/OutreachDashboard.test.tsx`:
-
-```ts
-import { setFirebaseUserToken, extractHeader } from '../../../testUtils/authTestUtils';
-
-beforeEach(() => {
-  jest.clearAllMocks();
-  setFirebaseUserToken(mockFirebaseUser, 'test-token');
-});
-
-// Later, when validating fetch calls
-const headers = postCall[1]?.headers as any;
-expect(extractHeader(headers, 'Authorization')).toBe('Bearer test-token');
-```
-
-### Running Frontend Tests
-```bash
-cd frontend
-npm test -- --watchAll=false --runInBand
-```
-Notes:
-- Tests mock Firebase Auth and network requests; no external services are called.
-- React Router v7 future-flag warnings are expected and safe to ignore during tests.
-
-### Communications (SMS & Outreach)
-- ✅ **SMS Broadcast System** using Twilio backend
-  - Send to individual members, groups, **departments**, or all members
-  - Department SMS: Target entire ministry/committee with one click
-  - Batch sending with rate limiting (20 concurrent, 1s delay between batches)
-  - Firebase auth with role-based access (Admin, Church Leadership, Secretary)
-  - Member dropdown search with real-time filtering
-  - Logs all SMS to `sms_logs` table with sender, recipient type, department, status
-  - Success/failure tracking with detailed counts
-- ✅ Dashboard cards
-  - Communications card (links to `/sms`) visible to roles with `canSendCommunications`
-  - Relationship Department card (links to `/outreach`) visible when `canAccessOutreachDashboard` or `canManageOnboarding`
-- ✅ Navigation cleanup
-  - Removed SMS, Outreach, and Admin links from the top header to reduce duplication
-  - Access these via the Dashboard cards
+### Code Quality & Infrastructure (Ongoing)
+- ✅ **TypeScript Strictness**: Full strict mode for type safety
+- ✅ **Jest Testing**: Comprehensive backend and frontend test suites
+- ✅ **Pre-commit Hooks**: Linting and format validation
+- ✅ **Debug Cleanup**: Production-ready code (no console.log statements)
+- ✅ **Error Boundaries**: User-friendly error handling throughout app
+- ✅ **Phone Number Normalization**: E.164 format throughout system
+- ✅ **CI/CD Pipeline**: Automated tests, builds, and deployments via GitHub Actions
+- ✅ **Bilingual Support**: English/Tigrigna with proper locale handling
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **Framework**: React 18 + TypeScript
-- **Styling**: TailwindCSS + Custom Church Theme
+- **Framework**: React 18 + TypeScript (strict mode)
+- **Styling**: TailwindCSS + Custom Church Theme with gradients
 - **State Management**: React Context API
-- **Authentication**: Firebase Auth (Phone + Email)
-- **Internationalization**: English/Tigrinya bilingual support
-- **Features**: Feature flags system, Error boundaries
-- **Deployment**: Firebase Hosting (with automatic CI/CD)
+- **Authentication**: Firebase Auth SDK (Phone + Email with reCAPTCHA)
+- **Internationalization**: Custom i18n context (English/Tigrigna)
+- **Testing**: Jest + React Testing Library with utilities
+- **Router**: React Router v7 with future-flags enabled
+- **Deployment**: Firebase Hosting with auto CI/CD
 
 ### Backend
-- **Runtime**: Node.js 18
-- **Framework**: Express.js
-- **ORM**: Sequelize with enhanced SSL configuration
-- **Validation**: Express-validator + custom middleware
-- **Authentication**: Dual JWT + Firebase Auth
-- **Security**: Helmet, CORS, Rate limiting
-- **Testing**: Jest with integration and unit tests
-- **Deployment**: OCI Compute (with automated GitHub CI/CD)
-
-### Database
-- **Provider**: Supabase (PostgreSQL 17.4)
-- **Connection**: Enhanced SSL with certificate bypass
-- **Features**: Connection pooling, retry logic
-- **Tier**: Free tier (500MB storage)
-- **SSL**: Production-ready configuration
+- **Runtime**: Node.js 18+ with Express.js framework
+- **ORM**: Sequelize 6 with 33 models and 67+ migrations
+- **Database**: PostgreSQL 17.4 via Supabase with connection pooling
+- **Authentication**: Firebase Admin SDK + dual JWT + custom middleware
+- **Validation**: express-validator with custom rules
+- **Security**: Helmet, CORS, rate limiting, input sanitization
+- **SMS Gateway**: Twilio SDK integration for communications
+- **Testing**: Jest with integration and unit test suites
+- **Logging**: Comprehensive audit trails for financial and SMS operations
+- **Deployment**: OCI Compute via automated GitHub Actions
 
 ### External Services
-- **Authentication**: Firebase Authentication (Phone/Email)
+- **Authentication**: Firebase Authentication (Phone/Email methods)
 - **Hosting**: Firebase Hosting (Frontend) + OCI Compute (Backend)
-- **Database**: Supabase PostgreSQL (Free tier)
-- **Version Control**: GitHub with automated deployments
-- **reCAPTCHA**: Google reCAPTCHA Enterprise for phone auth
+- **Database**: Supabase PostgreSQL (Free tier, 500MB storage)
+- **SMS**: Twilio for SMS broadcasting and communications
+- **Security**: Google reCAPTCHA Enterprise for phone auth
+- **Version Control**: GitHub with automated CI/CD pipelines
+- **Future**: Stripe for online payment processing
+
+### Development Tools
+- **Package Manager**: npm (monorepo with root, frontend/, backend/)
+- **Build**: Create React App (CRA) for frontend
+- **Testing**: Jest (frontend & backend) + React Testing Library
+- **Linting**: ESLint with react-app config
+- **Code Quality**: TypeScript strict mode, pre-commit hooks
+- **Debugging**: VS Code debugger support, Firebase emulator
+- **Documentation**: Markdown with Mermaid diagrams
 
 ## 🌐 Features
 
-### ✅ Implemented
-- **Bilingual Support**: English and Tigrigna languages with context switching (English default)
-- **Member Registration**: Multi-step registration form with comprehensive validation
-- **Children Management**: Add, edit, and manage dependents with phone number formatting
-- **User Authentication**: Dual Firebase Auth (Phone + Email) with feature flags
-- **Role-Based Access Control**: Seven-tier role system with proper admin access
-- **Profile Management**: Separate name fields (first, middle, last) with backend sync
-- **Responsive Design**: Mobile-first approach with custom church theme
-- **Phone Authentication**: reCAPTCHA Enterprise with test number bypass
-- **Dashboard**: Member dashboard with corrected role extraction
-- **Communications**: SMS module with Twilio, role-based access, and Communications dashboard card
-- **Outreach**: Relationship Department dashboard card linking to Outreach tools
-- **Admin Panel**: Full admin interface with member/role management
-- **Database Integration**: Supabase PostgreSQL with enhanced SSL configuration
-- **API Security**: Dual JWT + Firebase authentication with comprehensive validation
-- **Feature Flags**: Environment-based authentication method toggles
-- **Error Handling**: User-friendly error messages and retry mechanisms
-- **Deployment**: Production-ready Firebase Hosting + OCI deployment
-- **Department Management**: Complete system for church organization structure
-  - **Department CRUD**: Create, edit, delete departments (ministries, committees, services)
-  - **Member Assignment**: Add/remove members to departments with role management
-  - **Hierarchy Support**: Parent/sub-department relationships and organization
-  - **Enhanced Search**: Real-time filtering by name, ID, phone for large member lists
-  - **Leader Selection**: Visual member selection with ID and contact information
-- **Financial Management**: Complete treasurer dashboard with payment tracking
-  - **Payment Overview**: Pledge-based statistics with Contributing Members metric
-  - **Transaction Recording**: Support for all payment methods (cash, check, card, ACH)
-  - **Anonymous Payments**: Accept donations from non-members with optional donor details
-  - **Dual-Write System**: Transactions + Ledger entries for comprehensive financial tracking
-  - **Payment Validation**: Minimum $1.00 payment amounts enforced
+### ✅ Core Features (Implemented & Production-Ready)
 
-### 🚧 In Progress
-- **Backend Deployment**: Final OCI deployment with Supabase connection
-- **API Integration**: Connecting deployed frontend to deployed backend
-- **Payment Gateway**: Stripe integration for online giving
-- **Email Notifications**: Member communication system
+**Membership & Organization**
+- ✅ Bilingual Support (English/Tigrigna) with context-based switching
+- ✅ Member Registration: Multi-step form with comprehensive validation
+- ✅ Children/Dependents Management: Add, edit, manage with proper data validation
+- ✅ User Authentication: Firebase Auth (Phone + Email) with reCAPTCHA Enterprise
+- ✅ Role-Based Access Control: 7+ specialized roles with granular permissions
+- ✅ Profile Management: First, middle, last name fields with backend synchronization
+- ✅ Responsive Design: Mobile-first with custom church theme and gradients
+- ✅ Dashboard: Role-specific dashboards with relevant cards and metrics
+- ✅ Admin Panel: Full admin interface with member/role/department management
 
-### 📋 Planned
-- Member directory
-- Contribution tracking
-- Ministry management
-- Calendar integration
-- PDF report generation
+**Financial Management**
+- ✅ Payment Recording: All payment methods (cash, check, card, ACH, online)
+- ✅ Payment Overview Dashboard: Pledge-based statistics and contributing members tracking
+- ✅ Anonymous Donations: Accept non-member donations with optional donor info
+- ✅ Payment Validation: Minimum $1.00 amounts enforced
+- ✅ GL Code System: Income/expense categorization with GL code assignment
+- ✅ Ledger System: Dual-write architecture for complete audit trail
+- ✅ Treasurer Dashboard: Financial reports, transaction history, contribution tracking
+- ✅ Specialized Roles: Bookkeeper, AR Team, AP Team, Budget Committee, Auditor
+- ✅ Bank Reconciliation: Zelle email integration with automatic transaction matching
+- ✅ Expense Tracking: Vendor management, reimbursement requests, approval workflows
+
+**Communications & Outreach**
+- ✅ SMS Broadcast System: Department-based or member-targeted SMS via Twilio
+- ✅ Batch Messaging: Rate-limited batch sending (20 concurrent, 1s delay)
+- ✅ Message Logging: Complete audit trail in sms_logs table
+- ✅ Search & Filtering: Real-time member search by name, ID, phone, email
+- ✅ Relationship Department Tools: Member engagement, follow-up tracking, notes
+- ✅ Role-Based Permissions: SMS access controlled by role permissions
+
+**Department Management**
+- ✅ Department CRUD: Create, edit, delete departments with hierarchy
+- ✅ Leader Assignment: Select department leaders with member details display
+- ✅ Member Management: Assign/remove members with role tracking
+- ✅ Hierarchy Support: Parent/sub-department relationships
+- ✅ Status Management: Active/inactive and public visibility toggles
+- ✅ Enhanced Search: Fast filtering of large member lists
+- ✅ Member Count Tracking: Visual display of department composition
+
+### 🚧 In Progress / Planned
+- **Stripe Payment Gateway**: Online donation processing and subscription management
+- **Email Notifications**: Member communication system with templates
+- **Report Generation**: PDF exports for financial and membership reports
+- **Calendar Integration**: Church calendar with events and scheduling
+- **Vendor Management**: Advanced AP features (vendor portal, invoice matching, recurring payments)
+- **Budget Planning**: Budget creation, approval, and variance analysis
+- **Activity Audit Logs**: Enhanced system logging for compliance and security audits
 
 
-## 🔧 Environment Setup
+## 🔧 Environment Setup & Configuration
 
-### Frontend Environment Variables (Firebase Hosting)
+### Quick Start Commands
+```bash
+# Install all dependencies
+npm run install:all
+
+# Development (frontend + backend concurrently)
+npm run dev
+
+# Frontend only
+npm run dev:frontend
+
+# Backend only  
+npm run dev:backend
+
+# Run tests
+npm run test                    # all tests
+npm run test:backend            # backend only
+npm run test:frontend           # frontend only
+npm run test:coverage           # with coverage report
+
+# Build for production
+npm run build                   # frontend only
+cd backend && npm run build     # backend build (if applicable)
+```
+
+### Frontend Environment Variables
+Create `frontend/.env.local`:
 ```env
 # Firebase Configuration
 REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
@@ -286,133 +424,117 @@ REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 REACT_APP_FIREBASE_APP_ID=your_app_id
 
 # API Configuration
-REACT_APP_API_URL=https://api.abunearegawi.church
+REACT_APP_API_URL=http://localhost:5001  # local dev; use https://api.abunearegawi.church in prod
 
 # Feature Flags
 REACT_APP_ENABLE_EMAIL_AUTH=true
 REACT_APP_ENABLE_PHONE_AUTH=true
 REACT_APP_DEFAULT_AUTH_METHOD=phone
+
+# Google reCAPTCHA (for phone auth)
+REACT_APP_RECAPTCHA_SITE_KEY=your_recaptcha_site_key
 ```
 
-### Backend Environment Variables (OCI)
+### Backend Environment Variables
+Create `backend/.env`:
 ```env
-# Environment
+# Server Configuration
+NODE_ENV=development
+PORT=5001
+
+# Database (local development)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/church
+# OR for testing (in-memory SQLite)
+# DATABASE_URL=sqlite::memory:
+
+# Firebase
+FIREBASE_SERVICE_ACCOUNT_BASE64=your_base64_encoded_service_account
+# Note: Generate via: base64 -i service-account.json (no newlines)
+
+# JWT
+JWT_SECRET=your_secure_jwt_secret_key_at_least_32_chars
+
+# Twilio (for SMS)
+TWILIO_ACCOUNT_SID=your_twilio_account_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_PHONE_NUMBER=+1234567890
+
+# CORS & Deployment
+FRONTEND_URL=http://localhost:3000  # local; https://abune-aregawi-church-app.web.app in prod
+```
+
+### Production Environment Variables (OCI Compute)
+```env
 NODE_ENV=production
 PORT=10000
 
 # Database (Supabase)
 DATABASE_URL=postgresql://postgres.project_ref:password@aws-0-us-west-1.pooler.supabase.com:6543/postgres
 
-# Authentication
-JWT_SECRET=your_secure_jwt_secret_key
+# Firebase & Auth
 FIREBASE_SERVICE_ACCOUNT_BASE64=your_base64_encoded_service_account
+JWT_SECRET=your_production_jwt_secret
 
-# CORS
+# Twilio
+TWILIO_ACCOUNT_SID=production_account_sid
+TWILIO_AUTH_TOKEN=production_auth_token
+TWILIO_PHONE_NUMBER=+1234567890
+
+# CORS & Frontend
 FRONTEND_URL=https://abune-aregawi-church-app.web.app
 ```
 
-### Local Development (SMS + Ports)
+### Local Development Ports
+- **Frontend**: http://localhost:3000 (React dev server)
+- **Backend**: http://localhost:5001 (Express API server)
+- **Firebase Emulator** (optional): http://localhost:4000
+  - Run via `npm run emulators` in frontend folder
 
-- **Ports**: Frontend runs on `http://localhost:3000`, Backend on `http://localhost:5001`.
-- **Frontend API URL**: Set `REACT_APP_API_URL` to the backend URL for local dev.
-- **Proxy note**: `frontend/package.json` may have a proxy pointing to `http://localhost:5000`. Using `REACT_APP_API_URL` with absolute URLs bypasses proxy issues.
+### Database Setup (Local Development)
 
-#### Frontend `.env.local`
-```env
-REACT_APP_API_URL=http://localhost:5001
-```
-
-#### Backend `.env` (Local with Twilio)
-```env
-# Server
-PORT=5001
-NODE_ENV=development
-
-# Database (example)
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/church
-
-# Firebase
-FIREBASE_SERVICE_ACCOUNT_BASE64=your_base64_encoded_service_account
-
-# Twilio (required for SMS)
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=+1234567890
-
-# CORS
-FRONTEND_URL=http://localhost:3000
-```
-
-After setting these, start services:
+**PostgreSQL with Docker** (recommended):
 ```bash
-npm run start:backend   # starts on :5001
-npm run start:frontend  # starts on :3000
+# Start PostgreSQL container
+docker run --name church-db \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=church \
+  -p 5432:5432 \
+  -d postgres:17
+
+# Run migrations
+cd backend
+npm run db:migrate
 ```
 
-## 🚀 Deployment Architecture
+**SQLite** (lightweight alternative for testing):
+```bash
+# In backend/.env, use:
+DATABASE_URL=sqlite::memory:
 
-```mermaid
-graph LR
-    subgraph "Development"
-        A[Local Development] --> B[GitHub Repository]
-    end
-    
-    subgraph "CI/CD Pipeline"
-        B --> C[GitHub Actions]
-        C --> D[Firebase Hosting Build]
-        C --> E[OCI Build]
-    end
-    
-    subgraph "Production"
-        D --> F[Firebase Hosting Frontend]
-        E --> G[OCI Backend]
-        F --> H[Supabase Database]
-        G --> H
-        F --> I[Firebase Auth]
-        G --> I
-    end
-    
-    style F fill:#61dafb
-    style G fill:#68a063
-    style H fill:#3ecf8e
-    style I fill:#ffca28
+# Migrations run automatically on server start
 ```
 
-## 📊 Database Schema
+### Running Database Migrations
+```bash
+cd backend
 
-```mermaid
-erDiagram
-    MEMBERS {
-        bigint id PK
-        string firstName
-        string lastName
-        string email UK
-        string phoneNumber
-        enum gender
-        date dateOfBirth
-        enum maritalStatus
-        string firebaseUid UK
-        string loginEmail UK
-        enum role
-        boolean isActive
-        decimal yearlyPledge
-    }
-    
-    CHILDREN {
-        uuid id PK
-        uuid memberId FK
-        string firstName
-        string lastName
-        date dateOfBirth
-        enum gender
-        string phone
-        string email
-        string baptismName
-    }
-    
-    TRANSACTIONS {
-        bigint id PK
-        bigint memberId FK "nullable for anonymous"
+# Check migration status
+npm run db:status
+
+# Run all pending migrations
+npm run db:migrate
+
+# Undo last migration
+npm run db:migrate:undo
+
+# Undo all migrations
+npm run db:migrate:undo:all
+
+# See backend/.claude/skills/db-migrations/SKILL.md for detailed procedures
+```
+
+## � Security Features
         bigint collectedBy FK
         date paymentDate
         decimal amount "min 1.00"
@@ -479,332 +601,24 @@ erDiagram
 
 ## 🔐 Security Features
 
-- **Authentication**: Firebase Auth with JWT tokens
-- **Authorization**: Role-based access control
-- **Input Validation**: Express-validator with custom rules
+- **Authentication**: Firebase Auth (phone + email) with dual JWT verification
+- **Authorization**: 12-role hierarchical RBAC with granular permissions
+- **Input Validation**: Express-validator with custom rules and Sequelize validations
 - **SQL Injection Protection**: Sequelize ORM with parameterized queries
-- **CORS**: Configured for production domains
-- **Environment Variables**: Secure credential management
-- **HTTPS**: Enforced on all production deployments
-
-## 👥 Role-Based Access Control (RBAC)
-
-The system implements a comprehensive role-based access control system with seven distinct roles, each with specific permissions and access levels. This ensures that users can only access features and data appropriate to their role within the church community.
-
-### 🔑 Role Hierarchy
-
-```mermaid
-graph TD
-    A[Guest] --> B[Member]
-    B --> C[Secretary]
-    B --> D[Treasurer]
-    D --> H[Bookkeeper]
-    D --> I[AR Team]
-    D --> J[AP Team]
-    B --> E[🤝 Relationship Department]
-    B --> F[Church Leadership]
-    F --> K[Budget Committee]
-    F --> L[Auditor]
-    C --> G[Admin]
-    D --> G
-    E --> G
-    F --> G
-    
-    style A fill:#ff9999
-    style B fill:#99ccff
-    style C fill:#99ff99
-    style D fill:#ffcc99
-    style E fill:#ffe599
-    style F fill:#cc99ff
-    style G fill:#ff6666
-```
-
-### 📋 Role Descriptions & Permissions
-
-#### 🚪 **Guest** (Limited Access)
-**Description**: Unregistered visitors with minimal access to public information.
-
-**Permissions**:
-- ✅ View public church information
-- ✅ Access landing page and general content
-- ✅ Register as a new member
-- ✅ View basic church announcements
-
-**Restrictions**:
-- ❌ No access to member directory
-- ❌ Cannot view financial information
-- ❌ No access to admin features
-- ❌ Cannot manage children records
-
----
-
-#### 👤 **Member** (Standard Access)
-**Description**: Registered church members with access to personal and family management features.
-
-**Permissions**:
-- ✅ View and edit personal profile
-- ✅ Manage children records (add, edit, delete)
-- ✅ Access member dashboard
-- ✅ View personal contribution history
-- ✅ Update contact information
-- ✅ Access bilingual content
-- ✅ Submit online donations
-
-**Restrictions**:
-- ❌ Cannot view other members' information
-- ❌ No access to financial reports
-- ❌ Cannot manage church-wide settings
-
----
-
-#### 📝 **Secretary** (Administrative Support)
-**Description**: Church administrative staff responsible for member records and documentation.
-
-**Permissions**:
-- ✅ All Member permissions
-- ✅ View member directory (read-only)
-- ✅ Access member registration data
-- ✅ Generate member reports
-- ✅ Manage member status (active/inactive)
-- ✅ Export member data
-- ✅ Access bilingual content management
-
-**Restrictions**:
-- ❌ Cannot modify financial records
-- ❌ No access to treasury functions
-- ❌ Cannot change member roles
-
----
-
-#### 💰 **Treasurer** (Financial Management)
-**Description**: Church financial officer responsible for financial tracking and reporting.
-
-**Permissions**:
-- ✅ All Member permissions
-- ✅ View financial reports and summaries
-- ✅ Access donation and contribution data
-- ✅ Generate financial reports
-- ✅ Track online and offline donations
-- ✅ Export financial data
-- ✅ View member contribution history
-- ✅ **Record payments for members** (cash, check, card, ACH)
-- ✅ **Accept anonymous/non-member donations** with optional donor information
-- ✅ **Payment Overview Dashboard** with pledge-based statistics and metrics
-
-**Restrictions**:
-- ❌ Cannot modify member records
-- ❌ No access to member management features
-- ❌ Cannot change system settings
-- ❌ Cannot record membership dues for anonymous donors
-
----
-
-#### 📚 **Bookkeeper** (Financial Operations)
-**Description**: Dedicated financial staff responsible for daily transaction recording and reconciliation.
-
-**Permissions**:
-- ✅ All Member permissions
-- ✅ **Manage Income**: Record donations and payments
-- ✅ **Manage Expenses**: Record and categorize expenses
-- ✅ **Bank Reconciliation**: Reconcile bank transactions
-- ✅ View financial dashboards and reports
-
-**Restrictions**:
-- ❌ Cannot approve budgets
-- ❌ Cannot delete critical financial records
-- ❌ No access to system settings or user role management
-
----
-
-#### 🧾 **AR Team** (Accounts Receivable)
-**Description**: Focused on managing incoming funds, donations, and member contributions.
-
-**Permissions**:
-- ✅ All Member permissions
-- ✅ **Manage Income**: Record member payments and donations
-- ✅ View income-related reports
-- ✅ Access transaction history
-
-**Restrictions**:
-- ❌ **No Expense Access**: Cannot view or manage expenses
-- ❌ Cannot reconcile bank accounts
-
----
-
-#### 💸 **AP Team** (Accounts Payable)
-**Description**: Focused on managing outgoing funds, vendor payments, and expenses.
-
-**Permissions**:
-- ✅ All Member permissions
-- ✅ **Manage Expenses**: Record vendor payments and reimbursements
-- ✅ View expense-related reports
-- ✅ Manage vendor records
-
-**Restrictions**:
-- ❌ **No Income Access**: Cannot view or manage member contributions
-- ❌ Cannot reconcile bank accounts
-
----
-
-#### 📊 **Budget Committee** (Financial Planning)
-**Description**: Committee members responsible for planning and approving the church budget.
-
-**Permissions**:
-- ✅ All Member permissions
-- ✅ **View All Financials**: Full read access to income and expenses
-- ✅ **Approve Budget**: Authority to finalize and approve budgets
-- ✅ View financial reports
-
-**Restrictions**:
-- ❌ Read-Only access to actual transactions (cannot add/edit)
-- ❌ Cannot manage users or system settings
-
----
-
-#### 🔍 **Auditor** (Oversight)
-**Description**: Internal or external auditors responsible for reviewing financial integrity.
-
-**Permissions**:
-- ✅ All Member permissions
-- ✅ **View All Financials**: Read-only access to all financial records
-- ✅ **View Audit Logs**: Access to system activity and security logs
-- ✅ Generate comprehensive financial reports
-
-**Restrictions**:
-- ❌ **Strict Read-Only**: Cannot modify ANY data
-- ❌ No access to member personal notes via Relationship features
-
----
-
-#### 🤝 **Relationship Department** (Engagement & Care)
-**Description**: Team focused on member engagement, care, and follow-up. Oversees visitor welcome, conflict resolution coordination, and community relationship-building.
-
-**Permissions**:
-- ✅ All Member permissions
-- ✅ View member directory (read-only)
-- ✅ Manage contact and relationship notes for members
-- ✅ Assign and track follow-ups (visitors, inactive members, care requests)
-- ✅ Access engagement metrics and simple reports
-- ✅ Export contact lists for outreach
-- ✅ Use approved communication templates (email/SMS) where available
-
-**Restrictions**:
-- ❌ No access to financial reports or contribution details
-- ❌ Cannot change member roles or statuses
-- ❌ Cannot edit core member records (name, DOB, household) beyond notes and follow-up fields
-- ❌ No access to system settings or admin features
-
----
-
-#### ⛪ **Church Leadership** (Leadership Access)
-**Description**: Church leaders, elders, and ministry heads with broad administrative access.
-
-**Permissions**:
-- ✅ All Secretary and Treasurer permissions
-- ✅ Full member directory access
-- ✅ Manage member roles (except admin)
-- ✅ Access all church reports
-- ✅ View ministry and activity data
-- ✅ Manage church announcements
-- ✅ Access leadership dashboard
-
-**Restrictions**:
-- ❌ Cannot modify system configuration
-- ❌ No access to admin-only features
-- ❌ Cannot change admin roles
-
----
-
-#### 🔧 **Admin** (Full System Access)
-**Description**: System administrators with complete access to all features and data.
-
-**Permissions**:
-- ✅ **Complete system access**
-- ✅ All permissions from other roles
-- ✅ Manage all user roles and permissions
-- ✅ Access admin dashboard and analytics
-- ✅ System configuration and settings
-- ✅ Database management and backups
-- ✅ User account management
-- ✅ Security and audit logs
-- ✅ API endpoint management
-- ✅ Content management system
-
-**Key Features**:
-- 🔐 **Role Management**: Assign and modify user roles
-- 📊 **Analytics Dashboard**: View system usage and statistics
-- 👥 **Member Management**: Full CRUD operations on all members
-- 🔧 **System Settings**: Configure application parameters
-- 📈 **Reports**: Generate comprehensive system reports
-
----
-
-### 🔄 Role Assignment & Management
-
-#### **Automatic Role Assignment**
-- **New Registrations**: Automatically assigned "Member" role
-- **Firebase Integration**: Roles synchronized between Firebase and PostgreSQL
-- **Role Inheritance**: Higher roles inherit permissions from lower roles
-
-#### **Manual Role Management**
-- **Admin Assignment**: Only existing admins can assign admin roles
-- **Role Promotion**: Church leadership can promote members to secretary/treasurer
-- **Role Demotion**: Admins can modify any user's role
-- **Audit Trail**: All role changes are logged for security
-
-#### **Role Validation**
-- **Database Consistency**: Roles validated against PostgreSQL enum values
-- **Frontend Validation**: Role-based UI rendering and access control
-- **API Protection**: Backend middleware enforces role-based permissions
-
-### 🛡️ Security Implementation
-
-#### **Frontend Security**
-```typescript
-// Role-based component rendering
-{userRole === 'admin' && <AdminDashboard />}
-{['admin', 'church_leadership'].includes(userRole) && <MemberDirectory />}
-{['admin', 'treasurer'].includes(userRole) && <FinancialReports />}
-```
-
-#### **Backend Security**
-```javascript
-// Role-based middleware
-const requireRole = (roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'access.denied' 
-      });
-    }
-    next();
-  };
-};
-```
-
-#### **API Endpoint Protection**
-- **Public Endpoints**: `/api/auth/register`, `/api/auth/login`
-- **Member Endpoints**: Profile management, children management
-- **Admin Endpoints**: User management, system configuration
-- **Role-Specific Endpoints**: Financial reports, member directory
-
-### 📊 Role Statistics & Analytics
-
-The admin dashboard provides insights into role distribution and usage:
-
-- **Role Distribution**: Percentage of users in each role
-- **Activity Metrics**: Usage patterns by role
-- **Access Logs**: Track role-based feature usage
-- **Security Alerts**: Monitor for unusual access patterns
-
-### 🔐 Best Practices
-
-1. **Principle of Least Privilege**: Users receive minimum necessary permissions
-2. **Role Separation**: Financial and administrative functions are separated
-3. **Regular Audits**: Periodic review of role assignments
-4. **Secure Role Changes**: All role modifications require proper authorization
-5. **Audit Logging**: Complete trail of role changes and access patterns
+- **CORS**: Production-domain-only policy for cross-origin requests
+- **Environment Variables**: Base64-encoded secrets with secure credential management
+- **HTTPS**: Enforced on all production deployments (Firebase Hosting, OCI, Supabase)
+- **Data Protection**: Encrypted sensitive fields (PII, financial records)
+- **Rate Limiting**: Request throttling to prevent abuse
+- **Audit Logging**: SystemAuditLog table tracks all sensitive actions
+- **Error Handling**: Safe error messages (no sensitive info leakage)
+- **SAST Analysis**: Regular code security scanning via tools
+
+## 👥 Role-Based Access Control (RBAC) - Full Reference
+
+For detailed RBAC implementation, role descriptions, and permission matrices, see the **[Architecture Overview](#-architecture-overview)** section above which documents all 12 specialized roles, their permission categories, and the hierarchical structure.
+
+**Quick Reference**: The system supports Guest, Member, Treasurer, Bookkeeper, AR/AP Teams, Budget Committee, Auditor, Church Leadership, Secretary, Onboarding Coordinator, and Admin roles with granular permission controls.
 
 ## 🚀 Quick Start (Development)
 
@@ -969,16 +783,11 @@ This project is created for the Debre Tsehay Abune Aregawi Tigray Orthodox Tewah
 
 *Built with love for the Tigray Orthodox Christian community* 
 
-**Last Updated**: October 2025
-**Version**: 1.3.0
+**Last Updated**: August 2026
+**Version**: 2.0.0
 
-### Recent Updates (October 2025)
-- **Department Management System**: Full CRUD for departments and member management
-- **Enhanced Search & Filtering**: Real-time member search by name, ID, phone, email
-- **Route Preservation**: Page refresh maintains current route (no unwanted redirects)
-- **API Optimization**: 66% reduction in member list payload size
-- Payment Overview Dashboard with pledge-based statistics
-- Anonymous payment support for non-member donations
-- Contributing Members metric
-- Minimum payment validation ($1.00)
-- Ledger entries normalization and cleanup 
+### Version History
+- **v2.0.0** (August 2026): 11-agent specialized architecture, financial role expansion, comprehensive documentation
+- **v1.3.0** (October 2025): Department Management System, route preservation, API optimization
+- **v1.2.0** (January 2026): Financial role granularity (Bookkeeper, AR/AP, Budget Committee, Auditor)
+- **v1.1.0** (October 2025): SMS broadcasting, payment validation, anonymous donations 
