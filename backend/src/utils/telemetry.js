@@ -204,6 +204,22 @@ const scrubTags = (tags) => {
  *                      defensive insurance against a future SDK version (or
  *                      an integration this app adds later) starting to
  *                      populate it, not a fix for a live leak.
+ *   - transaction      stripped through stripUrl(), same as request.url.
+ *                      Sentry's http/express integration sets this
+ *                      independently of request.url — confirmed live: an
+ *                      "unreconcile" error's request.url correctly read
+ *                      /api/bank/transactions/:id/unreconcile while, on the
+ *                      very same event, transaction still read the raw
+ *                      "POST /api/bank/transactions/17/unreconcile", the
+ *                      real row id intact. It is the string shown as the
+ *                      issue's subtitle in the Sentry UI, so a leak here is
+ *                      not a buried field — it is front and center. The
+ *                      same class of gap as breadcrumbs above (an
+ *                      integration populating a field before beforeSend
+ *                      ever runs), just never enumerated until now.
+ *   - culprit          stripped the same way, for the same reason —
+ *                      Sentry's older/legacy twin of transaction, not
+ *                      guaranteed absent just because transaction is set.
  *   - breadcrumbs      scrubbed per-breadcrumb; see scrubBreadcrumb above.
  *   - tags             filtered through a closed allowlist; see scrubTags.
  *   - contexts         left alone deliberately, not by omission: this app
@@ -240,6 +256,17 @@ const scrubEvent = (event) => {
     delete event.request.cookies;
     delete event.request.query_string;
     delete event.request.env;
+  }
+
+  // Populated by the http/express integration independently of request.url
+  // (see the field-by-field comment above) — id-shaped path segments here
+  // survive beforeSend untouched otherwise, in the one field the Sentry UI
+  // shows most prominently.
+  if (typeof event.transaction === 'string') {
+    event.transaction = stripUrl(event.transaction);
+  }
+  if (typeof event.culprit === 'string') {
+    event.culprit = stripUrl(event.culprit);
   }
 
   if (event.breadcrumbs) {

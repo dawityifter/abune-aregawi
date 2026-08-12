@@ -103,6 +103,40 @@ describe('scrubEvent', () => {
     expect(scrubEvent(event).extra).toBeUndefined();
   });
 
+  describe('transaction and culprit', () => {
+    // Sentry's http/express integration sets these independently of
+    // request.url — confirmed live in the "unreconcile" issue, where
+    // request.url correctly read /api/bank/transactions/:id/unreconcile
+    // while transaction on the same event still carried the real row id.
+
+    it('masks a numeric id in event.transaction, mirroring the live "POST /api/.../17/unreconcile" leak', () => {
+      const event = { transaction: 'POST /api/bank/transactions/17/unreconcile' };
+      expect(scrubEvent(event).transaction).toBe('POST /api/bank/transactions/:id/unreconcile');
+    });
+
+    it('masks a Firebase-UID-shaped segment in event.transaction, the highest-value target here', () => {
+      const event = { transaction: 'GET /api/members/profile/firebase/Xk3mZq9LpR2sTuVwYz01AbCdEf23' };
+      expect(scrubEvent(event).transaction).toBe('GET /api/members/profile/firebase/:id');
+    });
+
+    it('masks event.culprit the same way', () => {
+      const event = { culprit: 'GET /api/members/482/dues' };
+      expect(scrubEvent(event).culprit).toBe('GET /api/members/:id/dues');
+    });
+
+    it('leaves a route-shaped transaction with no id segments untouched', () => {
+      const event = { transaction: 'GET /api/members/profile/firebase' };
+      expect(scrubEvent(event).transaction).toBe('GET /api/members/profile/firebase');
+    });
+
+    it('does nothing when transaction/culprit are absent, rather than adding them as undefined/null', () => {
+      const event = { request: { url: 'https://api.example.org/api/members' } };
+      const scrubbed = scrubEvent(event);
+      expect('transaction' in scrubbed).toBe(false);
+      expect('culprit' in scrubbed).toBe(false);
+    });
+  });
+
   describe('breadcrumbs', () => {
     // Sentry's default Node integrations record breadcrumbs Sentry.init()
     // never asks the app for: the Console integration mirrors every
