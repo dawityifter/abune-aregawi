@@ -181,7 +181,10 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availa
         {/* Annual Dues Progress + Other Income */}
         <div className="md:col-span-2 bg-white rounded-lg shadow-md p-6">
           <div className="flex justify-between items-center mb-2">
-            <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+            <p
+              className="text-sm font-semibold text-gray-700 uppercase tracking-wide"
+              title={t(`${td}.stats.annualDuesProgressHelp`)}
+            >
               {t(`${td}.stats.annualDuesProgress`)}
             </p>
             <div className="flex items-center gap-2">
@@ -214,7 +217,7 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availa
               <span className="font-semibold text-gray-900">{fmt(annualPledged)}</span>
               {' '}{t(`${td}.stats.pledged`)}
             </span>
-            <span className="text-red-600 font-medium">
+            <span className="text-red-600 font-medium" title={t(`${td}.stats.annualOutstandingHelp`)}>
               {fmt(annualOutstanding)} {t(`${td}.stats.stillOutstanding`)}
             </span>
           </div>
@@ -291,10 +294,24 @@ const PaymentStats: React.FC<PaymentStatsProps> = ({ stats, selectedYear, availa
 
           <div className="space-y-3">
             <div className="flex justify-between items-start">
-              <span className="text-sm text-gray-600">{t(`${td}.health.membershipDues`)}</span>
+              <span className="text-sm text-gray-600" title={t(`${td}.health.membershipDuesHelp`)}>
+                {t(`${td}.health.membershipDues`)}
+              </span>
               <div className="text-right">
-                <p className="text-base font-bold text-gray-900">{fmt(stats.totalMembershipCollected)}</p>
-                <p className="text-xs text-red-600 mt-0.5">{fmt(stats.outstandingAmount)} {t(`${td}.stats.stillOutstanding`)}</p>
+                {/* Paired with outstandingAmount below, which is only ever computed
+                    over dues-tracked members (there's no "amount due" for a member
+                    with no yearly_pledge) — so the collected figure here has to be
+                    scoped the same way, or the two numbers describe different
+                    populations and stop summing to anything meaningful. Same
+                    fallback as collectedForDues above, for API responses predating
+                    trackedMembershipCollected. totalMembershipCollected (the
+                    all-members figure) is still correct and shown elsewhere
+                    (Total Receipts, net income) — just not the right number to
+                    pair with a tracked-only outstanding amount in this panel. */}
+                <p className="text-base font-bold text-gray-900">{fmt(collectedForDues)}</p>
+                <p className="text-xs text-red-600 mt-0.5" title={t(`${td}.health.duesOutstandingHelp`)}>
+                  {fmt(stats.outstandingAmount)} {t(`${td}.stats.stillOutstanding`)}
+                </p>
               </div>
             </div>
             <div className="flex justify-between items-center">
