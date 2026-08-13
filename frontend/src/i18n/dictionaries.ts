@@ -196,6 +196,8 @@ export interface Dictionaries {
       reconcileLedger: string;
       reconcileBank: string;
       reconcileDiff: string;
+      annualDuesProgressHelp: string;
+      annualOutstandingHelp: string;
     };
     health: {
       title: string;
@@ -209,6 +211,8 @@ export interface Dictionaries {
       behindOnDues: string;
       activeMembers: string;
       membershipDues: string;
+      membershipDuesHelp: string;
+      duesOutstandingHelp: string;
       otherDonations: string;
     };
     transactionList: {
@@ -979,6 +983,8 @@ export const en: Dictionaries = {
       reconcileLedger: "Ledger",
       reconcileBank: "Bank",
       reconcileDiff: "Difference",
+      annualDuesProgressHelp: "Full-year view: this year's entire pledged total against what's been collected. Won't reach 100% until every member's full pledge is paid, no matter what month it is.",
+      annualOutstandingHelp: "Full-year total pledged minus total collected. This is the whole year's remaining gap, not just what's overdue right now — see \"still outstanding\" under Dues & Member Status for that.",
     },
     health: {
       title: "Membership Health",
@@ -992,6 +998,8 @@ export const en: Dictionaries = {
       behindOnDues: "Behind on Dues",
       activeMembers: "Active Members",
       membershipDues: "Membership Dues",
+      membershipDuesHelp: "Year-to-date view: collected against what should have been paid by now — each member's pledge prorated through the current month. This is why it's a smaller number than Annual Dues Progress above, which counts the whole year.",
+      duesOutstandingHelp: "What should have been paid by now (pledge prorated through the current month) minus what's collected. Matches the Behind on Dues count below — it only counts dues-tracked members. Different from the \"still outstanding\" figure in Annual Dues Progress, which is the full year's remaining gap.",
       otherDonations: "Other Donations",
     },
     transactionList: {
@@ -2854,6 +2862,10 @@ export const ti: Dictionaries = {
       reconcileLedger: "መዝገብ",
       reconcileBank: "ባንኪ",
       reconcileDiff: "ፍልልይ",
+      // NOTE: machine-drafted, not yet reviewed by a Tigrigna speaker — verify before relying on it.
+      annualDuesProgressHelp: "ናይ ምሉእ ዓመት ትርኢት፦ ናይዚ ዓመት ጠቕላላ ዝተማባጽዐ ገንዘብ ኣንጻር እቲ ክሳብ ሕጂ ዝተኣከበ። ኩሎም ኣባላት ምሉእ ተማብጻኦም ክሳብ ዝኸፍሉ 100% ኣይበጽሕን፣ ብዘየገድስ ኣየናይ ወርሒ ምዃኑ።",
+      // NOTE: machine-drafted, not yet reviewed by a Tigrigna speaker — verify before relying on it.
+      annualOutstandingHelp: "ጠቕላላ ናይ ምሉእ ዓመት ተማብጻ ነኪኻ እቲ ዝተኣከበ ገንዘብ። እዚ ናይ ምሉእ ዓመት ፍልልይ እዩ፣ ክሳብ ሕጂ ዝጸንሐ ዕዳ ጥራይ ኣይኮነን — ነቲ ኣብ ትሕቲ 'ክፍሊት ኣባልነትን ኩነታት ኣባላትን' ዘሎ 'ዝተረፈ' ርአ።",
     },
     health: {
       title: "ጥዕና ኣባልነት",
@@ -2867,6 +2879,10 @@ export const ti: Dictionaries = {
       behindOnDues: "ዕዳ ኣለዎ",
       activeMembers: "ንጡፋት ኣባላት",
       membershipDues: "ናይ ኣባልነት ክፍሊት",
+      // NOTE: machine-drafted, not yet reviewed by a Tigrigna speaker — verify before relying on it.
+      membershipDuesHelp: "ናይ ክሳብ ሕጂ ትርኢት፦ ክሳብ ሕጂ ክኽፈል ዝግብኦ (ናይ ነፍሲ ወከፍ ኣባል ተማብጻ ክሳብ ህሉው ወርሒ ተማቒሉ) ኣንጻር እቲ ዝተኣከበ። ስለዚ እዩ ካብቲ ልዕሊ ዘሎ ናይ ዓመት ኣባልነት ክፍሊት ንእሽቶ ቁጽሪ ዝኸውን።",
+      // NOTE: machine-drafted, not yet reviewed by a Tigrigna speaker — verify before relying on it.
+      duesOutstandingHelp: "ክሳብ ሕጂ ክኽፈል ዝግብኦ (ተማብጻ ክሳብ ህሉው ወርሒ ተማቒሉ) ነኪኻ ዝተኣከበ ገንዘብ። ምስቲ ትሕቲ ዘሎ ናይ 'ዕዳ ኣለዎ' ቁጽሪ ይሰማማዕ — ንዝተኸታተሉ ኣባላት ጥራይ እዩ ዝቖጽር። ካብቲ ኣብ ናይ ዓመት ኣባልነት ክፍሊት ዘሎ 'ዝተረፈ' ዝፍለ እዩ፣ ንሱ ናይ ምሉእ ዓመት ፍልልይ እዩ።",
       otherDonations: "ካልእ ሽልማታት",
     },
     transactionList: {
