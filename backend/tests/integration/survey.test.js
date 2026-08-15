@@ -106,3 +106,44 @@ describe('POST /api/survey/responses', () => {
     expect(sixth.status).toBe(429);
   });
 });
+
+describe('GET /api/survey/report', () => {
+  beforeEach(async () => {
+    await SurveyResponse.destroy({ where: {} });
+    await SurveyResponse.bulkCreate([
+      { survey_slug: SURVEY_SLUG, locale: 'en', answers: { q1: 'age18to28', q4: ['familyFriendInvitation', 'other'], q7: 'Loved the sermon' } },
+      { survey_slug: SURVEY_SLUG, locale: 'ti', answers: { q1: 'age18to28', q4: ['movedToArea'], q7: 'More parking please' } },
+      { survey_slug: SURVEY_SLUG, locale: 'en', answers: { q1: 'age29to38' } }
+    ]);
+  });
+
+  it('rejects a non-admin/secretary/board role', async () => {
+    process.env.TEST_SURVEY_ROLE = 'member';
+    const res = await request(app).get(`/api/survey/report?survey_slug=${SURVEY_SLUG}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('returns tallies and free-text answers for admin', async () => {
+    process.env.TEST_SURVEY_ROLE = 'admin';
+    const res = await request(app).get(`/api/survey/report?survey_slug=${SURVEY_SLUG}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.totalResponses).toBe(3);
+    expect(res.body.data.questionTallies.q1).toEqual({ age18to28: 2, age29to38: 1 });
+    expect(res.body.data.questionTallies.q4).toEqual({ familyFriendInvitation: 1, other: 1, movedToArea: 1 });
+    expect(res.body.data.freeTextAnswers.q7).toEqual(['Loved the sermon', 'More parking please']);
+  });
+
+  it('allows secretary and board roles too', async () => {
+    for (const role of ['secretary', 'board']) {
+      process.env.TEST_SURVEY_ROLE = role;
+      const res = await request(app).get(`/api/survey/report?survey_slug=${SURVEY_SLUG}`);
+      expect(res.status).toBe(200);
+    }
+  });
+
+  it('rejects an unknown survey_slug', async () => {
+    process.env.TEST_SURVEY_ROLE = 'admin';
+    const res = await request(app).get('/api/survey/report?survey_slug=bogus');
+    expect(res.status).toBe(400);
+  });
+});

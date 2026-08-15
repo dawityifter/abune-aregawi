@@ -5,6 +5,8 @@ const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const surveyController = require('../controllers/surveyController');
 const { SURVEY_DEFINITIONS, MEMBER_STATUS_OPTIONS } = require('../config/surveyDefinitions/churchServicesAssessment2026');
+const { firebaseAuthMiddleware: protect } = require('../middleware/auth');
+const authorize = require('../middleware/role');
 
 // Loose enough that multiple family members on the same church wifi can each
 // submit without being blocked, while still stopping a scripted flood.
@@ -26,6 +28,7 @@ const validateSubmission = [
 // Public — anonymous, no auth. Rate-limited on top of the global /api/ limiter in server.js.
 router.post('/responses', surveySubmitLimiter, validateSubmission, surveyController.submitResponse);
 
-// GET /report (admin/secretary/board) is added in Task 4, once surveyController.getReport exists.
+// Admin/secretary/board only. Uses the array form of authorize() — see Global Constraints.
+router.get('/report', protect, authorize(['admin', 'secretary', 'board']), surveyController.getReport);
 
 module.exports = router;

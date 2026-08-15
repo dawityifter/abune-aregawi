@@ -2,7 +2,7 @@
 const crypto = require('crypto');
 const { validationResult } = require('express-validator');
 const { SurveyResponse } = require('../models');
-const { isValidAnswers } = require('../config/surveyDefinitions/churchServicesAssessment2026');
+const { isValidAnswers, SURVEY_DEFINITIONS } = require('../config/surveyDefinitions/churchServicesAssessment2026');
 
 const MAX_ANSWERS_JSON_LENGTH = 20000;
 
@@ -51,4 +51,52 @@ const submitResponse = async (req, res) => {
   }
 };
 
-module.exports = { submitResponse };
+const getReport = async (req, res) => {
+  try {
+    const surveySlug = req.query.survey_slug;
+    const def = SURVEY_DEFINITIONS[surveySlug];
+    if (!def) {
+      return res.status(400).json({ success: false, message: 'Unknown survey_slug' });
+    }
+
+    const rows = await SurveyResponse.findAll({ where: { survey_slug: surveySlug }, attributes: ['answers'] });
+
+    const questionTallies = {};
+    const freeTextAnswers = {};
+    def.questions.forEach(q => {
+      if (q.type === 'text') {
+        freeTextAnswers[q.id] = [];
+      } else {
+        questionTallies[q.id] = {};
+      }
+    });
+
+    rows.forEach(row => {
+      const answers = row.answers || {};
+      def.questions.forEach(q => {
+        const value = answers[q.id];
+        if (value === undefined || value === null || value === '') return;
+
+        if (q.type === 'text') {
+          freeTextAnswers[q.id].push(value);
+        } else if (q.type === 'single') {
+          questionTallies[q.id][value] = (questionTallies[q.id][value] || 0) + 1;
+        } else if (q.type === 'multi' && Array.isArray(value)) {
+          value.forEach(optionKey => {
+            questionTallies[q.id][optionKey] = (questionTallies[q.id][optionKey] || 0) + 1;
+          });
+        }
+      });
+    });
+
+    return res.json({
+      success: true,
+      data: { totalResponses: rows.length, questionTallies, freeTextAnswers }
+    });
+  } catch (err) {
+    console.error('getReport error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to build survey report' });
+  }
+};
+
+module.exports = { submitResponse, getReport };
