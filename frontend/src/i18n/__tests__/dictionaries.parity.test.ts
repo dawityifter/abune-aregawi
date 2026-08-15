@@ -50,6 +50,7 @@ describe('dictionaries en/ti parity', () => {
       'treasurerDashboard.transactionList.status.pending',
       'church.address',
       'donatePage.auth.methodAch',
+      'survey.q35.options.whatsappViber',
     ]);
     const identical = Object.keys(enFlat).filter(
       (k) =>
