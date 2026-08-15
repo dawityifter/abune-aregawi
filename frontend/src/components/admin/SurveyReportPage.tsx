@@ -4,7 +4,10 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { fetchSurveyReport, SurveyReportData } from '../../utils/surveyApi';
 import { SURVEY_QUESTIONS, SURVEY_SLUG } from '../survey/surveyDefinitions';
 
-const ALLOWED_ROLES = ['admin', 'secretary', 'board'];
+// Must stay in sync with backend/src/routes/surveyRoutes.js's authorize() list.
+// 'church_leadership' is this system's board-equivalent leadership role (see
+// AdminDashboard.tsx); there is no 'board' role in the Member role ENUM.
+const ALLOWED_ROLES = ['admin', 'secretary', 'church_leadership'];
 
 const SurveyReportPage: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();

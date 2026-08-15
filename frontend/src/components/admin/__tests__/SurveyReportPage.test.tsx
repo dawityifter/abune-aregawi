@@ -32,6 +32,22 @@ describe('SurveyReportPage', () => {
     expect(mockedFetchReport).not.toHaveBeenCalled();
   });
 
+  it('grants access to the church_leadership role (this system has no "board" role)', async () => {
+    mockUseAuth.mockReturnValue({
+      currentUser: { uid: '1' },
+      firebaseUser: { getIdToken: async () => 'token' },
+      getUserProfile: async () => ({ data: { member: { roles: ['church_leadership'] } } })
+    });
+    mockedFetchReport.mockResolvedValue({
+      totalResponses: 1,
+      questionTallies: { q2: { male: 1 } },
+      freeTextAnswers: {}
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Total Responses')).toBeInTheDocument());
+    expect(mockedFetchReport).toHaveBeenCalled();
+  });
+
   it('loads and displays tallies for an admin role', async () => {
     mockUseAuth.mockReturnValue({
       currentUser: { uid: '1' },

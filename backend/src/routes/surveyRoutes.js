@@ -28,7 +28,7 @@ const validateSubmission = [
 // Public — anonymous, no auth. Rate-limited on top of the global /api/ limiter in server.js.
 router.post('/responses', surveySubmitLimiter, validateSubmission, surveyController.submitResponse);
 
-// Admin/secretary/board only. Uses the array form of authorize() — see Global Constraints.
-router.get('/report', protect, authorize(['admin', 'secretary', 'board']), surveyController.getReport);
+// Admin/secretary/leadership only. Uses the array form of authorize() — see Global Constraints.
+router.get('/report', protect, authorize(['admin', 'secretary', 'church_leadership']), surveyController.getReport);
 
 module.exports = router;

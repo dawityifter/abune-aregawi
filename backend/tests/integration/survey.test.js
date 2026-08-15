@@ -117,7 +117,7 @@ describe('GET /api/survey/report', () => {
     ]);
   });
 
-  it('rejects a non-admin/secretary/board role', async () => {
+  it('rejects a non-admin/secretary/church_leadership role', async () => {
     process.env.TEST_SURVEY_ROLE = 'member';
     const res = await request(app).get(`/api/survey/report?survey_slug=${SURVEY_SLUG}`);
     expect(res.status).toBe(403);
@@ -133,8 +133,8 @@ describe('GET /api/survey/report', () => {
     expect(res.body.data.freeTextAnswers.q7).toEqual(['Loved the sermon', 'More parking please']);
   });
 
-  it('allows secretary and board roles too', async () => {
-    for (const role of ['secretary', 'board']) {
+  it('allows secretary and church_leadership roles too', async () => {
+    for (const role of ['secretary', 'church_leadership']) {
       process.env.TEST_SURVEY_ROLE = role;
       const res = await request(app).get(`/api/survey/report?survey_slug=${SURVEY_SLUG}`);
       expect(res.status).toBe(200);
