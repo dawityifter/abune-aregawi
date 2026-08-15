@@ -858,7 +858,7 @@ router.get('/report', protect, authorize(['admin', 'secretary', 'board']), surve
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest tests/integration/survey.test.js`
-Expected: PASS (all 10 tests across both `describe` blocks)
+Expected: PASS (all 11 tests across both `describe` blocks — 7 from Task 3, 4 new)
 
 - [ ] **Step 6: Commit**
 
