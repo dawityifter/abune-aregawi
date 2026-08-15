@@ -60,6 +60,7 @@ const announcementRoutes = require('./routes/announcementRoutes');
 const settingRoutes = require('./routes/settingRoutes');
 const statementRoutes = require('./routes/statementRoutes');
 const loanRoutes = require('./routes/loanRoutes');
+const surveyRoutes = require('./routes/surveyRoutes');
 const { assertDemoModeNotEnabledInProduction } = require('./config/demoMode');
 const { reportError } = require('./utils/telemetry');
 const { startLedgerSheetsScheduler } = require('./jobs/ledgerSheets/scheduler');
@@ -284,6 +285,7 @@ app.use('/api/bank', bankRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/loans', loanRoutes);
+app.use('/api/survey', surveyRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
