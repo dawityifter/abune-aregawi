@@ -6,6 +6,10 @@ export interface SurveyDraft {
   answers: Record<string, string | string[]>;
   otherTexts: Record<string, string>;
   sectionIndex: number;
+  // The member-status radio only renders on section 1, so if it isn't part of
+  // the draft a reload past that section loses the answer with no way to
+  // re-enter it.
+  memberStatus?: string;
 }
 
 export function loadDraft(): SurveyDraft | null {

@@ -22,14 +22,15 @@ const SurveyPage: React.FC = () => {
       setAnswers(draft.answers);
       setOtherTexts(draft.otherTexts);
       setSectionIndex(draft.sectionIndex);
+      setMemberStatus(draft.memberStatus);
     }
   }, []);
 
   useEffect(() => {
     if (!submitted) {
-      saveDraft({ answers, otherTexts, sectionIndex });
+      saveDraft({ answers, otherTexts, sectionIndex, memberStatus });
     }
-  }, [answers, otherTexts, sectionIndex, submitted]);
+  }, [answers, otherTexts, sectionIndex, memberStatus, submitted]);
 
   const handleAnswerChange = (id: string, value: string | string[]) => {
     setAnswers(prev => ({ ...prev, [id]: value }));

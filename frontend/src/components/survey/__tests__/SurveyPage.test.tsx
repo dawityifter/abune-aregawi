@@ -47,6 +47,29 @@ describe('SurveyPage', () => {
     expect(screen.getByText('Section 2 of 11')).toBeInTheDocument();
   });
 
+  it('persists the picked member status and restores it after a reload past section 1', async () => {
+    const { unmount } = renderPage();
+    fireEvent.click(screen.getByLabelText('New Member'));
+
+    const saved = JSON.parse(window.localStorage.getItem('survey.church-services-assessment-2026.draft') as string);
+    expect(saved.memberStatus).toBe('newMember');
+
+    // Advance past section 1 (where the member-status radio lives) and remount,
+    // simulating a reload: the restored draft must still carry memberStatus.
+    fireEvent.click(screen.getByText('Next'));
+    unmount();
+    renderPage();
+    expect(screen.getByText('Section 2 of 11')).toBeInTheDocument();
+    expect(screen.queryByLabelText('New Member')).not.toBeInTheDocument();
+
+    // Jump to the last section and submit to prove the restored value is sent.
+    for (let i = 0; i < 9; i++) fireEvent.click(screen.getByText('Next'));
+    fireEvent.click(screen.getByText('Submit'));
+    await waitFor(() => expect(mockedSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ memberStatus: 'newMember' })
+    ));
+  });
+
   it('shows Submit instead of Next on the last section, and shows the thank-you screen after a successful submit', async () => {
     surveyDraft.saveDraft({ answers: { q1: 'age18to28' }, otherTexts: {}, sectionIndex: 10 });
     renderPage();
