@@ -6,6 +6,15 @@ const { isValidAnswers } = require('../config/surveyDefinitions/churchServicesAs
 
 const MAX_ANSWERS_JSON_LENGTH = 20000;
 
+// SURVEY_IP_SALT lets ops pin a stable salt across restarts, but nothing about
+// ip_hash depends on that stability (it's an audit-trail breadcrumb only, never
+// used for cross-session matching). So when the env var is unset, generate a
+// random salt once per process instead of falling back to a fixed string —
+// a source-controlled fallback would let anyone with the repo (or DB access)
+// precompute sha256(ip + salt) for the whole IPv4 space and de-anonymize
+// submitters, defeating the point of an anonymous survey.
+const SURVEY_IP_SALT = process.env.SURVEY_IP_SALT || crypto.randomBytes(32).toString('hex');
+
 const submitResponse = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -24,8 +33,7 @@ const submitResponse = async (req, res) => {
       return res.status(400).json({ success: false, message: validation.error });
     }
 
-    const salt = process.env.SURVEY_IP_SALT || 'dev-only-survey-salt-change-in-prod';
-    const ip_hash = crypto.createHash('sha256').update(`${req.ip}${salt}`).digest('hex');
+    const ip_hash = crypto.createHash('sha256').update(`${req.ip}${SURVEY_IP_SALT}`).digest('hex');
 
     await SurveyResponse.create({
       survey_slug,
