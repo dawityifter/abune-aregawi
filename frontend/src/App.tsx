@@ -67,6 +67,7 @@ const GalleryPage = lazy(() => import('./components/GalleryPage'));
 const ChurchBylaw = lazy(() => import('./components/ChurchBylaw'));
 const CreditsPage = lazy(() => import('./components/CreditsPage'));
 const ParishPulseSignUp = lazy(() => import('./components/ParishPulseSignUp'));
+const SurveyPage = lazy(() => import('./components/survey/SurveyPage'));
 const ThankYouPage = lazy(() => import('./pages/ThankYouPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
@@ -174,6 +175,7 @@ function App() {
                 <Route path="/church-bylaw" element={<ChurchBylaw />} />
                 <Route path="/dependents" element={<ProtectedRoute><DependentsManagement /></ProtectedRoute>} />
                 <Route path="/parish-pulse-sign-up" element={<ParishPulseSignUp />} />
+                <Route path="/survey" element={<SurveyPage />} />
                 <Route path="/pledge" element={<PledgePage />} />
                 <Route path="/thank-you" element={<ThankYouPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />

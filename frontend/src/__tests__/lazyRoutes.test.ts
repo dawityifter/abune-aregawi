@@ -50,10 +50,10 @@ describe('lazily-loaded routes', () => {
   it('finds the lazy imports in App.tsx', () => {
     // Guards the regex itself: if App.tsx is reformatted so this stops matching,
     // the checks below would silently pass over an empty list. Pinned to the
-    // real current count (22), not a loose lower bound — a loose bound is how
+    // real current count (23), not a loose lower bound — a loose bound is how
     // the five webpackChunkName-commented staff routes silently dropped out of
     // this suite the first time around while it kept reporting green.
-    expect(paths.length).toBe(22);
+    expect(paths.length).toBe(23);
   });
 
   it.each(lazyImportPaths())('%s resolves to a real file', (rel) => {
