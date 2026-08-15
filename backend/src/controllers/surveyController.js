@@ -63,11 +63,17 @@ const getReport = async (req, res) => {
 
     const questionTallies = {};
     const freeTextAnswers = {};
+    // No question in this survey is mandatory, so most respondents answer only a
+    // minority of them. Percentages must be computed against the number of people
+    // who answered THAT question, not totalResponses — otherwise a question 12 of
+    // 100 respondents answered reads as if every option were out of 100.
+    const answeredCounts = {};
     def.questions.forEach(q => {
       if (q.type === 'text') {
         freeTextAnswers[q.id] = [];
       } else {
         questionTallies[q.id] = {};
+        answeredCounts[q.id] = 0;
       }
     });
 
@@ -76,6 +82,11 @@ const getReport = async (req, res) => {
       def.questions.forEach(q => {
         const value = answers[q.id];
         if (value === undefined || value === null || value === '') return;
+        if (Array.isArray(value) && value.length === 0) return;
+
+        if (q.type !== 'text') {
+          answeredCounts[q.id] += 1;
+        }
 
         if (q.type === 'text') {
           freeTextAnswers[q.id].push(value);
@@ -91,7 +102,7 @@ const getReport = async (req, res) => {
 
     return res.json({
       success: true,
-      data: { totalResponses: rows.length, questionTallies, freeTextAnswers }
+      data: { totalResponses: rows.length, answeredCounts, questionTallies, freeTextAnswers }
     });
   } catch (err) {
     console.error('getReport error:', err);

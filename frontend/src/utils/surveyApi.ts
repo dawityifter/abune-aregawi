@@ -26,6 +26,10 @@ export async function submitSurveyResponse(payload: SubmitSurveyPayload): Promis
 
 export interface SurveyReportData {
   totalResponses: number;
+  // Per-question count of responses that answered that question at all. No
+  // question is mandatory, so this — not totalResponses — is the denominator
+  // for each option's percentage.
+  answeredCounts: Record<string, number>;
   questionTallies: Record<string, Record<string, number>>;
   freeTextAnswers: Record<string, string[]>;
 }

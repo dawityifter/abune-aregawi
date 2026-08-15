@@ -56,6 +56,7 @@ describe('SurveyReportPage', () => {
     });
     mockedFetchReport.mockResolvedValue({
       totalResponses: 2,
+      answeredCounts: { q2: 2 },
       questionTallies: { q2: { male: 1, female: 1 } },
       freeTextAnswers: { q7: ['Great parish'] }
     });
@@ -64,5 +65,27 @@ describe('SurveyReportPage', () => {
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('Great parish')).toBeInTheDocument();
     expect(mockedFetchReport).toHaveBeenCalledWith('token', 'church-services-assessment-2026');
+  });
+
+  it('computes percentages against the per-question answered count, not total responses', async () => {
+    mockUseAuth.mockReturnValue({
+      currentUser: { uid: '1' },
+      firebaseUser: { getIdToken: async () => 'token' },
+      getUserProfile: async () => ({ data: { member: { roles: ['admin'] } } })
+    });
+    // 100 responses overall, but only 4 people answered q2. male:3 of those 4 is
+    // 75% — not 3% of the whole survey population.
+    mockedFetchReport.mockResolvedValue({
+      totalResponses: 100,
+      answeredCounts: { q2: 4 },
+      questionTallies: { q2: { male: 3, female: 1 } },
+      freeTextAnswers: {}
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Total Responses')).toBeInTheDocument());
+    expect(screen.getByText('3 (75%)')).toBeInTheDocument();
+    expect(screen.getByText('1 (25%)')).toBeInTheDocument();
+    // The answered count is shown so an admin can see the real base for q2.
+    expect(screen.getByText('4 of 100 answered')).toBeInTheDocument();
   });
 });

@@ -133,6 +133,31 @@ describe('GET /api/survey/report', () => {
     expect(res.body.data.freeTextAnswers.q7).toEqual(['Loved the sermon', 'More parking please']);
   });
 
+  it('counts, per question, how many responses actually answered it', async () => {
+    process.env.TEST_SURVEY_ROLE = 'admin';
+    const res = await request(app).get(`/api/survey/report?survey_slug=${SURVEY_SLUG}`);
+    expect(res.status).toBe(200);
+    // All three fixtures answered q1; only two answered q4; nobody answered q2.
+    expect(res.body.data.totalResponses).toBe(3);
+    expect(res.body.data.answeredCounts.q1).toBe(3);
+    expect(res.body.data.answeredCounts.q4).toBe(2);
+    expect(res.body.data.answeredCounts.q2).toBe(0);
+    // Text questions are reported as free text, not tallied, so they have no count.
+    expect(res.body.data.answeredCounts.q7).toBeUndefined();
+  });
+
+  it('does not count an empty array as an answer to a multi-select question', async () => {
+    process.env.TEST_SURVEY_ROLE = 'admin';
+    await SurveyResponse.destroy({ where: {} });
+    await SurveyResponse.bulkCreate([
+      { survey_slug: SURVEY_SLUG, locale: 'en', answers: { q4: [] } },
+      { survey_slug: SURVEY_SLUG, locale: 'en', answers: { q4: ['movedToArea'] } }
+    ]);
+    const res = await request(app).get(`/api/survey/report?survey_slug=${SURVEY_SLUG}`);
+    expect(res.body.data.totalResponses).toBe(2);
+    expect(res.body.data.answeredCounts.q4).toBe(1);
+  });
+
   it('allows secretary and church_leadership roles too', async () => {
     for (const role of ['secretary', 'church_leadership']) {
       process.env.TEST_SURVEY_ROLE = role;

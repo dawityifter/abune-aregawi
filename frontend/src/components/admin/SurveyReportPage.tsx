@@ -75,12 +75,18 @@ const SurveyReportPage: React.FC = () => {
 
       {SURVEY_QUESTIONS.filter(q => q.type !== 'text').map(q => {
         const tallies = report.questionTallies[q.id] || {};
+        // Nothing in this survey is mandatory, so the denominator is the number
+        // of people who answered this specific question, not totalResponses.
+        const answered = report.answeredCounts?.[q.id] || 0;
         return (
           <div key={q.id} className="mb-6">
-            <p className="font-medium text-primary-700 mb-2">{t(`survey.${q.id}.label`)}</p>
+            <p className="font-medium text-primary-700 mb-1">{t(`survey.${q.id}.label`)}</p>
+            <p className="text-xs text-accent-500 mb-2">
+              {t('survey.report.answeredCount', { answered, total: report.totalResponses })}
+            </p>
             {(q.optionKeys || []).map(key => {
               const count = tallies[key] || 0;
-              const pct = report.totalResponses ? Math.round((count / report.totalResponses) * 100) : 0;
+              const pct = Math.round((count / (answered || 1)) * 100);
               return (
                 <div key={key} className="mb-1">
                   <div className="flex justify-between text-sm text-accent-700">
