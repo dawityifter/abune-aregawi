@@ -2696,6 +2696,7 @@ export const en: Dictionaries = {
     },
     report: {
       title: 'Church Services Survey — Report',
+      tab: 'Survey Report',
       totalResponses: 'Total Responses',
       freeTextAnswers: 'Free-text answers',
       noResponsesYet: 'No responses yet.',
@@ -4688,6 +4689,7 @@ export const ti: Dictionaries = {
     },
     report: {
       title: 'መርመራ ኣገልግሎት ቤተ ክርስቲያን — ሪፖርት',
+      tab: 'ሪፖርት መርመራ',
       totalResponses: 'ጠቕላላ ምላሽ',
       freeTextAnswers: 'ናይ ፅሑፍ ምላሻት',
       noResponsesYet: 'ገና ምላሽ የለን።',
