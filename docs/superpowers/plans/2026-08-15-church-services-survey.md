@@ -486,10 +486,17 @@ beforeEach(async () => {
   await SurveyResponse.destroy({ where: {} });
 });
 
+// express-rate-limit's default keyGenerator buckets by req.ip. All tests in this
+// file share one Express app instance and therefore one limiter store, so each
+// test below sets a distinct X-Forwarded-For IP (server.js already has
+// `app.set('trust proxy', 1)`) to keep its requests out of every other test's
+// bucket. The dedicated rate-limit test uses its own fixed IP across its whole
+// sequence, since that's the one test that must actually fill a bucket.
 describe('POST /api/survey/responses', () => {
   it('accepts a valid anonymous submission', async () => {
     const res = await request(app)
       .post('/api/survey/responses')
+      .set('X-Forwarded-For', '10.0.0.1')
       .send({
         survey_slug: SURVEY_SLUG,
         locale: 'en',
@@ -509,6 +516,7 @@ describe('POST /api/survey/responses', () => {
   it('does not require member_status, locale defaults are still validated', async () => {
     const res = await request(app)
       .post('/api/survey/responses')
+      .set('X-Forwarded-For', '10.0.0.2')
       .send({ survey_slug: SURVEY_SLUG, locale: 'ti', answers: { q2: 'female' } });
     expect(res.status).toBe(201);
   });
@@ -516,6 +524,7 @@ describe('POST /api/survey/responses', () => {
   it('rejects an unknown survey_slug', async () => {
     const res = await request(app)
       .post('/api/survey/responses')
+      .set('X-Forwarded-For', '10.0.0.3')
       .send({ survey_slug: 'bogus', locale: 'en', answers: {} });
     expect(res.status).toBe(400);
   });
@@ -523,6 +532,7 @@ describe('POST /api/survey/responses', () => {
   it('rejects an invalid locale', async () => {
     const res = await request(app)
       .post('/api/survey/responses')
+      .set('X-Forwarded-For', '10.0.0.4')
       .send({ survey_slug: SURVEY_SLUG, locale: 'fr', answers: {} });
     expect(res.status).toBe(400);
   });
@@ -530,6 +540,7 @@ describe('POST /api/survey/responses', () => {
   it('rejects an answer payload with an unknown question id', async () => {
     const res = await request(app)
       .post('/api/survey/responses')
+      .set('X-Forwarded-For', '10.0.0.5')
       .send({ survey_slug: SURVEY_SLUG, locale: 'en', answers: { q999: 'x' } });
     expect(res.status).toBe(400);
   });
@@ -537,6 +548,7 @@ describe('POST /api/survey/responses', () => {
   it('rejects an oversized answers payload', async () => {
     const res = await request(app)
       .post('/api/survey/responses')
+      .set('X-Forwarded-For', '10.0.0.6')
       .send({ survey_slug: SURVEY_SLUG, locale: 'en', answers: { q7: 'x'.repeat(21000) } });
     expect(res.status).toBe(400);
   });
@@ -544,10 +556,16 @@ describe('POST /api/survey/responses', () => {
   it('rate-limits after 5 submissions from the same IP within the window', async () => {
     const payload = { survey_slug: SURVEY_SLUG, locale: 'en', answers: { q2: 'male' } };
     for (let i = 0; i < 5; i++) {
-      const res = await request(app).post('/api/survey/responses').send(payload);
+      const res = await request(app)
+        .post('/api/survey/responses')
+        .set('X-Forwarded-For', '10.0.0.100')
+        .send(payload);
       expect(res.status).toBe(201);
     }
-    const sixth = await request(app).post('/api/survey/responses').send(payload);
+    const sixth = await request(app)
+      .post('/api/survey/responses')
+      .set('X-Forwarded-For', '10.0.0.100')
+      .send(payload);
     expect(sixth.status).toBe(429);
   });
 });
