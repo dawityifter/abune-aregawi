@@ -588,6 +588,15 @@ const { isValidAnswers } = require('../config/surveyDefinitions/churchServicesAs
 
 const MAX_ANSWERS_JSON_LENGTH = 20000;
 
+// SURVEY_IP_SALT lets ops pin a stable salt across restarts, but nothing about
+// ip_hash depends on that stability (it's an audit-trail breadcrumb only, never
+// used for cross-session matching). So when the env var is unset, generate a
+// random salt once per process instead of falling back to a fixed string —
+// a source-controlled fallback would let anyone with the repo (or DB access)
+// precompute sha256(ip + salt) for the whole IPv4 space and de-anonymize
+// submitters, defeating the point of an anonymous survey.
+const SURVEY_IP_SALT = process.env.SURVEY_IP_SALT || crypto.randomBytes(32).toString('hex');
+
 const submitResponse = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -606,8 +615,7 @@ const submitResponse = async (req, res) => {
       return res.status(400).json({ success: false, message: validation.error });
     }
 
-    const salt = process.env.SURVEY_IP_SALT || 'dev-only-survey-salt-change-in-prod';
-    const ip_hash = crypto.createHash('sha256').update(`${req.ip}${salt}`).digest('hex');
+    const ip_hash = crypto.createHash('sha256').update(`${req.ip}${SURVEY_IP_SALT}`).digest('hex');
 
     await SurveyResponse.create({
       survey_slug,
@@ -686,7 +694,11 @@ const surveyRoutes = require('./routes/surveyRoutes');
 Append:
 
 ```
-# Salt used to hash submitter IPs on the anonymous survey (audit trail only, never raw IP)
+# Optional: pins a stable salt for hashing submitter IPs on the anonymous survey
+# (audit trail only, never raw IP). If unset, a random salt is generated once
+# per server process — safe either way, since ip_hash is never used for
+# cross-session matching. Setting this only matters if you want ip_hash values
+# to stay comparable across a restart.
 SURVEY_IP_SALT=
 ```
 
@@ -2382,5 +2394,5 @@ git commit -m "feat: add admin survey report page with per-question tallies"
 - [ ] Run the full backend suite: `cd backend && npm test` — confirm no regressions outside the new `survey*` files.
 - [ ] Run the full frontend suite: `cd frontend && npm test -- --watchAll=false` — confirm no regressions outside the new `survey*`/`Survey*` files.
 - [ ] Manually verify in a browser: submit the survey once in English, once in Tigrigna, confirm both appear in `/admin/survey-report` tallies with a real admin-role login (see `superpowers:verification-before-completion` before claiming this plan complete).
-- [ ] Confirm `SURVEY_IP_SALT` is set in production env vars before this ships (see `backend/env.example` addition in Task 3) — without it, the fallback dev salt is used, which is fine functionally but not ideal for the audit trail's integrity.
+- [ ] `SURVEY_IP_SALT` is optional in production — if unset, a random per-process salt is generated automatically, so there's nothing to configure unless stable `ip_hash` values across restarts are wanted.
 
