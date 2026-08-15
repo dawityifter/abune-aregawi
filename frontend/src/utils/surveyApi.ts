@@ -1,5 +1,20 @@
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
+// The API answers errors with { success: false, message }. Without reading it the
+// caller only ever sees the status code, so specific, actionable reasons
+// ("Submission too large", the rate-limit message) never reach the respondent.
+async function errorFromResponse(res: Response, fallback: string): Promise<Error> {
+  try {
+    const body = await res.json();
+    if (body && typeof body.message === 'string' && body.message.trim()) {
+      return new Error(body.message);
+    }
+  } catch {
+    // Not JSON (proxy error page, empty body) — fall through to the generic message.
+  }
+  return new Error(fallback);
+}
+
 export interface SubmitSurveyPayload {
   surveySlug: string;
   locale: 'en' | 'ti';
@@ -20,7 +35,7 @@ export async function submitSurveyResponse(payload: SubmitSurveyPayload): Promis
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to submit survey response (status ${res.status})`);
+    throw await errorFromResponse(res, `Failed to submit survey response (status ${res.status})`);
   }
 }
 
@@ -40,7 +55,7 @@ export async function fetchSurveyReport(idToken: string, surveySlug: string): Pr
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch survey report (status ${res.status})`);
+    throw await errorFromResponse(res, `Failed to fetch survey report (status ${res.status})`);
   }
 
   const body = await res.json();

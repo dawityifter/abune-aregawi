@@ -68,8 +68,12 @@ const SurveyPage: React.FC = () => {
       });
       clearDraft();
       setSubmitted(true);
-    } catch {
-      setSubmitError(t('survey.wizard.submitError'));
+    } catch (err) {
+      // Prefer the server's own reason ("Submission too large", the rate-limit
+      // message) over the generic string — it is the only thing that tells the
+      // respondent what to actually do differently.
+      const message = err instanceof Error ? err.message.trim() : '';
+      setSubmitError(message || t('survey.wizard.submitError'));
     } finally {
       setSubmitting(false);
     }

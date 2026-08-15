@@ -4,7 +4,10 @@ const { validationResult } = require('express-validator');
 const { SurveyResponse } = require('../models');
 const { isValidAnswers, SURVEY_DEFINITIONS } = require('../config/surveyDefinitions/churchServicesAssessment2026');
 
-const MAX_ANSWERS_JSON_LENGTH = 20000;
+// Sized to comfortably fit the client-side ceiling: 13 free-text questions at
+// maxLength 2000 each (~26KB) plus the remaining single/multi answers. See the
+// textarea in frontend/src/components/survey/SurveyQuestion.tsx.
+const MAX_ANSWERS_JSON_LENGTH = 30000;
 
 // SURVEY_IP_SALT lets ops pin a stable salt across restarts, but nothing about
 // ip_hash depends on that stability (it's an audit-trail breadcrumb only, never

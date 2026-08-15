@@ -85,8 +85,19 @@ describe('SurveyPage', () => {
     expect(window.localStorage.getItem('survey.church-services-assessment-2026.draft')).toBeNull();
   });
 
-  it('shows an error message and stays on the wizard if submit fails', async () => {
-    mockedSubmit.mockRejectedValue(new Error('network error'));
+  it("shows the server's own reason and stays on the wizard if submit fails", async () => {
+    mockedSubmit.mockRejectedValue(new Error('Too many survey submissions from this IP, please try again later.'));
+    surveyDraft.saveDraft({ answers: {}, otherTexts: {}, sectionIndex: 10 });
+    renderPage();
+    fireEvent.click(screen.getByText('Submit'));
+    await waitFor(() => expect(
+      screen.getByText('Too many survey submissions from this IP, please try again later.')
+    ).toBeInTheDocument());
+    expect(screen.getByText('Section 11 of 11')).toBeInTheDocument();
+  });
+
+  it('falls back to the generic error message when the failure carries no message', async () => {
+    mockedSubmit.mockRejectedValue(new Error(''));
     surveyDraft.saveDraft({ answers: {}, otherTexts: {}, sectionIndex: 10 });
     renderPage();
     fireEvent.click(screen.getByText('Submit'));

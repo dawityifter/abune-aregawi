@@ -28,6 +28,11 @@ const SurveyQuestion: React.FC<SurveyQuestionProps> = ({ question, value, otherV
         <textarea
           className="w-full px-4 py-2 border border-accent-200 rounded-md focus:ring-primary-500 focus:border-primary-500"
           rows={3}
+          // The server caps the whole serialized answers payload
+          // (MAX_ANSWERS_JSON_LENGTH in backend/src/controllers/surveyController.js).
+          // Capping each of the 13 free-text answers keeps a verbose respondent
+          // from hitting that only at submit time, after filling the whole survey.
+          maxLength={2000}
           value={(value as string) || ''}
           onChange={e => onChange(question.id, e.target.value)}
         />

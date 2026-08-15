@@ -86,8 +86,9 @@ describe('POST /api/survey/responses', () => {
     const res = await request(app)
       .post('/api/survey/responses')
       .set('X-Forwarded-For', '10.0.0.6')
-      .send({ survey_slug: SURVEY_SLUG, locale: 'en', answers: { q7: 'x'.repeat(21000) } });
+      .send({ survey_slug: SURVEY_SLUG, locale: 'en', answers: { q7: 'x'.repeat(31000) } });
     expect(res.status).toBe(400);
+    expect(res.body.message).toBe('Submission too large');
   });
 
   it('rate-limits after 5 submissions from the same IP within the window', async () => {

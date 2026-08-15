@@ -68,4 +68,12 @@ describe('SurveyQuestion', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'My answer' } });
     expect(onChange).toHaveBeenCalledWith('q7', 'My answer');
   });
+
+  it('caps a free-text answer so it cannot overflow the server-side payload limit', () => {
+    const q: SurveyQuestionDef = { id: 'q7', section: 1, type: 'text' };
+    renderWithProviders(
+      <SurveyQuestion question={q} value={undefined} otherValue={undefined} onChange={jest.fn()} onOtherChange={jest.fn()} />
+    );
+    expect(screen.getByRole('textbox')).toHaveAttribute('maxlength', '2000');
+  });
 });
