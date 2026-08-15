@@ -1,0 +1,114 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { fetchSurveyReport, SurveyReportData } from '../../utils/surveyApi';
+import { SURVEY_QUESTIONS, SURVEY_SLUG } from '../survey/surveyDefinitions';
+
+const ALLOWED_ROLES = ['admin', 'secretary', 'board'];
+
+const SurveyReportPage: React.FC = () => {
+  const { currentUser, firebaseUser, getUserProfile } = useAuth();
+  const { t } = useLanguage();
+  const [userRoles, setUserRoles] = useState<string[] | null>(null);
+  const [report, setReport] = useState<SurveyReportData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!currentUser) return;
+      const uid = currentUser.uid || currentUser.id;
+      const profile = await getUserProfile(uid, currentUser.email, currentUser.phoneNumber);
+      const memberData = profile?.data?.member || profile;
+      const roles: string[] = memberData?.roles || [memberData?.role || 'member'];
+      setUserRoles(roles);
+    };
+    load();
+  }, [currentUser, getUserProfile]);
+
+  const canAccess = useMemo(
+    () => !!userRoles && userRoles.some(r => ALLOWED_ROLES.includes(r)),
+    [userRoles]
+  );
+
+  useEffect(() => {
+    if (userRoles === null) return;
+    if (!canAccess) { setLoading(false); return; }
+
+    const load = async () => {
+      try {
+        const token = await firebaseUser?.getIdToken();
+        const data = await fetchSurveyReport(token || '', SURVEY_SLUG);
+        setReport(data);
+      } catch {
+        setError(t('survey.report.loadError'));
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [userRoles, canAccess, firebaseUser, t]);
+
+  if (userRoles === null || loading) {
+    return <div className="p-8 text-center text-accent-500">{t('survey.report.loading')}</div>;
+  }
+
+  if (!canAccess) {
+    return <div className="p-8 text-center text-red-600">{t('survey.report.accessDenied')}</div>;
+  }
+
+  if (error) {
+    return <div className="p-8 text-center text-red-600">{error}</div>;
+  }
+
+  if (!report || report.totalResponses === 0) {
+    return <div className="p-8 text-center text-accent-500">{t('survey.report.noResponsesYet')}</div>;
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      <h1 className="text-h2 font-serif text-primary-700 mb-4">{t('survey.report.title')}</h1>
+      <p className="mb-6"><strong>{t('survey.report.totalResponses')}</strong>: <span>{report.totalResponses}</span></p>
+
+      {SURVEY_QUESTIONS.filter(q => q.type !== 'text').map(q => {
+        const tallies = report.questionTallies[q.id] || {};
+        return (
+          <div key={q.id} className="mb-6">
+            <p className="font-medium text-primary-700 mb-2">{t(`survey.${q.id}.label`)}</p>
+            {(q.optionKeys || []).map(key => {
+              const count = tallies[key] || 0;
+              const pct = report.totalResponses ? Math.round((count / report.totalResponses) * 100) : 0;
+              return (
+                <div key={key} className="mb-1">
+                  <div className="flex justify-between text-sm text-accent-700">
+                    <span>{t(`survey.${q.id}.options.${key}`)}</span>
+                    <span>{count} ({pct}%)</span>
+                  </div>
+                  <div className="w-full bg-accent-100 rounded h-2">
+                    <div className="bg-primary-600 h-2 rounded" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+
+      {SURVEY_QUESTIONS.filter(q => q.type === 'text').map(q => {
+        const texts = report.freeTextAnswers[q.id] || [];
+        if (texts.length === 0) return null;
+        return (
+          <div key={q.id} className="mb-6">
+            <p className="font-medium text-primary-700 mb-2">{t(`survey.${q.id}.label`)}</p>
+            <p className="text-xs text-accent-500 mb-2">{t('survey.report.freeTextAnswers')}</p>
+            <ul className="list-disc list-inside space-y-1">
+              {texts.map((text, i) => <li key={i} className="text-sm text-accent-700">{text}</li>)}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default SurveyReportPage;
