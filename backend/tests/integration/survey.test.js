@@ -91,20 +91,20 @@ describe('POST /api/survey/responses', () => {
     expect(res.body.message).toBe('Submission too large');
   });
 
-  it('rate-limits after 5 submissions from the same IP within the window', async () => {
+  it('rate-limits after 20 submissions from the same IP within the window', async () => {
     const payload = { survey_slug: SURVEY_SLUG, locale: 'en', answers: { q2: 'male' } };
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 20; i++) {
       const res = await request(app)
         .post('/api/survey/responses')
         .set('X-Forwarded-For', '10.0.0.100')
         .send(payload);
       expect(res.status).toBe(201);
     }
-    const sixth = await request(app)
+    const twentyFirst = await request(app)
       .post('/api/survey/responses')
       .set('X-Forwarded-For', '10.0.0.100')
       .send(payload);
-    expect(sixth.status).toBe(429);
+    expect(twentyFirst.status).toBe(429);
   });
 });
 

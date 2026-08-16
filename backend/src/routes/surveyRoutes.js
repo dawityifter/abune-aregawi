@@ -12,7 +12,7 @@ const authorize = require('../middleware/role');
 // submit without being blocked, while still stopping a scripted flood.
 const surveySubmitLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many survey submissions from this IP, please try again later.' }
