@@ -32,6 +32,20 @@ describe('SurveyReportPage', () => {
     expect(mockedFetchReport).not.toHaveBeenCalled();
   });
 
+  it('reports a load error instead of spinning forever when the profile fetch fails', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => { });
+    mockUseAuth.mockReturnValue({
+      currentUser: { uid: '1' },
+      firebaseUser: { getIdToken: async () => 'token' },
+      getUserProfile: async () => { throw new Error('network blip'); }
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Failed to load the survey report.')).toBeInTheDocument());
+    expect(screen.queryByText('Loading report...')).not.toBeInTheDocument();
+    expect(mockedFetchReport).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
   it('grants access to the church_leadership role (this system has no "board" role)', async () => {
     mockUseAuth.mockReturnValue({
       currentUser: { uid: '1' },

@@ -16,15 +16,27 @@ const SurveyReportPage: React.FC = () => {
   const [report, setReport] = useState<SurveyReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [roleLookupFailed, setRoleLookupFailed] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       if (!currentUser) return;
       const uid = currentUser.uid || currentUser.id;
-      const profile = await getUserProfile(uid, currentUser.email, currentUser.phoneNumber);
-      const memberData = profile?.data?.member || profile;
-      const roles: string[] = memberData?.roles || [memberData?.role || 'member'];
-      setUserRoles(roles);
+      try {
+        const profile = await getUserProfile(uid, currentUser.email, currentUser.phoneNumber);
+        const memberData = profile?.data?.member || profile;
+        const roles: string[] = memberData?.roles || [memberData?.role || 'member'];
+        setUserRoles(roles);
+      } catch (err) {
+        // Without this, a network blip left userRoles null forever: the page
+        // showed "Loading report..." indefinitely plus an unhandled rejection.
+        // AdminDashboard wraps the identical call the same way. Deny by default
+        // (empty roles) and say we couldn't verify access.
+        console.error('SurveyReportPage: failed to resolve user roles', err);
+        setUserRoles([]);
+        setRoleLookupFailed(true);
+        setLoading(false);
+      }
     };
     load();
   }, [currentUser, getUserProfile]);
@@ -54,6 +66,12 @@ const SurveyReportPage: React.FC = () => {
 
   if (userRoles === null || loading) {
     return <div className="p-8 text-center text-accent-500">{t('survey.report.loading')}</div>;
+  }
+
+  // A failed role lookup means access could not be verified, which is not the
+  // same as a confirmed denial — report it as a load failure.
+  if (roleLookupFailed) {
+    return <div className="p-8 text-center text-red-600">{t('survey.report.loadError')}</div>;
   }
 
   if (!canAccess) {
