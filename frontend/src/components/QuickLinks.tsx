@@ -187,6 +187,14 @@ const QuickLinks: React.FC = () => {
             )}
           />
         </div>
+        <div className="h-full">
+          <Card
+            icon="fas fa-clipboard-list"
+            title={t('survey.homeCard.title')}
+            desc={t('survey.homeCard.description')}
+            to="/survey"
+          />
+        </div>
       </div>
     </section>
   );

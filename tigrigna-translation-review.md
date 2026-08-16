@@ -27,6 +27,37 @@ seen by a handful of staff rather than the congregation.
 
 ---
 
+# Church Services Survey (Aug 2026)
+
+Most of `survey.*` in `dictionaries.ts` was taken directly from the client-provided
+Tigrigna PDF (`frontend/public/docs/Church Services Assesment Survey_Tigrigna.pdf`) and
+needs no review. The rows below are the exceptions: strings with **no Tigrigna PDF
+equivalent**, freshly translated here because the English PDF (treated as canonical —
+see `docs/superpowers/specs/2026-08-15-church-services-survey-design.md`) had an option,
+a numeric bracket, or a section instruction that the Tigrigna PDF lacked or stated
+differently.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| survey.q1.options.* | Under 18 / 18–28 / 29–38 / 39–48 / 49–60 / 61–75 / 76+ | ትሕቲ 18 / 18–28 / 29–38 / 39–48 / 49–60 / 61–75 / 76 ወይ ልዕሊኡ | ⚠️ numeric brackets renumbered to match the English PDF (the Tigrigna PDF used 18–30/31–40/41–50/61–70/71+) |
+| survey.q4.options.tigrayOrthodoxCommunity | Tigray Orthodox Tewahedo worship & community | ናይ ትግራይ ኦርቶዶክስ ተዋሕዶ ኣምልኾን ማሕበረሰብን | ⚠️ option missing from the Tigrigna PDF |
+| survey.q11.options.goodButLittleLong / moderatelyHelpfulNeedsFocus / desiresDeeperLongerSermon | Good but a little too long / Moderately helpful, needs more focus / Desires deeper teaching | ፅቡቕ እዩ፤ ግና ቁሩብ ንውሕ ኢሉ / መጠነኛ ጠቓሚ፤ ... / ዝበለፀ ዕምቈት እንተዝህልዎ... | ⚠️ paraphrased, please check register |
+| survey.q15.options.bilingual | Bilingual (Tigrinya/English) | ክልቲኡ (ትግርኛን እንግሊዝኛን) | ⚠️ the Tigrigna PDF had "Amharic" here instead of a bilingual option; dropped per canonical-English resolution |
+| survey.q17.options.neutralNoPreference | Neutral / no preference | ገለ ሓሳብ የብለይን/ግድን ኣይኮነን | ⚠️ option missing from the Tigrigna PDF |
+| survey.q21.options.supported | Supported | ደገፍ ይግበረለይ | ⚠️ option missing from the Tigrigna PDF |
+| survey.q27.options.youthFellowshipRetreats | Youth fellowship retreats, outings & service projects | ናይ መንእሰያት ሕብረት ጉዕዞን ኣገልግሎት ፕሮጀክትታትን | ⚠️ option missing from the Tigrigna PDF |
+| survey.q33.options.sanctuarySurroundings / buildingSafetySigns | Sanctuary surroundings / Building safety and signs | ከባቢ ቅድስተ ቅዱሳን / ድሕንነትን ምልክታትን ህንጻ | ⚠️ both missing from the Tigrigna PDF |
+| survey.q35.options.printedNotice / facebookSocialMedia | Printed notice / Facebook or social media | ብወረቐት ዝተሓትመ ሓበሬታ / Facebook/ማሕበራዊ ሜድያ | ⚠️ both missing from the Tigrigna PDF |
+| survey.q37.options.familyFellowship / youngAdultFellowship / charityOutreach | Family fellowship / Young-adult fellowship / Charity and outreach | ሕብረት ስድራቤት / ሕብረት መንእሰያት ዓበይቲ / ግብረ ሠናይን ወፃኢ ኣገልግሎትን | ⚠️ all three missing from the Tigrigna PDF |
+| survey.q40.options.mostlyClear | Mostly clear | ብዙሕ ግዜ ግልፂ | ⚠️ option missing from the Tigrigna PDF |
+| survey.q42.options.volunteerTime / invitingOthers / needMoreInfo | Volunteer time / Inviting others / Need more information | ናይ በጎ ፍቓድ ግዜ / ካልኦት ምዕዳም / ዝያዳ ሓበሬታ የድልየኒ | ⚠️ all three missing from the Tigrigna PDF |
+| survey.q46.options.consistentPoliciesProcedures | Consistent policies and procedures | ተኸታታልነት ዘለዎ ፖሊስን ስርዓትን | ⚠️ option missing from the Tigrigna PDF |
+| survey.q48.options.awareButNotVisited | Aware, but not visited | ሰሚዐ ኣለኹ፣ ግን ኣይበፃሕኩን | ⚠️ option missing from the Tigrigna PDF |
+| survey.q51.options.developCharityOutreach / improveWorshipTeachingLanguageAccess / strengthenEvangelismWelcomeFamilies | Develop charity & outreach / Improve worship, teaching & language access / Strengthen evangelism & welcome new families | ግብረ ሠናይን ወፃኢ ኣገልግሎትን ምዕባይ / ኣምልኾ፣ ትምህርትን ቋንቋዊ ተበፃሕነትን ምምሕያሽ / ወንጌላዊ ተልእኾን ኣቀባብላ ሓደስቲ ስድራቤታትን ምሕያል | ⚠️ all three missing from the Tigrigna PDF |
+| survey.section5.instruction / survey.section10.instruction | "Our children and youth are precious members..." / "Please consider the parish's future..." | ደቅናን መንእሰያትናን ክቡራት ኣባላት... / ብዛዕባ መጻኢ ደብርና... | ⚠️ the Tigrigna PDF had no instruction line for these two sections |
+
+---
+
 # Tigrigna Translation Review — Phase 1 (admin / stats / roles)
 
 These 61 keys were migrated from the legacy `LanguageContext` object into

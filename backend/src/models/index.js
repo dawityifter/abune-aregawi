@@ -120,6 +120,7 @@ try {
   const ChurchSetting = require('./ChurchSetting')(sequelize);
   const MemberLoan = require('./MemberLoan')(sequelize);
   const SquarePayment = require('./SquarePayment')(sequelize);
+  const SurveyResponse = require('./SurveyResponse')(sequelize);
 
   // Define models object
   const models = {
@@ -154,7 +155,8 @@ try {
     Announcement,
     ChurchSetting,
     MemberLoan,
-    SquarePayment
+    SquarePayment,
+    SurveyResponse
   };
 
   // Call associate on each model

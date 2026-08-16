@@ -9,11 +9,12 @@ import DepartmentList from './DepartmentList';
 import ActivityLogViewer from './ActivityLogViewer';
 import VoicemailInbox from './VoicemailInbox';
 import MemberReports from './MemberReports';
+import SurveyReportPage from './SurveyReportPage';
 
 const AdminDashboard: React.FC = () => {
   const { currentUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'departments' | 'activity-logs' | 'voicemails' | 'reports'>('members');
+  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'departments' | 'activity-logs' | 'voicemails' | 'reports' | 'survey-report'>('members');
   const [canAccess, setCanAccess] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
@@ -66,7 +67,7 @@ const AdminDashboard: React.FC = () => {
   // Handle URL hash for tab navigation
   useEffect(() => {
     const hash = window.location.hash.replace('#', '');
-    if (hash === 'members' || hash === 'roles' || hash === 'departments' || hash === 'activity-logs' || hash === 'voicemails' || hash === 'reports') {
+    if (hash === 'members' || hash === 'roles' || hash === 'departments' || hash === 'activity-logs' || hash === 'voicemails' || hash === 'reports' || hash === 'survey-report') {
       setActiveTab(hash as any);
     }
   }, []);
@@ -117,6 +118,10 @@ const AdminDashboard: React.FC = () => {
         return <ActivityLogViewer />;
       case 'voicemails':
         return <VoicemailInbox />;
+      case 'survey-report':
+        // SurveyReportPage enforces its own admin/secretary/church_leadership
+        // check, so no extra gate is needed here.
+        return <SurveyReportPage />;
       case 'reports':
         return isAdmin ? <MemberReports /> : <div className="p-4 text-center text-gray-500">Access Denied</div>;
       default: // 'members' is the default tab
@@ -215,6 +220,19 @@ const AdminDashboard: React.FC = () => {
               <i className="fas fa-envelope mr-2"></i>
               {t('admin.messages')}
             </button>
+
+            {userRoles.some(r => ['admin', 'secretary', 'church_leadership'].includes(r)) && (
+              <button
+                onClick={() => setActiveTab('survey-report')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'survey-report'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                <i className="fas fa-poll mr-2"></i>
+                {t('survey.report.tab')}
+              </button>
+            )}
           </nav>
         </div>
       </div>
