@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { I18nProvider } from '../../../i18n/I18nProvider';
 import { LanguageProvider } from '../../../contexts/LanguageContext';
@@ -79,6 +79,47 @@ describe('SurveyReportPage', () => {
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('Great parish')).toBeInTheDocument();
     expect(mockedFetchReport).toHaveBeenCalledWith('token', 'church-services-assessment-2026');
+  });
+
+  it('shows the member-status and locale breakdowns above the per-question tallies', async () => {
+    mockUseAuth.mockReturnValue({
+      currentUser: { uid: '1' },
+      firebaseUser: { getIdToken: async () => 'token' },
+      getUserProfile: async () => ({ data: { member: { roles: ['admin'] } } })
+    });
+    // 10 responses; only 8 gave a member status, so member-status percentages are
+    // out of 8 while locale percentages are out of all 10.
+    mockedFetchReport.mockResolvedValue({
+      totalResponses: 10,
+      answeredCounts: { q2: 10 },
+      memberStatusTallies: { firstTimeGuest: 2, newMember: 2, existingMember: 4 },
+      localeTallies: { en: 7, ti: 3 },
+      questionTallies: { q2: { male: 5, female: 5 } },
+      freeTextAnswers: {}
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Member Status')).toBeInTheDocument());
+
+    // Scoped to each breakdown block: some of these labels ('First-time / Guest',
+    // 'English') are also option labels on q3 and q15.
+    const statusBlock = screen.getByText('Member Status').closest('div') as HTMLElement;
+    expect(within(statusBlock).getByText('First-time / Guest')).toBeInTheDocument();
+    expect(within(statusBlock).getByText('Existing Member')).toBeInTheDocument();
+    expect(within(statusBlock).getByText('8 of 10 answered')).toBeInTheDocument();
+    // 4 of the 8 who gave a status are existing members — not 40% of all 10.
+    expect(within(statusBlock).getByText('4 (50%)')).toBeInTheDocument();
+
+    const localeBlock = screen.getByText('Survey Language').closest('div') as HTMLElement;
+    expect(within(localeBlock).getByText('English')).toBeInTheDocument();
+    expect(within(localeBlock).getByText('Tigrigna')).toBeInTheDocument();
+    expect(within(localeBlock).getByText('7 (70%)')).toBeInTheDocument();
+    expect(within(localeBlock).getByText('3 (30%)')).toBeInTheDocument();
+
+    // Both breakdowns come before the per-question tallies.
+    const language = screen.getByText('Survey Language');
+    const firstQuestion = screen.getByText(/What is your age group/i);
+    expect(language.compareDocumentPosition(firstQuestion) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
   });
 
   it('computes percentages against the per-question answered count, not total responses', async () => {

@@ -45,6 +45,11 @@ export interface SurveyReportData {
   // question is mandatory, so this — not totalResponses — is the denominator
   // for each option's percentage.
   answeredCounts: Record<string, number>;
+  // Counts per member_status ('firstTimeGuest' | 'newMember' | 'existingMember')
+  // and per submission locale ('en' | 'ti'). member_status is optional, so its
+  // counts need not sum to totalResponses.
+  memberStatusTallies: Record<string, number>;
+  localeTallies: Record<string, number>;
   questionTallies: Record<string, Record<string, number>>;
   freeTextAnswers: Record<string, string[]>;
 }

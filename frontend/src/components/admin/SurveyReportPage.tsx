@@ -9,6 +9,35 @@ import { SURVEY_QUESTIONS, SURVEY_SLUG } from '../survey/surveyDefinitions';
 // AdminDashboard.tsx); there is no 'board' role in the Member role ENUM.
 const ALLOWED_ROLES = ['admin', 'secretary', 'church_leadership'];
 
+// Mirrors MEMBER_STATUS_OPTIONS in
+// backend/src/config/surveyDefinitions/churchServicesAssessment2026.js.
+const MEMBER_STATUS_KEYS = ['firstTimeGuest', 'newMember', 'existingMember'];
+const LOCALE_KEYS = ['en', 'ti'];
+
+// Same bar markup the per-question tallies use, so the respondent-profile
+// breakdowns read as part of the same report rather than a bolted-on section.
+const TallyBars: React.FC<{
+  entries: { key: string; label: string; count: number }[];
+  denominator: number;
+}> = ({ entries, denominator }) => (
+  <>
+    {entries.map(({ key, label, count }) => {
+      const pct = Math.round((count / (denominator || 1)) * 100);
+      return (
+        <div key={key} className="mb-1">
+          <div className="flex justify-between text-sm text-accent-700">
+            <span>{label}</span>
+            <span>{count} ({pct}%)</span>
+          </div>
+          <div className="w-full bg-accent-100 rounded h-2">
+            <div className="bg-primary-600 h-2 rounded" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      );
+    })}
+  </>
+);
+
 const SurveyReportPage: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
@@ -86,10 +115,45 @@ const SurveyReportPage: React.FC = () => {
     return <div className="p-8 text-center text-accent-500">{t('survey.report.noResponsesYet')}</div>;
   }
 
+  // member_status is optional on submission, so its denominator is the number of
+  // respondents who supplied one — not every response.
+  const memberStatusAnswered = Object.values(report.memberStatusTallies || {})
+    .reduce((sum, n) => sum + n, 0);
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-h2 font-serif text-primary-700 mb-4">{t('survey.report.title')}</h1>
       <p className="mb-6"><strong>{t('survey.report.totalResponses')}</strong>: <span>{report.totalResponses}</span></p>
+
+      {/* Who answered, before what they answered: member_status and locale are
+          collected on every submission, and the whole point of keeping them is
+          being able to read the per-question tallies in light of who responded. */}
+      <div className="mb-8">
+        <p className="font-medium text-primary-700 mb-1">{t('survey.memberStatus.label')}</p>
+        <p className="text-xs text-accent-500 mb-2">
+          {t('survey.report.answeredCount', { answered: memberStatusAnswered, total: report.totalResponses })}
+        </p>
+        <TallyBars
+          entries={MEMBER_STATUS_KEYS.map(key => ({
+            key,
+            label: t(`survey.memberStatus.options.${key}`),
+            count: report.memberStatusTallies?.[key] || 0
+          }))}
+          denominator={memberStatusAnswered}
+        />
+      </div>
+
+      <div className="mb-8">
+        <p className="font-medium text-primary-700 mb-2">{t('survey.report.localeBreakdown')}</p>
+        <TallyBars
+          entries={LOCALE_KEYS.map(key => ({
+            key,
+            label: t(`survey.report.locales.${key}`),
+            count: report.localeTallies?.[key] || 0
+          }))}
+          denominator={report.totalResponses}
+        />
+      </div>
 
       {SURVEY_QUESTIONS.filter(q => q.type !== 'text').map(q => {
         const tallies = report.questionTallies[q.id] || {};

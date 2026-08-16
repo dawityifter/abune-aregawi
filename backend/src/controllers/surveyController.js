@@ -62,7 +62,24 @@ const getReport = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Unknown survey_slug' });
     }
 
-    const rows = await SurveyResponse.findAll({ where: { survey_slug: surveySlug }, attributes: ['answers'] });
+    const rows = await SurveyResponse.findAll({
+      where: { survey_slug: surveySlug },
+      attributes: ['answers', 'member_status', 'locale']
+    });
+
+    // Collected on every submission but previously never reported, which lost the
+    // ability to ask e.g. "how do first-time guests answer differently from
+    // existing members?" member_status is optional, so nulls are skipped.
+    const memberStatusTallies = {};
+    const localeTallies = {};
+    rows.forEach(row => {
+      if (row.member_status) {
+        memberStatusTallies[row.member_status] = (memberStatusTallies[row.member_status] || 0) + 1;
+      }
+      if (row.locale) {
+        localeTallies[row.locale] = (localeTallies[row.locale] || 0) + 1;
+      }
+    });
 
     const questionTallies = {};
     const freeTextAnswers = {};
@@ -105,7 +122,14 @@ const getReport = async (req, res) => {
 
     return res.json({
       success: true,
-      data: { totalResponses: rows.length, answeredCounts, questionTallies, freeTextAnswers }
+      data: {
+        totalResponses: rows.length,
+        answeredCounts,
+        memberStatusTallies,
+        localeTallies,
+        questionTallies,
+        freeTextAnswers
+      }
     });
   } catch (err) {
     console.error('getReport error:', err);

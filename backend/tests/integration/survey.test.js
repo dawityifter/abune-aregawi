@@ -112,8 +112,9 @@ describe('GET /api/survey/report', () => {
   beforeEach(async () => {
     await SurveyResponse.destroy({ where: {} });
     await SurveyResponse.bulkCreate([
-      { survey_slug: SURVEY_SLUG, locale: 'en', answers: { q1: 'age18to28', q4: ['familyFriendInvitation', 'other'], q7: 'Loved the sermon' } },
-      { survey_slug: SURVEY_SLUG, locale: 'ti', answers: { q1: 'age18to28', q4: ['movedToArea'], q7: 'More parking please' } },
+      { survey_slug: SURVEY_SLUG, locale: 'en', member_status: 'existingMember', answers: { q1: 'age18to28', q4: ['familyFriendInvitation', 'other'], q7: 'Loved the sermon' } },
+      { survey_slug: SURVEY_SLUG, locale: 'ti', member_status: 'existingMember', answers: { q1: 'age18to28', q4: ['movedToArea'], q7: 'More parking please' } },
+      // No member_status: it is optional, so it must not be tallied as a value.
       { survey_slug: SURVEY_SLUG, locale: 'en', answers: { q1: 'age29to38' } }
     ]);
   });
@@ -145,6 +146,29 @@ describe('GET /api/survey/report', () => {
     expect(res.body.data.answeredCounts.q2).toBe(0);
     // Text questions are reported as free text, not tallied, so they have no count.
     expect(res.body.data.answeredCounts.q7).toBeUndefined();
+  });
+
+  it('breaks responses down by member status and locale', async () => {
+    process.env.TEST_SURVEY_ROLE = 'admin';
+    const res = await request(app).get(`/api/survey/report?survey_slug=${SURVEY_SLUG}`);
+    expect(res.status).toBe(200);
+    // Two of the three fixtures supplied a member status; the third is skipped
+    // rather than counted under a null key.
+    expect(res.body.data.memberStatusTallies).toEqual({ existingMember: 2 });
+    expect(res.body.data.localeTallies).toEqual({ en: 2, ti: 1 });
+  });
+
+  it('tallies each distinct member status separately', async () => {
+    process.env.TEST_SURVEY_ROLE = 'admin';
+    await SurveyResponse.destroy({ where: {} });
+    await SurveyResponse.bulkCreate([
+      { survey_slug: SURVEY_SLUG, locale: 'en', member_status: 'firstTimeGuest', answers: {} },
+      { survey_slug: SURVEY_SLUG, locale: 'en', member_status: 'newMember', answers: {} },
+      { survey_slug: SURVEY_SLUG, locale: 'ti', member_status: 'newMember', answers: {} }
+    ]);
+    const res = await request(app).get(`/api/survey/report?survey_slug=${SURVEY_SLUG}`);
+    expect(res.body.data.memberStatusTallies).toEqual({ firstTimeGuest: 1, newMember: 2 });
+    expect(res.body.data.localeTallies).toEqual({ en: 2, ti: 1 });
   });
 
   it('does not count an empty array as an answer to a multi-select question', async () => {
