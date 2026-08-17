@@ -71,8 +71,9 @@ describe('PromoPopup', () => {
   });
 
   it('renders nothing when no promos are active', () => {
-    // August 1, 2026: all promos are expired
-    const futureDate = new Date('2026-08-01T00:00:00Z').getTime();
+    // August 21, 2026: all promos (including debretabor, expiring the evening
+    // of Aug 19 CDT / early Aug 20 UTC) are expired
+    const futureDate = new Date('2026-08-21T00:00:00Z').getTime();
     dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(futureDate);
 
     renderWithProviders(<PromoPopup />);
@@ -80,8 +81,9 @@ describe('PromoPopup', () => {
   });
 
   it('renders the single active promo without navigation controls', () => {
-    // July 20, 2026: the graduation promo is active
-    const testDate = new Date('2026-07-20T10:00:00-05:00').getTime();
+    // August 1, 2026: graduation has expired (July 26) but debretabor
+    // (expiring Aug 19) is still active — exactly one eligible promo
+    const testDate = new Date('2026-08-01T10:00:00-05:00').getTime();
     dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(testDate);
 
     renderWithProviders(<PromoPopup />);
@@ -89,7 +91,7 @@ describe('PromoPopup', () => {
     const dialog = screen.getByRole('dialog');
     expect(dialog).toBeInTheDocument();
 
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/july26-graduation.jpeg');
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/debretabor.jpeg');
 
     // With only one active promo, the carousel controls are not rendered.
     expect(screen.queryByTitle('Next Image')).not.toBeInTheDocument();
@@ -127,16 +129,17 @@ describe('PromoPopup', () => {
 
   it('does not auto-rotate when only one promo is active', () => {
     jest.useFakeTimers();
-    const testDate = new Date('2026-07-20T10:00:00-05:00').getTime();
+    // August 1, 2026: only debretabor is active (see comment above)
+    const testDate = new Date('2026-08-01T10:00:00-05:00').getTime();
     dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(testDate);
 
     renderWithProviders(<PromoPopup />);
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/july26-graduation.jpeg');
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/debretabor.jpeg');
 
     act(() => {
       jest.advanceTimersByTime(15000);
     });
     // A single promo has nothing to rotate to; it stays put.
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/july26-graduation.jpeg');
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/debretabor.jpeg');
   });
 });
