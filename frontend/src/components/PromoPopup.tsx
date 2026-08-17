@@ -16,6 +16,13 @@ const PROMOS: Promo[] = [
     alt: 'Graduation July 26',
     // July 26, 2026 at 12:00 PM CST (Daylight time CDT is UTC-5)
     expiry: new Date('2026-07-26T12:00:00-05:00').getTime()
+  },
+  {
+    id: 'debretabor',
+    src: '/images/promo/debretabor.jpeg',
+    alt: 'Debre Tabor',
+    // August 19, 2026 at 9:00 PM CST (Daylight time CDT is UTC-5)
+    expiry: new Date('2026-08-19T21:00:00-05:00').getTime()
   }
 ];
 
