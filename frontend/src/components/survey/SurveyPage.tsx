@@ -2,9 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import SurveyWizard from './SurveyWizard';
 import SurveyThankYou from './SurveyThankYou';
+import SurveyResumeBanner from './SurveyResumeBanner';
 import { SURVEY_SLUG, SURVEY_SECTION_COUNT, SURVEY_QUESTIONS } from './surveyDefinitions';
-import { loadDraft, saveDraft, clearDraft } from '../../utils/surveyDraft';
+import { loadDraft, saveDraft, clearDraft, StoredSurveyDraft } from '../../utils/surveyDraft';
 import { submitSurveyResponse } from '../../utils/surveyApi';
+
+// A draft written by merely opening the survey holds nothing worth announcing.
+const hasProgress = (draft: StoredSurveyDraft): boolean =>
+  Object.keys(draft.answers || {}).length > 0 ||
+  Boolean(draft.memberStatus) ||
+  draft.sectionIndex > 0;
 
 const SurveyPage: React.FC = () => {
   const { t, language } = useLanguage();
@@ -15,6 +22,14 @@ const SurveyPage: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Set only when a returning respondent actually had progress restored, so the
+  // welcome-back banner never greets a first-time visitor.
+  const [resumed, setResumed] = useState<{ savedAt?: number } | null>(null);
+  // Both effects below run on the first commit. Without this gate the save
+  // effect writes the component's initial, empty state over a real saved
+  // draft before the restored values land — and any re-read in between (as
+  // StrictMode does) then restores that blank.
+  const [restored, setRestored] = useState(false);
 
   useEffect(() => {
     const draft = loadDraft();
@@ -23,14 +38,16 @@ const SurveyPage: React.FC = () => {
       setOtherTexts(draft.otherTexts);
       setSectionIndex(draft.sectionIndex);
       setMemberStatus(draft.memberStatus);
+      if (hasProgress(draft)) setResumed({ savedAt: draft.savedAt });
     }
+    setRestored(true);
   }, []);
 
   useEffect(() => {
-    if (!submitted) {
+    if (restored && !submitted) {
       saveDraft({ answers, otherTexts, sectionIndex, memberStatus });
     }
-  }, [answers, otherTexts, sectionIndex, memberStatus, submitted]);
+  }, [restored, answers, otherTexts, sectionIndex, memberStatus, submitted]);
 
   const handleAnswerChange = (id: string, value: string | string[]) => {
     setAnswers(prev => ({ ...prev, [id]: value }));
@@ -54,6 +71,16 @@ const SurveyPage: React.FC = () => {
       if (isOtherSelected) merged[key] = text;
     });
     return merged;
+  };
+
+  const handleStartOver = () => {
+    clearDraft();
+    setAnswers({});
+    setOtherTexts({});
+    setMemberStatus(undefined);
+    setSectionIndex(0);
+    setSubmitError(null);
+    setResumed(null);
   };
 
   const handleSubmit = async () => {
@@ -84,6 +111,13 @@ const SurveyPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-neutral-50 py-8 px-4">
       <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6">
+        {resumed && (
+          <SurveyResumeBanner
+            savedAt={resumed.savedAt}
+            onStartOver={handleStartOver}
+            onDismiss={() => setResumed(null)}
+          />
+        )}
         <SurveyWizard
           sectionIndex={sectionIndex}
           answers={answers}

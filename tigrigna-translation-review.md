@@ -56,6 +56,22 @@ differently.
 | survey.q51.options.developCharityOutreach / improveWorshipTeachingLanguageAccess / strengthenEvangelismWelcomeFamilies | Develop charity & outreach / Improve worship, teaching & language access / Strengthen evangelism & welcome new families | ግብረ ሠናይን ወፃኢ ኣገልግሎትን ምዕባይ / ኣምልኾ፣ ትምህርትን ቋንቋዊ ተበፃሕነትን ምምሕያሽ / ወንጌላዊ ተልእኾን ኣቀባብላ ሓደስቲ ስድራቤታትን ምሕያል | ⚠️ all three missing from the Tigrigna PDF |
 | survey.section5.instruction / survey.section10.instruction | "Our children and youth are precious members..." / "Please consider the parish's future..." | ደቅናን መንእሰያትናን ክቡራት ኣባላት... / ብዛዕባ መጻኢ ደብርና... | ⚠️ the Tigrigna PDF had no instruction line for these two sections |
 
+## Save-and-continue-later UI (Aug 2026)
+
+These strings have no PDF equivalent at all — the paper survey had no concept of
+saving progress. All freshly translated, all UI chrome rather than survey content.
+The first row is the highest-value one to get right: it is the line that tells a
+respondent facing 56 questions that they are allowed to stop and come back.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| survey.wizard.autosaveNotice | Your answers are saved on this device. You can close this page and finish later. | መልስታትኩም ኣብዚ መሳርሒ ተቐሚጦም ኣለዉ። ነዚ ገጽ ዓፂኹም ደሓር ክትውድእዎ ትኽእሉ ኢኹም። | ⚠️ "መሳርሒ" for *device* — check this is the natural word for a phone here |
+| survey.resume.welcomeBack | Welcome back — we saved your progress. | እንቋዕ ደሓን ተመለስኩም — ዝሓለፈ ስራሕኩም ተቐሚጡ ኣሎ። | ⚠️ *progress* rendered as "ዝሓለፈ ስራሕኩም" (the work you did); check register |
+| survey.resume.welcomeBackOn | Welcome back — we saved your progress from {date}. | እንቋዕ ደሓን ተመለስኩም — ናይ {date} ስራሕኩም ተቐሚጡ ኣሎ። | ⚠️ same, with the date interpolated |
+| survey.resume.startOver | Start over | ብሓድሽ ጀምር | ⚠️ |
+| survey.resume.confirmStartOver | Yes, erase my answers | እወ፣ መልስታተይ ደምስስ | ⚠️ destructive confirm — must read unambiguously as *delete* |
+| survey.resume.dismiss | Dismiss | ዓጹ | ⚠️ aria-label on the banner's × button |
+
 ---
 
 # Tigrigna Translation Review — Phase 1 (admin / stats / roles)

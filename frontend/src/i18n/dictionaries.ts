@@ -2683,7 +2683,15 @@ export const en: Dictionaries = {
       skipHint: 'Skip any question that does not apply to you.',
       otherPlaceholder: 'Please specify...',
       selectUpTo: 'Select up to {n}',
-      submitError: 'Something went wrong submitting your response. Please try again.'
+      submitError: 'Something went wrong submitting your response. Please try again.',
+      autosaveNotice: 'Your answers are saved on this device. You can close this page and finish later.'
+    },
+    resume: {
+      welcomeBack: 'Welcome back — we saved your progress.',
+      welcomeBackOn: 'Welcome back — we saved your progress from {date}.',
+      startOver: 'Start over',
+      confirmStartOver: 'Yes, erase my answers',
+      dismiss: 'Dismiss'
     },
     thankYou: {
       title: 'Thank You',
@@ -4679,7 +4687,15 @@ export const ti: Dictionaries = {
       skipHint: 'ዘይምልከተኩም ሕቶ ሰግሩ።',
       otherPlaceholder: 'በጃኹም ግለጹ...',
       selectUpTo: 'ክሳብ {n} ምረፁ',
-      submitError: 'ርእይቶኹም ኣብ ምልኣኽ ጌጋ ኣጋጢሙ። በጃኹም ደጊምኩም ፈትኑ።'
+      submitError: 'ርእይቶኹም ኣብ ምልኣኽ ጌጋ ኣጋጢሙ። በጃኹም ደጊምኩም ፈትኑ።',
+      autosaveNotice: 'መልስታትኩም ኣብዚ መሳርሒ ተቐሚጦም ኣለዉ። ነዚ ገጽ ዓፂኹም ደሓር ክትውድእዎ ትኽእሉ ኢኹም።'
+    },
+    resume: {
+      welcomeBack: 'እንቋዕ ደሓን ተመለስኩም — ዝሓለፈ ስራሕኩም ተቐሚጡ ኣሎ።',
+      welcomeBackOn: 'እንቋዕ ደሓን ተመለስኩም — ናይ {date} ስራሕኩም ተቐሚጡ ኣሎ።',
+      startOver: 'ብሓድሽ ጀምር',
+      confirmStartOver: 'እወ፣ መልስታተይ ደምስስ',
+      dismiss: 'ዓጹ'
     },
     thankYou: {
       title: 'የቐንየለይ',

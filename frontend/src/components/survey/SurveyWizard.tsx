@@ -86,6 +86,10 @@ const SurveyWizard: React.FC<SurveyWizardProps> = ({
           <button type="button" className="btn btn-primary" onClick={onNext}>{t('survey.wizard.next')}</button>
         )}
       </div>
+
+      {/* Sits by the Next button on purpose: this is where someone facing 56
+          questions decides whether leaving means losing their answers. */}
+      <p className="text-xs text-accent-500 mt-4">{t('survey.wizard.autosaveNotice')}</p>
     </div>
   );
 };
