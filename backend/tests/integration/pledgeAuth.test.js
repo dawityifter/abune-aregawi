@@ -17,18 +17,29 @@ describe('Pledge route authorization', () => {
     await Member.destroy({ where: {} });
 
     memberUser = await Member.create({
-      first_name: 'Plain', last_name: 'Member', phone_number: '+15550000001',
-      email: 'plain@example.com', is_active: true, role: 'member',
+      first_name: 'Plain',
+      last_name: 'Member',
+      phone_number: '+15550000001',
+      email: 'plain@example.com',
+      is_active: true,
+      role: 'member',
       firebase_uid: 'uid-member'
     });
     treasurerUser = await Member.create({
-      first_name: 'Tess', last_name: 'Treasurer', phone_number: '+15550000002',
-      email: 'tess@example.com', is_active: true, role: 'treasurer',
+      first_name: 'Tess',
+      last_name: 'Treasurer',
+      phone_number: '+15550000002',
+      email: 'tess@example.com',
+      is_active: true,
+      role: 'treasurer',
       firebase_uid: 'uid-treasurer'
     });
     pledge = await Pledge.create({
-      amount: 500, first_name: 'Anon', last_name: 'Pledger',
-      email: 'anon@example.com', pledge_type: 'fundraising'
+      amount: 500,
+      first_name: 'Anon',
+      last_name: 'Pledger',
+      email: 'anon@example.com',
+      pledge_type: 'fundraising'
     });
   });
 
@@ -57,7 +68,9 @@ describe('Pledge route authorization', () => {
 
   it('still allows an unauthenticated visitor to create a pledge', async () => {
     const res = await request(app).post('/api/pledges').send({
-      amount: 250, first_name: 'Visitor', last_name: 'Guest',
+      amount: 250,
+      first_name: 'Visitor',
+      last_name: 'Guest',
       email: 'visitor@example.com'
     });
     expect(res.status).toBe(201);
