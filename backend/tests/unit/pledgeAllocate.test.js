@@ -108,4 +108,31 @@ describe('pledgeAllocationService.allocate', () => {
   it('rejects an unknown pledge', async () => {
     await expect(allocate(args({ pledgeId: 999999 }))).rejects.toMatchObject({ code: 'PLEDGE_NOT_FOUND' });
   });
+
+  it('returns the existing row when create() races on the idempotency key', async () => {
+    // Simulate a genuine concurrent duplicate: another caller already committed
+    // the winning row for this key, but THIS caller's up-front findOne raced
+    // ahead of that commit and saw nothing, so it proceeds to create() and
+    // collides with the DB's unique constraint on idempotency_key.
+    const existing = await allocate(args({ amount: 500, idempotencyKey: 'race:1' }));
+
+    const findOneSpy = jest.spyOn(PledgeAllocation, 'findOne');
+    findOneSpy.mockImplementationOnce(() => Promise.resolve(null)); // fast-path miss
+
+    const createSpy = jest.spyOn(PledgeAllocation, 'create');
+    createSpy.mockImplementationOnce(() => {
+      const err = new Error('duplicate key value violates unique constraint "pledge_allocations_idempotency_key"');
+      err.name = 'SequelizeUniqueConstraintError';
+      return Promise.reject(err);
+    });
+
+    try {
+      const result = await allocate(args({ amount: 500, idempotencyKey: 'race:1' }));
+      expect(result.id).toBe(existing.id);
+      expect(await PledgeAllocation.count()).toBe(1);
+    } finally {
+      findOneSpy.mockRestore();
+      createSpy.mockRestore();
+    }
+  });
 });

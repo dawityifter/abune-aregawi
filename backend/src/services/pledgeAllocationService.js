@@ -1,6 +1,5 @@
 'use strict';
 
-const { Op } = require('sequelize');
 const {
   sequelize, Pledge, PledgeCampaign, PledgeAllocation, Transaction, Member
 } = require('../models');
@@ -74,15 +73,31 @@ async function allocate(
         `Only ${(parseFloat(txn.amount) - parseFloat(allocatedSoFar)).toFixed(2)} of this payment is unallocated`);
     }
 
-    return PledgeAllocation.create({
-      pledge_id: pledgeId,
-      transaction_id: transactionId,
-      amount: requested,
-      source,
-      allocated_by: allocatedBy,
-      reason,
-      idempotency_key: idempotencyKey
-    }, options);
+    try {
+      return await PledgeAllocation.create({
+        pledge_id: pledgeId,
+        transaction_id: transactionId,
+        amount: requested,
+        source,
+        allocated_by: allocatedBy,
+        reason,
+        idempotency_key: idempotencyKey
+      }, options);
+    } catch (err) {
+      // A concurrent caller with the same idempotency key won the race. The DB
+      // unique constraint is the real guarantee; this converts the loser's
+      // constraint violation into the same no-op the sequential path returns.
+      // On Postgres the re-fetch inside an aborted transaction may itself
+      // fail to find the row (visibility rules); if so, rethrow the original
+      // error rather than returning undefined.
+      if (idempotencyKey && err.name === 'SequelizeUniqueConstraintError') {
+        const winner = await PledgeAllocation.findOne({
+          where: { idempotency_key: idempotencyKey }, ...options
+        });
+        if (winner) return winner;
+      }
+      throw err;
+    }
   };
 
   if (outer) return run(outer);
