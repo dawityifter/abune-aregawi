@@ -129,7 +129,12 @@ async function reverse(
         'A reason is required when reversing an allocation');
     }
 
-    const original = await PledgeAllocation.findByPk(allocationId, options);
+    // Lock the original row. This is what makes the outstanding/cap check correct
+    // under concurrency — two simultaneous reversals of the same allocation
+    // serialise here, mirroring the Transaction lock in allocate(). (SQLite, used
+    // in tests, ignores row locks; this is a production-only guarantee, same as
+    // in allocate().)
+    const original = await PledgeAllocation.findByPk(allocationId, { ...options, lock: t.LOCK.UPDATE });
     if (!original) throw new AllocationError('ALLOCATION_NOT_FOUND', 'Allocation not found');
 
     const alreadyReversed = await PledgeAllocation.sum('amount', {
@@ -142,7 +147,15 @@ async function reverse(
       throw new AllocationError('ALREADY_REVERSED', 'This allocation has already been reversed');
     }
 
-    const requested = amount == null ? outstanding : parseFloat(amount);
+    const requestedRaw = amount == null ? outstanding : parseFloat(amount);
+    if (!Number.isFinite(requestedRaw) || requestedRaw === 0) {
+      throw new AllocationError('INVALID_AMOUNT',
+        'Reversal amount must be a non-zero number');
+    }
+    // Callers may express a reversal as either 400 or -400; both mean "reverse
+    // 400". Normalise to a magnitude BEFORE the cap check, or a negative input
+    // bypasses the cap and is then written at full magnitude below.
+    const requested = Math.abs(requestedRaw);
     if (requested > outstanding + 1e-9) {
       throw new AllocationError('REVERSAL_TOO_LARGE',
         `At most ${outstanding.toFixed(2)} of this allocation can be reversed`);
@@ -150,16 +163,32 @@ async function reverse(
 
     // Append a reversing row. The original is never modified — that is the
     // entire audit mechanism.
-    return PledgeAllocation.create({
-      pledge_id: original.pledge_id,
-      transaction_id: original.transaction_id,
-      amount: -Math.abs(requested),
-      source: original.source === 'stripe_refund' ? 'stripe_refund' : 'treasurer_manual',
-      allocated_by: reversedBy,
-      reason,
-      reverses_allocation_id: original.id,
-      idempotency_key: idempotencyKey
-    }, options);
+    try {
+      return await PledgeAllocation.create({
+        pledge_id: original.pledge_id,
+        transaction_id: original.transaction_id,
+        amount: -requested,
+        source: original.source === 'stripe_refund' ? 'stripe_refund' : 'treasurer_manual',
+        allocated_by: reversedBy,
+        reason,
+        reverses_allocation_id: original.id,
+        idempotency_key: idempotencyKey
+      }, options);
+    } catch (err) {
+      // A concurrent caller with the same idempotency key won the race (e.g. a
+      // duplicate Stripe refund webhook). The DB unique constraint is the real
+      // guarantee; this converts the loser's constraint violation into the same
+      // no-op the sequential path returns. On Postgres the re-fetch inside an
+      // aborted transaction may itself fail to find the row (visibility rules);
+      // if so, rethrow the original error rather than returning undefined.
+      if (idempotencyKey && err.name === 'SequelizeUniqueConstraintError') {
+        const winner = await PledgeAllocation.findOne({
+          where: { idempotency_key: idempotencyKey }, ...options
+        });
+        if (winner) return winner;
+      }
+      throw err;
+    }
   };
 
   if (outer) return run(outer);

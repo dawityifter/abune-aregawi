@@ -85,4 +85,21 @@ describe('pledgeAllocationService.reverse', () => {
     const untouched = await PledgeAllocation.findByPk(original.id);
     expect(parseFloat(untouched.amount)).toBe(1000);
   });
+
+  it('refuses a negative amount whose magnitude exceeds the original (sign hole closed)', async () => {
+    await expect(
+      reverse({ allocationId: original.id, amount: -5000, reason: 'Too big', reversedBy: member.id })
+    ).rejects.toMatchObject({ code: 'REVERSAL_TOO_LARGE' });
+    const untouched = await PledgeAllocation.findByPk(original.id);
+    expect(parseFloat(untouched.amount)).toBe(1000);
+  });
+
+  it('accepts a negative amount as a magnitude and reverses that much', async () => {
+    const r = await reverse({
+      allocationId: original.id, amount: -400, reason: 'Partial refund', reversedBy: member.id
+    });
+    expect(parseFloat(r.amount)).toBe(-400);
+    const b = await PledgeBalance.findOne({ where: { pledge_id: pledge.id } });
+    expect(parseFloat(b.paid_amount)).toBe(600);
+  });
 });
