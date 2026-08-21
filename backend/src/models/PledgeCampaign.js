@@ -27,7 +27,7 @@ module.exports = (sequelize) => {
     description_ti: { type: DataTypes.TEXT, allowNull: true },
     start_date: { type: DataTypes.DATEONLY, allowNull: false },
     end_date: { type: DataTypes.DATEONLY, allowNull: true },
-    goal_amount: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
+    goal_amount: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
     currency: { type: DataTypes.STRING(3), allowNull: false, defaultValue: 'usd' },
     // VARCHAR + validation rather than a Postgres ENUM: LedgerEntry sets the
     // precedent (enums mapped as STRING to avoid enum mismatch), and it spares

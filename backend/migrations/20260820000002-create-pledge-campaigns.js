@@ -11,7 +11,7 @@ module.exports = {
       description_ti: { type: Sequelize.TEXT, allowNull: true },
       start_date: { type: Sequelize.DATEONLY, allowNull: false },
       end_date: { type: Sequelize.DATEONLY, allowNull: true },
-      goal_amount: { type: Sequelize.DECIMAL(12, 2), allowNull: true },
+      goal_amount: { type: Sequelize.DECIMAL(10, 2), allowNull: true },
       currency: { type: Sequelize.STRING(3), allowNull: false, defaultValue: 'usd' },
       status: { type: Sequelize.STRING(16), allowNull: false, defaultValue: 'draft' },
       default_payment_type: { type: Sequelize.STRING(50), allowNull: true },
