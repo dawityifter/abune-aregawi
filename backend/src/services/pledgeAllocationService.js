@@ -1,5 +1,6 @@
 'use strict';
 
+const { Op } = require('sequelize');
 const {
   sequelize, Pledge, PledgeCampaign, PledgeAllocation, Transaction, Member
 } = require('../models');
@@ -195,4 +196,56 @@ async function reverse(
   return sequelize.transaction(run);
 }
 
-module.exports = { allocate, reverse, AllocationError };
+// Payments that arrived with no pledge attached (spec scenario 4). This is a
+// queue, not an error state — the treasurer decides, the system never guesses.
+async function listUnallocated({ campaignId, paymentType = null, limit = 100 }) {
+  const campaign = await PledgeCampaign.findByPk(campaignId);
+  if (!campaign) throw new AllocationError('CAMPAIGN_NOT_FOUND', 'Campaign not found');
+
+  const where = { status: 'succeeded' };
+
+  if (campaign.start_date) {
+    where.payment_date = { [Op.gte]: campaign.start_date };
+    if (campaign.end_date) {
+      where.payment_date = { [Op.between]: [campaign.start_date, campaign.end_date] };
+    }
+  }
+
+  // Default to the campaign's own type so the queue does not nag about dues.
+  if (paymentType !== 'all') {
+    where.payment_type = paymentType || campaign.default_payment_type || 'pledge_drive';
+  }
+
+  const candidates = await Transaction.findAll({
+    where, order: [['payment_date', 'DESC']], limit: parseInt(limit, 10)
+  });
+
+  const items = [];
+  for (const txn of candidates) {
+    const allocated = parseFloat(await PledgeAllocation.sum('amount', {
+      where: { transaction_id: txn.id }
+    }) || 0);
+    const unallocated = parseFloat(txn.amount) - allocated;
+    if (unallocated <= 1e-9) continue;
+
+    // Deterministic because of the one-active-pledge-per-member-per-campaign
+    // index — a suggestion, never applied without a click.
+    let suggestedPledgeId = null;
+    if (txn.member_id) {
+      const suggestion = await Pledge.findOne({
+        where: {
+          campaign_id: campaignId, member_id: txn.member_id,
+          lifecycle: 'active', is_historical: false
+        },
+        attributes: ['id']
+      });
+      suggestedPledgeId = suggestion ? suggestion.id : null;
+    }
+
+    items.push({ transaction: txn, allocated, unallocated, suggestedPledgeId });
+  }
+
+  return items;
+}
+
+module.exports = { allocate, reverse, listUnallocated, AllocationError };

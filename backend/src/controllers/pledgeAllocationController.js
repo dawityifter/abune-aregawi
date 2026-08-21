@@ -1,20 +1,20 @@
 'use strict';
 
 const { sequelize, PledgeAllocation, Pledge, Member, Transaction } = require('../models');
-const { allocate, reverse, AllocationError } = require('../services/pledgeAllocationService');
+const { allocate, reverse, listUnallocated, AllocationError } = require('../services/pledgeAllocationService');
 const { createTransactionRecord } = require('../services/transactionService');
 
 // NOTE: CURRENCY_MISMATCH from the original brief does not exist on
-// AllocationError and was removed. CAMPAIGN_NOT_FOUND was also removed here —
-// verified against every `new AllocationError(...)` throw site in
-// pledgeAllocationService.js, that code is never thrown (a missing/closed
-// campaign always surfaces as CAMPAIGN_CLOSED there). INVALID_AMOUNT was
-// added since it is thrown by reverse(). Every code below has a live throw
-// site, and every throw site is mapped.
+// AllocationError and was removed. INVALID_AMOUNT was added since it is
+// thrown by reverse(). CAMPAIGN_NOT_FOUND was removed in an earlier pass
+// (unthrowable at the time) but listUnallocated() now throws it when the
+// campaign_id query param does not resolve, so it is mapped again here.
+// Every code below has a live throw site, and every throw site is mapped.
 const STATUS_BY_CODE = {
   PLEDGE_NOT_FOUND: 404,
   TRANSACTION_NOT_FOUND: 404,
   ALLOCATION_NOT_FOUND: 404,
+  CAMPAIGN_NOT_FOUND: 404,
   CAMPAIGN_CLOSED: 409,
   OVER_ALLOCATED: 422,
   MEMBER_MISMATCH: 422,
@@ -117,4 +117,18 @@ const listAllocations = async (req, res) => {
   } catch (err) { return sendError(res, err); }
 };
 
-module.exports = { createAllocation, createPledgePayment, reverseAllocation, listAllocations };
+const listUnallocatedPayments = async (req, res) => {
+  try {
+    const items = await listUnallocated({
+      campaignId: req.query.campaign_id,
+      paymentType: req.query.payment_type || null,
+      limit: req.query.limit || 100
+    });
+    return res.status(200).json({ success: true, items });
+  } catch (err) { return sendError(res, err); }
+};
+
+module.exports = {
+  createAllocation, createPledgePayment, reverseAllocation, listAllocations,
+  listUnallocatedPayments
+};
