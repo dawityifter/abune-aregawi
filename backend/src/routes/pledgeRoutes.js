@@ -54,13 +54,21 @@ const validatePledge = [
 const viewRoles = ['admin', 'treasurer', 'church_leadership', 'secretary', 'bookkeeper', 'auditor', 'budget_committee', 'ar_team', 'ap_team'];
 const editRoles = ['admin', 'treasurer', 'bookkeeper', 'ar_team'];
 
+// Aggregates are public (the progress bar on the public pledge page).
+// ?detail=true exposes donor names and requires auth + view role.
+const statsAuthGate = (req, res, next) => {
+  if (req.query.detail !== 'true') return next();
+  return firebaseAuthMiddleware(req, res, (err) =>
+    err ? next(err) : roleMiddleware(viewRoles)(req, res, next));
+};
+
 // PUBLIC: visitors pledge at events. Rate-limited by the global /api/ limiter.
 router.post('/', validatePledge, pledgeController.createPledge);
 
 router.get('/', firebaseAuthMiddleware, roleMiddleware(viewRoles), pledgeController.getAllPledges);
 
 // Get pledge statistics - must come before /:id to avoid wildcard catch
-router.get('/stats', pledgeController.getPledgeStats);
+router.get('/stats', statsAuthGate, pledgeController.getPledgeStats);
 
 router.get('/:id', firebaseAuthMiddleware, roleMiddleware(viewRoles), pledgeController.getPledge);
 router.put('/:id', firebaseAuthMiddleware, roleMiddleware(editRoles), pledgeController.updatePledge);

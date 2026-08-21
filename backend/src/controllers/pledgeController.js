@@ -293,6 +293,10 @@ const getPledgeStats = async (req, res) => {
   try {
     const { event_name } = req.query;
 
+    // Detail (per-pledge rows incl. donor names) is privileged. The route layer
+    // authenticates; this flag decides what gets serialized.
+    const wantDetail = req.query.detail === 'true';
+
     const whereClause = {};
     if (event_name) whereClause.event_name = event_name;
 
@@ -373,16 +377,18 @@ const getPledgeStats = async (req, res) => {
           status: stat.status,
           count: stat.count,
           total_amount: stat.total_amount,
-          pledges: stat.pledges
+          ...(wantDetail ? { pledges: stat.pledges } : {})
         })),
-        recent_pledges: recentPledges.map(pledge => ({
-          id: pledge.id,
-          name: `${pledge.first_name} ${pledge.last_name}`,
-          amount: parseFloat(pledge.amount),
-          pledge_type: pledge.pledge_type,
-          created_at: pledge.created_at,
-          member: pledge.member
-        }))
+        ...(wantDetail ? {
+          recent_pledges: recentPledges.map(pledge => ({
+            id: pledge.id,
+            name: `${pledge.first_name} ${pledge.last_name}`,
+            amount: parseFloat(pledge.amount),
+            pledge_type: pledge.pledge_type,
+            created_at: pledge.created_at,
+            member: pledge.member
+          }))
+        } : {})
       }
     });
 
