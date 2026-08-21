@@ -19,8 +19,7 @@ module.exports = (sequelize) => {
       });
 
       Pledge.belongsTo(models.PledgeCampaign, { foreignKey: 'campaign_id', as: 'campaign' });
-      // Task 6 registers the PledgeAllocation model; restore this association there.
-      // Pledge.hasMany(models.PledgeAllocation, { foreignKey: 'pledge_id', as: 'allocations' });
+      Pledge.hasMany(models.PledgeAllocation, { foreignKey: 'pledge_id', as: 'allocations' });
     }
   }
 
