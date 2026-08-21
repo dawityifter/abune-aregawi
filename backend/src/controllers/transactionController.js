@@ -1,4 +1,4 @@
-const { Transaction, Member, LedgerEntry, IncomeCategory, sequelize, BankTransaction } = require('../models');
+const { Transaction, Member, LedgerEntry, IncomeCategory, sequelize, BankTransaction, PledgeAllocation } = require('../models');
 const { Op } = require('sequelize');
 const tz = require('../config/timezone');
 const { validateReceiptNumber } = require('../utils/receiptNumber');
@@ -624,6 +624,19 @@ const deleteTransaction = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Transaction not found'
+      });
+    }
+
+    // Allocated payments are financial history. The FK is ON DELETE RESTRICT;
+    // this check turns that database error into an explanation the treasurer
+    // can act on — reverse the allocation first, then delete.
+    const allocationCount = await PledgeAllocation.count({ where: { transaction_id: transaction.id } });
+    if (allocationCount > 0) {
+      await t.rollback();
+      return res.status(409).json({
+        success: false,
+        code: 'TRANSACTION_ALLOCATED',
+        message: 'This payment is allocated to a pledge. Reverse the allocation before deleting it.'
       });
     }
 
