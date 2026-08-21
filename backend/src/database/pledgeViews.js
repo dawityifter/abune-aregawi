@@ -57,13 +57,34 @@ LEFT JOIN pledge_balances b
 GROUP BY c.id, c.slug, c.goal_amount
 `;
 
+async function shouldUseSecurityInvoker(queryInterface) {
+  if (queryInterface.sequelize.getDialect() !== 'postgres') return false;
+
+  // `security_invoker = true` is a PostgreSQL 15+ view option (it is a hard
+  // syntax error on older servers). Production (Supabase) runs PG15+, so it
+  // keeps the RLS-respecting behavior described above. Older servers — e.g. a
+  // local Homebrew Postgres 14 used for migration rehearsal, or CI images
+  // pinned to an older major version — cannot use the clause at all, so we
+  // omit it there and fall back to the view running as its owner (bypassing
+  // RLS) on those environments only. Do not drop this for PG15+; production
+  // is expected to always qualify.
+  //
+  // `sequelize.query('SHOW server_version_num;')` resolves to an array of row
+  // objects directly (NOT a [rows, metadata] tuple) for this driver/version,
+  // so destructure a single row object, not a nested array.
+  const [{ server_version_num: versionNum }] = await queryInterface.sequelize.query(
+    'SHOW server_version_num;'
+  );
+  return parseInt(versionNum, 10) >= 150000;
+}
+
 async function createPledgeViews(queryInterface) {
-  const isPg = queryInterface.sequelize.getDialect() === 'postgres';
+  const securityInvoker = await shouldUseSecurityInvoker(queryInterface);
   await dropPledgeViews(queryInterface);
   // security_invoker matters: in PG15 a view runs as its OWNER by default, which
   // would bypass the RLS we enabled on pledges. SQLite has no such concept.
-  await queryInterface.sequelize.query(PLEDGE_BALANCES(isPg));
-  await queryInterface.sequelize.query(CAMPAIGN_TOTALS(isPg));
+  await queryInterface.sequelize.query(PLEDGE_BALANCES(securityInvoker));
+  await queryInterface.sequelize.query(CAMPAIGN_TOTALS(securityInvoker));
 }
 
 async function dropPledgeViews(queryInterface) {
