@@ -3,6 +3,8 @@ const { body } = require('express-validator');
 const pledgeController = require('../controllers/pledgeController');
 const { firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
+const requireOpenCampaign = require('../middleware/requireOpenCampaign');
+const allocationController = require('../controllers/pledgeAllocationController');
 
 const router = express.Router();
 
@@ -71,6 +73,18 @@ router.get('/', firebaseAuthMiddleware, roleMiddleware(viewRoles), pledgeControl
 router.get('/stats', statsAuthGate, pledgeController.getPledgeStats);
 
 router.get('/:id', firebaseAuthMiddleware, roleMiddleware(viewRoles), pledgeController.getPledge);
-router.put('/:id', firebaseAuthMiddleware, roleMiddleware(editRoles), pledgeController.updatePledge);
+router.put('/:id', firebaseAuthMiddleware, roleMiddleware(editRoles),
+  requireOpenCampaign(requireOpenCampaign.fromPledgeParam), pledgeController.updatePledge);
+
+// This router is mounted at /api/pledges, so :id here is a PLEDGE id —
+// fromPledgeParam resolves it by looking up the pledge directly.
+router.get('/:id/allocations', firebaseAuthMiddleware, roleMiddleware(viewRoles),
+  allocationController.listAllocations);
+
+router.post('/:id/allocations', firebaseAuthMiddleware, roleMiddleware(editRoles),
+  requireOpenCampaign(requireOpenCampaign.fromPledgeParam), allocationController.createAllocation);
+
+router.post('/:id/payments', firebaseAuthMiddleware, roleMiddleware(editRoles),
+  requireOpenCampaign(requireOpenCampaign.fromPledgeParam), allocationController.createPledgePayment);
 
 module.exports = router;
