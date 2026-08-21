@@ -1,17 +1,15 @@
 'use strict';
 
 // NOTE: no transaction wrapper. Postgres will not let a newly-added enum value
-// be USED in the same transaction that adds it.
+// be USED in the same transaction that adds it — hence the income_categories
+// INSERT is a separate statement, issued after the ALTER TYPE calls above have
+// implicitly committed.
 //
-// BLOCKED: this migration intentionally does NOT insert an income_categories
-// row for 'pledge_drive'. The brief specified gl_code 'INC010', but that code
-// is already taken by 'Tigray Hunger Fundraiser' (see
-// backend/src/database/seedIncomeCategories.js). Per the task brief's own
-// instruction ("if INC010 is already taken there, STOP and report rather than
-// guessing another"), the GL code assignment and the matching
-// seedIncomeCategories.js entry are left for a follow-up once a real free code
-// (likely 'INC011') is confirmed. The enum additions below are unaffected by
-// that decision and are safe to ship on their own.
+// gl_code 'INC011' is used for the new "Pledge Drive" income category row.
+// 'INC010' (the code originally proposed) is already taken by 'Tigray Hunger
+// Fundraiser' in backend/src/database/seedIncomeCategories.js; INC001-INC010
+// are all in use and INC999 is the "Other Income" catch-all, so INC011 is the
+// next free sequential code (confirmed by the task coordinator).
 
 module.exports = {
   up: async (queryInterface) => {
@@ -32,7 +30,12 @@ module.exports = {
       console.log(`ℹ️  enum_ledger_entries_type not updated: ${e.message}`);
     }
 
-    // income_categories row intentionally NOT inserted here — see note above.
+    // Separate statement — the enum value added above is not usable until commit.
+    await sequelize.query(`
+      INSERT INTO income_categories (gl_code, name, description, payment_type_mapping, is_active, created_at, updated_at)
+      SELECT 'INC011', 'Pledge Drive', 'Payments toward a pledge campaign', 'pledge_drive', true, NOW(), NOW()
+      WHERE NOT EXISTS (SELECT 1 FROM income_categories WHERE gl_code = 'INC011');
+    `);
   },
 
   down: async () => {
