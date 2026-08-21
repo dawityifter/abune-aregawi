@@ -33,7 +33,8 @@ const sendError = (res, err) => {
   // receipt number) throw TransactionServiceError with a real statusCode;
   // honor it instead of collapsing every non-AllocationError into a 500.
   if (err && err.name === 'TransactionServiceError') {
-    return res.status(err.statusCode || 400).json({ success: false, message: err.message });
+    return res.status(err.statusCode || 400)
+      .json({ success: false, code: 'VALIDATION_ERROR', message: err.message });
   }
   console.error('Pledge allocation error:', err);
   return res.status(500).json({ success: false, message: 'Allocation failed' });

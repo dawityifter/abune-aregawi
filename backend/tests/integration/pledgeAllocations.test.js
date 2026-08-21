@@ -131,6 +131,9 @@ describe('Pledge allocation endpoints', () => {
       .send({ amount: 750, payment_date: '2026-03-01', payment_method: 'cash' });
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(await Transaction.count({ where: { payment_method: 'cash' } })).toBe(0);
+    expect(res.body.success).toBe(false);
+    expect(res.body.code).toBe('VALIDATION_ERROR');
+    expect(typeof res.body.message).toBe('string');
   });
 
   it('reverses an allocation through the API', async () => {
