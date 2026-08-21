@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/server');
-const { Member, Pledge, sequelize } = require('../../src/models');
+const { Member, Pledge, PledgeCampaign, sequelize } = require('../../src/models');
 const admin = require('firebase-admin');
 
 const setVerifyTokenPayload = (payload) => {
@@ -8,11 +8,17 @@ const setVerifyTokenPayload = (payload) => {
 };
 
 describe('GET /api/pledges/stats', () => {
+  let campaign;
+
   beforeAll(async () => { await sequelize.sync({ force: true }); });
 
   beforeEach(async () => {
     await Pledge.destroy({ where: {} });
+    await PledgeCampaign.destroy({ where: {} });
     await Member.destroy({ where: {} });
+    campaign = await PledgeCampaign.create({
+      slug: '2026-pledge-drive', name: '2026 Pledge Drive', start_date: '2026-01-01'
+    });
     await Member.create({
       first_name: 'Tess',
       last_name: 'Treasurer',
@@ -27,7 +33,9 @@ describe('GET /api/pledges/stats', () => {
       first_name: 'Jane',
       last_name: 'Doe',
       email: 'jane@example.com',
-      pledge_type: 'fundraising'
+      pledge_type: 'fundraising',
+      campaign_id: campaign.id,
+      legacy_status: 'pending'
     });
   });
 

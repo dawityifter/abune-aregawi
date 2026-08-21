@@ -1,6 +1,6 @@
 'use strict';
 
-const { Model, DataTypes } = require('sequelize');
+const { Model, DataTypes, Op } = require('sequelize');
 
 module.exports = (sequelize) => {
   class Pledge extends Model {
@@ -17,6 +17,10 @@ module.exports = (sequelize) => {
         foreignKey: 'donation_id',
         as: 'donation'
       });
+
+      Pledge.belongsTo(models.PledgeCampaign, { foreignKey: 'campaign_id', as: 'campaign' });
+      // Task 6 registers the PledgeAllocation model; restore this association there.
+      // Pledge.hasMany(models.PledgeAllocation, { foreignKey: 'pledge_id', as: 'allocations' });
     }
   }
 
@@ -52,10 +56,31 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true
     },
-    status: {
+    // Renamed from `status`. Holds the hand-flipped 2025 values verbatim.
+    // NOT a source of truth: fulfillment is derived in the pledge_balances view.
+    // Renaming was deliberate — leaving it called `status` is how this bug returns.
+    legacy_status: {
       type: DataTypes.ENUM('pending', 'fulfilled', 'expired', 'cancelled'),
+      allowNull: true
+    },
+    campaign_id: {
+      type: DataTypes.BIGINT,
       allowNull: false,
-      defaultValue: 'pending'
+      references: { model: 'pledge_campaigns', key: 'id' }
+    },
+    // The ONLY mutable state on a pledge. Fulfillment is never stored.
+    lifecycle: {
+      type: DataTypes.STRING(16),
+      allowNull: false,
+      defaultValue: 'active',
+      validate: { isIn: [['active', 'cancelled']] }
+    },
+    // True for every 2025 row. Required because 6 members hold duplicate 2025
+    // pledges, which would break the partial unique index below.
+    is_historical: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
     },
     pledge_date: {
       type: DataTypes.DATE,
@@ -133,7 +158,17 @@ module.exports = (sequelize) => {
     tableName: 'pledges',
     timestamps: true,
     createdAt: 'created_at',
-    updatedAt: 'updated_at'
+    updatedAt: 'updated_at',
+    indexes: [
+      { fields: ['campaign_id'] },
+      { fields: ['campaign_id', 'lifecycle'] },
+      {
+        name: 'pledges_one_active_per_member_per_campaign',
+        unique: true,
+        fields: ['campaign_id', 'member_id'],
+        where: { member_id: { [Op.ne]: null }, lifecycle: 'active', is_historical: false }
+      }
+    ]
   });
 
   return Pledge;

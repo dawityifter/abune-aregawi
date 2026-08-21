@@ -1,5 +1,6 @@
-const { Pledge, Member, Donation } = require('../models');
+const { Pledge, Member, Donation, PledgeCampaign } = require('../models');
 const { validationResult } = require('express-validator');
+const { Op } = require('sequelize');
 
 // Create a new pledge
 const createPledge = async (req, res) => {
@@ -53,14 +54,29 @@ const createPledge = async (req, res) => {
       console.warn('⚠️ Member lookup failed while creating pledge:', memberErr.message);
     }
 
+    // New pledges must land on an open campaign — campaign_id is NOT NULL.
+    // Campaign selection UI is a later task; for now, use whichever campaign
+    // is open (draft or active — see PledgeCampaign#isOpen), most recent first.
+    const openCampaign = await PledgeCampaign.findOne({
+      where: { status: { [Op.ne]: 'closed' } },
+      order: [['start_date', 'DESC']]
+    });
+    if (!openCampaign) {
+      return res.status(503).json({
+        success: false,
+        message: 'Pledges are not currently being accepted'
+      });
+    }
+
     // Create pledge record
     const pledge = await Pledge.create({
       member_id: linkedMember ? linkedMember.id : null,
+      campaign_id: openCampaign.id,
       amount,
       currency,
       pledge_type,
       event_name,
-      status: 'pending',
+      legacy_status: 'pending',
       due_date: due_date ? new Date(due_date) : null,
       first_name,
       last_name,
@@ -84,7 +100,7 @@ const createPledge = async (req, res) => {
         id: pledge.id,
         amount: pledge.amount,
         pledge_type: pledge.pledge_type,
-        status: pledge.status,
+        status: pledge.legacy_status,
         pledge_date: pledge.pledge_date,
         first_name: pledge.first_name,
         last_name: pledge.last_name,
@@ -117,7 +133,7 @@ const getAllPledges = async (req, res) => {
     const offset = (page - 1) * limit;
 
     const whereClause = {};
-    if (status) whereClause.status = status;
+    if (status) whereClause.legacy_status = status;
     if (pledge_type) whereClause.pledge_type = pledge_type;
     if (event_name) whereClause.event_name = event_name;
     if (member_id) whereClause.member_id = member_id;
@@ -149,7 +165,7 @@ const getAllPledges = async (req, res) => {
         amount: pledge.amount,
         pledge_type: pledge.pledge_type,
         event_name: pledge.event_name,
-        status: pledge.status,
+        status: pledge.legacy_status,
         pledge_date: pledge.pledge_date,
         due_date: pledge.due_date,
         fulfilled_date: pledge.fulfilled_date,
@@ -216,7 +232,7 @@ const getPledge = async (req, res) => {
         amount: pledge.amount,
         pledge_type: pledge.pledge_type,
         event_name: pledge.event_name,
-        status: pledge.status,
+        status: pledge.legacy_status,
         pledge_date: pledge.pledge_date,
         due_date: pledge.due_date,
         fulfilled_date: pledge.fulfilled_date,
@@ -261,7 +277,7 @@ const updatePledge = async (req, res) => {
     }
 
     const updateData = {};
-    if (status) updateData.status = status;
+    if (status) updateData.legacy_status = status;
     if (donation_id) updateData.donation_id = donation_id;
     if (notes !== undefined) updateData.notes = notes;
     if (fulfilled_date && status === 'fulfilled') {
@@ -302,12 +318,12 @@ const getPledgeStats = async (req, res) => {
 
     // Get total pledged amount
     const totalPledged = await Pledge.sum('amount', {
-      where: { ...whereClause, status: ['pending', 'fulfilled'] }
+      where: { ...whereClause, legacy_status: ['pending', 'fulfilled'] }
     }) || 0;
 
     // Get total fulfilled amount
     const totalFulfilled = await Pledge.sum('amount', {
-      where: { ...whereClause, status: 'fulfilled' }
+      where: { ...whereClause, legacy_status: 'fulfilled' }
     }) || 0;
 
     // Get individual pledges by status with member info
@@ -324,7 +340,7 @@ const getPledgeStats = async (req, res) => {
     // Group pledges by status and include member/spouse info
     const statusBreakdownMap = {};
     pledgesByStatus.forEach(pledge => {
-      const status = pledge.status;
+      const status = pledge.legacy_status;
       if (!statusBreakdownMap[status]) {
         statusBreakdownMap[status] = {
           status: status,
