@@ -1,6 +1,7 @@
 const request = require('supertest');
 const app = require('../../src/server');
 const { PledgeAllocation, Pledge, PledgeCampaign, Member, Transaction, sequelize } = require('../../src/models');
+const { reverse } = require('../../src/services/pledgeAllocationService');
 const admin = require('firebase-admin');
 
 const asTreasurer = () => {
@@ -91,8 +92,10 @@ describe('GET /api/pledge-allocations/unallocated', () => {
     expect(res.body.items).toHaveLength(0);
   });
 
-  it('omits failed payments', async () => {
+  it('omits failed, canceled and refunded payments', async () => {
     await payment({ status: 'failed' });
+    await payment({ status: 'canceled' });
+    await payment({ status: 'refunded' });
     asTreasurer();
     const res = await request(app)
       .get(`/api/pledge-allocations/unallocated?campaign_id=${campaign.id}`)
@@ -116,5 +119,58 @@ describe('GET /api/pledge-allocations/unallocated', () => {
       .get(`/api/pledge-allocations/unallocated?campaign_id=${campaign.id}&payment_type=all`)
       .set('Authorization', 'Bearer t');
     expect(res.body.items).toHaveLength(1);
+  });
+
+  it('brings a fully allocated payment back into the queue after a full reversal', async () => {
+    const txn = await payment();
+    const allocation = await PledgeAllocation.create({
+      pledge_id: pledge.id, transaction_id: txn.id, amount: 1000,
+      source: 'treasurer_manual', allocated_by: member.id
+    });
+    asTreasurer();
+
+    const before = await request(app)
+      .get(`/api/pledge-allocations/unallocated?campaign_id=${campaign.id}`)
+      .set('Authorization', 'Bearer t');
+    expect(before.body.items).toHaveLength(0);
+
+    await reverse({
+      allocationId: allocation.id,
+      reason: 'wrong pledge',
+      reversedBy: member.id
+    });
+
+    const after = await request(app)
+      .get(`/api/pledge-allocations/unallocated?campaign_id=${campaign.id}`)
+      .set('Authorization', 'Bearer t');
+    expect(after.body.items).toHaveLength(1);
+    expect(parseFloat(after.body.items[0].unallocated)).toBe(1000);
+  });
+
+  it('brings back only the reversed remainder after a partial reversal', async () => {
+    const txn = await payment();
+    const allocation = await PledgeAllocation.create({
+      pledge_id: pledge.id, transaction_id: txn.id, amount: 1000,
+      source: 'treasurer_manual', allocated_by: member.id
+    });
+    asTreasurer();
+
+    const before = await request(app)
+      .get(`/api/pledge-allocations/unallocated?campaign_id=${campaign.id}`)
+      .set('Authorization', 'Bearer t');
+    expect(before.body.items).toHaveLength(0);
+
+    await reverse({
+      allocationId: allocation.id,
+      reason: 'partial correction',
+      reversedBy: member.id,
+      amount: 400
+    });
+
+    const after = await request(app)
+      .get(`/api/pledge-allocations/unallocated?campaign_id=${campaign.id}`)
+      .set('Authorization', 'Bearer t');
+    expect(after.body.items).toHaveLength(1);
+    expect(parseFloat(after.body.items[0].unallocated)).toBe(400);
   });
 });
