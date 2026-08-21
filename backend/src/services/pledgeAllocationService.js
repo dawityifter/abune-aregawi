@@ -104,4 +104,66 @@ async function allocate(
   return sequelize.transaction(run);
 }
 
-module.exports = { allocate, AllocationError };
+// Corrections are appended, never edited in place. A reversal is a new row:
+// negative amount, reverses_allocation_id pointing at the original, and a
+// mandatory reason. The original row is never touched — that is the entire
+// audit trail (who / when / from what / to what / why), with no separate
+// audit table. A Postgres trigger physically blocks UPDATE/DELETE on
+// pledge_allocations in production; this service must never issue either.
+async function reverse(
+  { allocationId, reason, reversedBy = null, amount = null, idempotencyKey = null },
+  { transaction: outer } = {}
+) {
+  const run = async (t) => {
+    const options = { transaction: t };
+
+    if (idempotencyKey) {
+      const existing = await PledgeAllocation.findOne({
+        where: { idempotency_key: idempotencyKey }, ...options
+      });
+      if (existing) return existing;
+    }
+
+    if (!reason || !String(reason).trim()) {
+      throw new AllocationError('REASON_REQUIRED',
+        'A reason is required when reversing an allocation');
+    }
+
+    const original = await PledgeAllocation.findByPk(allocationId, options);
+    if (!original) throw new AllocationError('ALLOCATION_NOT_FOUND', 'Allocation not found');
+
+    const alreadyReversed = await PledgeAllocation.sum('amount', {
+      where: { reverses_allocation_id: allocationId }, ...options
+    }) || 0;
+
+    const originalAmount = parseFloat(original.amount);
+    const outstanding = originalAmount + parseFloat(alreadyReversed); // reversals are negative
+    if (outstanding <= 1e-9) {
+      throw new AllocationError('ALREADY_REVERSED', 'This allocation has already been reversed');
+    }
+
+    const requested = amount == null ? outstanding : parseFloat(amount);
+    if (requested > outstanding + 1e-9) {
+      throw new AllocationError('REVERSAL_TOO_LARGE',
+        `At most ${outstanding.toFixed(2)} of this allocation can be reversed`);
+    }
+
+    // Append a reversing row. The original is never modified — that is the
+    // entire audit mechanism.
+    return PledgeAllocation.create({
+      pledge_id: original.pledge_id,
+      transaction_id: original.transaction_id,
+      amount: -Math.abs(requested),
+      source: original.source === 'stripe_refund' ? 'stripe_refund' : 'treasurer_manual',
+      allocated_by: reversedBy,
+      reason,
+      reverses_allocation_id: original.id,
+      idempotency_key: idempotencyKey
+    }, options);
+  };
+
+  if (outer) return run(outer);
+  return sequelize.transaction(run);
+}
+
+module.exports = { allocate, reverse, AllocationError };
