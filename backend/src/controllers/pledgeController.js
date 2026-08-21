@@ -1,4 +1,4 @@
-const { Pledge, Member, Donation, PledgeCampaign } = require('../models');
+const { Pledge, Member, Donation, PledgeCampaign, PledgeBalance, ActivityLog } = require('../models');
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
 
@@ -76,7 +76,6 @@ const createPledge = async (req, res) => {
       currency,
       pledge_type,
       event_name,
-      legacy_status: 'pending',
       due_date: due_date ? new Date(due_date) : null,
       first_name,
       last_name,
@@ -262,11 +261,19 @@ const getPledge = async (req, res) => {
   }
 };
 
-// Update pledge status
+// Update pledge — lifecycle (active/cancelled) and notes only. Fulfillment is
+// never stored here; it is always derived from real payments (pledge_balances).
 const updatePledge = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, donation_id, notes, fulfilled_date } = req.body;
+    const { lifecycle, notes } = req.body;
+
+    if (lifecycle !== undefined && !['active', 'cancelled'].includes(lifecycle)) {
+      return res.status(400).json({
+        success: false,
+        message: "lifecycle must be 'active' or 'cancelled'"
+      });
+    }
 
     const pledge = await Pledge.findByPk(id);
     if (!pledge) {
@@ -276,17 +283,24 @@ const updatePledge = async (req, res) => {
       });
     }
 
+    const previousLifecycle = pledge.lifecycle;
+
     const updateData = {};
-    if (status) updateData.legacy_status = status;
-    if (donation_id) updateData.donation_id = donation_id;
     if (notes !== undefined) updateData.notes = notes;
-    if (fulfilled_date && status === 'fulfilled') {
-      updateData.fulfilled_date = new Date(fulfilled_date);
-    } else if (status === 'fulfilled' && !pledge.fulfilled_date) {
-      updateData.fulfilled_date = new Date();
-    }
+    if (lifecycle !== undefined) updateData.lifecycle = lifecycle;
 
     await pledge.update(updateData);
+
+    if (lifecycle !== undefined && lifecycle !== previousLifecycle) {
+      await ActivityLog.create({
+        user_id: req.user.id,
+        action: 'UPDATE',
+        entity_type: 'Pledge',
+        entity_id: String(pledge.id),
+        details: { from: previousLifecycle, to: lifecycle },
+        ip_address: req.ip
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -304,7 +318,9 @@ const updatePledge = async (req, res) => {
   }
 };
 
-// Get pledge statistics
+// Get pledge statistics — derived from pledge_balances (real payments), not
+// the frozen legacy_status column. See docs/superpowers/specs/
+// 2026-08-20-pledge-modernization-design.md section 8.4.
 const getPledgeStats = async (req, res) => {
   try {
     const { event_name } = req.query;
@@ -313,37 +329,45 @@ const getPledgeStats = async (req, res) => {
     // authenticates; this flag decides what gets serialized.
     const wantDetail = req.query.detail === 'true';
 
-    const whereClause = {};
-    if (event_name) whereClause.event_name = event_name;
-
-    // Get total pledged amount
-    const totalPledged = await Pledge.sum('amount', {
-      where: { ...whereClause, legacy_status: ['pending', 'fulfilled'] }
-    }) || 0;
-
-    // Get total fulfilled amount
-    const totalFulfilled = await Pledge.sum('amount', {
-      where: { ...whereClause, legacy_status: 'fulfilled' }
-    }) || 0;
-
-    // Get individual pledges by status with member info
-    const pledgesByStatus = await Pledge.findAll({
-      where: whereClause,
-      include: [{
-        model: Member,
-        as: 'member',
-        attributes: ['first_name', 'last_name', 'spouse_name']
-      }],
-      order: [['created_at', 'DESC']]
+    // event_name only exists on the pledges table, so filtering by it means
+    // filtering the balances whose underlying pledge matches.
+    const balances = await PledgeBalance.findAll({
+      include: [
+        {
+          model: Pledge,
+          as: 'pledge',
+          attributes: ['first_name', 'last_name', 'pledge_type', 'event_name', 'created_at'],
+          required: true,
+          where: event_name ? { event_name } : undefined
+        },
+        {
+          model: Member,
+          as: 'member',
+          attributes: ['first_name', 'last_name', 'spouse_name']
+        }
+      ],
+      order: [[{ model: Pledge, as: 'pledge' }, 'created_at', 'DESC']]
     });
 
-    // Group pledges by status and include member/spouse info
+    let totalPledged = 0;
+    let totalFulfilled = 0;
     const statusBreakdownMap = {};
-    pledgesByStatus.forEach(pledge => {
-      const status = pledge.legacy_status;
+
+    balances.forEach(balance => {
+      const pledgedAmount = parseFloat(balance.pledged_amount) || 0;
+      const paidAmount = parseFloat(balance.paid_amount) || 0;
+      const status = balance.derived_status;
+
+      // Cancelled pledges are excluded from the headline totals, but still
+      // show up in the status breakdown so admins can see them.
+      if (status !== 'cancelled') {
+        totalPledged += pledgedAmount;
+        totalFulfilled += paidAmount;
+      }
+
       if (!statusBreakdownMap[status]) {
         statusBreakdownMap[status] = {
-          status: status,
+          status,
           count: 0,
           total_amount: 0,
           pledges: []
@@ -351,43 +375,29 @@ const getPledgeStats = async (req, res) => {
       }
 
       statusBreakdownMap[status].count += 1;
-      statusBreakdownMap[status].total_amount += parseFloat(pledge.amount);
+      statusBreakdownMap[status].total_amount += pledgedAmount;
 
-      // Add pledge with member/spouse info
-      const pledgeInfo = {
-        id: pledge.id,
-        amount: parseFloat(pledge.amount),
-        name: `${pledge.first_name} ${pledge.last_name}`,
-        spouse_name: pledge.member?.spouse_name || null,
-        pledge_type: pledge.pledge_type,
-        created_at: pledge.created_at
-      };
-
-      statusBreakdownMap[status].pledges.push(pledgeInfo);
+      statusBreakdownMap[status].pledges.push({
+        id: balance.pledge_id,
+        amount: pledgedAmount,
+        name: `${balance.pledge.first_name} ${balance.pledge.last_name}`,
+        spouse_name: balance.member?.spouse_name || null,
+        pledge_type: balance.pledge.pledge_type,
+        created_at: balance.pledge.created_at
+      });
     });
 
-    // Convert to array format
     const statusBreakdown = Object.values(statusBreakdownMap);
 
-    // Get recent pledges
-    const recentPledges = await Pledge.findAll({
-      where: whereClause,
-      limit: 10,
-      order: [['created_at', 'DESC']],
-      attributes: ['id', 'first_name', 'last_name', 'amount', 'pledge_type', 'created_at'],
-      include: [{
-        model: Member,
-        as: 'member',
-        attributes: ['first_name', 'last_name']
-      }]
-    });
+    // Already ordered by pledge.created_at DESC above.
+    const recentPledges = balances.slice(0, 10);
 
     res.status(200).json({
       success: true,
       stats: {
-        total_pledged: parseFloat(totalPledged),
-        total_fulfilled: parseFloat(totalFulfilled),
-        total_remaining: parseFloat(totalPledged) - parseFloat(totalFulfilled),
+        total_pledged: totalPledged,
+        total_fulfilled: totalFulfilled,
+        total_remaining: totalPledged - totalFulfilled,
         fulfillment_rate: totalPledged > 0 ? (totalFulfilled / totalPledged * 100).toFixed(1) : 0,
         status_breakdown: statusBreakdown.map(stat => ({
           status: stat.status,
@@ -396,13 +406,15 @@ const getPledgeStats = async (req, res) => {
           ...(wantDetail ? { pledges: stat.pledges } : {})
         })),
         ...(wantDetail ? {
-          recent_pledges: recentPledges.map(pledge => ({
-            id: pledge.id,
-            name: `${pledge.first_name} ${pledge.last_name}`,
-            amount: parseFloat(pledge.amount),
-            pledge_type: pledge.pledge_type,
-            created_at: pledge.created_at,
-            member: pledge.member
+          recent_pledges: recentPledges.map(balance => ({
+            id: balance.pledge_id,
+            name: `${balance.pledge.first_name} ${balance.pledge.last_name}`,
+            amount: parseFloat(balance.pledged_amount) || 0,
+            pledge_type: balance.pledge.pledge_type,
+            created_at: balance.pledge.created_at,
+            member: balance.member
+              ? { first_name: balance.member.first_name, last_name: balance.member.last_name }
+              : null
           }))
         } : {})
       }

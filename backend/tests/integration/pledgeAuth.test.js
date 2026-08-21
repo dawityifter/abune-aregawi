@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/server');
-const { Member, Pledge, PledgeCampaign, sequelize } = require('../../src/models');
+const { Member, Pledge, PledgeCampaign, ActivityLog, sequelize } = require('../../src/models');
 const admin = require('firebase-admin');
 
 const setVerifyTokenPayload = (payload) => {
@@ -10,7 +10,10 @@ const setVerifyTokenPayload = (payload) => {
 describe('Pledge route authorization', () => {
   let memberUser, treasurerUser, pledge, campaign;
 
-  beforeAll(async () => { await sequelize.sync({ force: true }); });
+  beforeAll(async () => {
+    await sequelize.sync({ force: true });
+    await global.recreatePledgeViews();
+  });
 
   beforeEach(async () => {
     await Pledge.destroy({ where: {} });
@@ -80,5 +83,55 @@ describe('Pledge route authorization', () => {
       email: 'visitor@example.com'
     });
     expect(res.status).toBe(201);
+  });
+
+  it('rejects a status/legacy_status field on update — lifecycle is the only mutable state', async () => {
+    setVerifyTokenPayload({ uid: 'uid-treasurer', email: treasurerUser.email });
+    const res = await request(app)
+      .put(`/api/pledges/${pledge.id}`)
+      .set('Authorization', 'Bearer t')
+      .send({ status: 'fulfilled', donation_id: 999, fulfilled_date: '2026-01-01' });
+    expect(res.status).toBe(200);
+    await pledge.reload();
+    expect(pledge.legacy_status).toBeNull();
+    expect(pledge.donation_id).toBeNull();
+    expect(pledge.fulfilled_date).toBeNull();
+  });
+
+  it('rejects an invalid lifecycle value', async () => {
+    setVerifyTokenPayload({ uid: 'uid-treasurer', email: treasurerUser.email });
+    const res = await request(app)
+      .put(`/api/pledges/${pledge.id}`)
+      .set('Authorization', 'Bearer t')
+      .send({ lifecycle: 'fulfilled' });
+    expect(res.status).toBe(400);
+  });
+
+  it('lets a treasurer cancel a pledge and logs the lifecycle change', async () => {
+    setVerifyTokenPayload({ uid: 'uid-treasurer', email: treasurerUser.email });
+    const res = await request(app)
+      .put(`/api/pledges/${pledge.id}`)
+      .set('Authorization', 'Bearer t')
+      .send({ lifecycle: 'cancelled' });
+    expect(res.status).toBe(200);
+    await pledge.reload();
+    expect(pledge.lifecycle).toBe('cancelled');
+
+    const log = await ActivityLog.findOne({ where: { entity_type: 'Pledge', entity_id: String(pledge.id) } });
+    expect(log).not.toBeNull();
+    expect(log.action).toBe('UPDATE');
+    expect(log.details).toEqual({ from: 'active', to: 'cancelled' });
+    expect(log.user_id).toBe(treasurerUser.id);
+  });
+
+  it('does not log an ActivityLog row when lifecycle is unchanged', async () => {
+    setVerifyTokenPayload({ uid: 'uid-treasurer', email: treasurerUser.email });
+    const res = await request(app)
+      .put(`/api/pledges/${pledge.id}`)
+      .set('Authorization', 'Bearer t')
+      .send({ lifecycle: 'active', notes: 'still active' });
+    expect(res.status).toBe(200);
+    const log = await ActivityLog.findOne({ where: { entity_type: 'Pledge', entity_id: String(pledge.id) } });
+    expect(log).toBeNull();
   });
 });
