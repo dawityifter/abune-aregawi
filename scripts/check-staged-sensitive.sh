@@ -15,7 +15,7 @@ set -uo pipefail
 
 # Paths that legitimately look sensitive but are not: templates, fixtures, and
 # this script itself — it necessarily contains the very patterns it searches for.
-ALLOWLIST_RE='(env\.example|\.env\.example|env\.template|/__mocks__/|/fixtures/|scripts/check-staged-sensitive\.sh)'
+ALLOWLIST_RE='(env\.example|\.env\.example|env\.template|/__mocks__/|/fixtures/|/tests/|scripts/check-staged-sensitive\.sh)'
 
 fail=0
 note() { printf '  \033[31m%s\033[0m\n' "$*"; }

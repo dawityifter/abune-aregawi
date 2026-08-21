@@ -1,6 +1,8 @@
 const express = require('express');
 const { body } = require('express-validator');
 const pledgeController = require('../controllers/pledgeController');
+const { firebaseAuthMiddleware } = require('../middleware/auth');
+const roleMiddleware = require('../middleware/role');
 
 const router = express.Router();
 
@@ -48,19 +50,19 @@ const validatePledge = [
     .withMessage('Valid ZIP code is required')
 ];
 
-// Create a new pledge
+// Same vocabulary as transactionRoutes.js — do not invent new role names.
+const viewRoles = ['admin', 'treasurer', 'church_leadership', 'secretary', 'bookkeeper', 'auditor', 'budget_committee', 'ar_team', 'ap_team'];
+const editRoles = ['admin', 'treasurer', 'bookkeeper', 'ar_team'];
+
+// PUBLIC: visitors pledge at events. Rate-limited by the global /api/ limiter.
 router.post('/', validatePledge, pledgeController.createPledge);
 
-// Get all pledges (admin only)
-router.get('/', pledgeController.getAllPledges);
+router.get('/', firebaseAuthMiddleware, roleMiddleware(viewRoles), pledgeController.getAllPledges);
 
-// Get pledge statistics
+// Get pledge statistics - must come before /:id to avoid wildcard catch
 router.get('/stats', pledgeController.getPledgeStats);
 
-// Get pledge by ID
-router.get('/:id', pledgeController.getPledge);
-
-// Update pledge (admin only)
-router.put('/:id', pledgeController.updatePledge);
+router.get('/:id', firebaseAuthMiddleware, roleMiddleware(viewRoles), pledgeController.getPledge);
+router.put('/:id', firebaseAuthMiddleware, roleMiddleware(editRoles), pledgeController.updatePledge);
 
 module.exports = router;
