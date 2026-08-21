@@ -93,6 +93,7 @@ try {
   const MemberPayment = require('./MemberPayment')(sequelize);
   const Donation = require('./Donation')(sequelize);
   const Pledge = require('./Pledge')(sequelize);
+  const PledgeCampaign = require('./PledgeCampaign')(sequelize);
   const SmsLog = require('./SmsLog')(sequelize);
   const Group = require('./Group')(sequelize);
   const MemberGroup = require('./MemberGroup')(sequelize);
@@ -130,6 +131,7 @@ try {
     MemberPayment,
     Donation,
     Pledge,
+    PledgeCampaign,
     SmsLog,
     Group,
     MemberGroup,
