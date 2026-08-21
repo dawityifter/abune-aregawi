@@ -82,6 +82,17 @@ module.exports = {
       await queryInterface.sequelize.query('ALTER TABLE pledges DROP CONSTRAINT IF EXISTS pledges_amount_positive;');
     }
     await queryInterface.renameColumn('pledges', 'legacy_status', 'status');
+    // Pledges created after this migration (2026 rows) legitimately have a NULL
+    // legacy_status, so the NOT NULL constraint below cannot be applied until
+    // those are backfilled.
+    await queryInterface.sequelize.query(
+      "UPDATE pledges SET status = 'pending' WHERE status IS NULL;"
+    );
+    await queryInterface.changeColumn('pledges', 'status', {
+      type: Sequelize.ENUM('pending', 'fulfilled', 'expired', 'cancelled'),
+      allowNull: false,
+      defaultValue: 'pending'
+    });
     await queryInterface.removeColumn('pledges', 'lifecycle');
     await queryInterface.removeColumn('pledges', 'is_historical');
     await queryInterface.removeColumn('pledges', 'campaign_id');
