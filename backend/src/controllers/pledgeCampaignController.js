@@ -24,10 +24,12 @@ const listActive = async (req, res) => {
     });
   } catch (error) {
     console.error('Error listing active pledge campaigns:', error);
+    // This endpoint is public and unauthenticated — deliberately withhold
+    // error.message from the response so internal/DB detail never reaches
+    // an anonymous caller. Full detail stays in the server log above.
     res.status(500).json({
       success: false,
-      message: 'Failed to list active pledge campaigns',
-      error: error.message
+      message: 'Failed to load campaigns'
     });
   }
 };

@@ -58,6 +58,19 @@ describe('Pledge campaign endpoints', () => {
     expect(res.body.campaigns[0].total_collected).toBeUndefined();
   });
 
+  it('does not leak internal error detail on the public active endpoint', async () => {
+    const spy = jest.spyOn(PledgeCampaign, 'findAll')
+      .mockRejectedValue(new Error('INTERNAL_SCHEMA_DETAIL_abc123'));
+    try {
+      const res = await request(app).get('/api/pledge-campaigns/active');
+      expect(res.status).toBe(500);
+      expect(res.body.error).toBeUndefined();
+      expect(JSON.stringify(res.body)).not.toContain('INTERNAL_SCHEMA_DETAIL_abc123');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('rejects an unauthenticated full campaign listing', async () => {
     const res = await request(app).get('/api/pledge-campaigns');
     expect(res.status).toBe(401);
