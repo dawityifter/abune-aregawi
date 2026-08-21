@@ -3,6 +3,12 @@ const { Op } = require('sequelize');
 const tz = require('../config/timezone');
 const { validateReceiptNumber } = require('../utils/receiptNumber');
 const { buildDonorNote } = require('../utils/donorNote');
+const {
+  createTransactionRecord,
+  validateAndResolveTransaction,
+  createLedgerEntryForTransaction,
+  TransactionServiceError
+} = require('../services/transactionService');
 
 // Get all transactions with optional filtering
 const getAllTransactions = async (req, res) => {
@@ -212,100 +218,6 @@ const createTransaction = async (req, res) => {
       for_year // Add for_year support
     } = req.body;
 
-    // Validate required fields (member_id is optional for anonymous donations)
-    if (!collected_by || !amount || !payment_type || !payment_method) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields: collected_by, amount, payment_type, payment_method'
-      });
-    }
-
-    // Validate: membership_due requires a member_id
-    if (!member_id && payment_type === 'membership_due') {
-      return res.status(400).json({
-        success: false,
-        message: 'Membership dues cannot be paid anonymously. A member must be selected.'
-      });
-    }
-
-    // Validate amount (minimum $1)
-    if (parseFloat(amount) < 1) {
-      return res.status(400).json({
-        success: false,
-        message: 'Amount must be at least $1.00'
-      });
-    }
-
-    const receiptValidation = validateReceiptNumber(receipt_number);
-    if (!receiptValidation.valid) {
-      return res.status(400).json({
-        success: false,
-        message: receiptValidation.message
-      });
-    }
-    const normalizedReceiptNumber = receiptValidation.normalized;
-
-    // Validate receipt number for cash/check payments
-    if (['cash', 'check'].includes(payment_method) && !normalizedReceiptNumber) {
-      return res.status(400).json({
-        success: false,
-        message: 'Receipt number is required for cash and check payments'
-      });
-    }
-
-    // Check for duplicate receipt number ('000' is allowed as a no-receipt placeholder)
-    if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
-      const existing = await Transaction.findOne({ where: { receipt_number: normalizedReceiptNumber } });
-      if (existing) {
-        return res.status(409).json({
-          success: false,
-          message: `Receipt number "${normalizedReceiptNumber}" has already been used. Please use a unique receipt number.`
-        });
-      }
-    }
-
-    // Determine GL code from income_category_id or auto-assign from payment_type
-    let glCode = payment_type; // Fallback to payment_type for backward compatibility
-    let finalIncomeCategoryId = income_category_id;
-
-    if (income_category_id) {
-      // User explicitly selected an income category
-      const incomeCategory = await IncomeCategory.findByPk(income_category_id);
-      if (incomeCategory) {
-        glCode = incomeCategory.gl_code;
-      } else {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid income category ID'
-        });
-      }
-    } else {
-      // Auto-assign income category based on payment_type mapping
-      let incomeCategory = await IncomeCategory.findOne({
-        where: { payment_type_mapping: payment_type }
-      });
-
-      // Fallback mappings for payment types without direct mapping
-      if (!incomeCategory) {
-        const fallbackMappings = {
-          'tithe': 'offering',        // tithe → INC002 (Weekly Offering)
-          'building_fund': 'event'    // building_fund → INC003 (Fundraising)
-        };
-
-        const fallbackType = fallbackMappings[payment_type];
-        if (fallbackType) {
-          incomeCategory = await IncomeCategory.findOne({
-            where: { payment_type_mapping: fallbackType }
-          });
-        }
-      }
-
-      if (incomeCategory) {
-        finalIncomeCategoryId = incomeCategory.id;
-        glCode = incomeCategory.gl_code;
-      }
-    }
-
     // Build donor info note if anonymous donation. Member-linked gifts are
     // attributed by member_id, so they never get a donor block.
     const finalNote = member_id
@@ -321,28 +233,31 @@ const createTransaction = async (req, res) => {
       ? 'completed'
       : (txStatus === 'canceled' ? 'cancelled' : txStatus);
 
-    // Verify that collector exists and member exists (if provided)
-    const collector = await Member.findByPk(collected_by);
-    if (!collector) {
-      return res.status(400).json({
-        success: false,
-        message: 'Collector not found'
-      });
-    }
+    const payload = {
+      member_id,
+      collected_by,
+      payment_date,
+      amount,
+      payment_type,
+      payment_method,
+      receipt_number,
+      note: finalNote,
+      donor_name,
+      external_id,
+      for_year,
+      donation_id,
+      status: txStatus,
+      income_category_id
+    };
 
-    // Verify member exists only if member_id is provided (not anonymous)
-    if (member_id) {
-      const member = await Member.findByPk(member_id);
-      if (!member) {
-        return res.status(400).json({
-          success: false,
-          message: 'Member not found'
-        });
-      }
-    }
+    // Validate + resolve GL mapping / collector / member before opening a DB
+    // transaction — avoids holding a pool connection idle while other queries
+    // run (pool max is small). Throws TransactionServiceError (with
+    // .statusCode) on any failure — caught below and shaped into the same
+    // response the inline checks used to produce.
+    const resolved = await validateAndResolveTransaction(payload);
+    const { normalizedReceiptNumber, finalIncomeCategoryId } = resolved;
 
-    // Open DB transaction only after validation — avoids holding a pool
-    // connection idle while other queries run (pool max is small).
     t = await sequelize.transaction();
 
     // 1. If external_id provided, check for existing transaction
@@ -409,51 +324,13 @@ const createTransaction = async (req, res) => {
       }
     }
 
-    // Create new transaction if it doesn't exist
     if (!transaction) {
-      transaction = await Transaction.create({
-        member_id,
-        collected_by,
-        payment_date: payment_date ? tz.parseDate(payment_date) : tz.now(),
-        amount: parseFloat(amount),
-        payment_type,
-        payment_method,
-        receipt_number: normalizedReceiptNumber,
-        note: finalNote,
-        external_id: external_id || null,
-        status: txStatus,
-        donation_id: donation_id || null,
-        income_category_id: finalIncomeCategoryId,
-        for_year: for_year || null
-      }, { transaction: t });
-    }
-
-    // Create corresponding ledger entry using Sequelize (avoids enum issues)
-    // Wrapped in try-catch to make ledger entries optional (for gradual migration)
-    try {
-      const entryDate = payment_date ? tz.parseDate(payment_date) : tz.now();
-      const memo = `${glCode} - ${finalNote || 'No description'}`;
-
-      await LedgerEntry.create({
-        type: payment_type, // Keep payment_type for backward compatibility
-        category: glCode, // Use GL code for categorization (INC001, INC002, etc.)
-        amount: parseFloat(amount),
-        entry_date: entryDate,
-        payment_method,
-        receipt_number: normalizedReceiptNumber || null,
-        memo,
-        collected_by,
-        member_id,
-        transaction_id: transaction.id,
-        source_system: 'manual',
-        external_id: external_id || null,
-        fund: null,
-        attachment_url: null,
-        statement_date: null
-      }, { transaction: t });
-    } catch (ledgerError) {
-      // Ledger entries are optional - log error but don't fail transaction
-      console.warn('⚠️  Could not create ledger entry (table may not exist):', ledgerError.message);
+      // Create new transaction + its ledger entry via the shared service.
+      transaction = await createTransactionRecord(payload, { transaction: t });
+    } else {
+      // Existing transaction (matched via external_id) was updated above —
+      // it still needs a fresh ledger entry, exactly as before.
+      await createLedgerEntryForTransaction(transaction, payload, resolved, { transaction: t });
     }
 
     await t.commit();
@@ -495,6 +372,13 @@ const createTransaction = async (req, res) => {
       } catch (rollbackError) {
         console.error('Transaction rollback failed:', rollbackError.message);
       }
+    }
+
+    if (error instanceof TransactionServiceError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message
+      });
     }
 
     console.error('❌ Error creating transaction:', error);
