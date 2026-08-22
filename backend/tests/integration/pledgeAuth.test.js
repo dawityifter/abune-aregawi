@@ -20,8 +20,11 @@ describe('Pledge route authorization', () => {
     await PledgeCampaign.destroy({ where: {} });
     await Member.destroy({ where: {} });
 
+    // Must be live (active AND inside its date window) for anonymous pledge
+    // creation to be accepted — see services/pledgeCampaignService.
     campaign = await PledgeCampaign.create({
-      slug: '2026-pledge-drive', name: '2026 Pledge Drive', start_date: '2026-01-01'
+      slug: '2026-pledge-drive', name: '2026 Pledge Drive', status: 'active',
+      start_date: '2026-01-01', end_date: null
     });
 
     memberUser = await Member.create({

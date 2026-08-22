@@ -1,6 +1,6 @@
-const { Pledge, Member, Donation, PledgeCampaign, PledgeBalance, ActivityLog } = require('../models');
+const { Pledge, Member, Donation, PledgeBalance, ActivityLog } = require('../models');
 const { validationResult } = require('express-validator');
-const { Op } = require('sequelize');
+const { findLiveCampaign } = require('../services/pledgeCampaignService');
 
 // Create a new pledge
 const createPledge = async (req, res) => {
@@ -54,14 +54,13 @@ const createPledge = async (req, res) => {
       console.warn('⚠️ Member lookup failed while creating pledge:', memberErr.message);
     }
 
-    // New pledges must land on an open campaign — campaign_id is NOT NULL.
-    // Campaign selection UI is a later task; for now, use whichever campaign
-    // is open (draft or active — see PledgeCampaign#isOpen), most recent first.
-    const openCampaign = await PledgeCampaign.findOne({
-      where: { status: { [Op.ne]: 'closed' } },
-      order: [['start_date', 'DESC']]
-    });
-    if (!openCampaign) {
+    // Pledges bind to the campaign that is live right now — active AND inside
+    // its date window. Resolved server-side and any client-supplied
+    // campaign_id is ignored on purpose: a crafted request must not be able to
+    // attach a pledge to a different drive, including a draft one that the
+    // previous non-closed check would have accepted.
+    const liveCampaign = await findLiveCampaign();
+    if (!liveCampaign) {
       return res.status(503).json({
         success: false,
         message: 'Pledges are not currently being accepted'
@@ -71,7 +70,7 @@ const createPledge = async (req, res) => {
     // Create pledge record
     const pledge = await Pledge.create({
       member_id: linkedMember ? linkedMember.id : null,
-      campaign_id: openCampaign.id,
+      campaign_id: liveCampaign.id,
       amount,
       currency,
       pledge_type,
@@ -323,7 +322,7 @@ const updatePledge = async (req, res) => {
 // 2026-08-20-pledge-modernization-design.md section 8.4.
 const getPledgeStats = async (req, res) => {
   try {
-    const { event_name } = req.query;
+    const { event_name, campaign_id } = req.query;
 
     // Detail (per-pledge rows incl. donor names) is privileged. The route layer
     // authenticates; this flag decides what gets serialized.
@@ -338,7 +337,13 @@ const getPledgeStats = async (req, res) => {
           as: 'pledge',
           attributes: ['first_name', 'last_name', 'pledge_type', 'event_name', 'created_at'],
           required: true,
-          where: event_name ? { event_name } : undefined
+          // campaign_id scopes the public tracker to the current drive. Both
+          // filters are optional; omitting them keeps the all-campaign total
+          // that staff callers already rely on.
+          where: {
+            ...(event_name ? { event_name } : {}),
+            ...(campaign_id ? { campaign_id } : {})
+          }
         },
         {
           model: Member,
@@ -380,6 +385,11 @@ const getPledgeStats = async (req, res) => {
       statusBreakdownMap[status].pledges.push({
         id: balance.pledge_id,
         amount: pledgedAmount,
+        // Per-donor payment progress, so a caller can tell who actually paid
+        // rather than only who promised. Derived from pledge_balances, never
+        // from the frozen legacy_status column.
+        paid_amount: paidAmount,
+        remaining_amount: parseFloat(balance.remaining_amount) || 0,
         name: `${balance.pledge.first_name} ${balance.pledge.last_name}`,
         spouse_name: balance.member?.spouse_name || null,
         pledge_type: balance.pledge.pledge_type,

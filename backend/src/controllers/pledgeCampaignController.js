@@ -1,5 +1,6 @@
 const { PledgeCampaign, CampaignTotal, ActivityLog } = require('../models');
 const { Op } = require('sequelize');
+const { findLiveCampaign, findOverlappingActive } = require('../services/pledgeCampaignService');
 
 // PUBLIC — powers the unauthenticated pledge form used at events. Select the
 // column list explicitly (never the whole model, never joined with
@@ -12,11 +13,15 @@ const PUBLIC_ATTRIBUTES = [
 
 const listActive = async (req, res) => {
   try {
-    const campaigns = await PledgeCampaign.findAll({
-      where: { status: 'active' },
-      attributes: PUBLIC_ATTRIBUTES,
-      order: [['start_date', 'DESC']]
-    });
+    // Live means active AND inside the date window — see
+    // services/pledgeCampaignService. Exactly one drive runs at a time, so
+    // this is 0 or 1 rows; the array shape is kept so existing callers of
+    // this endpoint keep working.
+    const live = await findLiveCampaign();
+
+    const campaigns = live
+      ? [await PledgeCampaign.findByPk(live.id, { attributes: PUBLIC_ATTRIBUTES })]
+      : [];
 
     res.status(200).json({
       success: true,
@@ -93,6 +98,23 @@ const getTotals = async (req, res) => {
   }
 };
 
+// Exactly one campaign runs at a time. Checked in the app layer rather than
+// with a Postgres EXCLUDE constraint because the test suite runs on SQLite,
+// which has no such constraint — the same portability rule that shaped the
+// pledge views. Two admins activating in the same instant could still race;
+// activation is admin-only and rare, and the result is a visible duplicate
+// rather than corrupted money.
+const overlapConflict = async ({ id, start_date, end_date }) => {
+  const clash = await findOverlappingActive({ id, start_date, end_date });
+  if (!clash) return null;
+  const window = `${clash.start_date} – ${clash.end_date || 'no end date'}`;
+  return {
+    success: false,
+    code: 'CAMPAIGN_OVERLAP',
+    message: `${clash.name} (${window}) is already active for these dates.`
+  };
+};
+
 const create = async (req, res) => {
   try {
     const {
@@ -106,6 +128,11 @@ const create = async (req, res) => {
         success: false,
         message: `Invalid status. Must be one of: ${PledgeCampaign.STATUSES.join(', ')}`
       });
+    }
+
+    if (status === 'active') {
+      const conflict = await overlapConflict({ start_date, end_date });
+      if (conflict) return res.status(409).json(conflict);
     }
 
     const campaign = await PledgeCampaign.create({
@@ -170,6 +197,19 @@ const update = async (req, res) => {
     updatable.forEach((field) => {
       if (req.body[field] !== undefined) updateData[field] = req.body[field];
     });
+
+    // Check the campaign's post-update state, not just the request body: an
+    // admin widening an already-active campaign's dates can swallow another
+    // live one without ever sending status='active'.
+    const nextStatus = updateData.status ?? campaign.status;
+    if (nextStatus === 'active') {
+      const conflict = await overlapConflict({
+        id: campaign.id,
+        start_date: updateData.start_date ?? campaign.start_date,
+        end_date: updateData.end_date !== undefined ? updateData.end_date : campaign.end_date
+      });
+      if (conflict) return res.status(409).json(conflict);
+    }
 
     await campaign.update(updateData);
 
