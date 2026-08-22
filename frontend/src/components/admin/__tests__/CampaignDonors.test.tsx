@@ -12,9 +12,9 @@ jest.mock('../../../utils/pledgeCampaignApi', () => ({
 
 // Synthetic donors only — never real member names.
 const DONORS = [
-  { id: 1, name: 'Test DonorOne', amount: 300, paid_amount: 300, remaining_amount: 0, status: 'fulfilled', pledge_type: 'one_time', created_at: '2026-02-01T00:00:00Z' },
-  { id: 2, name: 'Test DonorTwo', amount: 500, paid_amount: 200, remaining_amount: 300, status: 'partial', pledge_type: 'one_time', created_at: '2026-02-02T00:00:00Z' },
-  { id: 3, name: 'Test DonorThree', amount: 100, paid_amount: 0, remaining_amount: 100, status: 'not_started', pledge_type: 'one_time', created_at: '2026-02-03T00:00:00Z' }
+  { id: 1, name: 'Test DonorOne', amount: 300, paid_amount: 300, remaining_amount: 0, status: 'fulfilled', is_historical: true, pledge_type: 'one_time', created_at: '2026-02-01T00:00:00Z' },
+  { id: 2, name: 'Test DonorTwo', amount: 500, paid_amount: 200, remaining_amount: 300, status: 'partially_fulfilled', is_historical: false, pledge_type: 'one_time', created_at: '2026-02-02T00:00:00Z' },
+  { id: 3, name: 'Test DonorThree', amount: 100, paid_amount: 0, remaining_amount: 100, status: 'not_started', is_historical: false, pledge_type: 'one_time', created_at: '2026-02-03T00:00:00Z' }
 ];
 
 const renderDonors = () => render(
@@ -47,8 +47,8 @@ describe('CampaignDonors', () => {
     renderDonors();
 
     await screen.findByText('Test DonorOne');
-    expect(screen.getByText(/fulfilled/i)).toBeInTheDocument();
-    expect(screen.getByText(/partial/i)).toBeInTheDocument();
+    expect(screen.getByText('fulfilled')).toBeInTheDocument();
+    expect(screen.getByText(/partially.fulfilled/i)).toBeInTheDocument();
     expect(screen.getByText(/not.started/i)).toBeInTheDocument();
   });
 
@@ -64,5 +64,26 @@ describe('CampaignDonors', () => {
     renderDonors();
 
     expect(await screen.findByText(/failed to load donors/i)).toBeInTheDocument();
+  });
+});
+
+
+describe('pre-modernization drives', () => {
+  it('marks rows whose figures come from the legacy record', async () => {
+    renderDonors();
+
+    // These amounts are inferred from legacy_status, not reconcilable against
+    // any transaction — the UI must not present them as tracked payments.
+    expect(await screen.findByText(/legacy record/i)).toBeInTheDocument();
+  });
+
+  it('does not mark rows backed by real allocations', async () => {
+    mockFetchDonors.mockResolvedValue([
+      { id: 4, name: 'Test ModernDonor', amount: 100, paid_amount: 100, remaining_amount: 0, status: 'fulfilled', is_historical: false, pledge_type: 'one_time', created_at: '2026-02-04T00:00:00Z' }
+    ]);
+    renderDonors();
+
+    await screen.findByText('Test ModernDonor');
+    expect(screen.queryByText(/legacy record/i)).not.toBeInTheDocument();
   });
 });

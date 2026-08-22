@@ -140,6 +140,8 @@ export interface Dictionaries {
     donor: string;
     noPledges: string;
     close2: string;
+    legacy: string;
+    legacyHelp: string;
     save: string;
     cancel: string;
     activate: string;
@@ -1894,6 +1896,8 @@ export const en: Dictionaries = {
     donor: "Donor",
     noPledges: "No pledges in this drive yet.",
     close2: "Close",
+    legacy: "legacy record",
+    legacyHelp: "Recorded before payment-level tracking: this figure comes from the pledge's saved status, not from a matched transaction.",
     save: "Save",
     cancel: "Cancel",
     activate: "Activate",
@@ -3949,6 +3953,8 @@ export const ti: Dictionaries = {
     donor: "ወሃቢ",
     noPledges: "ኣብዚ መደብ ጌና መብጽዓ የለን።",
     close2: "ዕጾ",
+    legacy: "ናይ ቀደም መዝገብ",
+    legacyHelp: "ቅድሚ ናይ ክፍሊት ምክትታል ዝተመዝገበ፦ እዚ ቁጽሪ ካብ ናይቲ መብጽዓ ዝተዓቀበ ኩነታት እዩ፡ ካብ ዝተዛመደ ልውውጥ ኣይኮነን።",
     save: "ኣቐምጥ",
     cancel: "ሰርዝ",
     activate: "ኣንቅሕ",

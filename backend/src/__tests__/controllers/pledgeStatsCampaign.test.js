@@ -90,6 +90,9 @@ describe('detail rows for the donor list', () => {
       remaining_amount: 300
     });
     expect(rows[0].name).toBe('Test DonorOne');
+    // Lets the UI mark rows whose figures come from legacy_status rather
+    // than from real allocations.
+    expect(rows[0].is_historical).toBe(false);
   });
 
   it('omits donor rows entirely when detail is not requested', async () => {

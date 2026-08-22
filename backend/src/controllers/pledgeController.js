@@ -390,6 +390,9 @@ const getPledgeStats = async (req, res) => {
         // from the frozen legacy_status column.
         paid_amount: paidAmount,
         remaining_amount: parseFloat(balance.remaining_amount) || 0,
+        // True when the figures come from the pre-allocation legacy_status
+        // record rather than from real payments, so the UI can say so.
+        is_historical: Boolean(balance.is_historical),
         name: `${balance.pledge.first_name} ${balance.pledge.last_name}`,
         spouse_name: balance.member?.spouse_name || null,
         pledge_type: balance.pledge.pledge_type,

@@ -100,8 +100,11 @@ export interface CampaignDonor {
   amount: number;
   paid_amount: number;
   remaining_amount: number;
-  /** Derived from real payments — never the frozen legacy_status column. */
+  /** Derived from real payments, except on pre-modernization drives. */
   status: string;
+  /** True when paid/remaining come from the legacy_status record rather than
+      from allocations, so those figures cannot be tied to a transaction. */
+  is_historical: boolean;
   pledge_type: string | null;
   created_at: string;
 }

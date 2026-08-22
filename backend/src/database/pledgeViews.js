@@ -12,6 +12,22 @@
 //   - every division guarded by CASE WHEN ... > 0: Postgres raises on
 //     divide-by-zero where SQLite quietly returns NULL.
 
+// Money actually received against a pledge.
+//
+// Drives that predate the allocation model (is_historical) recorded fulfilment
+// as a flag on the pledge, with no payment-level detail. Those rows cannot be
+// backfilled: pledge_allocations.transaction_id is NOT NULL and references a
+// real transaction, so inventing allocations would mean inventing ledger
+// entries. Reading legacy_status for exactly those rows is what keeps the 2025
+// drive from reporting its ~$55k of giving as never received.
+//
+// Everything from 2026 on is unaffected and still requires a real allocation
+// joined to a succeeded transaction — a flag alone never credits a pledge.
+const ALLOCATED = "COALESCE(SUM(CASE WHEN t.status = 'succeeded' THEN a.amount ELSE 0 END), 0)";
+const LEGACY_PAID =
+  `CASE WHEN p.is_historical = TRUE AND p.legacy_status = 'fulfilled' ` +
+  `THEN p.amount ELSE ${ALLOCATED} END`;
+
 const PLEDGE_BALANCES = (securityInvoker) => `
 CREATE VIEW pledge_balances ${securityInvoker ? 'WITH (security_invoker = true) ' : ''}AS
 SELECT
@@ -19,22 +35,23 @@ SELECT
   p.campaign_id       AS campaign_id,
   p.member_id         AS member_id,
   p.amount            AS pledged_amount,
-  COALESCE(SUM(CASE WHEN t.status = 'succeeded' THEN a.amount ELSE 0 END), 0) AS paid_amount,
-  p.amount - COALESCE(SUM(CASE WHEN t.status = 'succeeded' THEN a.amount ELSE 0 END), 0) AS remaining_amount,
+  p.is_historical     AS is_historical,
+  ${LEGACY_PAID} AS paid_amount,
+  p.amount - ${LEGACY_PAID} AS remaining_amount,
   CASE WHEN p.amount > 0
-       THEN ROUND(COALESCE(SUM(CASE WHEN t.status = 'succeeded' THEN a.amount ELSE 0 END), 0) * 100.0 / p.amount, 1)
+       THEN ROUND(${LEGACY_PAID} * 100.0 / p.amount, 1)
        ELSE 0 END AS percent_fulfilled,
   CASE
     WHEN p.lifecycle = 'cancelled' THEN 'cancelled'
-    WHEN COALESCE(SUM(CASE WHEN t.status = 'succeeded' THEN a.amount ELSE 0 END), 0) <= 0 THEN 'not_started'
-    WHEN COALESCE(SUM(CASE WHEN t.status = 'succeeded' THEN a.amount ELSE 0 END), 0) >= p.amount THEN 'fulfilled'
+    WHEN ${LEGACY_PAID} <= 0 THEN 'not_started'
+    WHEN ${LEGACY_PAID} >= p.amount THEN 'fulfilled'
     ELSE 'partially_fulfilled'
   END AS derived_status,
   MAX(CASE WHEN t.status = 'succeeded' THEN t.payment_date ELSE NULL END) AS last_payment_at
 FROM pledges p
 LEFT JOIN pledge_allocations a ON a.pledge_id = p.id
 LEFT JOIN transactions t ON t.id = a.transaction_id
-GROUP BY p.id, p.campaign_id, p.member_id, p.amount, p.lifecycle
+GROUP BY p.id, p.campaign_id, p.member_id, p.amount, p.lifecycle, p.is_historical, p.legacy_status
 `;
 
 const CAMPAIGN_TOTALS = (securityInvoker) => `

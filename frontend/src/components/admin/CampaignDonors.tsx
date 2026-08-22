@@ -17,7 +17,9 @@ const money = (value: number) =>
 // that can appear — legacy_status is frozen and never read here.
 const STATUS_STYLES: Record<string, string> = {
   fulfilled: 'bg-green-100 text-green-800',
-  partial: 'bg-yellow-100 text-yellow-800',
+  // The view emits 'partially_fulfilled'; keying this 'partial' silently fell
+  // through to the default grey.
+  partially_fulfilled: 'bg-yellow-100 text-yellow-800',
   not_started: 'bg-gray-100 text-gray-700',
   cancelled: 'bg-red-100 text-red-800'
 };
@@ -86,6 +88,14 @@ const CampaignDonors: React.FC<CampaignDonorsProps> = ({ campaignId, campaignNam
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[donor.status] || 'bg-gray-100 text-gray-700'}`}>
                       {donor.status}
                     </span>
+                    {donor.is_historical && (
+                      <span
+                        className="ml-2 text-xs text-gray-500"
+                        title={t('fundraising.legacyHelp')}
+                      >
+                        {t('fundraising.legacy')}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

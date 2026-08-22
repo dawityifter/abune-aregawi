@@ -16,6 +16,9 @@ module.exports = (sequelize) => {
     campaign_id: DataTypes.BIGINT,
     member_id: DataTypes.BIGINT,
     pledged_amount: DataTypes.DECIMAL(10, 2),
+    // Surfaced so callers can tell a legacy_status-derived figure from one
+    // backed by real allocations.
+    is_historical: DataTypes.BOOLEAN,
     paid_amount: DataTypes.DECIMAL(10, 2),
     remaining_amount: DataTypes.DECIMAL(10, 2),
     percent_fulfilled: DataTypes.DECIMAL(5, 1),
