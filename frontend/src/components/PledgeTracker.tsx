@@ -11,7 +11,10 @@ interface PledgeStats {
     status: string;
     count: number;
     total_amount: number;
-    pledges: Array<{
+    // Per-donor rows carry member names, so /api/pledges/stats only serializes
+    // them for an authenticated caller passing detail=true. This page is public
+    // and does not, so treat them as absent unless proven otherwise.
+    pledges?: Array<{
       id: number;
       amount: number;
       name: string;
@@ -20,7 +23,7 @@ interface PledgeStats {
       created_at: string;
     }>;
   }>;
-  recent_pledges: Array<{
+  recent_pledges?: Array<{
     id: number;
     name: string;
     amount: number;
@@ -231,7 +234,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
                   className="space-y-2"
                   style={['pending', 'fulfilled'].includes(status.status) ? { maxHeight: '22rem', overflowY: 'auto', paddingRight: '4px' } : undefined}
                 >
-                  {status.pledges.map((pledge) => (
+                  {(status.pledges ?? []).map((pledge) => (
                     <div key={pledge.id} className="bg-white rounded border p-2">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">

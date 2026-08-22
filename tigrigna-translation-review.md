@@ -539,3 +539,16 @@ actually see this screen. Drafts by a non-native speaker.
 | errorBoundary.body | An error occurred. Please try refreshing the page. | ጌጋ ኣጋጢሙ። በጃኹም ገጹ ኣሐድሱ። | ⚠️ "በጃኹም" is the formal/plural "please" used elsewhere in this file; confirm that register is right for an error screen rather than something gentler |
 | errorBoundary.retry | Try Again | ዳግማይ ፈትን | ✅ matches the existing `pledgeTracker.tryAgain` string exactly |
 | errorBoundary.detailsLabel | Error details | ዝርዝር ጌጋ | ⚠️ literally "error's details/list"; confirm this reads naturally as the label on a collapsed `<details>` disclosure |
+
+## Pledge home-page card (Aug 2026)
+
+New `pledge.homeCard.*` keys for the "Make a Pledge" card added to `QuickLinks`
+on the home page. This is the first entry point to `/pledge` visible to
+signed-out visitors — the existing header link sits behind `currentUser &&` —
+so the copy is read by people who have not registered yet. Drafts by a
+non-native speaker.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| pledge.homeCard.title | Make a Pledge | መብጽዓ ምእታው | ✅ matches the existing `nav.makePledge` string exactly |
+| pledge.homeCard.description | Pledge your support for the church and pay when you're ready — we'll send payment instructions. | ንቤተ ክርስቲያን ደገፍኩም ብመብጽዓ ኣረጋግጹ፤ ምስ ተዳለኹም ክትከፍሉ ትኽእሉ — መምርሒ ክፍሊት ክንሰደልኩም ኢና። | ⚠️ "ደገፍኩም ብመብጽዓ ኣረጋግጹ" is literally "confirm your support with a pledge"; confirm that carries the sense of promising a future amount. Also confirm "ምስ ተዳለኹም" ("when you are ready") does not read as "when you are prepared/dressed" in this financial context |

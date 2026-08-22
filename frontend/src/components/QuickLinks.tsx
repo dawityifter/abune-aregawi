@@ -195,6 +195,14 @@ const QuickLinks: React.FC = () => {
             to="/survey"
           />
         </div>
+        <div className="h-full">
+          <Card
+            icon="fas fa-hand-holding-heart"
+            title={t('pledge.homeCard.title')}
+            desc={t('pledge.homeCard.description')}
+            to="/pledge"
+          />
+        </div>
       </div>
     </section>
   );

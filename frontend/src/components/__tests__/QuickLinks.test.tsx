@@ -16,4 +16,13 @@ describe('QuickLinks', () => {
     const link = screen.getByText('Church Services Survey').closest('a');
     expect(link).toHaveAttribute('href', '/survey');
   });
+
+  it('links to the pledge page', () => {
+    // /pledge is a public route, but the only other link to it lives behind
+    // `currentUser &&` in Navigation — so without this card a signed-out
+    // visitor has no way to reach it from the home page.
+    renderWithProviders();
+    const link = screen.getByText('Make a Pledge').closest('a');
+    expect(link).toHaveAttribute('href', '/pledge');
+  });
 });

@@ -105,6 +105,12 @@ export interface Dictionaries {
   nav: {
     makePledge: string;
   };
+  pledge: {
+    homeCard: {
+      title: string;
+      description: string;
+    };
+  };
   dashboard: {
     welcome: string;
     settingUp: string;
@@ -1811,6 +1817,13 @@ export const en: Dictionaries = {
       lastNameRequired: "Last name is required",
       emailInvalid: "Please enter a valid email address",
       phoneRequired: "Phone number is required for new members"
+    }
+  },
+
+  pledge: {
+    homeCard: {
+      title: "Make a Pledge",
+      description: "Pledge your support for the church and pay when you're ready — we'll send payment instructions."
     }
   },
 
@@ -3816,6 +3829,14 @@ export const ti: Dictionaries = {
       lastNameRequired: "ስም ኣቦ የድሊ",
       emailInvalid: "በጃኹም ቅኑዕ ኢመይል ኣድራሻ ኣእትዉ",
       phoneRequired: "ንሓደስቲ ኣባላት ቁጽሪ ስልኪ የድሊ"
+    }
+  },
+
+  // DRAFT, pending native review
+  pledge: {
+    homeCard: {
+      title: "መብጽዓ ምእታው",
+      description: "ንቤተ ክርስቲያን ደገፍኩም ብመብጽዓ ኣረጋግጹ፤ ምስ ተዳለኹም ክትከፍሉ ትኽእሉ — መምርሒ ክፍሊት ክንሰደልኩም ኢና።"
     }
   },
 

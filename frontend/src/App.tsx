@@ -1,5 +1,5 @@
 import React, { Suspense, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { lazyWithRecovery as lazy } from './utils/lazyWithRecovery';
@@ -178,6 +178,9 @@ function App() {
                 <Route path="/parish-pulse-sign-up" element={<ParishPulseSignUp />} />
                 <Route path="/survey" element={<SurveyPage />} />
                 <Route path="/pledge" element={<PledgePage />} />
+                {/* The route is singular; /pledges is a common guess and there is
+                    no catch-all, so without this it renders a blank page. */}
+                <Route path="/pledges" element={<Navigate to="/pledge" replace />} />
                 <Route path="/thank-you" element={<ThankYouPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
