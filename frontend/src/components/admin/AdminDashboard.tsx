@@ -10,11 +10,12 @@ import ActivityLogViewer from './ActivityLogViewer';
 import VoicemailInbox from './VoicemailInbox';
 import MemberReports from './MemberReports';
 import SurveyReportPage from './SurveyReportPage';
+import FundraisingCampaigns from './FundraisingCampaigns';
 
 const AdminDashboard: React.FC = () => {
   const { currentUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'departments' | 'activity-logs' | 'voicemails' | 'reports' | 'survey-report'>('members');
+  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'departments' | 'activity-logs' | 'voicemails' | 'reports' | 'survey-report' | 'fundraising'>('members');
   const [canAccess, setCanAccess] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
@@ -53,6 +54,12 @@ const AdminDashboard: React.FC = () => {
   );
   const permissions = getMergedPermissions(userRoles);
   const isAdmin = userRoles.includes('admin');
+  // Mirrors viewRoles in backend/src/routes/pledgeCampaignRoutes.js — these
+  // roles may READ campaigns; only admin may create/edit/activate them.
+  const canViewFundraising = userRoles.some((r) => [
+    'admin', 'treasurer', 'church_leadership', 'secretary', 'bookkeeper',
+    'auditor', 'budget_committee', 'ar_team', 'ap_team'
+  ].includes(r));
 
   useEffect(() => {
     // Only admins, leadership, and secretary can access the dashboard generally, 
@@ -124,6 +131,11 @@ const AdminDashboard: React.FC = () => {
         return <SurveyReportPage />;
       case 'reports':
         return isAdmin ? <MemberReports /> : <div className="p-4 text-center text-gray-500">Access Denied</div>;
+      case 'fundraising':
+        // Finance/leadership roles read; only admin gets the write controls.
+        return canViewFundraising
+          ? <FundraisingCampaigns canManage={isAdmin} />
+          : <div className="p-4 text-center text-gray-500">Access Denied</div>;
       default: // 'members' is the default tab
         return (
           <MemberList
@@ -173,6 +185,19 @@ const AdminDashboard: React.FC = () => {
               >
                 <i className="fas fa-file-alt mr-2"></i>
                 {t('memberReports.tab')}
+              </button>
+            )}
+
+            {canViewFundraising && (
+              <button
+                onClick={() => setActiveTab('fundraising')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'fundraising'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                <i className="fas fa-hand-holding-heart mr-2"></i>
+                {t('fundraising.tab')}
               </button>
             )}
 
