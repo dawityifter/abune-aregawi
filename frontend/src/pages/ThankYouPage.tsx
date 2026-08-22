@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PledgeTracker from '../components/PledgeTracker';
+import { useActiveCampaign } from '../hooks/useActiveCampaign';
 
 const ThankYouPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { campaign } = useActiveCampaign();
   useEffect(() => {
     // Get pledge data from navigation state
     if (location.state?.pledgeId) {
@@ -120,10 +122,17 @@ const ThankYouPage: React.FC = () => {
               </p>
             </div>
 
-            <PledgeTracker
-              showRecentPledges={true}
-              compact={false}
-            />
+            {/* Scoped to the running drive. Unscoped, this totalled every
+                pledge ever recorded, so the closed historical drive's figures
+                showed up here as if they were the current campaign's. */}
+            {campaign && (
+              <PledgeTracker
+                campaignId={campaign.id}
+                goalAmount={campaign.goal_amount ? parseFloat(campaign.goal_amount) : undefined}
+                showRecentPledges={true}
+                compact={false}
+              />
+            )}
 
             <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Share Your Support</h3>

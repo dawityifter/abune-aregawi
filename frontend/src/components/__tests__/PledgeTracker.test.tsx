@@ -40,7 +40,7 @@ const statsWithoutDetail = {
 const renderTracker = () => render(
   <I18nProvider>
     <LanguageProvider>
-      <PledgeTracker showRecentPledges={true} compact={false} />
+      <PledgeTracker campaignId={7} goalAmount={10000} showRecentPledges={true} compact={false} />
     </LanguageProvider>
   </I18nProvider>
 );
@@ -74,5 +74,33 @@ describe('PledgeTracker', () => {
     expect(screen.getByText('7')).toBeInTheDocument();
     expect(screen.getByText('partial')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
+  });
+
+  it('requests only the given campaign', async () => {
+    renderTracker();
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+    });
+    const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+    expect(url).toContain('campaign_id=7');
+    // The legacy free-text filter is gone; campaign scoping replaces it.
+    expect(url).not.toContain('event_name');
+  });
+
+  it('shows progress toward the campaign goal', async () => {
+    renderTracker();
+
+    // $5,000 pledged against a $10,000 goal.
+    expect(await screen.findByText(/50%/)).toBeInTheDocument();
+    expect(screen.getByText(/\$10,000/)).toBeInTheDocument();
+  });
+
+  it('labels the goal percentage as pledged, not collected', async () => {
+    renderTracker();
+
+    // The admin tab shows collected/goal for the same campaign, so an
+    // unlabelled percentage here reads as a contradiction.
+    expect(await screen.findByText(/50% of goal pledged/i)).toBeInTheDocument();
   });
 });

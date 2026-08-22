@@ -3,6 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import PledgeForm from '../components/PledgeForm';
 import PledgeTracker from '../components/PledgeTracker';
 import ErrorBoundary from '../components/ErrorBoundary';
+import { useI18n } from '../i18n/I18nProvider';
+import { useActiveCampaign } from '../hooks/useActiveCampaign';
 
 interface PledgeFormData {
   amount: string;
@@ -23,6 +25,8 @@ const PledgePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { lang, t } = useI18n();
+  const { campaign, loading: campaignLoading } = useActiveCampaign();
 
   // Get event name from URL params
   const eventName = searchParams.get('event') || undefined;
@@ -85,6 +89,31 @@ const PledgePage: React.FC = () => {
     );
   }
 
+  if (campaignLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  // No live drive: say so, rather than showing a form whose submission the
+  // server would refuse with a 503.
+  if (!campaign) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">{t('pledge.noCampaign.title')}</h1>
+          <p className="text-gray-600">{t('pledge.noCampaign.body')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const campaignName = (lang === 'ti' && campaign.name_ti) || campaign.name;
+  const campaignDescription =
+    (lang === 'ti' && campaign.description_ti) || campaign.description;
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50">
@@ -92,13 +121,10 @@ const PledgePage: React.FC = () => {
         <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white py-16">
           <div className="max-w-7xl mx-auto px-4 text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              {eventName ? `${eventName} Fundraising` : 'Make a Pledge'}
+              {campaignName}
             </h1>
             <p className="text-xl md:text-2xl mb-6 opacity-90">
-              {eventName
-                ? `Support our ${eventName} with your generous pledge`
-                : 'Support our church with your generous pledge'
-              }
+              {campaignDescription || 'Support our church with your generous pledge'}
             </p>
             <div className="text-lg opacity-75">
               Your pledge helps us continue our mission of serving our Abune Aregawi church community
@@ -150,7 +176,8 @@ const PledgePage: React.FC = () => {
               </div>
 
               <PledgeTracker
-                eventName={eventName}
+                campaignId={campaign.id}
+                goalAmount={campaign.goal_amount ? parseFloat(campaign.goal_amount) : undefined}
                 showRecentPledges={true}
                 compact={false}
               />

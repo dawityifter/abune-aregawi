@@ -34,13 +34,18 @@ interface PledgeStats {
 }
 
 interface PledgeTrackerProps {
-  eventName?: string; // Optional filter by event
+  /** Scopes every figure to one drive. Without it the tracker would total
+      every pledge ever recorded, including closed historical campaigns. */
+  campaignId?: number;
+  /** Drives the goal progress bar. Absent when the campaign has no goal. */
+  goalAmount?: number;
   showRecentPledges?: boolean;
   compact?: boolean;
 }
 
 const PledgeTracker: React.FC<PledgeTrackerProps> = ({
-  eventName,
+  campaignId,
+  goalAmount,
   showRecentPledges = true,
   compact = false
 }) => {
@@ -56,8 +61,8 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
       setError(null);
 
       const params = new URLSearchParams();
-      if (eventName) {
-        params.append('event_name', eventName);
+      if (campaignId) {
+        params.append('campaign_id', String(campaignId));
       }
 
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/pledges/stats?${params.toString()}`);
@@ -74,7 +79,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [eventName, t]);
+  }, [campaignId, t]);
 
   useEffect(() => {
     fetchStats();
@@ -144,7 +149,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
       <div className={`mb-6 ${compact ? '' : 'flex items-center justify-between'}`}>
         <div className={`${compact ? 'text-center' : 'text-left'}`}>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {eventName ? t('pledgeTracker.eventPledges', { event: eventName }) : t('pledgeTracker.title')}
+            {t('pledgeTracker.title')}
           </h2>
           <p className="text-gray-600">
             {t('pledgeTracker.subtitle')}
@@ -204,6 +209,31 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
           </div>
         </div>
       )}
+
+      {/* Progress toward the campaign's goal — distinct from fulfillment,
+          which measures money collected against money pledged. */}
+      {goalAmount ? (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700">{t('pledgeTracker.goalProgress')}</span>
+            <span className="text-sm text-gray-600">
+              {formatCurrency(stats.total_pledged)} / {formatCurrency(goalAmount)}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div
+              className="bg-primary-600 h-3 rounded-full transition-all"
+              style={{ width: `${Math.min(100, (stats.total_pledged / goalAmount) * 100)}%` }}
+            ></div>
+          </div>
+          <div className="mt-1 text-right text-sm font-semibold text-primary-700">
+            {/* Labelled explicitly: the admin Fundraising tab shows
+                collected/goal for this same campaign, so a bare percentage
+                here looks like a contradiction. */}
+            {((stats.total_pledged / goalAmount) * 100).toFixed(0)}% {t('pledgeTracker.ofGoalPledged')}
+          </div>
+        </div>
+      ) : null}
 
       {/* Status Breakdown */}
       {!compact && (

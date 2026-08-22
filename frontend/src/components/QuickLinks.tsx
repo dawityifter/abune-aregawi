@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useI18n } from '../i18n/I18nProvider';
+import { useActiveCampaign } from '../hooks/useActiveCampaign';
 
 type CardProps = { icon: string; title: string; desc: React.ReactNode; to?: string; external?: boolean };
 // Update Card to be full height
@@ -36,6 +38,8 @@ const Card: React.FC<CardProps>
 
 const QuickLinks: React.FC = () => {
   const { t } = useLanguage();
+  const { lang } = useI18n();
+  const { campaign } = useActiveCampaign();
   return (
     <section className="max-w-7xl mx-auto px-4 py-8">
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
@@ -195,14 +199,19 @@ const QuickLinks: React.FC = () => {
             to="/survey"
           />
         </div>
-        <div className="h-full">
-          <Card
-            icon="fas fa-hand-holding-heart"
-            title={t('pledge.homeCard.title')}
-            desc={t('pledge.homeCard.description')}
-            to="/pledge"
-          />
-        </div>
+        {/* Only while a drive is actually running. Loading and error both
+            leave `campaign` null, so the card fails closed rather than
+            rendering a broken entry on the parish home page. */}
+        {campaign && (
+          <div className="h-full">
+            <Card
+              icon="fas fa-hand-holding-heart"
+              title={(lang === 'ti' && campaign.name_ti) || campaign.name}
+              desc={(lang === 'ti' && campaign.description_ti) || campaign.description || t('pledge.homeCard.description')}
+              to="/pledge"
+            />
+          </div>
+        )}
       </div>
     </section>
   );

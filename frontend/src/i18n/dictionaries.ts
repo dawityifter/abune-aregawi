@@ -110,7 +110,45 @@ export interface Dictionaries {
       title: string;
       description: string;
     };
+    noCampaign: {
+      title: string;
+      body: string;
+    };
   };
+  fundraising: {
+    tab: string;
+    heading: string;
+    newCampaign: string;
+    edit: string;
+    name: string;
+    nameTi: string;
+    description: string;
+    descriptionTi: string;
+    startDate: string;
+    endDate: string;
+    goalAmount: string;
+    status: string;
+    window: string;
+    pledged: string;
+    collected: string;
+    outstanding: string;
+    donors: string;
+    toGoal: string;
+    noTotals: string;
+    viewDonors: string;
+    donorsIn: string;
+    donor: string;
+    noPledges: string;
+    close2: string;
+    save: string;
+    cancel: string;
+    activate: string;
+    close: string;
+    closeWarning: string;
+    endBeforeStart: string;
+    noCampaigns: string;
+  };
+
   dashboard: {
     welcome: string;
     settingUp: string;
@@ -1824,11 +1862,52 @@ export const en: Dictionaries = {
     homeCard: {
       title: "Make a Pledge",
       description: "Pledge your support for the church and pay when you're ready — we'll send payment instructions."
+    },
+    noCampaign: {
+      title: "No fundraising drive is running right now",
+      body: "There is no active pledge drive at the moment. Please check back, or contact the church office if you would like to give."
     }
   },
 
+  fundraising: {
+    tab: "Fundraising",
+    heading: "Fundraising Campaigns",
+    newCampaign: "New Campaign",
+    edit: "Edit",
+    name: "Name",
+    nameTi: "Name (Tigrigna)",
+    description: "Description",
+    descriptionTi: "Description (Tigrigna)",
+    startDate: "Start date",
+    endDate: "End date",
+    goalAmount: "Goal amount",
+    status: "Status",
+    window: "Dates",
+    pledged: "Pledged",
+    collected: "Collected",
+    outstanding: "Outstanding",
+    donors: "Donors",
+    toGoal: "of goal collected",
+    noTotals: "No pledges recorded",
+    viewDonors: "View donors",
+    donorsIn: "Donors in",
+    donor: "Donor",
+    noPledges: "No pledges in this drive yet.",
+    close2: "Close",
+    save: "Save",
+    cancel: "Cancel",
+    activate: "Activate",
+    close: "Close campaign",
+    closeWarning: "Closing a campaign is permanent — it becomes read-only history.",
+    endBeforeStart: "The end date must be on or after the start date.",
+    noCampaigns: "No campaigns yet. Create one to start a drive."
+  },
+
+
   // ==== PledgeTracker (Phase 2a) ====
   pledgeTracker: {
+    goalProgress: "Goal Progress",
+    ofGoalPledged: "of goal pledged",
     loadFailed: "Failed to load pledge statistics",
     tryAgain: "Try Again",
     noData: "No pledge data available",
@@ -3837,11 +3916,53 @@ export const ti: Dictionaries = {
     homeCard: {
       title: "መብጽዓ ምእታው",
       description: "ንቤተ ክርስቲያን ደገፍኩም ብመብጽዓ ኣረጋግጹ፤ ምስ ተዳለኹም ክትከፍሉ ትኽእሉ — መምርሒ ክፍሊት ክንሰደልኩም ኢና።"
+    },
+    noCampaign: {
+      title: "ሕጂ ዝካየድ ዘሎ ወፈያ የለን",
+      body: "ኣብዚ እዋን ንጡፍ መደብ መብጽዓ የለን። በጃኹም ደሓር ተመልከቱ፡ ወይ ክትህቡ እንተደሊኹም ንቤት ጽሕፈት ቤተ ክርስቲያን ተወከሱ።"
     }
   },
 
+  // ==== Fundraising admin tab — DRAFT ti, pending native review ====
+  fundraising: {
+    tab: "ወፈያ",
+    heading: "መደባት ወፈያ",
+    newCampaign: "ሓድሽ መደብ",
+    edit: "ኣረም",
+    name: "ስም",
+    nameTi: "ስም (ትግርኛ)",
+    description: "መግለጺ",
+    descriptionTi: "መግለጺ (ትግርኛ)",
+    startDate: "መጀመሪ ዕለት",
+    endDate: "መወዳእታ ዕለት",
+    goalAmount: "ሸቶ መጠን",
+    status: "ኩነታት",
+    window: "ዕለታት",
+    pledged: "ተመባጺዑ",
+    collected: "ተኣኪቡ",
+    outstanding: "ተሪፉ",
+    donors: "ወሃብቲ",
+    toGoal: "ካብ ሸቶ ተኣኪቡ",
+    noTotals: "ዝተመዝገበ መብጽዓ የለን",
+    viewDonors: "ወሃብቲ ርአ",
+    donorsIn: "ወሃብቲ ኣብ",
+    donor: "ወሃቢ",
+    noPledges: "ኣብዚ መደብ ጌና መብጽዓ የለን።",
+    close2: "ዕጾ",
+    save: "ኣቐምጥ",
+    cancel: "ሰርዝ",
+    activate: "ኣንቅሕ",
+    close: "መደብ ዕጾ",
+    closeWarning: "መደብ ምዕጻው ቀዋሚ እዩ — ከም ታሪኽ ንንባብ ጥራይ ይኸውን።",
+    endBeforeStart: "መወዳእታ ዕለት ካብ መጀመሪ ዕለት ንድሕሪት ክኸውን የብሉን።",
+    noCampaigns: "ጌና መደባት የለዉን። ንምጅማር ሓደ ፍጠሩ።"
+  },
+
+
   // ==== PledgeTracker (Phase 2a) — DRAFT, pending native review ====
   pledgeTracker: {
+    goalProgress: "ኣብ ሸቶ ዝበጽሐ",
+    ofGoalPledged: "ካብ ሸቶ ተመባጺዑ",
     loadFailed: "ስታቲስቲክስ ቃል ኪዳን ምጽዓን ኣይተኻእለን",
     tryAgain: "ዳግማይ ፈትን",
     noData: "ዳታ ቃል ኪዳን የለን",
