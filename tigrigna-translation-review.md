@@ -552,3 +552,21 @@ non-native speaker.
 |-----|---------|------------------|------|
 | pledge.homeCard.title | Make a Pledge | መብጽዓ ምእታው | ✅ matches the existing `nav.makePledge` string exactly |
 | pledge.homeCard.description | Pledge your support for the church and pay when you're ready — we'll send payment instructions. | ንቤተ ክርስቲያን ደገፍኩም ብመብጽዓ ኣረጋግጹ፤ ምስ ተዳለኹም ክትከፍሉ ትኽእሉ — መምርሒ ክፍሊት ክንሰደልኩም ኢና። | ⚠️ "ደገፍኩም ብመብጽዓ ኣረጋግጹ" is literally "confirm your support with a pledge"; confirm that carries the sense of promising a future amount. Also confirm "ምስ ተዳለኹም" ("when you are ready") does not read as "when you are prepared/dressed" in this financial context |
+
+## Fundraising campaigns (Aug 2026)
+
+New `pledge.noCampaign.*`, `pledgeTracker.goalProgress`, and `fundraising.*`
+keys. The `fundraising.*` strings are admin-facing; the `pledge.noCampaign.*`
+pair is read by visitors when no drive is running. Campaign names and
+descriptions themselves come from the database (`name_ti`, `description_ti`),
+so those are entered by an admin, not translated here. Drafts by a non-native
+speaker.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| pledge.noCampaign.title | No fundraising drive is running right now | ሕጂ ዝካየድ ዘሎ ወፈያ የለን | ⚠️ confirm "ወፈያ" is the right word for an organised pledge drive rather than a single offering |
+| pledge.noCampaign.body | There is no active pledge drive at the moment… | ኣብዚ እዋን ንጡፍ መደብ መብጽዓ የለን። … | ⚠️ confirm "መደብ መብጽዓ" reads as "pledge programme/drive" |
+| pledgeTracker.goalProgress | Goal Progress | ኣብ ሸቶ ዝበጽሐ | ⚠️ literally "what has reached the goal"; confirm it works as a progress-bar label |
+| fundraising.tab | Fundraising | ወፈያ | ⚠️ same "ወፈያ" question as above, here as a short nav label |
+| fundraising.activate | Activate | ኣንቅሕ | ⚠️ confirm this reads as "make live/switch on" rather than "wake up" |
+| fundraising.closeWarning | Closing a campaign is permanent… | መደብ ምዕጻው ቀዋሚ እዩ… | ⚠️ confirm "ቀዋሚ" carries "permanent/irreversible" for a destructive action |
