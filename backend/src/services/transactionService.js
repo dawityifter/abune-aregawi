@@ -16,6 +16,7 @@
 const { Transaction, Member, LedgerEntry, IncomeCategory } = require('../models');
 const tz = require('../config/timezone');
 const { validateReceiptNumber } = require('../utils/receiptNumber');
+const { maybeAllocateToPledge } = require('./pledgeAllocationService');
 
 class TransactionServiceError extends Error {
   constructor(message, statusCode = 400) {
@@ -241,6 +242,20 @@ async function createTransactionRecord(payload, options = {}) {
   }, { transaction });
 
   await createLedgerEntryForTransaction(created, payload, resolved, { transaction });
+
+  // A pledge_drive payment for a member with a live pledge is allocated to it.
+  // Wrapped because recording money always wins: an allocation that cannot be
+  // made is logged and leaves the payment standing and unallocated, never
+  // rolled back. The treasurer's unallocated queue is how those get found.
+  try {
+    await maybeAllocateToPledge(
+      created,
+      { source: 'treasurer_manual', allocatedBy: collected_by || null },
+      { transaction }
+    );
+  } catch (err) {
+    console.error('⚠️ Pledge allocation failed for transaction', created.id, err.message);
+  }
 
   return created;
 }

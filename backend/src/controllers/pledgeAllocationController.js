@@ -79,7 +79,12 @@ const createPledgePayment = async (req, res) => {
       amount: req.body.amount,
       source: 'treasurer_manual',
       allocatedBy: req.user.id,
-      reason: req.body.reason || null
+      reason: req.body.reason || null,
+      // createTransactionRecord already ran maybeAllocateToPledge for this
+      // transaction (same idempotency key) if a live-campaign pledge matched.
+      // Passing the same key here makes this call a no-op read of that
+      // allocation instead of a second, over-allocating write.
+      idempotencyKey: `txn:${txn.id}`
     }, { transaction: t });
 
     await t.commit();

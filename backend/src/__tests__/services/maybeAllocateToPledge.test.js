@@ -132,3 +132,62 @@ describe('maybeAllocateToPledge', () => {
     expect(await maybeAllocateToPledge(txn, { source: 'stripe_auto' })).toBeNull();
   });
 });
+
+const { createTransactionRecord } = require('../../services/transactionService');
+
+describe('createTransactionRecord allocating to a pledge', () => {
+  it('creates the allocation alongside the payment', async () => {
+    const txn = await createTransactionRecord({
+      member_id: member.id,
+      collected_by: member.id,
+      amount: 150,
+      payment_type: 'pledge_drive',
+      payment_method: 'cash',
+      // createTransactionRecord's own validation (not just the model hook)
+      // requires a receipt_number for cash/check; '000' is the documented
+      // no-receipt placeholder that also skips the duplicate-receipt check.
+      // Not part of the rule under test, just a fixture requirement.
+      receipt_number: '000',
+      payment_date: '2026-08-22'
+    });
+
+    const allocations = await PledgeAllocation.findAll({ where: { transaction_id: txn.id } });
+    expect(allocations).toHaveLength(1);
+    expect(parseFloat(allocations[0].amount)).toBe(150);
+    expect(allocations[0].source).toBe('treasurer_manual');
+  });
+
+  it('records the payment even when allocation is impossible', async () => {
+    // Recording money always wins: no live campaign means no allocation, but
+    // the payment must still exist.
+    await campaign.update({ status: 'closed' });
+
+    const txn = await createTransactionRecord({
+      member_id: member.id,
+      collected_by: member.id,
+      amount: 150,
+      payment_type: 'pledge_drive',
+      payment_method: 'cash',
+      receipt_number: '000',
+      payment_date: '2026-08-22'
+    });
+
+    expect(txn.id).toBeDefined();
+    expect(await Transaction.findByPk(txn.id)).not.toBeNull();
+    expect(await PledgeAllocation.count({ where: { transaction_id: txn.id } })).toBe(0);
+  });
+
+  it('leaves other payment types alone', async () => {
+    const txn = await createTransactionRecord({
+      member_id: member.id,
+      collected_by: member.id,
+      amount: 150,
+      payment_type: 'membership_due',
+      payment_method: 'cash',
+      receipt_number: '000',
+      payment_date: '2026-08-22'
+    });
+
+    expect(await PledgeAllocation.count({ where: { transaction_id: txn.id } })).toBe(0);
+  });
+});
