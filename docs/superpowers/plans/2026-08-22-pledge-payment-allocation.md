@@ -885,6 +885,7 @@ git commit -m "feat: add pledge balance client and hook"
 
 **Files:**
 - Modify: `frontend/src/components/StripePayment.tsx` (the `purpose` prop union, line ~28)
+- Modify: `frontend/src/components/ACHPayment.tsx` (the `purpose` prop union, line ~25)
 - Modify: `frontend/src/components/DonatePage.tsx`
 - Modify: `frontend/src/i18n/dictionaries.ts`
 - Test: `frontend/src/components/__tests__/DonatePagePledge.test.tsx`
@@ -1021,10 +1022,22 @@ Interface:
 
 - [ ] **Step 4: Write the implementation**
 
-In `frontend/src/components/StripePayment.tsx`, widen the `purpose` union on line ~28 so the pledge type can be passed at all:
+Widen the `purpose` union in **both** payment components — ACH is a real path on this
+page, and if its purpose cannot carry `pledge_drive` an ACH gift toward a pledge is typed
+`donation` and silently never allocates.
+
+In `frontend/src/components/StripePayment.tsx`, line ~28:
 
 ```tsx
   // Optional payment purpose coming from Add Payment Screen dropdown
+  purpose?: 'membership_due' | 'tithe' | 'donation' | 'event' | 'other' | 'pledge_drive';
+```
+
+In `frontend/src/components/ACHPayment.tsx`, line ~25 (it already forwards `purpose` into
+the payment metadata at line ~92, so widening the type is the whole change):
+
+```tsx
+  // Optional payment purpose and refresh callback
   purpose?: 'membership_due' | 'tithe' | 'donation' | 'event' | 'other' | 'pledge_drive';
 ```
 
@@ -1089,7 +1102,7 @@ Expected: PASS — 5 tests.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add frontend/src/components/DonatePage.tsx frontend/src/components/StripePayment.tsx frontend/src/components/__tests__/DonatePagePledge.test.tsx frontend/src/i18n/dictionaries.ts
+git add frontend/src/components/DonatePage.tsx frontend/src/components/StripePayment.tsx frontend/src/components/ACHPayment.tsx frontend/src/components/__tests__/DonatePagePledge.test.tsx frontend/src/i18n/dictionaries.ts
 git commit -m "feat: let a member put an online gift toward their pledge"
 ```
 
@@ -1286,18 +1299,17 @@ jest.mock('../../../contexts/AuthContext', () => ({
   })
 }));
 
-// Synthetic member — never a real one.
-const MEMBER = {
-  id: 42,
-  first_name: 'Test',
-  last_name: 'Pledger',
-  phone_number: '+15550000301'
-};
-
+// The modal owns member selection internally; initialMemberId is the supported
+// way to pre-select one. There is no `member` prop.
 const renderModal = () => render(
   <I18nProvider>
     <LanguageProvider>
-      <AddPaymentModal isOpen={true} onClose={() => {}} onSuccess={() => {}} member={MEMBER as any} />
+      <AddPaymentModal
+        onClose={() => {}}
+        onPaymentAdded={() => {}}
+        paymentView="new"
+        initialMemberId="42"
+      />
     </LanguageProvider>
   </I18nProvider>
 );
@@ -1385,18 +1397,21 @@ Add state alongside the existing state declarations:
 Add this effect after the existing effects:
 
 ```tsx
-  // The treasurer needs to see what a pledge_drive payment will land on. A
-  // failed lookup is not worth blocking payment entry, so it just clears.
+  // The treasurer needs to see what a pledge_drive payment will land on.
+  // Keyed on the modal's own selectedMemberId — member choice lives in this
+  // component's state, not in a prop. A failed lookup is not worth blocking
+  // payment entry, so it just clears.
   useEffect(() => {
     let cancelled = false;
-    if (!member?.id) { setPledgeBalance(null); return; }
+    const memberId = parseInt(selectedMemberId, 10);
+    if (!selectedMemberId || Number.isNaN(memberId)) { setPledgeBalance(null); return; }
 
-    fetchPledgeBalance(member.id)
+    fetchPledgeBalance(memberId)
       .then((balance) => { if (!cancelled) setPledgeBalance(balance); })
       .catch(() => { if (!cancelled) setPledgeBalance(null); });
 
     return () => { cancelled = true; };
-  }, [member?.id]);
+  }, [selectedMemberId]);
 ```
 
 Add `pledge_drive` to `transactionPaymentTypes` (line ~411), after the `building_fund` entry:
