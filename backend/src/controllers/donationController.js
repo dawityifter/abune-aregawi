@@ -16,6 +16,7 @@ try {
 const { Donation, Member, Transaction, LedgerEntry, IncomeCategory } = require('../models');
 const { validationResult } = require('express-validator');
 const { parseFullName } = require('../../utils/nameParser');
+const { maybeAllocateToPledge } = require('../services/pledgeAllocationService');
 
 // Create payment intent for donation
 const createPaymentIntent = async (req, res) => {
@@ -431,7 +432,8 @@ const handlePaymentSucceeded = async (paymentIntent) => {
     }
 
     // Map purpose to allowed enum
-    const allowedTypes = ['membership_due', 'tithe', 'donation', 'event', 'tigray_hunger_fundraiser', 'other'];
+    const allowedTypes = ['membership_due', 'tithe', 'donation', 'event',
+      'tigray_hunger_fundraiser', 'other', 'pledge_drive'];
     const purpose = (md.purpose || 'donation').toLowerCase();
     const payment_type = allowedTypes.includes(purpose) ? purpose : 'donation';
 
@@ -505,6 +507,15 @@ const handlePaymentSucceeded = async (paymentIntent) => {
       status: 'succeeded',
       donation_id: (await Donation.findOne({ where: { stripe_payment_intent_id: paymentIntent.id } }))?.id || null
     });
+
+    // Same rule as the treasurer path — see pledgeAllocationService. Errors are
+    // swallowed on purpose: a webhook must acknowledge the payment even if the
+    // pledge link fails, or Stripe retries forever against money we already hold.
+    try {
+      await maybeAllocateToPledge(transaction, { source: 'stripe_auto' });
+    } catch (err) {
+      console.error('⚠️ Pledge allocation failed for transaction', transaction.id, err.message);
+    }
 
     // Create corresponding ledger entry
     try {
