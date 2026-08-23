@@ -72,6 +72,11 @@ router.get('/', firebaseAuthMiddleware, roleMiddleware(viewRoles), pledgeControl
 // Get pledge statistics - must come before /:id to avoid wildcard catch
 router.get('/stats', statsAuthGate, pledgeController.getPledgeStats);
 
+// Before /:id — otherwise "balance" is parsed as a pledge id.
+// Authenticated but unrestricted: the controller allows a member their own
+// record and requires a view role for anyone else's.
+router.get('/balance', firebaseAuthMiddleware, pledgeController.getPledgeBalance);
+
 router.get('/:id', firebaseAuthMiddleware, roleMiddleware(viewRoles), pledgeController.getPledge);
 router.put('/:id', firebaseAuthMiddleware, roleMiddleware(editRoles),
   requireOpenCampaign(requireOpenCampaign.fromPledgeParam), pledgeController.updatePledge);

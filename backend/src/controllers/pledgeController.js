@@ -2,6 +2,70 @@ const { Pledge, Member, Donation, PledgeBalance, ActivityLog } = require('../mod
 const { validationResult } = require('express-validator');
 const { findLiveCampaign } = require('../services/pledgeCampaignService');
 
+// Same vocabulary as pledgeRoutes.js — do not invent role names.
+const BALANCE_VIEW_ROLES = ['admin', 'treasurer', 'church_leadership', 'secretary',
+  'bookkeeper', 'auditor', 'budget_committee', 'ar_team', 'ap_team'];
+
+/**
+ * The member's pledge in the live campaign, with balances from
+ * pledge_balances. Serves two callers with one payload: a member reading their
+ * own (no role needed — it is their own record), and staff reading someone
+ * else's via ?member_id, which does require a view role.
+ */
+const getPledgeBalance = async (req, res) => {
+  try {
+    const requestedId = req.query.member_id;
+    const callerId = req.user.member_id;
+
+    const targetId = requestedId ? String(requestedId) : String(callerId);
+    const isSelf = targetId === String(callerId);
+
+    if (!isSelf) {
+      const roles = req.user.roles || [];
+      if (!roles.some((r) => BALANCE_VIEW_ROLES.includes(r))) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to view another member\'s pledge'
+        });
+      }
+    }
+
+    const campaign = await findLiveCampaign();
+    if (!campaign) return res.status(200).json({ success: true, pledge: null });
+
+    const pledge = await Pledge.findOne({
+      where: {
+        campaign_id: campaign.id,
+        member_id: targetId,
+        lifecycle: 'active',
+        is_historical: false
+      }
+    });
+    if (!pledge) return res.status(200).json({ success: true, pledge: null });
+
+    // Balances come from the view (real payments), never from legacy_status.
+    const balance = await PledgeBalance.findOne({ where: { pledge_id: pledge.id } });
+
+    const pledged = parseFloat(balance?.pledged_amount ?? pledge.amount) || 0;
+    const paid = parseFloat(balance?.paid_amount ?? 0) || 0;
+
+    return res.status(200).json({
+      success: true,
+      pledge: {
+        id: pledge.id,
+        campaign_id: campaign.id,
+        campaign_name: campaign.name,
+        pledged_amount: pledged,
+        paid_amount: paid,
+        remaining_amount: pledged - paid
+      }
+    });
+  } catch (error) {
+    console.error('Error loading pledge balance:', error);
+    return res.status(500).json({ success: false, message: 'Failed to load pledge balance' });
+  }
+};
+
 // Create a new pledge
 const createPledge = async (req, res) => {
   try {
@@ -448,5 +512,6 @@ module.exports = {
   getAllPledges,
   getPledge,
   updatePledge,
-  getPledgeStats
+  getPledgeStats,
+  getPledgeBalance
 };
