@@ -1761,7 +1761,9 @@ export const en: Dictionaries = {
     questions: {
       title: "Questions?",
       body: "For questions about donations, please contact us:"
-    }
+    },
+    applyToPledge: "Apply to my pledge",
+    pledgeRemaining: "{amount} still outstanding on your {campaign} pledge",
   },
 
   // ==== DependentsManagement (Phase 2a) ====
@@ -3816,7 +3818,9 @@ export const ti: Dictionaries = {
     questions: {
       title: "ሕቶታት?",
       body: "ብዛዕባ ወፈያ ሕቶ እንተልዩኩም፣ በጃኹም ተወከሱና:"
-    }
+    },
+    applyToPledge: "ናብ መብጽዓይ የውዕሎ",
+    pledgeRemaining: "ካብ መብጽዓኹም ናይ {campaign} {amount} ተሪፉ ኣሎ",
   },
 
   // ==== DependentsManagement (Phase 2a) — DRAFT, pending native review ====

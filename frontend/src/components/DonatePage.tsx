@@ -6,10 +6,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from '../config/stripe';
+import { usePledgeBalance } from '../hooks/usePledgeBalance';
 
 const DonatePage: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const { balance: pledgeBalance } = usePledgeBalance();
+  const [applyToPledge, setApplyToPledge] = useState(false);
+
+  // Only worth offering while money is actually owed on a pledge. An errored
+  // lookup leaves balance null, so the option simply does not appear — a
+  // payment page must never break because of this.
+  const canApplyToPledge = Boolean(user && pledgeBalance && pledgeBalance.remaining_amount > 0);
   const [donationType, setDonationType] = useState<'one-time' | 'recurring'>('one-time');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'ach'>('card');
   const [amount, setAmount] = useState('');
@@ -270,6 +278,31 @@ const DonatePage: React.FC = () => {
                   </div>
                 </div>
 
+                {canApplyToPledge && pledgeBalance && (
+                  <div className="mb-6 rounded-lg border border-primary-200 bg-primary-50 p-4">
+                    <label htmlFor="applyToPledge" className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        id="applyToPledge"
+                        type="checkbox"
+                        checked={applyToPledge}
+                        onChange={(e) => setApplyToPledge(e.target.checked)}
+                        className="mt-1"
+                      />
+                      <span>
+                        <span className="block font-medium text-accent-900">
+                          {t('donatePage.applyToPledge')}
+                        </span>
+                        <span className="block text-sm text-accent-700">
+                          {t('donatePage.pledgeRemaining', {
+                            amount: `$${pledgeBalance.remaining_amount.toLocaleString()}`,
+                            campaign: pledgeBalance.campaign_name
+                          })}
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                )}
+
                 {/* Payment Method */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -311,6 +344,7 @@ const DonatePage: React.FC = () => {
                         onCancel={handlePaymentCancel}
                         inline={true}
                         onPaymentReady={(fn) => setProcessCardPayment(() => fn)}
+                        purpose={applyToPledge ? 'pledge_drive' : 'donation'}
                       />
                     </div>
                   </div>
@@ -326,6 +360,7 @@ const DonatePage: React.FC = () => {
                       onCancel={handlePaymentCancel}
                       inline={true}
                       onPaymentReady={(fn) => setProcessACHPayment(() => fn)}
+                      purpose={applyToPledge ? 'pledge_drive' : 'donation'}
                     />
                   </div>
                 )}

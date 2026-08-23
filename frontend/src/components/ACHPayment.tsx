@@ -22,7 +22,7 @@ interface ACHPaymentProps {
   inline?: boolean;
   onPaymentReady?: (processPayment: () => Promise<void>) => void;
   // Optional payment purpose and refresh callback
-  purpose?: 'membership_due' | 'tithe' | 'donation' | 'event' | 'other';
+  purpose?: 'membership_due' | 'tithe' | 'donation' | 'event' | 'other' | 'pledge_drive';
   onRefreshHistory?: () => void;
 }
 

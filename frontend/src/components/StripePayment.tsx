@@ -25,7 +25,7 @@ interface StripePaymentProps {
   inline?: boolean;
   onPaymentReady?: (processPayment: () => Promise<void>) => void;
   // Optional payment purpose coming from Add Payment Screen dropdown
-  purpose?: 'membership_due' | 'tithe' | 'donation' | 'event' | 'other';
+  purpose?: 'membership_due' | 'tithe' | 'donation' | 'event' | 'other' | 'pledge_drive';
   // Optional callback to refresh dues/payment history after success
   onRefreshHistory?: () => void;
 }
