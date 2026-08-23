@@ -271,13 +271,32 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
             )}
           </div>
 
-          {/* Linked member (MATCHED) */}
-          {txn.status === 'MATCHED' && txn.member && (
+          {/* Linked member (MATCHED income) */}
+          {txn.status === 'MATCHED' && txn.amount >= 0 && txn.member && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
               <p className="text-xs text-green-700 font-bold mb-1">Linked Member</p>
               <p className="text-sm text-gray-900 font-semibold">
                 {txn.member.first_name} {txn.member.last_name}
               </p>
+            </div>
+          )}
+
+          {/* Reconciliation details (MATCHED expense) */}
+          {txn.status === 'MATCHED' && txn.amount < 0 && (txn.reconciled_payee_name || txn.reconciled_memo) && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+              <p className="text-xs text-orange-700 font-bold mb-2">Expense Details</p>
+              {txn.reconciled_payee_name && (
+                <div className="mb-2">
+                  <p className="text-xs text-orange-600 font-semibold mb-0.5">Payee</p>
+                  <p className="text-sm text-gray-900 font-medium">{txn.reconciled_payee_name}</p>
+                </div>
+              )}
+              {txn.reconciled_memo && (
+                <div>
+                  <p className="text-xs text-orange-600 font-semibold mb-0.5">Memo</p>
+                  <p className="text-sm text-gray-900 break-words">{txn.reconciled_memo}</p>
+                </div>
+              )}
             </div>
           )}
 

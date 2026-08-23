@@ -213,7 +213,7 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
 
     const { suggestMatch, suggestMatches } = require('../services/reconciliationService');
 
-    // Enrich with suggestions for Pending items
+    // Enrich with suggestions for Pending items, and reconciliation details for Matched items
     const matchedHashes = rows
         .filter(txn => txn.status === 'MATCHED' && txn.transaction_hash)
         .map(txn => txn.transaction_hash);
@@ -229,10 +229,31 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
         matchedTransactions.map(tx => [tx.external_id, tx.receipt_number])
     );
 
+    // Fetch reconciliation details (payee_name, memo) from LedgerEntry for expense reconciliations
+    const ledgerEntries = matchedHashes.length > 0
+        ? await LedgerEntry.findAll({
+            where: {
+                external_id: matchedHashes,
+                source_system: 'bank_reconciliation'
+            },
+            attributes: ['external_id', 'payee_name', 'memo']
+        })
+        : [];
+
+    const reconcilationByHash = new Map(
+        ledgerEntries.map(entry => [entry.external_id, { payee_name: entry.payee_name, memo: entry.memo }])
+    );
+
     const enrichedRows = await Promise.all(rows.map(async (txn) => {
         const plain = txn.get({ plain: true });
         if (txn.status === 'MATCHED' && txn.transaction_hash) {
             plain.receipt_number = receiptByHash.get(txn.transaction_hash) || null;
+            // Include reconciliation details (payee_name, memo) from LedgerEntry if available
+            const reconcilationDetails = reconcilationByHash.get(txn.transaction_hash);
+            if (reconcilationDetails) {
+                plain.reconciled_payee_name = reconcilationDetails.payee_name;
+                plain.reconciled_memo = reconcilationDetails.memo;
+            }
         }
         if (txn.status === 'PENDING') {
             try {

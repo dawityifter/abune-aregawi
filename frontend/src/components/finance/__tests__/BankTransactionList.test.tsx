@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import BankTransactionList from '../BankTransactionList';
+import BankTransactionList, { BankTransaction } from '../BankTransactionList';
 
 jest.mock('../../../contexts/AuthContext', () => ({
     useAuth: () => ({ firebaseUser: { getIdToken: () => Promise.resolve('mock-token') } }),
@@ -13,7 +13,7 @@ jest.mock('../../../contexts/LanguageContext', () => ({
 
 global.fetch = jest.fn();
 
-const mockTransactions = [
+const mockTransactions: BankTransaction[] = [
     {
         id: 1,
         date: '2026-02-01',
@@ -26,7 +26,10 @@ const mockTransactions = [
     },
 ];
 
-const setupFetchMock = (transactions = mockTransactions, pages = 1) => {
+// Partial, not BankTransaction[]: every test below spreads mockTransactions[0]
+// and adds only the fields that test cares about (member, potential_matches,
+// suggested_match, reconciled_payee_name, ...), never the full interface.
+const setupFetchMock = (transactions: Partial<BankTransaction>[] = mockTransactions, pages = 1) => {
     (global.fetch as jest.Mock).mockResolvedValue({
         json: () =>
             Promise.resolve({
@@ -111,6 +114,61 @@ describe('BankTransactionList', () => {
         render(<BankTransactionList refreshTrigger={0} />);
         await waitFor(() => screen.getByText('Matched: Linked Member'));
         expect(screen.getByText('MATCHED')).toBeInTheDocument();
+    });
+
+    test('shows reconciled payee and memo in the detail panel for a matched expense', async () => {
+        setupFetchMock([
+            {
+                ...mockTransactions[0],
+                amount: -75,
+                status: 'MATCHED',
+                reconciled_payee_name: 'Acme Supplies',
+                reconciled_memo: 'Candles for the altar',
+            },
+        ]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+        fireEvent.click(screen.getByText('Details →'));
+        expect(screen.getByText('Expense Details')).toBeInTheDocument();
+        expect(screen.getByText('Acme Supplies')).toBeInTheDocument();
+        expect(screen.getByText('Candles for the altar')).toBeInTheDocument();
+    });
+
+    test('does not render an empty Expense Details block when no payee or memo was recorded', async () => {
+        // Real case: reconcile-expense lets payee_name go null when neither the
+        // caller nor the bank txn's payer_name supplied one — the panel must not
+        // show a bare "Expense Details" header with nothing under it.
+        setupFetchMock([
+            {
+                ...mockTransactions[0],
+                amount: -50,
+                status: 'MATCHED',
+                reconciled_payee_name: null,
+                reconciled_memo: null,
+            },
+        ]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+        fireEvent.click(screen.getByText('Details →'));
+        expect(screen.queryByText('Expense Details')).not.toBeInTheDocument();
+    });
+
+    test('shows Expense Details when only a memo (no payee) was recorded', async () => {
+        setupFetchMock([
+            {
+                ...mockTransactions[0],
+                amount: -30,
+                status: 'MATCHED',
+                reconciled_payee_name: null,
+                reconciled_memo: 'Utility bill',
+            },
+        ]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+        fireEvent.click(screen.getByText('Details →'));
+        expect(screen.getByText('Expense Details')).toBeInTheDocument();
+        expect(screen.getByText('Utility bill')).toBeInTheDocument();
+        expect(screen.queryByText('Payee')).not.toBeInTheDocument();
     });
 
     test('resets pagination when search changes', async () => {

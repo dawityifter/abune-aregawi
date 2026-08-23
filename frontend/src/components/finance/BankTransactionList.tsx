@@ -15,6 +15,8 @@ export interface BankTransaction {
     receipt_number?: string | null;
     reconciled_source?: string | null;
     reconciled_at?: string | null;
+    reconciled_payee_name?: string | null;
+    reconciled_memo?: string | null;
     member?: {
         first_name: string;
         last_name: string;
