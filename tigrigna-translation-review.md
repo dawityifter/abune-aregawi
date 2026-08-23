@@ -583,6 +583,7 @@ non-native speaker.
 | donatePage.applyToPledge | Apply to my pledge | ናብ መብጽዓይ የውዕሎ | ⚠️ confirm this reads as an instruction the donor is giving, not a statement |
 | donatePage.pledgeRemaining | {amount} still outstanding on your {campaign} pledge | ካብ መብጽዓኹም ናይ {campaign} {amount} ተሪፉ ኣሎ | ⚠️ confirm the placeholder order still reads naturally in Tigrigna |
 | duesPage.pledgeBannerTitle | You have an open pledge | ክፉት መብጽዓ ኣለኩም | ⚠️ confirm "ክፉት" is right for an unpaid obligation rather than an open door |
+| duesPage.pledgeBannerBody | {amount} still outstanding on your {campaign} pledge. | ካብ መብጽዓኹም ናይ {campaign} {amount} ተሪፉ ኣሎ። | ⚠️ the placeholders appear in the opposite order from the English ({campaign} before {amount} here); confirm that order still reads naturally in Tigrigna |
 | duesPage.pledgeBannerCta | Pay toward my pledge | ናብ መብጽዓይ ክኸፍል | ⚠️ confirm this works as a button label |
 | fundraising.activePledge | Active pledge: {pledged} — {remaining} remaining | ንጡፍ መብጽዓ፦ {pledged} — {remaining} ተሪፉ | ⚠️ treasurer-facing; confirm the dash construction is idiomatic |
 | fundraising.overBy | over by {amount} | ብ{amount} ኣሕሊፉ | ⚠️ confirm this conveys "paid more than pledged" and not "overdue" |

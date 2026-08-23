@@ -193,7 +193,12 @@ const FundraisingCampaigns: React.FC<FundraisingCampaignsProps> = ({ canManage =
         <div className="py-8 text-center text-gray-500">{t('fundraising.noCampaigns')}</div>
       ) : (
         <div className="space-y-3">
-          {campaigns.map((campaign) => (
+          {campaigns.map((campaign) => {
+            // A pledge can be over-fulfilled (a payment lands on it in full even
+            // when it overshoots), which drives this negative — never show that
+            // raw, or a treasurer reads it as a bug rather than generosity.
+            const outstandingValue = campaign.totals ? parseFloat(campaign.totals.outstanding || '0') : 0;
+            return (
             <div key={campaign.id} className="bg-white rounded-lg shadow p-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="font-semibold text-gray-900">{campaign.name}</div>
@@ -208,9 +213,14 @@ const FundraisingCampaigns: React.FC<FundraisingCampaignsProps> = ({ canManage =
                     <span>{t('fundraising.pledged')}: <strong>{money(campaign.totals.total_pledged) ?? '$0'}</strong></span>
                     <span>{t('fundraising.collected')}: <strong>{money(campaign.totals.total_collected) ?? '$0'}</strong></span>
                     <span>{t('fundraising.outstanding')}: <strong>
-                      {parseFloat(campaign.totals.outstanding || '0') < 0
-                        ? money('0')
-                        : money(campaign.totals.outstanding) ?? '$0'}
+                      {outstandingValue < 0 ? (
+                        <>
+                          {money('0')}{' '}
+                          <span className="text-xs text-gray-500 font-normal">
+                            {t('fundraising.overBy', { amount: money(String(-outstandingValue)) })}
+                          </span>
+                        </>
+                      ) : (money(campaign.totals.outstanding) ?? '$0')}
                     </strong></span>
                     <span>{t('fundraising.donors')}: <strong>{campaign.totals.donor_count ?? 0}</strong></span>
                     {campaign.goal_amount && (
@@ -270,7 +280,8 @@ const FundraisingCampaigns: React.FC<FundraisingCampaignsProps> = ({ canManage =
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

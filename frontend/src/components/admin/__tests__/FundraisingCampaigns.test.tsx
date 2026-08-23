@@ -40,6 +40,17 @@ const WITH_TOTALS = {
   }
 };
 
+// Collected exceeds pledged, so the SQL view's outstanding string goes
+// negative — this is what an over-fulfilled drive looks like on the wire.
+const OVER_FULFILLED = {
+  ...CAMPAIGN, id: 11, name: 'Generous Drive', status: 'active' as const,
+  totals: {
+    total_pledged: '10000.00', total_collected: '11500.00',
+    outstanding: '-1500.00', percent_to_goal: '115.0',
+    pledge_count: 40, donor_count: 35
+  }
+};
+
 const renderTab = () => render(
   <I18nProvider><LanguageProvider><FundraisingCampaigns canManage={true} /></LanguageProvider></I18nProvider>
 );
@@ -172,6 +183,17 @@ describe('campaign totals', () => {
     renderTab();
 
     expect(await screen.findByText('Test Drive')).toBeInTheDocument();
+  });
+
+  it('shows an over-fulfilled campaign as zero outstanding plus an over-by note, never a negative figure', async () => {
+    mockFetchAll.mockResolvedValue([OVER_FULFILLED]);
+    renderTab();
+
+    expect(await screen.findByText('Generous Drive')).toBeInTheDocument();
+    // $1,500 collected beyond the $10,000 pledged.
+    expect(screen.getByText(/over by/i)).toBeInTheDocument();
+    expect(screen.getByText(/\$1,500/)).toBeInTheDocument();
+    expect(screen.queryByText(/-\$1,500/)).not.toBeInTheDocument();
   });
 });
 
