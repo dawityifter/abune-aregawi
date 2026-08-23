@@ -149,6 +149,7 @@ export interface Dictionaries {
     closeWarning: string;
     endBeforeStart: string;
     noCampaigns: string;
+    activePledge: string;
   };
 
   dashboard: {
@@ -1909,7 +1910,8 @@ export const en: Dictionaries = {
     close: "Close campaign",
     closeWarning: "Closing a campaign is permanent — it becomes read-only history.",
     endBeforeStart: "The end date must be on or after the start date.",
-    noCampaigns: "No campaigns yet. Create one to start a drive."
+    noCampaigns: "No campaigns yet. Create one to start a drive.",
+    activePledge: "Active pledge: {pledged} — {remaining} remaining"
   },
 
 
@@ -3971,7 +3973,8 @@ export const ti: Dictionaries = {
     close: "መደብ ዕጾ",
     closeWarning: "መደብ ምዕጻው ቀዋሚ እዩ — ከም ታሪኽ ንንባብ ጥራይ ይኸውን።",
     endBeforeStart: "መወዳእታ ዕለት ካብ መጀመሪ ዕለት ንድሕሪት ክኸውን የብሉን።",
-    noCampaigns: "ጌና መደባት የለዉን። ንምጅማር ሓደ ፍጠሩ።"
+    noCampaigns: "ጌና መደባት የለዉን። ንምጅማር ሓደ ፍጠሩ።",
+    activePledge: "ንጡፍ መብጽዓ፦ {pledged} — {remaining} ተሪፉ"
   },
 
 

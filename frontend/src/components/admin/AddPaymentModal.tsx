@@ -7,6 +7,7 @@ import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from '../../config/stripe';
 import { fetchIncomeCategories, IncomeCategory, getIncomeCategoryByPaymentType } from '../../utils/incomeCategoryApi';
 import { digitsOnly, receiptNumberHelpText } from '../../utils/receiptNumber';
+import { fetchPledgeBalance, PledgeBalance } from '../../utils/pledgeBalanceApi';
 
 interface Member {
   id: string;
@@ -41,7 +42,10 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   const [members, setMembers] = useState<Member[]>([]);
   const [memberSearch, setMemberSearch] = useState('');
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
-  const [selectedMemberId, setSelectedMemberId] = useState('');
+  // Seeded directly from the prop so a caller-provided member is selected
+  // immediately, without waiting on the network-validated sync effect below
+  // (which only confirms/repopulates the member's display details).
+  const [selectedMemberId, setSelectedMemberId] = useState(initialMemberId ? String(initialMemberId) : '');
   const [month, setMonth] = useState('');
   const [amount, setAmount] = useState('');
   const [amountError, setAmountError] = useState<string | null>(null);
@@ -70,6 +74,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   const [incomeCategories, setIncomeCategories] = useState<IncomeCategory[]>([]);
   const [selectedIncomeCategoryId, setSelectedIncomeCategoryId] = useState<string>('');
   const [incomeCategoriesLoading, setIncomeCategoriesLoading] = useState(false);
+  const [pledgeBalance, setPledgeBalance] = useState<PledgeBalance | null>(null);
 
   // Amount input helpers (currency-like)
   const amountPattern = useMemo(() => /^[0-9]*([.][0-9]{0,2})?$/, []);
@@ -283,6 +288,22 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
     }
   }, [paymentType, paymentMethod]);
 
+  // The treasurer needs to see what a pledge_drive payment will land on.
+  // Keyed on the modal's own selectedMemberId — member choice lives in this
+  // component's state, not in a prop. A failed lookup is not worth blocking
+  // payment entry, so it just clears.
+  useEffect(() => {
+    let cancelled = false;
+    const memberId = parseInt(selectedMemberId, 10);
+    if (!selectedMemberId || Number.isNaN(memberId)) { setPledgeBalance(null); return; }
+
+    fetchPledgeBalance(memberId)
+      .then((balance) => { if (!cancelled) setPledgeBalance(balance); })
+      .catch(() => { if (!cancelled) setPledgeBalance(null); });
+
+    return () => { cancelled = true; };
+  }, [selectedMemberId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -415,6 +436,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
       // Combine Donation and Other into one UI option mapping to 'donation'
       { value: 'donation', label: 'Other Donation / ካልእ' },
       { value: 'building_fund', label: 'Building Fund (ንሕንጻ ቤተክርስቲያን)' },
+      { value: 'pledge_drive', label: 'Pledge Drive / Fundraising (ወፈያ)' },
       { value: 'offering', label: 'Offering (መባእ)' },
       { value: 'vow', label: 'Vow (ስእለት)' },
       { value: 'tigray_hunger_fundraiser', label: 'Tigray Hunger Fundraiser (ረድኤት ንጥሙያት ትግራይ)' },
@@ -689,6 +711,14 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                       </option>
                     ))}
                   </select>
+                  {pledgeBalance && (
+                    <p className="mt-2 text-sm text-primary-700">
+                      {t('fundraising.activePledge', {
+                        pledged: `$${pledgeBalance.pledged_amount.toLocaleString()}`,
+                        remaining: `$${pledgeBalance.remaining_amount.toLocaleString()}`
+                      })}
+                    </p>
+                  )}
                 </div>
 
                 {paymentType === 'membership_due' && (
