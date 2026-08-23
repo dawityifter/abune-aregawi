@@ -213,10 +213,15 @@ recoverable, lost money is not.
 
 This gives the two calls different transaction semantics, deliberately:
 
-- **Treasurer path** — called inside the existing transaction, so the
-  allocation and the payment commit together. A failure here is caught and
-  swallowed after being logged, leaving the payment intact.
-- **Webhook path** — same, within `donationController`'s existing transaction.
+- **Treasurer path** (`transactionService.createTransactionRecord`) — called
+  inside the caller's ambient transaction, so the payment and allocation
+  commit together. The allocation is additionally wrapped in a SAVEPOINT, so a
+  DB-level allocation failure rolls back only the allocation while the payment
+  persists. A failure here is caught and swallowed after being logged, leaving
+  the payment intact.
+- **Webhook path** (`donationController`) — has no ambient transaction. The
+  payment autocommits before allocation is attempted, so a failure there simply
+  leaves the payment unallocated for human recovery.
 
 Errors that cannot occur in these flows, and why: `MEMBER_MISMATCH` (the
 transaction's own member resolves the pledge), `OVER_ALLOCATED` (a fresh

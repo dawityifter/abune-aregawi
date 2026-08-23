@@ -11,9 +11,10 @@
 // ~$55k of real giving across 118 donors as never received.
 //
 // Data-only in effect — no table is altered. createPledgeViews() already does
-// DROP VIEW IF EXISTS before creating, so this is safely re-runnable, and
-// down() restores the previous definition from the same shared module at the
-// prior commit.
+// DROP VIEW IF EXISTS before creating, so this is safely re-runnable. To
+// restore the prior definition, down() drops both views; restoring them
+// requires checking out the earlier version of pledgeViews.js and re-running
+// the create.
 
 const { createPledgeViews, dropPledgeViews } = require('../src/database/pledgeViews');
 
