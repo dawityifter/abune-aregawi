@@ -4,6 +4,7 @@ const { Op } = require('sequelize');
 const {
   sequelize, Pledge, PledgeCampaign, PledgeAllocation, Transaction, Member
 } = require('../models');
+const { findLiveCampaign } = require('./pledgeCampaignService');
 
 class AllocationError extends Error {
   constructor(code, message) {
@@ -196,6 +197,55 @@ async function reverse(
   return sequelize.transaction(run);
 }
 
+/**
+ * The single rule tying payments to pledges, keyed on the payment rather than
+ * on the screen that created it: a succeeded pledge_drive payment whose member
+ * has an active pledge in the live campaign is allocated to that pledge.
+ *
+ * Returns the allocation, or null when the rule does not apply. Callers treat
+ * null as ordinary — a pledge_drive payment from someone with no pledge is
+ * simply drive income.
+ *
+ * The idempotency key is the transaction id, which is what makes webhook
+ * redelivery safe: the second call returns the existing row rather than
+ * crediting the pledge twice.
+ */
+async function maybeAllocateToPledge(txn, { source, allocatedBy = null }, { transaction } = {}) {
+  if (!txn) return null;
+  if (txn.payment_type !== 'pledge_drive') return null;
+  if (txn.status !== 'succeeded') return null;
+  if (!txn.member_id) return null;
+
+  const options = transaction ? { transaction } : {};
+
+  const campaign = await findLiveCampaign();
+  if (!campaign) return null;
+
+  // At most one row can match: a unique index permits one active,
+  // non-historical pledge per member per campaign, so there is never a
+  // question of which pledge is meant.
+  const pledge = await Pledge.findOne({
+    where: {
+      campaign_id: campaign.id,
+      member_id: txn.member_id,
+      lifecycle: 'active',
+      is_historical: false
+    },
+    ...options
+  });
+  if (!pledge) return null;
+
+  return allocate({
+    pledgeId: pledge.id,
+    transactionId: txn.id,
+    // Full amount by design — see the spec on overpayment.
+    amount: parseFloat(txn.amount),
+    source,
+    allocatedBy,
+    idempotencyKey: `txn:${txn.id}`
+  }, { transaction });
+}
+
 // Payments that arrived with no pledge attached (spec scenario 4). This is a
 // queue, not an error state — the treasurer decides, the system never guesses.
 async function listUnallocated({ campaignId, paymentType = null, limit = 100 }) {
@@ -248,4 +298,4 @@ async function listUnallocated({ campaignId, paymentType = null, limit = 100 }) 
   return items;
 }
 
-module.exports = { allocate, reverse, listUnallocated, AllocationError };
+module.exports = { allocate, reverse, listUnallocated, maybeAllocateToPledge, AllocationError };
