@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { usePledgeBalance } from '../hooks/usePledgeBalance';
 
 interface MonthStatus {
   month: string;
@@ -48,6 +50,7 @@ const currency = (n: number) => n.toLocaleString(undefined, { style: 'currency',
 const DuesPage: React.FC = () => {
   const { firebaseUser, user, authReady } = useAuth();
   const { t } = useLanguage();
+  const { balance: pledgeBalance } = usePledgeBalance();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dues, setDues] = useState<DuesResponse['data'] | null>(null);
@@ -137,10 +140,31 @@ const DuesPage: React.FC = () => {
     }
   };
 
+  // A banner only. Dues are membership_due with their own GL code; letting
+  // a dues payment retype itself as pledge_drive would make the ledger and
+  // the member's dues record disagree about what they paid. Rendered ahead
+  // of the loading/error/content branches below so it shows up regardless
+  // of how the dues fetch itself is going.
+  const pledgeBanner = pledgeBalance && pledgeBalance.remaining_amount > 0 && (
+    <div className="mb-6 rounded-lg border border-primary-200 bg-primary-50 p-4">
+      <div className="font-semibold text-accent-900">{t('duesPage.pledgeBannerTitle')}</div>
+      <p className="mt-1 text-sm text-accent-700">
+        {t('duesPage.pledgeBannerBody', {
+          amount: `$${pledgeBalance.remaining_amount.toLocaleString()}`,
+          campaign: pledgeBalance.campaign_name
+        })}
+      </p>
+      <Link to="/donate" className="mt-2 inline-block text-primary-700 font-medium hover:underline">
+        {t('duesPage.pledgeBannerCta')}
+      </Link>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen pt-top-nav bg-gray-100" data-testid="dues-skeleton">
         <div className="max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-4">
+          {pledgeBanner}
           <div className="h-24 rounded-xl bg-gray-200 overflow-hidden relative">
             <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/60 to-transparent" />
           </div>
@@ -169,6 +193,7 @@ const DuesPage: React.FC = () => {
     return (
       <div className="min-h-screen pt-top-nav bg-gray-100 flex items-center justify-center p-6">
         <div className="max-w-xl w-full bg-white shadow rounded-xl p-6 text-center">
+          {pledgeBanner}
           <div className="text-red-600 mb-4">{error}</div>
           <button onClick={() => { setLoading(true); setError(null); fetchDues(); }} className="bg-primary-600 text-white px-4 py-2 rounded-lg">
             {t('duesPage.retry')}
@@ -195,6 +220,8 @@ const DuesPage: React.FC = () => {
   return (
     <div className="min-h-screen pt-top-nav bg-gray-100">
       <main className="max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-4">
+
+        {pledgeBanner}
 
         {/* Red Header Banner */}
         <div

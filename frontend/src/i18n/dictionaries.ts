@@ -1676,7 +1676,10 @@ export const en: Dictionaries = {
       title: "Annual Contribution Statement",
       desc: "Generate your tax-deductible contribution statement for {year}.",
       print: "Print Statement"
-    }
+    },
+    pledgeBannerTitle: "You have an open pledge",
+    pledgeBannerBody: "{amount} still outstanding on your {campaign} pledge.",
+    pledgeBannerCta: "Pay toward my pledge",
   },
 
   // ==== DonatePage (Phase 2a) ====
@@ -3733,7 +3736,10 @@ export const ti: Dictionaries = {
       title: "ዓመታዊ መግለጺ ወፈያ",
       desc: "ንግብሪ ዝቕነስ መግለጺ ወፈያኹም ንዓመተ {year} ኣውጽኡ።",
       print: "መግለጺ ሓትም"
-    }
+    },
+    pledgeBannerTitle: "ክፉት መብጽዓ ኣለኩም",
+    pledgeBannerBody: "ካብ መብጽዓኹም ናይ {campaign} {amount} ተሪፉ ኣሎ።",
+    pledgeBannerCta: "ናብ መብጽዓይ ክኸፍል",
   },
 
   // ==== DonatePage (Phase 2a) — DRAFT, pending native review ====
