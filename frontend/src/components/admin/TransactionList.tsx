@@ -844,7 +844,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                     <dd className="mt-1 text-sm text-slate-900">
                       {selectedTransaction.collector
                         ? `${selectedTransaction.collector.first_name} ${selectedTransaction.collector.last_name}`
-                        : `Collector ${selectedTransaction.collected_by}`}
+                        : 'Online'}
                     </dd>
                   </div>
                   <div>

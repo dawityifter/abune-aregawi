@@ -52,13 +52,14 @@ module.exports = (sequelize) => {
     },
     collected_by: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'members',
         key: 'id'
       },
       onUpdate: 'CASCADE',
-      onDelete: 'RESTRICT'
+      onDelete: 'RESTRICT',
+      comment: 'Member who collected the payment. Null for online self-service gifts, which nobody collected.'
     },
     payment_date: {
       type: DataTypes.DATEONLY,

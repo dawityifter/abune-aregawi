@@ -17,6 +17,7 @@ const { Donation, Member, Transaction, LedgerEntry, IncomeCategory } = require('
 const { validationResult } = require('express-validator');
 const { parseFullName } = require('../../utils/nameParser');
 const { maybeAllocateToPledge } = require('../services/pledgeAllocationService');
+const { buildDonorNote } = require('../utils/donorNote');
 
 // Create payment intent for donation
 const createPaymentIntent = async (req, res) => {
@@ -426,10 +427,16 @@ const handlePaymentSucceeded = async (paymentIntent) => {
       memberId = byPhone ? byPhone.id : memberId;
     }
 
-    if (!memberId) {
-      console.warn('⚠️ Stripe webhook: could not resolve member for paymentIntent', paymentIntent.id);
-      return;
+    // No resolvable member is NOT a reason to drop the payment. Returning here
+    // is how every non-member online gift used to vanish before reaching the
+    // books: no Transaction meant no LedgerEntry and no GL coding, while the
+    // money sat in Stripe. Record it as an anonymous gift instead.
+    const isAnonymousGift = !memberId;
+    if (isAnonymousGift) {
+      console.warn('ℹ️ Stripe payment has no resolvable member; recording as an anonymous gift:', paymentIntent.id);
     }
+
+    const donorName = md.donor_name || md.baptismName || md.donor_full_name || null;
 
     // Map purpose to allowed enum
     const allowedTypes = ['membership_due', 'tithe', 'donation', 'event',
@@ -494,15 +501,26 @@ const handlePaymentSucceeded = async (paymentIntent) => {
       return;
     }
 
+    const baseNote = `Stripe payment ${paymentIntent.id}`;
     const transaction = await Transaction.create({
       member_id: memberId,
-      collected_by: memberId, // automated collection – attribute to member
+      // Null for an anonymous gift: nobody collected it. For a member payment
+      // this stays attributed to the member, as before.
+      collected_by: memberId,
       payment_date: occurredAt,
       amount,
       payment_type,
       payment_method,
       receipt_number: paymentIntent.charges?.data?.[0]?.receipt_number || null,
-      note: `Stripe payment ${paymentIntent.id}`,
+      note: isAnonymousGift
+        ? buildDonorNote(baseNote, {
+            donor_type: md.donor_type || null,
+            donor_name: donorName,
+            donor_email: md.donor_email || null,
+            donor_phone: md.donor_phone || null
+          })
+        : baseNote,
+      donor_name: isAnonymousGift ? donorName : null,
       external_id: paymentIntent.id,
       status: 'succeeded',
       donation_id: (await Donation.findOne({ where: { stripe_payment_intent_id: paymentIntent.id } }))?.id || null
@@ -533,6 +551,7 @@ const handlePaymentSucceeded = async (paymentIntent) => {
         amount: parseFloat(amount),
         entry_date: occurredAt,
         member_id: memberId,
+        donor_name: isAnonymousGift ? donorName : null,
         payment_method: payment_method,
         memo: memo,
         transaction_id: transaction.id
@@ -574,5 +593,7 @@ module.exports = {
   confirmPayment,
   getDonation,
   getAllDonations,
-  handleWebhook
-}; 
+  handleWebhook,
+  // Exported for tests and for the pledge-intent path in pledgeFulfillmentService.
+  handlePaymentSucceeded
+};
