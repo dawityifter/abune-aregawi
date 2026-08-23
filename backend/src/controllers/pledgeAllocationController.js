@@ -70,7 +70,15 @@ const createPledgePayment = async (req, res) => {
       payment_type: req.campaign?.default_payment_type || 'pledge_drive',
       payment_method: req.body.payment_method,
       receipt_number: req.body.receipt_number || null,
-      note: req.body.note || null
+      note: req.body.note || null,
+      // This endpoint already knows exactly which pledge the payment is for
+      // (the id in the URL). createTransactionRecord's automatic allocation
+      // instead *infers* a pledge from the member's pledge in whatever
+      // campaign findLiveCampaign() returns — if the member holds an active
+      // pledge in more than one open campaign, that inference can target a
+      // different pledge than the one this request means. Opt out and do the
+      // explicit allocate() below against the URL's pledge, as before.
+      skip_pledge_auto_allocation: true
     }, { transaction: t });
 
     const allocation = await allocate({
@@ -79,12 +87,7 @@ const createPledgePayment = async (req, res) => {
       amount: req.body.amount,
       source: 'treasurer_manual',
       allocatedBy: req.user.id,
-      reason: req.body.reason || null,
-      // createTransactionRecord already ran maybeAllocateToPledge for this
-      // transaction (same idempotency key) if a live-campaign pledge matched.
-      // Passing the same key here makes this call a no-op read of that
-      // allocation instead of a second, over-allocating write.
-      idempotencyKey: `txn:${txn.id}`
+      reason: req.body.reason || null
     }, { transaction: t });
 
     await t.commit();

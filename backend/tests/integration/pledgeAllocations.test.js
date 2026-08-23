@@ -11,6 +11,7 @@ const asMember = () => setVerifyTokenPayload({ uid: 'uid-ann', email: 'ann@examp
 
 describe('Pledge allocation endpoints', () => {
   let campaign, closed, treasurer, member, pledge, oldPledge, txn;
+  let otherOpenCampaign, otherOpenPledge, noLivePledgeMember, noLivePledge;
 
   beforeAll(async () => {
     await sequelize.sync({ force: true });
@@ -48,6 +49,34 @@ describe('Pledge allocation endpoints', () => {
     txn = await Transaction.create({
       member_id: member.id, collected_by: member.id, payment_date: '2026-02-01',
       amount: 1000, payment_type: 'pledge_drive', payment_method: 'zelle', status: 'succeeded'
+    });
+
+    // A second campaign that is open (not closed, so requireOpenCampaign lets
+    // payments through) but not the live one findLiveCampaign() resolves —
+    // status 'draft' rather than 'active'. `member` holds an active,
+    // non-historical pledge here too, in addition to `pledge` in the live
+    // `campaign`. This is the fixture for the regression covering the
+    // wrong-pledge auto-allocation bug: a payment posted to
+    // otherOpenPledge's URL must land on otherOpenPledge, never on `pledge`
+    // via inference from the live campaign.
+    otherOpenCampaign = await PledgeCampaign.create({
+      slug: '2027-preview-drive', name: '2027 Preview', start_date: '2027-01-01', status: 'draft'
+    });
+    otherOpenPledge = await Pledge.create({
+      ...base, campaign_id: otherOpenCampaign.id, member_id: member.id
+    });
+
+    // A member with a pledge only in the open-but-not-live campaign, and no
+    // pledge at all in the live campaign — for the "no live pledge" path
+    // through createPledgePayment.
+    noLivePledgeMember = await Member.create({
+      first_name: 'Bea',
+      last_name: 'Backer',
+      phone_number: '+15550000011',
+      email: 'bea@example.com', is_active: true, role: 'member'
+    });
+    noLivePledge = await Pledge.create({
+      ...base, campaign_id: otherOpenCampaign.id, member_id: noLivePledgeMember.id
     });
   });
 
@@ -120,6 +149,44 @@ describe('Pledge allocation endpoints', () => {
 
     const b = await PledgeBalance.findOne({ where: { pledge_id: pledge.id } });
     expect(parseFloat(b.paid_amount)).toBe(750);
+  });
+
+  it('allocates an offline payment to the URL pledge, not the payer\'s pledge in the live campaign', async () => {
+    // `member` has an active, non-historical pledge in both the live
+    // `campaign` (`pledge`) and the open-but-not-live `otherOpenCampaign`
+    // (`otherOpenPledge`). Posting a payment to otherOpenPledge's URL must
+    // allocate to otherOpenPledge — not to `pledge`, which is what
+    // maybeAllocateToPledge's live-campaign inference would pick if it ran.
+    asTreasurer();
+    const res = await request(app)
+      .post(`/api/pledges/${otherOpenPledge.id}/payments`)
+      .set('Authorization', 'Bearer t')
+      .send({ amount: 400, payment_date: '2027-02-01', payment_method: 'check', receipt_number: '2001' });
+    expect(res.status).toBe(201);
+    expect(String(res.body.allocation.pledge_id)).toBe(String(otherOpenPledge.id));
+
+    const targetBalance = await PledgeBalance.findOne({ where: { pledge_id: otherOpenPledge.id } });
+    expect(parseFloat(targetBalance.paid_amount)).toBe(400);
+
+    const liveCampaignBalance = await PledgeBalance.findOne({ where: { pledge_id: pledge.id } });
+    expect(parseFloat(liveCampaignBalance?.paid_amount || 0)).toBe(0);
+  });
+
+  it('allocates an offline payment to the URL pledge when the payer has no pledge in the live campaign', async () => {
+    // noLivePledgeMember has a pledge only in otherOpenCampaign (open, not
+    // live) and none at all in the live `campaign`. maybeAllocateToPledge's
+    // inference would find nothing live to attach to; the endpoint's own
+    // explicit allocate() against the URL's pledge must still succeed.
+    asTreasurer();
+    const res = await request(app)
+      .post(`/api/pledges/${noLivePledge.id}/payments`)
+      .set('Authorization', 'Bearer t')
+      .send({ amount: 250, payment_date: '2027-03-01', payment_method: 'check', receipt_number: '2002' });
+    expect(res.status).toBe(201);
+    expect(String(res.body.allocation.pledge_id)).toBe(String(noLivePledge.id));
+
+    const b = await PledgeBalance.findOne({ where: { pledge_id: noLivePledge.id } });
+    expect(parseFloat(b.paid_amount)).toBe(250);
   });
 
   it('creates no transaction when the offline payment fails validation', async () => {

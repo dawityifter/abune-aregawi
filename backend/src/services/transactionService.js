@@ -13,7 +13,7 @@
 // aren't part of this payload). This looks like a pre-existing gap, not
 // something introduced by this extraction; it is deliberately left as-is.
 
-const { Transaction, Member, LedgerEntry, IncomeCategory } = require('../models');
+const { sequelize, Transaction, Member, LedgerEntry, IncomeCategory } = require('../models');
 const tz = require('../config/timezone');
 const { validateReceiptNumber } = require('../utils/receiptNumber');
 const { maybeAllocateToPledge } = require('./pledgeAllocationService');
@@ -199,6 +199,8 @@ async function createLedgerEntryForTransaction(transactionRecord, payload, resol
  *   payment_type, payment_method, receipt_number, note, donor_name,
  *   external_id, for_year, donation_id } — plus optional `status` and
  *   `income_category_id` for callers (like the controller) that need them.
+ *   Also accepts `skip_pledge_auto_allocation: true` — see the note at its
+ *   use below.
  * @param {object} [options] { transaction } — a Sequelize transaction.
  * @returns {Promise<Transaction>}
  */
@@ -216,7 +218,16 @@ async function createTransactionRecord(payload, options = {}) {
     status = 'succeeded', // Default transaction status
     donation_id,
     income_category_id,
-    for_year
+    for_year,
+    // Opt-out for callers that already know exactly which pledge a payment
+    // belongs to (e.g. POST /api/pledges/:id/payments, which targets the
+    // pledge id in the URL). maybeAllocateToPledge *infers* a pledge from the
+    // live campaign + payer, independently of any pledge the caller has in
+    // mind — if a member holds an active pledge in more than one open
+    // campaign, that inference can silently target the wrong one. Callers
+    // that already have the right pledge id must set this and do their own
+    // explicit allocate() call instead.
+    skip_pledge_auto_allocation = false
   } = payload;
 
   const resolved = await validateAndResolveTransaction(
@@ -247,14 +258,28 @@ async function createTransactionRecord(payload, options = {}) {
   // Wrapped because recording money always wins: an allocation that cannot be
   // made is logged and leaves the payment standing and unallocated, never
   // rolled back. The treasurer's unallocated queue is how those get found.
-  try {
-    await maybeAllocateToPledge(
-      created,
-      { source: 'treasurer_manual', allocatedBy: collected_by || null },
-      { transaction }
-    );
-  } catch (err) {
-    console.error('⚠️ Pledge allocation failed for transaction', created.id, err.message);
+  //
+  // The allocation runs inside its own SAVEPOINT nested in the caller's
+  // transaction (sequelize.transaction({ transaction }, ...) creates a
+  // savepoint when a parent transaction is present, or a fresh transaction
+  // when there isn't one). This is not optional decoration: a plain
+  // `await maybeAllocateToPledge(...)` inside the caller's transaction would,
+  // on a DB-level failure (e.g. a constraint violation), abort that whole
+  // transaction — catching the JS error does not un-abort it, so the
+  // Transaction insert above would be silently lost on commit. The savepoint
+  // means only the allocation rolls back; the payment insert survives.
+  if (!skip_pledge_auto_allocation) {
+    try {
+      await sequelize.transaction({ transaction }, async (savepoint) => {
+        await maybeAllocateToPledge(
+          created,
+          { source: 'treasurer_manual', allocatedBy: collected_by || null },
+          { transaction: savepoint }
+        );
+      });
+    } catch (err) {
+      console.error('⚠️ Pledge allocation failed for transaction', created.id, err.message);
+    }
   }
 
   return created;
