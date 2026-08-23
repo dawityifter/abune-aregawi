@@ -42,10 +42,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   const [members, setMembers] = useState<Member[]>([]);
   const [memberSearch, setMemberSearch] = useState('');
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
-  // Seeded directly from the prop so a caller-provided member is selected
-  // immediately, without waiting on the network-validated sync effect below
-  // (which only confirms/repopulates the member's display details).
-  const [selectedMemberId, setSelectedMemberId] = useState(initialMemberId ? String(initialMemberId) : '');
+  const [selectedMemberId, setSelectedMemberId] = useState('');
   const [month, setMonth] = useState('');
   const [amount, setAmount] = useState('');
   const [amountError, setAmountError] = useState<string | null>(null);

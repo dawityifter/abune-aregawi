@@ -34,10 +34,58 @@ const renderModal = () => render(
   </I18nProvider>
 );
 
+// A single synthetic member the mocked member-list endpoint returns, so the
+// component's real selectedMemberId sync effect (AddPaymentModal.tsx ~157-215)
+// can resolve initialMemberId="42" through its own matching logic rather than
+// having the test bypass it.
+const SYNTHETIC_MEMBER = {
+  id: 42,
+  firstName: 'Testy',
+  lastName: 'Fixture',
+  phoneNumber: '+15555550142',
+  email: 'testy.fixture@example.test'
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true, json: async () => ({ success: true, categories: [], incomeCategories: [] })
+  global.fetch = jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+
+    // Members list endpoint (fetchMembers) — the primary path the sync effect
+    // uses to resolve initialMemberId via `members.some(...)`.
+    if (url.includes('/api/members/all/firebase')) {
+      return {
+        ok: true,
+        json: async () => ({ success: true, data: { members: [SYNTHETIC_MEMBER] } })
+      };
+    }
+
+    // Specific-member fallback endpoint, only hit if the member weren't in the
+    // list above. Shaped as the raw (snake_case) API response the component's
+    // fetchSpecificMember transform expects.
+    if (url.includes('/api/members/42')) {
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            member: {
+              id: 42,
+              first_name: 'Testy',
+              last_name: 'Fixture',
+              phone_number: '+15555550142',
+              email: 'testy.fixture@example.test'
+            }
+          }
+        })
+      };
+    }
+
+    // Income category endpoints and anything else.
+    return {
+      ok: true,
+      json: async () => ({ success: true, categories: [], incomeCategories: [] })
+    };
   }) as unknown as typeof fetch;
   mockFetchBalance.mockResolvedValue({
     id: 1, campaign_id: 2, campaign_name: 'Live Drive',
