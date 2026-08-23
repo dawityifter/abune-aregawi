@@ -135,6 +135,12 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
     );
   }
 
+  // A drive can exceed its goal (a payment lands in full on a pledge even when
+  // it overshoots), so clamp: >100% reads as a rendering bug, not generosity.
+  const goalPercent = goalAmount
+    ? Math.min(100, (stats.total_pledged / goalAmount) * 100)
+    : 0;
+
   const progressPercentage = stats.total_pledged > 0
     ? (stats.total_fulfilled / stats.total_pledged) * 100
     : 0;
@@ -223,14 +229,14 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div
               className="bg-primary-600 h-3 rounded-full transition-all"
-              style={{ width: `${Math.min(100, (stats.total_pledged / goalAmount) * 100)}%` }}
+              style={{ width: `${goalPercent}%` }}
             ></div>
           </div>
           <div className="mt-1 text-right text-sm font-semibold text-primary-700">
             {/* Labelled explicitly: the admin Fundraising tab shows
                 collected/goal for this same campaign, so a bare percentage
                 here looks like a contradiction. */}
-            {((stats.total_pledged / goalAmount) * 100).toFixed(0)}% {t('pledgeTracker.ofGoalPledged')}
+            {goalPercent.toFixed(0)}% {t('pledgeTracker.ofGoalPledged')}
           </div>
         </div>
       ) : null}

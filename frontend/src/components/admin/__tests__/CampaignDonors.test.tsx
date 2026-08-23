@@ -87,3 +87,16 @@ describe('pre-modernization drives', () => {
     expect(screen.queryByText(/legacy record/i)).not.toBeInTheDocument();
   });
 });
+
+describe('over-fulfilled donors', () => {
+  it('shows an over-payment as zero outstanding plus an over-by note', async () => {
+    mockFetchDonors.mockResolvedValue([
+      { id: 5, name: 'Test Generous', amount: 300, paid_amount: 500, remaining_amount: -200, status: 'fulfilled', is_historical: false, pledge_type: 'one_time', created_at: '2026-02-05T00:00:00Z' }
+    ]);
+    renderDonors();
+
+    await screen.findByText('Test Generous');
+    expect(screen.getByText(/over by/i)).toBeInTheDocument();
+    expect(screen.queryByText(/-\$200/)).not.toBeInTheDocument();
+  });
+});

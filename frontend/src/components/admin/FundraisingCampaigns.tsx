@@ -207,7 +207,11 @@ const FundraisingCampaigns: React.FC<FundraisingCampaignsProps> = ({ canManage =
                   <div className="text-sm text-gray-700 flex flex-wrap gap-x-4 gap-y-1 justify-end">
                     <span>{t('fundraising.pledged')}: <strong>{money(campaign.totals.total_pledged) ?? '$0'}</strong></span>
                     <span>{t('fundraising.collected')}: <strong>{money(campaign.totals.total_collected) ?? '$0'}</strong></span>
-                    <span>{t('fundraising.outstanding')}: <strong>{money(campaign.totals.outstanding) ?? '$0'}</strong></span>
+                    <span>{t('fundraising.outstanding')}: <strong>
+                      {parseFloat(campaign.totals.outstanding || '0') < 0
+                        ? money('0')
+                        : money(campaign.totals.outstanding) ?? '$0'}
+                    </strong></span>
                     <span>{t('fundraising.donors')}: <strong>{campaign.totals.donor_count ?? 0}</strong></span>
                     {campaign.goal_amount && (
                       <span>

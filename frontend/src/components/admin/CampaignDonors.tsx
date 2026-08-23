@@ -83,7 +83,16 @@ const CampaignDonors: React.FC<CampaignDonorsProps> = ({ campaignId, campaignNam
                   <td className="py-2 pr-4 text-gray-900">{donor.name}</td>
                   <td className="py-2 pr-4 text-right">{money(donor.amount)}</td>
                   <td className="py-2 pr-4 text-right">{money(donor.paid_amount)}</td>
-                  <td className="py-2 pr-4 text-right">{money(donor.remaining_amount)}</td>
+                  <td className="py-2 pr-4 text-right">
+                    {donor.remaining_amount < 0 ? (
+                      <span>
+                        {money(0)}{' '}
+                        <span className="text-xs text-gray-500">
+                          {t('fundraising.overBy', { amount: money(-donor.remaining_amount) })}
+                        </span>
+                      </span>
+                    ) : money(donor.remaining_amount)}
+                  </td>
                   <td className="py-2">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[donor.status] || 'bg-gray-100 text-gray-700'}`}>
                       {donor.status}

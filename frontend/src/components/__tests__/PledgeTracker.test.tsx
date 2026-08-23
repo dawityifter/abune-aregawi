@@ -103,4 +103,22 @@ describe('PledgeTracker', () => {
     // unlabelled percentage here reads as a contradiction.
     expect(await screen.findByText(/50% of goal pledged/i)).toBeInTheDocument();
   });
+
+  it('caps the goal bar at 100% when a drive is over-subscribed', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      json: async () => ({
+        success: true,
+        stats: {
+          total_pledged: 15000, total_fulfilled: 0, total_remaining: 15000,
+          fulfillment_rate: '0.0', status_breakdown: []
+        }
+      })
+    }) as unknown as typeof fetch;
+
+    renderTracker();
+
+    // $15,000 against a $10,000 goal is 150%; showing that reads as a bug.
+    expect(await screen.findByText(/100% of goal pledged/i)).toBeInTheDocument();
+    expect(screen.queryByText(/150%/)).not.toBeInTheDocument();
+  });
 });
