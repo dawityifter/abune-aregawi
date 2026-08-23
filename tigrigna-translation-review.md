@@ -570,3 +570,19 @@ speaker.
 | fundraising.tab | Fundraising | ወፈያ | ⚠️ same "ወፈያ" question as above, here as a short nav label |
 | fundraising.activate | Activate | ኣንቅሕ | ⚠️ confirm this reads as "make live/switch on" rather than "wake up" |
 | fundraising.closeWarning | Closing a campaign is permanent… | መደብ ምዕጻው ቀዋሚ እዩ… | ⚠️ confirm "ቀዋሚ" carries "permanent/irreversible" for a destructive action |
+
+## Pledge payment allocation (Aug 2026)
+
+New `donatePage.applyToPledge` / `pledgeRemaining`, `duesPage.pledgeBanner*`,
+and `fundraising.activePledge` / `overBy` keys. All are seen by members paying
+online, except `activePledge`, which is treasurer-facing. Drafts by a
+non-native speaker.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| donatePage.applyToPledge | Apply to my pledge | ናብ መብጽዓይ የውዕሎ | ⚠️ confirm this reads as an instruction the donor is giving, not a statement |
+| donatePage.pledgeRemaining | {amount} still outstanding on your {campaign} pledge | ካብ መብጽዓኹም ናይ {campaign} {amount} ተሪፉ ኣሎ | ⚠️ confirm the placeholder order still reads naturally in Tigrigna |
+| duesPage.pledgeBannerTitle | You have an open pledge | ክፉት መብጽዓ ኣለኩም | ⚠️ confirm "ክፉት" is right for an unpaid obligation rather than an open door |
+| duesPage.pledgeBannerCta | Pay toward my pledge | ናብ መብጽዓይ ክኸፍል | ⚠️ confirm this works as a button label |
+| fundraising.activePledge | Active pledge: {pledged} — {remaining} remaining | ንጡፍ መብጽዓ፦ {pledged} — {remaining} ተሪፉ | ⚠️ treasurer-facing; confirm the dash construction is idiomatic |
+| fundraising.overBy | over by {amount} | ብ{amount} ኣሕሊፉ | ⚠️ confirm this conveys "paid more than pledged" and not "overdue" |
