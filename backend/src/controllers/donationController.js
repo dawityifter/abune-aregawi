@@ -137,9 +137,13 @@ const createPaymentIntent = async (req, res) => {
           message: 'A baptism or church name is required for an anonymous contribution'
         });
       }
-      // Pin the campaign so a drive that closes between checkout and webhook
-      // still credits the pledge it was given to. We have already taken the
-      // money by then; dropping the allocation would be the worse outcome.
+      // Pin the campaign so it still credits the pledge after its window
+      // expires between checkout and webhook (end_date passes while status
+      // stays 'active', so findLiveCampaign would otherwise no longer see
+      // it). This does NOT rescue a campaign an admin closes outright:
+      // allocate() throws CAMPAIGN_CLOSED for status: 'closed', rolling the
+      // pledge back, and that is deliberate — a hard closure leaves the
+      // payment for the treasurer to handle instead of auto-crediting it.
       metadata.campaignId = String(liveCampaign.id);
     }
 
@@ -559,7 +563,7 @@ const handlePaymentSucceeded = async (paymentIntent) => {
     // recording money always wins. A payment with no pledge is recoverable by
     // a treasurer; a webhook that keeps failing is not.
     let pledgeCreated = false;
-    if (md.pledgeIntent === 'immediate') {
+    if (md.purpose === 'pledge_drive' && md.pledgeIntent === 'immediate') {
       try {
         await sequelize.transaction(async (t) => {
           await createPledgeWithPayment({

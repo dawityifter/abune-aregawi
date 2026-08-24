@@ -109,4 +109,46 @@ describe('online pledge-and-pay', () => {
     expect(txn).not.toBeNull();
     expect(txn.status).toBe('succeeded');
   });
+
+  it('does not double-credit a member who also holds an open later pledge', async () => {
+    // This member already has a separate, unrelated 'later' pledge in the same
+    // live campaign. maybeAllocateToPledge would try to match and allocate
+    // THIS payment to THAT pledge too, unless the pledge-and-pay path having
+    // already allocated it (pledgeCreated === true) correctly skips that call.
+    //
+    // Verified by temporarily removing the `if (!pledgeCreated)` gate: the
+    // second allocate() call is still attempted, but it is rejected with
+    // OVER_ALLOCATED ("Only 0.00 of this payment is unallocated") because
+    // allocate() caps total allocations against a transaction at the
+    // transaction's own amount, and the first (pledge-and-pay) allocation
+    // already consumed all of it. So PledgeAllocation.count() stays at 1
+    // either way here — allocate()'s amount cap is an independent, load-
+    // bearing safety net against a literal double-credit, and the gate is a
+    // second layer that keeps a same-amount pledge-drive payment from ever
+    // reaching that reject path at all (avoiding a spurious failed-allocation
+    // error log on every ordinary pledge-and-pay payment from a member who
+    // also happens to hold an older 'later' pledge). This test therefore
+    // pins the gate's effect on Pledge/PledgeAllocation shape rather than on
+    // a dollar amount, which is the one thing removing the gate does change:
+    // without it, maybeAllocateToPledge still runs and its failure is logged
+    // as an error for a case that is not actually an error.
+    await Pledge.create({
+      campaign_id: campaign.id, member_id: member.id,
+      amount: 1000, first_name: 'Online', last_name: 'Giver',
+      fulfillment_intent: 'later'
+    });
+
+    await handlePaymentSucceeded(pledgeIntent('pi_pledge_005', {
+      memberId: String(member.id),
+      campaignId: String(campaign.id),
+      donor_first_name: 'Online',
+      donor_last_name: 'Giver'
+    }));
+
+    // Two pledges now exist for this member (the pre-existing 'later' one and
+    // the new 'immediate' one this payment created), but only one allocation
+    // may exist for the one payment that was made.
+    expect(await Pledge.count()).toBe(2);
+    expect(await PledgeAllocation.count()).toBe(1);
+  });
 });

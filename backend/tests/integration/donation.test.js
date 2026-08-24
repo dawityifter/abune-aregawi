@@ -29,7 +29,7 @@ jest.mock('../../src/middleware/auth', () => ({
 
 // Now require app and models
 const app = require('../../src/server');
-const { sequelize, Member, Donation } = require('../../src/models');
+const { sequelize, Member, Donation, PledgeCampaign } = require('../../src/models');
 
 describe('Donation Member Email Lookup Integration', () => {
     let memberWithEmail;
@@ -68,10 +68,6 @@ describe('Donation Member Email Lookup Integration', () => {
                 client_secret: `pi_test_${piCounter}_secret`,
             });
         });
-    });
-
-    afterAll(async () => {
-        await sequelize.close();
     });
 
     const baseDonationRequest = {
@@ -164,5 +160,61 @@ describe('Donation Member Email Lookup Integration', () => {
 
         const donation = await Donation.findByPk(res.body.donation_id);
         expect(donation.donor_email).toBe('abunearegawitx@gmail.com');
+    });
+});
+
+describe('pledge-and-pay checkout guard', () => {
+    // Reuses the module-level Stripe mock (mockCreate) and mocked auth
+    // middleware set up above. These tests exist because the guard in
+    // createPaymentIntent is the last point at which a bad pledge-and-pay
+    // request costs nothing — the "never called" assertion on mockCreate is
+    // what actually pins "before money moves"; a 400 alone would not catch a
+    // guard that ran too late.
+    const pledgeDriveRequest = (metadataOverrides = {}) => ({
+        amount: 400,
+        donation_type: 'one-time',
+        payment_method: 'card',
+        donor_first_name: 'Test',
+        donor_last_name: 'User',
+        metadata: {
+            purpose: 'pledge_drive',
+            pledgeIntent: 'immediate',
+            ...metadataOverrides
+        }
+    });
+
+    beforeEach(async () => {
+        await sequelize.sync({ force: true });
+        jest.clearAllMocks();
+        mockCreate.mockImplementation(() => Promise.resolve({
+            id: 'pi_should_not_be_created',
+            client_secret: 'pi_should_not_be_created_secret'
+        }));
+    });
+
+    it('rejects a pledge-and-pay checkout when no campaign is currently live', async () => {
+        // No PledgeCampaign row exists at all, so findLiveCampaign() finds none.
+        const res = await request(app)
+            .post('/api/donations/create-payment-intent')
+            .send(pledgeDriveRequest());
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('rejects an anonymous pledge-and-pay checkout with no baptism name', async () => {
+        await PledgeCampaign.create({
+            slug: '2026-drive', name: 'Test Drive', status: 'active',
+            start_date: '2026-01-01', end_date: null
+        });
+
+        const res = await request(app)
+            .post('/api/donations/create-payment-intent')
+            .send(pledgeDriveRequest({ isAnonymous: 'true' }));
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(mockCreate).not.toHaveBeenCalled();
     });
 });
