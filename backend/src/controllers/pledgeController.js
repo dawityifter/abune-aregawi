@@ -10,6 +10,11 @@ const BALANCE_VIEW_ROLES = ['admin', 'treasurer', 'church_leadership', 'secretar
 // pledge card at an event, say).
 const PLEDGE_ON_BEHALF_ROLES = ['admin', 'treasurer'];
 
+// Anonymous to the parish, never anonymous to the treasurer. Deliberately
+// narrower than BALANCE_VIEW_ROLES: a donor who asked for anonymity should not
+// have their name visible to all nine view roles.
+const ANONYMITY_PIERCING_ROLES = ['admin', 'treasurer'];
+
 /**
  * The member's pledge in the live campaign, with balances from
  * pledge_balances. Serves two callers with one payload: a member reading their
@@ -409,7 +414,8 @@ const getPledgeStats = async (req, res) => {
         {
           model: Pledge,
           as: 'pledge',
-          attributes: ['first_name', 'last_name', 'pledge_type', 'event_name', 'created_at'],
+          attributes: ['first_name', 'last_name', 'pledge_type', 'event_name',
+                       'created_at', 'is_anonymous'],
           required: true,
           // campaign_id scopes the public tracker to the current drive. Both
           // filters are optional; omitting them keeps the all-campaign total
@@ -431,6 +437,13 @@ const getPledgeStats = async (req, res) => {
     let totalPledged = 0;
     let totalFulfilled = 0;
     const statusBreakdownMap = {};
+
+    const callerRoles = req.user?.roles || [];
+    const canSeeAnonymousNames = callerRoles.some((r) => ANONYMITY_PIERCING_ROLES.includes(r));
+    const displayName = (pledge) =>
+      (pledge.is_anonymous && !canSeeAnonymousNames)
+        ? 'Anonymous'
+        : `${pledge.first_name} ${pledge.last_name}`;
 
     balances.forEach(balance => {
       const pledgedAmount = parseFloat(balance.pledged_amount) || 0;
@@ -467,8 +480,11 @@ const getPledgeStats = async (req, res) => {
         // True when the figures come from the pre-allocation legacy_status
         // record rather than from real payments, so the UI can say so.
         is_historical: Boolean(balance.is_historical),
-        name: `${balance.pledge.first_name} ${balance.pledge.last_name}`,
-        spouse_name: balance.member?.spouse_name || null,
+        is_anonymous: Boolean(balance.pledge.is_anonymous),
+        name: displayName(balance.pledge),
+        spouse_name: (balance.pledge.is_anonymous && !canSeeAnonymousNames)
+          ? null
+          : (balance.member?.spouse_name || null),
         pledge_type: balance.pledge.pledge_type,
         created_at: balance.pledge.created_at
       });
@@ -495,11 +511,12 @@ const getPledgeStats = async (req, res) => {
         ...(wantDetail ? {
           recent_pledges: recentPledges.map(balance => ({
             id: balance.pledge_id,
-            name: `${balance.pledge.first_name} ${balance.pledge.last_name}`,
+            name: displayName(balance.pledge),
+            is_anonymous: Boolean(balance.pledge.is_anonymous),
             amount: parseFloat(balance.pledged_amount) || 0,
             pledge_type: balance.pledge.pledge_type,
             created_at: balance.pledge.created_at,
-            member: balance.member
+            member: (balance.member && !(balance.pledge.is_anonymous && !canSeeAnonymousNames))
               ? { first_name: balance.member.first_name, last_name: balance.member.last_name }
               : null
           }))
