@@ -3,6 +3,9 @@
 const { sequelize, PledgeAllocation, Pledge, Member, Transaction } = require('../models');
 const { allocate, reverse, listUnallocated, AllocationError } = require('../services/pledgeAllocationService');
 const { createTransactionRecord } = require('../services/transactionService');
+const { createPledgeWithPayment } = require('../services/pledgeFulfillmentService');
+const { findLiveCampaign } = require('../services/pledgeCampaignService');
+const { buildDonorNote } = require('../utils/donorNote');
 
 // NOTE: CURRENCY_MISMATCH from the original brief does not exist on
 // AllocationError and was removed. INVALID_AMOUNT was added since it is
@@ -98,6 +101,84 @@ const createPledgePayment = async (req, res) => {
   }
 };
 
+// A pledge that is created and paid in the same act — a walk-up gift at an
+// event, anonymous or named. Distinct from createPledgePayment above, which
+// pays an EXISTING pledge named in the URL.
+const createPledgeWithPaymentHandler = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const campaign = await findLiveCampaign();
+    if (!campaign) {
+      throw new AllocationError('CAMPAIGN_NOT_FOUND', 'No pledge drive is currently open');
+    }
+
+    const pledgeAmount = parseFloat(req.body.pledge_amount);
+    const paymentAmount = parseFloat(req.body.amount);
+    const isAnonymous = Boolean(req.body.is_anonymous);
+    const baptismName = req.body.baptism_name || null;
+
+    if (!Number.isFinite(pledgeAmount) || pledgeAmount <= 0
+        || !Number.isFinite(paymentAmount) || paymentAmount <= 0) {
+      throw new AllocationError('INVALID_AMOUNT', 'Pledge and payment amounts must be positive');
+    }
+
+    // An anonymous pledge with an outstanding balance is the exact state the
+    // design forbids: nobody to collect from. A part payment against a NAMED
+    // pledge is fine and simply leaves a balance.
+    if (isAnonymous && Math.abs(pledgeAmount - paymentAmount) > 1e-9) {
+      throw new AllocationError('INVALID_AMOUNT',
+        'An anonymous pledge must be paid in full: the payment must equal the pledge amount');
+    }
+
+    const memberId = req.body.member_id || null;
+    const baseNote = req.body.note || null;
+
+    const txn = await createTransactionRecord({
+      member_id: memberId,
+      collected_by: req.user.id,
+      payment_date: req.body.payment_date,
+      amount: paymentAmount,
+      payment_type: campaign.default_payment_type || 'pledge_drive',
+      payment_method: req.body.payment_method,
+      receipt_number: req.body.receipt_number || null,
+      note: memberId
+        ? baseNote
+        : buildDonorNote(baseNote, {
+            donor_name: baptismName || `${req.body.first_name} ${req.body.last_name}`,
+            donor_email: req.body.email || null,
+            donor_phone: req.body.phone || null
+          }),
+      donor_name: memberId ? null : (baptismName || `${req.body.first_name} ${req.body.last_name}`),
+      // This request creates the pledge itself a moment from now, so there is
+      // nothing for the automatic rule to infer and it must not guess.
+      skip_pledge_auto_allocation: true
+    }, { transaction: t });
+
+    const { pledge, allocation } = await createPledgeWithPayment({
+      campaignId: campaign.id,
+      amount: pledgeAmount,
+      paymentAmount,
+      transactionId: txn.id,
+      memberId,
+      firstName: req.body.first_name,
+      lastName: req.body.last_name,
+      email: req.body.email || null,
+      phone: req.body.phone || null,
+      baptismName,
+      isAnonymous,
+      notes: baseNote,
+      source: 'treasurer_manual',
+      allocatedBy: req.user.id
+    }, { transaction: t });
+
+    await t.commit();
+    return res.status(201).json({ success: true, pledge, transaction: txn, allocation });
+  } catch (err) {
+    await t.rollback();
+    return sendError(res, err);
+  }
+};
+
 const reverseAllocation = async (req, res) => {
   try {
     const reversal = await reverse({
@@ -137,6 +218,6 @@ const listUnallocatedPayments = async (req, res) => {
 };
 
 module.exports = {
-  createAllocation, createPledgePayment, reverseAllocation, listAllocations,
-  listUnallocatedPayments
+  createAllocation, createPledgePayment, createPledgeWithPaymentHandler,
+  reverseAllocation, listAllocations, listUnallocatedPayments
 };

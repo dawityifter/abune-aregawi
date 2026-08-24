@@ -5,13 +5,11 @@
 // without duplicating receipt validation, GL/income-category mapping, and
 // ledger-entry creation.
 //
-// NOTE on donor_name: the `payload.donor_name` field is accepted (and Transaction
-// has a `donor_name` column) but, matching the original controller's behavior,
-// it is NOT written to the Transaction row here — the original code only folds
-// donor_name into the free-text `note` (via buildDonorNote, which stays in the
-// controller since it needs donor_type/donor_email/donor_phone/donor_memo that
-// aren't part of this payload). This looks like a pre-existing gap, not
-// something introduced by this extraction; it is deliberately left as-is.
+// NOTE on donor_name: `payload.donor_name` is written verbatim to both the
+// Transaction row and its LedgerEntry. Callers that also want a structured
+// donor block (donor_type/donor_email/donor_phone/donor_memo) still build that
+// via buildDonorNote into `note` themselves — this field only carries the
+// plain display name.
 
 const { sequelize, Transaction, Member, LedgerEntry, IncomeCategory } = require('../models');
 const tz = require('../config/timezone');
@@ -157,7 +155,7 @@ async function validateAndResolveTransaction(payload, options = {}) {
  */
 async function createLedgerEntryForTransaction(transactionRecord, payload, resolved, options = {}) {
   const { transaction } = options;
-  const { payment_type, amount, payment_date, payment_method, note, collected_by, member_id, external_id } = payload;
+  const { payment_type, amount, payment_date, payment_method, note, collected_by, member_id, external_id, donor_name } = payload;
   const { glCode, normalizedReceiptNumber } = resolved;
 
   try {
@@ -174,6 +172,7 @@ async function createLedgerEntryForTransaction(transactionRecord, payload, resol
       memo,
       collected_by,
       member_id,
+      donor_name: donor_name || null,
       transaction_id: transactionRecord.id,
       source_system: 'manual',
       external_id: external_id || null,
@@ -219,6 +218,7 @@ async function createTransactionRecord(payload, options = {}) {
     donation_id,
     income_category_id,
     for_year,
+    donor_name,
     // Opt-out for callers that already know exactly which pledge a payment
     // belongs to (e.g. POST /api/pledges/:id/payments, which targets the
     // pledge id in the URL). maybeAllocateToPledge *infers* a pledge from the
@@ -247,6 +247,7 @@ async function createTransactionRecord(payload, options = {}) {
     note: note || '',
     external_id: external_id || null,
     status,
+    donor_name: donor_name || null,
     donation_id: donation_id || null,
     income_category_id: finalIncomeCategoryId,
     for_year: for_year || null

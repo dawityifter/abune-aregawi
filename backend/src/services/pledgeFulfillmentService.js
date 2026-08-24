@@ -12,11 +12,18 @@ const { allocate } = require('./pledgeAllocationService');
  * A pledge that exists without its allocation would report as unpaid forever;
  * an allocation without its pledge cannot exist at all.
  *
+ * `amount` is the pledge's total; `paymentAmount` is what the transaction
+ * actually carries and is what gets allocated. They differ only for a named
+ * pledge's part payment (an anonymous pledge must always pay in full, so the
+ * two are always equal there). Defaults to `amount` so every existing caller —
+ * where the payment always covers the pledge in full — is unaffected.
+ *
  * @returns {Promise<{ pledge, allocation }>}
  */
 async function createPledgeWithPayment({
   campaignId,
   amount,
+  paymentAmount = amount,
   transactionId,
   memberId = null,
   firstName,
@@ -48,7 +55,7 @@ async function createPledgeWithPayment({
   const allocation = await allocate({
     pledgeId: pledge.id,
     transactionId,
-    amount,
+    amount: paymentAmount,
     source,
     allocatedBy,
     // allocate() refuses a payment whose payer does not match the pledge holder

@@ -82,6 +82,13 @@ router.get('/stats', statsAuthGate, pledgeController.getPledgeStats);
 // record and requires a view role for anyone else's.
 router.get('/balance', firebaseAuthMiddleware, pledgeController.getPledgeBalance);
 
+// Creates the pledge AND its payment together. Campaign comes from
+// findLiveCampaign(), not from a pledge id, because no pledge exists yet —
+// which is also why requireOpenCampaign cannot be used here; the handler makes
+// the equivalent check itself.
+router.post('/with-payment', firebaseAuthMiddleware, roleMiddleware(editRoles),
+  allocationController.createPledgeWithPaymentHandler);
+
 router.get('/:id', firebaseAuthMiddleware, roleMiddleware(viewRoles), pledgeController.getPledge);
 router.put('/:id', firebaseAuthMiddleware, roleMiddleware(editRoles),
   requireOpenCampaign(requireOpenCampaign.fromPledgeParam), pledgeController.updatePledge);
