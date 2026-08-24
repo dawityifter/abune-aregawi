@@ -21,6 +21,7 @@ export interface Dictionaries {
       contact: string;
       latestTeaching: string;
     };
+    submitting?: string;
   };
   // Keys used by Navigation.tsx
   navigation?: {
@@ -112,6 +113,20 @@ export interface Dictionaries {
     };
     noCampaign: {
       title: string;
+      body: string;
+    };
+    intent?: {
+      later: { title: string; body: string };
+      immediate: { title: string; body: string };
+      anonymous: { title: string; body: string };
+      signIn: { title: string; body: string };
+    };
+    existing?: {
+      title: string;
+      body: string;
+      payNow: string;
+    };
+    success?: {
       body: string;
     };
   };
@@ -787,6 +802,7 @@ export const en: Dictionaries = {
       contact: "Contact",
       latestTeaching: "Latest Teaching",
     },
+    submitting: "Submitting…",
   },
   navigation: {
     dashboard: "Dashboard",
@@ -1841,6 +1857,8 @@ export const en: Dictionaries = {
     eventName: "Event Name *",
     eventNamePlaceholder: "e.g., Sunday Fundraising Event",
     amount: "Pledge Amount *",
+    amountLabel: "Pledge Amount *",
+    notesLabel: "Notes (optional)",
     customAmountPlaceholder: "Enter custom amount",
     firstName: "First Name *",
     lastName: "Last Name *",
@@ -1875,6 +1893,32 @@ export const en: Dictionaries = {
     noCampaign: {
       title: "No fundraising drive is running right now",
       body: "There is no active pledge drive at the moment. Please check back, or contact the church office if you would like to give."
+    },
+    intent: {
+      later: {
+        title: "Pledge for later",
+        body: "Make a pledge now and pay it when you are ready."
+      },
+      immediate: {
+        title: "Pledge and pay now",
+        body: "Make your pledge and pay it in full in one step."
+      },
+      anonymous: {
+        title: "Give anonymously now",
+        body: "Give without your name appearing. Paid in full today; the church records a church name for its records only."
+      },
+      signIn: {
+        title: "Sign in to pledge",
+        body: "A pledge for later needs an account so we can credit your payments to it."
+      }
+    },
+    existing: {
+      title: "You already have a pledge",
+      body: "{remaining} remaining on your {campaign} pledge.",
+      payNow: "Pay now"
+    },
+    success: {
+      body: "Your pledge has been recorded. Thank you."
     }
   },
 
@@ -2839,6 +2883,7 @@ export const ti: Dictionaries = {
       contact: "ርክብ",
       latestTeaching: "ሓዱሽ ትምህርቲ",
     },
+    submitting: "የቐርብ ኣሎ...",
   },
   navigation: {
     dashboard: "ዳሽቦርድ",
@@ -3903,6 +3948,8 @@ export const ti: Dictionaries = {
     eventName: "ስም ፍጻመ *",
     eventNamePlaceholder: "ንኣብነት፣ ናይ ሰንበት ናይ ገንዘብ ምእካብ ፍጻመ",
     amount: "መጠን ቃል ኪዳን *",
+    amountLabel: "መጠን ቃል ኪዳን *",
+    notesLabel: "መዘኻኸሪ (ኣማራጺ)",
     customAmountPlaceholder: "ናይ ገዛእ ርእስኹም መጠን ኣእትዉ",
     firstName: "ስም *",
     lastName: "ስም ኣቦ *",
@@ -3938,6 +3985,32 @@ export const ti: Dictionaries = {
     noCampaign: {
       title: "ሕጂ ዝካየድ ዘሎ ወፈያ የለን",
       body: "ኣብዚ እዋን ንጡፍ መደብ መብጽዓ የለን። በጃኹም ደሓር ተመልከቱ፡ ወይ ክትህቡ እንተደሊኹም ንቤት ጽሕፈት ቤተ ክርስቲያን ተወከሱ።"
+    },
+    intent: {
+      later: {
+        title: "ንደሓር መብጽዓ",
+        body: "ሕጂ መብጽዓ ግበሩ፡ ምስ ተዳለኹም ድማ ክፈሉ።"
+      },
+      immediate: {
+        title: "መብጽዓን ክፍሊትን ሕጂ",
+        body: "መብጽዓኹም ግበሩ እሞ ብሓደ ግዜ ምሉእ ብምሉእ ክፈሉ።"
+      },
+      anonymous: {
+        title: "ስም ብዘይምግላጽ ሕጂ ውፈዩ",
+        body: "ስምኩም ከይተጠቕሰ ውፈዩ። ሎሚ ምሉእ ብምሉእ ይኽፈል፤ ቤተ ክርስቲያን ግና ንመዝገባ ጥራይ ስም ትጥቀም።"
+      },
+      signIn: {
+        title: "ንመብጽዓ እተዉ",
+        body: "ንደሓር ዝግበር መብጽዓ ኣካውንት የድልዮ፡ ክፍሊትኩም ናብኡ ምእንቲ ክንውስኾ።"
+      }
+    },
+    existing: {
+      title: "ድሮ መብጽዓ ኣለኩም",
+      body: "ካብ መብጽዓኹም ናይ {campaign} {remaining} ተሪፉ ኣሎ።",
+      payNow: "ሕጂ ክፈሉ"
+    },
+    success: {
+      body: "መብጽዓኹም ተመዝጊቡ ኣሎ። የቐንየልና።"
     }
   },
 

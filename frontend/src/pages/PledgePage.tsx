@@ -1,57 +1,52 @@
 import React, { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import PledgeForm from '../components/PledgeForm';
+import { useNavigate } from 'react-router-dom';
 import PledgeTracker from '../components/PledgeTracker';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useI18n } from '../i18n/I18nProvider';
 import { useActiveCampaign } from '../hooks/useActiveCampaign';
-
-interface PledgeFormData {
-  amount: string;
-  pledge_type: 'general' | 'event' | 'fundraising' | 'tithe';
-  event_name?: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  address?: string;
-  zip_code?: string;
-  notes?: string;
-}
+import { useAuth } from '../contexts/AuthContext';
+import { usePledgeBalance } from '../hooks/usePledgeBalance';
+import PledgeIntentSelector, { PledgeIntent } from '../components/pledge/PledgeIntentSelector';
+import PledgeLaterForm from '../components/pledge/PledgeLaterForm';
 
 const PledgePage: React.FC = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { lang, t } = useI18n();
   const { campaign, loading: campaignLoading } = useActiveCampaign();
+  const { user, currentUser, firebaseUser } = useAuth();
+  const { balance: pledgeBalance } = usePledgeBalance();
+  const [intent, setIntent] = useState<PledgeIntent | null>(null);
+  const signedIn = Boolean(user);
 
-  // Get event name from URL params
-  const eventName = searchParams.get('event') || undefined;
-
-  const handlePledgeSubmit = async (formData: PledgeFormData) => {
+  const handlePledgeSubmit = async (formData: { amount: string; notes?: string }) => {
     try {
       setLoading(true);
       setError(null);
 
+      const idToken = await firebaseUser?.getIdToken();
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/pledges`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`
         },
         body: JSON.stringify({
-          ...formData,
           amount: parseFloat(formData.amount),
-        }),
+          notes: formData.notes,
+          // The server requires these and prefills them from the member record
+          // it resolves from the token; sending the profile's values keeps the
+          // pledge's contact snapshot accurate.
+          first_name: currentUser?.first_name || currentUser?.firstName || '',
+          last_name: currentUser?.last_name || currentUser?.lastName || ''
+        })
       });
 
       const data = await response.json();
-
       if (data.success) {
         setSuccess(true);
-        // Auto-redirect after success
         setTimeout(() => {
           navigate('/thank-you', { state: { pledgeId: data.pledge.id } });
         }, 2000);
@@ -78,7 +73,7 @@ const PledgePage: React.FC = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h2>
             <p className="text-gray-600">
-              Your pledge has been recorded successfully. You will receive a confirmation email shortly with payment instructions.
+              {t('pledge.success.body')}
             </p>
           </div>
           <div className="text-sm text-gray-500">
@@ -159,11 +154,37 @@ const PledgePage: React.FC = () => {
                 </p>
               </div>
 
-              <PledgeForm
-                onSubmit={handlePledgeSubmit}
-                loading={loading}
-                eventName={eventName}
-              />
+              {/* An existing outstanding pledge means the member came back to PAY, not to
+                  promise again. Offering a new pledge here is how a campaign ends up
+                  double-counting one person's promise. */}
+              {signedIn && pledgeBalance && pledgeBalance.remaining_amount > 0 ? (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="font-semibold text-gray-900">{t('pledge.existing.title')}</h3>
+                  <p className="text-gray-600 mt-1">
+                    {t('pledge.existing.body')
+                      .replace('{remaining}', `$${pledgeBalance.remaining_amount.toLocaleString()}`)
+                      .replace('{campaign}', pledgeBalance.campaign_name)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/donate')}
+                    className="mt-4 rounded-md bg-primary-600 px-4 py-2 text-white font-medium"
+                  >
+                    {t('pledge.existing.payNow')}
+                  </button>
+                </div>
+              ) : intent === null ? (
+                <PledgeIntentSelector
+                  signedIn={signedIn}
+                  onChoose={setIntent}
+                  onSignIn={() => navigate('/login')}
+                />
+              ) : intent === 'later' ? (
+                <PledgeLaterForm onSubmit={handlePledgeSubmit} loading={loading} />
+              ) : (
+                /* Filled in by Task 10 */
+                <div />
+              )}
             </div>
 
             {/* Pledge Tracker */}

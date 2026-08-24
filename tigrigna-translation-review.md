@@ -587,3 +587,30 @@ non-native speaker.
 | duesPage.pledgeBannerCta | Pay toward my pledge | ናብ መብጽዓይ ክኸፍል | ⚠️ confirm this works as a button label |
 | fundraising.activePledge | Active pledge: {pledged} — {remaining} remaining | ንጡፍ መብጽዓ፦ {pledged} — {remaining} ተሪፉ | ⚠️ treasurer-facing; confirm the dash construction is idiomatic |
 | fundraising.overBy | over by {amount} | ብ{amount} ኣሕሊፉ | ⚠️ confirm this conveys "paid more than pledged" and not "overdue" |
+
+## Pledge intent chooser (Aug 2026)
+
+New `pledge.intent.*`, `pledge.existing.*`, `pledge.success.body`,
+`pledgeForm.amountLabel`/`notesLabel`, and `common.submitting` keys. All are
+seen by visitors and members on the `/pledge` page: the three-way "pledge for
+later / pledge and pay now / give anonymously" chooser, the "you already have
+a pledge, pay now" panel shown to a returning member, and the pledge-for-later
+form. Drafts by a non-native speaker.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| pledge.intent.later.title | Pledge for later | ንደሓር መብጽዓ | ⚠️ confirm this reads as a button label ("pledge for later") rather than a heading |
+| pledge.intent.later.body | Make a pledge now and pay it when you are ready. | ሕጂ መብጽዓ ግበሩ፡ ምስ ተዳለኹም ድማ ክፈሉ። | ⚠️ confirm tone matches the other body lines in this section |
+| pledge.intent.immediate.title | Pledge and pay now | መብጽዓን ክፍሊትን ሕጂ | ⚠️ literally "pledge-and-payment now"; confirm this reads naturally as a button label |
+| pledge.intent.immediate.body | Make your pledge and pay it in full in one step. | መብጽዓኹም ግበሩ እሞ ብሓደ ግዜ ምሉእ ብምሉእ ክፈሉ። | ⚠️ confirm "ብሓደ ግዜ" carries "in one step" rather than "at the same time" |
+| pledge.intent.anonymous.title | Give anonymously now | ስም ብዘይምግላጽ ሕጂ ውፈዩ | ⚠️ confirm "ውፈዩ" (donate) reads right here rather than "ለግሱ" (give) used elsewhere |
+| pledge.intent.anonymous.body | Give without your name appearing. Paid in full today; the church records a church name for its records only. | ስምኩም ከይተጠቕሰ ውፈዩ። ሎሚ ምሉእ ብምሉእ ይኽፈል፤ ቤተ ክርስቲያን ግና ንመዝገባ ጥራይ ስም ትጥቀም። | ⚠️ confirm "ንመዝገባ ጥራይ ስም ትጥቀም" clearly conveys "records a church name for internal records only", not that the giver's real name is recorded |
+| pledge.intent.signIn.title | Sign in to pledge | ንመብጽዓ እተዉ | ⚠️ confirm this reads as "sign in [in order] to pledge" and not as a command to enter a pledge |
+| pledge.intent.signIn.body | A pledge for later needs an account so we can credit your payments to it. | ንደሓር ዝግበር መብጽዓ ኣካውንት የድልዮ፡ ክፍሊትኩም ናብኡ ምእንቲ ክንውስኾ። | ⚠️ confirm "ክንውስኾ" (add to it/credit it) is the right verb for crediting a payment against a pledge |
+| pledge.existing.title | You already have a pledge | ድሮ መብጽዓ ኣለኩም | ⚠️ confirm tone (matter-of-fact vs. reminder) is appropriate |
+| pledge.existing.body | {remaining} remaining on your {campaign} pledge. | ካብ መብጽዓኹም ናይ {campaign} {remaining} ተሪፉ ኣሎ። | ⚠️ same placeholder-order question as `donatePage.pledgeRemaining`/`duesPage.pledgeBannerBody` above ({campaign} before the amount); confirm it still reads naturally here |
+| pledge.existing.payNow | Pay now | ሕጂ ክፈሉ | ⚠️ confirm this works as a short button label |
+| pledge.success.body | Your pledge has been recorded. Thank you. | መብጽዓኹም ተመዝጊቡ ኣሎ። የቐንየልና። | ⚠️ confirm this doesn't read as implying an email or other follow-up is coming — it deliberately does not promise one |
+| pledgeForm.amountLabel | Pledge Amount * | መጠን ቃል ኪዳን * | reuses the existing `pledgeForm.amount` draft verbatim, already listed above |
+| pledgeForm.notesLabel | Notes (optional) | መዘኻኸሪ (ኣማራጺ) | reuses the existing `pledgeForm.notes` draft verbatim, already listed above |
+| common.submitting | Submitting… | የቐርብ ኣሎ... | ⚠️ confirm this reads as "being submitted" and not "being brought closer" |
