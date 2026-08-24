@@ -229,7 +229,11 @@ async function maybeAllocateToPledge(txn, { source, allocatedBy = null }, { tran
       campaign_id: campaign.id,
       member_id: txn.member_id,
       lifecycle: 'active',
-      is_historical: false
+      is_historical: false,
+      // A member may hold one outstanding 'later' pledge plus any number of
+      // already-paid 'immediate' gifts. Only the former can still receive
+      // money, and the narrowed unique index guarantees there is at most one.
+      fulfillment_intent: 'later'
     },
     ...options
   });
@@ -285,7 +289,8 @@ async function listUnallocated({ campaignId, paymentType = null, limit = 100 }) 
       const suggestion = await Pledge.findOne({
         where: {
           campaign_id: campaignId, member_id: txn.member_id,
-          lifecycle: 'active', is_historical: false
+          lifecycle: 'active', is_historical: false,
+          fulfillment_intent: 'later'
         },
         attributes: ['id']
       });

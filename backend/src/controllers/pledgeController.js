@@ -38,7 +38,8 @@ const getPledgeBalance = async (req, res) => {
         campaign_id: campaign.id,
         member_id: targetId,
         lifecycle: 'active',
-        is_historical: false
+        is_historical: false,
+        fulfillment_intent: 'later'
       }
     });
     if (!pledge) return res.status(200).json({ success: true, pledge: null });
