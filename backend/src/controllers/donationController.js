@@ -13,11 +13,13 @@ try {
   stripe = null;
 }
 
-const { Donation, Member, Transaction, LedgerEntry, IncomeCategory } = require('../models');
+const { Donation, Member, Transaction, LedgerEntry, IncomeCategory, sequelize } = require('../models');
 const { validationResult } = require('express-validator');
 const { parseFullName } = require('../../utils/nameParser');
 const { maybeAllocateToPledge } = require('../services/pledgeAllocationService');
 const { buildDonorNote } = require('../utils/donorNote');
+const { findLiveCampaign } = require('../services/pledgeCampaignService');
+const { createPledgeWithPayment } = require('../services/pledgeFulfillmentService');
 
 // Create payment intent for donation
 const createPaymentIntent = async (req, res) => {
@@ -116,6 +118,29 @@ const createPaymentIntent = async (req, res) => {
       }
     } catch (memberErr) {
       console.warn('⚠️ Member lookup failed while creating payment intent:', memberErr.message);
+    }
+
+    // Validate a pledge-and-pay checkout BEFORE any Stripe call. Everything
+    // else about this flow happens after the money is taken, so this is the
+    // last point at which a bad request costs nothing.
+    if (metadata.purpose === 'pledge_drive' && metadata.pledgeIntent === 'immediate') {
+      const liveCampaign = await findLiveCampaign();
+      if (!liveCampaign) {
+        return res.status(400).json({
+          success: false,
+          message: 'Pledges are not currently being accepted'
+        });
+      }
+      if (String(metadata.isAnonymous) === 'true' && !String(metadata.baptismName || '').trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'A baptism or church name is required for an anonymous contribution'
+        });
+      }
+      // Pin the campaign so a drive that closes between checkout and webhook
+      // still credits the pledge it was given to. We have already taken the
+      // money by then; dropping the allocation would be the worse outcome.
+      metadata.campaignId = String(liveCampaign.id);
     }
 
     // Create payment intent with Stripe
@@ -526,13 +551,46 @@ const handlePaymentSucceeded = async (paymentIntent) => {
       donation_id: (await Donation.findOne({ where: { stripe_payment_intent_id: paymentIntent.id } }))?.id || null
     });
 
-    // Same rule as the treasurer path — see pledgeAllocationService. Errors are
-    // swallowed on purpose: a webhook must acknowledge the payment even if the
-    // pledge link fails, or Stripe retries forever against money we already hold.
-    try {
-      await maybeAllocateToPledge(transaction, { source: 'stripe_auto' });
-    } catch (err) {
-      console.error('⚠️ Pledge allocation failed for transaction', transaction.id, err.message);
+    // A pledge-and-pay checkout: the pledge is created only now, because the
+    // money succeeded. Nothing was written at checkout time, so an abandoned
+    // payment leaves no orphan pledge inflating the campaign totals.
+    //
+    // Swallowed on failure for the same reason maybeAllocateToPledge is:
+    // recording money always wins. A payment with no pledge is recoverable by
+    // a treasurer; a webhook that keeps failing is not.
+    let pledgeCreated = false;
+    if (md.pledgeIntent === 'immediate') {
+      try {
+        await sequelize.transaction(async (t) => {
+          await createPledgeWithPayment({
+            campaignId: md.campaignId,
+            amount,
+            transactionId: transaction.id,
+            memberId,
+            firstName: md.donor_first_name || md.baptismName || 'Anonymous',
+            lastName: md.donor_last_name || 'Giver',
+            email: md.donor_email || null,
+            phone: md.donor_phone || null,
+            baptismName: md.baptismName || null,
+            isAnonymous: String(md.isAnonymous) === 'true',
+            source: 'stripe_auto'
+          }, { transaction: t });
+        });
+        pledgeCreated = true;
+      } catch (err) {
+        console.error('⚠️ Pledge-and-pay pledge creation failed for transaction',
+          transaction.id, err.message);
+      }
+    }
+
+    // Skipped when the pledge-and-pay path already allocated this payment —
+    // otherwise the same money would be credited twice, to two pledges.
+    if (!pledgeCreated) {
+      try {
+        await maybeAllocateToPledge(transaction, { source: 'stripe_auto' });
+      } catch (err) {
+        console.error('⚠️ Pledge allocation failed for transaction', transaction.id, err.message);
+      }
     }
 
     // Create corresponding ledger entry
