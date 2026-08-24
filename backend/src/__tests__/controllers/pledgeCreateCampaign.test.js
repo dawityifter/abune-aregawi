@@ -2,7 +2,7 @@
 process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'sqlite::memory:';
 
-const { sequelize, PledgeCampaign, Pledge } = require('../../models');
+const { sequelize, PledgeCampaign, Pledge, Member } = require('../../models');
 const { createPledge } = require('../../controllers/pledgeController');
 const { todayInChurchTz } = require('../../services/pledgeCampaignService');
 
@@ -18,7 +18,30 @@ const body = (overrides = {}) => ({
   amount: 250, first_name: 'Test', last_name: 'Donor', ...overrides
 });
 
-beforeAll(async () => { await sequelize.sync({ force: true }); });
+// createPledge now runs only behind firebaseAuthMiddleware, which guarantees
+// req.user. A bare { body, ip } request can no longer reach it, so the mock
+// below carries the member the middleware would have resolved from the
+// token. Not truncated by afterEach (only Pledge/PledgeCampaign are), so one
+// member fixture serves all three tests.
+let pledger;
+const mockReq = (overrides = {}) => ({
+  body: body(overrides),
+  ip: '127.0.0.1',
+  user: { id: pledger.id, member_id: pledger.id, roles: ['member'] }
+});
+
+beforeAll(async () => {
+  await sequelize.sync({ force: true });
+  pledger = await Member.create({
+    first_name: 'Test',
+    last_name: 'Pledger',
+    phone_number: '+15550001234',
+    email: 'test-pledger@example.test',
+    is_active: true,
+    role: 'member',
+    firebase_uid: 'uid-campaign-binding-pledger'
+  });
+});
 afterEach(async () => {
   await Pledge.destroy({ where: {}, truncate: true, cascade: true });
   await PledgeCampaign.destroy({ where: {}, truncate: true, cascade: true });
@@ -33,7 +56,7 @@ describe('POST /api/pledges campaign binding', () => {
     });
 
     const res = mockRes();
-    await createPledge({ body: body(), ip: '127.0.0.1' }, res);
+    await createPledge(mockReq(), res);
 
     expect(res.statusCode).toBe(201);
     const stored = await Pledge.findByPk(res.payload.pledge.id);
@@ -51,7 +74,7 @@ describe('POST /api/pledges campaign binding', () => {
     });
 
     const res = mockRes();
-    await createPledge({ body: body({ campaign_id: draft.id }), ip: '127.0.0.1' }, res);
+    await createPledge(mockReq({ campaign_id: draft.id }), res);
 
     const stored = await Pledge.findByPk(res.payload.pledge.id);
     expect(String(stored.campaign_id)).toBe(String(live.id));
@@ -64,7 +87,7 @@ describe('POST /api/pledges campaign binding', () => {
     });
 
     const res = mockRes();
-    await createPledge({ body: body(), ip: '127.0.0.1' }, res);
+    await createPledge(mockReq(), res);
 
     expect(res.statusCode).toBe(503);
     expect(await Pledge.count()).toBe(0);

@@ -6,6 +6,10 @@ const { findLiveCampaign } = require('../services/pledgeCampaignService');
 const BALANCE_VIEW_ROLES = ['admin', 'treasurer', 'church_leadership', 'secretary',
   'bookkeeper', 'auditor', 'budget_committee', 'ar_team', 'ap_team'];
 
+// Who may create a pledge on someone else's behalf (a treasurer taking a
+// pledge card at an event, say).
+const PLEDGE_ON_BEHALF_ROLES = ['admin', 'treasurer'];
+
 /**
  * The member's pledge in the live campaign, with balances from
  * pledge_balances. Serves two callers with one payload: a member reading their
@@ -81,6 +85,15 @@ const createPledge = async (req, res) => {
       });
     }
 
+    // A pledge for future fulfillment can never be anonymous — the church would
+    // have no way to collect on it. Anonymity requires paying at the same time.
+    if (req.body.is_anonymous) {
+      return res.status(400).json({
+        success: false,
+        message: 'An anonymous contribution must be pledged and paid at the same time.'
+      });
+    }
+
     const {
       amount,
       currency = 'usd',
@@ -105,20 +118,15 @@ const createPledge = async (req, res) => {
       });
     }
 
-    // Try to find existing member by email or phone
-    let linkedMember = null;
-    try {
-      if (email) {
-        linkedMember = await Member.findOne({ where: { email: email } });
-      }
-      if (!linkedMember && phone) {
-        // Ensure phone starts with + for E.164
-        const normalizedPhone = phone.startsWith('+') ? phone : `+${phone}`;
-        linkedMember = await Member.findOne({ where: { phone_number: normalizedPhone } });
-      }
-    } catch (memberErr) {
-      console.warn('⚠️ Member lookup failed while creating pledge:', memberErr.message);
-    }
+    // The caller IS the pledger, unless a privileged caller names someone else.
+    // Note that PledgeForm has always sent member_id and createPledge has always
+    // ignored it, silently overriding an admin's explicit choice with a guess.
+    // This is the first time that parameter means anything.
+    const callerRoles = req.user.roles || [];
+    const canPledgeOnBehalf = callerRoles.some((r) => PLEDGE_ON_BEHALF_ROLES.includes(r));
+    const linkedMemberId = (canPledgeOnBehalf && req.body.member_id)
+      ? req.body.member_id
+      : req.user.member_id;
 
     // Pledges bind to the campaign that is live right now — active AND inside
     // its date window. Resolved server-side and any client-supplied
@@ -135,7 +143,7 @@ const createPledge = async (req, res) => {
 
     // Create pledge record
     const pledge = await Pledge.create({
-      member_id: linkedMember ? linkedMember.id : null,
+      member_id: linkedMemberId,
       campaign_id: liveCampaign.id,
       amount,
       currency,
@@ -149,10 +157,10 @@ const createPledge = async (req, res) => {
       address,
       zip_code,
       notes,
+      fulfillment_intent: 'later',
       metadata: {
         ...metadata,
-        // Link to member when possible
-        linkedMemberId: linkedMember ? linkedMember.id : null,
+        linkedMemberId,
         source: metadata.source || 'website'
       }
     });

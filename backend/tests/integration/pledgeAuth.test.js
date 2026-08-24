@@ -20,8 +20,8 @@ describe('Pledge route authorization', () => {
     await PledgeCampaign.destroy({ where: {} });
     await Member.destroy({ where: {} });
 
-    // Must be live (active AND inside its date window) for anonymous pledge
-    // creation to be accepted — see services/pledgeCampaignService.
+    // Must be live (active AND inside its date window) for pledge creation to
+    // be accepted — see services/pledgeCampaignService.
     campaign = await PledgeCampaign.create({
       slug: '2026-pledge-drive', name: '2026 Pledge Drive', status: 'active',
       start_date: '2026-01-01', end_date: null
@@ -78,14 +78,14 @@ describe('Pledge route authorization', () => {
     expect(res.body.success).toBe(true);
   });
 
-  it('still allows an unauthenticated visitor to create a pledge', async () => {
+  it('rejects an unauthenticated visitor creating a pledge', async () => {
     const res = await request(app).post('/api/pledges').send({
       amount: 250,
       first_name: 'Visitor',
       last_name: 'Guest',
       email: 'visitor@example.com'
     });
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(401);
   });
 
   it('rejects a status/legacy_status field on update — lifecycle is the only mutable state', async () => {

@@ -64,8 +64,13 @@ const statsAuthGate = (req, res, next) => {
     err ? next(err) : roleMiddleware(viewRoles)(req, res, next));
 };
 
-// PUBLIC: visitors pledge at events. Rate-limited by the global /api/ limiter.
-router.post('/', validatePledge, pledgeController.createPledge);
+// AUTHENTICATED. A pledge for future fulfillment must be attributable, because
+// member_id is what every downstream path keys on: automatic allocation, the
+// member's own balance, the Donate "apply to my pledge" option, and the Dues
+// banner all go dark when it is null. It used to be inferred from an email or
+// phone string match, which is a guess. Now it comes from the token.
+// Anonymous giving has its own path — it requires payment at the same time.
+router.post('/', firebaseAuthMiddleware, validatePledge, pledgeController.createPledge);
 
 router.get('/', firebaseAuthMiddleware, roleMiddleware(viewRoles), pledgeController.getAllPledges);
 
