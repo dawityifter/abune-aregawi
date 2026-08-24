@@ -39,6 +39,7 @@ const getPledgeBalance = async (req, res) => {
         member_id: targetId,
         lifecycle: 'active',
         is_historical: false,
+        // Only 'later' pledges are outstanding; 'immediate' pledges are already paid.
         fulfillment_intent: 'later'
       }
     });

@@ -221,18 +221,16 @@ async function maybeAllocateToPledge(txn, { source, allocatedBy = null }, { tran
   const campaign = await findLiveCampaign();
   if (!campaign) return null;
 
-  // At most one row can match: a unique index permits one active,
-  // non-historical pledge per member per campaign, so there is never a
-  // question of which pledge is meant.
+  // A member may hold one outstanding 'later' pledge plus any number of
+  // already-paid 'immediate' gifts. Only the former can still receive money.
+  // The unique index enforces at most one active, non-historical 'later' pledge
+  // per member per campaign, so the filter guarantees exactly zero or one row.
   const pledge = await Pledge.findOne({
     where: {
       campaign_id: campaign.id,
       member_id: txn.member_id,
       lifecycle: 'active',
       is_historical: false,
-      // A member may hold one outstanding 'later' pledge plus any number of
-      // already-paid 'immediate' gifts. Only the former can still receive
-      // money, and the narrowed unique index guarantees there is at most one.
       fulfillment_intent: 'later'
     },
     ...options
@@ -282,14 +280,16 @@ async function listUnallocated({ campaignId, paymentType = null, limit = 100 }) 
     const unallocated = parseFloat(txn.amount) - allocated;
     if (unallocated <= 1e-9) continue;
 
-    // Deterministic because of the one-active-pledge-per-member-per-campaign
-    // index — a suggestion, never applied without a click.
+    // Deterministic suggestion: the unique index guarantees at most one active,
+    // non-historical 'later' pledge per member per campaign. Never applied without
+    // a click — the treasurer may choose a different allocation.
     let suggestedPledgeId = null;
     if (txn.member_id) {
       const suggestion = await Pledge.findOne({
         where: {
           campaign_id: campaignId, member_id: txn.member_id,
           lifecycle: 'active', is_historical: false,
+          // Only 'later' pledges can receive new money; see maybeAllocateToPledge.
           fulfillment_intent: 'later'
         },
         attributes: ['id']
