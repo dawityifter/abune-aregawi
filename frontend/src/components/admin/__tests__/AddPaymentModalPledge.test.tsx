@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { I18nProvider } from '../../../i18n/I18nProvider';
 import { LanguageProvider } from '../../../contexts/LanguageContext';
@@ -117,5 +117,40 @@ describe('AddPaymentModal pledge support', () => {
 
     await waitFor(() => expect(mockFetchBalance).toHaveBeenCalled());
     expect(screen.queryByText(/active pledge/i)).not.toBeInTheDocument();
+  });
+
+  it('offers to record a pledge for a pledge_drive payment', async () => {
+    renderModal();
+
+    fireEvent.change(screen.getByLabelText(/payment type/i), {
+      target: { value: 'pledge_drive' }
+    });
+
+    expect(await screen.findByLabelText(/also record this as a pledge/i)).toBeInTheDocument();
+  });
+
+  it('does not offer it for other payment types', async () => {
+    renderModal();
+
+    fireEvent.change(screen.getByLabelText(/payment type/i), {
+      target: { value: 'donation' }
+    });
+
+    // Give any pending state updates a chance to flush before asserting absence,
+    // so this isn't just checking a render that hasn't happened yet.
+    await waitFor(() => expect(screen.getByLabelText(/payment type/i)).toHaveValue('donation'));
+    expect(screen.queryByLabelText(/also record this as a pledge/i)).not.toBeInTheDocument();
+  });
+
+  it('labels the donor name as a baptism name for an anonymous pledge', async () => {
+    renderModal();
+
+    fireEvent.click(screen.getByLabelText(/anonymous \/ non-member payment/i));
+    fireEvent.change(screen.getByLabelText(/payment type/i), {
+      target: { value: 'pledge_drive' }
+    });
+    fireEvent.click(await screen.findByLabelText(/also record this as a pledge/i));
+
+    expect(screen.getByLabelText(/baptism or church name/i)).toBeInTheDocument();
   });
 });

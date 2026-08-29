@@ -178,6 +178,10 @@ export interface Dictionaries {
     noCampaigns: string;
     activePledge: string;
     overBy: string;
+    alsoRecordPledge: string;
+    pledgeAmountLabel: string;
+    baptismNameLabel: string;
+    anonymousPaidInFull: string;
   };
 
   dashboard: {
@@ -1981,7 +1985,11 @@ export const en: Dictionaries = {
     endBeforeStart: "The end date must be on or after the start date.",
     noCampaigns: "No campaigns yet. Create one to start a drive.",
     activePledge: "Active pledge: {pledged} — {remaining} remaining",
-    overBy: "over by {amount}"
+    overBy: "over by {amount}",
+    alsoRecordPledge: "Also record this as a pledge",
+    pledgeAmountLabel: "Pledge amount",
+    baptismNameLabel: "Baptism or church name",
+    anonymousPaidInFull: "An anonymous pledge must be paid in full, so this must equal the payment amount."
   },
 
 
@@ -4086,7 +4094,11 @@ export const ti: Dictionaries = {
     endBeforeStart: "መወዳእታ ዕለት ካብ መጀመሪ ዕለት ንድሕሪት ክኸውን የብሉን።",
     noCampaigns: "ጌና መደባት የለዉን። ንምጅማር ሓደ ፍጠሩ።",
     activePledge: "ንጡፍ መብጽዓ፦ {pledged} — {remaining} ተሪፉ",
-    overBy: "ብ{amount} ኣሕሊፉ"
+    overBy: "ብ{amount} ኣሕሊፉ",
+    alsoRecordPledge: "እዚ እውን ከም መብጽዓ መዝግቦ",
+    pledgeAmountLabel: "መጠን ቃል ኪዳን",
+    baptismNameLabel: "ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም",
+    anonymousPaidInFull: "ስም ብዘይምግላጽ ዝግበር መብጽዓ ምሉእ ብምሉእ ክኽፈል ኣለዎ፣ ስለዚ እዚ ምስቲ መጠን ክፍሊት ማዕረ ክኸውን ኣለዎ።"
   },
 
 

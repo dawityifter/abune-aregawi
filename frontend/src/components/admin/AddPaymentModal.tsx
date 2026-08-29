@@ -73,6 +73,12 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   const [incomeCategoriesLoading, setIncomeCategoriesLoading] = useState(false);
   const [pledgeBalance, setPledgeBalance] = useState<PledgeBalance | null>(null);
 
+  // A pledge_drive payment from someone with no pledge is just drive income —
+  // correct, but it never appears in total_pledged, pledge_count, or the donor
+  // list. Ticking this records the promise alongside the money.
+  const [alsoRecordPledge, setAlsoRecordPledge] = useState(false);
+  const [pledgeAmount, setPledgeAmount] = useState('');
+
   // Amount input helpers (currency-like)
   const amountPattern = useMemo(() => /^[0-9]*([.][0-9]{0,2})?$/, []);
   const handleAmountChange = (value: string) => {
@@ -330,6 +336,45 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
             return;
           }
           await processStripePayment();
+          return;
+        }
+
+        // One endpoint creates the pledge, the payment, the ledger entry and
+        // the allocation in a single DB transaction, so a payment can never
+        // exist with a failed allocation. Do not create the pledge with a
+        // second request.
+        if (paymentType === 'pledge_drive' && alsoRecordPledge) {
+          const selectedMember = members.find(m => String(m.id) === String(selectedMemberId));
+          const pledgeResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/pledges/with-payment`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${await firebaseUser?.getIdToken()}`
+            },
+            body: JSON.stringify({
+              pledge_amount: parseFloat(pledgeAmount),
+              amount: parseFloat(amount),
+              payment_date: paymentDate,
+              payment_method: paymentMethod,
+              receipt_number: receiptNumber || null,
+              note: notes || null,
+              member_id: isAnonymous ? null : parseInt(selectedMemberId),
+              first_name: isAnonymous ? (donorName || 'Anonymous') : selectedMember?.firstName,
+              last_name: isAnonymous ? 'Giver' : selectedMember?.lastName,
+              baptism_name: isAnonymous ? donorName : null,
+              is_anonymous: isAnonymous
+            })
+          });
+
+          const pledgeData = await pledgeResponse.json();
+          if (!pledgeResponse.ok || !pledgeData.success) {
+            setError(pledgeData.message || 'Failed to record the pledge');
+            setLoading(false);
+            return;
+          }
+          try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch { }
+          onPaymentAdded();
+          onClose();
           return;
         }
 
@@ -692,10 +737,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="payment-type-select" className="block text-sm font-medium text-gray-700 mb-2">
                     Payment Type
                   </label>
                   <select
+                    id="payment-type-select"
                     value={paymentType}
                     onChange={(e) => setPaymentType(e.target.value)}
                     required
@@ -715,6 +761,50 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                         remaining: `$${pledgeBalance.remaining_amount.toLocaleString()}`
                       })}
                     </p>
+                  )}
+
+                  {paymentType === 'pledge_drive' && (
+                    <div className="mt-3 rounded-md bg-gray-50 p-3">
+                      <label htmlFor="also-record-pledge" className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          id="also-record-pledge" type="checkbox" checked={alsoRecordPledge}
+                          onChange={(e) => setAlsoRecordPledge(e.target.checked)}
+                          className="mt-1"
+                        />
+                        <span className="text-sm text-gray-700">{t('fundraising.alsoRecordPledge')}</span>
+                      </label>
+
+                      {alsoRecordPledge && (
+                        <div className="mt-3 space-y-3">
+                          <div>
+                            <label htmlFor="pledge-amount-field" className="block text-sm font-medium text-gray-700">
+                              {t('fundraising.pledgeAmountLabel')}
+                            </label>
+                            <input
+                              id="pledge-amount-field" type="number" min="1" step="0.01" value={pledgeAmount}
+                              onChange={(e) => setPledgeAmount(e.target.value)}
+                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                            />
+                            {isAnonymous && (
+                              <p className="mt-1 text-xs text-gray-500">{t('fundraising.anonymousPaidInFull')}</p>
+                            )}
+                          </div>
+
+                          {isAnonymous && (
+                            <div>
+                              <label htmlFor="pledge-baptism-name" className="block text-sm font-medium text-gray-700">
+                                {t('fundraising.baptismNameLabel')}
+                              </label>
+                              <input
+                                id="pledge-baptism-name" type="text" value={donorName}
+                                onChange={(e) => setDonorName(e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 

@@ -631,3 +631,18 @@ fields. Drafts by a non-native speaker.
 | pledge.anonymous.baptismNameHelp | Kept for church records only. Your gift is reported as anonymous. | ንመዝገብ ቤተ ክርስቲያን ጥራይ ይቕመጥ። ውህበትኩም ከም ስም ብዘይምግላጽ ይምዝገብ። | ⚠️ confirm this clearly conveys "kept internally, reported to others as anonymous" and not that the name itself is hidden from the church |
 | pledge.anonymous.contactLabel | Phone or email (optional) | ስልኪ ወይ ኢመይል (ኣማራጺ) | reuses existing `ስልኪ`/`ኢመይል` terms |
 | pledge.anonymous.errors.baptismNameRequired | A baptism or church name is required. | ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም የድሊ። | ⚠️ confirm this reads as a form validation error, matching the tone of `pledgeForm.errors.*` above |
+
+## Treasurer walk-up pledge (Aug 2026)
+
+New `fundraising.alsoRecordPledge`, `fundraising.pledgeAmountLabel`,
+`fundraising.baptismNameLabel`, and `fundraising.anonymousPaidInFull` keys,
+added to `AddPaymentModal` so a treasurer recording a cash/cheque gift at an
+event can also create the pledge behind a `pledge_drive` payment in one step.
+All four are treasurer-facing only. Drafts by a non-native speaker.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| fundraising.alsoRecordPledge | Also record this as a pledge | እዚ እውን ከም መብጽዓ መዝግቦ | ⚠️ imperative checkbox label ("record this too as a pledge"); confirm the register matches other admin toggle labels rather than reading as a command |
+| fundraising.pledgeAmountLabel | Pledge amount | መጠን ቃል ኪዳን | reuses the existing `pledgeForm.amountLabel` draft's `መጠን ቃል ኪዳን` (pledge amount) term verbatim, without its `*` |
+| fundraising.baptismNameLabel | Baptism or church name | ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም | reuses the existing `pledge.anonymous.baptismNameLabel` draft verbatim, without its `*` |
+| fundraising.anonymousPaidInFull | An anonymous pledge must be paid in full, so this must equal the payment amount. | ስም ብዘይምግላጽ ዝግበር መብጽዓ ምሉእ ብምሉእ ክኽፈል ኣለዎ፣ ስለዚ እዚ ምስቲ መጠን ክፍሊት ማዕረ ክኸውን ኣለዎ። | ⚠️ confirm this reads as an explanatory helper note under the amount field, not as a stern warning |
