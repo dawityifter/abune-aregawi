@@ -24,7 +24,11 @@ const STATUS_BY_CODE = {
   REASON_REQUIRED: 422,
   ALREADY_REVERSED: 422,
   REVERSAL_TOO_LARGE: 422,
-  INVALID_AMOUNT: 422
+  INVALID_AMOUNT: 422,
+  // A required field the caller simply did not send. Distinct from
+  // INVALID_AMOUNT so the client can tell "you left something out" from
+  // "the number you gave is wrong".
+  MISSING_FIELD: 422
 };
 
 const sendError = (res, err) => {
@@ -35,6 +39,17 @@ const sendError = (res, err) => {
   // transactionService.js validation failures (e.g. cash payment missing a
   // receipt number) throw TransactionServiceError with a real statusCode;
   // honor it instead of collapsing every non-AllocationError into a 500.
+  // pledges_one_active_per_member_per_campaign. Reachable from
+  // /with-payment now that a part-paid NAMED pledge is recorded as 'later':
+  // the member may already hold an outstanding pledge in this drive. That is a
+  // business rule with a plain answer, not an internal error.
+  if (err && err.name === 'SequelizeUniqueConstraintError') {
+    return res.status(409).json({
+      success: false,
+      code: 'DUPLICATE_PLEDGE',
+      message: 'This member already has an outstanding pledge in this drive. Record the payment against it instead.'
+    });
+  }
   if (err && err.name === 'TransactionServiceError') {
     return res.status(err.statusCode || 400)
       .json({ success: false, code: 'VALIDATION_ERROR', message: err.message });
@@ -133,6 +148,19 @@ const createPledgeWithPaymentHandler = async (req, res) => {
     const memberId = req.body.member_id || null;
     const baseNote = req.body.note || null;
 
+    // Pledge.first_name/last_name are allowNull: false. Without this the
+    // request dies as a SequelizeValidationError that sendError renders as a
+    // bare 500 "Allocation failed", which tells a treasurer nothing. It is the
+    // shape AddPaymentModal produces when "also record this as a pledge" is
+    // ticked for a named gift with no member selected: the undefined keys are
+    // dropped by JSON.stringify, so the request looks superficially valid.
+    const firstName = String(req.body.first_name || '').trim();
+    const lastName = String(req.body.last_name || '').trim();
+    if (!firstName || !lastName) {
+      throw new AllocationError('MISSING_FIELD',
+        'A pledge needs a first and last name: select a member, or mark the gift anonymous and give a baptism or church name');
+    }
+
     const txn = await createTransactionRecord({
       member_id: memberId,
       collected_by: req.user.id,
@@ -144,11 +172,11 @@ const createPledgeWithPaymentHandler = async (req, res) => {
       note: memberId
         ? baseNote
         : buildDonorNote(baseNote, {
-            donor_name: baptismName || `${req.body.first_name} ${req.body.last_name}`,
+            donor_name: baptismName || `${firstName} ${lastName}`,
             donor_email: req.body.email || null,
             donor_phone: req.body.phone || null
           }),
-      donor_name: memberId ? null : (baptismName || `${req.body.first_name} ${req.body.last_name}`),
+      donor_name: memberId ? null : (baptismName || `${firstName} ${lastName}`),
       // This request creates the pledge itself a moment from now, so there is
       // nothing for the automatic rule to infer and it must not guess.
       skip_pledge_auto_allocation: true
@@ -160,8 +188,8 @@ const createPledgeWithPaymentHandler = async (req, res) => {
       paymentAmount,
       transactionId: txn.id,
       memberId,
-      firstName: req.body.first_name,
-      lastName: req.body.last_name,
+      firstName,
+      lastName,
       email: req.body.email || null,
       phone: req.body.phone || null,
       baptismName,

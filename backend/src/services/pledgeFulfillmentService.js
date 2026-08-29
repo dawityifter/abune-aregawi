@@ -46,9 +46,22 @@ async function createPledgeWithPayment({
     phone,
     baptism_name: baptismName,
     is_anonymous: isAnonymous,
-    // Always 'immediate' here by definition: this function exists precisely for
-    // the case where the money arrives with the pledge.
-    fulfillment_intent: 'immediate',
+    // 'immediate' when the money that arrived covers the pledge, which is the
+    // ordinary case this function exists for.
+    //
+    // A NAMED pledge part-paid at an event (§5.5: "simply leaves a balance")
+    // is the exception. Task 3 narrowed maybeAllocateToPledge, getPledgeBalance
+    // and listUnallocated to fulfillment_intent: 'later', so an 'immediate'
+    // pledge carrying an outstanding balance would be invisible to every one
+    // of them: no automatic allocation, nothing on the member's /pledge page
+    // or Dues banner, and never suggested to a treasurer. §6.2's premise —
+    // "a fully paid immediate pledge must never be an allocation target" —
+    // holds only for a fully paid one.
+    //
+    // An anonymous pledge is always paid in full (D4, enforced by the
+    // endpoint), so it never takes this branch and never becomes 'later' —
+    // which the anonymousMustBeImmediate CHECK forbids outright.
+    fulfillment_intent: (!isAnonymous && paymentAmount < amount) ? 'later' : 'immediate',
     notes
   }, { transaction });
 
