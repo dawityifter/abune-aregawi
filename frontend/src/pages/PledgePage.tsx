@@ -22,6 +22,16 @@ const PledgePage: React.FC = () => {
   const [intent, setIntent] = useState<PledgeIntent | null>(null);
   const signedIn = Boolean(user);
 
+  // Spec §5.1's rule is EXISTENCE, not outstanding balance: a member already
+  // holding an active 'later' pledge in this drive is not offered another one.
+  // usePledgeBalance already returns null when there is no such pledge, so its
+  // presence is the whole test. Keying on `remaining_amount > 0` (as this did)
+  // let a member who had paid in full — or overpaid, giving a negative — back
+  // into the intent chooser, where POST /api/pledges then hit the
+  // one-active-pledge unique index.
+  const hasExistingPledge = signedIn && Boolean(pledgeBalance);
+  const pledgeSettled = Boolean(pledgeBalance && pledgeBalance.remaining_amount <= 0);
+
   const handlePledgeSubmit = async (formData: { amount: string; notes?: string }) => {
     try {
       setLoading(true);
@@ -152,7 +162,7 @@ const PledgePage: React.FC = () => {
                   existing-pledge panel and intent cards below carry their own
                   headings, and showing "Make Your Pledge" above a yes/no
                   question or a "you already have one" notice read oddly. */}
-              {intent === 'later' && !(signedIn && pledgeBalance && pledgeBalance.remaining_amount > 0) && (
+              {intent === 'later' && !hasExistingPledge && (
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">Make Your Pledge</h2>
                   <p className="text-gray-600">
@@ -164,20 +174,23 @@ const PledgePage: React.FC = () => {
               {/* An existing outstanding pledge means the member came back to PAY, not to
                   promise again. Offering a new pledge here is how a campaign ends up
                   double-counting one person's promise. */}
-              {signedIn && pledgeBalance && pledgeBalance.remaining_amount > 0 ? (
+              {hasExistingPledge ? (
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="font-semibold text-gray-900">{t('pledge.existing.title')}</h3>
                   <p className="text-gray-600 mt-1">
-                    {t('pledge.existing.body')
-                      .replace('{remaining}', `$${pledgeBalance.remaining_amount.toLocaleString()}`)
-                      .replace('{campaign}', pledgeBalance.campaign_name)}
+                    {pledgeSettled
+                      ? t('pledge.existing.settled')
+                          .replace('{campaign}', pledgeBalance!.campaign_name)
+                      : t('pledge.existing.body')
+                          .replace('{remaining}', `$${pledgeBalance!.remaining_amount.toLocaleString()}`)
+                          .replace('{campaign}', pledgeBalance!.campaign_name)}
                   </p>
                   <button
                     type="button"
                     onClick={() => navigate('/donate')}
                     className="mt-4 rounded-md bg-primary-600 px-4 py-2 text-white font-medium"
                   >
-                    {t('pledge.existing.payNow')}
+                    {pledgeSettled ? t('pledge.existing.giveAgain') : t('pledge.existing.payNow')}
                   </button>
                 </div>
               ) : intent === null ? (
@@ -234,8 +247,8 @@ const PledgePage: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Flexible Payment</h3>
-                <p className="text-gray-600">Pay when you're ready. We'll send you payment instructions.</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('pledge.info.flexibleTitle')}</h3>
+                <p className="text-gray-600">{t('pledge.info.flexibleBody')}</p>
               </div>
 
               <div className="text-center">

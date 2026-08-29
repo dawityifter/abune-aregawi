@@ -102,6 +102,51 @@ describe('PledgePage intent chooser', () => {
     expect(screen.queryByRole('button', { name: /pledge for later/i })).not.toBeInTheDocument();
   });
 
+  it('does not offer a second pledge to a member who paid theirs in full', async () => {
+    // The gate is EXISTENCE of an active 'later' pledge (§5.1), not an
+    // outstanding balance. Keyed on `remaining_amount > 0` this member fell
+    // through to the intent chooser and their next "pledge for later" hit the
+    // one-active-pledge unique index — a 500 from POST /api/pledges.
+    mockUseAuth.mockReturnValue({ user: { id: 1 }, currentUser: { id: 1 } });
+    mockUsePledgeBalance.mockReturnValue({
+      balance: { id: 3, campaign_name: 'Test Building Drive',
+                 pledged_amount: 500, paid_amount: 500, remaining_amount: 0 },
+      loading: false
+    });
+
+    renderPage();
+
+    expect(screen.queryByRole('button', { name: /pledge for later/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/paid in full/i)).toBeInTheDocument();
+    // "$0 remaining" is not a sentence anyone should have to read.
+    expect(screen.queryByText(/\$0 remaining/i)).not.toBeInTheDocument();
+  });
+
+  it('does not offer a second pledge to a member who overpaid theirs', async () => {
+    mockUseAuth.mockReturnValue({ user: { id: 1 }, currentUser: { id: 1 } });
+    mockUsePledgeBalance.mockReturnValue({
+      balance: { id: 3, campaign_name: 'Test Building Drive',
+                 pledged_amount: 500, paid_amount: 650, remaining_amount: -150 },
+      loading: false
+    });
+
+    renderPage();
+
+    expect(screen.queryByRole('button', { name: /pledge for later/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/-\$?150/)).not.toBeInTheDocument();
+  });
+
+  it('does not promise payment instructions that are never sent', async () => {
+    mockUseActiveCampaign.mockReturnValue({ campaign: CAMPAIGN, loading: false, error: null });
+
+    renderPage();
+
+    // No such email exists and none is being built (spec D6). The card now
+    // names the two ways a pledge is actually paid.
+    expect(screen.queryByText(/payment instructions/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Pay when you're ready/i)).toBeInTheDocument();
+  });
+
   it('does not promise a confirmation email that is never sent', async () => {
     // The old copy only ever lived in the post-submit success panel, so this
     // has to actually get there: sign in, pick "pledge for later", fill the

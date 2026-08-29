@@ -124,7 +124,13 @@ export interface Dictionaries {
     existing?: {
       title: string;
       body: string;
+      settled: string;
       payNow: string;
+      giveAgain: string;
+    };
+    info?: {
+      flexibleTitle: string;
+      flexibleBody: string;
     };
     success?: {
       body: string;
@@ -132,6 +138,8 @@ export interface Dictionaries {
     checkout?: {
       payInFullNote: string;
       continue: string;
+      showAsAnonymous: string;
+      showAsAnonymousHelp: string;
     };
     anonymous?: {
       baptismNameLabel: string;
@@ -183,6 +191,7 @@ export interface Dictionaries {
     baptismNameLabel: string;
     anonymousPaidInFull: string;
     pledgeCashOnly: string;
+    pledgeNeedsMember: string;
   };
 
   dashboard: {
@@ -1932,14 +1941,22 @@ export const en: Dictionaries = {
     existing: {
       title: "You already have a pledge",
       body: "{remaining} remaining on your {campaign} pledge.",
-      payNow: "Pay now"
+      settled: "Your {campaign} pledge is paid in full. Thank you.",
+      payNow: "Pay now",
+      giveAgain: "Give again"
+    },
+    info: {
+      flexibleTitle: "Flexible Payment",
+      flexibleBody: "Pay when you're ready, from the Give page or with a treasurer."
     },
     success: {
       body: "Your pledge has been recorded. Thank you."
     },
     checkout: {
       payInFullNote: "Paying now covers your pledge in full.",
-      continue: "Continue to payment"
+      continue: "Continue to payment",
+      showAsAnonymous: "Show my gift as anonymous",
+      showAsAnonymousHelp: "Your name is hidden from donor lists. The church still records the gift against your account, so it appears on your own giving statement."
     },
     anonymous: {
       baptismNameLabel: "Baptism or church name *",
@@ -1991,7 +2008,8 @@ export const en: Dictionaries = {
     pledgeAmountLabel: "Pledge amount",
     baptismNameLabel: "Baptism or church name",
     anonymousPaidInFull: "An anonymous pledge must be paid in full, so this must equal the payment amount.",
-    pledgeCashOnly: "Pledge recording is available for cash and check payments only."
+    pledgeCashOnly: "Pledge recording is available for cash and check payments only.",
+    pledgeNeedsMember: "Select a member to record this pledge, or mark the payment anonymous and give a baptism or church name."
   },
 
 
@@ -4041,14 +4059,22 @@ export const ti: Dictionaries = {
     existing: {
       title: "ድሮ መብጽዓ ኣለኩም",
       body: "ካብ መብጽዓኹም ናይ {campaign} {remaining} ተሪፉ ኣሎ።",
-      payNow: "ሕጂ ክፈሉ"
+      settled: "መብጽዓኹም ናይ {campaign} ምሉእ ብምሉእ ተኸፊሉ እዩ። የቐንየልና።",
+      payNow: "ሕጂ ክፈሉ",
+      giveAgain: "እንደገና ውፈዩ"
+    },
+    info: {
+      flexibleTitle: "ተዓጻጻፊ ክፍሊት",
+      flexibleBody: "ምስ ተዳለኹም ካብ ገጽ ውህበት ወይ ብመንገዲ ገንዘብ ተቐባሊ ክፈሉ።"
     },
     success: {
       body: "መብጽዓኹም ተመዝጊቡ ኣሎ። የቐንየልና።"
     },
     checkout: {
       payInFullNote: "ሕጂ ምኽፋል ንመብጽዓኹም ምሉእ ብምሉእ ይሽፍኖ።",
-      continue: "ናብ ክፍሊት ቀጽል"
+      continue: "ናብ ክፍሊት ቀጽል",
+      showAsAnonymous: "ውህበተይ ስም ብዘይምግላጽ የርኢ",
+      showAsAnonymousHelp: "ስምኩም ካብ ዝርዝር ወሃብቲ ይሕባእ። ቤተ ክርስቲያን ግና ነቲ ውህበት ኣብ ኣካውንትኩም ትምዝግቦ፡ ስለዚ ኣብ ናትኩም መግለጺ ውህበት ይረአ።"
     },
     anonymous: {
       baptismNameLabel: "ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም *",
@@ -4101,7 +4127,8 @@ export const ti: Dictionaries = {
     pledgeAmountLabel: "መጠን ቃል ኪዳን",
     baptismNameLabel: "ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም",
     anonymousPaidInFull: "ስም ብዘይምግላጽ ዝግበር መብጽዓ ምሉእ ብምሉእ ክኽፈል ኣለዎ፣ ስለዚ እዚ ምስቲ መጠን ክፍሊት ማዕረ ክኸውን ኣለዎ።",
-    pledgeCashOnly: "ምዝገባ መብጽዓ ንጥረ ገንዘብን ቼክን ጥራይ ይርከብ።"
+    pledgeCashOnly: "ምዝገባ መብጽዓ ንጥረ ገንዘብን ቼክን ጥራይ ይርከብ።",
+    pledgeNeedsMember: "እዚ መብጽዓ ንምምዝጋብ ኣባል ምረጹ፣ ወይ ነቲ ክፍሊት ስም ብዘይምግላጽ ኣምልክቱ እሞ ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም ሃቡ።"
   },
 
 

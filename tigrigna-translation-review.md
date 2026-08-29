@@ -647,3 +647,22 @@ All four are treasurer-facing only. Drafts by a non-native speaker.
 | fundraising.baptismNameLabel | Baptism or church name | ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም | reuses the existing `pledge.anonymous.baptismNameLabel` draft verbatim, without its `*` |
 | fundraising.anonymousPaidInFull | An anonymous pledge must be paid in full, so this must equal the payment amount. | ስም ብዘይምግላጽ ዝግበር መብጽዓ ምሉእ ብምሉእ ክኽፈል ኣለዎ፣ ስለዚ እዚ ምስቲ መጠን ክፍሊት ማዕረ ክኸውን ኣለዎ። | ⚠️ confirm this reads as an explanatory helper note under the amount field, not as a stern warning |
 | fundraising.pledgeCashOnly | Pledge recording is available for cash and check payments only. | ምዝገባ መብጽዓ ንጥረ ገንዘብን ቼክን ጥራይ ይርከብ። | ⚠️ added after review found the checkbox silently did nothing for card/ACH payments; confirm this reads as "only offered for cash/check" and not as a restriction on the payment itself |
+
+## Final review fixes — pledge intent and anonymous giving (Aug 2026)
+
+New keys added while fixing the final whole-branch review findings. Four are
+seen by members and visitors on `/pledge` (the fully-paid pledge panel, the
+"Flexible Payment" card whose old copy promised payment instructions that are
+never sent, and the "show as anonymous" checkbox a signed-in member can now
+tick while keeping their member link); the last is treasurer-facing in
+`AddPaymentModal`. Drafts by a non-native speaker.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| pledge.existing.settled | Your {campaign} pledge is paid in full. Thank you. | መብጽዓኹም ናይ {campaign} ምሉእ ብምሉእ ተኸፊሉ እዩ። የቐንየልና። | ⚠️ confirm the placeholder order reads naturally, matching the `pledge.existing.body` question above |
+| pledge.existing.giveAgain | Give again | እንደገና ውፈዩ | ⚠️ confirm "ውፈዩ" (donate) matches the verb used in `pledge.intent.anonymous.title`, and that this works as a short button label |
+| pledge.info.flexibleTitle | Flexible Payment | ተዓጻጻፊ ክፍሊት | ⚠️ confirm "ተዓጻጻፊ" carries "flexible" in the sense of timing rather than physically foldable |
+| pledge.info.flexibleBody | Pay when you're ready, from the Give page or with a treasurer. | ምስ ተዳለኹም ካብ ገጽ ውህበት ወይ ብመንገዲ ገንዘብ ተቐባሊ ክፈሉ። | ⚠️ replaces a false promise of emailed payment instructions (spec D6); confirm "ገንዘብ ተቐባሊ" is the term the parish uses for the treasurer, and that "ገጽ ውህበት" names the Give page |
+| pledge.checkout.showAsAnonymous | Show my gift as anonymous | ውህበተይ ስም ብዘይምግላጽ የርኢ | ⚠️ confirm this reads as the giver's own request ("show mine as anonymous") and works as a checkbox label |
+| pledge.checkout.showAsAnonymousHelp | Your name is hidden from donor lists. The church still records the gift against your account, so it appears on your own giving statement. | ስምኩም ካብ ዝርዝር ወሃብቲ ይሕባእ። ቤተ ክርስቲያን ግና ነቲ ውህበት ኣብ ኣካውንትኩም ትምዝግቦ፡ ስለዚ ኣብ ናትኩም መግለጺ ውህበት ይረአ። | ⚠️ this distinction is the whole point of the checkbox — confirm it clearly says the name is hidden from OTHERS while the church still knows, and does not read as "the church will not record it" |
+| fundraising.pledgeNeedsMember | Select a member to record this pledge, or mark the payment anonymous and give a baptism or church name. | እዚ መብጽዓ ንምምዝጋብ ኣባል ምረጹ፣ ወይ ነቲ ክፍሊት ስም ብዘይምግላጽ ኣምልክቱ እሞ ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም ሃቡ። | ⚠️ treasurer-facing validation message; confirm the two alternatives read as a choice rather than two required steps |

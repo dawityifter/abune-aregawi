@@ -26,6 +26,11 @@ const PledgeCheckoutForm: React.FC<PledgeCheckoutFormProps> = ({
   const [amount, setAmount] = useState('');
   const [baptismName, setBaptismName] = useState('');
   const [contact, setContact] = useState('');
+  // §5.3: a signed-in member may ask to be shown as anonymous WITHOUT giving up
+  // their member link. The church still knows exactly who gave; only what is
+  // displayed changes. Only offered on the signed-in branch — the walk-up
+  // anonymous flow is anonymous by definition.
+  const [showAsAnonymous, setShowAsAnonymous] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [readyToPay, setReadyToPay] = useState(false);
 
@@ -57,6 +62,12 @@ const PledgeCheckoutForm: React.FC<PledgeCheckoutFormProps> = ({
   // StripePayment (also used by DonatePage) takes a donationData bundle plus
   // purpose/onCancel, not the flat amount/metadata shape one might expect —
   // metadata rides inside donationData.metadata.
+  // The two ways a gift becomes anonymous: a walk-up giver with no account,
+  // and a signed-in member who ticked the box. They differ in what identifies
+  // the donor internally — a baptism name vs. the member link — and the server
+  // guard accepts either.
+  const giftIsAnonymous = anonymous || showAsAnonymous;
+
   const donationData: any = {
     amount: parseFloat(amount) || 0,
     donation_type: 'one-time',
@@ -70,7 +81,7 @@ const PledgeCheckoutForm: React.FC<PledgeCheckoutFormProps> = ({
     metadata: {
       pledgeIntent: 'immediate',
       campaignId: String(campaignId),
-      isAnonymous: anonymous ? 'true' : 'false',
+      isAnonymous: giftIsAnonymous ? 'true' : 'false',
       baptismName: anonymous ? baptismName.trim() : '',
       memberId: anonymous ? '' : String(user?.id || '')
     }
@@ -120,6 +131,20 @@ const PledgeCheckoutForm: React.FC<PledgeCheckoutFormProps> = ({
             />
           </div>
         </>
+      )}
+
+      {!anonymous && (
+        <div>
+          <label htmlFor="checkout-show-anonymous" className="flex items-start gap-2 cursor-pointer">
+            <input
+              id="checkout-show-anonymous" type="checkbox" checked={showAsAnonymous}
+              onChange={(e) => setShowAsAnonymous(e.target.checked)} disabled={readyToPay}
+              className="mt-1"
+            />
+            <span className="text-sm text-gray-700">{t('pledge.checkout.showAsAnonymous')}</span>
+          </label>
+          <p className="mt-1 text-xs text-gray-500">{t('pledge.checkout.showAsAnonymousHelp')}</p>
+        </div>
       )}
 
       {error && (
