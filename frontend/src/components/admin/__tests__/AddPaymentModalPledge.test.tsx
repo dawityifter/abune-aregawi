@@ -5,6 +5,26 @@ import { I18nProvider } from '../../../i18n/I18nProvider';
 import { LanguageProvider } from '../../../contexts/LanguageContext';
 import AddPaymentModal from '../AddPaymentModal';
 
+// AddPaymentModal mounts these (wrapped in <Elements>) whenever paymentMethod
+// is 'credit_card' or 'ach'. The real components re-run an effect keyed on a
+// freshly-constructed `donationData` object and an inline `onPaymentReady`
+// callback the parent recreates every render, which never stabilizes and
+// spins forever under React Testing Library — the same reason DonatePage's
+// tests (../../__tests__/DonatePage.test.tsx) stub them out rather than let
+// them mount for real. No prior AddPaymentModal test selected a card method,
+// which is why this had gone unnoticed; recorded as a concern for follow-up.
+jest.mock('../../StripePayment', () => {
+  return function MockStripePayment() {
+    return <div data-testid="stripe-payment">Stripe Payment Form</div>;
+  };
+});
+
+jest.mock('../../ACHPayment', () => {
+  return function MockACHPayment() {
+    return <div data-testid="ach-payment">ACH Payment Form</div>;
+  };
+});
+
 const mockFetchBalance = jest.fn();
 jest.mock('../../../utils/pledgeBalanceApi', () => ({
   fetchPledgeBalance: (id?: number) => mockFetchBalance(id)
@@ -152,5 +172,50 @@ describe('AddPaymentModal pledge support', () => {
     fireEvent.click(await screen.findByLabelText(/also record this as a pledge/i));
 
     expect(screen.getByLabelText(/baptism or church name/i)).toBeInTheDocument();
+  });
+
+  // The pledge endpoint records an already-completed payment; it never runs a
+  // card charge, so ticking the box would do nothing for a card/ACH payment.
+  // A control that looks armed and silently no-ops is worse than no control,
+  // so it must not be offered for those methods.
+  it('hides the pledge checkbox for a card payment and explains why', async () => {
+    renderModal();
+
+    fireEvent.change(screen.getByLabelText(/payment type/i), {
+      target: { value: 'pledge_drive' }
+    });
+    await screen.findByLabelText(/also record this as a pledge/i);
+
+    fireEvent.change(screen.getByLabelText(/payment method/i), {
+      target: { value: 'credit_card' }
+    });
+
+    await waitFor(() => expect(screen.getByLabelText(/payment method/i)).toHaveValue('credit_card'));
+    expect(screen.queryByLabelText(/also record this as a pledge/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/available for cash and check payments/i)).toBeInTheDocument();
+  });
+
+  it('does not leave the pledge checkbox silently checked after switching to a card method', async () => {
+    renderModal();
+
+    fireEvent.change(screen.getByLabelText(/payment type/i), {
+      target: { value: 'pledge_drive' }
+    });
+    fireEvent.click(await screen.findByLabelText(/also record this as a pledge/i));
+    expect(screen.getByLabelText(/also record this as a pledge/i)).toBeChecked();
+
+    // Switch to a card method (hides the checkbox) and back to cash (which
+    // brings it back) — if the underlying state weren't reset while hidden,
+    // it would reappear still checked.
+    fireEvent.change(screen.getByLabelText(/payment method/i), {
+      target: { value: 'credit_card' }
+    });
+    await waitFor(() => expect(screen.queryByLabelText(/also record this as a pledge/i)).not.toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText(/payment method/i), {
+      target: { value: 'cash' }
+    });
+
+    expect(await screen.findByLabelText(/also record this as a pledge/i)).not.toBeChecked();
   });
 });

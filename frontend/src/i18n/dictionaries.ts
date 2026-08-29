@@ -182,6 +182,7 @@ export interface Dictionaries {
     pledgeAmountLabel: string;
     baptismNameLabel: string;
     anonymousPaidInFull: string;
+    pledgeCashOnly: string;
   };
 
   dashboard: {
@@ -1989,7 +1990,8 @@ export const en: Dictionaries = {
     alsoRecordPledge: "Also record this as a pledge",
     pledgeAmountLabel: "Pledge amount",
     baptismNameLabel: "Baptism or church name",
-    anonymousPaidInFull: "An anonymous pledge must be paid in full, so this must equal the payment amount."
+    anonymousPaidInFull: "An anonymous pledge must be paid in full, so this must equal the payment amount.",
+    pledgeCashOnly: "Pledge recording is available for cash and check payments only."
   },
 
 
@@ -4098,7 +4100,8 @@ export const ti: Dictionaries = {
     alsoRecordPledge: "እዚ እውን ከም መብጽዓ መዝግቦ",
     pledgeAmountLabel: "መጠን ቃል ኪዳን",
     baptismNameLabel: "ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም",
-    anonymousPaidInFull: "ስም ብዘይምግላጽ ዝግበር መብጽዓ ምሉእ ብምሉእ ክኽፈል ኣለዎ፣ ስለዚ እዚ ምስቲ መጠን ክፍሊት ማዕረ ክኸውን ኣለዎ።"
+    anonymousPaidInFull: "ስም ብዘይምግላጽ ዝግበር መብጽዓ ምሉእ ብምሉእ ክኽፈል ኣለዎ፣ ስለዚ እዚ ምስቲ መጠን ክፍሊት ማዕረ ክኸውን ኣለዎ።",
+    pledgeCashOnly: "ምዝገባ መብጽዓ ንጥረ ገንዘብን ቼክን ጥራይ ይርከብ።"
   },
 
 

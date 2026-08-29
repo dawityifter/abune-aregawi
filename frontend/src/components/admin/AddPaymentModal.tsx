@@ -92,6 +92,21 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
 
   // Whether receipt number is required (new transaction flow only)
   const receiptRequired = useMemo(() => paymentView === 'new' && (paymentMethod === 'cash' || paymentMethod === 'check'), [paymentView, paymentMethod]);
+
+  // The pledge endpoint records an already-completed payment method as a
+  // string; it does not process a live card charge. Card/ACH payments go
+  // through the Stripe components below instead, so "also record this as a
+  // pledge" has nothing to do for those methods.
+  const pledgeUnavailableForMethod = useMemo(() => paymentMethod === 'credit_card' || paymentMethod === 'ach', [paymentMethod]);
+
+  // Never leave the checkbox stuck "on" for a method it no longer applies to —
+  // the render already hides it in that case, but this keeps the state itself
+  // from silently outliving the control the user saw.
+  useEffect(() => {
+    if (pledgeUnavailableForMethod) {
+      setAlsoRecordPledge(false);
+    }
+  }, [pledgeUnavailableForMethod]);
   const normalizeAmountOnBlur = () => {
     if (!amount) return;
     const num = Number(amount);
@@ -765,44 +780,56 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
 
                   {paymentType === 'pledge_drive' && (
                     <div className="mt-3 rounded-md bg-gray-50 p-3">
-                      <label htmlFor="also-record-pledge" className="flex items-start gap-2 cursor-pointer">
-                        <input
-                          id="also-record-pledge" type="checkbox" checked={alsoRecordPledge}
-                          onChange={(e) => setAlsoRecordPledge(e.target.checked)}
-                          className="mt-1"
-                        />
-                        <span className="text-sm text-gray-700">{t('fundraising.alsoRecordPledge')}</span>
-                      </label>
-
-                      {alsoRecordPledge && (
-                        <div className="mt-3 space-y-3">
-                          <div>
-                            <label htmlFor="pledge-amount-field" className="block text-sm font-medium text-gray-700">
-                              {t('fundraising.pledgeAmountLabel')}
-                            </label>
+                      {pledgeUnavailableForMethod ? (
+                        // The pledge endpoint records an already-completed payment; it does
+                        // not run a card charge. A live Stripe payment is handled entirely by
+                        // the components below, so there is nothing this checkbox could do —
+                        // show why instead of a control that would silently no-op.
+                        <p id="pledge-cash-only-note" className="text-sm text-gray-500">
+                          {t('fundraising.pledgeCashOnly')}
+                        </p>
+                      ) : (
+                        <>
+                          <label htmlFor="also-record-pledge" className="flex items-start gap-2 cursor-pointer">
                             <input
-                              id="pledge-amount-field" type="number" min="1" step="0.01" value={pledgeAmount}
-                              onChange={(e) => setPledgeAmount(e.target.value)}
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                              id="also-record-pledge" type="checkbox" checked={alsoRecordPledge}
+                              onChange={(e) => setAlsoRecordPledge(e.target.checked)}
+                              className="mt-1"
                             />
-                            {isAnonymous && (
-                              <p className="mt-1 text-xs text-gray-500">{t('fundraising.anonymousPaidInFull')}</p>
-                            )}
-                          </div>
+                            <span className="text-sm text-gray-700">{t('fundraising.alsoRecordPledge')}</span>
+                          </label>
 
-                          {isAnonymous && (
-                            <div>
-                              <label htmlFor="pledge-baptism-name" className="block text-sm font-medium text-gray-700">
-                                {t('fundraising.baptismNameLabel')}
-                              </label>
-                              <input
-                                id="pledge-baptism-name" type="text" value={donorName}
-                                onChange={(e) => setDonorName(e.target.value)}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                              />
+                          {alsoRecordPledge && (
+                            <div className="mt-3 space-y-3">
+                              <div>
+                                <label htmlFor="pledge-amount-field" className="block text-sm font-medium text-gray-700">
+                                  {t('fundraising.pledgeAmountLabel')}
+                                </label>
+                                <input
+                                  id="pledge-amount-field" type="number" min="1" step="0.01" value={pledgeAmount}
+                                  onChange={(e) => setPledgeAmount(e.target.value)}
+                                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                                />
+                                {isAnonymous && (
+                                  <p className="mt-1 text-xs text-gray-500">{t('fundraising.anonymousPaidInFull')}</p>
+                                )}
+                              </div>
+
+                              {isAnonymous && (
+                                <div>
+                                  <label htmlFor="pledge-baptism-name" className="block text-sm font-medium text-gray-700">
+                                    {t('fundraising.baptismNameLabel')}
+                                  </label>
+                                  <input
+                                    id="pledge-baptism-name" type="text" value={donorName}
+                                    onChange={(e) => setDonorName(e.target.value)}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                                  />
+                                </div>
+                              )}
                             </div>
                           )}
-                        </div>
+                        </>
                       )}
                     </div>
                   )}
@@ -864,10 +891,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="payment-method-select" className="block text-sm font-medium text-gray-700 mb-2">
                     Payment Method
                   </label>
                   <select
+                    id="payment-method-select"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     required
