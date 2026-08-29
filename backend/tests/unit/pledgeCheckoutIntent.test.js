@@ -82,6 +82,92 @@ describe('online pledge-and-pay', () => {
     expect(balance.derived_status).toBe('fulfilled');
   });
 
+  it('keeps the member link when a signed-in member gives anonymously', async () => {
+    // §5.3: anonymity and member-linkage are separate. The church knows
+    // exactly who gave — only what is displayed changes — so member_id stays
+    // set on both the pledge and the transaction while is_anonymous is true.
+    await handlePaymentSucceeded(pledgeIntent('pi_pledge_009', {
+      memberId: String(member.id),
+      campaignId: String(campaign.id),
+      isAnonymous: 'true',
+      donor_first_name: 'Online',
+      donor_last_name: 'Giver'
+    }));
+
+    const pledge = await Pledge.findOne({ where: { is_anonymous: true } });
+    expect(pledge).not.toBeNull();
+    expect(String(pledge.member_id)).toBe(String(member.id));
+    expect(pledge.baptism_name).toBeNull();
+    expect(pledge.fulfillment_intent).toBe('immediate');
+
+    const txn = await Transaction.findOne({ where: { external_id: 'pi_pledge_009' } });
+    expect(String(txn.member_id)).toBe(String(member.id));
+  });
+
+  it('does not link an anonymous giver to the member whose phone they typed', async () => {
+    // The anonymous checkout asks for "phone or email (optional)" so the
+    // church can reach the giver. A parishioner giving anonymously is very
+    // likely to type the number already on file — matching on it would attach
+    // the gift to their member row and their giving statement, which is the
+    // opposite of what they chose (spec A3, §12).
+    await handlePaymentSucceeded(pledgeIntent('pi_pledge_006', {
+      campaignId: String(campaign.id),
+      isAnonymous: 'true',
+      baptismName: 'Tesfay',
+      donor_first_name: 'Anonymous',
+      donor_last_name: 'Giver',
+      donor_phone: member.phone_number
+    }));
+
+    const pledge = await Pledge.findOne({ where: { is_anonymous: true } });
+    expect(pledge).not.toBeNull();
+    expect(pledge.member_id).toBeNull();
+    expect(pledge.baptism_name).toBe('Tesfay');
+
+    const txn = await Transaction.findOne({ where: { external_id: 'pi_pledge_006' } });
+    expect(txn.member_id).toBeNull();
+    expect(txn.collected_by).toBeNull();
+  });
+
+  it('does not link an anonymous giver to the member whose email they typed', async () => {
+    await handlePaymentSucceeded(pledgeIntent('pi_pledge_007', {
+      campaignId: String(campaign.id),
+      isAnonymous: 'true',
+      baptismName: 'Tesfay',
+      donor_first_name: 'Anonymous',
+      donor_last_name: 'Giver',
+      donor_email: member.email
+    }));
+
+    const pledge = await Pledge.findOne({ where: { is_anonymous: true } });
+    expect(pledge).not.toBeNull();
+    expect(pledge.member_id).toBeNull();
+  });
+
+  it('does not attribute a contact-less anonymous gift to the parish inbox', async () => {
+    // createPaymentIntent substitutes the church's own address when the giver
+    // leaves the contact field blank, so it identifies nobody. A member row
+    // carrying it must not absorb the gift.
+    await Member.create({
+      first_name: 'Parish', last_name: 'Office',
+      phone_number: '+15550000602',
+      email: 'abunearegawitx@gmail.com', is_active: true, role: 'member'
+    });
+
+    await handlePaymentSucceeded(pledgeIntent('pi_pledge_008', {
+      campaignId: String(campaign.id),
+      isAnonymous: 'true',
+      baptismName: 'Tesfay',
+      donor_first_name: 'Anonymous',
+      donor_last_name: 'Giver',
+      donor_email: 'abunearegawitx@gmail.com'
+    }));
+
+    const pledge = await Pledge.findOne({ where: { is_anonymous: true } });
+    expect(pledge).not.toBeNull();
+    expect(pledge.member_id).toBeNull();
+  });
+
   it('is idempotent when the webhook is redelivered', async () => {
     const intent = pledgeIntent('pi_pledge_003', {
       memberId: String(member.id), campaignId: String(campaign.id),
@@ -94,10 +180,14 @@ describe('online pledge-and-pay', () => {
     expect(await Transaction.count()).toBe(1);
   });
 
-  it('keeps the payment when the pledge cannot be created', async () => {
+  it('rolls the payment back with the pledge it could not create', async () => {
     // Anonymous with no baptism name violates the model validation, so the
-    // pledge fails. The money must still be on the books — an unlinked payment
-    // is recoverable, lost money is not.
+    // pledge fails. Spec §7.6 makes the three writes one DB transaction, so
+    // the payment row goes with it: this handler early-returns on a duplicate
+    // external_id, and a committed payment with no pledge could never be
+    // repaired by a redelivery. createPaymentIntent rejects this payload
+    // before any Stripe call, so reaching here at all means the metadata was
+    // mangled in flight — exactly the case a clean retry should get right.
     await handlePaymentSucceeded(pledgeIntent('pi_pledge_004', {
       campaignId: String(campaign.id),
       isAnonymous: 'true',
@@ -105,9 +195,7 @@ describe('online pledge-and-pay', () => {
     }));
 
     expect(await Pledge.count()).toBe(0);
-    const txn = await Transaction.findOne({ where: { external_id: 'pi_pledge_004' } });
-    expect(txn).not.toBeNull();
-    expect(txn.status).toBe('succeeded');
+    expect(await Transaction.findOne({ where: { external_id: 'pi_pledge_004' } })).toBeNull();
   });
 
   it('does not double-credit a member who also holds an open later pledge', async () => {
