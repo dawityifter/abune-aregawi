@@ -188,11 +188,13 @@ describe('online pledge-and-pay', () => {
     // repaired by a redelivery. createPaymentIntent rejects this payload
     // before any Stripe call, so reaching here at all means the metadata was
     // mangled in flight — exactly the case a clean retry should get right.
-    await handlePaymentSucceeded(pledgeIntent('pi_pledge_004', {
+    // It rejects rather than returning: the rollback has to reach handleWebhook
+    // so the webhook answers non-2xx and Stripe actually redelivers.
+    await expect(handlePaymentSucceeded(pledgeIntent('pi_pledge_004', {
       campaignId: String(campaign.id),
       isAnonymous: 'true',
       donor_first_name: 'Anonymous', donor_last_name: 'Giver'
-    }));
+    }))).rejects.toThrow(/rolled back for payment intent pi_pledge_004/);
 
     expect(await Pledge.count()).toBe(0);
     expect(await Transaction.findOne({ where: { external_id: 'pi_pledge_004' } })).toBeNull();

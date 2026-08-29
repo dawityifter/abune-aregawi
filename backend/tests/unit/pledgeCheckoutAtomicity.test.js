@@ -70,7 +70,11 @@ describe('pledge-and-pay is written atomically', () => {
   it('leaves no transaction behind when the pledge write fails', async () => {
     jest.spyOn(Pledge, 'create').mockRejectedValueOnce(new Error('transient DB error'));
 
-    await handlePaymentSucceeded(intentFor('pi_atomic_001'));
+    // The rollback is re-raised rather than logged and swallowed, so that the
+    // webhook answers non-2xx and Stripe redelivers. The HTTP side of that
+    // claim is pinned in tests/integration/stripeWebhookRedelivery.test.js.
+    await expect(handlePaymentSucceeded(intentFor('pi_atomic_001')))
+      .rejects.toThrow(/rolled back for payment intent pi_atomic_001/);
 
     expect(await Pledge.count()).toBe(0);
     expect(await PledgeAllocation.count()).toBe(0);
@@ -84,8 +88,9 @@ describe('pledge-and-pay is written atomically', () => {
   it('creates both on the redelivery that follows a rolled-back attempt', async () => {
     jest.spyOn(Pledge, 'create').mockRejectedValueOnce(new Error('transient DB error'));
 
-    await handlePaymentSucceeded(intentFor('pi_atomic_002'));
-    // Stripe redelivers the identical payment intent.
+    await expect(handlePaymentSucceeded(intentFor('pi_atomic_002'))).rejects.toThrow();
+    // Stripe redelivers the identical payment intent — which it only does
+    // because the failed attempt above answered non-2xx.
     await handlePaymentSucceeded(intentFor('pi_atomic_002'));
 
     expect(await Transaction.findOne({ where: { external_id: 'pi_atomic_002' } })).not.toBeNull();

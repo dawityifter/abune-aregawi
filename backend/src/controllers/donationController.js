@@ -26,6 +26,34 @@ const { createPledgeWithPayment } = require('../services/pledgeFulfillmentServic
 // member row that happens to carry it must not be matched against.
 const HOUSE_EMAIL = 'abunearegawitx@gmail.com';
 
+/**
+ * Raised when the pledge-and-pay write (transaction + pledge + allocation)
+ * rolls back. It exists purely to escape handlePaymentSucceeded's outer
+ * catch-all.
+ *
+ * That catch-all is deliberate everywhere else: "recording money always wins",
+ * so a broken ledger entry or a failed allocation must never cost us the
+ * payment row or make the webhook look failed. This one case is the exception.
+ * Spec §7.6 makes the pledge-and-pay writes atomic, which means the rollback
+ * took the payment row with it — nothing is on the books at all. The ONLY
+ * thing that can put the money back is Stripe redelivering the event, and
+ * Stripe redelivers only on a non-2xx. Swallowing this error and answering 200
+ * is how a captured payment ends up absent from the ledger permanently, with
+ * nothing to reconcile against (listUnallocated reads `transactions`, and there
+ * is no Stripe-vs-ledger sweep).
+ *
+ * A plain `throw` is not enough: it would land in the same outer catch and die
+ * there. Only this type is re-raised.
+ */
+class PledgeAndPayRollback extends Error {
+  constructor(paymentIntentId, cause) {
+    super(`Pledge-and-pay write rolled back for payment intent ${paymentIntentId}: ${cause && cause.message}`);
+    this.name = 'PledgeAndPayRollback';
+    this.paymentIntentId = paymentIntentId;
+    this.cause = cause;
+  }
+}
+
 // Create payment intent for donation
 const createPaymentIntent = async (req, res) => {
   try {
@@ -317,6 +345,11 @@ const confirmPayment = async (req, res) => {
         await handlePaymentSucceeded(paymentIntent);
       }
     } catch (txnErr) {
+      // Stays swallowed on purpose. This call is a best-effort accelerator so
+      // the treasurer dashboard reflects the gift without waiting for the
+      // webhook; the browser must not be shown a failure for a payment Stripe
+      // already captured. The webhook is the channel that owns retrying — a
+      // PledgeAndPayRollback reaching it answers non-2xx and Stripe redelivers.
       console.warn('⚠️  Failed to upsert Transaction during confirmPayment:', txnErr.message);
     }
 
@@ -460,6 +493,11 @@ const handleWebhook = async (req, res) => {
 
     res.json({ received: true });
   } catch (error) {
+    // This 500 is load-bearing, not just tidiness: it is the only signal that
+    // makes Stripe redeliver the event. handlePaymentSucceeded swallows every
+    // failure it can survive precisely so this stays a 200 for them; the one
+    // failure it re-raises (PledgeAndPayRollback) left NOTHING on the books and
+    // needs the retry. Do not turn this into a 200 to quiet the alerting.
     console.error('Error handling webhook:', error);
     res.status(500).json({ error: 'Webhook handler failed' });
   }
@@ -666,12 +704,14 @@ const handlePaymentSucceeded = async (paymentIntent) => {
         });
         pledgeCreated = true;
       } catch (err) {
-        console.error('⚠️ Pledge-and-pay write rolled back for payment intent',
-          paymentIntent.id, err.message);
         // Nothing survives, so there is no transaction to allocate against or
         // to write a ledger entry for. Stripe's next redelivery re-runs the
-        // whole thing from a clean slate.
-        return;
+        // whole thing from a clean slate — but ONLY if this webhook answers
+        // non-2xx, so the failure has to reach handleWebhook rather than be
+        // logged and dropped here. Returning normally (as this did) meant
+        // Stripe marked the event delivered and never retried, and the money
+        // stayed captured with nothing on the books.
+        throw new PledgeAndPayRollback(paymentIntent.id, err);
       }
     } else {
       transaction = await Transaction.create(transactionFields);
@@ -715,6 +755,13 @@ const handlePaymentSucceeded = async (paymentIntent) => {
       // Don't fail the entire operation if ledger entry creation fails
     }
   } catch (err) {
+    // The one error this catch-all must NOT swallow. See PledgeAndPayRollback:
+    // the payment row rolled back with the pledge, so only a Stripe redelivery
+    // can record it, and only a non-2xx from handleWebhook triggers one.
+    if (err instanceof PledgeAndPayRollback) {
+      console.error('❌', err.message, '— returning a failure so Stripe redelivers');
+      throw err;
+    }
     console.error('❌ Failed to upsert Transaction on payment success:', err.message);
   }
 };
