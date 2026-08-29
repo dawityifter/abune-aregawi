@@ -147,12 +147,18 @@ const PledgePage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Pledge Form */}
             <div>
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Make Your Pledge</h2>
-                <p className="text-gray-600">
-                  Fill out the form below to make your pledge. All information is kept confidential.
-                </p>
-              </div>
+              {/* This heading only fits the actual fill-in-the-amount step: the
+                  existing-pledge panel and intent cards below carry their own
+                  headings, and showing "Make Your Pledge" above a yes/no
+                  question or a "you already have one" notice read oddly. */}
+              {intent === 'later' && !(signedIn && pledgeBalance && pledgeBalance.remaining_amount > 0) && (
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Make Your Pledge</h2>
+                  <p className="text-gray-600">
+                    Fill out the form below to make your pledge. All information is kept confidential.
+                  </p>
+                </div>
+              )}
 
               {/* An existing outstanding pledge means the member came back to PAY, not to
                   promise again. Offering a new pledge here is how a campaign ends up

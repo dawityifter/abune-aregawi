@@ -35,9 +35,14 @@ const PledgeLaterForm: React.FC<PledgeLaterFormProps> = ({ onSubmit, loading }) 
         <input
           id="pledge-amount" type="number" min="1" step="0.01" value={amount}
           onChange={(e) => setAmount(e.target.value)}
+          aria-describedby={error ? 'pledge-amount-error' : undefined}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
         />
-        {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p id="pledge-amount-error" role="alert" className="mt-1 text-sm text-red-600">
+            {error}
+          </p>
+        )}
       </div>
 
       <div>

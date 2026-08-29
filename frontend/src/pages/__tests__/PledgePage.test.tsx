@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '../../i18n/I18nProvider';
@@ -102,8 +102,46 @@ describe('PledgePage intent chooser', () => {
     expect(screen.queryByRole('button', { name: /pledge for later/i })).not.toBeInTheDocument();
   });
 
-  it('does not promise a confirmation email that is never sent', () => {
-    renderPage();
-    expect(screen.queryByText(/confirmation email/i)).not.toBeInTheDocument();
+  it('does not promise a confirmation email that is never sent', async () => {
+    // The old copy only ever lived in the post-submit success panel, so this
+    // has to actually get there: sign in, pick "pledge for later", fill the
+    // amount, submit, and land on the panel before asserting anything about
+    // its text. Asserting on the pre-submit page (as the original version of
+    // this test did) can never fail — success and its email sentence never
+    // render — which defeats the point of a regression test.
+    //
+    // Fake timers control the success panel's `setTimeout(..., 2000)` navigate
+    // call, which would otherwise fire against an already-unmounted component
+    // once this test (and the real timers driving it) moves on; `waitFor`
+    // still works under fake timers (it detects them and advances the fake
+    // clock itself), so nothing here needs a real 2-second wait.
+    jest.useFakeTimers();
+    try {
+      mockUseAuth.mockReturnValue({
+        user: { id: 1 },
+        currentUser: { id: 1, first_name: 'Test', last_name: 'Giver' },
+        firebaseUser: { getIdToken: jest.fn().mockResolvedValue('test-token') }
+      });
+      global.fetch = jest.fn().mockResolvedValue({
+        json: () => Promise.resolve({ success: true, pledge: { id: 42 } })
+      }) as any;
+
+      renderPage();
+
+      // The intent card's accessible name includes its body text ("Pledge for
+      // later Make a pledge now and pay it when you are ready."), so this
+      // matches on the leading title only; the later submit button's
+      // accessible name is the title alone, so it still matches uniquely
+      // once the card is gone.
+      fireEvent.click(screen.getByRole('button', { name: /^pledge for later/i }));
+      fireEvent.change(screen.getByLabelText(/pledge amount/i), { target: { value: '50' } });
+      fireEvent.click(screen.getByRole('button', { name: /^pledge for later$/i }));
+
+      await waitFor(() => expect(screen.getByText('Thank You!')).toBeInTheDocument());
+
+      expect(screen.queryByText(/confirmation email/i)).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
