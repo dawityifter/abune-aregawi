@@ -614,3 +614,20 @@ form. Drafts by a non-native speaker.
 | pledgeForm.amountLabel | Pledge Amount * | መጠን ቃል ኪዳን * | reuses the existing `pledgeForm.amount` draft verbatim, already listed above |
 | pledgeForm.notesLabel | Notes (optional) | መዘኻኸሪ (ኣማራጺ) | reuses the existing `pledgeForm.notes` draft verbatim, already listed above |
 | common.submitting | Submitting… | የቐርብ ኣሎ... | ⚠️ confirm this reads as "being submitted" and not "being brought closer" |
+
+## Pledge and pay now / give anonymously checkout (Aug 2026)
+
+New `pledge.checkout.*` and `pledge.anonymous.*` keys, seen on the `/pledge`
+page's checkout step after a visitor chooses "pledge and pay now" or "give
+anonymously now" — the single amount field that is both the pledge and the
+payment, plus (anonymous only) the baptism/church name and optional contact
+fields. Drafts by a non-native speaker.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| pledge.checkout.payInFullNote | Paying now covers your pledge in full. | ሕጂ ምኽፋል ንመብጽዓኹም ምሉእ ብምሉእ ይሽፍኖ። | ⚠️ confirm this reads as "paying now settles your pledge in full" rather than an instruction |
+| pledge.checkout.continue | Continue to payment | ናብ ክፍሊት ቀጽል | ⚠️ confirm this works as a button label |
+| pledge.anonymous.baptismNameLabel | Baptism or church name * | ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም * | reuses the existing `ስም ጥምቀት` (baptism name) term used elsewhere in the app |
+| pledge.anonymous.baptismNameHelp | Kept for church records only. Your gift is reported as anonymous. | ንመዝገብ ቤተ ክርስቲያን ጥራይ ይቕመጥ። ውህበትኩም ከም ስም ብዘይምግላጽ ይምዝገብ። | ⚠️ confirm this clearly conveys "kept internally, reported to others as anonymous" and not that the name itself is hidden from the church |
+| pledge.anonymous.contactLabel | Phone or email (optional) | ስልኪ ወይ ኢመይል (ኣማራጺ) | reuses existing `ስልኪ`/`ኢመይል` terms |
+| pledge.anonymous.errors.baptismNameRequired | A baptism or church name is required. | ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም የድሊ። | ⚠️ confirm this reads as a form validation error, matching the tone of `pledgeForm.errors.*` above |

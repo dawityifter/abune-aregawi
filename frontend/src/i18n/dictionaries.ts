@@ -129,6 +129,18 @@ export interface Dictionaries {
     success?: {
       body: string;
     };
+    checkout?: {
+      payInFullNote: string;
+      continue: string;
+    };
+    anonymous?: {
+      baptismNameLabel: string;
+      baptismNameHelp: string;
+      contactLabel: string;
+      errors: {
+        baptismNameRequired: string;
+      };
+    };
   };
   fundraising: {
     tab: string;
@@ -1919,6 +1931,18 @@ export const en: Dictionaries = {
     },
     success: {
       body: "Your pledge has been recorded. Thank you."
+    },
+    checkout: {
+      payInFullNote: "Paying now covers your pledge in full.",
+      continue: "Continue to payment"
+    },
+    anonymous: {
+      baptismNameLabel: "Baptism or church name *",
+      baptismNameHelp: "Kept for church records only. Your gift is reported as anonymous.",
+      contactLabel: "Phone or email (optional)",
+      errors: {
+        baptismNameRequired: "A baptism or church name is required."
+      }
     }
   },
 
@@ -4011,6 +4035,18 @@ export const ti: Dictionaries = {
     },
     success: {
       body: "መብጽዓኹም ተመዝጊቡ ኣሎ። የቐንየልና።"
+    },
+    checkout: {
+      payInFullNote: "ሕጂ ምኽፋል ንመብጽዓኹም ምሉእ ብምሉእ ይሽፍኖ።",
+      continue: "ናብ ክፍሊት ቀጽል"
+    },
+    anonymous: {
+      baptismNameLabel: "ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም *",
+      baptismNameHelp: "ንመዝገብ ቤተ ክርስቲያን ጥራይ ይቕመጥ። ውህበትኩም ከም ስም ብዘይምግላጽ ይምዝገብ።",
+      contactLabel: "ስልኪ ወይ ኢመይል (ኣማራጺ)",
+      errors: {
+        baptismNameRequired: "ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም የድሊ።"
+      }
     }
   },
 

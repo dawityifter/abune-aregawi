@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePledgeBalance } from '../hooks/usePledgeBalance';
 import PledgeIntentSelector, { PledgeIntent } from '../components/pledge/PledgeIntentSelector';
 import PledgeLaterForm from '../components/pledge/PledgeLaterForm';
+import PledgeCheckoutForm from '../components/pledge/PledgeCheckoutForm';
 
 const PledgePage: React.FC = () => {
   const navigate = useNavigate();
@@ -188,8 +189,11 @@ const PledgePage: React.FC = () => {
               ) : intent === 'later' ? (
                 <PledgeLaterForm onSubmit={handlePledgeSubmit} loading={loading} />
               ) : (
-                /* Filled in by Task 10 */
-                <div />
+                <PledgeCheckoutForm
+                  anonymous={intent === 'anonymous'}
+                  campaignId={campaign.id}
+                  onSuccess={() => setSuccess(true)}
+                />
               )}
             </div>
 
