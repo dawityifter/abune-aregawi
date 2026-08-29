@@ -505,7 +505,20 @@ const handleWebhook = async (req, res) => {
 
 // Helper function to handle successful payments
 const handlePaymentSucceeded = async (paymentIntent) => {
-  // Update donation record if present
+  // Update donation record if present.
+  //
+  // Deliberately OUTSIDE the pledge-and-pay DB transaction below, and it stays
+  // committed even when that rolls back. Two reasons:
+  //  1. `donations` mirrors Stripe's own view of the checkout, not the church's
+  //     books. The payment really did succeed at Stripe; writing 'pending' back
+  //     because our pledge write failed would record something untrue.
+  //  2. It is then the durable breadcrumb for a payment that has no transaction
+  //     row yet — the only place a rolled-back pledge-and-pay is visible while
+  //     Stripe is still retrying, and after it gives up (~3 days). A treasurer
+  //     comparing succeeded donations against transactions can find it; nothing
+  //     could be found if this rolled back too.
+  // (confirmPayment sets the same field independently anyway, so enclosing it
+  // here would not actually make the two states consistent.)
   try {
     const donation = await Donation.findOne({
       where: { stripe_payment_intent_id: paymentIntent.id }

@@ -168,6 +168,41 @@ describe('online pledge-and-pay', () => {
     expect(pledge.member_id).toBeNull();
   });
 
+  it('does not attribute a contact-less NAMED gift to the parish inbox', async () => {
+    // The case the sibling test above cannot reach: there `isAnonymous: 'true'`
+    // short-circuits the whole `if (!declaredAnonymous)` block, so the
+    // `md.donor_email !== HOUSE_EMAIL` guard inside it is never evaluated and
+    // deleting it leaves that test green.
+    //
+    // A NAMED giver who left the contact field blank still travels with the
+    // parish address, because createPaymentIntent substitutes it. Without the
+    // guard, any member row carrying that address absorbs the gift — and this
+    // one is a pledge, so the pledge would be attributed to that member too.
+    const parishRow = await Member.create({
+      first_name: 'Parish', last_name: 'Inbox',
+      phone_number: '+15550000603',
+      email: 'abunearegawitx@gmail.com', is_active: true, role: 'member'
+    });
+
+    await handlePaymentSucceeded(pledgeIntent('pi_pledge_010', {
+      campaignId: String(campaign.id),
+      donor_first_name: 'Named',
+      donor_last_name: 'Wellwisher',
+      donor_email: 'abunearegawitx@gmail.com'
+    }));
+
+    const txn = await Transaction.findOne({ where: { external_id: 'pi_pledge_010' } });
+    expect(txn).not.toBeNull();
+    expect(txn.member_id).toBeNull();
+    expect(txn.collected_by).toBeNull();
+
+    const pledge = await Pledge.findOne({ where: { campaign_id: campaign.id } });
+    expect(pledge).not.toBeNull();
+    expect(pledge.member_id).toBeNull();
+    // Nothing was attached to the parish's own member row.
+    expect(await Transaction.count({ where: { member_id: parishRow.id } })).toBe(0);
+  });
+
   it('is idempotent when the webhook is redelivered', async () => {
     const intent = pledgeIntent('pi_pledge_003', {
       memberId: String(member.id), campaignId: String(campaign.id),

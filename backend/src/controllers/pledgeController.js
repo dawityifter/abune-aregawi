@@ -37,6 +37,11 @@ const maskAnonymousPledge = (payload, canPierce) => {
     last_name: '',
     email: null,
     phone: null,
+    // `notes` is free text a treasurer typed into `note` when recording the
+    // pledge, and the donor's name is exactly what gets written there ("cash
+    // from <name> at the fundraiser"). Masking every structured identity field
+    // while publishing the one free-text field is no masking at all.
+    notes: null,
     ...('address' in payload ? { address: null } : {}),
     ...('zip_code' in payload ? { zip_code: null } : {}),
     ...('metadata' in payload ? { metadata: null } : {}),

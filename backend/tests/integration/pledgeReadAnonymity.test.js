@@ -61,6 +61,10 @@ describe('anonymous pledges in the pledge read endpoints', () => {
       address: '1 Example Way',
       zip_code: '75001',
       is_anonymous: true,
+      // Free text a treasurer typed into `note` when recording the pledge.
+      // This is where a donor's name actually ends up in practice, so it is
+      // masked alongside the structured identity fields.
+      notes: 'Envelope handed in by Quiet Benefactor after liturgy',
       fulfillment_intent: 'immediate'
     });
   });
@@ -80,6 +84,7 @@ describe('anonymous pledges in the pledge read endpoints', () => {
     expect(row.is_anonymous).toBe(true);
     expect(row.member).toBeNull();
     expect(row.member_id).toBeNull();
+    expect(row.notes).toBeNull();
   });
 
   it('hides the donor from a secretary reading one pledge', async () => {
@@ -94,6 +99,8 @@ describe('anonymous pledges in the pledge read endpoints', () => {
     expect(res.body.pledge.address).toBeNull();
     expect(res.body.pledge.zip_code).toBeNull();
     expect(res.body.pledge.email).toBeNull();
+    // The free-text note is where a donor's name is most likely to be written.
+    expect(res.body.pledge.notes).toBeNull();
   });
 
   it('shows the donor to a treasurer', async () => {
@@ -105,6 +112,9 @@ describe('anonymous pledges in the pledge read endpoints', () => {
     expect(res.body.pledge.last_name).toBe('Benefactor');
     expect(res.body.pledge.is_anonymous).toBe(true);
     expect(res.body.pledge.member_id).toBe(linkedMember.id);
+    // Admin and treasurer still see the note; masking it is scoped to the
+    // seven non-piercing view roles.
+    expect(res.body.pledge.notes).toContain('after liturgy');
   });
 
   it('leaves a named pledge untouched for every view role', async () => {
