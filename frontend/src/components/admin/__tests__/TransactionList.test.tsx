@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import TransactionList from '../TransactionList';
 
@@ -80,5 +80,43 @@ describe('non-member donor name display', () => {
 
     await waitFor(() => expect(screen.getByText(/Real Member/)).toBeInTheDocument());
     expect(screen.queryByText('Anonymous Donor')).not.toBeInTheDocument();
+  });
+});
+
+// "Online" on a treasurer's reconciliation screen is a claim about how the
+// money arrived. The collector include is a LEFT JOIN, so keying the fallback
+// on the collector object being absent says "online" for any row whose join
+// simply did not come back — while collected_by names a real person.
+describe('collected-by display', () => {
+  const openDetails = async () => {
+    renderList();
+    fireEvent.click(await screen.findByRole('button', { name: /details/i }));
+  };
+
+  it('says Online only when nobody collected the payment', async () => {
+    mockApi([{ ...BASE_TX, collected_by: null, collector: null }]);
+    await openDetails();
+
+    expect(await screen.findByText('Online')).toBeInTheDocument();
+  });
+
+  it('names the collector when the join came back', async () => {
+    mockApi([{
+      ...BASE_TX,
+      collected_by: 7,
+      collector: { id: 7, first_name: 'Tess', last_name: 'Treasurer' }
+    }]);
+    await openDetails();
+
+    expect(await screen.findByText('Tess Treasurer')).toBeInTheDocument();
+    expect(screen.queryByText('Online')).not.toBeInTheDocument();
+  });
+
+  it('does not claim Online for a collected payment whose collector is missing', async () => {
+    mockApi([{ ...BASE_TX, collected_by: 7, collector: undefined }]);
+    await openDetails();
+
+    expect(await screen.findByText(/Collector 7/)).toBeInTheDocument();
+    expect(screen.queryByText('Online')).not.toBeInTheDocument();
   });
 });

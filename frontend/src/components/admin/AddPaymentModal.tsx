@@ -99,6 +99,14 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   // pledge" has nothing to do for those methods.
   const pledgeUnavailableForMethod = useMemo(() => paymentMethod === 'credit_card' || paymentMethod === 'ach', [paymentMethod]);
 
+  // A NAMED pledge takes its first/last name from the selected member. With no
+  // member selected those keys are simply absent from the request body, and
+  // Pledge.first_name is NOT NULL — so the endpoint fails on a field the
+  // treasurer was never asked for. An anonymous pledge is fine without one: it
+  // carries a baptism/church name instead.
+  const pledgeNeedsMember = paymentType === 'pledge_drive' && alsoRecordPledge
+    && !isAnonymous && !selectedMemberId;
+
   // Never leave the checkbox stuck "on" for a method it no longer applies to —
   // the render already hides it in that case, but this keeps the state itself
   // from silently outliving the control the user saw.
@@ -328,6 +336,16 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
     setError('');
 
     try {
+      // A named pledge needs a member: the endpoint reads first_name/last_name
+      // off the selected member, and with none selected those keys are dropped
+      // by JSON.stringify entirely. Caught here so the treasurer is told which
+      // field is missing instead of watching the request fail.
+      if (pledgeNeedsMember) {
+        setError(t('fundraising.pledgeNeedsMember'));
+        setLoading(false);
+        return;
+      }
+
       // Validate amount for ALL flows (including Stripe)
       const amt = parseFloat(amount);
       if (!amount || !Number.isFinite(amt) || amt < 1) {
@@ -799,6 +817,12 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                             <span className="text-sm text-gray-700">{t('fundraising.alsoRecordPledge')}</span>
                           </label>
 
+                          {pledgeNeedsMember && (
+                            <p role="alert" className="mt-2 text-sm text-red-600">
+                              {t('fundraising.pledgeNeedsMember')}
+                            </p>
+                          )}
+
                           {alsoRecordPledge && (
                             <div className="mt-3 space-y-3">
                               <div>
@@ -1131,7 +1155,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || pledgeNeedsMember}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-md"
               >
                 {loading

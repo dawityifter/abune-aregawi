@@ -6,7 +6,8 @@ import { formatDateForDisplay } from '../../utils/dateUtils';
 interface Transaction {
   id: number;
   member_id: number | null;
-  collected_by: number;
+  // Nullable since D7: nobody collects an online self-service gift.
+  collected_by: number | null;
   payment_date: string;
   amount: number;
   payment_type: 'membership_due' | 'tithe' | 'donation' | 'event' | 'tigray_hunger_fundraiser' | 'other';
@@ -842,9 +843,17 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                   <div>
                     <dt className="text-xs font-medium text-slate-500">Collected By</dt>
                     <dd className="mt-1 text-sm text-slate-900">
+                      {/* "Online" is a claim about HOW THE MONEY ARRIVED, on a
+                          treasurer's reconciliation screen. Key it on
+                          collected_by being null — the collector include is a
+                          LEFT JOIN, so a missing collector object with a set
+                          collected_by means the join did not come back, not
+                          that nobody collected the money. */}
                       {selectedTransaction.collector
                         ? `${selectedTransaction.collector.first_name} ${selectedTransaction.collector.last_name}`
-                        : 'Online'}
+                        : selectedTransaction.collected_by
+                          ? `Collector ${selectedTransaction.collected_by}`
+                          : 'Online'}
                     </dd>
                   </div>
                   <div>

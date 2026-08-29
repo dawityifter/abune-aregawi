@@ -174,6 +174,47 @@ describe('AddPaymentModal pledge support', () => {
     expect(screen.getByLabelText(/baptism or church name/i)).toBeInTheDocument();
   });
 
+  // With no member selected the request body simply has no first_name/last_name
+  // (JSON.stringify drops undefined) and Pledge.first_name is NOT NULL, so the
+  // endpoint fails on a field the treasurer was never asked for.
+  it('blocks a named pledge with no member selected and says why', async () => {
+    render(
+      <I18nProvider>
+        <LanguageProvider>
+          <AddPaymentModal onClose={() => {}} onPaymentAdded={() => {}} paymentView="new" />
+        </LanguageProvider>
+      </I18nProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/payment type/i), {
+      target: { value: 'pledge_drive' }
+    });
+    fireEvent.click(await screen.findByLabelText(/also record this as a pledge/i));
+
+    expect(await screen.findByText(/select a member to record this pledge/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^add payment$/i })).toBeDisabled();
+  });
+
+  it('lets an anonymous pledge through without a member', async () => {
+    render(
+      <I18nProvider>
+        <LanguageProvider>
+          <AddPaymentModal onClose={() => {}} onPaymentAdded={() => {}} paymentView="new" />
+        </LanguageProvider>
+      </I18nProvider>
+    );
+
+    fireEvent.click(screen.getByLabelText(/anonymous \/ non-member payment/i));
+    fireEvent.change(screen.getByLabelText(/payment type/i), {
+      target: { value: 'pledge_drive' }
+    });
+    fireEvent.click(await screen.findByLabelText(/also record this as a pledge/i));
+
+    await waitFor(() =>
+      expect(screen.queryByText(/select a member to record this pledge/i)).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /^add payment$/i })).not.toBeDisabled();
+  });
+
   // The pledge endpoint records an already-completed payment; it never runs a
   // card charge, so ticking the box would do nothing for a card/ACH payment.
   // A control that looks armed and silently no-ops is worse than no control,
