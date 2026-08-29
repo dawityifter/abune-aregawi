@@ -53,6 +53,24 @@ describe('POST /api/pledges requires a signed-in member', () => {
     amount: 500, first_name: 'Selam', last_name: 'Pledger', ...extra
   });
 
+  it('answers a second pledge in the same drive with 409, not a raw 500', async () => {
+    // A member whose first pledge is fully paid still holds it (A1), so the
+    // partial unique index still bites. That is a business rule with a plain
+    // answer, not an internal error, and the Sequelize message must not leak.
+    setVerifyTokenPayload({ uid: 'uid-pledger', email: pledger.email });
+    const first = await request(app).post('/api/pledges')
+      .set('Authorization', 'Bearer t').send(body());
+    expect(first.status).toBe(201);
+
+    const second = await request(app).post('/api/pledges')
+      .set('Authorization', 'Bearer t').send(body());
+
+    expect(second.status).toBe(409);
+    expect(second.body.message).toMatch(/already have a pledge/i);
+    expect(second.body.error).toBeUndefined();
+    expect(await Pledge.count()).toBe(1);
+  });
+
   it('rejects an unauthenticated pledge', async () => {
     const res = await request(app).post('/api/pledges').send(body());
     expect(res.status).toBe(401);

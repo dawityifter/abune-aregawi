@@ -15,6 +15,36 @@ const PLEDGE_ON_BEHALF_ROLES = ['admin', 'treasurer'];
 // have their name visible to all nine view roles.
 const ANONYMITY_PIERCING_ROLES = ['admin', 'treasurer'];
 
+const canPierceAnonymity = (req) =>
+  (req.user?.roles || []).some((r) => ANONYMITY_PIERCING_ROLES.includes(r));
+
+/**
+ * Strips an anonymous donor's identity out of a serialized pledge for the
+ * seven view roles that are not admin or treasurer (A2).
+ *
+ * For an ONLINE anonymous gift `first_name`/`last_name` hold the giver's real
+ * legal name — StripePayment sends the name on the card and createPaymentIntent
+ * prefers it over the 'Anonymous'/'Giver' placeholders — so leaving those
+ * fields alone would publish exactly what the donor asked to keep private.
+ * `is_anonymous` is always returned so a client knows the payload is masked
+ * rather than guessing from a name that reads as "Anonymous".
+ */
+const maskAnonymousPledge = (payload, canPierce) => {
+  if (!payload.is_anonymous || canPierce) return payload;
+  return {
+    ...payload,
+    first_name: 'Anonymous',
+    last_name: '',
+    email: null,
+    phone: null,
+    ...('address' in payload ? { address: null } : {}),
+    ...('zip_code' in payload ? { zip_code: null } : {}),
+    ...('metadata' in payload ? { metadata: null } : {}),
+    member_id: null,
+    member: null
+  };
+};
+
 /**
  * The member's pledge in the live campaign, with balances from
  * pledge_balances. Serves two callers with one payload: a member reading their
@@ -186,6 +216,16 @@ const createPledge = async (req, res) => {
     });
 
   } catch (error) {
+    // pledges_one_active_per_member_per_campaign. Per A1 a PAID 'later' pledge
+    // still counts, so a member who settled theirs in full and came back is the
+    // ordinary way to land here — that is a 409 with an explanation, not a 500
+    // leaking a raw Sequelize message about a partial unique index.
+    if (error && error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({
+        success: false,
+        message: 'You already have a pledge in this drive'
+      });
+    }
     console.error('Error creating pledge:', error);
     res.status(500).json({
       success: false,
@@ -234,9 +274,11 @@ const getAllPledges = async (req, res) => {
       ]
     });
 
+    const canPierce = canPierceAnonymity(req);
+
     res.status(200).json({
       success: true,
-      pledges: pledges.map(pledge => ({
+      pledges: pledges.map(pledge => maskAnonymousPledge({
         id: pledge.id,
         member_id: pledge.member_id,
         amount: pledge.amount,
@@ -250,12 +292,13 @@ const getAllPledges = async (req, res) => {
         last_name: pledge.last_name,
         email: pledge.email,
         phone: pledge.phone,
+        is_anonymous: pledge.is_anonymous,
         notes: pledge.notes,
         donation_id: pledge.donation_id,
         member: pledge.member,
         donation: pledge.donation,
         created_at: pledge.created_at
-      })),
+      }, canPierce)),
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -303,7 +346,7 @@ const getPledge = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      pledge: {
+      pledge: maskAnonymousPledge({
         id: pledge.id,
         member_id: pledge.member_id,
         amount: pledge.amount,
@@ -319,6 +362,7 @@ const getPledge = async (req, res) => {
         phone: pledge.phone,
         address: pledge.address,
         zip_code: pledge.zip_code,
+        is_anonymous: pledge.is_anonymous,
         notes: pledge.notes,
         donation_id: pledge.donation_id,
         metadata: pledge.metadata,
@@ -326,7 +370,7 @@ const getPledge = async (req, res) => {
         donation: pledge.donation,
         created_at: pledge.created_at,
         updated_at: pledge.updated_at
-      }
+      }, canPierceAnonymity(req))
     });
 
   } catch (error) {
@@ -438,8 +482,7 @@ const getPledgeStats = async (req, res) => {
     let totalFulfilled = 0;
     const statusBreakdownMap = {};
 
-    const callerRoles = req.user?.roles || [];
-    const canSeeAnonymousNames = callerRoles.some((r) => ANONYMITY_PIERCING_ROLES.includes(r));
+    const canSeeAnonymousNames = canPierceAnonymity(req);
     const displayName = (pledge) =>
       (pledge.is_anonymous && !canSeeAnonymousNames)
         ? 'Anonymous'
