@@ -561,6 +561,18 @@ describe('Automatic Bank Reconciliation', () => {
     });
 
     describe('Targeted linking when a Zelle transaction is created (review screen)', () => {
+        // This block exercises POST /api/zelle/reconcile/create-transaction directly,
+        // which match-only mode gates behind ZELLE_GMAIL_CREATE_ENABLED (default off).
+        // These tests are about bank-link side effects of a create, not about the flag
+        // itself, so run them with the flag on rather than adding CREATE_DISABLED
+        // handling to every case.
+        const originalFlag = process.env.ZELLE_GMAIL_CREATE_ENABLED;
+        beforeAll(() => { process.env.ZELLE_GMAIL_CREATE_ENABLED = 'true'; });
+        afterAll(() => {
+            if (originalFlag === undefined) delete process.env.ZELLE_GMAIL_CREATE_ENABLED;
+            else process.env.ZELLE_GMAIL_CREATE_ENABLED = originalFlag;
+        });
+
         test('Tier 0: creating a transaction from the Zelle review links the matching PENDING bank row immediately', async () => {
             // Bank CSV row uploaded FIRST — sits pending, carrying the Zelle reference
             const bankTxn = await BankTransaction.create({

@@ -4,6 +4,7 @@ const {
   extractPayerName
 } = require('../services/zelleTransactionService');
 const { ZelleEmailQueue, Member, Transaction } = require('../models');
+const { isZelleGmailCreateEnabled } = require('../config/featureFlags');
 
 async function syncFromGmail(req, res) {
   try {
@@ -87,10 +88,21 @@ async function processTransactionCreation(item, user) {
   return result;
 }
 
+// Match-only mode: transaction creation from the Gmail screen is disabled;
+// bank reconciliation is the only path that posts money.
+function creationDisabledResponse(res) {
+  return res.status(403).json({
+    success: false,
+    code: 'CREATE_DISABLED',
+    message: 'Creating transactions from Zelle emails is disabled. Match the payer to a member here, then approve the payment in Bank Reconciliation.'
+  });
+}
+
 // POST /api/zelle/reconcile/create-transaction
 // Body: { external_id, amount, payment_date, note, member_id, payment_type }
 // Insert-only: if external_id exists, do not modify existing
 async function createTransactionFromPreview(req, res) {
+  if (!isZelleGmailCreateEnabled()) return creationDisabledResponse(res);
   try {
     const result = await processTransactionCreation(req.body || {}, req.user);
     if (!result.success && result.code === 'EXISTS') {
@@ -106,6 +118,7 @@ async function createTransactionFromPreview(req, res) {
 // POST /api/zelle/reconcile/batch-create
 // Body: { items: [{ external_id, amount, payment_date, note, member_id, payment_type }, ...] }
 async function createBatchTransactions(req, res) {
+  if (!isZelleGmailCreateEnabled()) return creationDisabledResponse(res);
   try {
     const { items } = req.body;
     if (!Array.isArray(items)) {

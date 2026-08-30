@@ -5,6 +5,8 @@ const MOCK_MESSAGE = {
     snippet: 'SYNTHETIC PAYER sent you $75.00',
     payload: {
         headers: [
+            // The ® is required: extractPayerName's character class stops at it, which is
+            // what prevents the subject bleeding into the captured payer name.
             { name: 'Subject', value: 'You received money with Zelle®' },
             { name: 'From', value: 'Chase <no.reply.alerts@chase.com>' },
             { name: 'Date', value: 'Thu, 20 Aug 2026 15:00:00 +0000' },
@@ -24,6 +26,10 @@ const MOCK_MESSAGE = {
 jest.mock('googleapis', () => ({
     google: {
         auth: { OAuth2: class { setCredentials() {} } },
+        // server.js also loads youtubeRoutes, which calls google.youtube('v3') at
+        // require time; stub it so requiring the app doesn't throw. Nothing here
+        // exercises YouTube behavior.
+        youtube: () => ({}),
         gmail: () => ({
             users: {
                 labels: {
@@ -45,6 +51,8 @@ const {
 } = require('../../src/models');
 const { syncZelleFromGmail } = require('../../src/services/gmailZelleIngest');
 const { learnBankMemoMatch } = require('../../src/services/bankMemoMatchService');
+const request = require('supertest');
+const app = require('../../src/server');
 
 describe('Zelle match-only mode', () => {
     let member;
@@ -58,6 +66,8 @@ describe('Zelle match-only mode', () => {
         member = await Member.create({
             first_name: 'Synthetic',
             last_name: 'Payer',
+            email: 'test@example.com',
+            firebase_uid: 'test-firebase-uid',
             phone_number: '+15550003333',
             role: 'admin',
             is_active: true
@@ -116,5 +126,42 @@ describe('Zelle match-only mode', () => {
         expect(await Transaction.count()).toBe(1);
         const row = await ZelleEmailQueue.findOne({ where: { external_id: 'zelle:TESTREF123456' } });
         expect(row.status).toBe('AUTO_CREATED');
+    });
+
+    describe('create endpoints while the flag is off', () => {
+        test('POST /api/zelle/reconcile/create-transaction returns 403', async () => {
+            const res = await request(app)
+                .post('/api/zelle/reconcile/create-transaction')
+                .set('Authorization', 'Bearer valid-token')
+                .send({
+                    external_id: 'zelle:BLOCKED1',
+                    amount: 40.00,
+                    payment_date: '2026-08-20',
+                    member_id: member.id,
+                    payment_type: 'donation'
+                })
+                .expect(403);
+
+            expect(res.body.success).toBe(false);
+            expect(res.body.code).toBe('CREATE_DISABLED');
+            expect(await Transaction.count()).toBe(0);
+        });
+
+        test('POST /api/zelle/reconcile/batch-create returns 403', async () => {
+            const res = await request(app)
+                .post('/api/zelle/reconcile/batch-create')
+                .set('Authorization', 'Bearer valid-token')
+                .send({ items: [{
+                    external_id: 'zelle:BLOCKED2',
+                    amount: 40.00,
+                    payment_date: '2026-08-20',
+                    member_id: member.id,
+                    payment_type: 'donation'
+                }] })
+                .expect(403);
+
+            expect(res.body.code).toBe('CREATE_DISABLED');
+            expect(await Transaction.count()).toBe(0);
+        });
     });
 });
