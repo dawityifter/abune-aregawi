@@ -12,7 +12,8 @@
 
 ## Global Constraints
 
-- **Never commit without explicit user approval.** This repo's owner tests locally before any deploy, and pushing to `main` triggers a production deploy (GitHub Actions → OCI → pm2) which also runs `npx sequelize-cli db:migrate`. Each task below ends with a commit step: prepare it, show the user, and wait for their go-ahead before running it.
+- **Commit freely to this feature branch; never push, and never touch `main`.** Work happens in the `zelle-match-only` worktree branch, so each task's commit step runs as written without pausing for approval. What the repo owner's standing rule actually protects is the deploy: pushing `main` triggers GitHub Actions → OCI → pm2 *and* runs `npx sequelize-cli db:migrate` against the live Supabase database. So: no `git push`, no merge to `main`, no running migrations against any URL containing `supabase.com`. The merge decision belongs to the user at the end.
+- The pre-commit hook runs the full backend and frontend suites plus a staged-PII check on every commit (~1-2 min). Leave it enabled — do not use `--no-verify`. If it blocks a commit, the tests genuinely fail or a file genuinely looks like member data; fix the cause.
 - **Never put real member data in tests, fixtures, docs or commits.** All names in this plan are synthetic (`SYNTHETIC PAYER`, `Test Member`). Do not substitute real ones.
 - Backend tests run against `DATABASE_URL=sqlite::memory:` (set by `backend/tests/setup.js`). Never point tests at the production Supabase URL.
 - Migrations go in `backend/migrations/` (sequelize-cli, timestamp-prefixed, auto-run on deploy). Do **not** use `backend/src/database/migrations/`, which holds legacy ad-hoc scripts. See the `db-migrations` skill.
@@ -754,11 +755,24 @@ Then add this describe block:
         });
 
         test('refuses to re-match a row that already posted a transaction', async () => {
+            // A real Transaction, not a literal id: ZelleEmailQueue.belongsTo(Transaction)
+            // yields a foreign key under sequelize.sync(), and the sqlite dialect enforces
+            // it — a dangling id would throw on insert instead of reaching the 409 path.
+            const postedTxn = await Transaction.create({
+                member_id: member.id,
+                collected_by: member.id,
+                payment_date: '2026-08-20',
+                amount: 75.00,
+                payment_type: 'donation',
+                payment_method: 'zelle',
+                status: 'succeeded',
+                external_id: 'zelle:POSTEDTXN1'
+            });
             const posted = await ZelleEmailQueue.create({
                 external_id: 'zelle:POSTED1',
                 payer_name: 'SYNTHETIC PAYER',
                 status: 'AUTO_CREATED',
-                transaction_id: 999
+                transaction_id: postedTxn.id
             });
 
             const res = await request(app)
