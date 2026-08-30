@@ -1276,7 +1276,7 @@ Add to `backend/tests/integration/reconciliation.test.js` inside its top-level d
 ```js
     test('surfaces a Zelle duplicate candidate posted 4 days after the payment', async () => {
         const existing = await Transaction.create({
-            member_id: member.id,
+            member_id: memberToLink.id,
             collected_by: adminUser.id,
             payment_date: '2025-04-01',
             amount: 150.00,
@@ -1289,10 +1289,10 @@ Add to `backend/tests/integration/reconciliation.test.js` inside its top-level d
         await BankTransaction.create({
             date: new Date('2025-04-05'), // 4 days later: outside ±2, inside ±5
             amount: 150.00,
-            description: 'Zelle payment from ALMAZ TESFAY 77665544',
+            description: 'Zelle payment from LINK TARGET 77665544',
             type: 'ZELLE_CREDIT',
             status: 'PENDING',
-            payer_name: 'ALMAZ TESFAY',
+            payer_name: 'LINK TARGET',
             transaction_hash: 'bankhash-window-1',
             raw_data: {}
         });
@@ -1308,7 +1308,7 @@ Add to `backend/tests/integration/reconciliation.test.js` inside its top-level d
     });
 ```
 
-This test requires a `member` whose name tokens match `ALMAZ TESFAY`. Reuse the suite's existing member fixture; if it differs, adjust the `payer_name` and `description` to match that member's name rather than inventing a new one.
+The fixture names are verified against the current file: its `beforeAll` creates `adminUser` (Test Admin, the Firebase-mocked caller) and `memberToLink` (first name `Link`, last name `Target`). `findPotentialMatches` requires the bank payer name to contain the member's name tokens, which is why the payer reads `LINK TARGET`. There is no `member` variable in this suite — do not introduce one.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -1652,47 +1652,42 @@ git commit -m "feat(zelle): rewrite Zelle review as a read-only payer matching t
 Add to `frontend/src/components/finance/__tests__/BankTransactionDetail.test.tsx`:
 
 ```tsx
-    test('pre-fills the member field from the learned suggestion on a Zelle row', async () => {
-        const txn = {
-            ...baseTxn,
-            type: 'ZELLE',
-            status: 'PENDING',
-            amount: 75,
-            payer_name: 'SYNTHETIC PAYER',
-            suggested_match: {
-                source: 'LEARNED_ZELLE',
-                confidence: 'high',
-                reason: 'Previously associated with this ZELLE payer',
-                member: { id: 7, first_name: 'Test', last_name: 'Member' },
-            },
-        };
+    const zelleSuggestedTxn = {
+        ...baseTxn,
+        type: 'ZELLE',
+        status: 'PENDING',
+        amount: 75,
+        payer_name: 'SYNTHETIC PAYER',
+        suggested_match: {
+            source: 'LEARNED_ZELLE',
+            confidence: 'high',
+            reason: 'Previously associated with this ZELLE payer',
+            member: { id: 7, first_name: 'Test', last_name: 'Member' },
+        },
+    };
 
-        render(<BankTransactionDetail txn={txn as any} onClose={() => {}} onReconciled={() => {}} />);
+    test('pre-selects the suggested member on a Zelle row', async () => {
+        render(<BankTransactionDetail txn={zelleSuggestedTxn as any} onClose={() => {}} onSuccess={() => {}} />);
 
-        expect(await screen.findByDisplayValue('7')).toBeInTheDocument();
-        expect(screen.getByText(/Test Member/)).toBeInTheDocument();
-        expect(screen.getByText(/Previously associated/)).toBeInTheDocument();
+        // selectedMember is seeded from the suggestion, so the member's name
+        // renders without the treasurer searching for them.
+        expect(await screen.findByText(/Test Member/)).toBeInTheDocument();
+    });
+
+    test('shows the suggestion provenance so the treasurer can judge it', async () => {
+        render(<BankTransactionDetail txn={zelleSuggestedTxn as any} onClose={() => {}} onSuccess={() => {}} />);
+
+        expect(await screen.findByText(/Previously associated with this ZELLE payer/)).toBeInTheDocument();
+        expect(screen.getByText(/high/i)).toBeInTheDocument();
     });
 
     test('labels the action as approval for a Zelle row', async () => {
-        const txn = {
-            ...baseTxn,
-            type: 'ZELLE',
-            status: 'PENDING',
-            suggested_match: {
-                source: 'LEARNED_ZELLE',
-                confidence: 'high',
-                reason: 'Previously associated with this ZELLE payer',
-                member: { id: 7, first_name: 'Test', last_name: 'Member' },
-            },
-        };
-
-        render(<BankTransactionDetail txn={txn as any} onClose={() => {}} onReconciled={() => {}} />);
+        render(<BankTransactionDetail txn={zelleSuggestedTxn as any} onClose={() => {}} onSuccess={() => {}} />);
         expect(await screen.findByRole('button', { name: /approve/i })).toBeInTheDocument();
     });
 ```
 
-Match `baseTxn` and the component's actual prop names to what the existing tests in that file use — read the file's current fixtures first and reuse them rather than inventing new prop shapes.
+Verified against the current component: its props are `{ txn, onClose, onSuccess }` — there is no `onReconciled`. Reuse whatever `baseTxn` the existing tests in that file already define rather than inventing a new fixture shape.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -1703,17 +1698,21 @@ Expected: FAIL — the member field is empty and the button is not labelled Appr
 
 In `BankTransactionDetail.tsx`:
 
-1. Initialise the reconcile form's member-id state from `txn.suggested_match?.member?.id` when the row is `PENDING`, falling back to empty. Use a `useEffect` keyed on `txn.id` so switching rows re-seeds it:
+1. Seed the member selection from `txn.suggested_match` when the row is `PENDING`. The component does not hold a plain member-id string — it holds `selectedMember`, typed `{ id: number; name: string; phoneNumber?: string | null } | null`, populated by a search box. So build that object from the suggestion:
 
 ```tsx
 useEffect(() => {
     if (txn.status !== 'PENDING') return;
-    const suggestedId = txn.suggested_match?.member?.id;
-    setMemberId(suggestedId ? String(suggestedId) : '');
+    const suggested = txn.suggested_match?.member;
+    if (!suggested) return;
+    setSelectedMember({
+        id: suggested.id,
+        name: `${suggested.first_name || ''} ${suggested.last_name || ''}`.trim()
+    });
 }, [txn.id, txn.status, txn.suggested_match]);
 ```
 
-Use whatever the component already calls its member-id state setter — read the file before editing and reuse that name rather than introducing `setMemberId` if it differs.
+Seed only when a suggestion exists — do not clear a selection the treasurer has already made by hand. `suggested_match.member` carries `first_name`/`last_name` (see `buildCandidateFromMember` in `bankMemoMatchService.js`), not a pre-joined `name`, which is why it is composed here.
 2. Above the member field on a PENDING credit, render a suggestion panel when `txn.suggested_match?.member` exists: the member's name, the `confidence` value, and the `reason` string. Follow the styling of the existing amber "Possible Existing Entry" panel, but use a neutral or blue tone so the two panels are visually distinguishable — the suggestion is informational, the duplicate warning is a caution.
 3. When `sourceType` is Zelle (`txn.type` contains `ZELLE`), label the submit button `Approve` instead of the current label; leave the label unchanged for other types.
 
