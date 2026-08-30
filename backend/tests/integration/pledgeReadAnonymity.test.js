@@ -43,6 +43,13 @@ describe('anonymous pledges in the pledge read endpoints', () => {
       email: 'sam.secretary@example.test',
       is_active: true, role: 'secretary', firebase_uid: 'uid-secretary'
     });
+    await Member.create({
+      first_name: 'Beth',
+      last_name: 'Bookkeeper',
+      phone_number: '+15550000804',
+      email: 'beth.bookkeeper@example.test',
+      is_active: true, role: 'bookkeeper', firebase_uid: 'uid-bookkeeper'
+    });
     linkedMember = await Member.create({
       first_name: 'Quiet',
       last_name: 'Benefactor',
@@ -134,5 +141,60 @@ describe('anonymous pledges in the pledge read endpoints', () => {
     expect(res.body.pledge.last_name).toBe('Donor');
     expect(res.body.pledge.email).toBe('open.donor@example.test');
     expect(res.body.pledge.is_anonymous).toBe(false);
+  });
+
+  // The PUT response is a one-request bypass of the same mask: editRoles
+  // (admin/treasurer/bookkeeper/ar_team) is wider than the anonymity-piercing
+  // roles (admin/treasurer), and an empty PUT body makes pledge.update({}) a
+  // no-op that used to still hand back the full unmasked row.
+  it('masks the donor in a bookkeeper PUT response, even with an empty body', async () => {
+    setVerifyTokenPayload({ uid: 'uid-bookkeeper', email: 'beth.bookkeeper@example.test' });
+    const res = await request(app)
+      .put(`/api/pledges/${anonymousPledge.id}`)
+      .set('Authorization', 'Bearer t')
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(JSON.stringify(res.body)).not.toContain('Benefactor');
+    expect(res.body.pledge.first_name).toBe('Anonymous');
+    expect(res.body.pledge.last_name).toBe('');
+    expect(res.body.pledge.email).toBeNull();
+    expect(res.body.pledge.phone).toBeNull();
+    expect(res.body.pledge.address).toBeNull();
+    expect(res.body.pledge.zip_code).toBeNull();
+    expect(res.body.pledge.member_id).toBeNull();
+    // Not touched by this request, so it stays masked exactly like GET — a
+    // pre-existing note that names the donor must not surface on an
+    // unrelated (here, no-op) edit.
+    expect(res.body.pledge.notes).toBeNull();
+  });
+
+  it("still shows a bookkeeper the notes they just wrote in this PUT", async () => {
+    setVerifyTokenPayload({ uid: 'uid-bookkeeper', email: 'beth.bookkeeper@example.test' });
+    const res = await request(app)
+      .put(`/api/pledges/${anonymousPledge.id}`)
+      .set('Authorization', 'Bearer t')
+      .send({ notes: 'Confirmed by phone, no name given' });
+
+    expect(res.status).toBe(200);
+    // Their own just-submitted text is not the donor's leaked identity.
+    expect(res.body.pledge.notes).toBe('Confirmed by phone, no name given');
+    // But the donor's identity is still masked.
+    expect(res.body.pledge.first_name).toBe('Anonymous');
+    expect(res.body.pledge.email).toBeNull();
+  });
+
+  it('leaves the donor visible in a treasurer PUT response', async () => {
+    setVerifyTokenPayload({ uid: 'uid-treasurer', email: 'tess.treasurer@example.test' });
+    const res = await request(app)
+      .put(`/api/pledges/${anonymousPledge.id}`)
+      .set('Authorization', 'Bearer t')
+      .send({ notes: 'Confirmed by phone' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.pledge.last_name).toBe('Benefactor');
+    expect(res.body.pledge.email).toBe('quiet.benefactor@example.test');
+    expect(res.body.pledge.member_id).toBe(linkedMember.id);
+    expect(res.body.pledge.notes).toBe('Confirmed by phone');
   });
 });

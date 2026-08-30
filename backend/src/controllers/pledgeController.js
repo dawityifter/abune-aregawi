@@ -429,10 +429,51 @@ const updatePledge = async (req, res) => {
       });
     }
 
+    // Same projection and mask as getPledge (pledgeController.js:~354) — this
+    // response is a one-request bypass of the anonymity mask otherwise, since
+    // editRoles (admin/treasurer/bookkeeper/ar_team) is wider than the roles
+    // allowed to pierce anonymity (admin/treasurer), and a PUT with an empty
+    // body still returns the full row via pledge.update({}) as a no-op.
+    const canPierce = canPierceAnonymity(req);
+    const maskedPledge = maskAnonymousPledge({
+      id: pledge.id,
+      member_id: pledge.member_id,
+      amount: pledge.amount,
+      pledge_type: pledge.pledge_type,
+      event_name: pledge.event_name,
+      status: pledge.legacy_status,
+      pledge_date: pledge.pledge_date,
+      due_date: pledge.due_date,
+      fulfilled_date: pledge.fulfilled_date,
+      first_name: pledge.first_name,
+      last_name: pledge.last_name,
+      email: pledge.email,
+      phone: pledge.phone,
+      address: pledge.address,
+      zip_code: pledge.zip_code,
+      is_anonymous: pledge.is_anonymous,
+      notes: pledge.notes,
+      donation_id: pledge.donation_id,
+      metadata: pledge.metadata,
+      created_at: pledge.created_at,
+      updated_at: pledge.updated_at
+    }, canPierce);
+
+    // Judgement call: a bookkeeper/ar_team who just typed `notes` in THIS
+    // request gets that value back — echoing their own just-submitted input
+    // is not a leak. `notes` is only restored when this request actually set
+    // it; a lifecycle-only edit (or an empty body) leaves it masked exactly
+    // like GET, so a pre-existing note that names the donor (see
+    // maskAnonymousPledge) is never surfaced by an unrelated edit. The
+    // donor's name/email/phone/address stay masked unconditionally either way.
+    if (notes !== undefined) {
+      maskedPledge.notes = pledge.notes;
+    }
+
     res.status(200).json({
       success: true,
       message: 'Pledge updated successfully',
-      pledge: pledge
+      pledge: maskedPledge
     });
 
   } catch (error) {
