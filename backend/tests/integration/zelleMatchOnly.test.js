@@ -389,4 +389,55 @@ describe('Zelle match-only mode', () => {
                 .expect(400);
         });
     });
+
+    describe('GET /api/zelle/queue', () => {
+        beforeEach(async () => {
+            await ZelleEmailQueue.bulkCreate([
+                { external_id: 'zelle:L1', payer_name: 'ALPHA PAYER', amount: 10, payment_date: '2026-08-01', status: 'MATCHED', matched_member_id: member.id },
+                { external_id: 'zelle:L2', payer_name: 'BETA PAYER', amount: 20, payment_date: '2026-08-02', status: 'NEEDS_REVIEW' },
+                { external_id: 'zelle:L3', payer_name: 'GAMMA PAYER', amount: 30, payment_date: '2026-08-03', status: 'NEEDS_REVIEW' }
+            ]);
+        });
+
+        test('paginates and reports totals', async () => {
+            const res = await request(app)
+                .get('/api/zelle/queue?limit=2&page=1')
+                .set('Authorization', 'Bearer valid-token')
+                .expect(200);
+
+            expect(res.body.items).toHaveLength(2);
+            expect(res.body.pagination.total).toBe(3);
+            expect(res.body.pagination.pages).toBe(2);
+            expect(res.body.pagination.page).toBe(1);
+        });
+
+        test('orders unmatched rows first', async () => {
+            const res = await request(app)
+                .get('/api/zelle/queue')
+                .set('Authorization', 'Bearer valid-token')
+                .expect(200);
+
+            expect(res.body.items[0].status).toBe('NEEDS_REVIEW');
+            expect(res.body.items[res.body.items.length - 1].status).toBe('MATCHED');
+        });
+
+        test('filters by search across payer name', async () => {
+            const res = await request(app)
+                .get('/api/zelle/queue?search=BETA')
+                .set('Authorization', 'Bearer valid-token')
+                .expect(200);
+
+            expect(res.body.items).toHaveLength(1);
+            expect(res.body.items[0].payer_name).toBe('BETA PAYER');
+        });
+
+        test('still filters by status', async () => {
+            const res = await request(app)
+                .get('/api/zelle/queue?status=NEEDS_REVIEW')
+                .set('Authorization', 'Bearer valid-token')
+                .expect(200);
+
+            expect(res.body.items).toHaveLength(2);
+        });
+    });
 });

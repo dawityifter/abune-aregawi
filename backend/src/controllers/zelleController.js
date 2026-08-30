@@ -143,26 +143,57 @@ async function createBatchTransactions(req, res) {
   }
 }
 
-// GET /api/zelle/queue?status=AUTO_CREATED&limit=50
-// Audit/review list of processed Zelle emails
+// GET /api/zelle/queue?status=NEEDS_REVIEW&search=smith&page=1&limit=50
+// The treasurer's primary Zelle screen: every email the sync has recorded,
+// with its current member match.
 async function getQueue(req, res) {
   try {
-    const { status } = req.query;
-    const limit = Math.min(Number(req.query.limit || 50), 200);
+    const { Op } = require('sequelize');
+    const { sequelize } = require('../models');
+
+    const { status, search } = req.query;
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+
     const where = {};
     if (status) where.status = String(status).toUpperCase();
 
-    const rows = await ZelleEmailQueue.findAll({
+    const term = String(search || '').trim();
+    if (term) {
+      const likeOp = sequelize.getDialect() === 'postgres' ? Op.iLike : Op.like;
+      const contains = { [likeOp]: `%${term}%` };
+      where[Op.or] = [
+        { payer_name: contains },
+        { note: contains },
+        { subject: contains }
+      ];
+    }
+
+    const { count, rows } = await ZelleEmailQueue.findAndCountAll({
       where,
-      order: [['payment_date', 'DESC'], ['created_at', 'DESC']],
+      // Unmatched work first, then most recent payments. `matched_member_id IS
+      // NULL` sorts DESC in both dialects: Postgres puts TRUE first, sqlite
+      // puts 1 first. A CASE expression would need dialect-specific quoting.
+      order: [
+        [sequelize.literal('matched_member_id IS NULL'), 'DESC'],
+        ['payment_date', 'DESC'],
+        ['created_at', 'DESC']
+      ],
       limit,
+      offset: (page - 1) * limit,
+      distinct: true,
       include: [
         { model: Member, as: 'matchedMember', attributes: ['id', 'first_name', 'last_name'] },
         { model: Transaction, as: 'transaction', attributes: ['id', 'amount', 'payment_type', 'payment_date', 'receipt_number'] }
       ]
     });
 
-    return res.json({ success: true, count: rows.length, items: rows });
+    return res.json({
+      success: true,
+      count: rows.length,
+      items: rows,
+      pagination: { total: count, page, pages: Math.ceil(count / limit) }
+    });
   } catch (error) {
     console.error('Zelle queue list error:', error);
     return res.status(500).json({ success: false, message: error.message });
