@@ -1,6 +1,7 @@
 const { google } = require('googleapis');
 const moment = require('moment-timezone');
 const { Member, Transaction, ZelleEmailQueue } = require('../models');
+const { isZelleGmailCreateEnabled } = require('../config/featureFlags');
 const { Op } = require('sequelize');
 const {
   sanitizeNote,
@@ -237,7 +238,13 @@ async function syncZelleFromGmail({ dryRun = false } = {}) {
       // Match sender to member
       const match = await matchZelleSender({ payerName: parsed.payerName, note: parsed.note });
 
-      const canAutoCreate = match.confidence === 'high' && match.member_id && parsed.amount;
+      // Match-only mode: the Gmail path records the email and its suggested
+      // member but never posts money — bank reconciliation is the only path
+      // that creates transactions. See ZELLE_GMAIL_CREATE_ENABLED.
+      const canAutoCreate = isZelleGmailCreateEnabled()
+        && match.confidence === 'high'
+        && match.member_id
+        && parsed.amount;
       if (canAutoCreate) {
         if (dryRun) {
           stats.autoCreated += 1;
