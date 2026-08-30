@@ -206,7 +206,7 @@ async function matchQueueItem(req, res) {
     });
 
     if (!result.success) {
-      const statusByCode = { NOT_FOUND: 404, ALREADY_POSTED: 409, MEMBER_NOT_FOUND: 400 };
+      const statusByCode = { NOT_FOUND: 404, ALREADY_POSTED: 409, MEMBER_NOT_FOUND: 400, PAYER_NAME_REQUIRED: 400 };
       return res.status(statusByCode[result.code] || 400).json(result);
     }
     return res.json(result);

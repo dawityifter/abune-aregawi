@@ -198,6 +198,23 @@ describe('Zelle match-only mode', () => {
             expect(learned).toBeDefined();
             expect(learned.confidence).toBe('high');
             expect(String(learned.member.id)).toBe(String(member.id));
+
+            // Same description with no payer_name: only the DESCRIPTION key
+            // (built by stripping the trailing reference token) can hit here —
+            // the PAYER key has nothing to match against. This is what actually
+            // proves normalizeDescriptionForKey's `\s+\w{6,}$` strip still works;
+            // the assertion above alone would also pass off the PAYER key even
+            // if that stripping regressed. FUZZY_DESC candidates are low-confidence
+            // and not LEARNED, so they can't produce a false positive here.
+            const descOnlySuggestions = await findSuggestionCandidates({
+                type: 'ZELLE',
+                payer_name: null,
+                description: 'Zelle payment from SYNTHETIC PAYER 27250625041'
+            });
+            const descOnlyLearned = descOnlySuggestions.find(s => String(s.source || '').startsWith('LEARNED'));
+            expect(descOnlyLearned).toBeDefined();
+            expect(descOnlyLearned.confidence).toBe('high');
+            expect(String(descOnlyLearned.member.id)).toBe(String(member.id));
         });
 
         test('stamps the queue row and creates no transaction', async () => {
@@ -263,7 +280,34 @@ describe('Zelle match-only mode', () => {
                 payer_name: 'OVERRIDE PAYER',
                 description: 'Zelle payment from OVERRIDE PAYER 99887766'
             });
-            expect(suggestions.some(s => String(s.source || '').startsWith('LEARNED'))).toBe(true);
+            const learned = suggestions.find(s => String(s.source || '').startsWith('LEARNED'));
+            expect(learned).toBeDefined();
+            expect(String(learned.member.id)).toBe(String(member.id));
+        });
+
+        test('refuses to match when there is no payer name at all, so the row is not silently un-matchable', async () => {
+            const noPayer = await ZelleEmailQueue.create({
+                external_id: 'zelle:NOPAYERNOOVERRIDE1',
+                payer_name: null,
+                amount: 45.00,
+                payment_date: '2026-08-22',
+                note: 'You received money with Zelle',
+                status: 'NEEDS_REVIEW'
+            });
+
+            const res = await request(app)
+                .post(`/api/zelle/queue/${noPayer.id}/match`)
+                .set('Authorization', 'Bearer valid-token')
+                .send({ member_id: member.id })
+                .expect(400);
+
+            expect(res.body.success).toBe(false);
+            expect(res.body.code).toBe('PAYER_NAME_REQUIRED');
+
+            // Nothing was learned or stamped — the row is still actionable.
+            await noPayer.reload();
+            expect(noPayer.status).toBe('NEEDS_REVIEW');
+            expect(noPayer.matched_member_id).toBeNull();
         });
 
         test('refuses to re-match a row that already posted a transaction', async () => {
@@ -294,6 +338,41 @@ describe('Zelle match-only mode', () => {
                 .expect(409);
 
             expect(res.body.code).toBe('ALREADY_POSTED');
+        });
+
+        test('survives the next Gmail sync instead of being reverted to NEEDS_REVIEW', async () => {
+            // Populate the row the way the Gmail sync actually does, using the
+            // module's own mocked message fixture, so this exercises the exact
+            // finalized-status list that upsertQueueRow/syncZelleFromGmail check.
+            const stats = await syncZelleFromGmail({ dryRun: false });
+            expect(stats.needsReview).toBe(1);
+            const synced = await ZelleEmailQueue.findOne({ where: { external_id: 'zelle:TESTREF123456' } });
+            expect(synced).not.toBeNull();
+
+            await request(app)
+                .post(`/api/zelle/queue/${synced.id}/match`)
+                .set('Authorization', 'Bearer valid-token')
+                .send({ member_id: member.id })
+                .expect(200);
+
+            await synced.reload();
+            expect(synced.status).toBe('MATCHED');
+            expect(synced.match_source).toBe('TREASURER_MATCH');
+
+            // The next poll of the same inbox re-processes the same message
+            // (it's still within newer_than:30d and unlabeled in this mock).
+            // Before the fix, upsertQueueRow's "unless already finalized" guard
+            // did not include MATCHED, so this call would flip status back to
+            // NEEDS_REVIEW and overwrite match_source with the sync's own guess.
+            await syncZelleFromGmail({ dryRun: false });
+
+            await synced.reload();
+            expect(synced.status).toBe('MATCHED');
+            expect(synced.match_source).toBe('TREASURER_MATCH');
+            expect(synced.payer_name).toBe('SYNTHETIC PAYER');
+            expect(String(synced.matched_member_id)).toBe(String(member.id));
+            expect(String(synced.matched_by)).toBe(String(member.id));
+            expect(synced.matched_at).not.toBeNull();
         });
 
         test('404s for an unknown queue row and 400s for an unknown member', async () => {

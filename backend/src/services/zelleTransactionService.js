@@ -414,7 +414,21 @@ async function matchQueueRowToMember({ queueId, memberId, payerName = null, user
   // An explicit override wins: when extractPayerName failed, the stored
   // payer_name is null and learning would key off memo text that no bank row
   // ever matches.
-  const effectivePayerName = (payerName && String(payerName).trim()) || row.payer_name || null;
+  const trimmedOverride = payerName ? String(payerName).trim() : '';
+  const trimmedRowPayerName = row.payer_name ? String(row.payer_name).trim() : '';
+  const effectivePayerName = trimmedOverride || trimmedRowPayerName || null;
+
+  // With no payer name at all, learnZelleAssociation falls back to keying off
+  // the raw note text, which no real bank CSV description ever normalizes
+  // to — the match would report success while learning a key that can never
+  // be found. Refuse instead of silently doing nothing useful.
+  if (!effectivePayerName) {
+    return {
+      success: false,
+      code: 'PAYER_NAME_REQUIRED',
+      message: 'This email has no payer name on file. Enter the payer name exactly as it appears on the bank statement so bank reconciliation can find this match.'
+    };
+  }
 
   await learnZelleAssociation({
     payerName: effectivePayerName,
