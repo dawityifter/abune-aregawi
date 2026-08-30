@@ -5,7 +5,7 @@ const MOCK_MESSAGE = {
     snippet: 'SYNTHETIC PAYER sent you $75.00',
     payload: {
         headers: [
-            { name: 'Subject', value: 'You received money with Zelle:' },
+            { name: 'Subject', value: 'You received money with Zelle®' },
             { name: 'From', value: 'Chase <no.reply.alerts@chase.com>' },
             { name: 'Date', value: 'Thu, 20 Aug 2026 15:00:00 +0000' },
             { name: 'Message-Id', value: '<abc123@chase.com>' }
