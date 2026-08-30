@@ -185,18 +185,23 @@ describe('POST /api/donations/webhook', () => {
       fulfillment_intent: 'later'
     });
 
-    jest.spyOn(PledgeAllocation, 'create').mockRejectedValueOnce(new Error('allocation exploded'));
+    const allocationCreateSpy = jest.spyOn(PledgeAllocation, 'create')
+      .mockRejectedValueOnce(new Error('allocation exploded'));
 
     const res = await postWebhook(pledgeDriveLaterIntent('pi_hook_005'));
 
     expect(res.status).toBe(200);
     const txn = await Transaction.findOne({ where: { external_id: 'pi_hook_005' } });
     expect(txn).not.toBeNull();
-    // Proves the mock was actually consumed: absent the fixture pledge above,
-    // this would pass trivially (maybeAllocateToPledge returns null before
-    // ever calling create, so the count is 0 either way). With the fixture,
-    // an unmocked run allocates and leaves count() at 1 (verified by hand),
-    // so 0 here means the mocked rejection actually fired.
+    // count() alone cannot prove the mock fired: absent the fixture pledge
+    // above, maybeAllocateToPledge returns null before ever calling create,
+    // and count() would be 0 either way — reached-and-rejected and
+    // never-reached are indistinguishable by row count. The spy call count is
+    // what actually proves allocate() ran into the mocked rejection rather
+    // than bailing out earlier; deleting this assertion as "redundant" with
+    // the count() check below would silently let the path-never-reached bug
+    // return without failing anything.
+    expect(allocationCreateSpy).toHaveBeenCalledTimes(1);
     expect(await PledgeAllocation.count()).toBe(0);
   });
 });
