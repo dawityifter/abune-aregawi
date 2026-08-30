@@ -97,6 +97,18 @@ describe('POST /api/donations/webhook', () => {
     metadata: { purpose: 'donation', memberId: String(member.id) }
   });
 
+  // purpose is pledge_drive but pledgeIntent is NOT 'immediate', so this takes
+  // the ordinary "record the payment, then try to allocate" path rather than
+  // the atomic pledge-and-pay path (donationController.js checks
+  // metadata.pledgeIntent === 'immediate' to choose between the two).
+  const pledgeDriveLaterIntent = (id) => ({
+    id,
+    amount: 5000,
+    amount_received: 5000,
+    created: Math.floor(Date.now() / 1000),
+    metadata: { purpose: 'pledge_drive', memberId: String(member.id) }
+  });
+
   it('answers non-2xx when a pledge-and-pay rolls back, so Stripe redelivers', async () => {
     jest.spyOn(Pledge, 'create').mockRejectedValueOnce(new Error('transient DB error'));
 
@@ -159,12 +171,32 @@ describe('POST /api/donations/webhook', () => {
   });
 
   it('still answers 200 for an ordinary donation whose pledge allocation fails', async () => {
+    // Gives the member an open 'later' pledge in the live campaign, so
+    // maybeAllocateToPledge actually reaches allocate() instead of returning
+    // null before ever calling PledgeAllocation.create.
+    await Pledge.create({
+      campaign_id: campaign.id,
+      member_id: member.id,
+      amount: 100,
+      first_name: member.first_name,
+      last_name: member.last_name,
+      lifecycle: 'active',
+      is_historical: false,
+      fulfillment_intent: 'later'
+    });
+
     jest.spyOn(PledgeAllocation, 'create').mockRejectedValueOnce(new Error('allocation exploded'));
 
-    const res = await postWebhook(ordinaryDonationIntent('pi_hook_005'));
+    const res = await postWebhook(pledgeDriveLaterIntent('pi_hook_005'));
 
     expect(res.status).toBe(200);
     const txn = await Transaction.findOne({ where: { external_id: 'pi_hook_005' } });
     expect(txn).not.toBeNull();
+    // Proves the mock was actually consumed: absent the fixture pledge above,
+    // this would pass trivially (maybeAllocateToPledge returns null before
+    // ever calling create, so the count is 0 either way). With the fixture,
+    // an unmocked run allocates and leaves count() at 1 (verified by hand),
+    // so 0 here means the mocked rejection actually fired.
+    expect(await PledgeAllocation.count()).toBe(0);
   });
 });
