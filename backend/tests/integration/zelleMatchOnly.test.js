@@ -392,10 +392,16 @@ describe('Zelle match-only mode', () => {
 
     describe('GET /api/zelle/queue', () => {
         beforeEach(async () => {
+            // L1 (MATCHED) deliberately carries the NEWEST payment_date, and the two
+            // NEEDS_REVIEW rows the two OLDEST. This is load-bearing for "orders
+            // unmatched rows first" below: under plain payment_date-DESC ordering
+            // (i.e. without the matched_member_id-IS-NULL term), L1 would sort first
+            // and that test would fail. Only the unmatched-first clause can put a
+            // NEEDS_REVIEW row ahead of L1.
             await ZelleEmailQueue.bulkCreate([
-                { external_id: 'zelle:L1', payer_name: 'ALPHA PAYER', amount: 10, payment_date: '2026-08-01', status: 'MATCHED', matched_member_id: member.id },
-                { external_id: 'zelle:L2', payer_name: 'BETA PAYER', amount: 20, payment_date: '2026-08-02', status: 'NEEDS_REVIEW' },
-                { external_id: 'zelle:L3', payer_name: 'GAMMA PAYER', amount: 30, payment_date: '2026-08-03', status: 'NEEDS_REVIEW' }
+                { external_id: 'zelle:L1', payer_name: 'ALPHA PAYER', amount: 10, payment_date: '2026-08-03', status: 'MATCHED', matched_member_id: member.id },
+                { external_id: 'zelle:L2', payer_name: 'BETA PAYER', amount: 20, payment_date: '2026-08-01', status: 'NEEDS_REVIEW' },
+                { external_id: 'zelle:L3', payer_name: 'GAMMA PAYER', amount: 30, payment_date: '2026-08-02', status: 'NEEDS_REVIEW' }
             ]);
         });
 
@@ -431,6 +437,21 @@ describe('Zelle match-only mode', () => {
             expect(res.body.items[0].payer_name).toBe('BETA PAYER');
         });
 
+        test('filters by search across note text, not just payer name', async () => {
+            await ZelleEmailQueue.update(
+                { note: 'memo references DELTA-REF-9' },
+                { where: { external_id: 'zelle:L2' } }
+            );
+
+            const res = await request(app)
+                .get('/api/zelle/queue?search=DELTA-REF')
+                .set('Authorization', 'Bearer valid-token')
+                .expect(200);
+
+            expect(res.body.items).toHaveLength(1);
+            expect(res.body.items[0].external_id).toBe('zelle:L2');
+        });
+
         test('still filters by status', async () => {
             const res = await request(app)
                 .get('/api/zelle/queue?status=NEEDS_REVIEW')
@@ -438,6 +459,17 @@ describe('Zelle match-only mode', () => {
                 .expect(200);
 
             expect(res.body.items).toHaveLength(2);
+        });
+
+        test('truncates fractional page and limit instead of erroring', async () => {
+            const res = await request(app)
+                .get('/api/zelle/queue?page=1.9&limit=2.9')
+                .set('Authorization', 'Bearer valid-token')
+                .expect(200);
+
+            expect(res.body.pagination.page).toBe(1);
+            expect(res.body.items.length).toBeLessThanOrEqual(2);
+            expect(res.body.pagination.total).toBe(3);
         });
     });
 });

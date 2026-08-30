@@ -4,8 +4,9 @@ const {
   extractPayerName,
   matchQueueRowToMember
 } = require('../services/zelleTransactionService');
-const { ZelleEmailQueue, Member, Transaction } = require('../models');
+const { ZelleEmailQueue, Member, Transaction, sequelize } = require('../models');
 const { isZelleGmailCreateEnabled } = require('../config/featureFlags');
+const { Op } = require('sequelize');
 
 async function syncFromGmail(req, res) {
   try {
@@ -148,12 +149,14 @@ async function createBatchTransactions(req, res) {
 // with its current member match.
 async function getQueue(req, res) {
   try {
-    const { Op } = require('sequelize');
-    const { sequelize } = require('../models');
-
     const { status, search } = req.query;
-    const page = Math.max(Number(req.query.page) || 1, 1);
-    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    // Truncate before clamping: a fractional LIMIT/OFFSET (e.g. from
+    // `?page=2.5`) reaches the driver as a non-integer and both Postgres and
+    // sqlite reject it (Postgres: "syntax error at or near '.'"; sqlite:
+    // SQLITE_MISMATCH datatype mismatch) — this is a real cross-dialect bug,
+    // not just a Postgres one, verified against both.
+    const page = Math.max(Math.trunc(Number(req.query.page)) || 1, 1);
+    const limit = Math.min(Math.max(Math.trunc(Number(req.query.limit)) || 50, 1), 200);
 
     const where = {};
     if (status) where.status = String(status).toUpperCase();
