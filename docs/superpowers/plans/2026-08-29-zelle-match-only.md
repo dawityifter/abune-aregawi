@@ -1757,6 +1757,11 @@ The document currently states that sync "Creates Transactions only if a member m
 - **Reconciliation Workflow**: replace the Create steps with the match workflow — open Treasurer Dashboard → Zelle Review, assign the member (supplying a payer name when the email could not be parsed), then approve the payment in Bank Reconciliation when the Chase CSV is uploaded.
 - **Endpoints**: add `POST /api/zelle/queue/:id/match`, document the pagination and `search` params on `GET /api/zelle/queue`, and note that the two create endpoints return 403 while the flag is off.
 - Add a short section explaining that Zelle bank credits stay PENDING for approval, that Tier 0 exact-reference linking still runs to absorb the pre-existing Gmail-created backlog, and that ACH and check credits are unaffected.
+- Add a **Known limitations** section recording the `extractPayerName` defect found during this work, so it survives in git rather than only in a scratch ledger:
+
+  > `extractPayerName` matches against `subject + "\n" + body` after whitespace collapsing, with a left-anchored pattern. When the subject is letters and spaces only, the subject text is captured as part of the payer name — e.g. a subject of `You received money with Zelle` yields the payer `You received money with Zelle SYNTHETIC PAYER`. Production is currently protected only by accident: the `®` in Chase's real subject falls outside the pattern's character class and breaks the match. This matters more under match-only mode than it did before, because the payer name is now the `ZELLE:PAYER:<name>` key that carries a treasurer's match across to bank reconciliation — it is the Gmail path's only output. A template change dropping the `®`, or reusing this ingest for another bank's notifications, would silently corrupt every learned key. Fix by anchoring the pattern to the body rather than the concatenated text. Not fixed here: out of scope for the match-only change.
+
+  Keep the example synthetic, as written.
 
 - [ ] **Step 2: Update the payment-reconciliation skill**
 
