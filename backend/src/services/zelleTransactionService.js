@@ -382,6 +382,60 @@ async function createZelleTransaction({
   return { success: true, id: tx.id, data: tx, bank_link: bankLink };
 }
 
+/**
+ * Associate a queued Zelle email with a member WITHOUT creating a transaction.
+ *
+ * This is the whole point of match-only mode: it writes the learned payer keys
+ * (bank_memo_matches + the legacy memo row) that bank reconciliation will find
+ * when the corresponding Chase CSV row is uploaded, so the treasurer approves a
+ * pre-filled suggestion instead of identifying the giver from scratch.
+ *
+ * Re-runnable: matching again updates the learned keys, which is how a
+ * treasurer corrects a mistake.
+ */
+async function matchQueueRowToMember({ queueId, memberId, payerName = null, userId = null }) {
+  const row = await ZelleEmailQueue.findByPk(queueId);
+  if (!row) {
+    return { success: false, code: 'NOT_FOUND', message: 'Queue item not found' };
+  }
+  if (row.transaction_id) {
+    return {
+      success: false,
+      code: 'ALREADY_POSTED',
+      message: 'This email already has a transaction; its member association is settled by that transaction.'
+    };
+  }
+
+  const member = await Member.findByPk(memberId, { attributes: ['id'] });
+  if (!member) {
+    return { success: false, code: 'MEMBER_NOT_FOUND', message: 'Member not found' };
+  }
+
+  // An explicit override wins: when extractPayerName failed, the stored
+  // payer_name is null and learning would key off memo text that no bank row
+  // ever matches.
+  const effectivePayerName = (payerName && String(payerName).trim()) || row.payer_name || null;
+
+  await learnZelleAssociation({
+    payerName: effectivePayerName,
+    note: row.note,
+    memberId: member.id
+  });
+
+  await row.update({
+    payer_name: effectivePayerName,
+    matched_member_id: member.id,
+    match_confidence: 'high',
+    match_source: 'TREASURER_MATCH',
+    status: 'MATCHED',
+    matched_by: userId || null,
+    matched_at: new Date(),
+    error: null
+  });
+
+  return { success: true, data: row };
+}
+
 module.exports = {
   sanitizeNote,
   extractPayerName,
@@ -392,5 +446,6 @@ module.exports = {
   learnZelleAssociation,
   getDefaultPaymentType,
   createZelleTransaction,
+  matchQueueRowToMember,
   resolveIncomeCategory
 };

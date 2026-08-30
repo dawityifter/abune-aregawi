@@ -50,7 +50,7 @@ const {
     Member, Transaction, LedgerEntry, ZelleEmailQueue, ZelleMemoMatch, BankMemoMatch, IncomeCategory
 } = require('../../src/models');
 const { syncZelleFromGmail } = require('../../src/services/gmailZelleIngest');
-const { learnBankMemoMatch } = require('../../src/services/bankMemoMatchService');
+const { learnBankMemoMatch, findSuggestionCandidates } = require('../../src/services/bankMemoMatchService');
 const request = require('supertest');
 const app = require('../../src/server');
 
@@ -162,6 +162,152 @@ describe('Zelle match-only mode', () => {
 
             expect(res.body.code).toBe('CREATE_DISABLED');
             expect(await Transaction.count()).toBe(0);
+        });
+    });
+
+    describe('POST /api/zelle/queue/:id/match', () => {
+        let queueRow;
+
+        beforeEach(async () => {
+            queueRow = await ZelleEmailQueue.create({
+                external_id: 'zelle:MATCHME1',
+                payer_name: 'SYNTHETIC PAYER',
+                amount: 75.00,
+                payment_date: '2026-08-20',
+                note: 'SYNTHETIC PAYER sent you $75.00',
+                status: 'NEEDS_REVIEW'
+            });
+        });
+
+        test('learns keys a real bank CSV row will hit — the crux of the design', async () => {
+            await request(app)
+                .post(`/api/zelle/queue/${queueRow.id}/match`)
+                .set('Authorization', 'Bearer valid-token')
+                .send({ member_id: member.id })
+                .expect(200);
+
+            // A real Chase CSV Zelle row, as bankParserService would produce it
+            const bankRow = {
+                type: 'ZELLE',
+                payer_name: 'SYNTHETIC PAYER',
+                description: 'Zelle payment from SYNTHETIC PAYER 27250625041'
+            };
+            const suggestions = await findSuggestionCandidates(bankRow);
+            const learned = suggestions.find(s => String(s.source || '').startsWith('LEARNED'));
+
+            expect(learned).toBeDefined();
+            expect(learned.confidence).toBe('high');
+            expect(String(learned.member.id)).toBe(String(member.id));
+        });
+
+        test('stamps the queue row and creates no transaction', async () => {
+            const res = await request(app)
+                .post(`/api/zelle/queue/${queueRow.id}/match`)
+                .set('Authorization', 'Bearer valid-token')
+                .send({ member_id: member.id })
+                .expect(200);
+
+            expect(res.body.success).toBe(true);
+            await queueRow.reload();
+            expect(queueRow.status).toBe('MATCHED');
+            expect(String(queueRow.matched_member_id)).toBe(String(member.id));
+            expect(String(queueRow.matched_by)).toBe(String(member.id));
+            expect(queueRow.matched_at).not.toBeNull();
+            expect(await Transaction.count()).toBe(0);
+        });
+
+        test('is idempotent and re-matching moves the learned key to the new member', async () => {
+            const other = await Member.create({
+                first_name: 'Other', last_name: 'Member',
+                phone_number: '+15550004444', is_active: true
+            });
+
+            await request(app).post(`/api/zelle/queue/${queueRow.id}/match`)
+                .set('Authorization', 'Bearer valid-token')
+                .send({ member_id: member.id }).expect(200);
+            await request(app).post(`/api/zelle/queue/${queueRow.id}/match`)
+                .set('Authorization', 'Bearer valid-token')
+                .send({ member_id: other.id }).expect(200);
+
+            const suggestions = await findSuggestionCandidates({
+                type: 'ZELLE',
+                payer_name: 'SYNTHETIC PAYER',
+                description: 'Zelle payment from SYNTHETIC PAYER 27250625041'
+            });
+            const learned = suggestions.filter(s => String(s.source || '').startsWith('LEARNED'));
+            expect(learned).toHaveLength(1);
+            expect(String(learned[0].member.id)).toBe(String(other.id));
+        });
+
+        test('accepts a payer_name override when the email could not be parsed', async () => {
+            const unparsed = await ZelleEmailQueue.create({
+                external_id: 'zelle:NOPAYER1',
+                payer_name: null,
+                amount: 60.00,
+                payment_date: '2026-08-21',
+                note: 'You received money with Zelle',
+                status: 'NEEDS_REVIEW'
+            });
+
+            await request(app)
+                .post(`/api/zelle/queue/${unparsed.id}/match`)
+                .set('Authorization', 'Bearer valid-token')
+                .send({ member_id: member.id, payer_name: 'OVERRIDE PAYER' })
+                .expect(200);
+
+            await unparsed.reload();
+            expect(unparsed.payer_name).toBe('OVERRIDE PAYER');
+
+            const suggestions = await findSuggestionCandidates({
+                type: 'ZELLE',
+                payer_name: 'OVERRIDE PAYER',
+                description: 'Zelle payment from OVERRIDE PAYER 99887766'
+            });
+            expect(suggestions.some(s => String(s.source || '').startsWith('LEARNED'))).toBe(true);
+        });
+
+        test('refuses to re-match a row that already posted a transaction', async () => {
+            // A real Transaction, not a literal id: ZelleEmailQueue.belongsTo(Transaction)
+            // yields a foreign key under sequelize.sync(), and the sqlite dialect enforces
+            // it — a dangling id would throw on insert instead of reaching the 409 path.
+            const postedTxn = await Transaction.create({
+                member_id: member.id,
+                collected_by: member.id,
+                payment_date: '2026-08-20',
+                amount: 75.00,
+                payment_type: 'donation',
+                payment_method: 'zelle',
+                status: 'succeeded',
+                external_id: 'zelle:POSTEDTXN1'
+            });
+            const posted = await ZelleEmailQueue.create({
+                external_id: 'zelle:POSTED1',
+                payer_name: 'SYNTHETIC PAYER',
+                status: 'AUTO_CREATED',
+                transaction_id: postedTxn.id
+            });
+
+            const res = await request(app)
+                .post(`/api/zelle/queue/${posted.id}/match`)
+                .set('Authorization', 'Bearer valid-token')
+                .send({ member_id: member.id })
+                .expect(409);
+
+            expect(res.body.code).toBe('ALREADY_POSTED');
+        });
+
+        test('404s for an unknown queue row and 400s for an unknown member', async () => {
+            await request(app)
+                .post('/api/zelle/queue/00000000-0000-0000-0000-000000000000/match')
+                .set('Authorization', 'Bearer valid-token')
+                .send({ member_id: member.id })
+                .expect(404);
+
+            await request(app)
+                .post(`/api/zelle/queue/${queueRow.id}/match`)
+                .set('Authorization', 'Bearer valid-token')
+                .send({ member_id: 987654321 })
+                .expect(400);
         });
     });
 });

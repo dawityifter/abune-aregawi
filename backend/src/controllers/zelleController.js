@@ -1,7 +1,8 @@
 const { syncZelleFromGmail, previewZelleFromGmail } = require('../services/gmailZelleIngest');
 const {
   createZelleTransaction,
-  extractPayerName
+  extractPayerName,
+  matchQueueRowToMember
 } = require('../services/zelleTransactionService');
 const { ZelleEmailQueue, Member, Transaction } = require('../models');
 const { isZelleGmailCreateEnabled } = require('../config/featureFlags');
@@ -186,6 +187,35 @@ async function ignoreQueueItem(req, res) {
   }
 }
 
+// POST /api/zelle/queue/:id/match
+// Body: { member_id, payer_name? }
+// Associates a payer with a member for later bank reconciliation.
+// Creates NO transaction.
+async function matchQueueItem(req, res) {
+  try {
+    const { member_id, payer_name } = req.body || {};
+    if (!member_id) {
+      return res.status(400).json({ success: false, message: 'member_id is required' });
+    }
+
+    const result = await matchQueueRowToMember({
+      queueId: req.params.id,
+      memberId: member_id,
+      payerName: payer_name,
+      userId: req.user?.id || null
+    });
+
+    if (!result.success) {
+      const statusByCode = { NOT_FOUND: 404, ALREADY_POSTED: 409, MEMBER_NOT_FOUND: 400 };
+      return res.status(statusByCode[result.code] || 400).json(result);
+    }
+    return res.json(result);
+  } catch (error) {
+    console.error('Zelle queue match error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   syncFromGmail,
   previewFromGmail,
@@ -193,5 +223,6 @@ module.exports = {
   createBatchTransactions,
   processTransactionCreation,
   getQueue,
-  ignoreQueueItem
+  ignoreQueueItem,
+  matchQueueItem
 };
