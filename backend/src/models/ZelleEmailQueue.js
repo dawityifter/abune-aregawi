@@ -12,6 +12,8 @@ module.exports = (sequelize) => {
    *  - CREATED      : transaction created manually by treasurer
    *  - IGNORED      : treasurer dismissed this email
    *  - ERROR        : processing failed (see error column)
+   *  - MATCHED      : treasurer associated this payer with a member; NO transaction
+   *                   was created (bank reconciliation is the only path that posts money)
    */
   class ZelleEmailQueue extends Model {
     static associate(models) {
@@ -89,6 +91,16 @@ module.exports = (sequelize) => {
     processed_at: {
       type: DataTypes.DATE,
       allowNull: true
+    },
+    matched_by: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      defaultValue: null
+    },
+    matched_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null
     }
   }, {
     sequelize,
