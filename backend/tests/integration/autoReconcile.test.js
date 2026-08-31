@@ -235,13 +235,16 @@ describe('Automatic Bank Reconciliation', () => {
         });
 
         test('leaves unknown payers PENDING', async () => {
+            // Tier 2's negative branch (no learned match, or learned keys
+            // disagree, -> stay PENDING) is payment-method agnostic; Zelle's
+            // own "no auto-create" behavior is covered separately by the
+            // guard tests in "Zelle credits require approval".
             const bankTxn = await BankTransaction.create({
                 date: new Date('2025-01-06'),
                 amount: 42.00,
-                description: 'Zelle payment from STRANGER PERSON 11223344',
-                type: 'ZELLE_CREDIT',
+                description: 'ORIG CO NAME:EXAMPLE EMPLOYER IND NAME:STRANGER,PERSON WEB ID:5555',
+                type: 'ACH_CREDIT',
                 status: 'PENDING',
-                payer_name: 'STRANGER PERSON',
                 transaction_hash: 'bankhash-t2b',
                 raw_data: {}
             });
@@ -252,6 +255,7 @@ describe('Automatic Bank Reconciliation', () => {
 
             await bankTxn.reload();
             expect(bankTxn.status).toBe('PENDING');
+            expect(await Transaction.count()).toBe(0);
         });
 
         test('undo removes the auto-created transaction AND the learned association', async () => {
@@ -866,6 +870,7 @@ describe('Automatic Bank Reconciliation', () => {
             expect(bankTxn.status).toBe('PENDING');
             await handEntered.reload();
             expect(handEntered.external_id).toBe('manual:entry-1'); // not renamed
+            expect(await Transaction.count()).toBe(1); // only the pre-existing handEntered row; nothing created
         });
 
         test('Tier 0 still absorbs the Gmail-created backlog by exact reference', async () => {
