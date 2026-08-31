@@ -70,6 +70,11 @@ Service: `backend/src/services/gmailZelleIngest.js`
 - Queue statuses: `NEEDS_REVIEW`, `MATCHED` (a treasurer associated a payer with a member —
   no Transaction exists yet), `AUTO_CREATED` / `CREATED` (a Transaction exists), `IGNORED`,
   `ERROR`.
+- A `MATCHED` row stays `MATCHED` indefinitely, even after the payment is later posted
+  through bank reconciliation: nothing writes back to `zelle_email_queue` from the bank
+  reconciliation or auto-reconcile services, so `transaction_id` stays `null` and the status
+  never becomes `CREATED`. The Zelle Review screen does not reflect whether a matched
+  payment was subsequently approved elsewhere.
 
 ## Reconciliation Workflow
 
@@ -145,12 +150,23 @@ auto-link/auto-create/auto-expense those the same way it always has.
   - Marks the row `IGNORED`. 400 if the row already has a Transaction.
 
 - `POST /api/zelle/reconcile/create-transaction`
+  - Auth: Firebase, roles `treasurer|admin`
+  - **Returns 403 `CREATE_DISABLED` while `ZELLE_GMAIL_CREATE_ENABLED` is false (the
+    default).** When the flag is enabled, this is an insert-only creation endpoint: it
+    returns HTTP **409** (with `code: 'EXISTS'`) if `external_id` already exists. Use the
+    match workflow above instead; this endpoint exists for the flag being re-enabled, not
+    for day-to-day treasurer use.
+
 - `POST /api/zelle/reconcile/batch-create`
   - Auth: Firebase, roles `treasurer|admin`
-  - **Return 403 `CREATE_DISABLED` while `ZELLE_GMAIL_CREATE_ENABLED` is false (the
-    default).** When the flag is enabled, these behave as insert-only creation endpoints
-    (409 if `external_id` already exists). Use the match workflow above instead; these
-    endpoints exist for the flag being re-enabled, not for day-to-day treasurer use.
+  - **Returns 403 `CREATE_DISABLED` while `ZELLE_GMAIL_CREATE_ENABLED` is false (the
+    default).** When the flag is enabled, this **always returns HTTP 200** with
+    `{ success: true, results: [...] }` — unlike the single-item endpoint, a duplicate
+    `external_id` does **not** produce a top-level 409. Each item's outcome is embedded in
+    the `results` array instead: a duplicate comes back as `{ success: false, code: 'EXISTS',
+    external_id }` alongside otherwise-successful entries in the same response. Callers that
+    check only the HTTP status will treat duplicate-skipped items as successes — read each
+    item's `success`/`code`.
 
 ## Known limitations
 
