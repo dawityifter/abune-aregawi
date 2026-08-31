@@ -248,8 +248,15 @@ psql $DATABASE_URL -c "
 ```
 
 #### 5. Test Zelle Import
+
+> **Stale as of match-only mode**: `POST /api/zelle/reconcile/create-transaction` now
+> returns `403 CREATE_DISABLED` unless `ZELLE_GMAIL_CREATE_ENABLED=true` — see
+> `backend/ZELLE_INGESTION.md`. To exercise GL-code auto-assignment for a Zelle-style
+> payment today, approve a matched PENDING row in Bank Reconciliation instead; it goes
+> through the same `income_category_id` auto-assignment logic as `POST /api/transactions`.
+
 ```bash
-# Create Zelle transaction via API
+# Create Zelle transaction via API (requires ZELLE_GMAIL_CREATE_ENABLED=true)
 curl -X POST "http://localhost:5001/api/zelle/reconcile/create-transaction" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
