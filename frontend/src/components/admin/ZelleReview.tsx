@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 interface QueueItem {
   id: string;
@@ -32,14 +34,6 @@ const STATUS_OPTIONS = ['NEEDS_REVIEW', 'MATCHED', 'AUTO_CREATED', 'CREATED', 'I
 const ZelleReview: React.FC = () => {
   const { firebaseUser } = useAuth();
   const { t } = useLanguage();
-  // AuthContext can hand back a differently-identified object on every render
-  // (it does in tests). Reading the current user through a ref keeps
-  // loadQueue's identity stable across renders instead of retriggering its
-  // effect and re-entering the loading state on every commit.
-  const firebaseUserRef = useRef(firebaseUser);
-  useEffect(() => {
-    firebaseUserRef.current = firebaseUser;
-  }, [firebaseUser]);
   const [items, setItems] = useState<QueueItem[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ total: 0, page: 1, pages: 1 });
   const [loading, setLoading] = useState(false);
@@ -49,17 +43,32 @@ const ZelleReview: React.FC = () => {
   const [page, setPage] = useState(1);
   const [limit] = useState<number>(20);
   const [search, setSearch] = useState<string>('');
+  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [busyIds, setBusyIds] = useState<Record<string, boolean>>({});
   const [matchInputs, setMatchInputs] = useState<Record<string, { memberId?: string; payerName?: string }>>({});
 
+  // Keep the input responsive on every keystroke, but only let the debounced
+  // value flow into loadQueue's deps so typing doesn't fire one request per
+  // character against a paginated endpoint.
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [search]);
+
+  // Reset to page 1 once the debounced search actually changes, not on every keystroke.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
   const loadQueue = useCallback(async () => {
+    if (!firebaseUser) return;
     setLoading(true);
     setError('');
     try {
-      const token = await firebaseUserRef.current?.getIdToken();
+      const token = await firebaseUser.getIdToken();
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (search.trim()) params.set('search', search.trim());
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
       if (statusFilter) params.set('status', statusFilter);
 
       const res = await fetch(
@@ -75,17 +84,18 @@ const ZelleReview: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, statusFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firebaseUser?.uid, page, limit, debouncedSearch, statusFilter]);
 
   const handleSyncNow = useCallback(async () => {
-    if (!firebaseUserRef.current) return;
+    if (!firebaseUser) return;
     setSyncing(true);
     setSyncMessage('');
     setError('');
     try {
       const url = `${process.env.REACT_APP_API_URL}/api/zelle/sync/gmail`;
       const resp = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${await firebaseUserRef.current.getIdToken()}` }
+        headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` }
       });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok || !data.success) {
@@ -99,7 +109,8 @@ const ZelleReview: React.FC = () => {
     } finally {
       setSyncing(false);
     }
-  }, [loadQueue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firebaseUser?.uid, loadQueue]);
 
   useEffect(() => {
     loadQueue();
@@ -111,7 +122,7 @@ const ZelleReview: React.FC = () => {
 
     setBusyIds(prev => ({ ...prev, [item.id]: true }));
     try {
-      const token = await firebaseUserRef.current?.getIdToken();
+      const token = await firebaseUser?.getIdToken();
       const res = await fetch(
         `${process.env.REACT_APP_API_URL}/api/zelle/queue/${item.id}/match`,
         {
@@ -150,7 +161,7 @@ const ZelleReview: React.FC = () => {
             type="text"
             placeholder="Filter by memo or payer"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => setSearch(e.target.value)}
             className="w-72 px-2 py-1 border border-gray-300 rounded"
             aria-label="Text filter"
           />

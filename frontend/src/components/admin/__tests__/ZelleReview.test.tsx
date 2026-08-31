@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ZelleReview from '../ZelleReview';
 
@@ -113,6 +113,45 @@ describe('ZelleReview (match-only)', () => {
         render(<ZelleReview />);
 
         await waitFor(() => screen.getByPlaceholderText(/payer name/i));
-        expect(screen.getByPlaceholderText(/payer name/i)).toBeInTheDocument();
+    });
+
+    test('debounces the search input to one fetch instead of one per keystroke', async () => {
+        jest.useFakeTimers();
+        try {
+            mockQueue();
+            render(<ZelleReview />);
+            await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
+
+            const queueFetchCount = () =>
+                (global.fetch as jest.Mock).mock.calls.filter(c => String(c[0]).includes('/api/zelle/queue')).length;
+            const countAfterMount = queueFetchCount();
+
+            const input = screen.getByPlaceholderText(/filter by memo or payer/i);
+            act(() => {
+                fireEvent.change(input, { target: { value: 'S' } });
+                fireEvent.change(input, { target: { value: 'SY' } });
+                fireEvent.change(input, { target: { value: 'SYN' } });
+                fireEvent.change(input, { target: { value: 'SYNT' } });
+            });
+
+            // Still within the debounce window: no new request yet.
+            expect(queueFetchCount()).toBe(countAfterMount);
+
+            act(() => {
+                jest.advanceTimersByTime(300);
+            });
+
+            // loadQueue is async: the debounce timer firing only starts it,
+            // the actual fetch() call happens after an awaited getIdToken().
+            // Flush that microtask before asserting the new call landed.
+            await act(async () => {
+                await Promise.resolve();
+            });
+
+            // Exactly one new request for the whole burst of keystrokes.
+            expect(queueFetchCount()).toBe(countAfterMount + 1);
+        } finally {
+            jest.useRealTimers();
+        }
     });
 });
