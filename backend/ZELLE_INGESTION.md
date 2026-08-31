@@ -13,6 +13,15 @@ posted to the ledger via bank reconciliation.
 - **Match-only mode**: while `ZELLE_GMAIL_CREATE_ENABLED` is `false` (the default — see
   `backend/env.example`), the Gmail path never creates a Transaction. It only records every
   parsed email in `zelle_email_queue` and computes a suggested member match.
+- **Turning `ZELLE_GMAIL_CREATE_ENABLED` on has a cost**: it restores the pre-match-only
+  behavior where the Gmail sync creates transactions directly, which reopens the
+  cross-path duplicate this queue exists to prevent. If a treasurer approves the bank CSV
+  row for a payment before the Gmail sync next runs for that same payment, the sync's
+  idempotency check only looks up `zelle:<reference>` and `gmail:<messageId>` — it cannot
+  see the bank-created transaction (keyed by its own hash) — and on a high-confidence payer
+  match it creates a second transaction for the same payment. Only enable the flag
+  temporarily and with this tradeoff in mind (e.g. a backlog catch-up window), and prefer
+  reconciling any pending bank rows for the affected period first.
 - **Bank reconciliation is the only path that posts money.** A Transaction (and its
   LedgerEntry) is created when a treasurer approves a matching row after the Chase CSV is
   uploaded — see "Bank reconciliation and Zelle credits" below.
@@ -101,6 +110,11 @@ exceptions to be aware of:
   of Transactions the Gmail automation created before match-only mode, and to link legacy
   auto-created Zelle payments going forward if `ZELLE_GMAIL_CREATE_ENABLED` is ever turned
   back on. It never creates a new Transaction, only links to one that already exists.
+  Backlog transactions whose `external_id` fell back to `gmail:<messageId>` (no Zelle
+  reference was ever extracted from the email) are invisible to this exact-reference
+  lookup, and Tier 1 no longer acts on Zelle credits — so those specific rows will not
+  auto-drain. A treasurer needs to link them manually from the `potential_matches` panel
+  on the PENDING bank row.
 - Everything else Zelle-shaped (heuristic name/amount linking, learned-payer creation) is
   skipped for Zelle credits and left `PENDING` with suggestions for the treasurer.
 

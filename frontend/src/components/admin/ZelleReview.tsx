@@ -46,7 +46,15 @@ const ZelleReview: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [busyIds, setBusyIds] = useState<Record<string, boolean>>({});
-  const [matchInputs, setMatchInputs] = useState<Record<string, { memberId?: string; payerName?: string }>>({});
+  const [matchInputs, setMatchInputs] = useState<Record<string, { payerName?: string }>>({});
+
+  // Per-row member search state for the Match column: the treasurer types a
+  // name, sees candidate members, and picks one before Save is enabled. This
+  // mirrors the row-scoped search pattern the pre-rewrite version of this
+  // screen used against the same /api/members/search endpoint.
+  type SearchResult = { id: number; name: string; phoneNumber?: string | null; isActive?: boolean };
+  type RowSearchState = { query: string; results: SearchResult[]; loading: boolean; selectedId?: number; selectedName?: string };
+  const [rowSearch, setRowSearch] = useState<Record<string, RowSearchState>>({});
 
   // Keep the input responsive on every keystroke, but only let the debounced
   // value flow into loadQueue's deps so typing doesn't fire one request per
@@ -116,9 +124,40 @@ const ZelleReview: React.FC = () => {
     loadQueue();
   }, [loadQueue]);
 
+  const handleSearchChange = useCallback(async (itemId: string, query: string) => {
+    setRowSearch(prev => ({
+      ...prev,
+      [itemId]: { ...(prev[itemId] || { results: [], selectedId: undefined, selectedName: undefined }), query, loading: query.trim().length >= 3 }
+    }));
+
+    if (!firebaseUser) return;
+    if (query.trim().length < 3) {
+      setRowSearch(prev => ({ ...prev, [itemId]: { ...(prev[itemId] || {}), results: [], loading: false } as RowSearchState }));
+      return;
+    }
+
+    try {
+      const token = await firebaseUser.getIdToken();
+      const url = `${process.env.REACT_APP_API_URL}/api/members/search?q=${encodeURIComponent(query)}`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json().catch(() => ({}));
+      const results: SearchResult[] = data?.data?.results || [];
+      setRowSearch(prev => ({ ...prev, [itemId]: { ...(prev[itemId] || {}), query, results, loading: false } }));
+    } catch {
+      setRowSearch(prev => ({ ...prev, [itemId]: { ...(prev[itemId] || {}), loading: false } as RowSearchState }));
+    }
+  }, [firebaseUser]);
+
+  const handleSelectMember = useCallback((itemId: string, result: SearchResult) => {
+    setRowSearch(prev => ({
+      ...prev,
+      [itemId]: { ...(prev[itemId] || { results: [], query: '' }), selectedId: result.id, selectedName: result.name, query: result.name, results: [] }
+    }));
+  }, []);
+
   const handleMatch = async (item: QueueItem) => {
-    const memberId = Number(matchInputs[item.id]?.memberId);
-    if (!memberId) { setError('Enter a Member ID to match.'); return; }
+    const memberId = rowSearch[item.id]?.selectedId;
+    if (!memberId) { setError('Search for and select a member to match.'); return; }
 
     setBusyIds(prev => ({ ...prev, [item.id]: true }));
     try {
@@ -136,6 +175,7 @@ const ZelleReview: React.FC = () => {
       );
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.message || 'Match failed');
+      setRowSearch(prev => { const next = { ...prev }; delete next[item.id]; return next; });
       await loadQueue();
     } catch (e: any) {
       setError(e.message || String(e));
@@ -251,22 +291,44 @@ const ZelleReview: React.FC = () => {
                       {item.transaction_id ? (
                         <span className="text-xs text-gray-500">Posted · no changes</span>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            placeholder="Member ID"
-                            className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
-                            value={matchInputs[item.id]?.memberId || ''}
-                            onChange={e => setMatchInputs(prev => ({
-                              ...prev,
-                              [item.id]: { ...prev[item.id], memberId: e.target.value }
-                            }))}
-                          />
+                        <div className="flex flex-col gap-2">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="Search member by name or phone…"
+                              className="w-48 border border-gray-300 rounded px-2 py-1 text-sm"
+                              value={rowSearch[item.id]?.query || ''}
+                              onChange={e => handleSearchChange(item.id, e.target.value)}
+                            />
+                            {rowSearch[item.id]?.loading && (
+                              <div className="absolute right-2 top-1.5 text-xs text-gray-400">Searching…</div>
+                            )}
+                            {(rowSearch[item.id]?.results?.length || 0) > 0 && (
+                              <div className="absolute z-10 mt-1 w-64 max-h-48 overflow-auto bg-white border border-gray-200 rounded shadow">
+                                {rowSearch[item.id]!.results!.map(r => (
+                                  <button
+                                    key={r.id}
+                                    type="button"
+                                    onMouseDown={() => handleSelectMember(item.id, r)}
+                                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50"
+                                    title={r.phoneNumber ? `${r.name} • ${r.phoneNumber}` : r.name}
+                                  >
+                                    {r.name} {r.phoneNumber ? `• ${r.phoneNumber}` : ''}{!r.isActive ? ' (inactive)' : ''}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {rowSearch[item.id]?.selectedId && (
+                            <div className="text-xs text-gray-600">
+                              {`Selected: ${rowSearch[item.id]?.selectedName}`}
+                            </div>
+                          )}
                           {!item.payer_name && (
                             <input
                               type="text"
                               placeholder="Payer name"
-                              className="w-32 border border-gray-300 rounded px-2 py-1 text-sm"
+                              className="w-48 border border-gray-300 rounded px-2 py-1 text-sm"
                               value={matchInputs[item.id]?.payerName || ''}
                               onChange={e => setMatchInputs(prev => ({
                                 ...prev,
@@ -277,10 +339,10 @@ const ZelleReview: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleMatch(item)}
-                            disabled={!!busyIds[item.id]}
-                            className="px-3 py-1 text-sm bg-blue-600 text-white rounded disabled:opacity-50"
+                            disabled={!!busyIds[item.id] || !rowSearch[item.id]?.selectedId}
+                            className="self-start px-3 py-1 text-sm bg-blue-600 text-white rounded disabled:opacity-50"
                           >
-                            Match
+                            Save
                           </button>
                         </div>
                       )}

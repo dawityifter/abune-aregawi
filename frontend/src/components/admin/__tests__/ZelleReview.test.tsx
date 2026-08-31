@@ -39,6 +39,36 @@ const mockQueue = (items: any[] = [queueItem]) => {
     });
 };
 
+// A URL-aware mock: the queue endpoint returns `items`, the member search
+// endpoint returns `searchResults`, and everything else (the match POST)
+// succeeds. Needed once a test drives the row's member search, since a
+// single blanket mock can no longer serve both the queue load and the
+// search lookup with different payloads.
+const mockQueueAndSearch = (items: any[], searchResults: any[]) => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+        if (String(url).includes('/api/members/search')) {
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ success: true, data: { results: searchResults } }),
+            });
+        }
+        if (String(url).includes('/api/zelle/queue')) {
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({
+                    success: true,
+                    items,
+                    pagination: { total: items.length, page: 1, pages: 1 },
+                }),
+            });
+        }
+        return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true }),
+        });
+    });
+};
+
 describe('ZelleReview (match-only)', () => {
     beforeEach(() => {
         (global.fetch as jest.Mock).mockReset();
@@ -88,16 +118,37 @@ describe('ZelleReview (match-only)', () => {
         render(<ZelleReview />);
 
         await waitFor(() => screen.getByText('Test Member'));
-        expect(screen.queryByRole('button', { name: /match/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
+        expect(screen.queryByPlaceholderText(/search member/i)).not.toBeInTheDocument();
     });
 
-    test('posts to the match endpoint when a member is saved', async () => {
-        mockQueue();
+    test('offers a member search in the Match column and posts the selected member to the match endpoint', async () => {
+        mockQueueAndSearch(
+            [queueItem],
+            [{ id: 7, name: 'Selected Member', phoneNumber: '+15555550123', isActive: true }]
+        );
         render(<ZelleReview />);
         await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
 
-        fireEvent.change(screen.getByPlaceholderText(/member id/i), { target: { value: '7' } });
-        fireEvent.click(screen.getByRole('button', { name: /match/i }));
+        // No raw numeric member-id field: the treasurer must search by name.
+        expect(screen.queryByPlaceholderText(/member id/i)).not.toBeInTheDocument();
+
+        const saveButton = screen.getByRole('button', { name: /save/i });
+        // Save is disabled until a member has actually been picked from search
+        // results — proves the button can't silently post a stale/empty match.
+        expect(saveButton).toBeDisabled();
+
+        const searchInput = screen.getByPlaceholderText(/search member by name or phone/i);
+        fireEvent.change(searchInput, { target: { value: 'Sel' } });
+
+        const resultButton = await waitFor(() => screen.getByRole('button', { name: /Selected Member/i }));
+        fireEvent.mouseDown(resultButton);
+
+        // The chosen member's name must be visible before the treasurer commits the match.
+        await waitFor(() => expect(screen.getByText('Selected: Selected Member')).toBeInTheDocument());
+        expect(saveButton).not.toBeDisabled();
+
+        fireEvent.click(saveButton);
 
         await waitFor(() => {
             const call = (global.fetch as jest.Mock).mock.calls
