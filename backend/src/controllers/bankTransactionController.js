@@ -272,7 +272,14 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
 
                 // 2. Find Potential System Duplicates (Matches)
                 const { findPotentialMatches } = require('../services/reconciliationService');
-                const potentialMatches = await findPotentialMatches(plain);
+                // Zelle needs a wider window than the ±2 day default: the email
+                // arrives when the payment is sent, but the bank can post it
+                // several days later over weekends and holidays. Zelle rows are
+                // no longer auto-linked, so this list is the treasurer's only
+                // view of a possible existing entry.
+                const { sourceTypeFor } = require('../services/bankMemoMatchService');
+                const dayWindow = sourceTypeFor(plain) === 'ZELLE' ? 5 : 2;
+                const potentialMatches = await findPotentialMatches(plain, { dayWindow });
                 if (potentialMatches && potentialMatches.length > 0) {
                     plain.potential_matches = potentialMatches;
                 }
