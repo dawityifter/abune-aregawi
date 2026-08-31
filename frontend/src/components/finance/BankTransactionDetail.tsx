@@ -72,6 +72,8 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
       ? [txn.suggested_match]
       : [];
 
+  const isZelle = (txn?.type || '').toUpperCase().includes('ZELLE');
+
   const formatConfidence = (confidence?: string) => {
     if (!confidence) return 'suggested';
     return `${confidence.charAt(0).toUpperCase()}${confidence.slice(1)} confidence`;
@@ -126,6 +128,23 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
     setSearchTerm('');
     setSearchResults([]);
   }, [txn?.id]);
+
+  // Pre-fill the reconcile form's member field from the suggested match so a
+  // treasurer approving a PENDING Zelle row doesn't have to re-search for the
+  // payer that was already matched on the Zelle screen. Never overwrite a
+  // selection the treasurer has already made by hand (functional update
+  // keeps whatever is currently selected).
+  useEffect(() => {
+    if (!txn || txn.status !== 'PENDING') return;
+    const suggested = txn.suggested_match?.member;
+    if (!suggested) return;
+    setSelectedMember((prev) =>
+      prev ?? {
+        id: suggested.id,
+        name: `${suggested.first_name || ''} ${suggested.last_name || ''}`.trim(),
+      }
+    );
+  }, [txn?.id, txn?.status, txn?.suggested_match]);
 
   const handleReconcile = async (memberId: number, paymentType: string = selectedPaymentType) => {
     const token = await firebaseUser?.getIdToken();
@@ -469,7 +488,7 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
                   disabled={!selectedMember}
                   className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-md py-2 text-sm font-semibold"
                 >
-                  Confirm Selected Member
+                  {isZelle ? 'Approve' : 'Confirm Selected Member'}
                 </button>
 
                 <button
