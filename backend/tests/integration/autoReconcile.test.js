@@ -109,26 +109,29 @@ describe('Automatic Bank Reconciliation', () => {
     });
 
     describe('Tier 1: link credits to existing transactions', () => {
-        test('links a bank credit to the Zelle transaction created by email automation', async () => {
-            // Transaction previously auto-created from a Chase Zelle email
-            const gmailTxn = await Transaction.create({
+        test('links a bank credit to an existing transaction that already matches it (ACH)', async () => {
+            // Tier 1's mechanism is payment-method agnostic: exactly one
+            // existing transaction matches amount/method/date/payer name, so
+            // it gets linked instead of duplicated. Zelle is exercised
+            // separately in "Zelle credits require approval" below, since
+            // Zelle no longer takes this path.
+            const priorTxn = await Transaction.create({
                 member_id: member.id,
                 collected_by: adminUser.id,
                 payment_date: '2025-01-02',
                 amount: 100.00,
                 payment_type: 'donation',
-                payment_method: 'zelle',
+                payment_method: 'ach',
                 status: 'succeeded',
-                external_id: 'gmail:msg-abc'
+                external_id: 'manual:msg-abc'
             });
 
             const bankTxn = await BankTransaction.create({
                 date: new Date('2025-01-03'),
                 amount: 100.00,
-                description: 'Zelle payment from ALMAZ TESFAY 12345678',
-                type: 'ZELLE_CREDIT',
+                description: 'ORIG CO NAME:EXAMPLE EMPLOYER IND NAME:TESFAY,ALMAZ WEB ID:1234',
+                type: 'ACH_CREDIT',
                 status: 'PENDING',
-                payer_name: 'ALMAZ TESFAY',
                 transaction_hash: 'bankhash-t1',
                 raw_data: {}
             });
@@ -140,73 +143,34 @@ describe('Automatic Bank Reconciliation', () => {
             await bankTxn.reload();
             expect(bankTxn.status).toBe('MATCHED');
             expect(bankTxn.reconciled_source).toBe('AUTO_LINKED');
-            expect(bankTxn.reconciled_meta.transaction_id).toBe(gmailTxn.id);
-            expect(bankTxn.reconciled_meta.prev_external_id).toBe('gmail:msg-abc');
+            expect(bankTxn.reconciled_meta.transaction_id).toBe(priorTxn.id);
+            expect(bankTxn.reconciled_meta.prev_external_id).toBe('manual:msg-abc');
 
-            await gmailTxn.reload();
-            expect(gmailTxn.external_id).toBe('bankhash-t1');
+            await priorTxn.reload();
+            expect(priorTxn.external_id).toBe('bankhash-t1');
 
             // No duplicate transaction was created
             const count = await Transaction.count();
             expect(count).toBe(1);
         });
 
-        test('links a Zelle credit posted days later with a MISMATCHED reference (sender-bank ref vs Chase number)', async () => {
-            // Email-created transaction: Chase numeric transaction number
-            const emailTxn = await Transaction.create({
-                member_id: member.id,
-                collected_by: adminUser.id,
-                payment_date: '2025-01-03', // Friday
-                amount: 50.00,
-                payment_type: 'donation',
-                payment_method: 'zelle',
-                status: 'succeeded',
-                external_id: 'zelle:29891157299'
-            });
-
-            // Bank posts the following Tuesday with the SENDER's bank reference
-            const bankTxn = await BankTransaction.create({
-                date: new Date('2025-01-07'), // 4 days later — outside old ±2 window
-                amount: 50.00,
-                description: 'Zelle payment from ALMAZ TESFAY WFCT12CZXKH9',
-                type: 'ZELLE_CREDIT',
-                status: 'PENDING',
-                payer_name: 'ALMAZ TESFAY',
-                external_ref_id: 'WFCT12CZXKH9', // does NOT match the email number
-                transaction_hash: 'bankhash-t1w',
-                raw_data: {}
-            });
-
-            const stats = await autoReconcilePending({ user: adminUser });
-            expect(stats.autoLinked).toBe(1);
-            expect(stats.autoMember).toBe(0);
-
-            await bankTxn.reload();
-            expect(bankTxn.status).toBe('MATCHED');
-            expect(bankTxn.reconciled_source).toBe('AUTO_LINKED');
-            expect(bankTxn.reconciled_meta.transaction_id).toBe(emailTxn.id);
-
-            expect(await Transaction.count()).toBe(1); // linked, not duplicated
-        });
-
         test('undo restores the linked transaction and reverts to PENDING', async () => {
-            const gmailTxn = await Transaction.create({
+            const priorTxn = await Transaction.create({
                 member_id: member.id,
                 collected_by: adminUser.id,
                 payment_date: '2025-01-02',
                 amount: 100.00,
                 payment_type: 'donation',
-                payment_method: 'zelle',
+                payment_method: 'ach',
                 status: 'succeeded',
-                external_id: 'gmail:msg-abc'
+                external_id: 'manual:msg-abc'
             });
             const bankTxn = await BankTransaction.create({
                 date: new Date('2025-01-03'),
                 amount: 100.00,
-                description: 'Zelle payment from ALMAZ TESFAY 12345678',
-                type: 'ZELLE_CREDIT',
+                description: 'ORIG CO NAME:EXAMPLE EMPLOYER IND NAME:TESFAY,ALMAZ WEB ID:1234',
+                type: 'ACH_CREDIT',
                 status: 'PENDING',
-                payer_name: 'ALMAZ TESFAY',
                 transaction_hash: 'bankhash-t1u',
                 raw_data: {}
             });
@@ -218,14 +182,18 @@ describe('Automatic Bank Reconciliation', () => {
             expect(bankTxn.status).toBe('PENDING');
             expect(bankTxn.reconciled_source).toBeNull();
 
-            await gmailTxn.reload();
-            expect(gmailTxn.external_id).toBe('gmail:msg-abc'); // restored
+            await priorTxn.reload();
+            expect(priorTxn.external_id).toBe('manual:msg-abc'); // restored
             expect(await Transaction.count()).toBe(1); // still exists
         });
     });
 
     describe('Tier 2: create transactions for learned payers', () => {
         test('creates a transaction for a previously-associated payer using last-used payment type', async () => {
+            // Tier 2's mechanism (learned payer lookup + last-used payment
+            // type) is payment-method agnostic; Zelle is exercised separately
+            // in "Zelle credits require approval" below, since Zelle no
+            // longer takes this path.
             // Member's payment history: last payment was a tithe
             await Transaction.create({
                 member_id: member.id,
@@ -233,18 +201,17 @@ describe('Automatic Bank Reconciliation', () => {
                 payment_date: '2024-12-01',
                 amount: 55.00,
                 payment_type: 'tithe',
-                payment_method: 'zelle',
+                payment_method: 'ach',
                 status: 'succeeded',
-                external_id: 'gmail:old-1'
+                external_id: 'manual:old-1'
             });
 
             const bankTxn = await BankTransaction.create({
                 date: new Date('2025-01-05'),
                 amount: 80.00, // different amount → no Tier 1 link
-                description: 'Zelle payment from ALMAZ TESFAY 99887766',
-                type: 'ZELLE_CREDIT',
+                description: 'ORIG CO NAME:EXAMPLE EMPLOYER IND NAME:TESFAY,ALMAZ WEB ID:1234',
+                type: 'ACH_CREDIT',
                 status: 'PENDING',
-                payer_name: 'ALMAZ TESFAY',
                 transaction_hash: 'bankhash-t2',
                 raw_data: {}
             });
@@ -291,10 +258,9 @@ describe('Automatic Bank Reconciliation', () => {
             const bankTxn = await BankTransaction.create({
                 date: new Date('2025-01-05'),
                 amount: 80.00,
-                description: 'Zelle payment from ALMAZ TESFAY 99887766',
-                type: 'ZELLE_CREDIT',
+                description: 'ORIG CO NAME:EXAMPLE EMPLOYER IND NAME:TESFAY,ALMAZ WEB ID:1234',
+                type: 'ACH_CREDIT',
                 status: 'PENDING',
-                payer_name: 'ALMAZ TESFAY',
                 transaction_hash: 'bankhash-t2u',
                 raw_data: {}
             });
@@ -791,37 +757,41 @@ describe('Automatic Bank Reconciliation', () => {
             expect(learnedKey).not.toBeNull();
             expect(String(learnedKey.member_id)).toBe(String(zerihun.id));
 
-            // The second $300 payment (a genuinely separate one) now
-            // auto-creates for the right member on the next full pass
+            // The second $300 payment (a genuinely separate one) is a Zelle
+            // credit, so even with the learned key from the anchor match
+            // above, Tier 2 no longer auto-creates for it — it stays PENDING
+            // for the treasurer to approve explicitly.
             const stats = await autoReconcilePending({ user: adminUser });
-            expect(stats.autoMember).toBe(1);
+            expect(stats.autoMember).toBe(0);
+            expect(stats.needsReview).toBe(1);
             await rowB.reload();
-            expect(rowB.status).toBe('MATCHED');
-            expect(String(rowB.member_id)).toBe(String(zerihun.id));
+            expect(rowB.status).toBe('PENDING');
         });
 
-        test('Tier 2 links an existing unlinked member transaction instead of creating a duplicate', async () => {
-            // A transaction already recorded from the Zelle review (unlinked,
-            // and invisible to Tier 1 because the sender name differs from
-            // the member's registered name)
+        test('Tier 2 links an existing unlinked member transaction instead of creating a duplicate (ACH)', async () => {
+            // Tier 2's link-first mechanism is payment-method agnostic. Zelle
+            // Tier 2 is disabled entirely (see "Zelle credits require
+            // approval"), so this exercises the mechanism via ACH: a
+            // transaction already recorded by hand (unlinked, and invisible
+            // to Tier 1 because the sender name differs from the member's
+            // registered name).
             const existingTx = await Transaction.create({
                 member_id: member.id, // Almaz Tesfay
                 collected_by: adminUser.id,
                 payment_date: '2026-07-10',
                 amount: 120.00,
                 payment_type: 'donation',
-                payment_method: 'zelle',
+                payment_method: 'ach',
                 status: 'succeeded',
-                external_id: 'zelle:55511122'
+                external_id: 'manual:55511122'
             });
 
             const bankTxn = await BankTransaction.create({
                 date: new Date('2026-07-11'),
                 amount: 120.00,
-                description: 'Zelle payment from BERHE KIDANE 77665544',
-                type: 'ZELLE_CREDIT',
+                description: 'ORIG CO NAME:EXAMPLE EMPLOYER IND NAME:KIDANE,BERHE WEB ID:9999', // ≠ "Almaz Tesfay" → Tier 1 misses
+                type: 'ACH_CREDIT',
                 status: 'PENDING',
-                payer_name: 'BERHE KIDANE', // ≠ "Almaz Tesfay" → Tier 1 misses
                 transaction_hash: 'bankhash-linkfirst',
                 raw_data: {}
             });
@@ -839,6 +809,159 @@ describe('Automatic Bank Reconciliation', () => {
             expect(bankTxn.reconciled_meta.transaction_id).toBe(existingTx.id);
             expect(bankTxn.reconciled_meta.reason).toMatch(/linked existing/i);
             expect(await Transaction.count()).toBe(1); // no duplicate
+        });
+    });
+
+    describe('Zelle credits require approval', () => {
+        test('does not auto-create for a learned Zelle payer; row stays PENDING', async () => {
+            const bankTxn = await BankTransaction.create({
+                date: new Date('2025-03-01'),
+                amount: 90.00,
+                description: 'Zelle payment from ALMAZ TESFAY 55443322',
+                type: 'ZELLE_CREDIT',
+                status: 'PENDING',
+                payer_name: 'ALMAZ TESFAY',
+                transaction_hash: 'bankhash-approve-1',
+                raw_data: {}
+            });
+            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id);
+
+            const stats = await autoReconcilePending({ user: adminUser });
+
+            expect(stats.autoMember).toBe(0);
+            expect(stats.needsReview).toBe(1);
+            await bankTxn.reload();
+            expect(bankTxn.status).toBe('PENDING');
+            expect(await Transaction.count()).toBe(0);
+        });
+
+        test('does not auto-link a Zelle row to a heuristic Tier 1 candidate', async () => {
+            const handEntered = await Transaction.create({
+                member_id: member.id,
+                collected_by: adminUser.id,
+                payment_date: '2025-03-05',
+                amount: 120.00,
+                payment_type: 'donation',
+                payment_method: 'zelle',
+                status: 'succeeded',
+                external_id: 'manual:entry-1'
+            });
+
+            const bankTxn = await BankTransaction.create({
+                date: new Date('2025-03-06'),
+                amount: 120.00,
+                description: 'Zelle payment from ALMAZ TESFAY 66554433',
+                type: 'ZELLE_CREDIT',
+                status: 'PENDING',
+                payer_name: 'ALMAZ TESFAY',
+                transaction_hash: 'bankhash-approve-2',
+                raw_data: {}
+            });
+
+            const stats = await autoReconcilePending({ user: adminUser });
+
+            expect(stats.autoLinked).toBe(0);
+            expect(stats.needsReview).toBe(1);
+            await bankTxn.reload();
+            expect(bankTxn.status).toBe('PENDING');
+            await handEntered.reload();
+            expect(handEntered.external_id).toBe('manual:entry-1'); // not renamed
+        });
+
+        test('Tier 0 still absorbs the Gmail-created backlog by exact reference', async () => {
+            const backlog = await Transaction.create({
+                member_id: member.id,
+                collected_by: adminUser.id,
+                payment_date: '2025-03-10',
+                amount: 45.00,
+                payment_type: 'donation',
+                payment_method: 'zelle',
+                status: 'succeeded',
+                external_id: 'zelle:BACKLOGREF1'
+            });
+
+            const bankTxn = await BankTransaction.create({
+                date: new Date('2025-03-14'),
+                amount: 45.00,
+                description: 'Zelle payment from ALMAZ TESFAY BACKLOGREF1',
+                type: 'ZELLE_CREDIT',
+                status: 'PENDING',
+                payer_name: 'ALMAZ TESFAY',
+                external_ref_id: 'BACKLOGREF1',
+                transaction_hash: 'bankhash-approve-3',
+                raw_data: {}
+            });
+
+            const stats = await autoReconcilePending({ user: adminUser });
+
+            expect(stats.autoLinked).toBe(1);
+            await bankTxn.reload();
+            expect(bankTxn.status).toBe('MATCHED');
+            expect(bankTxn.reconciled_meta.transaction_id).toBe(backlog.id);
+            expect(await Transaction.count()).toBe(1);
+        });
+
+        test('ACH credits still auto-create for a learned payer', async () => {
+            const bankTxn = await BankTransaction.create({
+                date: new Date('2025-03-20'),
+                amount: 65.00,
+                description: 'ORIG CO NAME:EXAMPLE EMPLOYER IND NAME:TESFAY,ALMAZ WEB ID:1234',
+                type: 'ACH_CREDIT',
+                status: 'PENDING',
+                transaction_hash: 'bankhash-approve-4',
+                raw_data: {}
+            });
+            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id);
+
+            const stats = await autoReconcilePending({ user: adminUser });
+
+            expect(stats.autoMember).toBe(1);
+            await bankTxn.reload();
+            expect(bankTxn.status).toBe('MATCHED');
+            expect(bankTxn.reconciled_source).toBe('AUTO_MEMBER');
+        });
+
+        test('a Zelle credit with a MISMATCHED reference (sender-bank ref vs Chase number) stays PENDING for approval', async () => {
+            // Email-created transaction: Chase numeric transaction number
+            const emailTxn = await Transaction.create({
+                member_id: member.id,
+                collected_by: adminUser.id,
+                payment_date: '2025-01-03', // Friday
+                amount: 50.00,
+                payment_type: 'donation',
+                payment_method: 'zelle',
+                status: 'succeeded',
+                external_id: 'zelle:29891157299'
+            });
+
+            // Bank posts the following Tuesday with the SENDER's bank
+            // reference. Tier 0's exact-reference match can't find it (the
+            // references don't match) and Tier 1's heuristic link is now
+            // disabled for Zelle, so this row waits for the treasurer instead
+            // of auto-linking the way it used to.
+            const bankTxn = await BankTransaction.create({
+                date: new Date('2025-01-07'),
+                amount: 50.00,
+                description: 'Zelle payment from ALMAZ TESFAY WFCT12CZXKH9',
+                type: 'ZELLE_CREDIT',
+                status: 'PENDING',
+                payer_name: 'ALMAZ TESFAY',
+                external_ref_id: 'WFCT12CZXKH9', // does NOT match the email number
+                transaction_hash: 'bankhash-t1w',
+                raw_data: {}
+            });
+
+            const stats = await autoReconcilePending({ user: adminUser });
+            expect(stats.autoLinked).toBe(0);
+            expect(stats.needsReview).toBe(1);
+
+            await bankTxn.reload();
+            expect(bankTxn.status).toBe('PENDING');
+
+            await emailTxn.reload();
+            expect(emailTxn.external_id).toBe('zelle:29891157299'); // untouched
+
+            expect(await Transaction.count()).toBe(1); // no duplicate created
         });
     });
 });

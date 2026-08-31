@@ -7,10 +7,12 @@
  *  Tier 1 (credits, AUTO_LINKED):  exactly one existing system transaction
  *    matches (amount, method, date ±2 days, payer name) — typically a Zelle
  *    payment already created by the Gmail automation. Link it, create nothing.
+ *    Zelle credits are excluded; they require treasurer approval.
  *
  *  Tier 2 (credits, AUTO_MEMBER):  a learned payer→member association
  *    (bank_memo_matches / zelle_memo_matches) points to exactly one member.
  *    Create the member transaction using their last-used payment type.
+ *    Zelle credits are excluded; they require treasurer approval.
  *
  *  Tier 3 (debits, AUTO_EXPENSE):  a learned payee→GL mapping
  *    (expense_memo_matches) exists for the debit's normalized description.
@@ -182,6 +184,20 @@ async function autoReconcileCredit(txn, user, { linkOnly = false } = {}) {
       });
       return 'AUTO_LINKED';
     }
+  }
+
+  // Zelle credits require explicit treasurer approval. Tier 0 above is an
+  // exact reference match and is allowed to run because it only ever links a
+  // transaction the Gmail automation already created (the legacy backlog) and
+  // never posts money. Everything below is heuristic — a name/amount/date
+  // guess (Tier 1) or a create (Tier 2) — so Zelle rows stop here and stay
+  // PENDING with suggestions for the treasurer to approve.
+  //
+  // linkOnly callers are exempt: they run from
+  // linkPendingBankRowsForTransaction, which only fires when a transaction was
+  // just created deliberately, and which never creates anything itself.
+  if (sourceTypeFor(plain) === 'ZELLE' && !linkOnly) {
+    return null;
   }
 
   // Tier 1: link to exactly one existing system transaction (e.g. a
