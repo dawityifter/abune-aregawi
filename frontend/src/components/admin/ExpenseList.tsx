@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
@@ -36,6 +36,20 @@ interface Expense {
     email: string;
   };
   created_at: string;
+}
+
+/** The bank row a reconciled expense was matched to, loaded on demand. */
+interface BankTransactionDetail {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: string;
+  check_number: string | null;
+  status: string;
+  reconciled_source: string | null;
+  reconciled_at: string | null;
+  amount_matches: boolean;
 }
 
 interface ExpenseCategory {
@@ -104,6 +118,8 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
   const { t } = useLanguage();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [bankDetail, setBankDetail] = useState<BankTransactionDetail | null>(null);
+  const [bankDetailLoading, setBankDetailLoading] = useState(false);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
@@ -298,7 +314,50 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
     setIsEditing(false);
     setEditForm(null);
     setEditError(null);
+    setBankDetail(null);
   };
+
+  // The bank row is fetched only when a reconciled expense is opened, so the
+  // 20-row list query stays light. An unreconciled expense has nothing to
+  // fetch and says so without a request.
+  //
+  // Keyed on the expense id and its reconciled flag rather than the object, and
+  // reading the auth user through a ref: this effect sets loading state on entry,
+  // so depending on either identity re-runs it on every render it causes — an
+  // endless fetch loop.
+  const detailExpenseId = selectedExpense?.id;
+  const detailIsReconciled = selectedExpense?.is_reconciled;
+  const firebaseUserRef = useRef(firebaseUser);
+  firebaseUserRef.current = firebaseUser;
+
+  useEffect(() => {
+    if (!detailExpenseId || !detailIsReconciled) {
+      setBankDetail(null);
+      return;
+    }
+
+    let cancelled = false;
+    const load = async () => {
+      setBankDetailLoading(true);
+      try {
+        const token = await firebaseUserRef.current?.getIdToken();
+        const response = await fetch(
+          `${process.env.REACT_APP_API_URL}/api/expenses/${detailExpenseId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!cancelled) setBankDetail(data.data?.bank_transaction || null);
+      } catch (err) {
+        console.error('Error fetching bank reconciliation detail:', err);
+      } finally {
+        if (!cancelled) setBankDetailLoading(false);
+      }
+    };
+    load();
+
+    return () => { cancelled = true; };
+  }, [detailExpenseId, detailIsReconciled]);
 
   useEffect(() => {
     if (!selectedExpense) return;
@@ -981,6 +1040,66 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
                     <dd className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{selectedExpense.memo || '-'}</dd>
                   </div>
                 </dl>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  Bank Reconciliation
+                </p>
+
+                {!selectedExpense.is_reconciled ? (
+                  <p className="mt-3 text-sm text-slate-500">
+                    Not reconciled against the bank — no cleared bank transaction is linked to this expense yet.
+                  </p>
+                ) : bankDetailLoading && !bankDetail ? (
+                  <p className="mt-3 text-sm text-slate-500">Loading bank transaction…</p>
+                ) : !bankDetail ? (
+                  <p className="mt-3 text-sm text-slate-500">
+                    This expense is marked reconciled, but the linked bank transaction could not be found.
+                  </p>
+                ) : (
+                  <dl className="mt-3 space-y-3">
+                    <div>
+                      <dt className="text-xs font-medium text-slate-500">Statement Line</dt>
+                      <dd className="mt-1 break-words text-sm font-medium text-slate-900">
+                        {bankDetail.description}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-slate-500">Posted</dt>
+                      <dd className="mt-1 text-sm text-slate-900">{formatDate(bankDetail.date)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-slate-500">Bank Amount</dt>
+                      <dd className={`mt-1 text-sm font-semibold ${bankDetail.amount_matches ? 'text-slate-900' : 'text-red-700'}`}>
+                        {formatCurrency(Math.abs(bankDetail.amount))}
+                        {!bankDetail.amount_matches && (
+                          <span className="ml-2 font-medium">
+                            — does not match the recorded expense of {formatCurrency(selectedExpense.amount)}
+                          </span>
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-slate-500">Bank Type</dt>
+                      <dd className="mt-1 text-sm text-slate-900">
+                        {bankDetail.type}
+                        {bankDetail.check_number && ` · check #${bankDetail.check_number}`}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-slate-500">How</dt>
+                      <dd className="mt-1 text-sm text-slate-700">
+                        {bankDetail.reconciled_source === 'MANUAL'
+                          ? 'Reconciled by hand'
+                          : bankDetail.reconciled_source
+                            ? `Matched automatically${bankDetail.check_number ? ` on check #${bankDetail.check_number}` : ''}`
+                            : 'Linked to this bank transaction'}
+                        {bankDetail.reconciled_at && ` · ${formatDate(bankDetail.reconciled_at)}`}
+                      </dd>
+                    </div>
+                  </dl>
+                )}
               </div>
                 </>
               )}

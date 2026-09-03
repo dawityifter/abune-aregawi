@@ -4,7 +4,7 @@
  * and orders rows the way the treasurer expects.
  */
 const { LedgerEntry, ExpenseCategory, Vendor, Member } = require('../../src/models');
-const { getExpenses, getExpensePaymentMethods } = require('../../src/controllers/expenseController');
+const { getExpenses, getExpensePaymentMethods, getExpenseById } = require('../../src/controllers/expenseController');
 
 async function list(query) {
   let payload;
@@ -141,5 +141,61 @@ describe('Expense payment method filter (real SQL)', () => {
     await getExpensePaymentMethods({ query: {} }, res);
 
     expect(payload.data).toEqual(['ach', 'cash', 'check', 'debit_card']);
+  });
+});
+
+describe('Expense bank reconciliation details (real SQL)', () => {
+  const { BankTransaction } = require('../../src/models');
+
+  beforeAll(async () => {
+    await LedgerEntry.destroy({ where: {} });
+    await BankTransaction.destroy({ where: {} });
+    await ExpenseCategory.findOrCreate({
+      where: { gl_code: 'EXP100' },
+      defaults: { gl_code: 'EXP100', name: 'Utilities', is_active: true }
+    });
+  });
+
+  afterAll(async () => {
+    await LedgerEntry.destroy({ where: {} });
+    await BankTransaction.destroy({ where: {} });
+  });
+
+  async function fetchOne(id) {
+    let payload;
+    const res = { json: (p) => { payload = p; }, status: () => res };
+    await getExpenseById({ params: { id } }, res);
+    return payload;
+  }
+
+  it('joins the real bank row through external_id', async () => {
+    await BankTransaction.create({
+      date: new Date('2026-08-31'), amount: -125.00, description: 'CHECK #1601',
+      type: 'CHECK_PAID', status: 'MATCHED', check_number: '1601',
+      reconciled_source: 'AUTO_CHECK_MATCH', reconciled_at: new Date('2026-09-01'),
+      transaction_hash: 'hash-detail-1', raw_data: {}
+    });
+    const expense = await LedgerEntry.create({
+      type: 'expense', category: 'EXP100', amount: 125.00, entry_date: '2026-08-30',
+      payment_method: 'check', check_number: '1601', external_id: 'hash-detail-1',
+      source_system: 'manual'
+    });
+
+    const payload = await fetchOne(expense.id);
+
+    expect(payload.data.bank_transaction.description).toBe('CHECK #1601');
+    expect(payload.data.bank_transaction.reconciled_source).toBe('AUTO_CHECK_MATCH');
+    expect(payload.data.bank_transaction.amount_matches).toBe(true);
+  });
+
+  it('returns null for an expense that never cleared the bank', async () => {
+    const expense = await LedgerEntry.create({
+      type: 'expense', category: 'EXP100', amount: 60.00, entry_date: '2026-08-30',
+      payment_method: 'check', check_number: '1602', source_system: 'manual'
+    });
+
+    const payload = await fetchOne(expense.id);
+
+    expect(payload.data.bank_transaction).toBeNull();
   });
 });

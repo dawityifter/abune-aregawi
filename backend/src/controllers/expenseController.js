@@ -1,4 +1,4 @@
-const { ExpenseCategory, LedgerEntry, Member, Employee, Vendor, sequelize } = require('../models');
+const { ExpenseCategory, LedgerEntry, BankTransaction, Member, Employee, Vendor, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const tz = require('../config/timezone');
 const { DEFAULT_START_CHECK_NUMBER, normalizeCheckNumber } = require('../utils/checkNumber');
@@ -413,6 +413,44 @@ const getExpenses = async (req, res) => {
   }
 };
 
+// The bank row an expense was reconciled against, for the details drawer.
+//
+// external_id holds the bank transaction's hash — the same link auto-reconcile
+// writes when a cleared check is matched to a hand-entered expense. Fetched per
+// request rather than joined into the list, since it is only read when someone
+// opens one expense.
+//
+// amount_matches is computed here rather than in the UI: the bank stores a debit
+// as negative and the expense stores it positive, so the comparison is on
+// absolute values with a cent of tolerance. Getting that wrong in the UI would
+// show a false mismatch on every reconciled row.
+async function describeReconciliation(expense) {
+  if (!expense.external_id) return null;
+
+  const bankTxn = await BankTransaction.findOne({
+    where: { transaction_hash: expense.external_id }
+  });
+
+  // A link with no row behind it: the bank transaction was deleted, or the
+  // external_id came from somewhere other than a bank import. Report nothing
+  // rather than failing the whole request.
+  if (!bankTxn) return null;
+
+  const bankAmount = Number(bankTxn.amount);
+  return {
+    id: bankTxn.id,
+    date: bankTxn.date,
+    description: bankTxn.description,
+    amount: bankAmount,
+    type: bankTxn.type,
+    check_number: bankTxn.check_number,
+    status: bankTxn.status,
+    reconciled_source: bankTxn.reconciled_source,
+    reconciled_at: bankTxn.reconciled_at,
+    amount_matches: Math.abs(Math.abs(bankAmount) - Math.abs(Number(expense.amount))) < 0.005
+  };
+}
+
 // Get single expense by ID
 const getExpenseById = async (req, res) => {
   try {
@@ -447,7 +485,8 @@ const getExpenseById = async (req, res) => {
     const result = {
       ...expense.toJSON(),
       category_name: category?.name || 'Unknown',
-      category_description: category?.description || null
+      category_description: category?.description || null,
+      bank_transaction: await describeReconciliation(expense)
     };
 
     res.json({
