@@ -391,6 +391,31 @@ describe('Automatic Bank Reconciliation', () => {
             expect(debit.status).toBe('PENDING');
         });
 
+        test('never matches a returned deposit against a church check of the same serial', async () => {
+            // The serial on a returned item is the DONOR's, printed on the check
+            // they wrote to the church. If the church also wrote its own check
+            // 1397 for the same amount, the two must not be linked.
+            const churchCheck = await manualCheckExpense({ checkNumber: '1397', amount: 200.00 });
+            const returned = await BankTransaction.create({
+                date: new Date('2026-09-02'),
+                amount: -200.00,
+                description: 'DEPOSITED ITEM RETURNED RETURN ITEM REF# 99007994 CHK SER# 1397 DEP REF: 5380734149 CHARGEBACK',
+                type: 'DEPOSIT_RETURN',
+                status: 'PENDING',
+                check_number: '1397',
+                transaction_hash: 'bankhash-returned-item',
+                raw_data: {}
+            });
+
+            await autoReconcilePending({ user: adminUser });
+
+            await returned.reload();
+            expect(returned.status).toBe('PENDING');
+
+            await churchCheck.reload();
+            expect(churchCheck.external_id).toBeNull();
+        });
+
         test('undo unlinks the manual expense without deleting it', async () => {
             const expense = await manualCheckExpense({ checkNumber: '1599', amount: 310.00 });
             const debit = await pendingCheckDebit({ checkNumber: '1599', amount: -310.00, hash: 'bankhash-chk-undo' });

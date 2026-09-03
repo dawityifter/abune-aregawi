@@ -204,6 +204,7 @@ const createTransaction = async (req, res) => {
       payment_type,
       payment_method,
       receipt_number,
+      check_number,
       note,
       external_id,
       status = 'succeeded', // Default transaction status
@@ -241,6 +242,7 @@ const createTransaction = async (req, res) => {
       payment_type,
       payment_method,
       receipt_number,
+      check_number,
       note: finalNote,
       donor_name,
       external_id,

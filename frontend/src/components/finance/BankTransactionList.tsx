@@ -30,6 +30,20 @@ export interface BankTransaction {
         expense_amount?: number;
         ledger_entry_id?: string | null;
     };
+    /**
+     * Present only on returned deposited items — a check the church deposited
+     * that bounced. The serial is the DONOR's, so this points at the gift being
+     * reversed, never at the church's own checkbook.
+     */
+    returned_item?: {
+        state: 'RETURNED';
+        reason?: 'ORIGINAL_NOT_FOUND' | 'NO_CHECK_SERIAL' | 'AMOUNT_MISMATCH' | null;
+        check_number: string | null;
+        bank_amount?: number;
+        original_amount?: number;
+        receipt_number?: string | null;
+        reverses_ledger_entry_id?: number | string | null;
+    };
     member?: {
         first_name: string;
         last_name: string;
@@ -231,6 +245,27 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                 return 'This check cleared without a check number on the bank record — enter it manually';
             default:
                 return `No expense recorded for check ${number} — enter it to reconcile`;
+        }
+    };
+
+    /**
+     * A bounced deposit is money the books still show as received, so the row
+     * says what it reverses rather than sitting as an unexplained debit.
+     */
+    const explainReturnedItem = (txn: BankTransaction) => {
+        const r = txn.returned_item;
+        if (!r) return null;
+
+        const number = r.check_number ? `#${r.check_number}` : '';
+        switch (r.reason) {
+            case 'NO_CHECK_SERIAL':
+                return `Deposited item returned for ${formatCurrency(r.bank_amount ?? 0)} — the bank did not report a check serial`;
+            case 'ORIGINAL_NOT_FOUND':
+                return `Returned check ${number} for ${formatCurrency(r.bank_amount ?? 0)} — no recorded payment carries this serial, so the original gift must be found by hand`;
+            case 'AMOUNT_MISMATCH':
+                return `Returned check ${number}: recorded as ${formatCurrency(r.original_amount ?? 0)}, bank reversed ${formatCurrency(r.bank_amount ?? 0)} — reverses receipt #${r.receipt_number}`;
+            default:
+                return `Returned check ${number} for ${formatCurrency(r.bank_amount ?? 0)} — reverses receipt #${r.receipt_number}. The ledger still counts this gift as received.`;
         }
     };
 
@@ -563,12 +598,19 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         </td>
                                         <td className="whitespace-nowrap px-6 py-4 text-center">
                                             <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold
-                                                ${txn.check_status?.state === 'NOT_RECONCILED' ? 'bg-red-100 text-red-800' :
+                                                ${txn.returned_item || txn.check_status?.state === 'NOT_RECONCILED' ? 'bg-red-100 text-red-800' :
                                                     txn.status === 'MATCHED' ? 'bg-emerald-100 text-emerald-800' :
                                                         txn.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
                                                             'bg-slate-100 text-slate-700'}`}>
-                                                {formatCheckStatusLabel(txn) ?? formatStatusLabel(txn.status)}
+                                                {txn.returned_item
+                                                    ? 'RETURNED ITEM'
+                                                    : formatCheckStatusLabel(txn) ?? formatStatusLabel(txn.status)}
                                             </span>
+                                            {explainReturnedItem(txn) && (
+                                                <div className="mt-1 max-w-72 whitespace-normal text-xs font-medium leading-4 text-red-700">
+                                                    {explainReturnedItem(txn)}
+                                                </div>
+                                            )}
                                             {explainCheckStatus(txn) && (
                                                 <div className="mt-1 text-xs text-red-700">
                                                     {explainCheckStatus(txn)}

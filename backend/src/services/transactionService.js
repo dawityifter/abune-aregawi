@@ -14,6 +14,7 @@
 // something introduced by this extraction; it is deliberately left as-is.
 
 const { sequelize, Transaction, Member, LedgerEntry, IncomeCategory } = require('../models');
+const { parseCheckNumber } = require('../utils/checkNumber');
 const tz = require('../config/timezone');
 const { validateReceiptNumber } = require('../utils/receiptNumber');
 const { maybeAllocateToPledge } = require('./pledgeAllocationService');
@@ -157,8 +158,18 @@ async function validateAndResolveTransaction(payload, options = {}) {
  */
 async function createLedgerEntryForTransaction(transactionRecord, payload, resolved, options = {}) {
   const { transaction } = options;
-  const { payment_type, amount, payment_date, payment_method, note, collected_by, member_id, external_id } = payload;
+  const { payment_type, amount, payment_date, payment_method, note, collected_by, member_id, external_id, check_number } = payload;
   const { glCode, normalizedReceiptNumber } = resolved;
+
+  // The serial printed on the donor's own check. Unlike the church's outgoing
+  // check numbers this carries no uniqueness rule — two donors may each write
+  // their own check 1397 — but recording it is what lets a returned deposit
+  // ("DEPOSITED ITEM RETURNED ... CHK SER# 1397") be traced back to the gift it
+  // reverses. It used to survive only when a treasurer typed it into the memo.
+  // A serial that won't parse is dropped rather than failing the gift.
+  const payerCheckNumber = payment_method === 'check'
+    ? parseCheckNumber(check_number)
+    : null;
 
   try {
     const entryDate = payment_date ? tz.parseDate(payment_date) : tz.now();
@@ -171,6 +182,7 @@ async function createLedgerEntryForTransaction(transactionRecord, payload, resol
       entry_date: entryDate,
       payment_method,
       receipt_number: normalizedReceiptNumber || null,
+      check_number: payerCheckNumber,
       memo,
       collected_by,
       member_id,

@@ -218,6 +218,61 @@ lands in the review queue with no name, the Zelle Review screen requires the tre
 supply one before matching, and nothing is learned under a wrong key. If you see rows arriving
 with no payer name, compare a real body against the patterns before assuming the data is bad.
 
+## Repeated identical charges
+
+`generateTransactionHash` is `Posting Date | Description | Amount`, deliberately
+excluding Balance so a transaction seen first as pending and later as posted does not
+import twice.
+
+That exclusion made a statement's *second* copy of a genuinely repeated charge — same
+merchant, same amount, same day, differing only in the running balance — hash identically
+to the first, and the upload discarded it as a duplicate. Real spending vanished from the
+ledger with no visible sign: the row was counted in `skipped`, which reads as normal.
+
+Byte-identical rows are now numbered as they are read, and the hash of occurrence *n > 0*
+carries a `|#n` suffix. Consequences worth knowing:
+
+- **Occurrence 0 hashes exactly as before**, so every already-ingested row keeps its hash
+  and is never re-imported.
+- **Re-uploading a statement stays idempotent**: the same file yields the same ordinals.
+  An overlapping statement matches occurrence 0 to the stored row and creates only what is
+  new.
+- **A truly duplicated export line now creates two rows** rather than one. That is the
+  deliberate trade: a spurious extra row is visible in the pending queue and can be marked
+  IGNORED, whereas the old behaviour silently dropped real money. Balance is still not
+  hashed, so the pending-to-posted case it protected keeps working.
+
+## Returned deposited items
+
+A check the church deposited can bounce. Chase reports it as a debit whose
+description carries the bounced check's own serial:
+
+```
+DEPOSITED ITEM RETURNED RETURN ITEM REF# 99007994 CHK SER# 1397
+DEP REF: 5380734149 CHARGEBACK RTN REASON: UnableTo Locate
+```
+
+That serial belongs to the **donor**, not the church checkbook, which makes these
+rows dangerous to treat as ordinary check debits: matching `CHK SER# 1397` against the
+church's own check 1397 would link two unrelated payments. So:
+
+- The parser captures the serial into `check_number` and flags the row via
+  `isReturnedItem()`; the ordinary `CHECK` description pattern is skipped for it.
+- `autoReconcileDebit` returns early on a returned item, so it is never matched
+  against a church expense.
+- The bank list annotates it as `returned_item`, resolving the serial against **income**
+  entries to name the receipt it reverses.
+
+Recording the payer's serial at entry time is what makes that lookup possible:
+`createLedgerEntryForTransaction` stores `check_number` for check payments. Unlike the
+church's outgoing checks these carry **no uniqueness rule** — two donors may each write
+their own check 1397.
+
+**A returned item is not reversed automatically.** The ledger still counts the gift as
+received; the treasurer must correct it. Deciding whether that means marking the original
+`refunded`, posting a contra-entry, or both is an accounting policy question that has not
+been settled here.
+
 ## Troubleshooting
 
 - Auth errors: Ensure you are signed in and your role is Treasurer or Admin.

@@ -62,6 +62,10 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   const [paymentType, setPaymentType] = useState(initialPaymentType || '');
   const [forYear, setForYear] = useState('');
   const [receiptNumber, setReceiptNumber] = useState('');
+  // The serial printed on the donor's own check. Recorded so a returned deposit
+  // ("DEPOSITED ITEM RETURNED ... CHK SER# 1397") can be traced back to the gift
+  // it reverses instead of being reconstructed from a free-text memo.
+  const [payerCheckNumber, setPayerCheckNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [submissionId, setSubmissionId] = useState('');
   const [error, setError] = useState('');
@@ -342,6 +346,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           payment_type: paymentType,
           payment_method: paymentMethod,
           receipt_number: receiptNumber,
+          check_number: paymentMethod === 'check' ? payerCheckNumber : null,
           for_year: forYear ? parseInt(forYear) : null,
           note: notes,
           external_id: submissionId
@@ -657,10 +662,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="payment-method-0" className="block text-sm font-medium text-gray-700 mb-2">
                     Payment Method
                   </label>
                   <select
+                    id="payment-method-0"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     required
@@ -674,6 +680,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                     ))}
                   </select>
                 </div>
+
               </>
             ) : (
               // New transaction system fields
@@ -774,10 +781,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="payment-method-1" className="block text-sm font-medium text-gray-700 mb-2">
                     Payment Method
                   </label>
                   <select
+                    id="payment-method-1"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     required
@@ -791,6 +799,27 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                     ))}
                   </select>
                 </div>
+                {paymentMethod === 'check' && (
+                  <div>
+                    <label htmlFor="payer-check" className="block text-sm font-medium text-gray-700 mb-2">
+                      Check Number (on the donor's check)
+                    </label>
+                    <input
+                      id="payer-check"
+                      data-testid="payer-check-number"
+                      type="text"
+                      inputMode="numeric"
+                      value={payerCheckNumber}
+                      onChange={(e) => setPayerCheckNumber(e.target.value.replace(/\D/g, ''))}
+                      placeholder="1397"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Lets a bounced check be traced back to this payment.
+                    </p>
+                  </div>
+                )}
+
 
                 {/* Stripe payment forms when card/ACH selected */}
                 {(paymentMethod === 'credit_card' || paymentMethod === 'ach') && (

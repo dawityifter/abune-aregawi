@@ -153,9 +153,51 @@ exports.uploadBankCSV = asyncHandler(async (req, res) => {
  * Returns null for anything that isn't a check debit, so non-check rows keep
  * their normal pending/matched treatment.
  */
+/**
+ * Classify a returned deposited item — a check the church deposited that
+ * bounced. The serial Chase reports is the DONOR's, so this looks for the
+ * income entry it reverses, never the church's own checkbook.
+ *
+ * Returns null for anything that isn't a return, so ordinary rows are untouched.
+ */
+async function describeReturnedItem(txn, plain) {
+    const { isReturnedItem } = require('../services/bankParserService');
+    if (!isReturnedItem(plain)) return null;
+
+    const serialMatch = String(plain.description || '').match(/CHK\s*SER#?\s*(\d+)/i);
+    const checkNumber = parseCheckNumber(plain.check_number) || parseCheckNumber(serialMatch && serialMatch[1]);
+    const bankAmount = Math.abs(Number(plain.amount));
+
+    const base = { state: 'RETURNED', check_number: checkNumber, bank_amount: bankAmount };
+    if (!checkNumber) {
+        return { ...base, reverses_ledger_entry_id: null, receipt_number: null, reason: 'NO_CHECK_SERIAL' };
+    }
+
+    // Income entries only: this reverses a gift the church received.
+    const original = await LedgerEntry.findOne({
+        where: { type: { [require('sequelize').Op.ne]: 'expense' }, check_number: checkNumber }
+    });
+
+    if (!original) {
+        return { ...base, reverses_ledger_entry_id: null, receipt_number: null, reason: 'ORIGINAL_NOT_FOUND' };
+    }
+
+    return {
+        ...base,
+        reverses_ledger_entry_id: original.id,
+        receipt_number: original.receipt_number || null,
+        original_amount: Number(original.amount),
+        reason: Math.abs(Number(original.amount) - bankAmount) < 0.005 ? null : 'AMOUNT_MISMATCH'
+    };
+}
+
 async function describeCheckStatus(txn, plain) {
     const { checkNumberFor } = require('../services/autoReconcileService');
     const { sourceTypeFor } = require('../services/bankMemoMatchService');
+    const { isReturnedItem } = require('../services/bankParserService');
+
+    // A return carries the donor's serial, not one of the church's own checks.
+    if (isReturnedItem(plain)) return null;
 
     const isDebit = Number(plain.amount) < 0;
     const checkNumber = checkNumberFor(plain);
@@ -318,6 +360,11 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
         // A cleared check is only reconciled once it lines up with an expense the
         // treasurer entered by hand. Computed per row rather than stored, so the
         // answer stays true as expenses are added and corrected.
+        const returnedItem = await describeReturnedItem(txn, plain);
+        if (returnedItem) {
+            plain.returned_item = returnedItem;
+        }
+
         const checkStatus = await describeCheckStatus(txn, plain);
         if (checkStatus) {
             plain.check_status = checkStatus;

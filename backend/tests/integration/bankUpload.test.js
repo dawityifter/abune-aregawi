@@ -31,6 +31,40 @@ describe('Bank CSV Upload API', () => {
         });
     });
 
+    test('ingests both copies of a charge that legitimately repeats in one statement', async () => {
+        // Two distinct charges at the same merchant, same amount, same day.
+        // The running balance drops twice, proving they are separate purchases.
+        const csvContent = `Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #
+DEBIT,08/28/2026,SOME MERCHANT 1234,-171.46,DEBIT_CARD,900.00,
+DEBIT,08/28/2026,SOME MERCHANT 1234,-171.46,DEBIT_CARD,728.54,`;
+
+        const response = await request(app)
+            .post('/api/bank/upload')
+            .set('Authorization', 'Bearer MAGIC_DEMO_TOKEN')
+            .attach('file', Buffer.from(csvContent, 'utf-8'), 'chase.csv');
+
+        expect(response.status).toBe(200);
+
+        const rows = await BankTransaction.findAll({ where: { amount: -171.46 } });
+        expect(rows).toHaveLength(2);
+        expect(new Set(rows.map(r => r.transaction_hash)).size).toBe(2);
+    });
+
+    test('re-uploading the same statement creates nothing new', async () => {
+        const csvContent = `Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #
+DEBIT,08/28/2026,SOME MERCHANT 1234,-171.46,DEBIT_CARD,900.00,
+DEBIT,08/28/2026,SOME MERCHANT 1234,-171.46,DEBIT_CARD,728.54,`;
+
+        for (let i = 0; i < 2; i++) {
+            await request(app)
+                .post('/api/bank/upload')
+                .set('Authorization', 'Bearer MAGIC_DEMO_TOKEN')
+                .attach('file', Buffer.from(csvContent, 'utf-8'), 'chase.csv');
+        }
+
+        expect(await BankTransaction.count({ where: { amount: -171.46 } })).toBe(2);
+    });
+
     test('should bulk create transactions from CSV', async () => {
         // Chase CSV encodes sign in Amount: expenses are negative, refunds positive
         const csvContent = `Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #

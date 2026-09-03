@@ -53,6 +53,7 @@ const {
 } = require('./bankMemoMatchService');
 const { getDefaultPaymentType } = require('./zelleTransactionService');
 const { parseCheckNumber } = require('../utils/checkNumber');
+const { isReturnedItem } = require('./bankParserService');
 
 // ---------------------------------------------------------------------------
 // Expense learning
@@ -423,6 +424,13 @@ async function autoReconcileDebit(txn, user) {
   // a new expense. Creating one here produced duplicate ledger entries with no
   // check number (the bank row often carries none), which is what made the
   // expense list look full of missing check numbers.
+  // A returned deposited item also carries a check serial, but it is the
+  // DONOR's — the check they wrote to the church that bounced. Matching it
+  // against the church's own checkbook would link two unrelated payments that
+  // happen to share a serial, so returns are excluded entirely and left for the
+  // treasurer to reverse by hand.
+  if (isReturnedItem(txn)) return null;
+
   if (sourceTypeFor(txn.get ? txn.get({ plain: true }) : txn) === 'CHECK' || checkNumberFor(txn)) {
     const match = await findManualCheckExpense(txn);
     if (!match) return null; // unreconciled — surfaced in red for the treasurer
