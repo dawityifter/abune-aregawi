@@ -39,16 +39,35 @@ function sanitizeNote(input) {
 /**
  * Extract the payer (sender) name from Chase Zelle email subject/body.
  * Known Chase formats:
+ *   "JOHN DOE sent you money"     <- current notification wording
  *   "JOHN DOE sent you $50.00"
  *   "You received $50.00 from JOHN DOE"
  *   "Zelle payment from JOHN DOE 123456"
+ *
+ * Two things about the real input shape drive the leading pattern:
+ *
+ * 1. The amount is NOT next to the name. Chase writes "<NAME> sent you money"
+ *    and puts the amount further down in a details table, so a pattern
+ *    requiring "sent you $" matches none of the live notifications.
+ * 2. There is usually no line structure to lean on. Chase sends these as
+ *    text/html with no text/plain part, so parseCandidatesFromMessage falls
+ *    back to Gmail's ~200 character snippet: a single line reading
+ *    "Zelle ® payment <NAME> sent you money Here are the details: ...".
+ *
+ * So the name's start is anchored to a line start OR to the "®" that ends
+ * Chase's chrome — a character that cannot occur inside a name. Without such
+ * an anchor the match runs leftward and swallows whatever preceded it (the
+ * subject line, or the word "payment") into the captured name, which would
+ * silently corrupt the ZELLE:PAYER:<name> key every match is stored under.
  */
 function extractPayerName(text) {
   if (!text) return null;
-  const raw = String(text).replace(/\s+/g, ' ');
+  // Collapse runs of spaces/tabs, but keep newlines: where they do exist they
+  // are a boundary that stops one line bleeding into the next line's name.
+  const raw = String(text).replace(/[ \t]+/g, ' ');
 
   const patterns = [
-    /([A-Za-z][A-Za-z'’.\- ]{1,60}?)\s+sent you\s+\$/i,
+    /(?:^|®)[ \t]*(?:payment[ \t]+)?([A-Za-z][A-Za-z'’.\- ]{1,60}?)\s+sent you\s+(?:money\b|\$)/im,
     /received\s+\$[\d,.]+\s+from\s+([A-Za-z][A-Za-z'’.\- ]{1,60}?)(?=\s*(?:[.,|\n]|$|is registered))/i,
     /Zelle payment from\s+([A-Za-z][A-Za-z'’.\- ]{1,60}?)(?=\s*(?:[.,|\n]|\d|$))/i
   ];

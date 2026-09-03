@@ -74,6 +74,62 @@ describe('Zelle Transaction Service', () => {
             expect(extractPayerName('Your statement is ready')).toBeNull();
             expect(extractPayerName('')).toBeNull();
         });
+
+        // The shape Chase actually sends: the name says "sent you money", and the
+        // amount lives further down in a details table rather than beside it. The
+        // original "sent you $" pattern required them adjacent, so it matched none
+        // of the real notifications this church receives.
+        const CHASE_BODY = [
+            'Zelle® payment',
+            'JANE DOE sent you money',
+            '',
+            'Here are the details:',
+            '',
+            'Amount\t$50.00',
+            'Sent on\tAug 29, 2026',
+            'Transaction number\t30598898951',
+            'Memo\tSYNTHETIC MEMO',
+            '',
+            'JANE DOE is registered with a Zelle® member bank that supports payments in real time.'
+        ].join('\n');
+
+        test('parses the real Chase "X sent you money" body', () => {
+            expect(extractPayerName(CHASE_BODY)).toBe('JANE DOE');
+        });
+
+        test('parses the real Chase body when prefixed with the subject, as ingestion does', () => {
+            expect(extractPayerName(`You received money with Zelle®\n${CHASE_BODY}`)).toBe('JANE DOE');
+        });
+
+        // Regression: the matcher used to collapse newlines and match without a
+        // line anchor, so a subject made only of letters and spaces was captured
+        // as part of the payer name. Production was protected only by the ® in
+        // Chase's real subject falling outside the character class.
+        test('does not absorb a letters-only subject into the payer name', () => {
+            expect(extractPayerName('You received money with Zelle\nSYNTHETIC PAYER sent you $75.00'))
+                .toBe('SYNTHETIC PAYER');
+        });
+
+        test('does not absorb preceding words on the same line', () => {
+            expect(extractPayerName('Zelle payment\nJANE DOE sent you money')).toBe('JANE DOE');
+        });
+
+        // What ingestion ACTUALLY receives. Chase sends these notifications as
+        // text/html with no text/plain part, so parseCandidatesFromMessage falls
+        // back to Gmail's snippet: one 200-character line, no newlines, with the
+        // "Zelle ® payment" chrome sitting immediately before the payer. A
+        // line-anchored match cannot work here — there are no lines.
+        const CHASE_SNIPPET =
+            'Zelle ® payment JANE DOE sent you money Here are the details: Amount $50.00 ' +
+            'Sent on Aug 29, 2026 Transaction number 30598898951 Memo For synthetic purposes';
+
+        test('parses the single-line Gmail snippet ingestion actually receives', () => {
+            expect(extractPayerName(CHASE_SNIPPET)).toBe('JANE DOE');
+        });
+
+        test('parses the snippet when prefixed with the subject, as ingestion does', () => {
+            expect(extractPayerName(`You received money with Zelle®\n${CHASE_SNIPPET}`)).toBe('JANE DOE');
+        });
     });
 
     describe('extractZelleReference + buildZelleExternalId (payment-level dedupe)', () => {

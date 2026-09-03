@@ -155,9 +155,20 @@ const ZelleReview: React.FC = () => {
     }));
   }, []);
 
+  // The learned key this match writes is built from the payer name, so a row
+  // whose email had none cannot be matched until the treasurer supplies one —
+  // the backend returns 400 PAYER_NAME_REQUIRED. Gate it here so the rule is
+  // visible before the click rather than arriving as a server error after it.
+  const payerNameMissing = (item: QueueItem) =>
+    !item.payer_name && !(matchInputs[item.id]?.payerName || '').trim();
+
   const handleMatch = async (item: QueueItem) => {
     const memberId = rowSearch[item.id]?.selectedId;
     if (!memberId) { setError('Search for and select a member to match.'); return; }
+    if (payerNameMissing(item)) {
+      setError('Enter the payer name for this row before saving the match.');
+      return;
+    }
 
     setBusyIds(prev => ({ ...prev, [item.id]: true }));
     try {
@@ -325,21 +336,40 @@ const ZelleReview: React.FC = () => {
                             </div>
                           )}
                           {!item.payer_name && (
-                            <input
-                              type="text"
-                              placeholder="Payer name"
-                              className="w-48 border border-gray-300 rounded px-2 py-1 text-sm"
-                              value={matchInputs[item.id]?.payerName || ''}
-                              onChange={e => setMatchInputs(prev => ({
-                                ...prev,
-                                [item.id]: { ...prev[item.id], payerName: e.target.value }
-                              }))}
-                            />
+                            <>
+                              <input
+                                type="text"
+                                placeholder="Payer name (required)"
+                                className={`w-48 rounded px-2 py-1 text-sm border ${
+                                  payerNameMissing(item)
+                                    ? 'border-amber-400 bg-amber-50'
+                                    : 'border-gray-300'
+                                }`}
+                                value={matchInputs[item.id]?.payerName || ''}
+                                onChange={e => setMatchInputs(prev => ({
+                                  ...prev,
+                                  [item.id]: { ...prev[item.id], payerName: e.target.value }
+                                }))}
+                              />
+                              {payerNameMissing(item) && (
+                                <span className="text-xs text-amber-700">
+                                  Payer name is required — this email didn&apos;t include one. Enter it as
+                                  it appears on the bank statement.
+                                </span>
+                              )}
+                            </>
                           )}
                           <button
                             type="button"
+                            title={
+                              !rowSearch[item.id]?.selectedId
+                                ? 'Search for and select a member first'
+                                : payerNameMissing(item)
+                                  ? 'Enter the payer name for this row first'
+                                  : 'Save this payer to member match'
+                            }
                             onClick={() => handleMatch(item)}
-                            disabled={!!busyIds[item.id] || !rowSearch[item.id]?.selectedId}
+                            disabled={!!busyIds[item.id] || !rowSearch[item.id]?.selectedId || payerNameMissing(item)}
                             className="self-start px-3 py-1 text-sm bg-blue-600 text-white rounded disabled:opacity-50"
                           >
                             Save

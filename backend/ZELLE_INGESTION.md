@@ -182,20 +182,41 @@ auto-link/auto-create/auto-expense those the same way it always has.
     check only the HTTP status will treat duplicate-skipped items as successes — read each
     item's `success`/`code`.
 
-## Known limitations
+## Payer name parsing
 
-`extractPayerName` (in `backend/src/services/zelleTransactionService.js`) matches against
-`subject + "\n" + body` after whitespace collapsing, with a left-anchored pattern. When the
-subject is letters and spaces only, the subject text is captured as part of the payer name —
-e.g. a subject of `You received money with Zelle` yields the payer
-`You received money with Zelle SYNTHETIC PAYER`. Production is currently protected only by
-accident: the `®` in Chase's real subject falls outside the pattern's character class and
-breaks the match. This matters more under match-only mode than it did before, because the
-payer name is now the `ZELLE:PAYER:<name>` key that carries a treasurer's match across to
-bank reconciliation — it is the Gmail path's only output. A template change dropping the
-`®`, or reusing this ingest for another bank's notifications, would silently corrupt every
-learned key. Fix by anchoring the pattern to the body rather than the concatenated text. Not
-fixed here: out of scope for the match-only change.
+The payer name is the Gmail path's only output — it becomes the `ZELLE:PAYER:<name>` key
+that carries a treasurer's match across to bank reconciliation — so `extractPayerName` (in
+`backend/src/services/zelleTransactionService.js`) is worth understanding before changing.
+
+Chase's current notification puts the payer on its own line and the amount further down in a
+details table, so the two are **not** adjacent:
+
+```
+Zelle® payment
+JANE DOE sent you money
+
+Here are the details:
+
+Amount              $50.00
+Transaction number  30598898951
+```
+
+Two properties of the matcher follow from that shape, and both are load-bearing:
+
+- It looks for `sent you money` as well as `sent you $`. An earlier version required the
+  amount immediately after `sent you`, which matched none of the real notifications — every
+  queued email parsed an amount and a transaction number but no payer name, leaving the
+  treasurer to type one for every row.
+- It preserves newlines and anchors to a line start. Without the anchor the match runs
+  leftward across the collapsed text and swallows whatever preceded it — the subject line, or
+  the `Zelle® payment` header — into the captured name. A letters-and-spaces-only subject
+  would then yield a payer like `You received money with Zelle JANE DOE`, silently corrupting
+  every learned key built from it.
+
+If Chase changes the template again, the safe failure mode is a `null` payer name: the row
+lands in the review queue with no name, the Zelle Review screen requires the treasurer to
+supply one before matching, and nothing is learned under a wrong key. If you see rows arriving
+with no payer name, compare a real body against the patterns before assuming the data is bad.
 
 ## Troubleshooting
 
@@ -206,7 +227,7 @@ fixed here: out of scope for the match-only change.
 - 409 `ALREADY_POSTED` on `/queue/:id/match`: the queue row already has a Transaction; nothing
   to do.
 - A matched payer isn't linking during bank reconciliation: confirm the payer name typed
-  during matching matches the bank statement's payer text exactly (see Known limitations
-  above for one way this can silently break).
+  during matching matches the bank statement's payer text exactly (see Payer name parsing
+  above for how the name is extracted, and how it fails safely when it cannot be).
 - Parsing issues: Check Gmail template changes and `gmailZelleIngest.js` parsing logic.
 - Timezone/amount: Verify `payment_date` format and amount parsing for older templates.

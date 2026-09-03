@@ -166,6 +166,62 @@ describe('ZelleReview (match-only)', () => {
         await waitFor(() => screen.getByPlaceholderText(/payer name/i));
     });
 
+    // The backend rejects a match with no payer name (400 PAYER_NAME_REQUIRED),
+    // because the learned key is built from that name — without it the match
+    // would save and teach bank reconciliation nothing. The UI must enforce the
+    // same rule up front rather than letting the treasurer discover it as a
+    // server error after filling the rest of the row in.
+    test('keeps Save disabled until a payer name is supplied when the email had none', async () => {
+        mockQueueAndSearch(
+            [{ ...queueItem, payer_name: null }],
+            [{ id: 7, name: 'Selected Member', phoneNumber: '+15555550123', isActive: true }]
+        );
+        render(<ZelleReview />);
+        await waitFor(() => screen.getByPlaceholderText(/payer name/i));
+
+        const saveButton = screen.getByRole('button', { name: /save/i });
+        const searchInput = screen.getByPlaceholderText(/search member by name or phone/i);
+        fireEvent.change(searchInput, { target: { value: 'Sel' } });
+        const resultButton = await waitFor(() => screen.getByRole('button', { name: /Selected Member/i }));
+        fireEvent.mouseDown(resultButton);
+        await waitFor(() => expect(screen.getByText('Selected: Selected Member')).toBeInTheDocument());
+
+        // A member is chosen, but this row's payer name is still blank.
+        expect(saveButton).toBeDisabled();
+        expect(screen.getByText(/payer name is required/i)).toBeInTheDocument();
+        // The disabled button must say why it is disabled — a treasurer who
+        // reaches for Save should not have to infer the blocker from layout.
+        expect(saveButton).toHaveAttribute('title', 'Enter the payer name for this row first');
+
+        // Whitespace is not a payer name.
+        fireEvent.change(screen.getByPlaceholderText(/payer name/i), { target: { value: '   ' } });
+        expect(saveButton).toBeDisabled();
+
+        fireEvent.change(screen.getByPlaceholderText(/payer name/i), { target: { value: 'JANE DOE' } });
+        expect(saveButton).not.toBeDisabled();
+        expect(screen.queryByText(/payer name is required/i)).not.toBeInTheDocument();
+    });
+
+    // A row whose email DID carry a payer name must not be gated by a field
+    // that isn't even rendered for it.
+    test('does not gate Save on a payer name when the email already had one', async () => {
+        mockQueueAndSearch(
+            [queueItem],
+            [{ id: 7, name: 'Selected Member', phoneNumber: '+15555550123', isActive: true }]
+        );
+        render(<ZelleReview />);
+        await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
+
+        expect(screen.queryByPlaceholderText(/payer name/i)).not.toBeInTheDocument();
+
+        const searchInput = screen.getByPlaceholderText(/search member by name or phone/i);
+        fireEvent.change(searchInput, { target: { value: 'Sel' } });
+        const resultButton = await waitFor(() => screen.getByRole('button', { name: /Selected Member/i }));
+        fireEvent.mouseDown(resultButton);
+
+        await waitFor(() => expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled());
+    });
+
     test('debounces the search input to one fetch instead of one per keystroke', async () => {
         jest.useFakeTimers();
         try {
