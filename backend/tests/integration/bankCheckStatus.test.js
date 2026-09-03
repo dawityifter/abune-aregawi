@@ -60,6 +60,73 @@ describe('Check reconciliation status on the bank list', () => {
     });
   }
 
+  describe('expense details on a reconciled bank row', () => {
+    async function matchedCheckWithExpense({ sourceSystem }) {
+      const hash = `bankhash-detail-${sourceSystem}`;
+      await BankTransaction.create({
+        date: new Date('2025-02-10'), amount: -120.00, description: 'CHECK #1701',
+        type: 'CHECK_PAID', status: 'MATCHED', check_number: '1701',
+        reconciled_source: 'AUTO_CHECK_MATCH', reconciled_at: new Date('2025-02-12'),
+        transaction_hash: hash, raw_data: {}
+      });
+      await LedgerEntry.create({
+        type: 'expense', category: 'EXP100', amount: 120.00, entry_date: '2025-02-09',
+        payment_method: 'check', check_number: '1701', receipt_number: '7001',
+        payee_name: 'Dallas Utilities', memo: 'February power bill',
+        external_id: hash, source_system: sourceSystem
+      });
+      return hash;
+    }
+
+    it('shows the expense for a check the treasurer entered by hand', async () => {
+      // The match-only flow links a MANUAL expense. The lookup used to require
+      // source_system 'bank_reconciliation', so these showed nothing at all.
+      const hash = await matchedCheckWithExpense({ sourceSystem: 'manual' });
+
+      const row = await fetchRow(hash);
+
+      expect(row.reconciled_expense).toBeTruthy();
+      expect(row.reconciled_expense.payee_name).toBe('Dallas Utilities');
+    });
+
+    it('still shows the expense for one the bank reconciliation created', async () => {
+      const hash = await matchedCheckWithExpense({ sourceSystem: 'bank_reconciliation' });
+
+      const row = await fetchRow(hash);
+
+      expect(row.reconciled_expense.payee_name).toBe('Dallas Utilities');
+    });
+
+    it('carries the full expense record, not just payee and memo', async () => {
+      const hash = await matchedCheckWithExpense({ sourceSystem: 'manual' });
+
+      const row = await fetchRow(hash);
+
+      expect(row.reconciled_expense).toMatchObject({
+        category: 'EXP100',
+        category_name: 'Utilities',
+        check_number: '1701',
+        receipt_number: '7001',
+        payment_method: 'check',
+        memo: 'February power bill'
+      });
+      expect(Number(row.reconciled_expense.amount)).toBe(120);
+      expect(row.reconciled_expense.id).toBeDefined();
+    });
+
+    it('reports nothing for a bank row with no linked expense', async () => {
+      await BankTransaction.create({
+        date: new Date('2025-02-10'), amount: -55.00, description: 'CHECK #1702',
+        type: 'CHECK_PAID', status: 'MATCHED', check_number: '1702',
+        transaction_hash: 'bankhash-detail-none', raw_data: {}
+      });
+
+      const row = await fetchRow('bankhash-detail-none');
+
+      expect(row.reconciled_expense).toBeFalsy();
+    });
+  });
+
   it('flags a cleared check with no hand-entered expense as unreconciled', async () => {
     await pendingCheck({ checkNumber: '1593', amount: -120.00, hash: 'bankhash-status-none' });
 

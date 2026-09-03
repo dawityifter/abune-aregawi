@@ -332,18 +332,46 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
     );
 
     // Fetch reconciliation details (payee_name, memo) from LedgerEntry for expense reconciliations
+    // Every expense linked to these rows, however it got there. This used to
+    // require source_system 'bank_reconciliation', which silently excluded the
+    // match-only flow: a cleared check links the expense the treasurer entered
+    // BY HAND, whose source_system is 'manual'. Those rows showed no expense
+    // detail at all.
     const ledgerEntries = matchedHashes.length > 0
         ? await LedgerEntry.findAll({
             where: {
                 external_id: matchedHashes,
-                source_system: 'bank_reconciliation'
+                type: 'expense'
             },
-            attributes: ['external_id', 'payee_name', 'memo']
+            attributes: [
+                'id', 'external_id', 'category', 'amount', 'entry_date', 'payment_method',
+                'check_number', 'receipt_number', 'payee_name', 'memo', 'source_system'
+            ]
         })
         : [];
 
+    // GL code -> display name, so the drawer can say "EXP100 · Utilities"
+    // instead of making the treasurer decode the code.
+    const expenseGlCodes = [...new Set(ledgerEntries.map(e => e.category).filter(Boolean))];
+    const expenseCategories = expenseGlCodes.length > 0
+        ? await ExpenseCategory.findAll({ where: { gl_code: expenseGlCodes } })
+        : [];
+    const categoryNameByGl = new Map(expenseCategories.map(c => [c.gl_code, c.name]));
+
     const reconcilationByHash = new Map(
-        ledgerEntries.map(entry => [entry.external_id, { payee_name: entry.payee_name, memo: entry.memo }])
+        ledgerEntries.map(entry => [entry.external_id, {
+            id: entry.id,
+            category: entry.category,
+            category_name: categoryNameByGl.get(entry.category) || null,
+            amount: entry.amount,
+            entry_date: entry.entry_date,
+            payment_method: entry.payment_method,
+            check_number: entry.check_number,
+            receipt_number: entry.receipt_number,
+            payee_name: entry.payee_name,
+            memo: entry.memo,
+            source_system: entry.source_system
+        }])
     );
 
     const enrichedRows = await Promise.all(rows.map(async (txn) => {
@@ -353,6 +381,8 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
             // Include reconciliation details (payee_name, memo) from LedgerEntry if available
             const reconcilationDetails = reconcilationByHash.get(txn.transaction_hash);
             if (reconcilationDetails) {
+                plain.reconciled_expense = reconcilationDetails;
+                // Kept alongside the fuller object: existing callers read these.
                 plain.reconciled_payee_name = reconcilationDetails.payee_name;
                 plain.reconciled_memo = reconcilationDetails.memo;
             }

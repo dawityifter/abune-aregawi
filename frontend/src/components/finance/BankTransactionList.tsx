@@ -17,6 +17,20 @@ export interface BankTransaction {
     reconciled_at?: string | null;
     reconciled_payee_name?: string | null;
     reconciled_memo?: string | null;
+    /** The expense this debit is reconciled against, however it got linked. */
+    reconciled_expense?: {
+        id: number | string;
+        category: string;
+        category_name: string | null;
+        amount: number | string;
+        entry_date: string;
+        payment_method: string | null;
+        check_number: string | null;
+        receipt_number: string | null;
+        payee_name: string | null;
+        memo: string | null;
+        source_system: string | null;
+    } | null;
     /**
      * Present only on check debits. A cleared check is reconciled when it lines
      * up with an expense the treasurer entered by hand; the server computes this
