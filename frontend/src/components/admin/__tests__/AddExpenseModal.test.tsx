@@ -83,21 +83,23 @@ describe('AddExpenseModal — required check number', () => {
     render(<AddExpenseModal isOpen onClose={jest.fn()} onSuccess={jest.fn()} />);
     await fillRequiredFields();
 
-    fireEvent.click(screen.getByText('treasurerDashboard.expenses.addModal.save'));
+    // Save is gated rather than merely validated on click, so the missing check
+    // number can never reach the server.
+    const save = screen.getByRole('button', { name: 'treasurerDashboard.expenses.addModal.save' });
+    expect(save).toBeDisabled();
 
-    expect(
-      await screen.findByText('treasurerDashboard.expenses.addModal.checkNumberRequired')
-    ).toBeInTheDocument();
+    fireEvent.click(save);
+
     expect((global.fetch as jest.Mock).mock.calls.some(([, o]) => o?.method === 'POST')).toBe(false);
   });
 
-  it('sends the trimmed check number on a valid submit', async () => {
+  it('sends only the digits of the check number on a valid submit', async () => {
     const onSuccess = jest.fn();
     mockApi();
     render(<AddExpenseModal isOpen onClose={jest.fn()} onSuccess={onSuccess} />);
     await fillRequiredFields();
 
-    fireEvent.change(screen.getByPlaceholderText('CHK-1234'), { target: { value: ' 1042 ' } });
+    fireEvent.change(screen.getByTestId('check-number-input'), { target: { value: ' CHK-1042 ' } });
     fireEvent.click(screen.getByText('treasurerDashboard.expenses.addModal.save'));
 
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());

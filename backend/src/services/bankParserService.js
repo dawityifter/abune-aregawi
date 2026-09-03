@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const csv = require('csv-parse/sync');
+const { parseCheckNumber } = require('../utils/checkNumber');
 
 /**
  * Service to parse bank export files (specifically Chase CSV)
@@ -14,8 +15,8 @@ const PATTERNS = {
     // "ORIG CO NAME:RAYTHEON COMPANY ... IND NAME:BERHE,SELAMAWIT ..."
     ACH_IND_NAME: /IND NAME:(?<name>.*)$/i,
 
-    // "CHECK 1582"
-    CHECK: /^CHECK (?<number>\d+)/i
+    // "CHECK 1582", "CHECK #1582", "CHECK PAID 1582"
+    CHECK: /^CHECK\s*(?:PAID\s*)?#?\s*(?<number>\d+)/i
 };
 
 /**
@@ -80,7 +81,9 @@ const parseChaseCSV = (fileBuffer) => {
         const rawDesc = row['Description'];
         let payerName = null;
         let externalRefId = null;
-        let checkNumber = row['Check or Slip #'] || null;
+        // The slip column is often blank, padded ("01593") or junk ("n/a").
+        // Canonicalize it so it lines up with the check numbers on expenses.
+        let checkNumber = parseCheckNumber(row['Check or Slip #']);
         let type = row['Type'] || 'UNKNOWN';
 
         // 1. Try Zelle Parsing
@@ -100,7 +103,7 @@ const parseChaseCSV = (fileBuffer) => {
         if (!checkNumber) {
             const checkMatch = rawDesc.match(PATTERNS.CHECK);
             if (checkMatch) {
-                checkNumber = checkMatch.groups.number;
+                checkNumber = parseCheckNumber(checkMatch.groups.number);
                 type = 'CHECK';
             }
         }

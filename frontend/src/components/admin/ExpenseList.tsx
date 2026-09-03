@@ -16,6 +16,8 @@ interface Expense {
   invoice_number?: string;
   memo: string;
   payee_name?: string;
+  /** True once a cleared bank debit has been linked to this expense. */
+  is_reconciled?: boolean;
   employee?: {
     id: string;
     first_name: string;
@@ -49,6 +51,10 @@ interface ExpenseListProps {
   onExpenseChanged?: () => void;
 }
 
+/** Columns the API will sort on. Kept in step with EXPENSE_SORT_COLUMNS on the server. */
+type SortKey = 'entry_date' | 'category' | 'payee' | 'amount' | 'payment_method' | 'check_number';
+type SortDir = 'asc' | 'desc';
+
 interface EditForm {
   gl_code: string;
   amount: string;
@@ -59,6 +65,39 @@ interface EditForm {
   invoice_number: string;
   memo: string;
 }
+
+/**
+ * Defined at module scope so it isn't remounted on every parent render, which
+ * would drop keyboard focus from the header the user just activated.
+ */
+const SortableHeader: React.FC<{
+  sortKey: SortKey;
+  label: string;
+  activeKey: SortKey;
+  activeDir: SortDir;
+  onSort: (key: SortKey) => void;
+}> = ({ sortKey, label, activeKey, activeDir, onSort }) => {
+  const active = activeKey === sortKey;
+  return (
+    <th
+      className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500"
+      aria-sort={active ? (activeDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`group inline-flex items-center gap-1.5 uppercase tracking-[0.18em] transition-colors hover:text-slate-900 ${
+          active ? 'text-slate-900' : ''
+        }`}
+      >
+        {label}
+        <span aria-hidden="true" className={active ? 'text-blue-600' : 'text-slate-300 group-hover:text-slate-400'}>
+          {active ? (activeDir === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </button>
+    </th>
+  );
+};
 
 const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseChanged }) => {
   const { firebaseUser } = useAuth();
@@ -80,6 +119,15 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
   const [endDate, setEndDate] = useState('');
   const [glCodeFilter, setGlCodeFilter] = useState('');
   const [payeeFilter, setPayeeFilter] = useState('');
+  const [methodFilter, setMethodFilter] = useState('');
+  // Populated from the API rather than hardcoded: bank reconciliation writes
+  // methods (ach, debit_card) the Add Expense form cannot produce.
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
+
+  // Sorting is server-side: the treasurer expects "highest amount" to mean
+  // highest overall, not highest on the page that happens to be loaded.
+  const [sortBy, setSortBy] = useState<SortKey>('entry_date');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -99,6 +147,24 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
     }
   }, [firebaseUser]);
 
+  const fetchPaymentMethods = useCallback(async () => {
+    try {
+      const token = await firebaseUser?.getIdToken();
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/expenses/payment-methods`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPaymentMethods(data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching payment methods:', err);
+    }
+  }, [firebaseUser]);
+
   const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
@@ -106,13 +172,16 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
 
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: '20'
+        limit: '20',
+        sort_by: sortBy,
+        sort_dir: sortDir
       });
 
       if (startDate) params.append('start_date', startDate);
       if (endDate) params.append('end_date', endDate);
       if (glCodeFilter) params.append('gl_code', glCodeFilter);
       if (payeeFilter) params.append('payee', payeeFilter);
+      if (methodFilter) params.append('payment_method', methodFilter);
 
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/api/expenses?${params.toString()}`,
@@ -134,11 +203,15 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
     } finally {
       setLoading(false);
     }
-  }, [firebaseUser, page, startDate, endDate, glCodeFilter, payeeFilter]);
+  }, [firebaseUser, page, startDate, endDate, glCodeFilter, payeeFilter, methodFilter, sortBy, sortDir]);
 
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
+
+  useEffect(() => {
+    fetchPaymentMethods();
+  }, [fetchPaymentMethods]);
 
   useEffect(() => {
     fetchExpenses();
@@ -204,6 +277,19 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
     setEndDate('');
     setGlCodeFilter('');
     setPayeeFilter('');
+    setMethodFilter('');
+    setPage(1);
+  };
+
+  // First click on a column sorts descending (the useful direction for dates
+  // and amounts); clicking the same column again flips it.
+  const toggleSort = (key: SortKey) => {
+    if (key === sortBy) {
+      setSortDir(prev => (prev === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortBy(key);
+      setSortDir('desc');
+    }
     setPage(1);
   };
 
@@ -345,7 +431,7 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('treasurerDashboard.expenses.filters.title')}</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {/* Start Date */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -400,6 +486,32 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
             </select>
           </div>
 
+          {/* Payment Method */}
+          <div>
+            <label
+              htmlFor="expense-method-filter"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              {t('treasurerDashboard.expenses.filters.paymentMethod')}
+            </label>
+            <select
+              id="expense-method-filter"
+              value={methodFilter}
+              onChange={(e) => {
+                setMethodFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">{t('treasurerDashboard.expenses.filters.allMethods')}</option>
+              {paymentMethods.map((method) => (
+                <option key={method} value={method}>
+                  {t(`treasurerDashboard.transactionList.methods.${method}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Payee */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -419,7 +531,7 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
         </div>
 
         {/* Clear Filters Button */}
-        {(startDate || endDate || glCodeFilter || payeeFilter) && (
+        {(startDate || endDate || glCodeFilter || payeeFilter || methodFilter) && (
           <div className="mt-4">
             <button
               onClick={clearFilters}
@@ -454,20 +566,14 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
               <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-100/80">
                   <tr>
+                    <SortableHeader sortKey="entry_date" label={t('treasurerDashboard.expenses.table.date')} activeKey={sortBy} activeDir={sortDir} onSort={toggleSort} />
+                    <SortableHeader sortKey="category" label={t('treasurerDashboard.expenses.table.category')} activeKey={sortBy} activeDir={sortDir} onSort={toggleSort} />
+                    <SortableHeader sortKey="payee" label={t('treasurerDashboard.expenses.table.payee')} activeKey={sortBy} activeDir={sortDir} onSort={toggleSort} />
+                    <SortableHeader sortKey="amount" label={t('treasurerDashboard.expenses.table.amount')} activeKey={sortBy} activeDir={sortDir} onSort={toggleSort} />
+                    <SortableHeader sortKey="payment_method" label={t('treasurerDashboard.expenses.table.method')} activeKey={sortBy} activeDir={sortDir} onSort={toggleSort} />
+                    <SortableHeader sortKey="check_number" label={t('treasurerDashboard.expenses.table.checkNumber')} activeKey={sortBy} activeDir={sortDir} onSort={toggleSort} />
                     <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      {t('treasurerDashboard.expenses.table.date')}
-                    </th>
-                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      {t('treasurerDashboard.expenses.table.category')}
-                    </th>
-                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      {t('treasurerDashboard.expenses.table.payee')}
-                    </th>
-                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      {t('treasurerDashboard.expenses.table.amount')}
-                    </th>
-                    <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      {t('treasurerDashboard.expenses.table.method')}
+                      {t('treasurerDashboard.expenses.table.bankStatus')}
                     </th>
                     <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Action
@@ -501,17 +607,30 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
                           }`}>
                           {expense.payment_method.toUpperCase()}
                         </span>
-                        {expense.payment_method === 'check' && (
-                          expense.check_number ? (
-                            <span className="ml-2 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                              #{expense.check_number}
-                            </span>
-                          ) : (
-                            <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
-                              <i className="fas fa-exclamation-triangle mr-1"></i>
-                              {t('treasurerDashboard.expenses.missingCheckNumber')}
-                            </span>
-                          )
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        {expense.check_number ? (
+                          <span className="font-mono text-sm font-semibold text-slate-900 tabular-nums">
+                            {expense.check_number}
+                          </span>
+                        ) : isMissingCheckNumber(expense) ? (
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                            <i className="fas fa-exclamation-triangle mr-1"></i>
+                            {t('treasurerDashboard.expenses.missingCheckNumber')}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4">
+                        {expense.is_reconciled ? (
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                            {t('treasurerDashboard.expenses.table.reconciled')}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800">
+                            {t('treasurerDashboard.expenses.table.notReconciled')}
+                          </span>
                         )}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
@@ -681,9 +800,12 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
                         </label>
                         <input
                           type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          data-testid="edit-check-number-input"
                           value={editForm.check_number}
-                          onChange={(e) => updateEditField('check_number', e.target.value)}
-                          placeholder="CHK-1234"
+                          onChange={(e) => updateEditField('check_number', e.target.value.replace(/\D/g, ''))}
+                          placeholder="1593"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>

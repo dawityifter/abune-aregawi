@@ -17,6 +17,7 @@ This runbook documents the implementation of the Expense Tracking System for Abu
 ### Included in v1.0.0
 - ✅ Record expenses with GL codes
 - ✅ Support for cash and check payment methods
+- ✅ Check numbers are numeric-only, unique across expenses, and audited for gaps from #1593
 - ✅ Fixed expense categories (9 predefined)
 - ✅ Direct expense entry (no approval required)
 - ✅ Expense list view with filtering
@@ -33,6 +34,57 @@ This runbook documents the implementation of the Expense Tracking System for Abu
 - ⏳ Budget vs actual tracking
 
 ---
+
+
+## Checks and bank reconciliation
+
+Check numbers are the church's own checkbook sequence, so they are stored as
+canonical digits: `#1593`, `01593` and `1593` all normalize to `1593`. A
+non-numeric check number is rejected with a 400, and a number already used by
+another expense with a 409. The uniqueness check is scoped to expenses — a
+member paying the church by check may legitimately use the same number.
+
+The skipped-check audit (`GET /api/expenses/skipped-checks`) anchors at check
+**1593**, the first check of the current checkbook. Numbers below it belong to a
+retired book and are not reported as gaps. Override with `START_CHECK_NUMBER`
+when a new checkbook starts.
+
+**Checks are never auto-created from the bank.** The treasurer records the
+expense when the check is written; the bank debit that clears days later is
+matched against it on check number *and* amount:
+
+| Situation | Bank screen | Expenses screen |
+|---|---|---|
+| Number and amount both match | `RECONCILED` (green) | `Reconciled` |
+| Number matches, amount differs | `NOT RECONCILED` (red), shows both amounts | `Not reconciled` |
+| No expense recorded for that number | `NOT RECONCILED` (red) | — |
+| Bank row has no readable check number | `NOT RECONCILED` (red) | — |
+
+Undoing a check match unlinks the expense; it never deletes it, because the
+expense was entered by hand.
+
+Non-check debits (ACH, card) still auto-record an expense from a learned
+payee→GL mapping, unchanged.
+
+### Payment methods
+
+Manual entry accepts only `cash` and `check`. Bank reconciliation also writes
+`ach`, `debit_card`, `credit_card` and `other`, so the expense list can contain
+methods the Add Expense form cannot produce. The Method filter is populated from
+`GET /api/expenses/payment-methods`, which returns the methods actually present
+on expenses, so it never offers a choice that matches nothing.
+
+Both the automatic pass and the treasurer's manual **Reconcile as expense**
+action derive the method from the bank row via the same
+`paymentMethodForBankTxn()` helper. The manual path used to hardcode `check`,
+filing every ACH and card debit as a check with no check number.
+
+Card purchases previously fell through to `other`, because `sourceTypeFor()`
+recognizes only ZELLE, ACH and CHECK and returns the bank's raw type otherwise.
+They are now labelled `debit_card` (or `credit_card`). **Rows recorded before
+this change remain `other`** — no backfill was run. `sourceTypeFor()` itself is
+deliberately unchanged: its output also forms `expense_memo_matches.match_key`,
+so altering it would orphan every learned payee→GL mapping.
 
 ## 🗄️ Database Changes
 

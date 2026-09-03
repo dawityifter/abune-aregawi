@@ -284,6 +284,208 @@ describe('Automatic Bank Reconciliation', () => {
         });
     });
 
+    describe('Check debits: match a manual expense, never create one', () => {
+        async function manualCheckExpense({ checkNumber, amount, externalId = null }) {
+            return LedgerEntry.create({
+                type: 'expense',
+                category: 'EXP100',
+                amount,
+                entry_date: '2025-01-10',
+                payment_method: 'check',
+                check_number: checkNumber,
+                memo: 'Manually entered check',
+                source_system: 'manual',
+                external_id: externalId
+            });
+        }
+
+        async function pendingCheckDebit({ checkNumber, amount, hash, description = null }) {
+            return BankTransaction.create({
+                date: new Date('2025-01-12'),
+                amount,
+                description: description || `CHECK #${checkNumber}`,
+                type: 'CHECK_PAID',
+                status: 'PENDING',
+                check_number: checkNumber,
+                transaction_hash: hash,
+                raw_data: {}
+            });
+        }
+
+        test('links the bank check to the manual expense with the same number and amount', async () => {
+            const expense = await manualCheckExpense({ checkNumber: '1593', amount: 250.00 });
+            const debit = await pendingCheckDebit({ checkNumber: '1593', amount: -250.00, hash: 'bankhash-chk-ok' });
+
+            const stats = await autoReconcilePending({ user: adminUser });
+            expect(stats.autoExpense).toBe(1);
+
+            await debit.reload();
+            expect(debit.status).toBe('MATCHED');
+            expect(debit.reconciled_source).toBe('AUTO_CHECK_MATCH');
+            expect(debit.reconciled_meta.created).toBe(false);
+            expect(debit.reconciled_meta.ledger_entry_id).toBe(expense.id);
+
+            await expense.reload();
+            expect(expense.external_id).toBe('bankhash-chk-ok');
+
+            expect(await LedgerEntry.count({ where: { type: 'expense' } })).toBe(1);
+        });
+
+        test('never creates an expense for a check debit, even with a learned payee', async () => {
+            const priorDebit = await BankTransaction.create({
+                date: new Date('2024-12-10'),
+                amount: -100.00,
+                description: 'CHECK #1500',
+                type: 'CHECK_PAID',
+                status: 'MATCHED',
+                payer_name: 'City Utilities',
+                transaction_hash: 'bankhash-chk-prior',
+                raw_data: {}
+            });
+            await learnExpenseMemoMatch(priorDebit.get({ plain: true }), {
+                gl_code: 'EXP100',
+                payee_name: 'City Utilities'
+            });
+
+            const debit = await pendingCheckDebit({ checkNumber: '1594', amount: -175.00, hash: 'bankhash-chk-learned' });
+            await debit.update({ payer_name: 'City Utilities' });
+
+            const stats = await autoReconcilePending({ user: adminUser });
+            expect(stats.autoExpense).toBe(0);
+
+            await debit.reload();
+            expect(debit.status).toBe('PENDING');
+            expect(await LedgerEntry.count({ where: { type: 'expense' } })).toBe(0);
+        });
+
+        test('leaves the check debit unreconciled when the amounts disagree', async () => {
+            const expense = await manualCheckExpense({ checkNumber: '1595', amount: 205.00 });
+            const debit = await pendingCheckDebit({ checkNumber: '1595', amount: -250.00, hash: 'bankhash-chk-amt' });
+
+            await autoReconcilePending({ user: adminUser });
+
+            await debit.reload();
+            expect(debit.status).toBe('PENDING');
+
+            await expense.reload();
+            expect(expense.external_id).toBeNull();
+        });
+
+        test('leaves the check debit unreconciled when no manual expense exists', async () => {
+            const debit = await pendingCheckDebit({ checkNumber: '1596', amount: -80.00, hash: 'bankhash-chk-none' });
+
+            await autoReconcilePending({ user: adminUser });
+
+            await debit.reload();
+            expect(debit.status).toBe('PENDING');
+            expect(await LedgerEntry.count({ where: { type: 'expense' } })).toBe(0);
+        });
+
+        test('does not reuse an expense already linked to another bank row', async () => {
+            await manualCheckExpense({ checkNumber: '1597', amount: 90.00, externalId: 'bankhash-chk-other' });
+            const debit = await pendingCheckDebit({ checkNumber: '1597', amount: -90.00, hash: 'bankhash-chk-dupe' });
+
+            await autoReconcilePending({ user: adminUser });
+
+            await debit.reload();
+            expect(debit.status).toBe('PENDING');
+        });
+
+        test('undo unlinks the manual expense without deleting it', async () => {
+            const expense = await manualCheckExpense({ checkNumber: '1599', amount: 310.00 });
+            const debit = await pendingCheckDebit({ checkNumber: '1599', amount: -310.00, hash: 'bankhash-chk-undo' });
+
+            await autoReconcilePending({ user: adminUser });
+            await debit.reload();
+            expect(debit.status).toBe('MATCHED');
+
+            await undoAutoReconciliation(debit.id);
+
+            await debit.reload();
+            expect(debit.status).toBe('PENDING');
+
+            const stillThere = await LedgerEntry.findByPk(expense.id);
+            expect(stillThere).not.toBeNull();
+            expect(stillThere.external_id).toBeNull();
+        });
+
+        test('matches when the number is only in the description, not the column', async () => {
+            const expense = await manualCheckExpense({ checkNumber: '1598', amount: 45.00 });
+            const debit = await BankTransaction.create({
+                date: new Date('2025-01-12'),
+                amount: -45.00,
+                description: 'CHECK PAID 1598',
+                type: 'CHECK_PAID',
+                status: 'PENDING',
+                check_number: null,
+                transaction_hash: 'bankhash-chk-desc',
+                raw_data: {}
+            });
+
+            await autoReconcilePending({ user: adminUser });
+
+            await debit.reload();
+            expect(debit.status).toBe('MATCHED');
+            await expense.reload();
+            expect(expense.external_id).toBe('bankhash-chk-desc');
+        });
+    });
+
+    describe('Payment method labelling for bank-recorded expenses', () => {
+        async function learnedDebit({ type, description, hash, payer }) {
+            const prior = await BankTransaction.create({
+                date: new Date('2024-12-10'), amount: -100.00,
+                description, type, status: 'MATCHED', payer_name: payer,
+                transaction_hash: `${hash}-prior`, raw_data: {}
+            });
+            await learnExpenseMemoMatch(prior.get({ plain: true }), {
+                gl_code: 'EXP100', payee_name: payer
+            });
+
+            const debit = await BankTransaction.create({
+                date: new Date('2025-01-10'), amount: -42.00,
+                description, type, status: 'PENDING', payer_name: payer,
+                transaction_hash: hash, raw_data: {}
+            });
+            await autoReconcilePending({ user: adminUser });
+            return LedgerEntry.findOne({ where: { external_id: hash } });
+        }
+
+        test('records a debit card purchase as debit_card, not other', async () => {
+            const expense = await learnedDebit({
+                type: 'DEBIT_CARD',
+                description: 'SOME MERCHANT PURCHASE',
+                hash: 'bankhash-card',
+                payer: 'Some Merchant'
+            });
+
+            expect(expense).not.toBeNull();
+            expect(expense.payment_method).toBe('debit_card');
+        });
+
+        test('still records an ACH debit as ach', async () => {
+            const expense = await learnedDebit({
+                type: 'ACH_DEBIT',
+                description: 'ORIG CO NAME:CITY POWER IND NAME:CHURCH',
+                hash: 'bankhash-ach-method',
+                payer: 'City Power'
+            });
+
+            expect(expense.payment_method).toBe('ach');
+        });
+
+        test('leaves a genuinely unrecognized debit as other', async () => {
+            const expense = await learnedDebit({
+                type: 'FEE_TRANSACTION',
+                description: 'MONTHLY SERVICE FEE',
+                hash: 'bankhash-fee',
+                payer: 'Bank Fee'
+            });
+
+            expect(expense.payment_method).toBe('other');
+        });
+    });
+
     describe('Tier 3: record learned expenses for debits', () => {
         test('auto-records an expense for a previously-classified payee', async () => {
             // The treasurer classified this utility payee once before
@@ -456,6 +658,72 @@ describe('Automatic Bank Reconciliation', () => {
                 .set('Authorization', 'Bearer valid-token');
 
             expect(res.status).toBe(400);
+        });
+
+        async function reconcileAsExpense({ type, description, hash, amount = -200.00, checkNumber = null }) {
+            const debit = await BankTransaction.create({
+                date: new Date('2025-01-12'),
+                amount,
+                description,
+                type,
+                status: 'PENDING',
+                check_number: checkNumber,
+                transaction_hash: hash,
+                raw_data: {}
+            });
+
+            const res = await request(app)
+                .post('/api/bank/reconcile-expense')
+                .set('Authorization', 'Bearer valid-token')
+                .send({ transaction_id: debit.id, gl_code: 'EXP100', payee_name: 'Some Payee' });
+
+            expect(res.status).toBe(201);
+            return LedgerEntry.findOne({ where: { external_id: hash } });
+        }
+
+        test('records a manually reconciled card debit as debit_card, not check', async () => {
+            const expense = await reconcileAsExpense({
+                type: 'DEBIT_CARD',
+                description: 'OFFICE SUPPLY STORE PURCHASE',
+                hash: 'bankhash-manual-card'
+            });
+
+            expect(expense.payment_method).toBe('debit_card');
+            expect(expense.check_number).toBeNull();
+        });
+
+        test('records a manually reconciled ACH debit as ach', async () => {
+            const expense = await reconcileAsExpense({
+                type: 'ACH_DEBIT',
+                description: 'ORIG CO NAME:CITY WATER IND NAME:CHURCH',
+                hash: 'bankhash-manual-ach'
+            });
+
+            expect(expense.payment_method).toBe('ach');
+            expect(expense.check_number).toBeNull();
+        });
+
+        test('still records a manually reconciled check as a check, keeping its number', async () => {
+            const expense = await reconcileAsExpense({
+                type: 'CHECK_PAID',
+                description: 'CHECK #1601',
+                hash: 'bankhash-manual-check',
+                checkNumber: '1601'
+            });
+
+            expect(expense.payment_method).toBe('check');
+            expect(expense.check_number).toBe('1601');
+        });
+
+        test('canonicalizes a padded check number on the manual path', async () => {
+            const expense = await reconcileAsExpense({
+                type: 'CHECK_PAID',
+                description: 'CHECK #01602',
+                hash: 'bankhash-manual-padded',
+                checkNumber: '01602'
+            });
+
+            expect(expense.check_number).toBe('1602');
         });
 
         test('manual reconcile-expense learns the classification', async () => {

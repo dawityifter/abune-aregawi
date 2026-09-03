@@ -31,6 +31,39 @@ DEBIT,12/14/2025,GODADDY.COM REFUND,25.00,W_DRA,,
         expect(results[2].amount).toBe(25.00);
     });
 
+    describe('check number extraction', () => {
+        function parseOne(row) {
+            const csv = `Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #\n${row}\n`;
+            return parseChaseCSV(Buffer.from(csv))[0];
+        }
+
+        test('reads a hashed check number from the description', () => {
+            const txn = parseOne('DEBIT,12/13/2025,CHECK #1593,-50.00,CHECK,,');
+            expect(txn.check_number).toBe('1593');
+            expect(txn.type).toBe('CHECK');
+        });
+
+        test('reads a check number from a CHECK_PAID description', () => {
+            const txn = parseOne('DEBIT,12/13/2025,CHECK PAID 1593,-50.00,CHECK_PAID,,');
+            expect(txn.check_number).toBe('1593');
+        });
+
+        test('canonicalizes a padded check number from the slip column', () => {
+            const txn = parseOne('DEBIT,12/13/2025,CHECK 01593,-50.00,CHECK,,01593');
+            expect(txn.check_number).toBe('1593');
+        });
+
+        test('leaves the check number null when the row carries no number', () => {
+            const txn = parseOne('DEBIT,12/13/2025,CHECK PAID,-50.00,CHECK_PAID,,');
+            expect(txn.check_number).toBeNull();
+        });
+
+        test('ignores a non-numeric slip column value', () => {
+            const txn = parseOne('DEBIT,12/13/2025,SOME DEBIT,-50.00,W_DRA,,n/a');
+            expect(txn.check_number).toBeNull();
+        });
+    });
+
     test('should generate stable hash ignoring balance', () => {
         const row1 = {
             'Posting Date': '12/12/2025',

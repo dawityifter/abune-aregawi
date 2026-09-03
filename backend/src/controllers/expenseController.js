@@ -1,6 +1,7 @@
 const { ExpenseCategory, LedgerEntry, Member, Employee, Vendor, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const tz = require('../config/timezone');
+const { DEFAULT_START_CHECK_NUMBER, normalizeCheckNumber } = require('../utils/checkNumber');
 
 // Check-method expenses must carry a unique check number. Enforcement is
 // application-level (no DB constraint), so both the create and the update path
@@ -13,16 +14,21 @@ async function validateCheckNumber({ paymentMethod, checkNumber, excludeId = nul
     return { ok: true, value: null };
   }
 
-  const value = (checkNumber || '').trim();
-  if (!value) {
+  const normalized = normalizeCheckNumber(checkNumber);
+  if (!normalized.ok) {
     return {
       ok: false,
       status: 400,
-      message: 'Check number is required for check payments'
+      message: normalized.reason === 'empty'
+        ? 'Check number is required for check payments'
+        : 'Check number must be numeric (digits only, e.g. 1593)'
     };
   }
+  const value = normalized.value;
 
-  const where = { check_number: value };
+  // Scoped to expenses: an incoming member check that happens to carry the same
+  // number is a different physical check and must not block the church's own.
+  const where = { type: 'expense', check_number: value };
   if (excludeId) {
     where.id = { [Op.ne]: excludeId };
   }
@@ -251,6 +257,45 @@ const createExpense = async (req, res) => {
   }
 };
 
+// Sort columns the expense list accepts, mapped to their ORDER BY clauses.
+// A whitelist rather than interpolation: sort_by arrives straight from the
+// query string and must never reach SQL as text.
+//
+// check_number is a string column holding digits, so plain text ordering would
+// put "1000" before "999". Ordering by length first restores numeric order
+// without a cast that would throw on the legacy non-numeric values still in the
+// table. payee lives in three places depending on how the expense was entered.
+const EXPENSE_SORT_COLUMNS = {
+  entry_date: (dir) => [['entry_date', dir], ['created_at', dir]],
+  category: (dir) => [['category', dir]],
+  amount: (dir) => [['amount', dir]],
+  payment_method: (dir) => [['payment_method', dir]],
+  check_number: (dir) => [
+    [sequelize.literal('LENGTH("LedgerEntry"."check_number")'), dir],
+    ['check_number', dir]
+  ],
+  payee: (dir) => [
+    [sequelize.literal('COALESCE("LedgerEntry"."payee_name", "vendor"."name", "employee"."last_name")'), dir]
+  ]
+};
+
+const DEFAULT_EXPENSE_ORDER = [['entry_date', 'DESC'], ['created_at', 'DESC']];
+
+// Mirrors the ledger_entries payment_method enum. Manual entry only allows cash
+// and check, but bank reconciliation also writes ach, debit_card and other, so
+// the filter has to cover everything that can reach the table.
+const EXPENSE_PAYMENT_METHODS = [
+  'cash', 'check', 'zelle', 'credit_card', 'debit_card', 'ach', 'other'
+];
+
+function buildExpenseOrder(sortBy, sortDir) {
+  const build = EXPENSE_SORT_COLUMNS[sortBy];
+  if (!build) return DEFAULT_EXPENSE_ORDER;
+
+  const dir = String(sortDir).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  return build(dir);
+}
+
 // Get all expenses with filtering and pagination
 const getExpenses = async (req, res) => {
   try {
@@ -260,7 +305,10 @@ const getExpenses = async (req, res) => {
       start_date,
       end_date,
       gl_code,
-      payee
+      payee,
+      payment_method,
+      sort_by,
+      sort_dir
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -275,6 +323,13 @@ const getExpenses = async (req, res) => {
       if (end_date) {
         whereClause.entry_date[Op.lte] = end_date;
       }
+    }
+
+    // Payment method filter. Whitelisted rather than passed through: the value
+    // comes straight from the query string into a where clause.
+    const methodFilter = String(payment_method || '').trim().toLowerCase();
+    if (EXPENSE_PAYMENT_METHODS.includes(methodFilter)) {
+      whereClause.payment_method = methodFilter;
     }
 
     // GL code filter
@@ -313,7 +368,7 @@ const getExpenses = async (req, res) => {
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['entry_date', 'DESC'], ['created_at', 'DESC']]
+      order: buildExpenseOrder(sort_by, sort_dir)
     });
 
     // Fetch all unique GL codes from the results to get category names
@@ -331,7 +386,10 @@ const getExpenses = async (req, res) => {
       return {
         ...expenseData,
         category_name: category?.name || 'Unknown',
-        category_description: category?.description || null
+        category_description: category?.description || null,
+        // external_id holds the bank transaction hash once a cleared bank row
+        // has been linked to this expense.
+        is_reconciled: Boolean(expenseData.external_id)
       };
     });
 
@@ -725,13 +783,91 @@ const getExpenseStats = async (req, res) => {
   }
 };
 
+// Answer "is this check number free?" for the Add Expense form, so a duplicate
+// surfaces as the treasurer leaves the field rather than after a full submit.
+// Same rules as validateCheckNumber, kept in one place by reusing its helper.
+const getCheckNumberAvailability = async (req, res) => {
+  try {
+    const { check_number, exclude_id } = req.query;
+
+    if (check_number === undefined || String(check_number).trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'check_number is required'
+      });
+    }
+
+    const normalized = normalizeCheckNumber(check_number);
+    if (!normalized.ok) {
+      return res.json({
+        success: true,
+        data: { check_number: null, available: false, reason: 'NON_NUMERIC' }
+      });
+    }
+
+    const where = { type: 'expense', check_number: normalized.value };
+    if (exclude_id) {
+      where.id = { [Op.ne]: exclude_id };
+    }
+
+    const existing = await LedgerEntry.findOne({ where });
+
+    res.json({
+      success: true,
+      data: {
+        check_number: normalized.value,
+        available: !existing,
+        reason: existing ? 'DUPLICATE' : null
+      }
+    });
+  } catch (error) {
+    console.error('Error checking check number availability:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check check number availability',
+      error: error.message
+    });
+  }
+};
+
+// The payment methods expenses actually use, so the filter never offers a
+// choice that matches nothing. Derived rather than hardcoded: manual entry and
+// bank reconciliation write different sets, and that will drift over time.
+const getExpensePaymentMethods = async (req, res) => {
+  try {
+    const rows = await LedgerEntry.findAll({
+      attributes: ['payment_method'],
+      where: { type: 'expense' },
+      group: ['payment_method'],
+      raw: true
+    });
+
+    const methods = rows
+      .map((row) => row.payment_method)
+      .filter(Boolean)
+      .sort();
+
+    res.json({ success: true, data: methods });
+  } catch (error) {
+    console.error('Error fetching expense payment methods:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch expense payment methods',
+      error: error.message
+    });
+  }
+};
+
 // Identify gaps in the check number sequence so the treasurer can audit the
 // checkbook the same way skipped receipt numbers are audited on the payments side.
 const getSkippedChecks = async (req, res) => {
   try {
+    // Expenses only: the church's own checkbook. A check number on an income
+    // entry is the number of a check a member wrote to the church, and counting
+    // those here manufactures gaps across an unrelated numbering sequence.
     const rows = await LedgerEntry.findAll({
       attributes: ['check_number'],
-      where: { check_number: { [Op.ne]: null } },
+      where: { type: 'expense', check_number: { [Op.ne]: null } },
       raw: true
     });
 
@@ -755,14 +891,21 @@ const getSkippedChecks = async (req, res) => {
       });
     }
 
-    const checkSet = new Set(numbers);
-    const maxCheck = Math.max(...numbers);
-
-    // Receipts anchor to a hardcoded START_RECEIPT_NUMBER. Checks have no such
-    // known starting point, so default to the lowest check on record — anchoring
-    // any lower would report every number below the first recorded check as a gap.
+    // The audit anchors at the first check of the current checkbook. Numbers
+    // below it belong to a retired book and are not gaps to chase.
     const envStart = parseInt(process.env.START_CHECK_NUMBER, 10);
-    const startCheck = Number.isFinite(envStart) ? envStart : Math.min(...numbers);
+    const startCheck = Number.isFinite(envStart) ? envStart : DEFAULT_START_CHECK_NUMBER;
+
+    const inRange = numbers.filter((n) => n >= startCheck);
+    if (inRange.length === 0) {
+      return res.json({
+        success: true,
+        data: { skippedChecks: [], range: null, ignoredNonNumeric }
+      });
+    }
+
+    const checkSet = new Set(inRange);
+    const maxCheck = Math.max(...inRange);
 
     const skippedChecks = [];
     for (let i = startCheck; i < maxCheck; i++) {
@@ -797,5 +940,7 @@ module.exports = {
   updateExpense,
   deleteExpense,
   getExpenseStats,
-  getSkippedChecks
+  getSkippedChecks,
+  getExpensePaymentMethods,
+  getCheckNumberAvailability
 };
