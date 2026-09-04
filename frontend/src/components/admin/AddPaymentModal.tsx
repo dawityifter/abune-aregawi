@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import StripePayment from '../StripePayment';
@@ -199,9 +199,19 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   }, [onClose]);
 
 
+  // Applied once. This effect depends on `members`, which the debounced member
+  // search replaces 300ms after every keystroke — and the body below does not
+  // ask whether it has already run, it simply re-asserts initialMemberId. So a
+  // treasurer who opened the modal from one member's dues page, picked someone
+  // else, then touched the search box had their choice silently reverted to the
+  // member whose page they came from, and any payment entered afterwards would
+  // have been filed against the wrong person.
+  const initialMemberApplied = useRef(false);
+
   // Set initial member ID if provided, but only after members are loaded
   useEffect(() => {
-    if (initialMemberId && members.length > 0 && firebaseUser) {
+    if (initialMemberId && members.length > 0 && firebaseUser && !initialMemberApplied.current) {
+      initialMemberApplied.current = true;
       // Verify the member exists in the loaded members list
       const memberExists = members.some(m => String(m.id) === String(initialMemberId));
       if (memberExists) {
