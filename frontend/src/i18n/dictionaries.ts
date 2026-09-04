@@ -413,6 +413,9 @@ export interface Dictionaries {
         amount: string;
         method: string;
         checkNumber: string;
+        bankStatus: string;
+        reconciled: string;
+        notReconciled: string;
         recordedBy: string;
         memo: string;
         employee: string;
@@ -429,6 +432,8 @@ export interface Dictionaries {
         paymentMethod: string;
         checkNumber: string;
         checkNumberRequired: string;
+        checkNumberDuplicate: string;
+        checkNumberNumeric: string;
         receiptNumber: string;
         memo: string;
         cancel: string;
@@ -1201,6 +1206,9 @@ export const en: Dictionaries = {
         amount: "Amount",
         method: "Method",
         checkNumber: "Check #",
+        bankStatus: "Bank",
+        reconciled: "Reconciled",
+        notReconciled: "Not reconciled",
         recordedBy: "Recorded By",
         memo: "Memo",
         employee: "Employee",
@@ -1217,6 +1225,8 @@ export const en: Dictionaries = {
         paymentMethod: "Payment Method",
         checkNumber: "Check Number",
         checkNumberRequired: "Check number is required for check payments",
+        checkNumberDuplicate: "This check number has already been used. Please use a unique check number.",
+        checkNumberNumeric: "Check number must be numeric (digits only, e.g. 1593)",
         receiptNumber: "Receipt Number",
         memo: "Memo",
         cancel: "Cancel",
@@ -3317,6 +3327,9 @@ export const ti: Dictionaries = {
         amount: "መጠን",
         method: "ኣገባብ",
         checkNumber: "ቁጽሪ ቼክ",
+        bankStatus: "ባንኪ",
+        reconciled: "ተዓሪዩ",
+        notReconciled: "ኣይተዓረየን",
         recordedBy: "ዝመዝገቦ",
         memo: "መዘኻኸሪ",
         employee: "ሰራሕተኛ",
@@ -3333,6 +3346,8 @@ export const ti: Dictionaries = {
         paymentMethod: "ኣገባብ ክፍሊት",
         checkNumber: "ቁጽሪ ቼክ",
         checkNumberRequired: "ንክፍሊት ብቼክ ቁጽሪ ቼክ ኣድላዪ እዩ",
+        checkNumberDuplicate: "እዚ ቁጽሪ ቼክ ተጠቒሙ እዩ። በጃኹም ዘይተጠቕመ ቁጽሪ ቼክ ተጠቐሙ።",
+        checkNumberNumeric: "ቁጽሪ ቼክ ኣሃዛት ጥራይ ክኸውን ኣለዎ (ንኣብነት 1593)",
         receiptNumber: "ቁጽሪ ቅብሊት",
         memo: "መዘኻኸሪ",
         cancel: "ሰርዝ",

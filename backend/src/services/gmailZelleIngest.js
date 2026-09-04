@@ -1,6 +1,7 @@
 const { google } = require('googleapis');
 const moment = require('moment-timezone');
 const { Member, Transaction, ZelleEmailQueue } = require('../models');
+const { isZelleGmailCreateEnabled } = require('../config/featureFlags');
 const { Op } = require('sequelize');
 const {
   sanitizeNote,
@@ -140,8 +141,11 @@ async function upsertQueueRow(parsed, fields) {
       ...fields
     }
   });
-  // Refresh parse fields + status on existing rows (unless already finalized)
-  const finalized = ['CREATED', 'AUTO_CREATED', 'IGNORED'];
+  // Refresh parse fields + status on existing rows (unless already finalized).
+  // MATCHED counts as finalized too: it carries a treasurer's audit stamp
+  // (matched_by/matched_at) and a learned key already written elsewhere;
+  // re-syncing must not flip it back to NEEDS_REVIEW or overwrite match_source.
+  const finalized = ['CREATED', 'AUTO_CREATED', 'IGNORED', 'MATCHED'];
   if (!finalized.includes(row.status)) {
     await row.update({
       gmail_id: parsed.gmailId || row.gmail_id,
@@ -209,8 +213,9 @@ async function syncZelleFromGmail({ dryRun = false } = {}) {
       const externalIds = candidateExternalIds(parsed);
 
       // Already in queue and finalized? Just make sure the label is set.
+      // MATCHED is finalized too — see the comment in upsertQueueRow.
       const queued = await ZelleEmailQueue.findOne({ where: { external_id: { [Op.in]: externalIds } } });
-      if (queued && ['CREATED', 'AUTO_CREATED', 'IGNORED'].includes(queued.status)) {
+      if (queued && ['CREATED', 'AUTO_CREATED', 'IGNORED', 'MATCHED'].includes(queued.status)) {
         stats.skipped += 1;
         await addLabel(m.id, processedLabelId);
         continue;
@@ -237,7 +242,13 @@ async function syncZelleFromGmail({ dryRun = false } = {}) {
       // Match sender to member
       const match = await matchZelleSender({ payerName: parsed.payerName, note: parsed.note });
 
-      const canAutoCreate = match.confidence === 'high' && match.member_id && parsed.amount;
+      // Match-only mode: the Gmail path records the email and its suggested
+      // member but never posts money — bank reconciliation is the only path
+      // that creates transactions. See ZELLE_GMAIL_CREATE_ENABLED.
+      const canAutoCreate = isZelleGmailCreateEnabled()
+        && match.confidence === 'high'
+        && match.member_id
+        && parsed.amount;
       if (canAutoCreate) {
         if (dryRun) {
           stats.autoCreated += 1;
@@ -288,7 +299,7 @@ async function syncZelleFromGmail({ dryRun = false } = {}) {
         if (!dryRun) {
           await ZelleEmailQueue.update(
             { status: 'ERROR', error: String(e.message || e) },
-            { where: { gmail_id: m.id, status: { [require('sequelize').Op.notIn]: ['CREATED', 'AUTO_CREATED', 'IGNORED'] } } }
+            { where: { gmail_id: m.id, status: { [require('sequelize').Op.notIn]: ['CREATED', 'AUTO_CREATED', 'IGNORED', 'MATCHED'] } } }
           );
         }
       } catch (_) { }

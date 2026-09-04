@@ -7,14 +7,25 @@
  *  Tier 1 (credits, AUTO_LINKED):  exactly one existing system transaction
  *    matches (amount, method, date ±2 days, payer name) — typically a Zelle
  *    payment already created by the Gmail automation. Link it, create nothing.
+ *    Zelle credits are excluded; they require treasurer approval.
  *
  *  Tier 2 (credits, AUTO_MEMBER):  a learned payer→member association
  *    (bank_memo_matches / zelle_memo_matches) points to exactly one member.
  *    Create the member transaction using their last-used payment type.
+ *    Zelle credits are excluded; they require treasurer approval.
  *
- *  Tier 3 (debits, AUTO_EXPENSE):  a learned payee→GL mapping
+ *  Tier 3a (check debits, AUTO_CHECK_MATCH):  match only, never create. The
+ *    treasurer writes the check and records the expense by hand before it
+ *    clears, so the bank row is a confirmation. Links the expense whose check
+ *    number AND amount both match. A number that matches on a different amount
+ *    means one side was mistyped, so it stays PENDING and the bank screen shows
+ *    it in red as NOT RECONCILED with both amounts.
+ *
+ *  Tier 3b (other debits, AUTO_EXPENSE):  a learned payee→GL mapping
  *    (expense_memo_matches) exists for the debit's normalized description.
- *    Record the expense ledger entry with the learned classification.
+ *    Record the expense ledger entry with the learned classification. Checks
+ *    never reach this tier — creating expenses for them produced duplicate
+ *    ledger entries with no check number, since the bank row often carries none.
  *
  * Anything ambiguous (zero or multiple candidates, conflicting learned keys)
  * is left PENDING for the treasurer. Nothing is ever auto-ignored.
@@ -41,6 +52,8 @@ const {
   sourceTypeFor
 } = require('./bankMemoMatchService');
 const { getDefaultPaymentType } = require('./zelleTransactionService');
+const { parseCheckNumber } = require('../utils/checkNumber');
+const { isReturnedItem } = require('./bankParserService');
 
 // ---------------------------------------------------------------------------
 // Expense learning
@@ -122,10 +135,7 @@ async function recordExpenseFromBankTxn(bankTxn, { gl_code, payee_name, vendor_i
     throw new Error(`Invalid or inactive GL code: ${gl_code}`);
   }
 
-  const sourceType = sourceTypeFor(bankTxn);
-  let payment_method = 'other';
-  if (sourceType === 'CHECK' || bankTxn.check_number) payment_method = 'check';
-  else if (sourceType === 'ACH') payment_method = 'ach';
+  const payment_method = paymentMethodForBankTxn(bankTxn);
 
   const expense = await LedgerEntry.create({
     type: 'expense',
@@ -144,6 +154,73 @@ async function recordExpenseFromBankTxn(bankTxn, { gl_code, payee_name, vendor_i
   }, t ? { transaction: t } : {});
 
   return expense;
+}
+
+// ---------------------------------------------------------------------------
+// Check matching
+// ---------------------------------------------------------------------------
+
+/**
+ * The check number for a bank debit, taken from the CSV's slip column and
+ * falling back to the description ("CHECK #1593", "CHECK PAID 1593").
+ */
+function checkNumberFor(bankTxn) {
+  const fromColumn = parseCheckNumber(bankTxn?.check_number);
+  if (fromColumn) return fromColumn;
+
+  const match = String(bankTxn?.description || '').match(/^CHECK\s*(?:PAID\s*)?#?\s*(\d+)/i);
+  return match ? parseCheckNumber(match[1]) : null;
+}
+
+/**
+ * How a bank row was actually paid, for the expense recorded from it.
+ *
+ * sourceTypeFor returns the bank's own type verbatim when it recognizes nothing
+ * (e.g. "DEBIT_CARD"), so card purchases used to fall through to 'other' and
+ * became indistinguishable from fees. sourceTypeFor itself is deliberately left
+ * alone: its output also forms expense_memo_match keys, and changing it would
+ * orphan every learned payee mapping.
+ *
+ * Shared by the automatic pass and the treasurer's manual reconcile-expense
+ * action, which previously hardcoded 'check' and mislabelled every ACH and card
+ * debit it recorded.
+ */
+function paymentMethodForBankTxn(bankTxn) {
+  const plain = bankTxn && bankTxn.get ? bankTxn.get({ plain: true }) : bankTxn;
+  const sourceType = sourceTypeFor(plain);
+
+  if (sourceType === 'CHECK' || checkNumberFor(plain)) return 'check';
+  if (sourceType === 'ACH') return 'ach';
+  if (sourceType.includes('CREDIT_CARD')) return 'credit_card';
+  if (sourceType.includes('CARD')) return 'debit_card';
+  return 'other';
+}
+
+/**
+ * Find the manually-entered expense a cleared check belongs to.
+ *
+ * Checks are written by hand before they clear, so the expense already exists —
+ * auto-reconcile links it rather than recording a second one. The number alone
+ * is not enough to link on: a number that matches while the amount does not
+ * means one of the two was mistyped, which is exactly what the treasurer needs
+ * to see, so those stay unreconciled instead of quietly agreeing.
+ */
+async function findManualCheckExpense(bankTxn) {
+  const checkNumber = checkNumberFor(bankTxn);
+  if (!checkNumber) return null;
+
+  const candidates = await LedgerEntry.findAll({
+    where: {
+      type: 'expense',
+      check_number: checkNumber,
+      external_id: null // not already tied to another bank row
+    }
+  });
+
+  const amount = Math.abs(Number(bankTxn.amount));
+  const matches = candidates.filter((e) => Math.abs(Number(e.amount) - amount) < 0.005);
+
+  return matches.length === 1 ? { expense: matches[0], checkNumber } : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -182,6 +259,20 @@ async function autoReconcileCredit(txn, user, { linkOnly = false } = {}) {
       });
       return 'AUTO_LINKED';
     }
+  }
+
+  // Zelle credits require explicit treasurer approval. Tier 0 above is an
+  // exact reference match and is allowed to run because it only ever links a
+  // transaction the Gmail automation already created (the legacy backlog) and
+  // never posts money. Everything below is heuristic — a name/amount/date
+  // guess (Tier 1) or a create (Tier 2) — so Zelle rows stop here and stay
+  // PENDING with suggestions for the treasurer to approve.
+  //
+  // linkOnly callers are exempt: they run from
+  // linkPendingBankRowsForTransaction, which only fires when a transaction was
+  // just created deliberately, and which never creates anything itself.
+  if (sourceTypeFor(plain) === 'ZELLE' && !linkOnly) {
+    return null;
   }
 
   // Tier 1: link to exactly one existing system transaction (e.g. a
@@ -323,6 +414,40 @@ async function autoReconcileDebit(txn, user) {
         ledger_entry_id: existingLedger.id,
         created: false,
         reason: 'Expense ledger entry already existed for this bank transaction'
+      }
+    });
+    return 'AUTO_EXPENSE';
+  }
+
+  // Checks are match-only. The treasurer writes the check and records the
+  // expense by hand; the bank row that clears days later is a confirmation, not
+  // a new expense. Creating one here produced duplicate ledger entries with no
+  // check number (the bank row often carries none), which is what made the
+  // expense list look full of missing check numbers.
+  // A returned deposited item also carries a check serial, but it is the
+  // DONOR's — the check they wrote to the church that bounced. Matching it
+  // against the church's own checkbook would link two unrelated payments that
+  // happen to share a serial, so returns are excluded entirely and left for the
+  // treasurer to reverse by hand.
+  if (isReturnedItem(txn)) return null;
+
+  if (sourceTypeFor(txn.get ? txn.get({ plain: true }) : txn) === 'CHECK' || checkNumberFor(txn)) {
+    const match = await findManualCheckExpense(txn);
+    if (!match) return null; // unreconciled — surfaced in red for the treasurer
+
+    await match.expense.update({
+      external_id: txn.transaction_hash,
+      statement_date: txn.date
+    });
+    await txn.update({
+      status: 'MATCHED',
+      reconciled_source: 'AUTO_CHECK_MATCH',
+      reconciled_at: new Date(),
+      reconciled_meta: {
+        ledger_entry_id: match.expense.id,
+        created: false,
+        check_number: match.checkNumber,
+        reason: 'Cleared check matched a manually recorded expense on number and amount'
       }
     });
     return 'AUTO_EXPENSE';
@@ -571,6 +696,15 @@ async function undoAutoReconciliation(bankTxnId) {
         });
       }
     }
+  } else if (source === 'AUTO_CHECK_MATCH') {
+    // The expense was entered by hand and merely linked — unlink it, never
+    // delete it. There is no learned classification to forget either.
+    if (meta.ledger_entry_id) {
+      const expense = await LedgerEntry.findByPk(meta.ledger_entry_id);
+      if (expense && expense.external_id === txn.transaction_hash) {
+        await expense.update({ external_id: null, statement_date: null });
+      }
+    }
   } else if (source === 'AUTO_EXPENSE') {
     if (meta.created && meta.ledger_entry_id) {
       await LedgerEntry.destroy({ where: { id: meta.ledger_entry_id } });
@@ -601,5 +735,8 @@ module.exports = {
   undoAutoReconciliation,
   learnExpenseMemoMatch,
   findLearnedExpense,
-  recordExpenseFromBankTxn
+  recordExpenseFromBankTxn,
+  checkNumberFor,
+  findManualCheckExpense,
+  paymentMethodForBankTxn
 };

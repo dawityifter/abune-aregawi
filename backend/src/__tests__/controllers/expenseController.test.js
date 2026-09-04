@@ -112,9 +112,11 @@ describe('createExpense — check number', () => {
 describe('updateExpense — check number', () => {
   const invoke = async (body, expense) => {
     LedgerEntry.findOne.mockImplementation(async (opts) => {
-      // First call resolves the expense being edited; later calls are duplicate lookups.
-      if (opts && opts.where && opts.where.type === 'expense') return expense;
-      return null;
+      // The edit looks the row up by id; the duplicate check looks up by
+      // check_number. Both are scoped to type 'expense', so key off the column.
+      const where = (opts && opts.where) || {};
+      if (where.check_number !== undefined) return null; // no duplicate
+      return expense;
     });
     const res = mockRes();
     await updateExpense({ params: { id: expense.id }, body }, res);

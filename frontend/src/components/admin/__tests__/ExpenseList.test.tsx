@@ -58,11 +58,11 @@ beforeEach(() => {
 });
 
 describe('ExpenseList — check number display', () => {
-  it('shows the check number in the table when one is recorded', async () => {
+  it('shows the check number in its own column when one is recorded', async () => {
     mockApi();
     render(<ExpenseList />);
 
-    expect(await screen.findByText('#1042')).toBeInTheDocument();
+    expect(await screen.findByText('1042')).toBeInTheDocument();
     expect(screen.queryByText('treasurerDashboard.expenses.missingCheckNumber')).not.toBeInTheDocument();
   });
 

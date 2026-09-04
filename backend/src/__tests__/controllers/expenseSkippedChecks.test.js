@@ -42,29 +42,47 @@ describe('getSkippedChecks', () => {
     else process.env.START_CHECK_NUMBER = originalStart;
   });
 
-  it('reports no gaps for a contiguous run', async () => {
-    mockChecks(['1001', '1002', '1003', '1004', '1005']);
+  it('anchors the audit at the first check of the current checkbook', async () => {
+    mockChecks(['1595', '1596']);
+    const { payload } = await invoke();
+
+    expect(payload.data.range).toEqual({ start: 1593, end: 1596 });
+    expect(payload.data.skippedChecks).toEqual([1593, 1594]);
+  });
+
+  it('reports no gaps for a contiguous run from the anchor', async () => {
+    mockChecks(['1593', '1594', '1595']);
     const { payload } = await invoke();
 
     expect(payload.success).toBe(true);
     expect(payload.data.skippedChecks).toEqual([]);
-    expect(payload.data.range).toEqual({ start: 1001, end: 1005 });
+    expect(payload.data.range).toEqual({ start: 1593, end: 1595 });
   });
 
   it('finds the gaps in a broken run', async () => {
-    mockChecks(['1001', '1002', '1005']);
+    mockChecks(['1593', '1594', '1597']);
     const { payload } = await invoke();
 
-    expect(payload.data.skippedChecks).toEqual([1003, 1004]);
-    expect(payload.data.range).toEqual({ start: 1001, end: 1005 });
+    expect(payload.data.skippedChecks).toEqual([1595, 1596]);
   });
 
-  it('normalizes prefixed and punctuated check numbers', async () => {
-    mockChecks(['CHK-1001', '#1002', '1004']);
+  it('ignores checks written before the current checkbook started', async () => {
+    mockChecks(['1002', '1593', '1594']);
     const { payload } = await invoke();
 
-    expect(payload.data.skippedChecks).toEqual([1003]);
-    expect(payload.data.range).toEqual({ start: 1001, end: 1004 });
+    expect(payload.data.skippedChecks).toEqual([]);
+    expect(payload.data.range).toEqual({ start: 1593, end: 1594 });
+  });
+
+  it('audits the church checkbook only, not check numbers on member income', async () => {
+    mockChecks(['1593']);
+    await invoke();
+
+    expect(LedgerEntry.findAll).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ type: 'expense' }),
+      })
+    );
   });
 
   it('returns an empty result when nothing has a check number', async () => {
@@ -78,28 +96,28 @@ describe('getSkippedChecks', () => {
   });
 
   it('excludes values with no digits and counts them separately', async () => {
-    mockChecks(['1001', 'void', '1003']);
+    mockChecks(['1593', 'void', '1595']);
     const { payload } = await invoke();
 
-    expect(payload.data.skippedChecks).toEqual([1002]);
+    expect(payload.data.skippedChecks).toEqual([1594]);
     expect(payload.data.ignoredNonNumeric).toBe(1);
   });
 
-  it('honors START_CHECK_NUMBER below the lowest recorded check', async () => {
-    process.env.START_CHECK_NUMBER = '1000';
-    mockChecks(['1001', '1002']);
+  it('honors START_CHECK_NUMBER as an override of the default anchor', async () => {
+    process.env.START_CHECK_NUMBER = '1600';
+    mockChecks(['1593', '1601', '1602']);
     const { payload } = await invoke();
 
-    expect(payload.data.skippedChecks).toEqual([1000]);
-    expect(payload.data.range).toEqual({ start: 1000, end: 1002 });
+    expect(payload.data.skippedChecks).toEqual([1600]);
+    expect(payload.data.range).toEqual({ start: 1600, end: 1602 });
   });
 
   it('collapses duplicate check numbers without inventing a gap', async () => {
-    mockChecks(['1001', '1001', '1002', '1003']);
+    mockChecks(['1593', '1593', '1594', '1595']);
     const { payload } = await invoke();
 
     expect(payload.data.skippedChecks).toEqual([]);
-    expect(payload.data.range).toEqual({ start: 1001, end: 1003 });
+    expect(payload.data.range).toEqual({ start: 1593, end: 1595 });
   });
 
   it('returns 500 when the query fails', async () => {

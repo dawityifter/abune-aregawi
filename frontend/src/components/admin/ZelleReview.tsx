@@ -1,34 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { digitsOnly } from '../../utils/receiptNumber';
 
-interface ZellePreviewItem {
-  gmail_id?: string;
-  external_id?: string | null;
-  amount?: number | string | null;
-  payment_date?: string | null;
-  sender_email?: string | null;
-  memo_phone_e164?: string | null;
-  payer_name?: string | null;
-  note_preview?: string | null;
-  subject?: string | null;
-  matched_member_id?: number | null;
-  matched_member_name?: string | null;
-  match_confidence?: string | null;
-  match_source?: string | null;
-  queue_status?: string | null;
-  matched_candidates?: Array<{ id: number; name: string }>;
-  would_create?: boolean;
-  already_exists?: boolean;
-  existing_transaction_id?: number | null;
-  existing_note?: string | null;
-  existing_receipt_number?: string | null;
-  payment_method?: 'zelle';
-  payment_type?: string;
-  status?: string;
-  error?: string;
-}
+const SEARCH_DEBOUNCE_MS = 300;
 
 interface QueueItem {
   id: string;
@@ -37,126 +11,89 @@ interface QueueItem {
   amount?: number | string | null;
   payment_date?: string | null;
   note?: string | null;
+  subject?: string | null;
   status: string;
   transaction_id?: number | null;
+  matched_member_id?: number | null;
+  match_confidence?: string | null;
+  match_source?: string | null;
+  matched_by?: number | null;
+  matched_at?: string | null;
   matchedMember?: { id: number; first_name?: string; last_name?: string } | null;
   transaction?: { id: number; amount?: string; payment_type?: string; receipt_number?: string | null } | null;
 }
 
+interface Pagination {
+  total: number;
+  page: number;
+  pages: number;
+}
+
+const STATUS_OPTIONS = ['NEEDS_REVIEW', 'MATCHED', 'AUTO_CREATED', 'CREATED', 'IGNORED', 'ERROR'];
+
 const ZelleReview: React.FC = () => {
-  const { currentUser, firebaseUser } = useAuth();
+  const { firebaseUser } = useAuth();
   const { t } = useLanguage();
-  const [items, setItems] = useState<ZellePreviewItem[]>([]);
+  const [items, setItems] = useState<QueueItem[]>([]);
+  const [pagination, setPagination] = useState<Pagination>({ total: 0, page: 1, pages: 1 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const [autoCreated, setAutoCreated] = useState<QueueItem[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string>('');
-  const [limit, setLimit] = useState<number>(10);
+  const [page, setPage] = useState(1);
+  const [limit] = useState<number>(20);
+  const [search, setSearch] = useState<string>('');
+  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
   const [busyIds, setBusyIds] = useState<Record<string, boolean>>({});
-  const [textFilter, setTextFilter] = useState<string>('');
-  const [onlyUnmatched, setOnlyUnmatched] = useState<boolean>(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [batchLoading, setBatchLoading] = useState(false);
+  const [matchInputs, setMatchInputs] = useState<Record<string, { payerName?: string }>>({});
 
-  // Per-row reconcile selection and search state
+  // Per-row member search state for the Match column: the treasurer types a
+  // name, sees candidate members, and picks one before Save is enabled. This
+  // mirrors the row-scoped search pattern the pre-rewrite version of this
+  // screen used against the same /api/members/search endpoint.
   type SearchResult = { id: number; name: string; phoneNumber?: string | null; isActive?: boolean };
-  type RowSearchState = { query: string; results: SearchResult[]; loading: boolean; selectedId?: number };
+  type RowSearchState = { query: string; results: SearchResult[]; loading: boolean; selectedId?: number; selectedName?: string };
   const [rowSearch, setRowSearch] = useState<Record<string, RowSearchState>>({});
 
-  // Manual Donor state
-  type RowMode = 'match' | 'manual';
-  interface ManualDonor {
-    name: string;
-    type: 'Individual' | 'Organization';
-  }
-  const [rowModes, setRowModes] = useState<Record<string, RowMode>>({});
-  const [manualDonors, setManualDonors] = useState<Record<string, ManualDonor>>({});
+  // Keep the input responsive on every keystroke, but only let the debounced
+  // value flow into loadQueue's deps so typing doesn't fire one request per
+  // character against a paginated endpoint.
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [search]);
 
-  // Per-row payment type (controlled) and membership year
-  const [rowPaymentTypes, setRowPaymentTypes] = useState<Record<string, string>>({});
-  const [rowYears, setRowYears] = useState<Record<string, string>>({});
-  const [rowReceiptNumbers, setRowReceiptNumbers] = useState<Record<string, string>>({});
-  const currentYear = new Date().getFullYear();
+  // Reset to page 1 once the debounced search actually changes, not on every keystroke.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
-  const getKey = (it: ZellePreviewItem, idx: number) => it.gmail_id || it.external_id || String(idx);
-
-  const fetchPreview = useCallback(async () => {
-    if (!firebaseUser || !currentUser?.email) return;
+  const loadQueue = useCallback(async () => {
+    if (!firebaseUser) return;
     setLoading(true);
     setError('');
     try {
-      const url = `${process.env.REACT_APP_API_URL}/api/zelle/preview/gmail?limit=${encodeURIComponent(String(limit))}`;
-      const resp = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
-        }
-      });
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}));
-        throw new Error(data.message || `Preview failed with status ${resp.status}`);
-      }
-      const data = await resp.json();
-      if (data.success) {
-        setItems(data.items);
-        setRowReceiptNumbers(prev => {
-          const next = { ...prev };
-          data.items.forEach((it: ZellePreviewItem, idx: number) => {
-            const key = getKey(it, idx);
-            if (it.existing_receipt_number !== undefined && it.existing_receipt_number !== null) {
-              next[key] = it.existing_receipt_number;
-            }
-          });
-          return next;
-        });
+      const token = await firebaseUser.getIdToken();
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
+      if (statusFilter) params.set('status', statusFilter);
 
-        // Prepopulate manual donor info and row modes from existing notes
-        const newRowModes: Record<string, RowMode> = {};
-        const newManualDonors: Record<string, ManualDonor> = {};
-
-        data.items.forEach((it: ZellePreviewItem, idx: number) => {
-          const key = getKey(it, idx);
-          if (it.already_exists && it.existing_note) {
-            const donorMatch = it.existing_note.match(/\[Anonymous Donor\]\nName: (.*)\nType: (Individual|Organization)/);
-            if (donorMatch) {
-              newRowModes[key] = 'manual';
-              newManualDonors[key] = {
-                name: donorMatch[1],
-                type: donorMatch[2] as 'Individual' | 'Organization'
-              };
-            }
-          }
-        });
-
-        if (Object.keys(newRowModes).length > 0) {
-          setRowModes(prev => ({ ...prev, ...newRowModes }));
-        }
-        if (Object.keys(newManualDonors).length > 0) {
-          setManualDonors(prev => ({ ...prev, ...newManualDonors }));
-        }
-      }
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/zelle/queue?${params.toString()}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to load Zelle emails');
+      setItems(data.items || []);
+      setPagination(data.pagination || { total: 0, page: 1, pages: 1 });
     } catch (e: any) {
-      setError(e.message || 'Failed to load Zelle preview');
+      setError(e.message || String(e));
     } finally {
       setLoading(false);
     }
-  }, [firebaseUser, currentUser?.email, limit]);
-
-  const fetchAutoCreated = useCallback(async () => {
-    if (!firebaseUser) return;
-    try {
-      const url = `${process.env.REACT_APP_API_URL}/api/zelle/queue?status=AUTO_CREATED&limit=20`;
-      const resp = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` }
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (resp.ok && data.success) {
-        setAutoCreated(data.items || []);
-      }
-    } catch (_) {
-      // Non-fatal: panel simply stays empty
-    }
-  }, [firebaseUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firebaseUser?.uid, page, limit, debouncedSearch, statusFilter]);
 
   const handleSyncNow = useCallback(async () => {
     if (!firebaseUser) return;
@@ -174,299 +111,124 @@ const ZelleReview: React.FC = () => {
       }
       const s = data.stats || {};
       setSyncMessage(`Sync complete — auto-created: ${s.autoCreated ?? 0}, needs review: ${s.needsReview ?? 0}, skipped: ${s.skipped ?? 0}, errors: ${s.errors ?? 0}`);
-      await Promise.all([fetchPreview(), fetchAutoCreated()]);
+      await loadQueue();
     } catch (e: any) {
       setError(e.message || 'Sync failed');
     } finally {
       setSyncing(false);
     }
-  }, [firebaseUser, fetchPreview, fetchAutoCreated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firebaseUser?.uid, loadQueue]);
 
   useEffect(() => {
-    fetchPreview();
-    fetchAutoCreated();
-  }, [fetchPreview, fetchAutoCreated]);
+    loadQueue();
+  }, [loadQueue]);
 
-  // Reset selection on items change
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [items]);
-
-  const toggleSelection = (key: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    const selectable = filteredItems
-      .filter(it => !it.already_exists && (it.matched_member_id || rowSearch[getKey(it, items.indexOf(it))]?.selectedId))
-      .map((it, idx) => getKey(it, items.indexOf(it)));
-
-    if (selectedIds.size === selectable.length && selectable.length > 0) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(selectable));
-    }
-  };
-
-  const handleBatchCreate = async () => {
-    if (!firebaseUser || selectedIds.size === 0) return;
-    setBatchLoading(true);
-    setError('');
-    try {
-      const payloadItems = items
-        .map((it, idx) => ({ item: it, key: getKey(it, items.indexOf(it)) }))
-        .filter(({ key }) => selectedIds.has(key))
-        .map(({ item, key }) => {
-          const selected = rowSearch[key]?.selectedId;
-          const isManual = rowModes[key] === 'manual';
-          const manual = manualDonors[key];
-
-          let member_id = item.matched_member_id || selected;
-          let note = item.note_preview || item.subject || undefined;
-
-          if (isManual && manual?.name) {
-            member_id = undefined; // Send as undefined/null for manual
-            const donorPrefix = `[Anonymous Donor]\nName: ${manual.name}\nType: ${manual.type}`;
-            note = note ? `${donorPrefix}\n\n${note}` : donorPrefix;
-          }
-
-          const payment_type = rowPaymentTypes[key] ?? item.payment_type ?? 'donation';
-          const for_year = payment_type === 'membership_due'
-            ? parseInt(rowYears[key] ?? String(currentYear))
-            : null;
-          const numericAmount = typeof item.amount === 'number' ? item.amount : Number(item.amount);
-
-          return {
-            external_id: item.external_id,
-            amount: numericAmount,
-            payment_date: item.payment_date,
-            note,
-            member_id,
-            payment_type,
-            for_year,
-            receipt_number: rowReceiptNumbers[key]?.trim() || null,
-            payer_name: item.payer_name || undefined
-          };
-        });
-
-      const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/zelle/reconcile/batch-create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
-        },
-        body: JSON.stringify({ items: payloadItems })
-      });
-
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        throw new Error(data.message || `Batch create failed with status ${resp.status}`);
-      }
-
-      // Refresh list after success
-      await fetchPreview();
-      setSelectedIds(new Set());
-    } catch (e: any) {
-      setError(e.message || 'Failed to process batch');
-    } finally {
-      setBatchLoading(false);
-    }
-  };
-
-  const handleCreate = useCallback(async (item: ZellePreviewItem, idx?: number) => {
-    if (!firebaseUser) return;
-    const key = getKey(item, idx ?? 0);
-    try {
-      setBusyIds((m) => ({ ...m, [key]: true }));
-      setError('');
-
-      const selected = rowSearch[key]?.selectedId;
-      const isManual = rowModes[key] === 'manual';
-      const manual = manualDonors[key];
-
-      let member_id = item.matched_member_id || selected;
-      let note = item.note_preview || item.subject || undefined;
-
-      if (isManual && manual?.name) {
-        member_id = undefined;
-        const donorPrefix = `[Anonymous Donor]\nName: ${manual.name}\nType: ${manual.type}`;
-        note = note ? `${donorPrefix}\n\n${note}` : donorPrefix;
-      }
-
-      if (!member_id && (!isManual || !manual?.name)) {
-        throw new Error('Please provide a member ID or manual donor name to reconcile.');
-      }
-
-      const payment_type = rowPaymentTypes[key] ?? item.payment_type ?? 'donation';
-      const for_year = payment_type === 'membership_due'
-        ? parseInt(rowYears[key] ?? String(currentYear))
-        : null;
-
-      if (!item.external_id) {
-        throw new Error('Missing external_id for this item.');
-      }
-      const numericAmount = typeof item.amount === 'number' ? item.amount : Number(item.amount);
-      if (!Number.isFinite(numericAmount) || !item.payment_date) {
-        throw new Error('Missing or invalid amount, or missing payment date.');
-      }
-
-      const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/zelle/reconcile/create-transaction`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
-        },
-        body: JSON.stringify({
-          external_id: item.external_id,
-          amount: numericAmount,
-          payment_date: item.payment_date,
-          note,
-          member_id,
-          payment_type,
-          for_year,
-          receipt_number: rowReceiptNumbers[key]?.trim() || null,
-          payer_name: item.payer_name || undefined,
-        })
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        throw new Error(data.message || `Create failed with status ${resp.status}`);
-      }
-      // Refresh list after success
-      await fetchPreview();
-    } catch (e: any) {
-      setError(e.message || 'Failed to create transaction');
-    } finally {
-      setBusyIds((m) => ({ ...m, [key]: false }));
-    }
-  }, [firebaseUser, fetchPreview, rowSearch, rowModes, manualDonors, rowPaymentTypes, rowYears, rowReceiptNumbers, currentYear]);
-
-  const handleUpdatePaymentType = useCallback(async (item: ZellePreviewItem, idx?: number) => {
-    if (!firebaseUser) return;
-    const key = getKey(item, idx ?? 0);
-    if (!item.already_exists || !item.existing_transaction_id) {
-      setError('Cannot update: no existing transaction id.');
-      return;
-    }
-    try {
-      setBusyIds((m) => ({ ...m, [key]: true }));
-      setError('');
-      const newType = rowPaymentTypes[key] ?? item.payment_type ?? 'donation';
-      const receiptNumber = rowReceiptNumbers[key]?.trim() || null;
-      const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions/${item.existing_transaction_id}/payment-type`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await firebaseUser.getIdToken()}`
-        },
-        body: JSON.stringify({ payment_type: newType, receipt_number: receiptNumber })
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        throw new Error(data.message || `Update failed with status ${resp.status}`);
-      }
-      // optimistic update
-      setItems((prev) => prev.map((it, i) => (
-        getKey(it, i) === key
-          ? { ...it, payment_type: newType, existing_receipt_number: receiptNumber }
-          : it
-      )));
-    } catch (e: any) {
-      setError(e.message || 'Failed to update payment type');
-    } finally {
-      setBusyIds((m) => ({ ...m, [key]: false }));
-    }
-  }, [firebaseUser, rowPaymentTypes, rowReceiptNumbers]);
-
-  const handleSearchChange = useCallback(async (key: string, query: string) => {
-    setRowSearch((prev) => ({
+  const handleSearchChange = useCallback(async (itemId: string, query: string) => {
+    setRowSearch(prev => ({
       ...prev,
-      [key]: { ...(prev[key] || { results: [], selectedId: undefined }), query, loading: query.length >= 3 }
+      [itemId]: { ...(prev[itemId] || { results: [], selectedId: undefined, selectedName: undefined }), query, loading: query.trim().length >= 3 }
     }));
 
     if (!firebaseUser) return;
     if (query.trim().length < 3) {
-      setRowSearch((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), results: [], loading: false } as RowSearchState }));
+      setRowSearch(prev => ({ ...prev, [itemId]: { ...(prev[itemId] || {}), results: [], loading: false } as RowSearchState }));
       return;
     }
 
     try {
+      const token = await firebaseUser.getIdToken();
       const url = `${process.env.REACT_APP_API_URL}/api/members/search?q=${encodeURIComponent(query)}`;
-      const resp = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` }
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        setError((data && (data.message || data.error)) || `Search failed with status ${resp.status}`);
-        setRowSearch((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), loading: false } as RowSearchState }));
-        return;
-      }
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json().catch(() => ({}));
       const results: SearchResult[] = data?.data?.results || [];
-      setRowSearch((prev) => ({
-        ...prev,
-        [key]: { ...(prev[key] || {}), query, results, loading: false }
-      }));
-    } catch (e) {
-      setRowSearch((prev) => ({ ...prev, [key]: { ...(prev[key] || {}), loading: false } as RowSearchState }));
+      setRowSearch(prev => ({ ...prev, [itemId]: { ...(prev[itemId] || {}), query, results, loading: false } }));
+    } catch {
+      setRowSearch(prev => ({ ...prev, [itemId]: { ...(prev[itemId] || {}), loading: false } as RowSearchState }));
     }
   }, [firebaseUser]);
 
-  const handleSelectMember = useCallback((key: string, result: SearchResult) => {
-    const label = `${result.name}${result.phoneNumber ? ` • ${result.phoneNumber}` : ''}`;
-    setRowSearch((prev) => ({
+  const handleSelectMember = useCallback((itemId: string, result: SearchResult) => {
+    setRowSearch(prev => ({
       ...prev,
-      [key]: { ...(prev[key] || { results: [], query: '' }), selectedId: result.id, query: label, results: [] }
+      [itemId]: { ...(prev[itemId] || { results: [], query: '' }), selectedId: result.id, selectedName: result.name, query: result.name, results: [] }
     }));
   }, []);
 
-  const filteredItems = items.filter((it) => {
-    if (onlyUnmatched && it.matched_member_id) return false;
-    const q = textFilter.trim().toLowerCase();
-    if (!q) return true;
-    const fields = [
-      it.note_preview || '',
-      it.matched_member_name || ''
-    ].map(s => String(s).toLowerCase());
-    return fields.some(f => f.includes(q));
-  });
+  // The learned key this match writes is built from the payer name, so a row
+  // whose email had none cannot be matched until the treasurer supplies one —
+  // the backend returns 400 PAYER_NAME_REQUIRED. Gate it here so the rule is
+  // visible before the click rather than arriving as a server error after it.
+  const payerNameMissing = (item: QueueItem) =>
+    !item.payer_name && !(matchInputs[item.id]?.payerName || '').trim();
+
+  const handleMatch = async (item: QueueItem) => {
+    const memberId = rowSearch[item.id]?.selectedId;
+    if (!memberId) { setError('Search for and select a member to match.'); return; }
+    if (payerNameMissing(item)) {
+      setError('Enter the payer name for this row before saving the match.');
+      return;
+    }
+
+    setBusyIds(prev => ({ ...prev, [item.id]: true }));
+    try {
+      const token = await firebaseUser?.getIdToken();
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/zelle/queue/${item.id}/match`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            member_id: memberId,
+            payer_name: matchInputs[item.id]?.payerName || undefined
+          })
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Match failed');
+      setRowSearch(prev => { const next = { ...prev }; delete next[item.id]; return next; });
+      await loadQueue();
+    } catch (e: any) {
+      setError(e.message || String(e));
+    } finally {
+      setBusyIds(prev => ({ ...prev, [item.id]: false }));
+    }
+  };
+
+  const formatAmount = (amount?: number | string | null) => {
+    const amt = typeof amount === 'number' ? amount : Number(amount);
+    return Number.isFinite(amt) ? `$${amt.toFixed(2)}` : '-';
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">{t('treasurerDashboard.tabs.zelle')}</h2>
-          <p className="text-sm text-gray-600">Preview of Gmail-parsed {t('zelle')} payments for reconciliation</p>
+          <p className="text-sm text-gray-600">Recorded {t('zelle')} payments awaiting or already matched to a member</p>
         </div>
         <div className="flex items-center space-x-2">
           <input
             type="text"
-            placeholder="Filter by memo or matched name"
-            value={textFilter}
-            onChange={(e) => setTextFilter(e.target.value)}
+            placeholder="Filter by memo or payer"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             className="w-72 px-2 py-1 border border-gray-300 rounded"
             aria-label="Text filter"
           />
-          <label className="flex items-center space-x-1 text-sm text-gray-700">
-            <input type="checkbox" checked={onlyUnmatched} onChange={(e) => setOnlyUnmatched(e.target.checked)} />
-            <span>Only Unmatched</span>
-          </label>
-          <input
-            type="number"
-            min={1}
-            max={25}
-            value={limit}
-            onChange={(e) => setLimit(parseInt(e.target.value || '10', 10))}
-            className="w-20 px-2 py-1 border border-gray-300 rounded"
-            aria-label="Limit"
-            title="Max results"
-          />
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            className="px-2 py-1 border border-gray-300 rounded"
+            aria-label="Status filter"
+          >
+            <option value="">All</option>
+            {STATUS_OPTIONS.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
           <button
-            onClick={fetchPreview}
+            onClick={loadQueue}
             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded"
           >
             Refresh
@@ -475,19 +237,10 @@ const ZelleReview: React.FC = () => {
             onClick={handleSyncNow}
             disabled={syncing}
             className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-3 py-2 rounded"
-            title="Fetch new Zelle emails and auto-create transactions for known payers"
+            title="Fetch new Zelle emails and record/match them"
           >
             {syncing ? 'Syncing…' : 'Sync Now'}
           </button>
-          {selectedIds.size > 0 && (
-            <button
-              onClick={handleBatchCreate}
-              disabled={batchLoading}
-              className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-2 rounded shadow-sm"
-            >
-              {batchLoading ? 'Processing...' : `Process Selected (${selectedIds.size})`}
-            </button>
-          )}
         </div>
       </div>
 
@@ -506,302 +259,155 @@ const ZelleReview: React.FC = () => {
       {loading ? (
         <div className="py-10 text-center text-gray-500">Loading…</div>
       ) : items.length === 0 ? (
-        <div className="py-10 text-center text-gray-500">No candidates found.</div>
+        <div className="py-10 text-center text-gray-500">No Zelle payments found.</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 w-8">
-                  <input
-                    type="checkbox"
-                    onChange={toggleSelectAll}
-                    checked={filteredItems.length > 0 && selectedIds.size === filteredItems.filter(it => !it.already_exists && (it.matched_member_id || rowSearch[getKey(it, items.indexOf(it))]?.selectedId || (rowModes[getKey(it, items.indexOf(it))] === 'manual' && manualDonors[getKey(it, items.indexOf(it))]?.name))).length && selectedIds.size > 0}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date/Time</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payer</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Memo</th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matched Member</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reconcile</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Match</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredItems.map((it, idx) => (
-                <tr key={getKey(it, items.indexOf(it))}>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(getKey(it, items.indexOf(it)))}
-                      onChange={() => toggleSelection(getKey(it, items.indexOf(it)))}
-                      disabled={!!it.already_exists || (!it.matched_member_id && !rowSearch[getKey(it, items.indexOf(it))]?.selectedId && (rowModes[getKey(it, items.indexOf(it))] !== 'manual' || !manualDonors[getKey(it, items.indexOf(it))]?.name))}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
-                    />
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.payment_date || '-'}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{
-                    (() => {
-                      const amt = typeof it.amount === 'number' ? it.amount : Number(it.amount);
-                      return Number.isFinite(amt) ? `$${amt.toFixed(2)}` : '-';
-                    })()
-                  }</td>
-                  <td className="px-3 py-2 text-sm text-gray-900 max-w-5xl whitespace-normal break-words" title={it.note_preview || ''}>{it.note_preview || '-'}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm">
-                    {it.matched_member_id ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title={it.matched_member_name || ''}>
-                        {it.matched_member_name ? `${it.matched_member_name} ` : ''}#{it.matched_member_id}
-                      </span>
-                    ) : (
-                      <div className="flex flex-col space-y-1">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                          Unmatched
-                        </span>
-                        {it.matched_candidates && it.matched_candidates.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {it.matched_candidates.map(c => (
-                              <button
-                                key={c.id}
-                                onClick={() => handleSelectMember(getKey(it, items.indexOf(it)), { id: c.id, name: c.name, isActive: true })}
-                                className="text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded px-1.5 py-0.5 text-gray-700"
-                                title={`Select ${c.name}`}
-                              >
-                                {c.name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm">
-                    {it.already_exists ? (
-                      it.queue_status === 'AUTO_CREATED' ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title={it.existing_transaction_id ? `Auto-created TX #${it.existing_transaction_id}` : 'Auto-created'}>
-                          Auto-created
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title={it.existing_transaction_id ? `TX #${it.existing_transaction_id}` : 'Already saved'}>
-                          Saved
-                        </span>
-                      )
-                    ) : (it.matched_member_id || rowSearch[getKey(it, items.indexOf(it))]?.selectedId || (rowModes[getKey(it, items.indexOf(it))] === 'manual' && manualDonors[getKey(it, items.indexOf(it))]?.name)) ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Ready</span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">Needs Match</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm">
-                    <div className="flex items-center space-x-2">
-                      {!it.matched_member_id && (
-                        <div className="flex flex-col space-y-2">
-                          <div className="flex items-center space-x-2 border-b border-gray-100 pb-2 mb-2">
-                            <button
-                              onClick={() => setRowModes(m => ({ ...m, [getKey(it, items.indexOf(it))]: 'match' }))}
-                              className={`px-2 py-1 text-xs rounded ${rowModes[getKey(it, items.indexOf(it))] !== 'manual' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
-                            >
-                              Member Match
-                            </button>
-                            <button
-                              onClick={() => setRowModes(m => ({ ...m, [getKey(it, items.indexOf(it))]: 'manual' }))}
-                              className={`px-2 py-1 text-xs rounded ${rowModes[getKey(it, items.indexOf(it))] === 'manual' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
-                            >
-                              Manual Entry
-                            </button>
-                          </div>
-
-                          {rowModes[getKey(it, items.indexOf(it))] === 'manual' ? (
-                            <div className="flex flex-col space-y-2">
-                              <input
-                                type="text"
-                                placeholder="Individual or Org Name"
-                                className="w-64 px-2 py-1 border border-gray-300 rounded text-sm"
-                                value={manualDonors[getKey(it, items.indexOf(it))]?.name || ''}
-                                onChange={(e) => setManualDonors(m => ({
-                                  ...m,
-                                  [getKey(it, items.indexOf(it))]: { ...(m[getKey(it, items.indexOf(it))] || { type: 'Individual' }), name: e.target.value }
-                                }))}
-                              />
-                              <select
-                                className="w-64 px-2 py-1 border border-gray-300 rounded text-sm bg-white"
-                                value={manualDonors[getKey(it, items.indexOf(it))]?.type || 'Individual'}
-                                onChange={(e) => setManualDonors(m => ({
-                                  ...m,
-                                  [getKey(it, items.indexOf(it))]: { ...(m[getKey(it, items.indexOf(it))] || { name: '' }), type: e.target.value as any }
-                                }))}
-                              >
-                                <option value="Individual">Individual</option>
-                                <option value="Organization">Organization</option>
-                              </select>
-                            </div>
-                          ) : (
-                            <div className="relative">
-                              <input
-                                type="text"
-                                placeholder="Type name or phone (3+ chars)"
-                                className="w-64 px-2 py-1 border border-gray-300 rounded"
-                                value={rowSearch[getKey(it, items.indexOf(it))]?.query || ''}
-                                onChange={(e) => handleSearchChange(getKey(it, items.indexOf(it)), e.target.value)}
-                              />
-                              <div className="mt-1 text-xs text-gray-400">Type 3+ characters</div>
-                              {(rowSearch[getKey(it, items.indexOf(it))]?.loading) && (
-                                <div className="absolute right-2 top-1.5 text-xs text-gray-400">Searching…</div>
-                              )}
-                              {(rowSearch[getKey(it, items.indexOf(it))]?.results?.length || 0) > 0 && (
-                                <div className="absolute z-10 mt-1 w-72 max-h-56 overflow-auto bg-white border border-gray-200 rounded shadow">
-                                  {rowSearch[getKey(it, items.indexOf(it))]!.results!.map((r) => (
-                                    <button
-                                      key={r.id}
-                                      type="button"
-                                      onMouseDown={() => handleSelectMember(getKey(it, items.indexOf(it)), r)}
-                                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50"
-                                      title={r.phoneNumber ? `${r.name} • ${r.phoneNumber}` : r.name}
-                                    >
-                                      {r.name} {r.phoneNumber ? `• ${r.phoneNumber}` : ''} {!r.isActive ? '(inactive)' : ''}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                              {rowSearch[getKey(it, items.indexOf(it))]?.selectedId && (
-                                <div className="mt-1 text-xs text-gray-600">Selected: #{rowSearch[getKey(it, items.indexOf(it))]?.selectedId}</div>
-                              )}
-                            </div>
+              {items.map((item) => {
+                const memberName = item.matchedMember
+                  ? `${item.matchedMember.first_name || ''} ${item.matchedMember.last_name || ''}`.trim()
+                  : null;
+                return (
+                  <tr key={item.id}>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{item.payment_date || '-'}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{formatAmount(item.amount)}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{item.payer_name || '—'}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900 max-w-5xl whitespace-normal break-words" title={item.note || ''}>{item.note || '-'}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                      {memberName ? (
+                        <div className="flex flex-col">
+                          <span>{memberName}</span>
+                          {(item.match_source || item.match_confidence) && (
+                            <span className="text-xs text-gray-500">
+                              {[item.match_source, item.match_confidence].filter(Boolean).join(' · ')}
+                            </span>
                           )}
                         </div>
-                      )}
-                      <select
-                        className="px-2 py-1 border border-gray-300 rounded"
-                        value={rowPaymentTypes[getKey(it, items.indexOf(it))] ?? it.payment_type ?? 'donation'}
-                        onChange={(e) => {
-                          const key = getKey(it, items.indexOf(it));
-                          setRowPaymentTypes(prev => ({ ...prev, [key]: e.target.value }));
-                          // Reset year to current year when switching to membership_due
-                          if (e.target.value === 'membership_due') {
-                            setRowYears(prev => ({ ...prev, [key]: prev[key] ?? String(currentYear) }));
-                          }
-                        }}
-                        disabled={!!busyIds[getKey(it, items.indexOf(it))]}
-                        title="Payment Type"
-                      >
-                        <option value="membership_due">Membership Due</option>
-                        <option value="tithe">Tithe</option>
-                        <option value="donation">Donation</option>
-                        <option value="event">Event</option>
-                        <option value="tigray_hunger_fundraiser">Tigray Hunger Fundraiser</option>
-                        <option value="other">Other</option>
-                      </select>
-                      {(rowPaymentTypes[getKey(it, items.indexOf(it))] ?? it.payment_type) === 'membership_due' && (
-                        <select
-                          className="px-2 py-1 border border-gray-300 rounded"
-                          value={rowYears[getKey(it, items.indexOf(it))] ?? String(currentYear)}
-                          onChange={(e) => {
-                            const key = getKey(it, items.indexOf(it));
-                            setRowYears(prev => ({ ...prev, [key]: e.target.value }));
-                          }}
-                          disabled={!!busyIds[getKey(it, items.indexOf(it))]}
-                          title="Membership Year"
-                        >
-                          {Array.from({ length: currentYear - 2023 }, (_, i) => currentYear - i).map(y => (
-                            <option key={y} value={String(y)}>{y}</option>
-                          ))}
-                        </select>
-                      )}
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        className="px-2 py-1 border border-gray-300 rounded"
-                        value={rowReceiptNumbers[getKey(it, items.indexOf(it))] ?? it.existing_receipt_number ?? ''}
-                        onChange={(e) => {
-                          const key = getKey(it, items.indexOf(it));
-                          setRowReceiptNumbers(prev => ({ ...prev, [key]: digitsOnly(e.target.value) }));
-                        }}
-                        disabled={!!busyIds[getKey(it, items.indexOf(it))]}
-                        placeholder="Receipt # (optional)"
-                        title="Receipt Number"
-                      />
-                      {!it.already_exists ? (
-                        <button
-                          type="button"
-                          onClick={() => handleCreate(it, items.indexOf(it))}
-                          disabled={!!busyIds[getKey(it, items.indexOf(it))]}
-                          className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-1.5 rounded"
-                          title="Create transaction"
-                        >
-                          {busyIds[getKey(it, items.indexOf(it))] ? 'Creating…' : 'Create'}
-                        </button>
                       ) : (
-                        <div className="flex items-center space-x-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title={it.existing_transaction_id ? `TX #${it.existing_transaction_id}` : 'Already saved'}>
-                            Saved
-                          </span>
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {item.transaction_id ? (
+                        <span className="text-xs text-gray-500">Posted · no changes</span>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="Search member by name or phone…"
+                              className="w-48 border border-gray-300 rounded px-2 py-1 text-sm"
+                              value={rowSearch[item.id]?.query || ''}
+                              onChange={e => handleSearchChange(item.id, e.target.value)}
+                            />
+                            {rowSearch[item.id]?.loading && (
+                              <div className="absolute right-2 top-1.5 text-xs text-gray-400">Searching…</div>
+                            )}
+                            {(rowSearch[item.id]?.results?.length || 0) > 0 && (
+                              <div className="absolute z-10 mt-1 w-64 max-h-48 overflow-auto bg-white border border-gray-200 rounded shadow">
+                                {rowSearch[item.id]!.results!.map(r => (
+                                  <button
+                                    key={r.id}
+                                    type="button"
+                                    onMouseDown={() => handleSelectMember(item.id, r)}
+                                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50"
+                                    title={r.phoneNumber ? `${r.name} • ${r.phoneNumber}` : r.name}
+                                  >
+                                    {r.name} {r.phoneNumber ? `• ${r.phoneNumber}` : ''}{!r.isActive ? ' (inactive)' : ''}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {rowSearch[item.id]?.selectedId && (
+                            <div className="text-xs text-gray-600">
+                              {`Selected: ${rowSearch[item.id]?.selectedName}`}
+                            </div>
+                          )}
+                          {!item.payer_name && (
+                            <>
+                              <input
+                                type="text"
+                                placeholder="Payer name (required)"
+                                className={`w-48 rounded px-2 py-1 text-sm border ${
+                                  payerNameMissing(item)
+                                    ? 'border-amber-400 bg-amber-50'
+                                    : 'border-gray-300'
+                                }`}
+                                value={matchInputs[item.id]?.payerName || ''}
+                                onChange={e => setMatchInputs(prev => ({
+                                  ...prev,
+                                  [item.id]: { ...prev[item.id], payerName: e.target.value }
+                                }))}
+                              />
+                              {payerNameMissing(item) && (
+                                <span className="text-xs text-amber-700">
+                                  Payer name is required — this email didn&apos;t include one. Enter it as
+                                  it appears on the bank statement.
+                                </span>
+                              )}
+                            </>
+                          )}
                           <button
                             type="button"
-                            onClick={() => handleUpdatePaymentType(it, items.indexOf(it))}
-                            disabled={!!busyIds[getKey(it, items.indexOf(it))]}
-                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1.5 rounded"
-                            title="Update payment type"
+                            title={
+                              !rowSearch[item.id]?.selectedId
+                                ? 'Search for and select a member first'
+                                : payerNameMissing(item)
+                                  ? 'Enter the payer name for this row first'
+                                  : 'Save this payer to member match'
+                            }
+                            onClick={() => handleMatch(item)}
+                            disabled={!!busyIds[item.id] || !rowSearch[item.id]?.selectedId || payerNameMissing(item)}
+                            className="self-start px-3 py-1 text-sm bg-blue-600 text-white rounded disabled:opacity-50"
                           >
-                            {busyIds[getKey(it, items.indexOf(it))] ? 'Saving…' : 'Save'}
+                            Save
                           </button>
                         </div>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      {autoCreated.length > 0 && (
-        <div className="mt-6 border-t border-gray-200 pt-4">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">Recently Auto-created</h3>
-          <p className="text-sm text-gray-600 mb-3">
-            Transactions created automatically from Zelle emails of previously-associated payers.
-            Change the payment type or add a receipt number from the row above or the Transactions list.
-          </p>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payer</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TX</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {autoCreated.map((q) => {
-                  const amt = typeof q.amount === 'number' ? q.amount : Number(q.amount);
-                  const memberName = q.matchedMember
-                    ? `${q.matchedMember.first_name || ''} ${q.matchedMember.last_name || ''}`.trim()
-                    : '-';
-                  return (
-                    <tr key={q.id}>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{q.payment_date || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{Number.isFinite(amt) ? `$${amt.toFixed(2)}` : '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{q.payer_name || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                        {q.matchedMember ? `${memberName} #${q.matchedMember.id}` : '-'}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{q.transaction?.payment_type || '-'}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                        {q.transaction_id ? `#${q.transaction_id}` : '-'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+      {pagination.pages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <button
+            type="button"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-600">
+            Page {pagination.page} of {pagination.pages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+            disabled={page >= pagination.pages}
+            className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50"
+          >
+            Next
+          </button>
         </div>
       )}
-
     </div>
   );
 };

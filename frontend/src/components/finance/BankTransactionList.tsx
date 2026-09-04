@@ -17,6 +17,47 @@ export interface BankTransaction {
     reconciled_at?: string | null;
     reconciled_payee_name?: string | null;
     reconciled_memo?: string | null;
+    /** The expense this debit is reconciled against, however it got linked. */
+    reconciled_expense?: {
+        id: number | string;
+        category: string;
+        category_name: string | null;
+        amount: number | string;
+        entry_date: string;
+        payment_method: string | null;
+        check_number: string | null;
+        receipt_number: string | null;
+        payee_name: string | null;
+        memo: string | null;
+        source_system: string | null;
+    } | null;
+    /**
+     * Present only on check debits. A cleared check is reconciled when it lines
+     * up with an expense the treasurer entered by hand; the server computes this
+     * per request rather than storing it.
+     */
+    check_status?: {
+        state: 'RECONCILED' | 'NOT_RECONCILED';
+        reason?: 'NO_MANUAL_ENTRY' | 'AMOUNT_MISMATCH' | 'NO_CHECK_NUMBER' | 'ALREADY_LINKED';
+        check_number: string | null;
+        bank_amount?: number;
+        expense_amount?: number;
+        ledger_entry_id?: string | null;
+    };
+    /**
+     * Present only on returned deposited items — a check the church deposited
+     * that bounced. The serial is the DONOR's, so this points at the gift being
+     * reversed, never at the church's own checkbook.
+     */
+    returned_item?: {
+        state: 'RETURNED';
+        reason?: 'ORIGINAL_NOT_FOUND' | 'NO_CHECK_SERIAL' | 'AMOUNT_MISMATCH' | null;
+        check_number: string | null;
+        bank_amount?: number;
+        original_amount?: number;
+        receipt_number?: string | null;
+        reverses_ledger_entry_id?: number | string | null;
+    };
     member?: {
         first_name: string;
         last_name: string;
@@ -198,6 +239,50 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         return 'RECONCILED';
     };
 
+    const formatCheckStatusLabel = (txn: BankTransaction) => {
+        if (!txn.check_status) return null;
+        return txn.check_status.state === 'RECONCILED' ? 'RECONCILED' : 'NOT RECONCILED';
+    };
+
+    /** Why a cleared check has not been reconciled, in the treasurer's terms. */
+    const explainCheckStatus = (txn: BankTransaction) => {
+        const status = txn.check_status;
+        if (!status || status.state === 'RECONCILED') return null;
+
+        const number = status.check_number ? `#${status.check_number}` : '';
+        switch (status.reason) {
+            case 'AMOUNT_MISMATCH':
+                return `Check ${number}: expense recorded as ${formatCurrency(status.expense_amount ?? 0)}, bank cleared ${formatCurrency(status.bank_amount ?? 0)}`;
+            case 'ALREADY_LINKED':
+                return `Check ${number} is already reconciled against another bank transaction`;
+            case 'NO_CHECK_NUMBER':
+                return 'This check cleared without a check number on the bank record — enter it manually';
+            default:
+                return `No expense recorded for check ${number} — enter it to reconcile`;
+        }
+    };
+
+    /**
+     * A bounced deposit is money the books still show as received, so the row
+     * says what it reverses rather than sitting as an unexplained debit.
+     */
+    const explainReturnedItem = (txn: BankTransaction) => {
+        const r = txn.returned_item;
+        if (!r) return null;
+
+        const number = r.check_number ? `#${r.check_number}` : '';
+        switch (r.reason) {
+            case 'NO_CHECK_SERIAL':
+                return `Deposited item returned for ${formatCurrency(r.bank_amount ?? 0)} — the bank did not report a check serial`;
+            case 'ORIGINAL_NOT_FOUND':
+                return `Returned check ${number} for ${formatCurrency(r.bank_amount ?? 0)} — no recorded payment carries this serial, so the original gift must be found by hand`;
+            case 'AMOUNT_MISMATCH':
+                return `Returned check ${number}: recorded as ${formatCurrency(r.original_amount ?? 0)}, bank reversed ${formatCurrency(r.bank_amount ?? 0)} — reverses receipt #${r.receipt_number}`;
+            default:
+                return `Returned check ${number} for ${formatCurrency(r.bank_amount ?? 0)} — reverses receipt #${r.receipt_number}. The ledger still counts this gift as received.`;
+        }
+    };
+
     const isAutoReconciled = (txn: BankTransaction) =>
         txn.status === 'MATCHED' && !!txn.reconciled_source && txn.reconciled_source.startsWith('AUTO');
 
@@ -205,6 +290,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         if (source === 'AUTO_LINKED') return 'Automatically linked to an existing payment (e.g. created by the Zelle email automation)';
         if (source === 'AUTO_MEMBER') return 'Payment automatically created for a previously-associated member';
         if (source === 'AUTO_EXPENSE') return 'Expense automatically recorded from a previously-learned payee/GL classification';
+        if (source === 'AUTO_CHECK_MATCH') return 'Cleared check matched to a manually recorded expense on check number and amount';
         return 'Automatically reconciled';
     };
 
@@ -526,11 +612,24 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         </td>
                                         <td className="whitespace-nowrap px-6 py-4 text-center">
                                             <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold
-                                                ${txn.status === 'MATCHED' ? 'bg-emerald-100 text-emerald-800' :
-                                                    txn.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
-                                                        'bg-slate-100 text-slate-700'}`}>
-                                                {formatStatusLabel(txn.status)}
+                                                ${txn.returned_item || txn.check_status?.state === 'NOT_RECONCILED' ? 'bg-red-100 text-red-800' :
+                                                    txn.status === 'MATCHED' ? 'bg-emerald-100 text-emerald-800' :
+                                                        txn.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
+                                                            'bg-slate-100 text-slate-700'}`}>
+                                                {txn.returned_item
+                                                    ? 'RETURNED ITEM'
+                                                    : formatCheckStatusLabel(txn) ?? formatStatusLabel(txn.status)}
                                             </span>
+                                            {explainReturnedItem(txn) && (
+                                                <div className="mt-1 max-w-72 whitespace-normal text-xs font-medium leading-4 text-red-700">
+                                                    {explainReturnedItem(txn)}
+                                                </div>
+                                            )}
+                                            {explainCheckStatus(txn) && (
+                                                <div className="mt-1 text-xs text-red-700">
+                                                    {explainCheckStatus(txn)}
+                                                </div>
+                                            )}
                                             {isAutoReconciled(txn) && (
                                                 <span
                                                     className="ml-1 inline-flex rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800"

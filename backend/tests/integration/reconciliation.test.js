@@ -399,4 +399,37 @@ describe('Bank Reconciliation API', () => {
 
         expect(noNameMatches).toHaveLength(0);
     });
+
+    test('surfaces a Zelle duplicate candidate posted 4 days after the payment', async () => {
+        const existing = await Transaction.create({
+            member_id: memberToLink.id,
+            collected_by: adminUser.id,
+            payment_date: '2025-04-01',
+            amount: 150.00,
+            payment_type: 'donation',
+            payment_method: 'zelle',
+            status: 'succeeded',
+            external_id: 'manual:window-1'
+        });
+
+        await BankTransaction.create({
+            date: '2025-04-05', // 4 days later: outside ±2, inside ±5
+            amount: 150.00,
+            description: 'Zelle payment from LINK TARGET 77665544',
+            type: 'ZELLE_CREDIT',
+            status: 'PENDING',
+            payer_name: 'LINK TARGET',
+            transaction_hash: 'bankhash-window-1',
+            raw_data: {}
+        });
+
+        const res = await request(app)
+            .get('/api/bank/transactions?status=PENDING')
+            .set('Authorization', 'Bearer valid-token')
+            .expect(200);
+
+        const row = res.body.data.transactions.find(t => t.transaction_hash === 'bankhash-window-1');
+        expect(row.potential_matches).toBeDefined();
+        expect(row.potential_matches.map(m => m.id)).toContain(existing.id);
+    });
 });

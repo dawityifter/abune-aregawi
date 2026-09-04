@@ -72,6 +72,8 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
       ? [txn.suggested_match]
       : [];
 
+  const isZelle = (txn?.type || '').toUpperCase().includes('ZELLE');
+
   const formatConfidence = (confidence?: string) => {
     if (!confidence) return 'suggested';
     return `${confidence.charAt(0).toUpperCase()}${confidence.slice(1)} confidence`;
@@ -126,6 +128,23 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
     setSearchTerm('');
     setSearchResults([]);
   }, [txn?.id]);
+
+  // Pre-fill the reconcile form's member field from the suggested match so a
+  // treasurer approving a PENDING Zelle row doesn't have to re-search for the
+  // payer that was already matched on the Zelle screen. Never overwrite a
+  // selection the treasurer has already made by hand (functional update
+  // keeps whatever is currently selected).
+  useEffect(() => {
+    if (!txn || txn.status !== 'PENDING') return;
+    const suggested = txn.suggested_match?.member;
+    if (!suggested) return;
+    setSelectedMember((prev) =>
+      prev ?? {
+        id: suggested.id,
+        name: `${suggested.first_name || ''} ${suggested.last_name || ''}`.trim(),
+      }
+    );
+  }, [txn?.id, txn?.status, txn?.suggested_match]);
 
   const handleReconcile = async (memberId: number, paymentType: string = selectedPaymentType) => {
     const token = await firebaseUser?.getIdToken();
@@ -281,21 +300,81 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
             </div>
           )}
 
-          {/* Reconciliation details (MATCHED expense) */}
-          {txn.status === 'MATCHED' && txn.amount < 0 && (txn.reconciled_payee_name || txn.reconciled_memo) && (
+          {/* The expense this bank debit is reconciled against. */}
+          {txn.status === 'MATCHED' && txn.amount < 0 && (txn.reconciled_expense || txn.reconciled_payee_name || txn.reconciled_memo) && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
               <p className="text-xs text-orange-700 font-bold mb-2">Expense Details</p>
-              {txn.reconciled_payee_name && (
-                <div className="mb-2">
-                  <p className="text-xs text-orange-600 font-semibold mb-0.5">Payee</p>
-                  <p className="text-sm text-gray-900 font-medium">{txn.reconciled_payee_name}</p>
+
+              {txn.reconciled_expense ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-xs text-orange-600 font-semibold mb-0.5">Category</p>
+                      <p className="text-sm text-gray-900 font-medium">
+                        {txn.reconciled_expense.category}
+                        {txn.reconciled_expense.category_name && ` · ${txn.reconciled_expense.category_name}`}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-orange-600 font-semibold mb-0.5">Recorded Amount</p>
+                      <p className="text-sm text-gray-900 font-semibold">
+                        {formatCurrency(Math.abs(Number(txn.reconciled_expense.amount)))}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-orange-600 font-semibold mb-0.5">Expense Date</p>
+                      <p className="text-sm text-gray-900">{txn.reconciled_expense.entry_date}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-orange-600 font-semibold mb-0.5">Method</p>
+                      <p className="text-sm text-gray-900">
+                        {formatPaymentLabel(txn.reconciled_expense.payment_method)}
+                        {txn.reconciled_expense.check_number && ` · #${txn.reconciled_expense.check_number}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {txn.reconciled_expense.receipt_number && (
+                    <div>
+                      <p className="text-xs text-orange-600 font-semibold mb-0.5">Receipt</p>
+                      <p className="text-sm text-gray-900">{txn.reconciled_expense.receipt_number}</p>
+                    </div>
+                  )}
+                  {txn.reconciled_expense.payee_name && (
+                    <div>
+                      <p className="text-xs text-orange-600 font-semibold mb-0.5">Payee</p>
+                      <p className="text-sm text-gray-900 font-medium">{txn.reconciled_expense.payee_name}</p>
+                    </div>
+                  )}
+                  {txn.reconciled_expense.memo && (
+                    <div>
+                      <p className="text-xs text-orange-600 font-semibold mb-0.5">Memo</p>
+                      <p className="text-sm text-gray-900 break-words">{txn.reconciled_expense.memo}</p>
+                    </div>
+                  )}
+
+                  <p className="pt-1 text-xs text-orange-700 border-t border-orange-200">
+                    {txn.reconciled_expense.source_system === 'bank_reconciliation'
+                      ? 'Expense created by bank reconciliation from this transaction'
+                      : 'Expense entered by hand, then matched to this transaction'}
+                    {txn.reconciled_source === 'AUTO_CHECK_MATCH' && ' automatically on the check number'}
+                  </p>
                 </div>
-              )}
-              {txn.reconciled_memo && (
-                <div>
-                  <p className="text-xs text-orange-600 font-semibold mb-0.5">Memo</p>
-                  <p className="text-sm text-gray-900 break-words">{txn.reconciled_memo}</p>
-                </div>
+              ) : (
+                <>
+                  {txn.reconciled_payee_name && (
+                    <div className="mb-2">
+                      <p className="text-xs text-orange-600 font-semibold mb-0.5">Payee</p>
+                      <p className="text-sm text-gray-900 font-medium">{txn.reconciled_payee_name}</p>
+                    </div>
+                  )}
+                  {txn.reconciled_memo && (
+                    <div>
+                      <p className="text-xs text-orange-600 font-semibold mb-0.5">Memo</p>
+                      <p className="text-sm text-gray-900 break-words">{txn.reconciled_memo}</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -469,7 +548,7 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
                   disabled={!selectedMember}
                   className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-md py-2 text-sm font-semibold"
                 >
-                  Confirm Selected Member
+                  {isZelle ? 'Approve' : 'Confirm Selected Member'}
                 </button>
 
                 <button

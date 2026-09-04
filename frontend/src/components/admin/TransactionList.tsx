@@ -70,6 +70,10 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  // No sort until the treasurer asks for one, so the default stays
+  // "most recent payment first" from the server.
+  const [sortBy, setSortBy] = useState<'receipt_number' | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [totalPages, setTotalPages] = useState(1);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
@@ -83,7 +87,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   useEffect(() => {
     fetchTransactions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentTypeFilter, paymentMethodFilter, cardSourceFilter, minAmountFilter, maxAmountFilter, dateRangeFilter, customStartDate, customEndDate, receiptNumberFilter, currentPage]);
+  }, [paymentTypeFilter, paymentMethodFilter, cardSourceFilter, minAmountFilter, maxAmountFilter, dateRangeFilter, customStartDate, customEndDate, receiptNumberFilter, currentPage, sortBy, sortDir]);
 
   // Fetch only when search is cleared or has at least 3 characters
   useEffect(() => {
@@ -112,12 +116,29 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // First click sorts descending (newest receipts, the useful direction);
+  // clicking again flips it.
+  const toggleReceiptSort = () => {
+    if (sortBy === 'receipt_number') {
+      setSortDir(prev => (prev === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortBy('receipt_number');
+      setSortDir('desc');
+    }
+    setCurrentPage(1);
+  };
+
   const fetchTransactions = async () => {
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '20'
       });
+
+      if (sortBy) {
+        params.append('sort_by', sortBy);
+        params.append('sort_dir', sortDir);
+      }
 
       if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
         params.append('search', debouncedSearchTerm);
@@ -572,8 +593,25 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                 <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('treasurerDashboard.transactionList.table.status')}
                 </th>
-                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {t('treasurerDashboard.transactionList.table.receipt')}
+                <th
+                  className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500"
+                  aria-sort={sortBy === 'receipt_number' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                >
+                  <button
+                    type="button"
+                    onClick={toggleReceiptSort}
+                    className={`group inline-flex items-center gap-1.5 uppercase tracking-[0.18em] transition-colors hover:text-slate-900 ${
+                      sortBy === 'receipt_number' ? 'text-slate-900' : ''
+                    }`}
+                  >
+                    {t('treasurerDashboard.transactionList.table.receipt')}
+                    <span
+                      aria-hidden="true"
+                      className={sortBy === 'receipt_number' ? 'text-blue-600' : 'text-slate-300 group-hover:text-slate-400'}
+                    >
+                      {sortBy === 'receipt_number' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+                    </span>
+                  </button>
                 </th>
                 <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Action

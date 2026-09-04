@@ -22,6 +22,14 @@ router.get('/stats', roleMiddleware(viewRoles), expenseController.getExpenseStat
 // MUST stay above '/:id' or that route swallows it as an expense lookup.
 router.get('/skipped-checks', roleMiddleware(viewRoles), expenseController.getSkippedChecks);
 
+// Payment methods present on expenses, for the list filter (READ-ONLY).
+// MUST stay above '/:id' or that route swallows it as an expense lookup.
+router.get('/payment-methods', roleMiddleware(viewRoles), expenseController.getExpensePaymentMethods);
+
+// Is a check number free? Drives inline validation on the Add Expense form
+// (READ-ONLY). MUST stay above '/:id' or that route swallows it.
+router.get('/check-number-availability', roleMiddleware(viewRoles), expenseController.getCheckNumberAvailability);
+
 // Get all expenses (READ-ONLY)
 router.get('/', roleMiddleware(viewRoles), expenseController.getExpenses);
 

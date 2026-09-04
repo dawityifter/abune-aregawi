@@ -20,5 +20,6 @@ router.post('/reconcile/batch-create', require('../controllers/zelleController')
 // Email queue (audit trail + review list persisted by the sync job)
 router.get('/queue', require('../controllers/zelleController').getQueue);
 router.post('/queue/:id/ignore', require('../controllers/zelleController').ignoreQueueItem);
+router.post('/queue/:id/match', require('../controllers/zelleController').matchQueueItem);
 
 module.exports = router;

@@ -39,16 +39,35 @@ function sanitizeNote(input) {
 /**
  * Extract the payer (sender) name from Chase Zelle email subject/body.
  * Known Chase formats:
+ *   "JOHN DOE sent you money"     <- current notification wording
  *   "JOHN DOE sent you $50.00"
  *   "You received $50.00 from JOHN DOE"
  *   "Zelle payment from JOHN DOE 123456"
+ *
+ * Two things about the real input shape drive the leading pattern:
+ *
+ * 1. The amount is NOT next to the name. Chase writes "<NAME> sent you money"
+ *    and puts the amount further down in a details table, so a pattern
+ *    requiring "sent you $" matches none of the live notifications.
+ * 2. There is usually no line structure to lean on. Chase sends these as
+ *    text/html with no text/plain part, so parseCandidatesFromMessage falls
+ *    back to Gmail's ~200 character snippet: a single line reading
+ *    "Zelle ® payment <NAME> sent you money Here are the details: ...".
+ *
+ * So the name's start is anchored to a line start OR to the "®" that ends
+ * Chase's chrome — a character that cannot occur inside a name. Without such
+ * an anchor the match runs leftward and swallows whatever preceded it (the
+ * subject line, or the word "payment") into the captured name, which would
+ * silently corrupt the ZELLE:PAYER:<name> key every match is stored under.
  */
 function extractPayerName(text) {
   if (!text) return null;
-  const raw = String(text).replace(/\s+/g, ' ');
+  // Collapse runs of spaces/tabs, but keep newlines: where they do exist they
+  // are a boundary that stops one line bleeding into the next line's name.
+  const raw = String(text).replace(/[ \t]+/g, ' ');
 
   const patterns = [
-    /([A-Za-z][A-Za-z'’.\- ]{1,60}?)\s+sent you\s+\$/i,
+    /(?:^|®)[ \t]*(?:payment[ \t]+)?([A-Za-z][A-Za-z'’.\- ]{1,60}?)\s+sent you\s+(?:money\b|\$)/im,
     /received\s+\$[\d,.]+\s+from\s+([A-Za-z][A-Za-z'’.\- ]{1,60}?)(?=\s*(?:[.,|\n]|$|is registered))/i,
     /Zelle payment from\s+([A-Za-z][A-Za-z'’.\- ]{1,60}?)(?=\s*(?:[.,|\n]|\d|$))/i
   ];
@@ -382,6 +401,74 @@ async function createZelleTransaction({
   return { success: true, id: tx.id, data: tx, bank_link: bankLink };
 }
 
+/**
+ * Associate a queued Zelle email with a member WITHOUT creating a transaction.
+ *
+ * This is the whole point of match-only mode: it writes the learned payer keys
+ * (bank_memo_matches + the legacy memo row) that bank reconciliation will find
+ * when the corresponding Chase CSV row is uploaded, so the treasurer approves a
+ * pre-filled suggestion instead of identifying the giver from scratch.
+ *
+ * Re-runnable: matching again updates the learned keys, which is how a
+ * treasurer corrects a mistake.
+ */
+async function matchQueueRowToMember({ queueId, memberId, payerName = null, userId = null }) {
+  const row = await ZelleEmailQueue.findByPk(queueId);
+  if (!row) {
+    return { success: false, code: 'NOT_FOUND', message: 'Queue item not found' };
+  }
+  if (row.transaction_id) {
+    return {
+      success: false,
+      code: 'ALREADY_POSTED',
+      message: 'This email already has a transaction; its member association is settled by that transaction.'
+    };
+  }
+
+  const member = await Member.findByPk(memberId, { attributes: ['id'] });
+  if (!member) {
+    return { success: false, code: 'MEMBER_NOT_FOUND', message: 'Member not found' };
+  }
+
+  // An explicit override wins: when extractPayerName failed, the stored
+  // payer_name is null and learning would key off memo text that no bank row
+  // ever matches.
+  const trimmedOverride = payerName ? String(payerName).trim() : '';
+  const trimmedRowPayerName = row.payer_name ? String(row.payer_name).trim() : '';
+  const effectivePayerName = trimmedOverride || trimmedRowPayerName || null;
+
+  // With no payer name at all, learnZelleAssociation falls back to keying off
+  // the raw note text, which no real bank CSV description ever normalizes
+  // to — the match would report success while learning a key that can never
+  // be found. Refuse instead of silently doing nothing useful.
+  if (!effectivePayerName) {
+    return {
+      success: false,
+      code: 'PAYER_NAME_REQUIRED',
+      message: 'This email has no payer name on file. Enter the payer name exactly as it appears on the bank statement so bank reconciliation can find this match.'
+    };
+  }
+
+  await learnZelleAssociation({
+    payerName: effectivePayerName,
+    note: row.note,
+    memberId: member.id
+  });
+
+  await row.update({
+    payer_name: effectivePayerName,
+    matched_member_id: member.id,
+    match_confidence: 'high',
+    match_source: 'TREASURER_MATCH',
+    status: 'MATCHED',
+    matched_by: userId || null,
+    matched_at: new Date(),
+    error: null
+  });
+
+  return { success: true, data: row };
+}
+
 module.exports = {
   sanitizeNote,
   extractPayerName,
@@ -392,5 +479,6 @@ module.exports = {
   learnZelleAssociation,
   getDefaultPaymentType,
   createZelleTransaction,
+  matchQueueRowToMember,
   resolveIncomeCategory
 };

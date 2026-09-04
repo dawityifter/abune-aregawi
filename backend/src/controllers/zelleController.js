@@ -1,9 +1,12 @@
 const { syncZelleFromGmail, previewZelleFromGmail } = require('../services/gmailZelleIngest');
 const {
   createZelleTransaction,
-  extractPayerName
+  extractPayerName,
+  matchQueueRowToMember
 } = require('../services/zelleTransactionService');
-const { ZelleEmailQueue, Member, Transaction } = require('../models');
+const { ZelleEmailQueue, Member, Transaction, sequelize } = require('../models');
+const { isZelleGmailCreateEnabled } = require('../config/featureFlags');
+const { Op } = require('sequelize');
 
 async function syncFromGmail(req, res) {
   try {
@@ -87,10 +90,21 @@ async function processTransactionCreation(item, user) {
   return result;
 }
 
+// Match-only mode: transaction creation from the Gmail screen is disabled;
+// bank reconciliation is the only path that posts money.
+function creationDisabledResponse(res) {
+  return res.status(403).json({
+    success: false,
+    code: 'CREATE_DISABLED',
+    message: 'Creating transactions from Zelle emails is disabled. Match the payer to a member here, then approve the payment in Bank Reconciliation.'
+  });
+}
+
 // POST /api/zelle/reconcile/create-transaction
 // Body: { external_id, amount, payment_date, note, member_id, payment_type }
 // Insert-only: if external_id exists, do not modify existing
 async function createTransactionFromPreview(req, res) {
+  if (!isZelleGmailCreateEnabled()) return creationDisabledResponse(res);
   try {
     const result = await processTransactionCreation(req.body || {}, req.user);
     if (!result.success && result.code === 'EXISTS') {
@@ -106,6 +120,7 @@ async function createTransactionFromPreview(req, res) {
 // POST /api/zelle/reconcile/batch-create
 // Body: { items: [{ external_id, amount, payment_date, note, member_id, payment_type }, ...] }
 async function createBatchTransactions(req, res) {
+  if (!isZelleGmailCreateEnabled()) return creationDisabledResponse(res);
   try {
     const { items } = req.body;
     if (!Array.isArray(items)) {
@@ -129,26 +144,59 @@ async function createBatchTransactions(req, res) {
   }
 }
 
-// GET /api/zelle/queue?status=AUTO_CREATED&limit=50
-// Audit/review list of processed Zelle emails
+// GET /api/zelle/queue?status=NEEDS_REVIEW&search=smith&page=1&limit=50
+// The treasurer's primary Zelle screen: every email the sync has recorded,
+// with its current member match.
 async function getQueue(req, res) {
   try {
-    const { status } = req.query;
-    const limit = Math.min(Number(req.query.limit || 50), 200);
+    const { status, search } = req.query;
+    // Truncate before clamping: a fractional LIMIT/OFFSET (e.g. from
+    // `?page=2.5`) reaches the driver as a non-integer and both Postgres and
+    // sqlite reject it (Postgres: "syntax error at or near '.'"; sqlite:
+    // SQLITE_MISMATCH datatype mismatch) — this is a real cross-dialect bug,
+    // not just a Postgres one, verified against both.
+    const page = Math.max(Math.trunc(Number(req.query.page)) || 1, 1);
+    const limit = Math.min(Math.max(Math.trunc(Number(req.query.limit)) || 50, 1), 200);
+
     const where = {};
     if (status) where.status = String(status).toUpperCase();
 
-    const rows = await ZelleEmailQueue.findAll({
+    const term = String(search || '').trim();
+    if (term) {
+      const likeOp = sequelize.getDialect() === 'postgres' ? Op.iLike : Op.like;
+      const contains = { [likeOp]: `%${term}%` };
+      where[Op.or] = [
+        { payer_name: contains },
+        { note: contains },
+        { subject: contains }
+      ];
+    }
+
+    const { count, rows } = await ZelleEmailQueue.findAndCountAll({
       where,
-      order: [['payment_date', 'DESC'], ['created_at', 'DESC']],
+      // Unmatched work first, then most recent payments. `matched_member_id IS
+      // NULL` sorts DESC in both dialects: Postgres puts TRUE first, sqlite
+      // puts 1 first. A CASE expression would need dialect-specific quoting.
+      order: [
+        [sequelize.literal('matched_member_id IS NULL'), 'DESC'],
+        ['payment_date', 'DESC'],
+        ['created_at', 'DESC']
+      ],
       limit,
+      offset: (page - 1) * limit,
+      distinct: true,
       include: [
         { model: Member, as: 'matchedMember', attributes: ['id', 'first_name', 'last_name'] },
         { model: Transaction, as: 'transaction', attributes: ['id', 'amount', 'payment_type', 'payment_date', 'receipt_number'] }
       ]
     });
 
-    return res.json({ success: true, count: rows.length, items: rows });
+    return res.json({
+      success: true,
+      count: rows.length,
+      items: rows,
+      pagination: { total: count, page, pages: Math.ceil(count / limit) }
+    });
   } catch (error) {
     console.error('Zelle queue list error:', error);
     return res.status(500).json({ success: false, message: error.message });
@@ -173,6 +221,35 @@ async function ignoreQueueItem(req, res) {
   }
 }
 
+// POST /api/zelle/queue/:id/match
+// Body: { member_id, payer_name? }
+// Associates a payer with a member for later bank reconciliation.
+// Creates NO transaction.
+async function matchQueueItem(req, res) {
+  try {
+    const { member_id, payer_name } = req.body || {};
+    if (!member_id) {
+      return res.status(400).json({ success: false, message: 'member_id is required' });
+    }
+
+    const result = await matchQueueRowToMember({
+      queueId: req.params.id,
+      memberId: member_id,
+      payerName: payer_name,
+      userId: req.user?.id || null
+    });
+
+    if (!result.success) {
+      const statusByCode = { NOT_FOUND: 404, ALREADY_POSTED: 409, MEMBER_NOT_FOUND: 400, PAYER_NAME_REQUIRED: 400 };
+      return res.status(statusByCode[result.code] || 400).json(result);
+    }
+    return res.json(result);
+  } catch (error) {
+    console.error('Zelle queue match error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   syncFromGmail,
   previewFromGmail,
@@ -180,5 +257,6 @@ module.exports = {
   createBatchTransactions,
   processTransactionCreation,
   getQueue,
-  ignoreQueueItem
+  ignoreQueueItem,
+  matchQueueItem
 };

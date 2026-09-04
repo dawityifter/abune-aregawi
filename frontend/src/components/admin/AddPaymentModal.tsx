@@ -62,6 +62,17 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   const [paymentType, setPaymentType] = useState(initialPaymentType || '');
   const [forYear, setForYear] = useState('');
   const [receiptNumber, setReceiptNumber] = useState('');
+  // The serial printed on the donor's own check. Recorded so a returned deposit
+  // ("DEPOSITED ITEM RETURNED ... CHK SER# 1397") can be traced back to the gift
+  // it reverses instead of being reconstructed from a free-text memo.
+  const [payerCheckNumber, setPayerCheckNumber] = useState('');
+  // Skipped-receipt guard. The receipt book is a paper sequence, so jumping
+  // ahead usually means a receipt was written and never recorded — worth
+  // stopping for, but the treasurer may have a good reason, so it is a
+  // confirmable warning rather than a block.
+  const [skippedReceipts, setSkippedReceipts] = useState<number[]>([]);
+  const [lastReceiptNumber, setLastReceiptNumber] = useState<number | null>(null);
+  const [skipConfirmed, setSkipConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submissionId, setSubmissionId] = useState('');
   const [error, setError] = useState('');
@@ -330,6 +341,44 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
     return () => { cancelled = true; };
   }, [selectedMemberId]);
 
+  // Checked as the treasurer leaves the field rather than on submit, so the
+  // gap is visible while the receipt book is still in their hand.
+  const handleReceiptBlur = async () => {
+    const entered = parseInt(receiptNumber.trim(), 10);
+    // "000" means no receipt was issued; it is not part of the sequence.
+    if (!Number.isFinite(entered) || receiptNumber.trim() === '000') {
+      setSkippedReceipts([]);
+      return;
+    }
+
+    try {
+      const token = await firebaseUser?.getIdToken();
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      const res = await fetch(`${apiUrl}/api/transactions/last-receipt-number`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const last = data?.data?.last_receipt_number ?? null;
+      setLastReceiptNumber(last);
+
+      // Nothing recorded yet means no sequence to break.
+      if (last === null || entered <= last + 1) {
+        setSkippedReceipts([]);
+        return;
+      }
+
+      const gaps: number[] = [];
+      for (let i = last + 1; i < entered; i++) gaps.push(i);
+      setSkippedReceipts(gaps);
+      setSkipConfirmed(false);
+    } catch (err) {
+      // A failed lookup must not block recording a payment.
+      console.error('Could not check the last receipt number:', err);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -356,6 +405,13 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
       let response;
 
       if (paymentView === 'new') {
+        // A skipped receipt has to be acknowledged before the payment lands.
+        if (skippedReceipts.length > 0 && !skipConfirmed) {
+          setError('This receipt number skips one or more receipts. Confirm the skip before saving.');
+          setLoading(false);
+          return;
+        }
+
         // Enforce receipt number for cash/check per business rule
         if (receiptRequired && !receiptNumber.trim()) {
           setError('Receipt number is required for cash and check payments.');
@@ -420,6 +476,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           payment_type: paymentType,
           payment_method: paymentMethod,
           receipt_number: receiptNumber,
+          check_number: paymentMethod === 'check' ? payerCheckNumber : null,
           for_year: forYear ? parseInt(forYear) : null,
           note: notes,
           external_id: submissionId
@@ -735,10 +792,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="payment-method-0" className="block text-sm font-medium text-gray-700 mb-2">
                     Payment Method
                   </label>
                   <select
+                    id="payment-method-0"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     required
@@ -752,6 +810,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                     ))}
                   </select>
                 </div>
+
               </>
             ) : (
               // New transaction system fields
@@ -915,11 +974,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 </div>
 
                 <div>
-                  <label htmlFor="payment-method-select" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="payment-method-1" className="block text-sm font-medium text-gray-700 mb-2">
                     Payment Method
                   </label>
                   <select
-                    id="payment-method-select"
+                    id="payment-method-1"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     required
@@ -933,6 +992,27 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                     ))}
                   </select>
                 </div>
+                {paymentMethod === 'check' && (
+                  <div>
+                    <label htmlFor="payer-check" className="block text-sm font-medium text-gray-700 mb-2">
+                      Check Number (on the donor's check)
+                    </label>
+                    <input
+                      id="payer-check"
+                      data-testid="payer-check-number"
+                      type="text"
+                      inputMode="numeric"
+                      value={payerCheckNumber}
+                      onChange={(e) => setPayerCheckNumber(e.target.value.replace(/\D/g, ''))}
+                      placeholder="1397"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Lets a bounced check be traced back to this payment.
+                    </p>
+                  </div>
+                )}
+
 
                 {/* Stripe payment forms when card/ACH selected */}
                 {(paymentMethod === 'credit_card' || paymentMethod === 'ach') && (
@@ -1066,19 +1146,55 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="payment-receipt-number" className="block text-sm font-medium text-gray-700 mb-2">
                     Receipt Number {receiptRequired && <span className="text-red-600">*</span>}
                   </label>
                   <input
+                    id="payment-receipt-number"
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
                     value={receiptNumber}
-                    onChange={(e) => setReceiptNumber(digitsOnly(e.target.value))}
+                    onChange={(e) => {
+                      setReceiptNumber(digitsOnly(e.target.value));
+                      // A different number is a different decision.
+                      setSkippedReceipts([]);
+                      setSkipConfirmed(false);
+                    }}
+                    onBlur={handleReceiptBlur}
                     placeholder={receiptRequired ? 'Enter receipt number (required for Cash/Check)' : 'Enter receipt number (optional)'}
                     required={receiptRequired}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  {skippedReceipts.length > 0 && (
+                    <div
+                      data-testid="receipt-skip-warning"
+                      className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2"
+                    >
+                      <p className="text-xs font-semibold text-amber-800">
+                        ⚠️ This skips {skippedReceipts.length === 1 ? 'a receipt' : `${skippedReceipts.length} receipts`}.
+                      </p>
+                      <p className="mt-1 text-xs text-amber-800">
+                        The last receipt recorded is <strong>{lastReceiptNumber}</strong>, so entering{' '}
+                        <strong>{receiptNumber}</strong> leaves{' '}
+                        <strong>
+                          {skippedReceipts.length <= 4
+                            ? skippedReceipts.join(', ')
+                            : `${skippedReceipts[0]}–${skippedReceipts[skippedReceipts.length - 1]}`}
+                        </strong>{' '}
+                        unrecorded.
+                      </p>
+                      <label className="mt-2 flex items-center gap-2 text-xs font-medium text-amber-900">
+                        <input
+                          data-testid="receipt-skip-confirm"
+                          type="checkbox"
+                          checked={skipConfirmed}
+                          onChange={(e) => setSkipConfirmed(e.target.checked)}
+                        />
+                        I meant to skip {skippedReceipts.length === 1 ? 'this number' : 'these numbers'} — continue
+                      </label>
+                    </div>
+                  )}
                   {receiptNumber === '000' && (
                     <p className="mt-1 text-xs text-amber-600 font-medium">
                       ⚠️ Using 000 means no receipt was given. A written receipt must be issued as soon as possible.
@@ -1155,7 +1271,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={loading || pledgeNeedsMember}
+                disabled={loading || pledgeNeedsMember || (skippedReceipts.length > 0 && !skipConfirmed)}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-md"
               >
                 {loading

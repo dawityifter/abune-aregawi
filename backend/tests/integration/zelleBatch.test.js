@@ -15,6 +15,13 @@ describe('Zelle Batch Ingestion', () => {
     let adminMember;
     let donorMember;
 
+    const originalFlag = process.env.ZELLE_GMAIL_CREATE_ENABLED;
+    beforeAll(() => { process.env.ZELLE_GMAIL_CREATE_ENABLED = 'true'; });
+    afterAll(() => {
+        if (originalFlag === undefined) delete process.env.ZELLE_GMAIL_CREATE_ENABLED;
+        else process.env.ZELLE_GMAIL_CREATE_ENABLED = originalFlag;
+    });
+
     beforeAll(async () => {
         await sequelize.sync({ force: true });
 

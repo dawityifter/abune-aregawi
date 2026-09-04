@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import BankTransactionDetail from '../BankTransactionDetail';
 import { BankTransaction } from '../BankTransactionList';
@@ -213,7 +213,9 @@ describe('BankTransactionDetail — PENDING income actions', () => {
     renderDetail(<BankTransactionDetail txn={mockTxnWithMatch} onClose={jest.fn()} onSuccess={onSuccess} />);
     fireEvent.change(screen.getByLabelText('Receipt Number (Optional)'), { target: { value: 'R-1001' } });
     fireEvent.click(screen.getByRole('button', { name: /Dawit Yifter/i }));
-    fireEvent.click(screen.getByText('Confirm Selected Member'));
+    // mockTxnWithMatch is a ZELLE-type row, so the submit button reads
+    // "Approve" rather than the generic "Confirm Selected Member" label.
+    fireEvent.click(screen.getByRole('button', { name: /^Approve$/i }));
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/bank/reconcile'),
@@ -255,8 +257,9 @@ describe('BankTransactionDetail — PENDING income actions', () => {
   });
 
   test('confirm button stays disabled until a member is selected', () => {
+    // mockTxn is a ZELLE-type row, so the submit button reads "Approve".
     renderDetail(<BankTransactionDetail txn={mockTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
-    expect(screen.getByText('Confirm Selected Member')).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Approve$/i })).toBeDisabled();
   });
 
   test('shows member search input', () => {
@@ -384,5 +387,97 @@ describe('BankTransactionDetail — PENDING expense actions', () => {
     });
     fireEvent.click(screen.getByText('Record Expense'));
     await waitFor(() => expect(screen.getByText('Server error')).toBeInTheDocument());
+  });
+});
+
+describe('BankTransactionDetail — Zelle suggestion pre-fill and approval', () => {
+  const zelleSuggestedTxn: BankTransaction = {
+    ...mockTxn,
+    type: 'ZELLE',
+    status: 'PENDING',
+    amount: 75,
+    payer_name: 'SYNTHETIC PAYER',
+    suggested_match: {
+      type: 'LEARNED_ZELLE',
+      source: 'LEARNED_ZELLE',
+      confidence: 'high',
+      reason: 'Previously associated with this ZELLE payer',
+      member: { id: 7, first_name: 'Test', last_name: 'Member' },
+    },
+  };
+
+  test('pre-selects the suggested member on a Zelle row', async () => {
+    renderDetail(<BankTransactionDetail txn={zelleSuggestedTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
+
+    // selectedMember is seeded from the suggestion, so the "Selected Member"
+    // panel renders immediately without the treasurer clicking or searching.
+    expect(await screen.findByText('Selected Member')).toBeInTheDocument();
+    const selectedPanel = screen.getByText('Selected Member').closest('div') as HTMLElement;
+    expect(within(selectedPanel).getByText('Test Member')).toBeInTheDocument();
+
+    // Ground truth: submitting immediately reconciles member id 7 without
+    // any further interaction, proving the selection is real, not decorative.
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
+    fireEvent.click(screen.getByRole('button', { name: /Approve/i }));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(body.member_id).toBe(7);
+  });
+
+  test('does not clobber a manual selection already made by the treasurer', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true, data: { results: [{ id: 99, name: 'Manual Member', phoneNumber: '+15551234567' }] } }),
+    });
+
+    const { rerender } = renderDetail(
+      <BankTransactionDetail txn={zelleSuggestedTxn} onClose={jest.fn()} onSuccess={jest.fn()} />
+    );
+
+    // Seeded from the suggestion first.
+    await screen.findByText('Selected Member');
+    expect(within(screen.getByText('Selected Member').closest('div') as HTMLElement).getByText('Test Member')).toBeInTheDocument();
+
+    // Treasurer overrides it by hand via the search box.
+    fireEvent.change(screen.getByPlaceholderText(/search member/i), { target: { value: 'Manual Mem' } });
+    await waitFor(() => expect(screen.getByText('Manual Member')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Manual Member'));
+    expect(within(screen.getByText('Selected Member').closest('div') as HTMLElement).getByText('Manual Member')).toBeInTheDocument();
+
+    // Parent re-renders with a fresh suggested_match object (e.g. a background
+    // refresh of the same row) — the seeding effect must not stomp the treasurer's
+    // manual choice just because the object identity changed.
+    const sameRowRefreshed: BankTransaction = {
+      ...zelleSuggestedTxn,
+      suggested_match: { ...zelleSuggestedTxn.suggested_match! },
+    };
+    rerender(
+      <I18nProvider>
+        <LanguageProvider>
+          <BankTransactionDetail txn={sameRowRefreshed} onClose={jest.fn()} onSuccess={jest.fn()} />
+        </LanguageProvider>
+      </I18nProvider>
+    );
+
+    expect(within(screen.getByText('Selected Member').closest('div') as HTMLElement).getByText('Manual Member')).toBeInTheDocument();
+  });
+
+  test('shows the suggestion provenance so the treasurer can judge it', async () => {
+    renderDetail(<BankTransactionDetail txn={zelleSuggestedTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
+
+    expect(await screen.findByText(/Previously associated with this ZELLE payer/)).toBeInTheDocument();
+    expect(screen.getByText(/high/i)).toBeInTheDocument();
+  });
+
+  test('labels the action as approval for a Zelle row', async () => {
+    renderDetail(<BankTransactionDetail txn={zelleSuggestedTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    expect(await screen.findByRole('button', { name: /^Approve$/i })).toBeInTheDocument();
+  });
+
+  test('keeps the original label for a non-Zelle PENDING income row', () => {
+    const achTxn: BankTransaction = { ...mockTxn, type: 'ACH' };
+    renderDetail(<BankTransactionDetail txn={achTxn} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    expect(screen.getByText('Confirm Selected Member')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Approve$/i })).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const { BankTransaction, Member, LedgerEntry, IncomeCategory, Transaction, ZelleMemoMatch, ExpenseCategory, sequelize } = require('../models');
 const { parseChaseCSV } = require('../services/bankParserService');
+const { parseCheckNumber } = require('../utils/checkNumber');
 
 /**
  * @desc    Upload and parse bank CSV
@@ -147,6 +148,107 @@ exports.uploadBankCSV = asyncHandler(async (req, res) => {
  * @route   GET /api/bank/transactions
  * @access  Private
  */
+/**
+ * Classify a bank row's check reconciliation for the list UI.
+ * Returns null for anything that isn't a check debit, so non-check rows keep
+ * their normal pending/matched treatment.
+ */
+/**
+ * Classify a returned deposited item — a check the church deposited that
+ * bounced. The serial Chase reports is the DONOR's, so this looks for the
+ * income entry it reverses, never the church's own checkbook.
+ *
+ * Returns null for anything that isn't a return, so ordinary rows are untouched.
+ */
+async function describeReturnedItem(txn, plain) {
+    const { isReturnedItem } = require('../services/bankParserService');
+    if (!isReturnedItem(plain)) return null;
+
+    const serialMatch = String(plain.description || '').match(/CHK\s*SER#?\s*(\d+)/i);
+    const checkNumber = parseCheckNumber(plain.check_number) || parseCheckNumber(serialMatch && serialMatch[1]);
+    const bankAmount = Math.abs(Number(plain.amount));
+
+    const base = { state: 'RETURNED', check_number: checkNumber, bank_amount: bankAmount };
+    if (!checkNumber) {
+        return { ...base, reverses_ledger_entry_id: null, receipt_number: null, reason: 'NO_CHECK_SERIAL' };
+    }
+
+    // Income entries only: this reverses a gift the church received.
+    const original = await LedgerEntry.findOne({
+        where: { type: { [require('sequelize').Op.ne]: 'expense' }, check_number: checkNumber }
+    });
+
+    if (!original) {
+        return { ...base, reverses_ledger_entry_id: null, receipt_number: null, reason: 'ORIGINAL_NOT_FOUND' };
+    }
+
+    return {
+        ...base,
+        reverses_ledger_entry_id: original.id,
+        receipt_number: original.receipt_number || null,
+        original_amount: Number(original.amount),
+        reason: Math.abs(Number(original.amount) - bankAmount) < 0.005 ? null : 'AMOUNT_MISMATCH'
+    };
+}
+
+async function describeCheckStatus(txn, plain) {
+    const { checkNumberFor } = require('../services/autoReconcileService');
+    const { sourceTypeFor } = require('../services/bankMemoMatchService');
+    const { isReturnedItem } = require('../services/bankParserService');
+
+    // A return carries the donor's serial, not one of the church's own checks.
+    if (isReturnedItem(plain)) return null;
+
+    const isDebit = Number(plain.amount) < 0;
+    const checkNumber = checkNumberFor(plain);
+    if (!isDebit || (sourceTypeFor(plain) !== 'CHECK' && !checkNumber)) return null;
+
+    if (txn.status === 'MATCHED') {
+        return {
+            state: 'RECONCILED',
+            check_number: checkNumber,
+            ledger_entry_id: (plain.reconciled_meta || {}).ledger_entry_id || null
+        };
+    }
+    if (txn.status === 'IGNORED') return null;
+
+    const bankAmount = Math.abs(Number(plain.amount));
+    if (!checkNumber) {
+        return { state: 'NOT_RECONCILED', reason: 'NO_CHECK_NUMBER', check_number: null, bank_amount: bankAmount };
+    }
+
+    const candidates = await LedgerEntry.findAll({
+        where: { type: 'expense', check_number: checkNumber }
+    });
+
+    if (candidates.length === 0) {
+        return { state: 'NOT_RECONCILED', reason: 'NO_MANUAL_ENTRY', check_number: checkNumber, bank_amount: bankAmount };
+    }
+
+    // The number exists, so the amounts must be what disagree — show both so the
+    // treasurer can tell which side was mistyped.
+    const mismatched = candidates.find((e) => Math.abs(Number(e.amount) - bankAmount) >= 0.005);
+    if (mismatched) {
+        return {
+            state: 'NOT_RECONCILED',
+            reason: 'AMOUNT_MISMATCH',
+            check_number: checkNumber,
+            bank_amount: bankAmount,
+            expense_amount: Number(mismatched.amount),
+            ledger_entry_id: mismatched.id
+        };
+    }
+
+    // Amount agrees but the expense is spoken for by another bank row.
+    return {
+        state: 'NOT_RECONCILED',
+        reason: 'ALREADY_LINKED',
+        check_number: checkNumber,
+        bank_amount: bankAmount,
+        ledger_entry_id: candidates[0].id
+    };
+}
+
 exports.getBankTransactions = asyncHandler(async (req, res) => {
     const { status, type, startDate, endDate, description, search, page = 1, limit = 50 } = req.query;
     const { Op } = require('sequelize');
@@ -230,18 +332,46 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
     );
 
     // Fetch reconciliation details (payee_name, memo) from LedgerEntry for expense reconciliations
+    // Every expense linked to these rows, however it got there. This used to
+    // require source_system 'bank_reconciliation', which silently excluded the
+    // match-only flow: a cleared check links the expense the treasurer entered
+    // BY HAND, whose source_system is 'manual'. Those rows showed no expense
+    // detail at all.
     const ledgerEntries = matchedHashes.length > 0
         ? await LedgerEntry.findAll({
             where: {
                 external_id: matchedHashes,
-                source_system: 'bank_reconciliation'
+                type: 'expense'
             },
-            attributes: ['external_id', 'payee_name', 'memo']
+            attributes: [
+                'id', 'external_id', 'category', 'amount', 'entry_date', 'payment_method',
+                'check_number', 'receipt_number', 'payee_name', 'memo', 'source_system'
+            ]
         })
         : [];
 
+    // GL code -> display name, so the drawer can say "EXP100 · Utilities"
+    // instead of making the treasurer decode the code.
+    const expenseGlCodes = [...new Set(ledgerEntries.map(e => e.category).filter(Boolean))];
+    const expenseCategories = expenseGlCodes.length > 0
+        ? await ExpenseCategory.findAll({ where: { gl_code: expenseGlCodes } })
+        : [];
+    const categoryNameByGl = new Map(expenseCategories.map(c => [c.gl_code, c.name]));
+
     const reconcilationByHash = new Map(
-        ledgerEntries.map(entry => [entry.external_id, { payee_name: entry.payee_name, memo: entry.memo }])
+        ledgerEntries.map(entry => [entry.external_id, {
+            id: entry.id,
+            category: entry.category,
+            category_name: categoryNameByGl.get(entry.category) || null,
+            amount: entry.amount,
+            entry_date: entry.entry_date,
+            payment_method: entry.payment_method,
+            check_number: entry.check_number,
+            receipt_number: entry.receipt_number,
+            payee_name: entry.payee_name,
+            memo: entry.memo,
+            source_system: entry.source_system
+        }])
     );
 
     const enrichedRows = await Promise.all(rows.map(async (txn) => {
@@ -251,10 +381,25 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
             // Include reconciliation details (payee_name, memo) from LedgerEntry if available
             const reconcilationDetails = reconcilationByHash.get(txn.transaction_hash);
             if (reconcilationDetails) {
+                plain.reconciled_expense = reconcilationDetails;
+                // Kept alongside the fuller object: existing callers read these.
                 plain.reconciled_payee_name = reconcilationDetails.payee_name;
                 plain.reconciled_memo = reconcilationDetails.memo;
             }
         }
+        // A cleared check is only reconciled once it lines up with an expense the
+        // treasurer entered by hand. Computed per row rather than stored, so the
+        // answer stays true as expenses are added and corrected.
+        const returnedItem = await describeReturnedItem(txn, plain);
+        if (returnedItem) {
+            plain.returned_item = returnedItem;
+        }
+
+        const checkStatus = await describeCheckStatus(txn, plain);
+        if (checkStatus) {
+            plain.check_status = checkStatus;
+        }
+
         if (txn.status === 'PENDING') {
             try {
                 // 1. Suggest Member Match
@@ -272,7 +417,14 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
 
                 // 2. Find Potential System Duplicates (Matches)
                 const { findPotentialMatches } = require('../services/reconciliationService');
-                const potentialMatches = await findPotentialMatches(plain);
+                // Zelle needs a wider window than the ±2 day default: the email
+                // arrives when the payment is sent, but the bank can post it
+                // several days later over weekends and holidays. Zelle rows are
+                // no longer auto-linked, so this list is the treasurer's only
+                // view of a possible existing entry.
+                const { sourceTypeFor } = require('../services/bankMemoMatchService');
+                const dayWindow = sourceTypeFor(plain) === 'ZELLE' ? 5 : 2;
+                const potentialMatches = await findPotentialMatches(plain, { dayWindow });
                 if (potentialMatches && potentialMatches.length > 0) {
                     plain.potential_matches = potentialMatches;
                 }
@@ -443,13 +595,23 @@ exports.reconcileExpense = asyncHandler(async (req, res) => {
         const category = await ExpenseCategory.findOne({ where: { gl_code, is_active: true }, transaction: t });
         if (!category) { res.status(400); throw new Error('Invalid or inactive GL code'); }
 
+        // Derived from the bank row, not assumed. This used to hardcode 'check',
+        // which filed every ACH and card debit as a check with no check number —
+        // the same phantom "missing check number" rows the automatic pass used
+        // to produce.
+        const { paymentMethodForBankTxn, checkNumberFor } = require('../services/autoReconcileService');
+        const paymentMethod = paymentMethodForBankTxn(bankTxn);
+        const resolvedCheckNumber = paymentMethod === 'check'
+            ? (parseCheckNumber(check_number) || checkNumberFor(bankTxn))
+            : null;
+
         const expense = await LedgerEntry.create({
             type:           'expense',
             category:       gl_code,
             amount:         Math.abs(bankTxn.amount),
             entry_date:     bankTxn.date,
-            payment_method: 'check',
-            check_number:   check_number || bankTxn.check_number || null,
+            payment_method: paymentMethod,
+            check_number:   resolvedCheckNumber,
             memo:           memo || bankTxn.description,
             payee_name:     payee_name || bankTxn.payer_name || null,
             vendor_id:      vendor_id  || null,
