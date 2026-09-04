@@ -11,6 +11,52 @@ const {
 } = require('../services/transactionService');
 
 // Get all transactions with optional filtering
+// Sort columns the member payments list accepts, mapped to ORDER BY clauses.
+// A whitelist, not interpolation: sort_by arrives from the query string and
+// must never reach SQL as text.
+//
+// receipt_number is a string column holding digits, so plain text ordering puts
+// "999" after "1000". Ordering by length first restores numeric order without a
+// cast that would throw on the non-numeric receipt values already in the table
+// (blank strings, "000", and other free-text entries).
+// "Is this receipt a plain run of digits?" — needed because sorting must put
+// everything else last, and the two dialects spell the test differently.
+// Postgres has POSIX regex; sqlite (the test database) has GLOB.
+function receiptIsNumericSql() {
+  const col = '"Transaction"."receipt_number"';
+  return sequelize.getDialect() === 'postgres'
+    ? `${col} ~ '^[0-9]+$'`
+    : `(${col} <> '' AND ${col} NOT GLOB '*[^0-9]*')`;
+}
+
+const TRANSACTION_SORT_COLUMNS = {
+  receipt_number: (dir) => [
+    // Anything that is not a receipt number sorts last in BOTH directions:
+    // most payments carry no receipt (online giving never gets one), and 122
+    // legacy rows hold the text "imported". Postgres also sorts NULLs first on
+    // DESC. Left alone, all of that buries every real receipt behind hundreds
+    // of rows — and a treasurer sorting by receipt wants receipts.
+    [sequelize.literal(
+      `CASE WHEN "Transaction"."receipt_number" IS NULL`
+      + ` OR NOT (${receiptIsNumericSql()}) THEN 1 ELSE 0 END`
+    ), 'ASC'],
+    // Digits as text put "999" after "1000"; ordering by length first restores
+    // numeric order without a cast that would throw on the non-numeric values.
+    [sequelize.literal('LENGTH("Transaction"."receipt_number")'), dir],
+    ['receipt_number', dir]
+  ]
+};
+
+const DEFAULT_TRANSACTION_ORDER = [['payment_date', 'DESC'], ['created_at', 'DESC']];
+
+function buildTransactionOrder(sortBy, sortDir) {
+  const build = TRANSACTION_SORT_COLUMNS[sortBy];
+  if (!build) return DEFAULT_TRANSACTION_ORDER;
+
+  const dir = String(sortDir).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  return build(dir);
+}
+
 const getAllTransactions = async (req, res) => {
   try {
     const {
@@ -25,7 +71,9 @@ const getAllTransactions = async (req, res) => {
       max_amount,
       search,
       receipt_number,
-      card_source
+      card_source,
+      sort_by,
+      sort_dir
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -122,7 +170,7 @@ const getAllTransactions = async (req, res) => {
     const { count, rows: transactions } = await Transaction.findAndCountAll({
       where: whereClause,
       include: includes,
-      order: [['payment_date', 'DESC'], ['created_at', 'DESC']],
+      order: buildTransactionOrder(sort_by, sort_dir),
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
@@ -1030,9 +1078,59 @@ const getMemberPaymentSummaries = async (req, res) => {
 };
 
 // Get skipped receipt numbers starting from a specific number
+// The first receipt of the current book. Anything below it belongs to a retired
+// book and is not part of the sequence being audited or continued.
+function startReceiptNumber() {
+  return parseInt(process.env.START_RECEIPT_NUMBER || '5680', 10);
+}
+
+// Numeric receipts belonging to the current book, ascending and deduplicated.
+// Shared so the gap report and the "what comes next" lookup can never disagree
+// about which receipts count — 122 rows hold the text "imported", and hundreds
+// more belong to the previous book.
+function currentBookReceiptNumbers(rows, start) {
+  const numbers = rows
+    .map(t => parseInt(t.receipt_number, 10))
+    .filter(num => !isNaN(num) && num >= start);
+  return [...new Set(numbers)].sort((a, b) => a - b);
+}
+
+// The highest receipt recorded so far, so the Add Payment form can warn when a
+// treasurer skips ahead of it.
+const getLastReceiptNumber = async (req, res) => {
+  try {
+    const start = startReceiptNumber();
+
+    const transactions = await Transaction.findAll({
+      attributes: ['receipt_number'],
+      where: { receipt_number: { [Op.not]: null } },
+      raw: true
+    });
+
+    const numbers = currentBookReceiptNumbers(transactions, start);
+    const last = numbers.length > 0 ? numbers[numbers.length - 1] : null;
+
+    res.json({
+      success: true,
+      data: {
+        last_receipt_number: last,
+        // With an empty book the next receipt is the book's first number.
+        next_expected: last === null ? start : last + 1
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching last receipt number:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch last receipt number',
+      error: error.message
+    });
+  }
+};
+
 const getSkippedReceipts = async (req, res) => {
   try {
-    const START_RECEIPT_NUMBER = parseInt(process.env.START_RECEIPT_NUMBER || '5680', 10);
+    const START_RECEIPT_NUMBER = startReceiptNumber();
 
     // Fetch all receipt numbers greater than or equal to the start number
     // We only care about numeric receipt numbers for this check
@@ -1046,14 +1144,7 @@ const getSkippedReceipts = async (req, res) => {
       raw: true
     });
 
-    // Extract numeric receipt numbers
-    const receiptNumbers = transactions
-      .map(t => parseInt(t.receipt_number, 10))
-      .filter(num => !isNaN(num) && num >= START_RECEIPT_NUMBER)
-      .sort((a, b) => a - b);
-
-    // Remove duplicates
-    const uniqueReceiptNumbers = [...new Set(receiptNumbers)];
+    const uniqueReceiptNumbers = currentBookReceiptNumbers(transactions, START_RECEIPT_NUMBER);
 
     if (uniqueReceiptNumbers.length === 0) {
       return res.json({
@@ -1346,6 +1437,7 @@ module.exports = {
   getTransactionStats,
   getMemberPaymentSummaries,
   getSkippedReceipts,
+  getLastReceiptNumber,
   updateTransactionPaymentType,
   generateTransactionReport
 };
