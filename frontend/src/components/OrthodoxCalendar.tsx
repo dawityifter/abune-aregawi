@@ -32,7 +32,11 @@ const OrthodoxCalendar: React.FC = () => {
     // Ethiopian state
     const [currentEthMonthIdx, setCurrentEthMonthIdx] = useState(12); // Start at Tahsas 2018 (Dec 2025)
 
-    const [selectedDate, setSelectedDate] = useState<string | null>(null);
+    // Today is selected on arrival, so a visitor lands on the day they came to
+    // read about rather than an empty "Select Date" pane. Lazily initialised and
+    // built from local Y/M/D (not toISOString) so an evening visitor west of UTC
+    // still gets their own date, not tomorrow's.
+    const [selectedDate, setSelectedDate] = useState<string | null>(() => formatLocalDate(new Date()));
 
     const monthNames = [
         'January', 'February', 'March', 'April', 'May', 'June',
@@ -266,6 +270,11 @@ const CalendarCell: React.FC<{
     return (
         <button
             onClick={onClick}
+            // The cell toggles selection, so it carries that state. Previously
+            // selection was conveyed by colour alone, which a screen reader
+            // could not report.
+            aria-pressed={isSelected}
+            aria-current={isCurrent ? 'date' : undefined}
             className={`aspect-square rounded-2xl flex flex-col items-center justify-center relative transition-all duration-300 border border-transparent ${bgClass} ${isSelected ? 'scale-110 z-10 shadow-lg' : ''}`}
         >
             {language === 'ti' && dayGeez ? (
