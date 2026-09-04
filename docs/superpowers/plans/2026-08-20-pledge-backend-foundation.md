@@ -554,7 +554,7 @@ module.exports = (sequelize) => {
     description_ti: { type: DataTypes.TEXT, allowNull: true },
     start_date: { type: DataTypes.DATEONLY, allowNull: false },
     end_date: { type: DataTypes.DATEONLY, allowNull: true },
-    goal_amount: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
+    goal_amount: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
     currency: { type: DataTypes.STRING(3), allowNull: false, defaultValue: 'usd' },
     // VARCHAR + validation rather than a Postgres ENUM: LedgerEntry sets the
     // precedent (enums mapped as STRING to avoid enum mismatch), and it spares
@@ -614,7 +614,7 @@ module.exports = {
       description_ti: { type: Sequelize.TEXT, allowNull: true },
       start_date: { type: Sequelize.DATEONLY, allowNull: false },
       end_date: { type: Sequelize.DATEONLY, allowNull: true },
-      goal_amount: { type: Sequelize.DECIMAL(12, 2), allowNull: true },
+      goal_amount: { type: Sequelize.DECIMAL(10, 2), allowNull: true },
       currency: { type: Sequelize.STRING(3), allowNull: false, defaultValue: 'usd' },
       status: { type: Sequelize.STRING(16), allowNull: false, defaultValue: 'draft' },
       default_payment_type: { type: Sequelize.STRING(50), allowNull: true },
@@ -1717,8 +1717,8 @@ module.exports = {
     // Separate statement — the value added above is not usable until commit.
     await sequelize.query(`
       INSERT INTO income_categories (gl_code, name, description, payment_type_mapping, is_active, created_at, updated_at)
-      SELECT 'INC010', 'Pledge Drive', 'Payments toward a pledge campaign', 'pledge_drive', true, NOW(), NOW()
-      WHERE NOT EXISTS (SELECT 1 FROM income_categories WHERE gl_code = 'INC010');
+      SELECT 'INC011', 'Pledge Drive', 'Payments toward a pledge campaign', 'pledge_drive', true, NOW(), NOW()
+      WHERE NOT EXISTS (SELECT 1 FROM income_categories WHERE gl_code = 'INC011');
     `);
   },
 
@@ -1730,7 +1730,7 @@ module.exports = {
 };
 ```
 
-Before writing `INC010`, run
+Before writing `INC011`, run
 `SELECT gl_code, name, payment_type_mapping FROM income_categories ORDER BY gl_code;`
 against a database copy and pick the next free code. Also add the matching entry
 to `src/database/seedIncomeCategories.js` so fresh environments get it.
