@@ -66,6 +66,16 @@ const SYNTHETIC_MEMBER = {
   email: 'testy.fixture@example.test'
 };
 
+// A second member so the member <select> can be switched between someone who
+// already holds a pledge and someone who does not.
+const PLEDGED_MEMBER = {
+  id: 43,
+  firstName: 'Alredy',
+  lastName: 'Pledged',
+  phoneNumber: '+15555550143',
+  email: 'already.pledged@example.test'
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   global.fetch = jest.fn().mockImplementation(async (input: RequestInfo | URL) => {
@@ -76,7 +86,7 @@ beforeEach(() => {
     if (url.includes('/api/members/all/firebase')) {
       return {
         ok: true,
-        json: async () => ({ success: true, data: { members: [SYNTHETIC_MEMBER] } })
+        json: async () => ({ success: true, data: { members: [SYNTHETIC_MEMBER, PLEDGED_MEMBER] } })
       };
     }
 
@@ -139,7 +149,11 @@ describe('AddPaymentModal pledge support', () => {
     expect(screen.queryByText(/active pledge/i)).not.toBeInTheDocument();
   });
 
-  it('offers to record a pledge for a pledge_drive payment', async () => {
+  // The default balance mock gives member 42 an active pledge, which is now
+  // exactly the state that must NOT offer the checkbox, so this case needs a
+  // member who has pledged nothing yet.
+  it('offers to record a pledge for a member who has none', async () => {
+    mockFetchBalance.mockResolvedValue(null);
     renderModal();
 
     fireEvent.change(screen.getByLabelText(/payment type/i), {
@@ -147,6 +161,68 @@ describe('AddPaymentModal pledge support', () => {
     });
 
     expect(await screen.findByLabelText(/also record this as a pledge/i)).toBeInTheDocument();
+  });
+
+  // A second pledge for the same member in the same campaign is what the
+  // partial unique index and the endpoint's 409 exist to refuse. The treasurer
+  // is here to take money against the pledge shown right above the checkbox, so
+  // offering to create another one can only produce an error or a double count.
+  it('hides the pledge checkbox when the member already has an active pledge', async () => {
+    renderModal();
+
+    fireEvent.change(screen.getByLabelText(/payment type/i), {
+      target: { value: 'pledge_drive' }
+    });
+
+    // Waiting on the pledge line first means the balance has resolved, so the
+    // absence below is a real decision rather than a render yet to happen.
+    expect(await screen.findByText(/active pledge/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/also record this as a pledge/i)).not.toBeInTheDocument();
+  });
+
+  // Same hazard as the card-method reset further down: state that outlives the
+  // control the treasurer saw would submit a pledge they never asked for, and
+  // for a member who already has one it is the duplicate the endpoint rejects.
+  it('does not leave the pledge checkbox checked after switching to a member who has pledged', async () => {
+    mockFetchBalance.mockImplementation(async (id?: number) => (
+      id === PLEDGED_MEMBER.id
+        ? { id: 1, campaign_id: 2, campaign_name: 'Live Drive',
+            pledged_amount: 500, paid_amount: 200, remaining_amount: 300 }
+        : null
+    ));
+    // Deliberately no initialMemberId: the effect that applies it re-runs
+    // whenever the debounced member search replaces the `members` array, which
+    // would snap the selection back mid-test.
+    render(
+      <I18nProvider>
+        <LanguageProvider>
+          <AddPaymentModal onClose={() => {}} onPaymentAdded={() => {}} paymentView="new" />
+        </LanguageProvider>
+      </I18nProvider>
+    );
+
+    fireEvent.change(screen.getByLabelText(/payment type/i), {
+      target: { value: 'pledge_drive' }
+    });
+    fireEvent.change(await screen.findByLabelText(/^member$/i), {
+      target: { value: String(SYNTHETIC_MEMBER.id) }
+    });
+    fireEvent.click(await screen.findByLabelText(/also record this as a pledge/i));
+    expect(screen.getByLabelText(/also record this as a pledge/i)).toBeChecked();
+
+    // Switch to the member who already pledged — the control disappears.
+    fireEvent.change(screen.getByLabelText(/^member$/i), {
+      target: { value: String(PLEDGED_MEMBER.id) }
+    });
+    await waitFor(() =>
+      expect(screen.queryByLabelText(/also record this as a pledge/i)).not.toBeInTheDocument());
+
+    // Back to the member with no pledge. Still checked would mean the state
+    // survived while the control was gone.
+    fireEvent.change(screen.getByLabelText(/^member$/i), {
+      target: { value: String(SYNTHETIC_MEMBER.id) }
+    });
+    expect(await screen.findByLabelText(/also record this as a pledge/i)).not.toBeChecked();
   });
 
   it('does not offer it for other payment types', async () => {
@@ -220,6 +296,7 @@ describe('AddPaymentModal pledge support', () => {
   // A control that looks armed and silently no-ops is worse than no control,
   // so it must not be offered for those methods.
   it('hides the pledge checkbox for a card payment and explains why', async () => {
+    mockFetchBalance.mockResolvedValue(null);
     renderModal();
 
     fireEvent.change(screen.getByLabelText(/payment type/i), {
@@ -237,6 +314,7 @@ describe('AddPaymentModal pledge support', () => {
   });
 
   it('does not leave the pledge checkbox silently checked after switching to a card method', async () => {
+    mockFetchBalance.mockResolvedValue(null);
     renderModal();
 
     fireEvent.change(screen.getByLabelText(/payment type/i), {

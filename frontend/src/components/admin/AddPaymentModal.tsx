@@ -110,6 +110,14 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   // pledge" has nothing to do for those methods.
   const pledgeUnavailableForMethod = useMemo(() => paymentMethod === 'credit_card' || paymentMethod === 'ach', [paymentMethod]);
 
+  // The treasurer is here to record money against the pledge already shown
+  // above the checkbox. A second pledge for the same member in the same
+  // campaign is what pledges_one_active_per_member_per_campaign and the
+  // endpoint's 409 exist to refuse, so the offer is withheld rather than left
+  // to fail at submit. Anonymous payments clear the member selection, so
+  // pledgeBalance is null for them and a walk-up pledge is still offered.
+  const memberAlreadyPledged = pledgeBalance !== null;
+
   // A NAMED pledge takes its first/last name from the selected member. With no
   // member selected those keys are simply absent from the request body, and
   // Pledge.first_name is NOT NULL — so the endpoint fails on a field the
@@ -118,14 +126,15 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   const pledgeNeedsMember = paymentType === 'pledge_drive' && alsoRecordPledge
     && !isAnonymous && !selectedMemberId;
 
-  // Never leave the checkbox stuck "on" for a method it no longer applies to —
-  // the render already hides it in that case, but this keeps the state itself
-  // from silently outliving the control the user saw.
+  // Never leave the checkbox stuck "on" once it no longer applies — to the
+  // chosen method, or to a member who already has a pledge. The render hides it
+  // in both cases, but this keeps the state itself from silently outliving the
+  // control the user saw and submitting a pledge nobody asked for.
   useEffect(() => {
-    if (pledgeUnavailableForMethod) {
+    if (pledgeUnavailableForMethod || memberAlreadyPledged) {
       setAlsoRecordPledge(false);
     }
-  }, [pledgeUnavailableForMethod]);
+  }, [pledgeUnavailableForMethod, memberAlreadyPledged]);
   const normalizeAmountOnBlur = () => {
     if (!amount) return;
     const num = Number(amount);
@@ -670,7 +679,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
 
             {!isAnonymous && (
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="member-select" className="block text-sm font-medium text-gray-700 mb-2">
                   Member
                 </label>
                 <input
@@ -678,9 +687,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
                   placeholder="Search by name, email, or phone"
+                  aria-label="Search members"
                   className="w-full px-3 py-2 mb-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <select
+                  id="member-select"
                   value={selectedMemberId}
                   onChange={(e) => setSelectedMemberId(e.target.value)}
                   required={!isAnonymous}
@@ -855,7 +866,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                     </p>
                   )}
 
-                  {paymentType === 'pledge_drive' && (
+                  {paymentType === 'pledge_drive' && !memberAlreadyPledged && (
                     <div className="mt-3 rounded-md bg-gray-50 p-3">
                       {pledgeUnavailableForMethod ? (
                         // The pledge endpoint records an already-completed payment; it does
