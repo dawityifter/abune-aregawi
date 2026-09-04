@@ -2377,6 +2377,9 @@ export const en: Dictionaries = {
   "activityLog.pageOf": "Page {page} of {total}",
   "activityLog.previous": "Previous",
   "activityLog.next": "Next",
+  "activityLog.analyticsTitle": "Website Analytics",
+  "activityLog.analyticsDescription": "Page views, referrers and traffic for the church website, from our own analytics server.",
+  "activityLog.analyticsLink": "Open analytics dashboard",
 
   // -- MemberSearch --
   "memberSearch.title": "Search Members",
@@ -4501,6 +4504,9 @@ export const ti: Dictionaries = {
   "activityLog.pageOf": "ገጽ {page} ካብ {total}",
   "activityLog.previous": "ዝሓለፈ",
   "activityLog.next": "ቀጻሊ",
+  "activityLog.analyticsTitle": "ናይ ወብሳይት ጸብጻብ",
+  "activityLog.analyticsDescription": "ናይ ቤተ ክርስቲያን ወብሳይት ብዝሒ ምርኣይ፡ ካበይ ከም ዝመጹን ትራፊክን፡ ካብ ናትና ሰርቨር።",
+  "activityLog.analyticsLink": "ናይ ጸብጻብ ዳሽቦርድ ክፈት",
 
   // -- MemberSearch --
   "memberSearch.title": "ኣባላት ድለ",

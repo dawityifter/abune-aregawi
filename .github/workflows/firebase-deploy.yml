@@ -51,6 +51,10 @@ jobs:
           # exactly as it did before.
           REACT_APP_UMAMI_SRC: ${{ secrets.REACT_APP_UMAMI_SRC }}
           REACT_APP_UMAMI_WEBSITE_ID: ${{ secrets.REACT_APP_UMAMI_WEBSITE_ID }}
+          # Umami share URL behind the Activity Logs "Website Analytics" card.
+          # Absent or empty means the card is simply not rendered, so this is
+          # safe to leave unset until the share link exists.
+          REACT_APP_UMAMI_SHARE_URL: ${{ secrets.REACT_APP_UMAMI_SHARE_URL }}
           # Sentry error tracking. Inlined at build time for the same reason as
           # the Umami vars above. Absent or empty means the Sentry chunk is
           # never even fetched, so members pay nothing for it.

@@ -666,3 +666,18 @@ tick while keeping their member link); the last is treasurer-facing in
 | pledge.checkout.showAsAnonymous | Show my gift as anonymous | ውህበተይ ስም ብዘይምግላጽ የርኢ | ⚠️ confirm this reads as the giver's own request ("show mine as anonymous") and works as a checkbox label |
 | pledge.checkout.showAsAnonymousHelp | Your name is hidden from donor lists. The church still records the gift against your account, so it appears on your own giving statement. | ስምኩም ካብ ዝርዝር ወሃብቲ ይሕባእ። ቤተ ክርስቲያን ግና ነቲ ውህበት ኣብ ኣካውንትኩም ትምዝግቦ፡ ስለዚ ኣብ ናትኩም መግለጺ ውህበት ይረአ። | ⚠️ this distinction is the whole point of the checkbox — confirm it clearly says the name is hidden from OTHERS while the church still knows, and does not read as "the church will not record it" |
 | fundraising.pledgeNeedsMember | Select a member to record this pledge, or mark the payment anonymous and give a baptism or church name. | እዚ መብጽዓ ንምምዝጋብ ኣባል ምረጹ፣ ወይ ነቲ ክፍሊት ስም ብዘይምግላጽ ኣምልክቱ እሞ ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም ሃቡ። | ⚠️ treasurer-facing validation message; confirm the two alternatives read as a choice rather than two required steps |
+
+## Website analytics link — Activity Logs tab (Sep 2026)
+
+Three keys for the "Website Analytics" card added to the admin Activity Logs
+tab, linking out to the parish's own Umami dashboard. Admin-facing only; no
+member or visitor ever sees these. Drafts by a non-native speaker, reusing the
+terms already in the dictionary: `ወብሳይት` (website, from `vendorForm.website`),
+`ዳሽቦርድ` (dashboard), `ክፈት` (open), `ጸብጻብ` (report) and the spaced
+`ቤተ ክርስቲያን`.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| activityLog.analyticsTitle | Website Analytics | ናይ ወብሳይት ጸብጻብ | ⚠️ `ጸብጻብ` (report) is the nearest established term; confirm it carries "analytics/statistics" here rather than a written report, and that a borrowed term is not preferred |
+| activityLog.analyticsDescription | Page views, referrers and traffic for the church website, from our own analytics server. | ናይ ቤተ ክርስቲያን ወብሳይት ብዝሒ ምርኣይ፡ ካበይ ከም ዝመጹን ትራፊክን፡ ካብ ናትና ሰርቨር። | ⚠️ three web-analytics terms with no precedent in this dictionary — "page views" as `ብዝሒ ምርኣይ` (view count), "referrers" paraphrased as `ካበይ ከም ዝመጹ` (where they came from), and `ትራፊክ` borrowed. Confirm all three, and that `ካብ ናትና ሰርቨር` conveys self-hosted rather than merely "from our server" |
+| activityLog.analyticsLink | Open analytics dashboard | ናይ ጸብጻብ ዳሽቦርድ ክፈት | ⚠️ confirm this works as a short button label; compare `sms.open` (`ኤስ.ኤም.ኤስ ክፈት`) for the imperative pattern |

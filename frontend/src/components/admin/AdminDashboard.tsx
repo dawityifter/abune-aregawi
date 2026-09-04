@@ -7,6 +7,7 @@ import MemberEditModal from './MemberEditModal';
 import RoleManagement from './RoleManagement';
 import DepartmentList from './DepartmentList';
 import ActivityLogViewer from './ActivityLogViewer';
+import AnalyticsDashboardLink from './AnalyticsDashboardLink';
 import VoicemailInbox from './VoicemailInbox';
 import MemberReports from './MemberReports';
 import SurveyReportPage from './SurveyReportPage';
@@ -122,7 +123,15 @@ const AdminDashboard: React.FC = () => {
       case 'departments':
         return <DepartmentList />;
       case 'activity-logs':
-        return <ActivityLogViewer />;
+        // The log data itself is admin-only at the API (roleMiddleware(['admin'])),
+        // so the analytics link beside it is gated the same way rather than
+        // being offered to every role that can open this dashboard.
+        return (
+          <>
+            {isAdmin && <AnalyticsDashboardLink />}
+            <ActivityLogViewer />
+          </>
+        );
       case 'voicemails':
         return <VoicemailInbox />;
       case 'survey-report':
