@@ -52,11 +52,31 @@ beforeAll(async () => {
     // Sync database models for testing
     await sequelize.sync({ force: true });
     console.log('✅ Test database synchronized');
+
+    // Tests sync models rather than running migrations, so views must be created
+    // here too. PledgeBalance/CampaignTotal disable their own sync()/drop() (see
+    // those model files) so sequelize.sync() never manages a real table under
+    // these names — createPledgeViews() (which itself does DROP VIEW IF EXISTS
+    // before CREATE VIEW) is the only thing that ever touches them.
+    const { createPledgeViews } = require('../src/database/pledgeViews');
+    await createPledgeViews(sequelize.getQueryInterface());
+    console.log('✅ Pledge views created');
   } catch (error) {
     console.error('❌ Test database setup failed:', error);
     throw error;
   }
 });
+
+// Tests that call sequelize.sync({ force: true }) themselves (in their own
+// beforeAll, after this file's beforeAll already ran) drop and recreate every
+// other table; PledgeBalance/CampaignTotal opt out of that (see the sync/drop
+// no-ops in their model files), so the views survive untouched. Call this
+// afterward anyway so any file exercising pledge balances is explicit about
+// depending on fresh views tied to the freshly-synced rows.
+global.recreatePledgeViews = async () => {
+  const { createPledgeViews } = require('../src/database/pledgeViews');
+  await createPledgeViews(sequelize.getQueryInterface());
+};
 
 // Global test teardown
 afterAll(async () => {

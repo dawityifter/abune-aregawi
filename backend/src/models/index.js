@@ -38,7 +38,7 @@ try {
       ...config,
       dialect: 'postgres',
       pool: {
-        max: 5,
+        max: parseInt(process.env.DB_POOL_MAX || '10', 10),
         min: 0,
         acquire: 60000,
         idle: 10000,
@@ -93,6 +93,10 @@ try {
   const MemberPayment = require('./MemberPayment')(sequelize);
   const Donation = require('./Donation')(sequelize);
   const Pledge = require('./Pledge')(sequelize);
+  const PledgeCampaign = require('./PledgeCampaign')(sequelize);
+  const PledgeAllocation = require('./PledgeAllocation')(sequelize);
+  const PledgeBalance = require('./PledgeBalance')(sequelize);
+  const CampaignTotal = require('./CampaignTotal')(sequelize);
   const SmsLog = require('./SmsLog')(sequelize);
   const Group = require('./Group')(sequelize);
   const MemberGroup = require('./MemberGroup')(sequelize);
@@ -112,9 +116,15 @@ try {
   const Voicemail = require('./Voicemail')(sequelize);
   const VolunteerRequest = require('./VolunteerRequest')(sequelize);
   const BankTransaction = require('./BankTransaction')(sequelize);
+  const BankMemoMatch = require('./BankMemoMatch')(sequelize);
+  const ZelleEmailQueue = require('./ZelleEmailQueue')(sequelize);
+  const ExpenseMemoMatch = require('./ExpenseMemoMatch')(sequelize);
   const Title = require('./Title')(sequelize);
   const Announcement = require('./Announcement')(sequelize);
   const ChurchSetting = require('./ChurchSetting')(sequelize);
+  const MemberLoan = require('./MemberLoan')(sequelize);
+  const SquarePayment = require('./SquarePayment')(sequelize);
+  const SurveyResponse = require('./SurveyResponse')(sequelize);
 
   // Define models object
   const models = {
@@ -124,6 +134,10 @@ try {
     MemberPayment,
     Donation,
     Pledge,
+    PledgeCampaign,
+    PledgeAllocation,
+    PledgeBalance,
+    CampaignTotal,
     SmsLog,
     Group,
     MemberGroup,
@@ -142,9 +156,15 @@ try {
     Voicemail,
     VolunteerRequest,
     BankTransaction,
+    BankMemoMatch,
+    ZelleEmailQueue,
+    ExpenseMemoMatch,
     Title,
     Announcement,
-    ChurchSetting
+    ChurchSetting,
+    MemberLoan,
+    SquarePayment,
+    SurveyResponse
   };
 
   // Call associate on each model

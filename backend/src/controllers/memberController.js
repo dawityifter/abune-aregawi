@@ -1,11 +1,31 @@
 const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
-const { Op } = require('sequelize');
+const { Op, fn, col, literal, where: seqWhere } = require('sequelize');
 const { Member, Dependent, ActivityLog, Title, Outreach } = require('../models');
 const { sanitizeInput } = require('../utils/sanitize');
 const { newMemberRegistered } = require('../utils/notifications');
 const logger = require('../utils/logger');
 const { logActivity } = require('../utils/activityLogger');
+const { isDemoUid, DEMO_PHONE, DEMO_EMAIL } = require('../config/demoMode');
+
+const buildHeadOfHouseholdSummary = (member) => {
+  if (!member?.family_head) return null;
+  if (!member.family_id || String(member.family_id) === String(member.id)) return null;
+
+  return {
+    id: member.family_head.id,
+    firstName: member.family_head.first_name,
+    lastName: member.family_head.last_name,
+    email: member.family_head.email,
+    phoneNumber: member.family_head.phone_number,
+    streetLine1: member.family_head.street_line1,
+    apartmentNo: member.family_head.apartment_no,
+    city: member.family_head.city,
+    state: member.family_head.state,
+    postalCode: member.family_head.postal_code,
+    country: member.family_head.country
+  };
+};
 
 // Utility function to normalize phone numbers
 const normalizePhoneNumber = (phoneNumber) => {
@@ -58,22 +78,31 @@ exports.searchMembers = async (req, res) => {
 
     const nameTokenClauses = tokens.map(t => ({
       [Op.or]: [
-        { first_name: { [Op.iLike]: `%${t}%` } },
-        { middle_name: { [Op.iLike]: `%${t}%` } },
-        { last_name: { [Op.iLike]: `%${t}%` } },
+        seqWhere(fn('lower', col('first_name')), { [Op.like]: `%${t}%` }),
+        seqWhere(fn('lower', col('middle_name')), { [Op.like]: `%${t}%` }),
+        seqWhere(fn('lower', col('last_name')), { [Op.like]: `%${t}%` }),
       ]
     }));
 
-    const where = nameTokenClauses.length > 0
-      ? { [Op.and]: nameTokenClauses }
-      : {};
+    // Full-name concat: "Dawit Y" matches CONCAT('Dawit', ' ', 'Yifter') = 'Dawit Yifter'
+    // Use lower() + Op.like (not iLike) so this works in both PostgreSQL and SQLite tests
+    const fullNameClause = seqWhere(
+      fn('lower', literal(`trim(COALESCE("first_name", '') || ' ' || COALESCE("last_name", ''))`)),
+      { [Op.like]: `%${lower}%` }
+    );
 
+    // Name match: token-AND path OR full-name concat path
+    const nameMatch = nameTokenClauses.length > 0
+      ? { [Op.or]: [{ [Op.and]: nameTokenClauses }, fullNameClause] }
+      : fullNameClause;
+
+    // Top-level: name match OR phone match
+    const orClauses = [nameMatch];
     if (phoneCandidates.length > 0) {
-      where[Op.or] = [
-        ...(where[Op.or] || []),
-        { phone_number: { [Op.in]: phoneCandidates } }
-      ];
+      orClauses.push({ phone_number: { [Op.in]: phoneCandidates } });
     }
+
+    const where = orClauses.length === 1 ? orClauses[0] : { [Op.or]: orClauses };
 
     const members = await Member.findAll({
       where,
@@ -530,20 +559,6 @@ exports.register = async (req, res) => {
     // Use provided email or null (do not generate fake emails)
     const email = providedEmail || null;
 
-    // Check if email already exists in PostgreSQL (skip check for generated placeholder emails)
-    let existingMemberByEmail = null;
-    if (providedEmail) {
-      existingMemberByEmail = await Member.findOne({
-        where: { email: providedEmail }
-      });
-    }
-    if (existingMemberByEmail) {
-      return res.status(400).json({
-        success: false,
-        message: 'A member with this email already exists'
-      });
-    }
-
     // Handle Firebase-authenticated users completing their profile
     if (firebaseUid) {
       // Check if this Firebase UID already has a complete member profile
@@ -837,6 +852,27 @@ exports.checkPhoneExists = async (req, res) => {
   }
 };
 
+// Check if an email already exists in members (used by registration form on blur)
+exports.checkEmailExists = async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    const member = await Member.findOne({ where: { email }, attributes: ['id'] });
+
+    return res.status(200).json({
+      success: true,
+      exists: !!member
+    });
+  } catch (error) {
+    console.error('Error checking email existence:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 // Login member
 exports.login = async (req, res) => {
   try {
@@ -1118,10 +1154,22 @@ exports.getAllMembersFirebase = async (req, res) => {
     const whereClause = {};
 
     if (search) {
+      const searchLower = search.toLowerCase();
+      const searchTokens = searchLower.split(/\s+/).filter(Boolean);
+      const fullNameClause = seqWhere(
+        fn('lower', literal(`trim(COALESCE("Member"."first_name", '') || ' ' || COALESCE("Member"."last_name", ''))`)),
+        { [Op.like]: `%${searchLower}%` }
+      );
+      const tokenClauses = searchTokens.map(t => ({
+        [Op.or]: [
+          seqWhere(fn('lower', col('Member.first_name')), { [Op.like]: `%${t}%` }),
+          seqWhere(fn('lower', col('Member.last_name')), { [Op.like]: `%${t}%` }),
+          { email: { [Op.iLike]: `%${t}%` } },
+        ]
+      }));
       whereClause[Op.or] = [
-        { first_name: { [Op.iLike]: `%${search}%` } },
-        { last_name: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } }
+        { [Op.and]: tokenClauses },
+        fullNameClause,
       ];
     }
 
@@ -1407,17 +1455,25 @@ exports.getMemberContributions = async (req, res) => {
 exports.getProfileByFirebaseUid = async (req, res) => {
   try {
     const { uid } = req.params;
-    const userEmail = req.query.email;
-    const userPhone = req.query.phone;
+
+    // Authorization: a caller may only fetch their OWN profile. The path :uid
+    // must match the verified token uid (set by verifyFirebaseTokenOnly), and
+    // the email/phone used for lookup come from the token — never from the
+    // client-supplied query string.
+    if (!req.firebaseUid || req.firebaseUid !== uid) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+    const userEmail = req.firebaseEmail || null;
+    const userPhone = req.firebasePhone || null;
     logger.debug('getProfileByFirebaseUid called', {
       uid,
       hasEmail: !!userEmail,
       hasPhone: !!userPhone
     });
 
-    // MAGIC DEMO BYPASS
-    if (uid === 'magic-demo-uid' || (process.env.ENABLE_DEMO_MODE === 'true' && uid === 'magic-demo-uid')) {
-      logger.info('✨ Magic Demo UID detected in getProfileByFirebaseUid - Returning mock admin profile');
+    // Demo bypass — never honored in production, see config/demoMode.js
+    if (isDemoUid(uid)) {
+      logger.info('Demo mode: returning mock admin profile');
       return res.json({
         success: true,
         data: {
@@ -1425,8 +1481,8 @@ exports.getProfileByFirebaseUid = async (req, res) => {
             id: 999999,
             firstName: 'Demo',
             lastName: 'Admin',
-            email: 'demo@admin.com',
-            phoneNumber: '+14699078229',
+            email: DEMO_EMAIL,
+            phoneNumber: DEMO_PHONE,
             role: 'admin',
             isActive: true,
             firebaseUid: 'magic-demo-uid',
@@ -1497,6 +1553,8 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         logger.error('Failed to log daily visit activity', logErr);
       }
 
+      const headOfHousehold = buildHeadOfHouseholdSummary(memberByUid);
+
       // Transform snake_case to camelCase for frontend compatibility
       const transformedMember = {
         id: memberByUid.id,
@@ -1531,7 +1589,11 @@ exports.getProfileByFirebaseUid = async (req, res) => {
         emergencyContactPhone: memberByUid.emergency_contact_phone,
         titleId: memberByUid.title_id, // Add titleId here
         yearlyPledge: memberByUid.yearly_pledge,
-        dependents: memberByUid.dependents || []
+        dependents: memberByUid.dependents || [],
+        headOfHousehold,
+        headOfHouseholdName: headOfHousehold
+          ? `${headOfHousehold.firstName || ''} ${headOfHousehold.lastName || ''}`.trim()
+          : null
       };
 
       const responseData = {
@@ -1700,6 +1762,8 @@ exports.getProfileByFirebaseUid = async (req, res) => {
 
     console.log('✅ Returning member profile');
 
+    const headOfHousehold = buildHeadOfHouseholdSummary(member);
+
     // Transform snake_case to camelCase for frontend compatibility
     const transformedMember = {
       id: member.id,
@@ -1733,7 +1797,11 @@ exports.getProfileByFirebaseUid = async (req, res) => {
       emergencyContactName: member.emergency_contact_name,
       emergencyContactPhone: member.emergency_contact_phone,
       yearlyPledge: member.yearly_pledge,
-      dependents: member.dependents || []
+      dependents: member.dependents || [],
+      headOfHousehold,
+      headOfHouseholdName: headOfHousehold
+        ? `${headOfHousehold.firstName || ''} ${headOfHousehold.lastName || ''}`.trim()
+        : null
     };
 
     const responseData = {
@@ -1756,42 +1824,54 @@ exports.updateProfileByFirebaseUid = async (req, res) => {
   try {
     const { uid } = req.params;
 
-    console.log('🔍 Profile update request:', {
-      uid,
-      query: req.query,
-      body: req.body
-    });
+    // Authorization: a caller may only update their OWN profile. The path :uid
+    // must match the verified token uid (set by verifyFirebaseTokenOnly), and
+    // the record is resolved from the token identity — never from the
+    // client-supplied query string.
+    if (!req.firebaseUid || req.firebaseUid !== uid) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
 
-    // Find member by email or phone from Firebase Auth
-    const whereClause = {};
-    if (req.query.email) {
-      whereClause.email = req.query.email;
-    } else if (req.query.phone) {
-      // Normalize phone in query to E.164 for consistent lookup
-      let p = normalizePhoneNumber(req.query.phone);
-      const digits = p.replace(/[^\d]/g, '');
+    const tokenEmail = req.firebaseEmail || null;
+    let tokenPhone = null;
+    if (req.firebasePhone) {
+      let p = normalizePhoneNumber(req.firebasePhone);
+      const digits = (p || '').replace(/[^\d]/g, '');
       if (digits.length === 10) {
         p = `+1${digits}`;
       } else if (digits.length === 11 && digits.startsWith('1')) {
         p = `+${digits}`;
       }
-      whereClause.phone_number = p; // Fixed: use snake_case field name
-    } else {
+      tokenPhone = p;
+    }
+
+    if (!tokenEmail && !tokenPhone) {
       return res.status(400).json({
         success: false,
-        message: 'Email or phone query parameter required'
+        message: 'Authenticated identity is missing an email or phone number'
       });
     }
 
-    let member = await Member.findOne({ where: whereClause });
+    console.log('🔍 Profile update request:', { uid, body: req.body });
 
-    // If no member is found, try to resolve as a dependent update
+    // Resolve the caller's own member record: prefer the linked firebase_uid,
+    // then fall back to the token's verified email/phone.
+    let member = await Member.findOne({ where: { firebase_uid: uid } });
     if (!member) {
-      const depWhere = {};
-      if (whereClause.email) depWhere.email = whereClause.email;
-      if (whereClause.phone_number) depWhere.phone = whereClause.phone_number;
+      const orConds = [];
+      if (tokenEmail) orConds.push({ email: tokenEmail });
+      if (tokenPhone) orConds.push({ phone_number: tokenPhone });
+      member = await Member.findOne({ where: { [Op.or]: orConds } });
+    }
 
-      const dependent = await Dependent.findOne({ where: depWhere });
+    // If no member is found, try to resolve as a dependent update (also bound
+    // strictly to the verified token identity).
+    if (!member) {
+      const depOr = [];
+      if (tokenEmail) depOr.push({ email: tokenEmail });
+      if (tokenPhone) depOr.push({ phone: tokenPhone });
+
+      const dependent = await Dependent.findOne({ where: { [Op.or]: depOr } });
 
       if (!dependent) {
         return res.status(404).json({

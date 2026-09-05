@@ -4,6 +4,7 @@
   "private": true,
   "homepage": "https://abune-aregawi-church-dallas.web.app",
   "dependencies": {
+    "@sentry/react": "^10.69.0",
     "@stripe/react-stripe-js": "^3.9.0",
     "@stripe/stripe-js": "^7.8.0",
     "@tailwindcss/forms": "^0.5.10",
@@ -37,25 +38,26 @@
     "remark-gfm": "^4.0.1",
     "remark-slug": "^7.0.1",
     "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "workbox-core": "^7.4.1",
+    "workbox-expiration": "^7.4.1",
+    "workbox-precaching": "^7.4.1",
+    "workbox-routing": "^7.4.1",
+    "workbox-strategies": "^7.4.1"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "prebuild": "node ./scripts/generate-og.mjs",
+    "prebuild": "node ./scripts/generate-og.mjs && node ./scripts/generate-icons.mjs",
     "generate:og": "node ./scripts/generate-og.mjs",
     "build:ci": "CI=false react-scripts build",
     "test": "react-scripts test",
     "test:watch": "react-scripts test --watch",
     "test:coverage": "react-scripts test --coverage --watchAll=false",
     "test:ci": "react-scripts test --coverage --ci --watchAll=false",
-    "test:e2e": "playwright test --config=e2e/playwright.config.ts --project=auth-tests --project=authenticated --project=public",
-    "test:e2e:headed": "SLOW_MO=800 playwright test --config=e2e/playwright.config.ts --headed",
-    "test:e2e:demo": "playwright test --config=e2e/playwright.config.ts --project=demo",
-    "test:e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui",
     "eject": "react-scripts eject"
   },
-  "proxy": "http://localhost:8080",
+  "proxy": "http://localhost:5001",
   "eslintConfig": {
     "extends": [
       "react-app",
@@ -75,7 +77,6 @@
     ]
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
     "sharp": "^0.33.4",
     "tailwindcss": "^3.4.17"
   }

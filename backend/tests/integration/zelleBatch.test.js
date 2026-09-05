@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../src/server');
-const { Member, Transaction, IncomeCategory, LedgerEntry, Dependent, MemberPayment, Donation, Pledge, ActivityLog, Outreach, ZelleMemoMatch, sequelize } = require('../../src/models');
+const { Member, Transaction, IncomeCategory, LedgerEntry, Dependent, MemberPayment, Donation, Pledge, ActivityLog, Outreach, ZelleMemoMatch, BankMemoMatch, ZelleEmailQueue, sequelize } = require('../../src/models');
 const admin = require('firebase-admin');
 
 // Mock Firebase auth
@@ -15,6 +15,13 @@ describe('Zelle Batch Ingestion', () => {
     let adminMember;
     let donorMember;
 
+    const originalFlag = process.env.ZELLE_GMAIL_CREATE_ENABLED;
+    beforeAll(() => { process.env.ZELLE_GMAIL_CREATE_ENABLED = 'true'; });
+    afterAll(() => {
+        if (originalFlag === undefined) delete process.env.ZELLE_GMAIL_CREATE_ENABLED;
+        else process.env.ZELLE_GMAIL_CREATE_ENABLED = originalFlag;
+    });
+
     beforeAll(async () => {
         await sequelize.sync({ force: true });
 
@@ -25,6 +32,8 @@ describe('Zelle Batch Ingestion', () => {
 
     beforeEach(async () => {
         // Clear dependent tables first due to foreign key constraints
+        await BankMemoMatch.destroy({ where: {} });
+        await ZelleEmailQueue.destroy({ where: {} });
         await ZelleMemoMatch.destroy({ where: {} });
         await ActivityLog.destroy({ where: {} });
         await Outreach.destroy({ where: {} });
@@ -66,7 +75,8 @@ describe('Zelle Batch Ingestion', () => {
                 payment_date: '2023-01-01',
                 note: 'Donation 1',
                 member_id: donorMember.id,
-                payment_type: 'donation'
+                payment_type: 'donation',
+                receipt_number: '1001'
             },
             {
                 external_id: 'gmail:msg2',
@@ -74,7 +84,8 @@ describe('Zelle Batch Ingestion', () => {
                 payment_date: '2023-01-02',
                 note: 'Donation 2',
                 member_id: donorMember.id,
-                payment_type: 'donation'
+                payment_type: 'donation',
+                receipt_number: '1002'
             }
         ];
 
@@ -92,7 +103,36 @@ describe('Zelle Batch Ingestion', () => {
         const txs = await Transaction.findAll({ order: [['external_id', 'ASC']] });
         expect(txs).toHaveLength(2);
         expect(txs[0].external_id).toBe('gmail:msg1');
+        expect(txs[0].receipt_number).toBe('1001');
         expect(txs[1].external_id).toBe('gmail:msg2');
+        expect(txs[1].receipt_number).toBe('1002');
+    });
+
+    it('updates receipt number for an existing saved zelle transaction', async () => {
+        setVerifyTokenPayload({ uid: 'admin-uid', email: 'admin@example.com' });
+
+        const tx = await Transaction.create({
+            member_id: donorMember.id,
+            collected_by: adminMember.id,
+            payment_date: '2023-01-01',
+            amount: 100,
+            payment_type: 'donation',
+            payment_method: 'zelle',
+            status: 'succeeded',
+            external_id: 'gmail:existing'
+        });
+
+        const res = await request(app)
+            .patch(`/api/transactions/${tx.id}/payment-type`)
+            .set('Authorization', 'Bearer fake-token')
+            .send({ payment_type: 'donation', receipt_number: '2001' })
+            .expect(200);
+
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.receipt_number).toBe('2001');
+
+        await tx.reload();
+        expect(tx.receipt_number).toBe('2001');
     });
 
     it('handles duplicates gracefully (idempotency)', async () => {

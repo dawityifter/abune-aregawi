@@ -13,9 +13,46 @@ try {
   stripe = null;
 }
 
-const { Donation, Member, Transaction, LedgerEntry, IncomeCategory } = require('../models');
+const { Donation, Member, Transaction, LedgerEntry, IncomeCategory, sequelize } = require('../models');
 const { validationResult } = require('express-validator');
 const { parseFullName } = require('../../utils/nameParser');
+const { maybeAllocateToPledge } = require('../services/pledgeAllocationService');
+const { buildDonorNote } = require('../utils/donorNote');
+const { findLiveCampaign } = require('../services/pledgeCampaignService');
+const { createPledgeWithPayment } = require('../services/pledgeFulfillmentService');
+
+// The parish's own inbox, substituted into Stripe metadata whenever a giver
+// leaves the email field blank. It is a placeholder, never an identity: any
+// member row that happens to carry it must not be matched against.
+const HOUSE_EMAIL = 'abunearegawitx@gmail.com';
+
+/**
+ * Raised when the pledge-and-pay write (transaction + pledge + allocation)
+ * rolls back. It exists purely to escape handlePaymentSucceeded's outer
+ * catch-all.
+ *
+ * That catch-all is deliberate everywhere else: "recording money always wins",
+ * so a broken ledger entry or a failed allocation must never cost us the
+ * payment row or make the webhook look failed. This one case is the exception.
+ * Spec §7.6 makes the pledge-and-pay writes atomic, which means the rollback
+ * took the payment row with it — nothing is on the books at all. The ONLY
+ * thing that can put the money back is Stripe redelivering the event, and
+ * Stripe redelivers only on a non-2xx. Swallowing this error and answering 200
+ * is how a captured payment ends up absent from the ledger permanently, with
+ * nothing to reconcile against (listUnallocated reads `transactions`, and there
+ * is no Stripe-vs-ledger sweep).
+ *
+ * A plain `throw` is not enough: it would land in the same outer catch and die
+ * there. Only this type is re-raised.
+ */
+class PledgeAndPayRollback extends Error {
+  constructor(paymentIntentId, cause) {
+    super(`Pledge-and-pay write rolled back for payment intent ${paymentIntentId}: ${cause && cause.message}`);
+    this.name = 'PledgeAndPayRollback';
+    this.paymentIntentId = paymentIntentId;
+    this.cause = cause;
+  }
+}
 
 // Create payment intent for donation
 const createPaymentIntent = async (req, res) => {
@@ -62,7 +99,7 @@ const createPaymentIntent = async (req, res) => {
     if (!finalEmail && metadata.memberId) {
       try {
         const member = await Member.findByPk(metadata.memberId);
-        if (member && member.email && member.email !== '' && member.email !== 'abunearegawitx@gmail.com') {
+        if (member && member.email && member.email !== '' && member.email !== HOUSE_EMAIL) {
           finalEmail = member.email;
           console.log(`📧 Using member's email from database: ${finalEmail} for member ID: ${metadata.memberId}`);
         }
@@ -73,7 +110,7 @@ const createPaymentIntent = async (req, res) => {
 
     // If still no email, use default church email
     if (!finalEmail || finalEmail === '') {
-      finalEmail = 'abunearegawitx@gmail.com';
+      finalEmail = HOUSE_EMAIL;
       console.log('📧 Using default church email (no member email available or no memberId)');
     }
 
@@ -104,7 +141,7 @@ const createPaymentIntent = async (req, res) => {
     // Attempt to find a member by email or phone for metadata linking
     let linkedMember = null;
     try {
-      if (finalEmail && finalEmail !== 'abunearegawitx@gmail.com') {
+      if (finalEmail && finalEmail !== HOUSE_EMAIL) {
         linkedMember = await Member.findOne({ where: { email: finalEmail } });
       }
       if (!linkedMember && donor_phone) {
@@ -114,6 +151,76 @@ const createPaymentIntent = async (req, res) => {
       }
     } catch (memberErr) {
       console.warn('⚠️ Member lookup failed while creating payment intent:', memberErr.message);
+    }
+
+    // Validate a pledge-and-pay checkout BEFORE any Stripe call. Everything
+    // else about this flow happens after the money is taken, so this is the
+    // last point at which a bad request costs nothing.
+    if (metadata.purpose === 'pledge_drive' && metadata.pledgeIntent === 'immediate') {
+      const liveCampaign = await findLiveCampaign();
+      if (!liveCampaign) {
+        return res.status(400).json({
+          success: false,
+          message: 'Pledges are not currently being accepted'
+        });
+      }
+      // Who this pledge belongs to. Only an explicit memberId/firebaseUid
+      // counts: `linkedMember` above is an email/phone GUESS, and §5.3's
+      // sign-in requirement must not be satisfiable by typing an address.
+      let pledgeMember = null;
+      try {
+        if (metadata.memberId) {
+          pledgeMember = await Member.findByPk(metadata.memberId);
+        }
+        if (!pledgeMember && metadata.firebaseUid) {
+          pledgeMember = await Member.findOne({ where: { firebase_uid: metadata.firebaseUid } });
+        }
+      } catch (lookupErr) {
+        console.warn('⚠️ Pledge member lookup failed:', lookupErr.message);
+      }
+
+      const declaredAnonymous = String(metadata.isAnonymous) === 'true';
+
+      // A NAMED pledge is a claim about a named person, and this endpoint is
+      // public. Without a member behind it, anyone willing to pay a dollar
+      // could write an arbitrary name onto the campaign donor list with
+      // member_id NULL — flaw 6's shape. §5.3 requires sign-in for this flow.
+      if (!declaredAnonymous && !pledgeMember) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please sign in to pledge and pay, or choose to give anonymously'
+        });
+      }
+
+      // The baptism name is an anonymous giver's ONLY internal identifier, so
+      // the church can still reconcile the gift. A signed-in member who ticked
+      // "show as anonymous" has a member link instead, which satisfies the
+      // same CHECK (is_anonymous = false OR member_id IS NOT NULL OR
+      // baptism_name IS NOT NULL) — demanding a baptism name from them would
+      // reject the very flow §5.3 describes.
+      if (declaredAnonymous && !pledgeMember
+          && !String(metadata.baptismName || '').trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'A baptism or church name is required for an anonymous contribution'
+        });
+      }
+      // Pin the member the guard actually verified. Without this a checkout
+      // that identified itself by firebaseUid alone travels with memberId ''
+      // and the webhook has to resolve it a second time — the guard and the
+      // write must agree on who this pledge belongs to.
+      if (pledgeMember) {
+        metadata.memberId = String(pledgeMember.id);
+      }
+
+      // Pin the campaign so it still credits the pledge after its window
+      // expires between checkout and webhook (end_date passes while status
+      // stays 'active', so findLiveCampaign would otherwise no longer see
+      // it). This does NOT rescue a campaign an admin closes outright:
+      // allocate() throws CAMPAIGN_CLOSED for status: 'closed', which now
+      // rolls the whole pledge-and-pay write back (transaction included, see
+      // handlePaymentSucceeded) rather than auto-crediting a closed drive.
+      metadata.campaignId = String(liveCampaign.id);
     }
 
     // Create payment intent with Stripe
@@ -238,6 +345,11 @@ const confirmPayment = async (req, res) => {
         await handlePaymentSucceeded(paymentIntent);
       }
     } catch (txnErr) {
+      // Stays swallowed on purpose. This call is a best-effort accelerator so
+      // the treasurer dashboard reflects the gift without waiting for the
+      // webhook; the browser must not be shown a failure for a payment Stripe
+      // already captured. The webhook is the channel that owns retrying — a
+      // PledgeAndPayRollback reaching it answers non-2xx and Stripe redelivers.
       console.warn('⚠️  Failed to upsert Transaction during confirmPayment:', txnErr.message);
     }
 
@@ -381,6 +493,11 @@ const handleWebhook = async (req, res) => {
 
     res.json({ received: true });
   } catch (error) {
+    // This 500 is load-bearing, not just tidiness: it is the only signal that
+    // makes Stripe redeliver the event. handlePaymentSucceeded swallows every
+    // failure it can survive precisely so this stays a 200 for them; the one
+    // failure it re-raises (PledgeAndPayRollback) left NOTHING on the books and
+    // needs the retry. Do not turn this into a 200 to quiet the alerting.
     console.error('Error handling webhook:', error);
     res.status(500).json({ error: 'Webhook handler failed' });
   }
@@ -388,7 +505,20 @@ const handleWebhook = async (req, res) => {
 
 // Helper function to handle successful payments
 const handlePaymentSucceeded = async (paymentIntent) => {
-  // Update donation record if present
+  // Update donation record if present.
+  //
+  // Deliberately OUTSIDE the pledge-and-pay DB transaction below, and it stays
+  // committed even when that rolls back. Two reasons:
+  //  1. `donations` mirrors Stripe's own view of the checkout, not the church's
+  //     books. The payment really did succeed at Stripe; writing 'pending' back
+  //     because our pledge write failed would record something untrue.
+  //  2. It is then the durable breadcrumb for a payment that has no transaction
+  //     row yet — the only place a rolled-back pledge-and-pay is visible while
+  //     Stripe is still retrying, and after it gives up (~3 days). A treasurer
+  //     comparing succeeded donations against transactions can find it; nothing
+  //     could be found if this rolled back too.
+  // (confirmPayment sets the same field independently anyway, so enclosing it
+  // here would not actually make the two states consistent.)
   try {
     const donation = await Donation.findOne({
       where: { stripe_payment_intent_id: paymentIntent.id }
@@ -414,24 +544,48 @@ const handlePaymentSucceeded = async (paymentIntent) => {
       memberId = member ? member.id : null;
     }
 
+    // A giver who ASKED to be anonymous must never be linked back to a member
+    // record by the contact detail they helpfully supplied (spec A3, §12).
+    // The anonymous checkout asks for "phone or email (optional)" so the church
+    // can reach them about the gift; a parishioner giving anonymously is very
+    // likely to type the number already on file, and matching on it would
+    // attach the gift to their member row and their giving statement — the
+    // exact opposite of what they chose. An explicit memberId/firebaseUid above
+    // is a different thing: that is a signed-in member who ticked "show as
+    // anonymous", where §5.3 wants the member link kept.
+    const declaredAnonymous = String(md.isAnonymous) === 'true';
+
     // As a fallback, try donor_email/phone in metadata
-    if (!memberId && md.donor_email) {
-      const byEmail = await Member.findOne({ where: { email: md.donor_email } });
-      memberId = byEmail ? byEmail.id : memberId;
-    }
-    if (!memberId && md.donor_phone) {
-      const normalizedPhone = md.donor_phone.startsWith('+') ? md.donor_phone : `+${md.donor_phone}`;
-      const byPhone = await Member.findOne({ where: { phone_number: normalizedPhone } });
-      memberId = byPhone ? byPhone.id : memberId;
+    if (!declaredAnonymous) {
+      // HOUSE_EMAIL is what createPaymentIntent substitutes when the giver
+      // left the field blank, so it identifies nobody. createPaymentIntent's
+      // own lookup already excludes it; this one must too, or a member row
+      // carrying the parish address would absorb every contact-less gift.
+      if (!memberId && md.donor_email && md.donor_email !== HOUSE_EMAIL) {
+        const byEmail = await Member.findOne({ where: { email: md.donor_email } });
+        memberId = byEmail ? byEmail.id : memberId;
+      }
+      if (!memberId && md.donor_phone) {
+        const normalizedPhone = md.donor_phone.startsWith('+') ? md.donor_phone : `+${md.donor_phone}`;
+        const byPhone = await Member.findOne({ where: { phone_number: normalizedPhone } });
+        memberId = byPhone ? byPhone.id : memberId;
+      }
     }
 
-    if (!memberId) {
-      console.warn('⚠️ Stripe webhook: could not resolve member for paymentIntent', paymentIntent.id);
-      return;
+    // No resolvable member is NOT a reason to drop the payment. Returning here
+    // is how every non-member online gift used to vanish before reaching the
+    // books: no Transaction meant no LedgerEntry and no GL coding, while the
+    // money sat in Stripe. Record it as an anonymous gift instead.
+    const isAnonymousGift = !memberId;
+    if (isAnonymousGift) {
+      console.warn('ℹ️ Stripe payment has no resolvable member; recording as an anonymous gift:', paymentIntent.id);
     }
+
+    const donorName = md.donor_name || md.baptismName || md.donor_full_name || null;
 
     // Map purpose to allowed enum
-    const allowedTypes = ['membership_due', 'tithe', 'donation', 'event', 'tigray_hunger_fundraiser', 'other'];
+    const allowedTypes = ['membership_due', 'tithe', 'donation', 'event',
+      'tigray_hunger_fundraiser', 'other', 'pledge_drive'];
     const purpose = (md.purpose || 'donation').toLowerCase();
     const payment_type = allowedTypes.includes(purpose) ? purpose : 'donation';
 
@@ -443,7 +597,12 @@ const handlePaymentSucceeded = async (paymentIntent) => {
     const amount = (paymentIntent.amount_received || paymentIntent.amount) / 100.0;
     const occurredAt = new Date((paymentIntent.created || Math.floor(Date.now() / 1000)) * 1000);
 
-    // Idempotent upsert by external_id (payment_intent.id)
+    // Idempotent upsert by external_id (payment_intent.id).
+    // This handler runs from BOTH confirmPayment and the Stripe webhook, which
+    // can race. The find-then-create below is not atomic, so correctness relies
+    // on the UNIQUE index on transactions.external_id: a concurrent second
+    // create throws SequelizeUniqueConstraintError (caught by the outer try),
+    // preventing a duplicate transaction. Do not drop that unique index.
     const existing = await Transaction.findOne({ where: { external_id: paymentIntent.id } });
     if (existing) {
       // Ensure it matches succeeded status use-case; optionally update
@@ -487,19 +646,99 @@ const handlePaymentSucceeded = async (paymentIntent) => {
       return;
     }
 
-    const transaction = await Transaction.create({
+    const baseNote = `Stripe payment ${paymentIntent.id}`;
+    const donationRow = await Donation.findOne({
+      where: { stripe_payment_intent_id: paymentIntent.id }
+    });
+    const transactionFields = {
       member_id: memberId,
-      collected_by: memberId, // automated collection – attribute to member
+      // Null for an anonymous gift: nobody collected it. For a member payment
+      // this stays attributed to the member, as before.
+      collected_by: memberId,
       payment_date: occurredAt,
       amount,
       payment_type,
       payment_method,
       receipt_number: paymentIntent.charges?.data?.[0]?.receipt_number || null,
-      note: `Stripe payment ${paymentIntent.id}`,
+      note: isAnonymousGift
+        ? buildDonorNote(baseNote, {
+            donor_type: md.donor_type || null,
+            donor_name: donorName,
+            donor_email: md.donor_email || null,
+            donor_phone: md.donor_phone || null
+          })
+        : baseNote,
+      donor_name: isAnonymousGift ? donorName : null,
       external_id: paymentIntent.id,
       status: 'succeeded',
-      donation_id: (await Donation.findOne({ where: { stripe_payment_intent_id: paymentIntent.id } }))?.id || null
-    });
+      donation_id: donationRow?.id || null
+    };
+
+    // A pledge-and-pay checkout: the pledge is created only now, because the
+    // money succeeded. Nothing was written at checkout time, so an abandoned
+    // payment leaves no orphan pledge inflating the campaign totals.
+    const isPledgeAndPay = md.purpose === 'pledge_drive' && md.pledgeIntent === 'immediate';
+
+    let transaction;
+    let pledgeCreated = false;
+
+    if (isPledgeAndPay) {
+      // Spec §7.6: the transaction, the pledge and its allocation are ONE DB
+      // transaction. The transaction row must not commit on its own, because
+      // this handler early-returns on a duplicate external_id: a payment
+      // recorded without its pledge could never be repaired by a Stripe
+      // redelivery — the retry would find the transaction and return, and the
+      // pledge would be missing from total_pledged, pledge_count and
+      // CampaignDonors forever.
+      //
+      // The deliberate cost: a pledge failure that repeats on every redelivery
+      // (a campaign closed outright between checkout and webhook, say) leaves
+      // the payment unrecorded rather than recorded-without-a-pledge. That is
+      // the trade §7.6 chose — a retryable nothing over an unrepairable
+      // half-write — and it applies to this path ONLY. Every other payment
+      // still follows "recording money always wins" below.
+      try {
+        transaction = await sequelize.transaction(async (t) => {
+          const txn = await Transaction.create(transactionFields, { transaction: t });
+          await createPledgeWithPayment({
+            campaignId: md.campaignId,
+            amount,
+            transactionId: txn.id,
+            memberId,
+            firstName: md.donor_first_name || md.baptismName || 'Anonymous',
+            lastName: md.donor_last_name || 'Giver',
+            email: md.donor_email || null,
+            phone: md.donor_phone || null,
+            baptismName: md.baptismName || null,
+            isAnonymous: declaredAnonymous,
+            source: 'stripe_auto'
+          }, { transaction: t });
+          return txn;
+        });
+        pledgeCreated = true;
+      } catch (err) {
+        // Nothing survives, so there is no transaction to allocate against or
+        // to write a ledger entry for. Stripe's next redelivery re-runs the
+        // whole thing from a clean slate — but ONLY if this webhook answers
+        // non-2xx, so the failure has to reach handleWebhook rather than be
+        // logged and dropped here. Returning normally (as this did) meant
+        // Stripe marked the event delivered and never retried, and the money
+        // stayed captured with nothing on the books.
+        throw new PledgeAndPayRollback(paymentIntent.id, err);
+      }
+    } else {
+      transaction = await Transaction.create(transactionFields);
+    }
+
+    // Skipped when the pledge-and-pay path already allocated this payment —
+    // otherwise the same money would be credited twice, to two pledges.
+    if (!pledgeCreated) {
+      try {
+        await maybeAllocateToPledge(transaction, { source: 'stripe_auto' });
+      } catch (err) {
+        console.error('⚠️ Pledge allocation failed for transaction', transaction.id, err.message);
+      }
+    }
 
     // Create corresponding ledger entry
     try {
@@ -517,6 +756,7 @@ const handlePaymentSucceeded = async (paymentIntent) => {
         amount: parseFloat(amount),
         entry_date: occurredAt,
         member_id: memberId,
+        donor_name: isAnonymousGift ? donorName : null,
         payment_method: payment_method,
         memo: memo,
         transaction_id: transaction.id
@@ -528,6 +768,13 @@ const handlePaymentSucceeded = async (paymentIntent) => {
       // Don't fail the entire operation if ledger entry creation fails
     }
   } catch (err) {
+    // The one error this catch-all must NOT swallow. See PledgeAndPayRollback:
+    // the payment row rolled back with the pledge, so only a Stripe redelivery
+    // can record it, and only a non-2xx from handleWebhook triggers one.
+    if (err instanceof PledgeAndPayRollback) {
+      console.error('❌', err.message, '— returning a failure so Stripe redelivers');
+      throw err;
+    }
     console.error('❌ Failed to upsert Transaction on payment success:', err.message);
   }
 };
@@ -558,5 +805,7 @@ module.exports = {
   confirmPayment,
   getDonation,
   getAllDonations,
-  handleWebhook
-}; 
+  handleWebhook,
+  // Exported for tests and for the pledge-intent path in pledgeFulfillmentService.
+  handlePaymentSucceeded
+};

@@ -4,6 +4,23 @@ import './index.css';
 import App from './App';
 import { I18nProvider } from './i18n/I18nProvider';
 import reportWebVitals from './reportWebVitals';
+import { initErrorTracking } from './lib/errorTracking';
+
+// No-ops without REACT_APP_SENTRY_DSN, outside production, or under Do Not
+// Track — see lib/errorTracking.ts. Safe to call unconditionally here.
+initErrorTracking();
+
+// No app-level 'unhandledrejection' listener here: @sentry/browser's
+// globalHandlersIntegration is on by default and already captures
+// unhandled promise rejections (and uncaught errors) without one. An
+// earlier version of this file added its own listener that called
+// reportError with `new Error(String(reason))` — which double-reported
+// every rejection (once via globalHandlersIntegration, once via the app
+// listener) and the synthesized wrapper defeated Sentry's dedupe on top of
+// that. Removed rather than fixed in place. Left alone: the
+// reCAPTCHA/Firebase timeout-suppression listener below, which is
+// unrelated (it only quiets a known-benign console message) and does not
+// stop globalHandlersIntegration's own listener from also seeing the event.
 
 // Suppress noisy reCAPTCHA timeouts that can occur after navigation
 // when Firebase's reCAPTCHA script rejects internally. We ignore only

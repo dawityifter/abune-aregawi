@@ -127,7 +127,7 @@ function createTransporter() {
     service: 'gmail',
     auth: {
       type: 'OAuth2',
-      user: 'info@abunearegawi.church',
+      user: 'abune.aregawi.dev@gmail.com',
       clientId: GMAIL_CLIENT_ID,
       clientSecret: GMAIL_CLIENT_SECRET,
       refreshToken: GMAIL_REFRESH_TOKEN,
@@ -146,7 +146,7 @@ function createTransporter() {
 async function sendEmail({ to, subject, text, attachments = [] }) {
   const transporter = createTransporter();
   await transporter.sendMail({
-    from: '"Debre Tsehay Abune Aregawi Church" <info@abunearegawi.church>',
+    from: '"Debre Tsehay Abune Aregawi Church" <abune.aregawi.dev@gmail.com>',
     to,
     subject,
     text,
@@ -379,7 +379,7 @@ function buildPdfBuffer({ member, transactions, year }) {
       .text('Orthodox Tewahedo Church', 115, 65);
     doc.fontSize(9)
       .text('1621 S Jupiter Rd, Garland, TX 75042', 115, 80)
-      .text('info@abunearegawi.church', 115, 93);
+      .text('abune.aregawi.dev@gmail.com', 115, 93);
 
     doc.moveTo(50, 118).lineTo(562, 118).lineWidth(1).stroke();
 

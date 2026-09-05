@@ -6,7 +6,8 @@ import { formatDateForDisplay } from '../../utils/dateUtils';
 interface Transaction {
   id: number;
   member_id: number | null;
-  collected_by: number;
+  // Nullable since D7: nobody collects an online self-service gift.
+  collected_by: number | null;
   payment_date: string;
   amount: number;
   payment_type: 'membership_due' | 'tithe' | 'donation' | 'event' | 'tigray_hunger_fundraiser' | 'other';
@@ -14,7 +15,11 @@ interface Transaction {
   status?: 'pending' | 'succeeded' | 'failed' | 'canceled';
   receipt_number?: string;
   note?: string;
+  /** Set for non-member gifts. Authoritative over the note's donor block. */
+  donor_name?: string | null;
   income_category_id?: number | null;
+  external_id?: string | null;
+  donation_id?: number | null;
   created_at: string;
   updated_at: string;
   member?: {
@@ -48,19 +53,29 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   const { firebaseUser } = useAuth();
   const { t } = useLanguage();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editDraft, setEditDraft] = useState({ payment_type: '', receipt_number: '', note: '' });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [receiptNumberFilter, setReceiptNumberFilter] = useState('');
   const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
+  const [cardSourceFilter, setCardSourceFilter] = useState('all');
+  const [minAmountFilter, setMinAmountFilter] = useState('');
+  const [maxAmountFilter, setMaxAmountFilter] = useState('');
   const [dateRangeFilter, setDateRangeFilter] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  // No sort until the treasurer asks for one, so the default stays
+  // "most recent payment first" from the server.
+  const [sortBy, setSortBy] = useState<'receipt_number' | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [totalPages, setTotalPages] = useState(1);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<string>('id');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Debounce search term to reduce API calls while typing
   useEffect(() => {
@@ -72,7 +87,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   useEffect(() => {
     fetchTransactions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentTypeFilter, paymentMethodFilter, dateRangeFilter, customStartDate, customEndDate, receiptNumberFilter, currentPage, sortField, sortDirection]);
+  }, [paymentTypeFilter, paymentMethodFilter, cardSourceFilter, minAmountFilter, maxAmountFilter, dateRangeFilter, customStartDate, customEndDate, receiptNumberFilter, currentPage, sortBy, sortDir]);
 
   // Fetch only when search is cleared or has at least 3 characters
   useEffect(() => {
@@ -101,13 +116,29 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // First click sorts descending (newest receipts, the useful direction);
+  // clicking again flips it.
+  const toggleReceiptSort = () => {
+    if (sortBy === 'receipt_number') {
+      setSortDir(prev => (prev === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortBy('receipt_number');
+      setSortDir('desc');
+    }
+    setCurrentPage(1);
+  };
+
   const fetchTransactions = async () => {
     try {
       const params = new URLSearchParams({
-        page: (currentPage - 1).toString(), // Spring is 0-indexed
-        size: '20', // Spring uses 'size' instead of 'limit'
-        sort: `${sortField},${sortDirection}`
+        page: currentPage.toString(),
+        limit: '20'
       });
+
+      if (sortBy) {
+        params.append('sort_by', sortBy);
+        params.append('sort_dir', sortDir);
+      }
 
       if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
         params.append('search', debouncedSearchTerm);
@@ -121,8 +152,20 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
         params.append('payment_method', paymentMethodFilter);
       }
 
+      if (cardSourceFilter !== 'all') {
+        params.append('card_source', cardSourceFilter);
+      }
+
       if (receiptNumberFilter.trim()) {
         params.append('receipt_number', receiptNumberFilter.trim());
+      }
+
+      if (minAmountFilter.trim()) {
+        params.append('min_amount', minAmountFilter.trim());
+      }
+
+      if (maxAmountFilter.trim()) {
+        params.append('max_amount', maxAmountFilter.trim());
       }
 
       if (dateRangeFilter === 'custom') {
@@ -166,11 +209,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
 
       if (response.ok) {
         const data = await response.json();
-        // Handle Spring Page<T> structure which puts list in 'content'
-        // Fallback to 'transactions' for legacy support if needed, but primary is 'content'
-        const txs = data.data.content || data.data.transactions || [];
-        setTransactions(txs);
-        setTotalPages(data.data.totalPages || data.data.pagination?.total_pages || 1);
+        setTransactions(data.data.transactions || []);
+        setTotalPages(data.data.pagination?.total_pages || 1);
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -203,7 +243,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
       tigray_hunger_fundraiser: t('treasurerDashboard.transactionList.types.tigray_hunger_fundraiser'),
       other: t('treasurerDashboard.transactionList.types.other')
     };
-    return labels[type as keyof typeof labels] || type;
+    return labels[type as keyof typeof labels]
+      || type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
 
   const getPaymentMethodLabel = (method: string) => {
@@ -218,6 +259,20 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     };
     return labels[method as keyof typeof labels] || method;
   };
+
+  // Which processor a card payment came through, derived from external_id.
+  // Square rides on 'square:<id>'; Stripe uses a payment_intent id and/or a
+  // donation link; a manually keyed card has neither. Kept in sync with the
+  // backend card_source filter. Returns null for non-card payments.
+  const deriveCardSource = (transaction: Transaction): 'square' | 'stripe' | 'manual' | null => {
+    if (!['credit_card', 'debit_card'].includes(transaction.payment_method)) return null;
+    if (transaction.external_id?.startsWith('square:')) return 'square';
+    if (transaction.external_id || transaction.donation_id) return 'stripe';
+    return 'manual';
+  };
+
+  const getCardSourceLabel = (source: 'square' | 'stripe' | 'manual') =>
+    t(`treasurerDashboard.transactionList.source.${source}`);
 
   const renderStatusBadge = (status?: string) => {
     if (!status) return null;
@@ -252,22 +307,80 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     return donorInfo;
   };
 
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('desc');
-    }
-    setCurrentPage(1);
+  // The donor name lives in two places: the donor_name column (authoritative,
+  // set on newer non-member gifts) and the note's [Anonymous Donor] block
+  // (human-readable, and the only source on older manually-entered rows).
+  // The note is editable in the drawer, so prefer the column where it exists.
+  const donorDisplayName = (transaction: Transaction) =>
+    transaction.donor_name || parseDonorInfo(transaction.note)?.name || 'Anonymous Donor';
+
+  const closeDetails = () => { setSelectedTransaction(null); setIsEditing(false); setEditError(''); };
+
+  // Payment types a treasurer may reclassify a transaction to (income types;
+  // loan types are intentionally excluded).
+  const EDITABLE_PAYMENT_TYPES = [
+    'membership_due', 'tithe', 'offering', 'donation', 'vow',
+    'building_fund', 'event', 'religious_item_sales', 'tigray_hunger_fundraiser', 'other'
+  ];
+
+  const startEdit = () => {
+    if (!selectedTransaction) return;
+    setEditDraft({
+      payment_type: selectedTransaction.payment_type,
+      receipt_number: selectedTransaction.receipt_number || '',
+      note: selectedTransaction.note || ''
+    });
+    setEditError('');
+    setIsEditing(true);
   };
 
-  const SortIndicator = ({ field }: { field: string }) => {
-    if (sortField !== field) {
-      return <span className="ml-1 text-gray-300">&uarr;&darr;</span>;
+  const cancelEdit = () => { setIsEditing(false); setEditError(''); };
+
+  const saveEdit = async () => {
+    if (!selectedTransaction) return;
+    setSavingEdit(true); setEditError('');
+    try {
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/api/transactions/${selectedTransaction.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
+        },
+        body: JSON.stringify({
+          payment_type: editDraft.payment_type,
+          receipt_number: editDraft.receipt_number.trim() || null,
+          note: editDraft.note
+        })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data.success) throw new Error(data.message || 'Failed to save changes');
+      const updated = data?.data?.transaction;
+      // Merge the saved fields into the open drawer. Drop the now-stale
+      // incomeCategory object so the GL badge shows neutral until the refreshed
+      // list is reopened (the list query returns the fresh category).
+      if (updated) {
+        setSelectedTransaction(prev => (prev ? { ...prev, ...updated, incomeCategory: undefined } : prev));
+      }
+      setIsEditing(false);
+      fetchTransactions();
+    } catch (e: any) {
+      setEditError(e.message || 'Failed to save changes');
+    } finally {
+      setSavingEdit(false);
     }
-    return <span className="ml-1">{sortDirection === 'asc' ? '\u2191' : '\u2193'}</span>;
   };
+
+  useEffect(() => {
+    if (!selectedTransaction) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeDetails();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTransaction]);
+
+  // Leaving edit mode whenever a different transaction is opened.
+  useEffect(() => { setIsEditing(false); setEditError(''); }, [selectedTransaction?.id]);
 
   if (loading) {
     return (
@@ -281,7 +394,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     <div className="space-y-6">
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-8 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t('treasurerDashboard.transactionList.filters.memberSearch')}
@@ -345,6 +458,51 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
               <option value="ach">{t('treasurerDashboard.transactionList.methods.ach')}</option>
               <option value="other">{t('treasurerDashboard.transactionList.methods.other')}</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('treasurerDashboard.transactionList.filters.cardSource')}
+            </label>
+            <select
+              value={cardSourceFilter}
+              onChange={(e) => { setCardSourceFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">{t('treasurerDashboard.transactionList.filters.options.allSources')}</option>
+              <option value="stripe">{t('treasurerDashboard.transactionList.source.stripe')}</option>
+              <option value="square">{t('treasurerDashboard.transactionList.source.square')}</option>
+              <option value="manual">{t('treasurerDashboard.transactionList.source.manual')}</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('treasurerDashboard.transactionList.filters.minAmount')}
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              value={minAmountFilter}
+              onChange={(e) => setMinAmountFilter(e.target.value)}
+              placeholder={t('treasurerDashboard.transactionList.filters.placeholder.minAmount')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('treasurerDashboard.transactionList.filters.maxAmount')}
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              value={maxAmountFilter}
+              onChange={(e) => setMaxAmountFilter(e.target.value)}
+              placeholder={t('treasurerDashboard.transactionList.filters.placeholder.maxAmount')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
           <div className="col-span-1 md:col-span-2 lg:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -412,83 +570,69 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
       </div>
 
       {/* Transactions Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-100/80">
               <tr>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                  onClick={() => handleSort('id')}
-                >
-                  {t('treasurerDashboard.transactionList.table.transactionId')}<SortIndicator field="id" />
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  {t('treasurerDashboard.transactionList.table.date')}
                 </th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                  onClick={() => handleSort('paymentDate')}
-                >
-                  {t('treasurerDashboard.transactionList.table.date')}<SortIndicator field="paymentDate" />
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  {t('treasurerDashboard.transactionList.table.member')}
                 </th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                  onClick={() => handleSort('member.id')}
-                >
-                  {t('treasurerDashboard.transactionList.table.memberId')}<SortIndicator field="member.id" />
-                </th>
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                  onClick={() => handleSort('member.firstName')}
-                >
-                  {t('treasurerDashboard.transactionList.table.member')}<SortIndicator field="member.firstName" />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('treasurerDashboard.transactionList.table.amount')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('treasurerDashboard.transactionList.table.type')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.glCode')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('treasurerDashboard.transactionList.table.method')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   {t('treasurerDashboard.transactionList.table.status')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.collectedBy')}
+                <th
+                  className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500"
+                  aria-sort={sortBy === 'receipt_number' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                >
+                  <button
+                    type="button"
+                    onClick={toggleReceiptSort}
+                    className={`group inline-flex items-center gap-1.5 uppercase tracking-[0.18em] transition-colors hover:text-slate-900 ${
+                      sortBy === 'receipt_number' ? 'text-slate-900' : ''
+                    }`}
+                  >
+                    {t('treasurerDashboard.transactionList.table.receipt')}
+                    <span
+                      aria-hidden="true"
+                      className={sortBy === 'receipt_number' ? 'text-blue-600' : 'text-slate-300 group-hover:text-slate-400'}
+                    >
+                      {sortBy === 'receipt_number' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+                    </span>
+                  </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.receipt')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('treasurerDashboard.transactionList.table.notes')}
+                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Action
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {transactions.map((transaction) => (
-                <tr key={transaction.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    #{transaction.id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <tr key={transaction.id} className="odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/70 transition-colors">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">
                     {formatDate(transaction.payment_date)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {transaction.member_id ? (transaction.member?.id ?? transaction.member_id) : (
-                      <span className="italic text-gray-500">Anonymous</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4">
                     {transaction.member_id ? (
                       <>
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-semibold text-slate-900">
                           {transaction.member ? `${transaction.member.first_name} ${transaction.member.last_name}` : `Member ${transaction.member_id}`}
+                          <span className="ml-1.5 text-xs font-normal text-slate-400">(#{transaction.member?.id ?? transaction.member_id})</span>
                         </div>
                         {transaction.member?.email && (
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-slate-500">
                             {transaction.member.email}
                           </div>
                         )}
@@ -496,62 +640,56 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                     ) : (
                       <>
                         <div className="flex items-center">
-                          <span className="text-sm font-medium text-gray-900">
-                            {parseDonorInfo(transaction.note)?.name || 'Anonymous Donor'}
+                          <span className="text-sm font-semibold text-slate-900">
+                            {donorDisplayName(transaction)}
                           </span>
-                          <span className="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                          <span className="ml-2 inline-flex rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-800">
                             Non-Member
                           </span>
                         </div>
                         {parseDonorInfo(transaction.note)?.email && (
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-slate-500">
                             {parseDonorInfo(transaction.note)?.email}
                           </div>
                         )}
                         {parseDonorInfo(transaction.note)?.type && (
-                          <div className="text-xs text-gray-400">
+                          <div className="text-xs text-slate-400">
                             {parseDonorInfo(transaction.note)?.type === 'organization' ? 'Organization/Group' : 'Individual'}
                           </div>
                         )}
                       </>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-semibold text-slate-900">
                     {formatCurrency(transaction.amount)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
                       {getPaymentTypeLabel(transaction.payment_type)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {transaction.incomeCategory ? (
-                      <div className="text-sm">
-                        <div className="font-medium text-gray-900">{transaction.incomeCategory.gl_code}</div>
-                        <div className="text-xs text-gray-500">{transaction.incomeCategory.name}</div>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400 italic">Auto-assigned</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
                       {getPaymentMethodLabel(transaction.payment_method)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="whitespace-nowrap px-6 py-4">
                     {renderStatusBadge(transaction.status)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {transaction.collector ? `${transaction.collector.first_name} ${transaction.collector.last_name}` : `Collector ${transaction.collected_by}`}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900">
                     {transaction.receipt_number || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {transaction.note || '-'}
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
+                    <button
+                      onClick={() => setSelectedTransaction(transaction)}
+                      className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        selectedTransaction?.id === transaction.id
+                          ? 'border-blue-600 bg-blue-600 text-white'
+                          : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
+                      }`}
+                    >
+                      Details
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -596,6 +734,218 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
             {t('treasurerDashboard.transactionList.empty.desc')}
           </div>
         </div>
+      )}
+
+      {selectedTransaction && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={closeDetails} aria-hidden="true" />
+          <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-slate-200 bg-slate-900 px-5 py-4">
+              <div>
+                <p className="text-sm font-bold text-white">Payment Details</p>
+                <p className="mt-1 text-xs text-slate-300">Transaction #{selectedTransaction.id}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {!isEditing && (
+                  <button
+                    onClick={startEdit}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    {t('treasurerDashboard.transactionList.edit.edit')}
+                  </button>
+                )}
+                <button
+                  onClick={closeDetails}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+                  aria-label="Close details"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 space-y-4 overflow-y-auto p-5">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Date</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatDate(selectedTransaction.payment_date)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Amount</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900">{formatCurrency(selectedTransaction.amount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Status</p>
+                    <div className="mt-1">{renderStatusBadge(selectedTransaction.status)}</div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Method</p>
+                    <div className="mt-1">
+                      <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                        {getPaymentMethodLabel(selectedTransaction.payment_method)}
+                      </span>
+                    </div>
+                  </div>
+                  {deriveCardSource(selectedTransaction) && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                        {t('treasurerDashboard.transactionList.source.label')}
+                      </p>
+                      <div className="mt-1">
+                        <span className="inline-flex rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-800">
+                          {getCardSourceLabel(deriveCardSource(selectedTransaction)!)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Member</p>
+                {selectedTransaction.member_id ? (
+                  <>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {selectedTransaction.member
+                        ? `${selectedTransaction.member.first_name} ${selectedTransaction.member.last_name}`
+                        : `Member ${selectedTransaction.member_id}`}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">Member ID: {selectedTransaction.member?.id ?? selectedTransaction.member_id}</p>
+                    {selectedTransaction.member?.email && <p className="mt-1 text-sm text-slate-500">{selectedTransaction.member.email}</p>}
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{donorDisplayName(selectedTransaction)}</p>
+                    <p className="mt-1 text-sm text-slate-500">Anonymous / non-member payment</p>
+                    {parseDonorInfo(selectedTransaction.note)?.email && (
+                      <p className="mt-1 text-sm text-slate-500">{parseDonorInfo(selectedTransaction.note)?.email}</p>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Classification</p>
+                {isEditing && (
+                  <div className="mt-2">
+                    <label className="text-xs font-medium text-slate-500">{t('treasurerDashboard.transactionList.table.type')}</label>
+                    <select
+                      value={editDraft.payment_type}
+                      onChange={(e) => setEditDraft(d => ({ ...d, payment_type: e.target.value }))}
+                      className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                    >
+                      {EDITABLE_PAYMENT_TYPES.map(pt => (
+                        <option key={pt} value={pt}>{getPaymentTypeLabel(pt)}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
+                    {getPaymentTypeLabel(isEditing ? editDraft.payment_type : selectedTransaction.payment_type)}
+                  </span>
+                  {!isEditing && selectedTransaction.incomeCategory ? (
+                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                      GL {selectedTransaction.incomeCategory.gl_code}: {selectedTransaction.incomeCategory.name}
+                    </span>
+                  ) : (
+                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                      GL auto-assigned
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Record Info</p>
+                <dl className="mt-3 space-y-3">
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">Receipt Number</dt>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={editDraft.receipt_number}
+                        onChange={(e) => setEditDraft(d => ({ ...d, receipt_number: e.target.value }))}
+                        placeholder={t('treasurerDashboard.transactionList.filters.placeholder.receipt')}
+                        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                      />
+                    ) : (
+                      <dd className="mt-1 text-sm text-slate-900">{selectedTransaction.receipt_number || '-'}</dd>
+                    )}
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">Collected By</dt>
+                    <dd className="mt-1 text-sm text-slate-900">
+                      {/* "Online" is a claim about HOW THE MONEY ARRIVED, on a
+                          treasurer's reconciliation screen. Key it on
+                          collected_by being null — the collector include is a
+                          LEFT JOIN, so a missing collector object with a set
+                          collected_by means the join did not come back, not
+                          that nobody collected the money. */}
+                      {selectedTransaction.collector
+                        ? `${selectedTransaction.collector.first_name} ${selectedTransaction.collector.last_name}`
+                        : selectedTransaction.collected_by
+                          ? `Collector ${selectedTransaction.collected_by}`
+                          : 'Online'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">Created</dt>
+                    <dd className="mt-1 text-sm text-slate-900">{formatDate(selectedTransaction.created_at)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">Notes</dt>
+                    {isEditing ? (
+                      <textarea
+                        rows={3}
+                        value={editDraft.note}
+                        onChange={(e) => setEditDraft(d => ({ ...d, note: e.target.value }))}
+                        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                      />
+                    ) : (
+                      <dd className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{selectedTransaction.note || '-'}</dd>
+                    )}
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            {isEditing && (
+              <div className="border-t border-slate-200 bg-slate-50 px-5 py-4">
+                {editError && (
+                  <p className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{editError}</p>
+                )}
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={cancelEdit}
+                    disabled={savingEdit}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {t('treasurerDashboard.transactionList.edit.cancel')}
+                  </button>
+                  <button
+                    onClick={saveEdit}
+                    disabled={savingEdit}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {savingEdit && (
+                      <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                      </svg>
+                    )}
+                    {t('treasurerDashboard.transactionList.edit.save')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

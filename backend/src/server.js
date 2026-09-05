@@ -1,4 +1,10 @@
 require('dotenv').config();
+
+// Must run before express (or anything express pulls in, like http) is
+// required below — see the comment in instrument.js for why order here is
+// load-bearing, not stylistic.
+require('./instrument');
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -38,7 +44,10 @@ const smsRoutes = require('./routes/smsRoutes');
 const groupRoutes = require('./routes/groupRoutes');
 const departmentRoutes = require('./routes/departmentRoutes');
 const zelleRoutes = require('./routes/zelleRoutes');
+const squareRoutes = require('./routes/squareRoutes');
 const pledgeRoutes = require('./routes/pledgeRoutes');
+const pledgeAllocationRoutes = require('./routes/pledgeAllocationRoutes');
+const pledgeCampaignRoutes = require('./routes/pledgeCampaignRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const galleryRoutes = require('./routes/galleryRoutes');
 const incomeCategoryRoutes = require('./routes/incomeCategoryRoutes');
@@ -52,6 +61,12 @@ const bankRoutes = require('./routes/bankRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const settingRoutes = require('./routes/settingRoutes');
 const statementRoutes = require('./routes/statementRoutes');
+const loanRoutes = require('./routes/loanRoutes');
+const surveyRoutes = require('./routes/surveyRoutes');
+const { assertDemoModeNotEnabledInProduction } = require('./config/demoMode');
+const { reportError } = require('./utils/telemetry');
+const { startLedgerSheetsScheduler } = require('./jobs/ledgerSheets/scheduler');
+const { startZelleSyncScheduler } = require('./jobs/zelleSyncScheduler');
 const donationController = require('./controllers/donationController');
 
 // Import database
@@ -136,6 +151,9 @@ app.use('/api/', limiter);
 
 // Mount Stripe webhook BEFORE body parsers to preserve raw body for signature verification
 app.post('/api/donations/webhook', express.raw({ type: 'application/json' }), donationController.handleWebhook);
+
+// Mount Square webhook BEFORE body parsers to preserve raw body for signature verification
+app.post('/api/square/webhook', express.raw({ type: 'application/json' }), require('./controllers/squareController').handleWebhook);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -252,9 +270,12 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/zelle', zelleRoutes);
+app.use('/api/square', squareRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/pledges', pledgeRoutes);
+app.use('/api/pledge-allocations', pledgeAllocationRoutes);
+app.use('/api/pledge-campaigns', pledgeCampaignRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/income-categories', incomeCategoryRoutes);
@@ -267,6 +288,8 @@ app.use('/api/volunteers', volunteerRoutes);
 app.use('/api/bank', bankRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/loans', loanRoutes);
+app.use('/api/survey', surveyRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -280,6 +303,10 @@ app.use('*', (req, res) => {
 app.use((error, req, res, next) => {
   console.error('Global error handler:', error);
 
+  // Best-effort; reportError swallows its own failures so a telemetry outage
+  // cannot turn a 500 into a hang.
+  reportError(error, { route: req.route?.path || 'unknown', method: req.method });
+
   res.status(error.status || 500).json({
     success: false,
     message: error.message || 'Internal server error',
@@ -291,6 +318,14 @@ app.use((error, req, res, next) => {
 const startServer = async () => {
   try {
     console.log('🚀 Starting server...');
+
+    // Fail before binding a port rather than serving traffic with a bypass the
+    // operator believes is off. (Telemetry is already initialized by this
+    // point — require('./instrument') above runs at module load, before this
+    // function is even called — but that has no bearing on this check: it
+    // still runs, and still exits the process the same way, regardless of
+    // what ran before it.)
+    assertDemoModeNotEnabledInProduction();
 
     // Debug environment variables
     console.log('🔍 Server Environment Debug:');
@@ -374,6 +409,8 @@ const startServer = async () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      startLedgerSheetsScheduler(console);
+      startZelleSyncScheduler(console);
       console.log('✅ Server startup completed successfully!');
     });
 

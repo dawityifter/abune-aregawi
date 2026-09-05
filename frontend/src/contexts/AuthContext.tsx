@@ -1,7 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, User, signOut, onAuthStateChanged, updateProfile, Auth } from "firebase/auth";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { signInWithPhoneNumber, User, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { normalizePhoneNumber } from "../utils/formatPhoneNumber";
+import { auth } from "../firebase";
+
+const PROFILE_FETCH_TIMEOUT_MS = Number(process.env.REACT_APP_PROFILE_FETCH_TIMEOUT_MS || 20000);
+const READY_PROBE_TIMEOUT_MS = 8000;
+const READY_BACKOFFS_MS = [3000, 7000, 15000, 25000, 30000];
 
 interface AuthContextType {
   user: any;
@@ -39,12 +44,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const [backendStarting, setBackendStarting] = useState<boolean>(false);
   const navigate = useNavigate();
-  const auth = getAuth();
-
-  // Configurable timeout for backend profile fetch (default 20s)
-  const PROFILE_FETCH_TIMEOUT_MS = Number(process.env.REACT_APP_PROFILE_FETCH_TIMEOUT_MS || 20000);
-  const READY_PROBE_TIMEOUT_MS = 8000;
-  const READY_BACKOFFS_MS = [3000, 7000, 15000, 25000, 30000]; // ~80s total
 
   // Cache for 404 results to prevent retry storms
   const [newUserCache, setNewUserCache] = useState<Set<string>>(new Set());
@@ -118,6 +117,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
       console.log('🔍 Backend check URL:', apiUrl);
 
+      // Attach the caller's Firebase ID token so the backend can authorize the
+      // request (the endpoint now requires a verified token bound to this uid).
+      let idToken: string | null = null;
+      try {
+        idToken = await firebaseUser.getIdToken();
+      } catch (e) {
+        console.warn('⚠️ Could not obtain Firebase ID token for profile check');
+      }
+      const authHeaders: Record<string, string> = idToken ? { Authorization: `Bearer ${idToken}` } : {};
+
       // Retry/backoff for transient errors (kept low to avoid long waits)
       const maxAttempts = 2;
       let lastError: any = null;
@@ -126,16 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Timeout per attempt to avoid indefinite hangs
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), PROFILE_FETCH_TIMEOUT_MS);
-          const token = await firebaseUser.getIdToken();
-          const headers: any = { 'Authorization': `Bearer ${token}` };
-          if (token === 'MAGIC_DEMO_TOKEN' && email) {
-            headers['X-Demo-Email'] = email;
-          }
-
-          const response = await fetch(apiUrl, {
-            headers,
-            signal: controller.signal
-          });
+          const response = await fetch(apiUrl, { headers: authHeaders, signal: controller.signal });
 
           // Always clear timeout even if parsing/logic throws later
           clearTimeout(timeoutId);
@@ -144,11 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (response.status === 200) {
             const responseData = await response.json();
             console.log('✅ Backend user found:', responseData);
-            // Handle both structure formats:
-            // 1. { data: { member: { ... } } } - Node.js style
-            // 2. { data: { ... } } - Java style (MemberDTO directly in data)
-            // 3. { ... } - Fallback
-            return responseData.data?.member || responseData.data || responseData;
+            return responseData.data?.member || responseData;
           }
 
           if (response.status === 404) {
@@ -267,6 +263,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setNewUserCache(new Set());
   }, []);
 
+  const checkUserProfileRef = useRef(checkUserProfile);
+  const clearNewUserCacheRef = useRef(clearNewUserCache);
+  const probeBackendReadyRef = useRef(probeBackendReady);
+  const navigateRef = useRef(navigate);
+
+  useEffect(() => {
+    checkUserProfileRef.current = checkUserProfile;
+  }, [checkUserProfile]);
+
+  useEffect(() => {
+    clearNewUserCacheRef.current = clearNewUserCache;
+  }, [clearNewUserCache]);
+
+  useEffect(() => {
+    probeBackendReadyRef.current = probeBackendReady;
+  }, [probeBackendReady]);
+
+  useEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
+
   // Phone sign-in with OTP verification
   const loginWithPhone = useCallback(async (phone: string, appVerifier: any, otp?: string, confirmationResult?: any) => {
     setLoading(true);
@@ -312,7 +329,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  }, [auth]);
+  }, []);
 
   // Logout
   const logout = async () => {
@@ -363,24 +380,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
-      const currentUser = auth.currentUser;
-      const token = currentUser ? await currentUser.getIdToken() : '';
-      const headers: any = { 'Authorization': `Bearer ${token}` };
-      if (token === 'MAGIC_DEMO_TOKEN' && (email || currentUser?.email)) {
-        headers['X-Demo-Email'] = email || currentUser?.email;
-      }
-
+      const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch(apiUrl, {
-        headers
+        headers: idToken ? { Authorization: `Bearer ${idToken}` } : {}
       });
 
       if (res.status === 200) {
-        const responseData = await res.json();
-        // Handle both structure formats:
-        // 1. { data: { member: { ... } } } - Node.js style
-        // 2. { data: { ... } } - Java style (MemberDTO directly in data)
-        // 3. { ... } - Fallback
-        return responseData.data?.member || responseData.data || responseData;
+        return await res.json();
       } else {
         console.error('Failed to fetch user profile:', res.status);
         return null;
@@ -401,19 +407,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/profile/firebase/${uid}?${params.toString()}`;
-      const currentUser = auth.currentUser;
-      const token = currentUser ? await currentUser.getIdToken() : '';
-      const headers: any = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      };
-      if (token === 'MAGIC_DEMO_TOKEN' && currentUser?.email) {
-        headers['X-Demo-Email'] = currentUser.email;
-      }
-
+      const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch(apiUrl, {
         method: 'PUT',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+        },
         body: JSON.stringify(updates)
       });
 
@@ -445,10 +445,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Listen for Firebase auth state changes
   useEffect(() => {
     console.log('🔌 Setting up auth state listener');
+    let isActive = true;
 
     const handleAuthStateChange = async (firebaseUser: User | null) => {
-      // Magic Demo Mode Bypass
-      if ((localStorage.getItem('magic_demo_mode') === 'true' || localStorage.getItem('magic_new_user_mode') === 'true') && process.env.REACT_APP_ENABLE_DEMO_MODE === 'true') {
+      if (!isActive) return;
+
+      // Demo mode bypass. Gated on NODE_ENV as well as the flag so a production
+      // build can never honor it, even if the flag leaks into the build env.
+      const demoModeAvailable =
+        process.env.NODE_ENV !== 'production' && process.env.REACT_APP_ENABLE_DEMO_MODE === 'true';
+      if ((localStorage.getItem('magic_demo_mode') === 'true' || localStorage.getItem('magic_new_user_mode') === 'true') && demoModeAvailable) {
         console.log('✨ Magic Demo Mode Active');
         const isNewUser = localStorage.getItem('magic_new_user_mode') === 'true';
         const magicPhone = isNewUser ? '+14699078230' : '+14699078229';
@@ -475,7 +481,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: 'member',
             roles: ['member']
           });
-          navigate('/register', { state: { phone: magicPhone } });
+          navigateRef.current('/register', { state: { phone: magicPhone } });
           setAuthReady(true);
           return;
         }
@@ -489,7 +495,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (!firebaseUser) {
         setUser(null);
-        clearNewUserCache();
+        clearNewUserCacheRef.current();
         // Mark auth initialized even if signed out
         setAuthReady(true);
         return;
@@ -508,7 +514,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         // Always check profile first, don't navigate until we know the result
-        let profile = await checkUserProfile(firebaseUser);
+        let profile = await checkUserProfileRef.current(firebaseUser);
+        if (!isActive) return;
 
         if (profile) {
           console.log('✅ User profile loaded, updating state');
@@ -527,17 +534,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Don't redirect if user is already on a protected page (let them stay there)
           const REDIRECT_TO_DASHBOARD_PATHS = new Set<string>([
             '/login',
-            '/',
             '/credits',
             '/church-bylaw',
             '/donate',
-            '/member-status',
             '/parish-pulse-sign-up',
           ]);
           const currentPath = window.location.pathname;
           if (REDIRECT_TO_DASHBOARD_PATHS.has(currentPath)) {
             console.log('🔄 Navigating to dashboard from public/login page');
-            navigate('/dashboard');
+            navigateRef.current('/dashboard');
           } else {
             console.log('✅ User already on protected route, staying on:', currentPath);
           }
@@ -545,10 +550,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Before treating as new user, attempt readiness warm-up with exponential backoff
           console.log('ℹ️ Profile not found or backend unavailable. Probing readiness...');
           setBackendStarting(true);
-          const ready = await probeBackendReady();
+          const ready = await probeBackendReadyRef.current();
+          if (!isActive) return;
           if (ready) {
             console.log('✅ Backend reports ready. Retrying profile fetch...');
-            profile = await checkUserProfile(firebaseUser);
+            profile = await checkUserProfileRef.current(firebaseUser);
+            if (!isActive) return;
           }
           setBackendStarting(false);
 
@@ -565,12 +572,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
             // Only navigate to dashboard if on login page or public pages
             const REDIRECT_TO_DASHBOARD_PATHS = new Set<string>([
-              '/login', '/', '/credits', '/church-bylaw', '/donate', '/member-status', '/parish-pulse-sign-up',
+              '/login', '/credits', '/church-bylaw', '/donate', '/parish-pulse-sign-up',
             ]);
             const currentPath = window.location.pathname;
             if (REDIRECT_TO_DASHBOARD_PATHS.has(currentPath)) {
               console.log('🔄 Navigating to dashboard from public/login page after warm-up');
-              navigate('/dashboard');
+              navigateRef.current('/dashboard');
             } else {
               console.log('✅ User already on protected route after warm-up, staying on:', currentPath);
             }
@@ -585,7 +592,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               roles: ['member']
             });
             if (window.location.pathname !== '/register') {
-              navigate('/register', { state: { phone: phoneNumber } });
+              navigateRef.current('/register', { state: { phone: phoneNumber } });
             }
           }
         }
@@ -628,11 +635,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Cleanup function
     return () => {
       console.log('🧹 Cleaning up auth state listener');
+      isActive = false;
       if (typeof unsubscribe === 'function') {
         unsubscribe();
       }
     };
-  }, []); // Empty dependency array ensures listener is only registered once
+  }, []);
 
   // Client warm-up: background health ping on app load (prod-only, once per session)
   useEffect(() => {

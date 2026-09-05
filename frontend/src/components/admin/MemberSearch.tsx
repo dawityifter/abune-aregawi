@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import MemberDuesViewer from './MemberDuesViewer';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { formatMemberName } from '../../utils/formatName';
 
 interface Member {
@@ -19,16 +19,24 @@ interface Member {
 
 interface MemberSearchProps {
   onMemberSelect: (memberId: string) => void;
-  onClose: () => void;
+  onClose?: () => void;
+  embedded?: boolean;
+  selectedMemberId?: string | null;
+  autoSelectFirst?: boolean;
 }
 
-const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) => {
+const MemberSearch: React.FC<MemberSearchProps> = ({
+  onMemberSelect,
+  onClose,
+  embedded = false,
+  selectedMemberId,
+  autoSelectFirst = false
+}) => {
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [members, setMembers] = useState<Member[]>([]);
-  const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -87,10 +95,14 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
     return () => clearTimeout(timeoutId);
   }, [firebaseUser, searchQuery]);
 
-  const handleMemberSelect = (member: Member) => {
-    setSelectedMember(String(member.id));
-    onMemberSelect(String(member.id));
-  };
+  const handleMemberSelect = (member: Member) => onMemberSelect(String(member.id));
+
+  useEffect(() => {
+    if (!embedded) return;
+    if (!autoSelectFirst) return;
+    if (selectedMemberId || members.length === 0) return;
+    onMemberSelect(String(members[0].id));
+  }, [embedded, autoSelectFirst, selectedMemberId, members, onMemberSelect]);
 
   // Check if member has no pledge (null, undefined, or 0)
   const hasNoPledge = (member: Member) => {
@@ -112,35 +124,24 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
     return hasNoPledge(member) ? 'text-red-600' : 'text-blue-600';
   };
 
-  if (selectedMember) {
-    return (
-      <MemberDuesViewer
-        memberId={selectedMember}
-        onClose={() => {
-          setSelectedMember(null);
-          onClose();
-        }}
-      />
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+  const content = (
+      <div className={`bg-white ${embedded ? 'rounded-2xl border border-gray-200 shadow-sm h-full min-h-[700px]' : 'rounded-lg max-w-2xl w-full max-h-[80vh]'} overflow-hidden flex flex-col`}>
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Search Members</h2>
-            <p className="text-gray-600 text-sm">Select a member to view their dues and payment history</p>
+            <h2 className="text-xl font-bold text-gray-900">{t('memberSearch.title')}</h2>
+            <p className="text-gray-600 text-sm">{t('memberSearch.subtitle')}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {!embedded && onClose && (
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Search Input */}
@@ -155,7 +156,7 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, email, phone, or member ID..."
+              placeholder={t('memberSearch.placeholder')}
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               autoFocus
             />
@@ -167,7 +168,7 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">Loading members...</span>
+              <span className="ml-2 text-gray-600">{t('memberSearch.loading')}</span>
             </div>
           ) : members.length === 0 ? (
             <div className="flex items-center justify-center py-12">
@@ -175,9 +176,9 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No members found</h3>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">{t('memberSearch.noMembersTitle')}</h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  {searchQuery ? 'Try adjusting your search terms.' : 'No members available.'}
+                  {searchQuery ? t('memberSearch.adjustSearch') : t('memberSearch.noneAvailable')}
                 </p>
               </div>
             </div>
@@ -186,7 +187,11 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
               {members.map((member) => (
                 <div
                   key={member.id}
-                  className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                  className={`p-4 cursor-pointer transition-colors ${
+                    selectedMemberId === String(member.id)
+                      ? 'bg-blue-50 ring-1 ring-inset ring-blue-200'
+                      : 'hover:bg-gray-50'
+                  }`}
                   onClick={() => handleMemberSelect(member)}
                 >
                   <div className="flex items-center justify-between">
@@ -209,11 +214,11 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
                             </p>
                             {hasNoPledge(member) ? (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                No Pledge
+                                {t('memberSearch.noPledge')}
                               </span>
                             ) : (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                ${member.yearlyPledge}/year
+                                ${member.yearlyPledge}{t('memberSearch.perYear')}
                               </span>
                             )}
                           </div>
@@ -254,16 +259,27 @@ const MemberSearch: React.FC<MemberSearchProps> = ({ onMemberSelect, onClose }) 
         {/* Footer */}
         <div className="flex justify-between items-center p-6 border-t bg-gray-50">
           <div className="text-sm text-gray-500">
-            {members.length} member{members.length !== 1 ? 's' : ''} found
+            {t('memberSearch.found', { count: members.length })}
           </div>
-          <button
-            onClick={onClose}
-            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium"
-          >
-            Cancel
-          </button>
+          {!embedded && onClose && (
+            <button
+              onClick={onClose}
+              className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium"
+            >
+              {t('memberSearch.cancel')}
+            </button>
+          )}
         </div>
       </div>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      {content}
     </div>
   );
 };

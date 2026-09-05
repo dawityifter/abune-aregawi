@@ -1,14 +1,67 @@
-const { Transaction, Member, LedgerEntry, IncomeCategory, sequelize, BankTransaction } = require('../models');
+const { Transaction, Member, LedgerEntry, IncomeCategory, sequelize, BankTransaction, PledgeAllocation } = require('../models');
 const { Op } = require('sequelize');
 const tz = require('../config/timezone');
+const { validateReceiptNumber } = require('../utils/receiptNumber');
+const { buildDonorNote } = require('../utils/donorNote');
+const {
+  createTransactionRecord,
+  validateAndResolveTransaction,
+  createLedgerEntryForTransaction,
+  TransactionServiceError
+} = require('../services/transactionService');
 
 // Get all transactions with optional filtering
+// Sort columns the member payments list accepts, mapped to ORDER BY clauses.
+// A whitelist, not interpolation: sort_by arrives from the query string and
+// must never reach SQL as text.
+//
+// receipt_number is a string column holding digits, so plain text ordering puts
+// "999" after "1000". Ordering by length first restores numeric order without a
+// cast that would throw on the non-numeric receipt values already in the table
+// (blank strings, "000", and other free-text entries).
+// "Is this receipt a plain run of digits?" — needed because sorting must put
+// everything else last, and the two dialects spell the test differently.
+// Postgres has POSIX regex; sqlite (the test database) has GLOB.
+function receiptIsNumericSql() {
+  const col = '"Transaction"."receipt_number"';
+  return sequelize.getDialect() === 'postgres'
+    ? `${col} ~ '^[0-9]+$'`
+    : `(${col} <> '' AND ${col} NOT GLOB '*[^0-9]*')`;
+}
+
+const TRANSACTION_SORT_COLUMNS = {
+  receipt_number: (dir) => [
+    // Anything that is not a receipt number sorts last in BOTH directions:
+    // most payments carry no receipt (online giving never gets one), and 122
+    // legacy rows hold the text "imported". Postgres also sorts NULLs first on
+    // DESC. Left alone, all of that buries every real receipt behind hundreds
+    // of rows — and a treasurer sorting by receipt wants receipts.
+    [sequelize.literal(
+      `CASE WHEN "Transaction"."receipt_number" IS NULL`
+      + ` OR NOT (${receiptIsNumericSql()}) THEN 1 ELSE 0 END`
+    ), 'ASC'],
+    // Digits as text put "999" after "1000"; ordering by length first restores
+    // numeric order without a cast that would throw on the non-numeric values.
+    [sequelize.literal('LENGTH("Transaction"."receipt_number")'), dir],
+    ['receipt_number', dir]
+  ]
+};
+
+const DEFAULT_TRANSACTION_ORDER = [['payment_date', 'DESC'], ['created_at', 'DESC']];
+
+function buildTransactionOrder(sortBy, sortDir) {
+  const build = TRANSACTION_SORT_COLUMNS[sortBy];
+  if (!build) return DEFAULT_TRANSACTION_ORDER;
+
+  const dir = String(sortDir).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  return build(dir);
+}
+
 const getAllTransactions = async (req, res) => {
   try {
     const {
-      page = 0,
-      limit,
-      size = 10,
+      page = 1,
+      limit = 10,
       member_id,
       payment_type,
       payment_method,
@@ -17,19 +70,44 @@ const getAllTransactions = async (req, res) => {
       min_amount,
       max_amount,
       search,
-      receipt_number
+      receipt_number,
+      card_source,
+      sort_by,
+      sort_dir
     } = req.query;
 
-    // Accept both `limit` and `size` (Spring Data style); page is 0-based
-    const parsedLimit = parseInt(limit || size) || 10;
-    const parsedPage = Math.max(0, parseInt(page) || 0);
-    const offset = parsedPage * parsedLimit;
+    const offset = (page - 1) * limit;
     const whereClause = {};
 
     // Add filters
     if (member_id) whereClause.member_id = member_id;
     if (payment_type) whereClause.payment_type = payment_type;
     if (payment_method) whereClause.payment_method = payment_method;
+
+    // Card-source filter (Square vs Stripe vs manual), derived from external_id.
+    // Square rides on external_id 'square:<id>'; Stripe uses its payment_intent
+    // id and/or a donation_id; a manually keyed card has neither. Kept in sync
+    // with the frontend deriveCardSource() so filter and label agree.
+    if (card_source && card_source !== 'all') {
+      const cardMethods = ['credit_card', 'debit_card'];
+      if (card_source === 'square') {
+        whereClause[Op.and] = [{ external_id: { [Op.like]: 'square:%' } }];
+      } else if (card_source === 'stripe') {
+        whereClause[Op.and] = [
+          { payment_method: { [Op.in]: cardMethods } },
+          { [Op.or]: [
+            { external_id: { [Op.ne]: null, [Op.notLike]: 'square:%' } },
+            { donation_id: { [Op.ne]: null } }
+          ] }
+        ];
+      } else if (card_source === 'manual') {
+        whereClause[Op.and] = [
+          { payment_method: { [Op.in]: cardMethods } },
+          { external_id: null },
+          { donation_id: null }
+        ];
+      }
+    }
     if (receipt_number) {
       whereClause.receipt_number = { [Op.iLike]: `%${receipt_number}%` };
     }
@@ -92,9 +170,9 @@ const getAllTransactions = async (req, res) => {
     const { count, rows: transactions } = await Transaction.findAndCountAll({
       where: whereClause,
       include: includes,
-      order: [['payment_date', 'DESC'], ['created_at', 'DESC']],
-      limit: parsedLimit,
-      offset: offset
+      order: buildTransactionOrder(sort_by, sort_dir),
+      limit: parseInt(limit),
+      offset: parseInt(offset)
     });
 
     res.json({
@@ -102,10 +180,10 @@ const getAllTransactions = async (req, res) => {
       data: {
         transactions,
         pagination: {
-          current_page: parsedPage,
-          total_pages: Math.ceil(count / parsedLimit),
+          current_page: parseInt(page),
+          total_pages: Math.ceil(count / limit),
           total_items: count,
-          items_per_page: parsedLimit
+          items_per_page: parseInt(limit)
         }
       }
     });
@@ -163,7 +241,7 @@ const getTransactionById = async (req, res) => {
 
 // Create a new transaction with dual-write to ledger_entries
 const createTransaction = async (req, res) => {
-  const t = await sequelize.transaction();
+  let t;
 
   try {
     const {
@@ -174,6 +252,7 @@ const createTransaction = async (req, res) => {
       payment_type,
       payment_method,
       receipt_number,
+      check_number,
       note,
       external_id,
       status = 'succeeded', // Default transaction status
@@ -188,104 +267,11 @@ const createTransaction = async (req, res) => {
       for_year // Add for_year support
     } = req.body;
 
-    // Validate required fields (member_id is optional for anonymous donations)
-    if (!collected_by || !amount || !payment_type || !payment_method) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields: collected_by, amount, payment_type, payment_method'
-      });
-    }
-
-    // Validate: membership_due requires a member_id
-    if (!member_id && payment_type === 'membership_due') {
-      return res.status(400).json({
-        success: false,
-        message: 'Membership dues cannot be paid anonymously. A member must be selected.'
-      });
-    }
-
-    // Validate amount (minimum $1)
-    if (parseFloat(amount) < 1) {
-      return res.status(400).json({
-        success: false,
-        message: 'Amount must be at least $1.00'
-      });
-    }
-
-    // Validate receipt number for cash/check payments
-    if (['cash', 'check'].includes(payment_method) && !receipt_number) {
-      return res.status(400).json({
-        success: false,
-        message: 'Receipt number is required for cash and check payments'
-      });
-    }
-
-    // Check for duplicate receipt number ('000' is allowed as a no-receipt placeholder)
-    if (receipt_number && receipt_number !== '000') {
-      const existing = await Transaction.findOne({ where: { receipt_number } });
-      if (existing) {
-        return res.status(409).json({
-          success: false,
-          message: `Receipt number "${receipt_number}" has already been used. Please use a unique receipt number.`
-        });
-      }
-    }
-
-    // Determine GL code from income_category_id or auto-assign from payment_type
-    let glCode = payment_type; // Fallback to payment_type for backward compatibility
-    let finalIncomeCategoryId = income_category_id;
-
-    if (income_category_id) {
-      // User explicitly selected an income category
-      const incomeCategory = await IncomeCategory.findByPk(income_category_id);
-      if (incomeCategory) {
-        glCode = incomeCategory.gl_code;
-      } else {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid income category ID'
-        });
-      }
-    } else {
-      // Auto-assign income category based on payment_type mapping
-      let incomeCategory = await IncomeCategory.findOne({
-        where: { payment_type_mapping: payment_type }
-      });
-
-      // Fallback mappings for payment types without direct mapping
-      if (!incomeCategory) {
-        const fallbackMappings = {
-          'tithe': 'offering',        // tithe → INC002 (Weekly Offering)
-          'building_fund': 'event'    // building_fund → INC003 (Fundraising)
-        };
-
-        const fallbackType = fallbackMappings[payment_type];
-        if (fallbackType) {
-          incomeCategory = await IncomeCategory.findOne({
-            where: { payment_type_mapping: fallbackType }
-          });
-        }
-      }
-
-      if (incomeCategory) {
-        finalIncomeCategoryId = incomeCategory.id;
-        glCode = incomeCategory.gl_code;
-      }
-    }
-
-    // Build donor info note if anonymous donation
-    let finalNote = note || '';
-    if (!member_id && (donor_name || donor_email || donor_phone || donor_memo || donor_type)) {
-      const donorInfo = [];
-      if (donor_type) donorInfo.push(`Type: ${donor_type}`);
-      if (donor_name) donorInfo.push(`Name: ${donor_name}`);
-      if (donor_email) donorInfo.push(`Email: ${donor_email}`);
-      if (donor_phone) donorInfo.push(`Phone: ${donor_phone}`);
-      if (donor_memo) donorInfo.push(`Memo: ${donor_memo}`);
-
-      const donorSection = `[Anonymous Donor]\n${donorInfo.join('\n')}`;
-      finalNote = finalNote ? `${donorSection}\n\n${finalNote}` : donorSection;
-    }
+    // Build donor info note if anonymous donation. Member-linked gifts are
+    // attributed by member_id, so they never get a donor block.
+    const finalNote = member_id
+      ? (note || '')
+      : buildDonorNote(note, { donor_type, donor_name, donor_email, donor_phone, donor_memo });
 
     // Normalize and map statuses between transactions and ledger entries
     const txStatus = status === 'completed'
@@ -296,25 +282,33 @@ const createTransaction = async (req, res) => {
       ? 'completed'
       : (txStatus === 'canceled' ? 'cancelled' : txStatus);
 
-    // Verify that collector exists and member exists (if provided)
-    const collector = await Member.findByPk(collected_by);
-    if (!collector) {
-      return res.status(400).json({
-        success: false,
-        message: 'Collector not found'
-      });
-    }
+    const payload = {
+      member_id,
+      collected_by,
+      payment_date,
+      amount,
+      payment_type,
+      payment_method,
+      receipt_number,
+      check_number,
+      note: finalNote,
+      donor_name,
+      external_id,
+      for_year,
+      donation_id,
+      status: txStatus,
+      income_category_id
+    };
 
-    // Verify member exists only if member_id is provided (not anonymous)
-    if (member_id) {
-      const member = await Member.findByPk(member_id);
-      if (!member) {
-        return res.status(400).json({
-          success: false,
-          message: 'Member not found'
-        });
-      }
-    }
+    // Validate + resolve GL mapping / collector / member before opening a DB
+    // transaction — avoids holding a pool connection idle while other queries
+    // run (pool max is small). Throws TransactionServiceError (with
+    // .statusCode) on any failure — caught below and shaped into the same
+    // response the inline checks used to produce.
+    const resolved = await validateAndResolveTransaction(payload);
+    const { normalizedReceiptNumber, finalIncomeCategoryId } = resolved;
+
+    t = await sequelize.transaction();
 
     // 1. If external_id provided, check for existing transaction
     let transaction = null;
@@ -334,9 +328,8 @@ const createTransaction = async (req, res) => {
             amount: parseFloat(amount),
             payment_type,
             payment_method,
-            receipt_number,
+            receipt_number: normalizedReceiptNumber,
             note: finalNote,
-            status: txStatus,
             status: txStatus,
             donation_id: donation_id || transaction.donation_id,
             income_category_id: finalIncomeCategoryId,
@@ -360,7 +353,7 @@ const createTransaction = async (req, res) => {
           amount: parseFloat(amount),
           payment_date: payment_date ? tz.parseDate(payment_date) : tz.now(),
           payment_type,
-          receipt_number: receipt_number || null,
+          receipt_number: normalizedReceiptNumber || null,
           // Only check manual payments for logical duplicates
           payment_method: { [Op.notIn]: ['credit_card', 'ach'] },
           created_at: {
@@ -381,54 +374,18 @@ const createTransaction = async (req, res) => {
       }
     }
 
-    // Create new transaction if it doesn't exist
     if (!transaction) {
-      transaction = await Transaction.create({
-        member_id,
-        collected_by,
-        payment_date: payment_date ? tz.parseDate(payment_date) : tz.now(),
-        amount: parseFloat(amount),
-        payment_type,
-        payment_method,
-        receipt_number,
-        note: finalNote,
-        external_id: external_id || null,
-        status: txStatus,
-        donation_id: donation_id || null,
-        income_category_id: finalIncomeCategoryId,
-        for_year: for_year || null
-      }, { transaction: t });
+      // Create new transaction + its ledger entry via the shared service.
+      transaction = await createTransactionRecord(payload, { transaction: t });
+    } else {
+      // Existing transaction (matched via external_id) was updated above —
+      // it still needs a fresh ledger entry, exactly as before.
+      await createLedgerEntryForTransaction(transaction, payload, resolved, { transaction: t });
     }
 
-    // Create corresponding ledger entry using Sequelize (avoids enum issues)
-    // Wrapped in try-catch to make ledger entries optional (for gradual migration)
-    try {
-      const entryDate = payment_date ? tz.parseDate(payment_date) : tz.now();
-      const memo = `${glCode} - ${finalNote || 'No description'}`;
+    await t.commit();
 
-      await LedgerEntry.create({
-        type: payment_type, // Keep payment_type for backward compatibility
-        category: glCode, // Use GL code for categorization (INC001, INC002, etc.)
-        amount: parseFloat(amount),
-        entry_date: entryDate,
-        payment_method,
-        receipt_number: receipt_number || null,
-        memo,
-        collected_by,
-        member_id,
-        transaction_id: transaction.id,
-        source_system: 'manual',
-        external_id: external_id || null,
-        fund: null,
-        attachment_url: null,
-        statement_date: null
-      }, { transaction: t });
-    } catch (ledgerError) {
-      // Ledger entries are optional - log error but don't fail transaction
-      console.warn('⚠️  Could not create ledger entry (table may not exist):', ledgerError.message);
-    }
-
-    // Fetch the created transaction with associations and ledger entries
+    // Fetch after commit so the write transaction doesn't stay open during joins
     const createdTransaction = await Transaction.findByPk(transaction.id, {
       include: [
         {
@@ -448,12 +405,8 @@ const createTransaction = async (req, res) => {
           attributes: ['id', 'gl_code', 'name', 'description'],
           required: false
         }
-      ],
-      transaction: t
+      ]
     });
-
-    // Commit the transaction
-    await t.commit();
 
     res.status(201).json({
       success: true,
@@ -463,8 +416,20 @@ const createTransaction = async (req, res) => {
       }
     });
   } catch (error) {
-    // Rollback the transaction in case of error
-    await t.rollback();
+    if (t && !t.finished) {
+      try {
+        await t.rollback();
+      } catch (rollbackError) {
+        console.error('Transaction rollback failed:', rollbackError.message);
+      }
+    }
+
+    if (error instanceof TransactionServiceError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message
+      });
+    }
 
     console.error('❌ Error creating transaction:', error);
     console.error('Error details:', error.message);
@@ -507,12 +472,52 @@ const updateTransaction = async (req, res) => {
       });
     }
 
+    if (updateData.receipt_number !== undefined) {
+      const receiptValidation = validateReceiptNumber(updateData.receipt_number);
+      if (!receiptValidation.valid) {
+        await t.rollback();
+        return res.status(400).json({
+          success: false,
+          message: receiptValidation.message
+        });
+      }
+      updateData.receipt_number = receiptValidation.normalized;
+
+      // Reject a receipt number already used by a different transaction
+      // ('000' is the shared no-receipt placeholder). Mirrors createTransaction.
+      if (updateData.receipt_number && updateData.receipt_number !== '000') {
+        const duplicateReceipt = await Transaction.findOne({
+          where: { receipt_number: updateData.receipt_number, id: { [Op.ne]: id } },
+          transaction: t
+        });
+        if (duplicateReceipt) {
+          await t.rollback();
+          return res.status(409).json({
+            success: false,
+            message: `Receipt number "${updateData.receipt_number}" has already been used. Please use a unique receipt number.`
+          });
+        }
+      }
+    }
+
     // Validate receipt number for cash/check payments
     if (updateData.payment_method && ['cash', 'check'].includes(updateData.payment_method) && !updateData.receipt_number) {
       await t.rollback();
       return res.status(400).json({
         success: false,
         message: 'Receipt number is required for cash and check payments'
+      });
+    }
+
+    // Membership dues cannot be anonymous — enforce against the post-update state
+    // (mirrors createTransaction so an edit can't strip the member off a due).
+    const finalPaymentType = updateData.payment_type || transaction.payment_type;
+    const finalMemberId = updateData.member_id !== undefined ? updateData.member_id : transaction.member_id;
+    if (finalPaymentType === 'membership_due' && !finalMemberId) {
+      await t.rollback();
+      return res.status(400).json({
+        success: false,
+        message: 'Membership dues cannot be paid anonymously. A member must be selected.'
       });
     }
 
@@ -539,6 +544,27 @@ const updateTransaction = async (req, res) => {
       }
     }
 
+    // Resolve the income category for the (possibly changed) payment type so the
+    // transaction's income_category_id and the ledger GL code stay aligned with the
+    // type — mirrors createTransaction and the Zelle payment-type patch. Without
+    // this, editing a type would leave GL-code income reports pointing at the old
+    // category.
+    let incomeCategory = await IncomeCategory.findOne({
+      where: { payment_type_mapping: finalPaymentType },
+      transaction: t
+    });
+    if (!incomeCategory) {
+      const fallbackType = { tithe: 'offering', building_fund: 'event' }[finalPaymentType];
+      if (fallbackType) {
+        incomeCategory = await IncomeCategory.findOne({
+          where: { payment_type_mapping: fallbackType },
+          transaction: t
+        });
+      }
+    }
+    const glCode = incomeCategory ? incomeCategory.gl_code : 'INC999';
+    updateData.income_category_id = incomeCategory ? incomeCategory.id : null;
+
     // Update the transaction
     await transaction.update(updateData, { transaction: t });
 
@@ -557,14 +583,14 @@ const updateTransaction = async (req, res) => {
     const collectedById = updateData.collected_by || transaction.collected_by;
     const receiptNumber = updateData.receipt_number || transaction.receipt_number || null;
     const note = updateData.note || transaction.note || '';
-    const memo = `${paymentType} - ${note || 'No description'}`;
+    const memo = `${glCode} - ${note || 'No description'}`;
 
     // Create ledger entry using Sequelize (avoids enum issues)
     // Wrapped in try-catch to make ledger entries optional
     try {
       await LedgerEntry.create({
         type: paymentType, // Use paymentType directly - Sequelize handles it as STRING
-        category: paymentType,
+        category: glCode,
         amount: amount,
         entry_date: entryDate,
         payment_method: paymentMethod,
@@ -651,6 +677,19 @@ const deleteTransaction = async (req, res) => {
       });
     }
 
+    // Allocated payments are financial history. The FK is ON DELETE RESTRICT;
+    // this check turns that database error into an explanation the treasurer
+    // can act on — reverse the allocation first, then delete.
+    const allocationCount = await PledgeAllocation.count({ where: { transaction_id: transaction.id } });
+    if (allocationCount > 0) {
+      await t.rollback();
+      return res.status(409).json({
+        success: false,
+        code: 'TRANSACTION_ALLOCATED',
+        message: 'This payment is allocated to a pledge. Reverse the allocation before deleting it.'
+      });
+    }
+
     // Delete associated ledger entries first (if any)
     if (transaction.ledgerEntries && transaction.ledgerEntries.length > 0) {
       await LedgerEntry.destroy({
@@ -722,7 +761,7 @@ const getTransactionStats = async (req, res) => {
     // Total Collected (All income)
     const totalCollectedResult = await Transaction.sum('amount', {
       where: {
-        status: { [Op.notIn]: ['failed', 'cancelled'] }, // Exclude failed/cancelled
+        status: { [Op.notIn]: ['failed', 'canceled'] }, // Exclude failed/cancelled
         ...dateFilter
       }
     });
@@ -732,7 +771,7 @@ const getTransactionStats = async (req, res) => {
     const totalMembershipCollectedResult = await Transaction.sum('amount', {
       where: {
         payment_type: 'membership_due',
-        status: { [Op.notIn]: ['failed', 'cancelled'] },
+        status: { [Op.notIn]: ['failed', 'canceled'] },
         ...dateFilter
       }
     });
@@ -751,7 +790,7 @@ const getTransactionStats = async (req, res) => {
     const contributingMembersCount = await Transaction.count({
       where: {
         amount: { [Op.gt]: 0 },
-        status: { [Op.notIn]: ['failed', 'cancelled'] },
+        status: { [Op.notIn]: ['failed', 'canceled'] },
         ...dateFilter
       },
       distinct: true,
@@ -826,12 +865,16 @@ const getTransactionStats = async (req, res) => {
     }
 
     // 7. Recent Bank Balance
+    // Chase CSVs list newest transactions first, so bulkCreate assigns the
+    // LOWEST id to the NEWEST same-day transaction. Use id ASC to pick the
+    // newest row for a given date — matches the balance logic in
+    // bankTransactionController.getBankTransactions and memberPaymentController.
     console.log('--- DEBUG: Fetching Bank Balance ---');
     const latestBankTxn = await BankTransaction.findOne({
       where: {
         balance: { [Op.ne]: null }
       },
-      order: [['date', 'DESC'], ['id', 'DESC']],
+      order: [['date', 'DESC'], ['id', 'ASC']],
       attributes: ['id', 'balance', 'date', ['created_at', 'createdAt']]
     });
 
@@ -915,14 +958,15 @@ const getMemberPaymentSummaries = async (req, res) => {
         'email',
         'phone_number',
         'spouse_name',
-        'monthly_payment'
+        'monthly_payment',
+        'yearly_pledge'
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['first_name', 'ASC']]
     });
 
-    // Get transaction summaries for each member
+    // Get transaction summaries for each member (all payment types, for display)
     const memberIds = members.map(member => member.id);
     const transactionSummaries = await Transaction.findAll({
       where: {
@@ -937,6 +981,28 @@ const getMemberPaymentSummaries = async (req, res) => {
       raw: true
     });
 
+    // Membership dues collected in the current year — this is what determines
+    // whether a member is "behind" (a large one-time donation must NOT mark a
+    // member up-to-date on dues). Mirrors getPaymentStats' dues-based logic.
+    const now = new Date();
+    const yearStart = `${now.getFullYear()}-01-01`;
+    const yearEnd = `${now.getFullYear()}-12-31`;
+    const duesSummaries = await Transaction.findAll({
+      where: {
+        member_id: memberIds,
+        payment_type: 'membership_due',
+        payment_date: { [Op.gte]: yearStart, [Op.lte]: yearEnd }
+      },
+      attributes: [
+        'member_id',
+        [sequelize.fn('SUM', sequelize.col('amount')), 'duesCollected']
+      ],
+      group: ['member_id'],
+      raw: true
+    });
+    const duesMap = {};
+    duesSummaries.forEach(d => { duesMap[d.member_id] = parseFloat(d.duesCollected || 0); });
+
     // Create a map for quick lookup
     const summaryMap = {};
     transactionSummaries.forEach(summary => {
@@ -946,21 +1012,28 @@ const getMemberPaymentSummaries = async (req, res) => {
       };
     });
 
+    // Prorate the yearly pledge to months elapsed in the current year
+    const monthsElapsed = now.getMonth() + 1;
+
     // Transform the data to match the expected format
     const summaries = members.map(member => {
       const stats = summaryMap[member.id] || { totalCollected: 0, transactionCount: 0 };
+      const duesCollected = duesMap[member.id] || 0;
 
-      // Calculate status based on monthly payment vs collected
-      // This is a simplified logic - can be made more complex based on months passed
-      const currentMonth = new Date().getMonth() + 1;
-      const expectedTotal = (member.monthly_payment || 0) * currentMonth;
+      // Status is based on membership dues vs the prorated yearly pledge.
+      const yearlyPledge = Number(member.yearly_pledge || 0);
+      const expectedDuesToDate = (yearlyPledge / 12) * monthsElapsed;
 
-      let status = 'up_to_date';
-      if (stats.totalCollected < expectedTotal) {
-        status = 'behind';
-      }
-      if (stats.totalCollected === 0) {
+      let status;
+      if (yearlyPledge <= 0) {
+        // No pledge → not dues-tracked; reflect whether anything was collected
+        status = stats.totalCollected > 0 ? 'up_to_date' : 'no_payment';
+      } else if (duesCollected === 0) {
         status = 'no_payment';
+      } else if (duesCollected + 1e-6 < expectedDuesToDate) {
+        status = 'behind';
+      } else {
+        status = 'up_to_date';
       }
 
       return {
@@ -974,6 +1047,7 @@ const getMemberPaymentSummaries = async (req, res) => {
         },
         stats: {
           totalCollected: stats.totalCollected,
+          duesCollected,
           transactionCount: stats.transactionCount,
           lastPaymentDate: null, // Would need another query or subquery for this
           status
@@ -1004,9 +1078,59 @@ const getMemberPaymentSummaries = async (req, res) => {
 };
 
 // Get skipped receipt numbers starting from a specific number
+// The first receipt of the current book. Anything below it belongs to a retired
+// book and is not part of the sequence being audited or continued.
+function startReceiptNumber() {
+  return parseInt(process.env.START_RECEIPT_NUMBER || '5680', 10);
+}
+
+// Numeric receipts belonging to the current book, ascending and deduplicated.
+// Shared so the gap report and the "what comes next" lookup can never disagree
+// about which receipts count — 122 rows hold the text "imported", and hundreds
+// more belong to the previous book.
+function currentBookReceiptNumbers(rows, start) {
+  const numbers = rows
+    .map(t => parseInt(t.receipt_number, 10))
+    .filter(num => !isNaN(num) && num >= start);
+  return [...new Set(numbers)].sort((a, b) => a - b);
+}
+
+// The highest receipt recorded so far, so the Add Payment form can warn when a
+// treasurer skips ahead of it.
+const getLastReceiptNumber = async (req, res) => {
+  try {
+    const start = startReceiptNumber();
+
+    const transactions = await Transaction.findAll({
+      attributes: ['receipt_number'],
+      where: { receipt_number: { [Op.not]: null } },
+      raw: true
+    });
+
+    const numbers = currentBookReceiptNumbers(transactions, start);
+    const last = numbers.length > 0 ? numbers[numbers.length - 1] : null;
+
+    res.json({
+      success: true,
+      data: {
+        last_receipt_number: last,
+        // With an empty book the next receipt is the book's first number.
+        next_expected: last === null ? start : last + 1
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching last receipt number:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch last receipt number',
+      error: error.message
+    });
+  }
+};
+
 const getSkippedReceipts = async (req, res) => {
   try {
-    const START_RECEIPT_NUMBER = parseInt(process.env.START_RECEIPT_NUMBER || '5680', 10);
+    const START_RECEIPT_NUMBER = startReceiptNumber();
 
     // Fetch all receipt numbers greater than or equal to the start number
     // We only care about numeric receipt numbers for this check
@@ -1020,14 +1144,7 @@ const getSkippedReceipts = async (req, res) => {
       raw: true
     });
 
-    // Extract numeric receipt numbers
-    const receiptNumbers = transactions
-      .map(t => parseInt(t.receipt_number, 10))
-      .filter(num => !isNaN(num) && num >= START_RECEIPT_NUMBER)
-      .sort((a, b) => a - b);
-
-    // Remove duplicates
-    const uniqueReceiptNumbers = [...new Set(receiptNumbers)];
+    const uniqueReceiptNumbers = currentBookReceiptNumbers(transactions, START_RECEIPT_NUMBER);
 
     if (uniqueReceiptNumbers.length === 0) {
       return res.json({
@@ -1077,7 +1194,7 @@ const getSkippedReceipts = async (req, res) => {
 const updateTransactionPaymentType = async (req, res) => {
   try {
     const { id } = req.params;
-    const { payment_type } = req.body || {};
+    const { payment_type, receipt_number } = req.body || {};
 
     const allowed = ['membership_due', 'tithe', 'donation', 'event', 'offering', 'vow', 'building_fund', 'religious_item_sales', 'tigray_hunger_fundraiser', 'other'];
     if (!payment_type || !allowed.includes(payment_type)) {
@@ -1094,7 +1211,28 @@ const updateTransactionPaymentType = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Only Zelle transactions can be updated via this endpoint' });
     }
 
-    await tx.update({ payment_type });
+    const receiptValidation = validateReceiptNumber(receipt_number);
+    if (!receiptValidation.valid) {
+      return res.status(400).json({ success: false, message: receiptValidation.message });
+    }
+    const normalizedReceiptNumber = receiptValidation.normalized;
+    if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
+      const duplicateReceipt = await Transaction.findOne({
+        where: {
+          receipt_number: normalizedReceiptNumber,
+          id: { [Op.ne]: tx.id }
+        }
+      });
+
+      if (duplicateReceipt) {
+        return res.status(409).json({
+          success: false,
+          message: `Receipt number "${normalizedReceiptNumber}" has already been used. Please use a unique receipt number.`
+        });
+      }
+    }
+
+    await tx.update({ payment_type, receipt_number: normalizedReceiptNumber || null });
 
     // Sync corresponding LedgerEntry
     try {
@@ -1107,6 +1245,7 @@ const updateTransactionPaymentType = async (req, res) => {
         await le.update({
           type: payment_type,
           category: glCode,
+          receipt_number: tx.receipt_number || null,
           memo: `${glCode} - Zelle payment ${tx.external_id || tx.id}`
         });
         console.log(`✅ Synced ledger entry for transaction ${tx.id} to new type ${payment_type}`);
@@ -1115,7 +1254,7 @@ const updateTransactionPaymentType = async (req, res) => {
       console.warn(`⚠️ Failed to sync ledger entry for transaction ${tx.id}:`, syncErr.message);
     }
 
-    return res.json({ success: true, data: { id: tx.id, payment_type: tx.payment_type } });
+    return res.json({ success: true, data: { id: tx.id, payment_type: tx.payment_type, receipt_number: tx.receipt_number } });
   } catch (error) {
     console.error('Error updating transaction payment_type:', error);
     return res.status(500).json({ success: false, message: 'Failed to update payment_type', error: error.message });
@@ -1298,6 +1437,7 @@ module.exports = {
   getTransactionStats,
   getMemberPaymentSummaries,
   getSkippedReceipts,
+  getLastReceiptNumber,
   updateTransactionPaymentType,
   generateTransactionReport
 };

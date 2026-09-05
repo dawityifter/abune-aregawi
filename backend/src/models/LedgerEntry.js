@@ -159,6 +159,11 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'Generic payee name for expenses without employee/vendor'
     },
+    donor_name: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Name of a non-member donor on income entries. Only set when member_id is null.'
+    },
     check_number: {
       type: DataTypes.STRING(50),
       allowNull: true,

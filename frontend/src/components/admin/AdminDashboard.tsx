@@ -1,21 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
+import { getMergedPermissions, UserRole } from '../../utils/roles';
 import MemberList from './MemberList';
 import MemberEditModal from './MemberEditModal';
 import RoleManagement from './RoleManagement';
 import DepartmentList from './DepartmentList';
 import ActivityLogViewer from './ActivityLogViewer';
+import AnalyticsDashboardLink from './AnalyticsDashboardLink';
 import VoicemailInbox from './VoicemailInbox';
+import MemberReports from './MemberReports';
+import SurveyReportPage from './SurveyReportPage';
+import FundraisingCampaigns from './FundraisingCampaigns';
 
 const AdminDashboard: React.FC = () => {
   const { currentUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'departments' | 'activity-logs' | 'voicemails'>('members');
+  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'departments' | 'activity-logs' | 'voicemails' | 'reports' | 'survey-report' | 'fundraising'>('members');
   const [canAccess, setCanAccess] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
   // Member Edit Modal State
   const [showEditModal, setShowEditModal] = useState(false);
@@ -38,11 +41,7 @@ const AdminDashboard: React.FC = () => {
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
-        } finally {
-          setLoading(false);
         }
-      } else {
-        setLoading(false);
       }
     };
 
@@ -50,8 +49,18 @@ const AdminDashboard: React.FC = () => {
   }, [currentUser, getUserProfile]);
 
   const memberData = userProfile?.data?.member || userProfile;
-  const userRoles: UserRole[] = memberData?.roles || [(memberData?.role || 'member') as UserRole];
+  const userRoles: UserRole[] = useMemo(
+    () => memberData?.roles || [(memberData?.role || 'member') as UserRole],
+    [memberData]
+  );
   const permissions = getMergedPermissions(userRoles);
+  const isAdmin = userRoles.includes('admin');
+  // Mirrors viewRoles in backend/src/routes/pledgeCampaignRoutes.js — these
+  // roles may READ campaigns; only admin may create/edit/activate them.
+  const canViewFundraising = userRoles.some((r) => [
+    'admin', 'treasurer', 'church_leadership', 'secretary', 'bookkeeper',
+    'auditor', 'budget_committee', 'ar_team', 'ap_team'
+  ].includes(r));
 
   useEffect(() => {
     // Only admins, leadership, and secretary can access the dashboard generally, 
@@ -66,7 +75,7 @@ const AdminDashboard: React.FC = () => {
   // Handle URL hash for tab navigation
   useEffect(() => {
     const hash = window.location.hash.replace('#', '');
-    if (hash === 'members' || hash === 'roles' || hash === 'departments' || hash === 'activity-logs' || hash === 'voicemails') {
+    if (hash === 'members' || hash === 'roles' || hash === 'departments' || hash === 'activity-logs' || hash === 'voicemails' || hash === 'reports' || hash === 'survey-report') {
       setActiveTab(hash as any);
     }
   }, []);
@@ -114,9 +123,28 @@ const AdminDashboard: React.FC = () => {
       case 'departments':
         return <DepartmentList />;
       case 'activity-logs':
-        return <ActivityLogViewer />;
+        // The log data itself is admin-only at the API (roleMiddleware(['admin'])),
+        // so the analytics link beside it is gated the same way rather than
+        // being offered to every role that can open this dashboard.
+        return (
+          <>
+            {isAdmin && <AnalyticsDashboardLink />}
+            <ActivityLogViewer />
+          </>
+        );
       case 'voicemails':
         return <VoicemailInbox />;
+      case 'survey-report':
+        // SurveyReportPage enforces its own admin/secretary/church_leadership
+        // check, so no extra gate is needed here.
+        return <SurveyReportPage />;
+      case 'reports':
+        return isAdmin ? <MemberReports /> : <div className="p-4 text-center text-gray-500">Access Denied</div>;
+      case 'fundraising':
+        // Finance/leadership roles read; only admin gets the write controls.
+        return canViewFundraising
+          ? <FundraisingCampaigns canManage={isAdmin} />
+          : <div className="p-4 text-center text-gray-500">Access Denied</div>;
       default: // 'members' is the default tab
         return (
           <MemberList
@@ -134,7 +162,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 print:hidden">
         <h1 className="text-3xl font-bold text-gray-900">{t('admin.dashboard')}</h1>
         <p className="mt-2 text-gray-600">
           {t('admin.welcome')}, <span className="font-semibold">{currentUser?.displayName || currentUser?.email}</span> ({userRoles.join(', ')})
@@ -142,7 +170,7 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-8">
+      <div className="border-b border-gray-200 mb-8 print:hidden">
         <div className="-mb-px flex items-center justify-between overflow-x-auto">
           <nav className="flex space-x-8">
             <button
@@ -155,6 +183,32 @@ const AdminDashboard: React.FC = () => {
               <i className="fas fa-users mr-2"></i>
               {t('admin.manageMembers')}
             </button>
+
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab('reports')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'reports'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                <i className="fas fa-file-alt mr-2"></i>
+                {t('memberReports.tab')}
+              </button>
+            )}
+
+            {canViewFundraising && (
+              <button
+                onClick={() => setActiveTab('fundraising')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'fundraising'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                <i className="fas fa-hand-holding-heart mr-2"></i>
+                {t('fundraising.tab')}
+              </button>
+            )}
 
             {permissions.canManageRoles && (
               <button
@@ -200,6 +254,19 @@ const AdminDashboard: React.FC = () => {
               <i className="fas fa-envelope mr-2"></i>
               {t('admin.messages')}
             </button>
+
+            {userRoles.some(r => ['admin', 'secretary', 'church_leadership'].includes(r)) && (
+              <button
+                onClick={() => setActiveTab('survey-report')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'survey-report'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                <i className="fas fa-poll mr-2"></i>
+                {t('survey.report.tab')}
+              </button>
+            )}
           </nav>
         </div>
       </div>

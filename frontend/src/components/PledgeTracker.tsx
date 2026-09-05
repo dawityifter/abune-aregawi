@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useLanguage } from '../contexts/LanguageContext';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface PledgeStats {
   total_pledged: number;
@@ -11,7 +11,10 @@ interface PledgeStats {
     status: string;
     count: number;
     total_amount: number;
-    pledges: Array<{
+    // Per-donor rows carry member names, so /api/pledges/stats only serializes
+    // them for an authenticated caller passing detail=true. This page is public
+    // and does not, so treat them as absent unless proven otherwise.
+    pledges?: Array<{
       id: number;
       amount: number;
       name: string;
@@ -20,7 +23,7 @@ interface PledgeStats {
       created_at: string;
     }>;
   }>;
-  recent_pledges: Array<{
+  recent_pledges?: Array<{
     id: number;
     name: string;
     amount: number;
@@ -31,30 +34,35 @@ interface PledgeStats {
 }
 
 interface PledgeTrackerProps {
-  eventName?: string; // Optional filter by event
+  /** Scopes every figure to one drive. Without it the tracker would total
+      every pledge ever recorded, including closed historical campaigns. */
+  campaignId?: number;
+  /** Drives the goal progress bar. Absent when the campaign has no goal. */
+  goalAmount?: number;
   showRecentPledges?: boolean;
   compact?: boolean;
 }
 
 const PledgeTracker: React.FC<PledgeTrackerProps> = ({
-  eventName,
+  campaignId,
+  goalAmount,
   showRecentPledges = true,
   compact = false
 }) => {
-  const { t } = useLanguage();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [stats, setStats] = useState<PledgeStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams();
-      if (eventName) {
-        params.append('event_name', eventName);
+      if (campaignId) {
+        params.append('campaign_id', String(campaignId));
       }
 
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/pledges/stats?${params.toString()}`);
@@ -63,21 +71,21 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
       if (data.success) {
         setStats(data.stats);
       } else {
-        setError(data.message || 'Failed to load pledge statistics');
+        setError(data.message || t('pledgeTracker.loadFailed'));
       }
     } catch (err) {
       console.error('Error fetching pledge stats:', err);
-      setError('Failed to load pledge statistics');
+      setError(t('pledgeTracker.loadFailed'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [campaignId, t]);
 
   useEffect(() => {
     fetchStats();
     // Removed auto-refresh per requirement; manual refresh button provided instead
     return () => {};
-  }, [eventName]);
+  }, [fetchStats]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -113,7 +121,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
           onClick={fetchStats}
           className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
         >
-          Try Again
+          {t('pledgeTracker.tryAgain')}
         </button>
       </div>
     );
@@ -122,10 +130,16 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
   if (!stats) {
     return (
       <div className="text-center py-8 text-gray-500">
-        No pledge data available
+        {t('pledgeTracker.noData')}
       </div>
     );
   }
+
+  // A drive can exceed its goal (a payment lands in full on a pledge even when
+  // it overshoots), so clamp: >100% reads as a rendering bug, not generosity.
+  const goalPercent = goalAmount
+    ? Math.min(100, (stats.total_pledged / goalAmount) * 100)
+    : 0;
 
   const progressPercentage = stats.total_pledged > 0
     ? (stats.total_fulfilled / stats.total_pledged) * 100
@@ -141,20 +155,20 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
       <div className={`mb-6 ${compact ? '' : 'flex items-center justify-between'}`}>
         <div className={`${compact ? 'text-center' : 'text-left'}`}>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {eventName ? `${eventName} Pledges` : 'Pledge Tracker'}
+            {t('pledgeTracker.title')}
           </h2>
           <p className="text-gray-600">
-            See how our Abune Aregawi church community is coming together to support this cause.
+            {t('pledgeTracker.subtitle')}
           </p>
         </div>
         {!compact && (
           <button
             onClick={fetchStats}
             className="mt-3 md:mt-0 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary-600 hover:bg-primary-700 text-white shadow"
-            title="Refresh"
+            title={t('pledgeTracker.refresh')}
           >
             <i className="fas fa-rotate-right"></i>
-            Refresh
+            {t('pledgeTracker.refresh')}
           </button>
         )}
       </div>
@@ -166,7 +180,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
           <div className="text-2xl font-bold text-blue-600 mb-1">
             {formatCurrency(stats.total_pledged)}
           </div>
-          <div className="text-sm text-blue-700 font-medium">Total Pledged</div>
+          <div className="text-sm text-blue-700 font-medium">{t('pledgeTracker.totalPledged')}</div>
         </div>
 
         {/* Total Fulfilled */}
@@ -174,7 +188,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
           <div className="text-2xl font-bold text-green-600 mb-1">
             {formatCurrency(stats.total_fulfilled)}
           </div>
-          <div className="text-sm text-green-700 font-medium">Total Donated</div>
+          <div className="text-sm text-green-700 font-medium">{t('pledgeTracker.totalDonated')}</div>
         </div>
 
         {/* Remaining */}
@@ -182,7 +196,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
           <div className="text-2xl font-bold text-orange-600 mb-1">
             {formatCurrency(stats.total_remaining)}
           </div>
-          <div className="text-sm text-orange-700 font-medium">Remaining</div>
+          <div className="text-sm text-orange-700 font-medium">{t('pledgeTracker.remaining')}</div>
         </div>
       </div>
 
@@ -190,7 +204,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
       {!compact && (
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">Fulfillment Progress</span>
+            <span className="text-sm font-medium text-gray-700">{t('pledgeTracker.fulfillmentProgress')}</span>
             <span className="text-sm text-gray-600">{stats.fulfillment_rate}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
@@ -202,10 +216,35 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
         </div>
       )}
 
+      {/* Progress toward the campaign's goal — distinct from fulfillment,
+          which measures money collected against money pledged. */}
+      {goalAmount ? (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700">{t('pledgeTracker.goalProgress')}</span>
+            <span className="text-sm text-gray-600">
+              {formatCurrency(stats.total_pledged)} / {formatCurrency(goalAmount)}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div
+              className="bg-primary-600 h-3 rounded-full transition-all"
+              style={{ width: `${goalPercent}%` }}
+            ></div>
+          </div>
+          <div className="mt-1 text-right text-sm font-semibold text-primary-700">
+            {/* Labelled explicitly: the admin Fundraising tab shows
+                collected/goal for this same campaign, so a bare percentage
+                here looks like a contradiction. */}
+            {goalPercent.toFixed(0)}% {t('pledgeTracker.ofGoalPledged')}
+          </div>
+        </div>
+      ) : null}
+
       {/* Status Breakdown */}
       {!compact && (
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">Pledge Status</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('pledgeTracker.pledgeStatus')}</h3>
           <div className="space-y-4">
             {stats.status_breakdown.map((status) => (
               <div key={status.status} className="bg-gray-50 rounded-lg p-4">
@@ -222,7 +261,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
                     <div className="text-lg font-semibold text-green-600">
                       {formatCurrency(status.total_amount)}
                     </div>
-                    <div className="text-xs text-gray-500">Total Amount</div>
+                    <div className="text-xs text-gray-500">{t('pledgeTracker.totalAmount')}</div>
                   </div>
                 </div>
 
@@ -231,7 +270,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
                   className="space-y-2"
                   style={['pending', 'fulfilled'].includes(status.status) ? { maxHeight: '22rem', overflowY: 'auto', paddingRight: '4px' } : undefined}
                 >
-                  {status.pledges.map((pledge) => (
+                  {(status.pledges ?? []).map((pledge) => (
                     <div key={pledge.id} className="bg-white rounded border p-2">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
@@ -244,7 +283,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
                                 )}
                               </>
                             ) : (
-                              <span className="italic text-gray-600">Anonymous</span>
+                              <span className="italic text-gray-600">{t('pledgeTracker.anonymous')}</span>
                             )}
                           </div>
                           <div className="text-xs text-gray-500 capitalize">
@@ -268,7 +307,7 @@ const PledgeTracker: React.FC<PledgeTrackerProps> = ({
 
       {/* Last Updated */}
       <div className="text-center text-xs text-gray-500 mt-6">
-        Last updated: {new Date().toLocaleTimeString()}
+        {t('pledgeTracker.lastUpdated', { time: new Date().toLocaleTimeString() })}
       </div>
     </div>
   );

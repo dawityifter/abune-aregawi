@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowTempUser = false // Default to false for most routes
 }) => {
   const { currentUser, firebaseUser, loading, authReady, error } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
 
   console.log('🛡️ ProtectedRoute check:', { 
@@ -58,13 +60,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                 onClick={() => window.location.reload()}
                 className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
               >
-                Retry
+                {t('protectedRoute.retry')}
               </button>
               <a
                 href="/register"
                 className="px-4 py-2 border rounded hover:bg-gray-50 inline-flex items-center justify-center"
               >
-                Go to Registration
+                {t('protectedRoute.goToRegistration')}
               </a>
             </div>
           </div>

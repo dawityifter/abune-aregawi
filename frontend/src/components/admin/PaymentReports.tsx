@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
@@ -74,14 +74,9 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchReport();
-  }, [reportType, paymentView]);
-
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
-      // Use different endpoints based on the selected view
       const baseEndpoint = paymentView === 'new' ? '/api/transactions' : '/api/payments';
       const response = await fetch(`${process.env.REACT_APP_API_URL}${baseEndpoint}/reports/${reportType}?email=${encodeURIComponent(currentUser?.email || '')}`, {
         headers: {
@@ -98,7 +93,11 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [paymentView, reportType, currentUser?.email, firebaseUser]);
+
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
 
   const parseDonorInfo = (note?: string) => {
     if (!note || !note.includes('[Anonymous Donor]')) return null;
@@ -361,7 +360,7 @@ const PaymentReports: React.FC<PaymentReportsProps> = ({ paymentView }) => {
     <div className="space-y-6 print:space-y-0">
       {/* Print Header */}
       <div className="hidden print:block text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 font-serif">Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church</h1>
+        <h1 className="text-2xl font-bold text-gray-900 font-serif">Debre Tsehay Abune Aregawi Orthodox Tewahedo Church</h1>
         <p className="text-sm text-gray-500 mt-1">{new Date().toLocaleDateString()}</p>
       </div>
 

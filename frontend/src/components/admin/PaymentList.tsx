@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface Payment {
   id: number;
@@ -29,6 +30,7 @@ interface PaymentListProps {
 
 const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded, paymentView }) => {
   const { currentUser, firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -111,11 +113,11 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded, paymentView }
     const collected = Number(totalCollected) || 0;
     const due = Number(totalAmountDue) || 0;
     
-    if (due <= 0) return 'No Dues';
-    if (collected >= due) return 'Up to Date';
-    if (collected > 0 && collected < due) return 'Partial';
-    if (collected === 0) return 'Behind';
-    return 'No Dues';
+    if (due <= 0) return t('paymentList.statusNoDues');
+    if (collected >= due) return t('paymentList.statusUpToDate');
+    if (collected > 0 && collected < due) return t('paymentList.statusPartial');
+    if (collected === 0) return t('paymentList.statusBehind');
+    return t('paymentList.statusNoDues');
   };
 
   if (loading) {
@@ -133,29 +135,29 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded, paymentView }
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Search Members
+              {t('paymentList.searchLabel')}
             </label>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name or member ID..."
+              placeholder={t('paymentList.searchPlaceholder')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status Filter
+              {t('paymentList.statusFilter')}
             </label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="all">All Members</option>
-              <option value="up_to_date">Up to Date</option>
-              <option value="behind">Behind on Payments</option>
-              <option value="partial">Partial Payments</option>
+              <option value="all">{t('paymentList.filterAll')}</option>
+              <option value="up_to_date">{t('paymentList.filterUpToDate')}</option>
+              <option value="behind">{t('paymentList.filterBehind')}</option>
+              <option value="partial">{t('paymentList.filterPartial')}</option>
             </select>
           </div>
           <div className="flex items-end">
@@ -163,7 +165,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded, paymentView }
               onClick={fetchPayments}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
             >
-              Apply Filters
+              {t('paymentList.applyFilters')}
             </button>
           </div>
         </div>
@@ -176,25 +178,25 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded, paymentView }
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Member
+                  {t('paymentList.colMember')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact
+                  {t('paymentList.colContact')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Monthly Payment
+                  {t('paymentList.colMonthly')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Due
+                  {t('paymentList.colTotalDue')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Collected
+                  {t('paymentList.colCollected')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Balance
+                  {t('paymentList.colBalance')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  {t('paymentList.colStatus')}
                 </th>
               </tr>
             </thead>
@@ -217,7 +219,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded, paymentView }
                       </div>
                       {payment.spouseName && (
                         <div className="text-sm text-gray-500">
-                          Spouse: {payment.spouseName}
+                          {t('paymentList.spouse')} {payment.spouseName}
                         </div>
                       )}
                     </div>
@@ -262,7 +264,7 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded, paymentView }
         <div className="bg-white rounded-lg shadow-md px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-700">
-              Page {currentPage} of {totalPages}
+              {t('paymentList.pageOf', { page: currentPage, total: totalPages })}
             </div>
             <div className="flex space-x-2">
               <button
@@ -270,14 +272,14 @@ const PaymentList: React.FC<PaymentListProps> = ({ onPaymentAdded, paymentView }
                 disabled={currentPage === 1}
                 className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Previous
+                {t('paymentList.previous')}
               </button>
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
                 className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Next
+                {t('paymentList.next')}
               </button>
             </div>
           </div>

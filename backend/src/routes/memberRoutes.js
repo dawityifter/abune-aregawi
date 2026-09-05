@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const memberController = require('../controllers/memberController');
 const memberPaymentController = require('../controllers/memberPaymentController');
+const memberReportController = require('../controllers/memberReportController');
 const {
   validateMemberRegistration,
   validateLogin,
@@ -21,6 +22,8 @@ const roleMiddleware = require('../middleware/role');
 const activityLoggerMiddleware = require('../middleware/activityLog');
 const admin = require('firebase-admin');
 const outreachController = require('../controllers/outreachController');
+const { isDemoToken, DEMO_UID, DEMO_PHONE, DEMO_EMAIL } = require('../config/demoMode');
+const { Member, Dependent } = require('../models');
 
 // Only verifies Firebase ID token, does not check DB
 const verifyFirebaseTokenOnly = async (req, res, next) => {
@@ -30,15 +33,100 @@ const verifyFirebaseTokenOnly = async (req, res, next) => {
       return res.status(401).json({ message: 'No Firebase token provided.' });
     }
     const firebaseToken = authHeader.substring(7);
+
+    // Demo bypass — never honored in production, see config/demoMode.js
+    if (isDemoToken(firebaseToken)) {
+      req.firebaseUid = DEMO_UID;
+      req.firebaseEmail = DEMO_EMAIL;
+      req.firebasePhone = DEMO_PHONE;
+      return next();
+    }
+
     const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
     req.firebaseUid = decodedToken.uid;
-    // Attach phone number from token when present to help authorize dependents
+    // Attach email/phone from token when present so controllers can bind the
+    // request to the caller's own identity (never trust client-supplied ids).
+    if (decodedToken.email) {
+      req.firebaseEmail = decodedToken.email;
+    }
     if (decodedToken.phone_number) {
       req.firebasePhone = decodedToken.phone_number;
     }
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Invalid or expired Firebase token.' });
+  }
+};
+
+// Authorize access to a household's dependents. Runs AFTER verifyFirebaseTokenOnly.
+// Allowed callers: church staff, the head-of-household / a member of the same
+// family, or (read-only) a dependent viewing their own household. Everyone else
+// gets 403. This closes the previously-unauthenticated dependents CRUD.
+const DEPENDENT_STAFF_ROLES = ['admin', 'secretary', 'church_leadership', 'relationship'];
+
+const rolesOf = (member) => {
+  if (!member) return [];
+  return (Array.isArray(member.roles) && member.roles.length) ? member.roles : [member.role];
+};
+
+const isInHousehold = async (caller, targetMemberId) => {
+  if (!caller || targetMemberId == null) return false;
+  const effFamilyId = caller.family_id || caller.id;
+  if (String(targetMemberId) === String(caller.id)) return true;
+  if (String(targetMemberId) === String(effFamilyId)) return true;
+  const target = await Member.findByPk(targetMemberId, { attributes: ['id', 'family_id'] });
+  return !!target && String(target.family_id || target.id) === String(effFamilyId);
+};
+
+const authorizeDependentAccess = async (req, res, next) => {
+  try {
+    // Resolve the household member this request targets
+    let targetMemberId = req.params.memberId || null;
+    if (!targetMemberId && req.params.dependentId) {
+      const dep = await Dependent.findByPk(req.params.dependentId, {
+        attributes: ['id', 'memberId', 'linkedMemberId']
+      });
+      if (!dep) {
+        return res.status(404).json({ success: false, message: 'Dependent not found' });
+      }
+      targetMemberId = dep.linkedMemberId || dep.memberId;
+    }
+
+    // Identify the caller from the verified token (phone-auth only)
+    let caller = null;
+    if (req.firebaseUid) {
+      caller = await Member.findOne({ where: { firebase_uid: req.firebaseUid } });
+    }
+    if (!caller && req.firebasePhone) {
+      caller = await Member.findOne({ where: { phone_number: req.firebasePhone } });
+    }
+
+    // Church staff may manage any household's dependents
+    if (rolesOf(caller).some((r) => DEPENDENT_STAFF_ROLES.includes(r))) {
+      return next();
+    }
+
+    // The head-of-household or a member of the same family may manage their own
+    if (await isInHousehold(caller, targetMemberId)) {
+      return next();
+    }
+
+    // A dependent login (no Member record) may READ its own household only
+    if (!caller && req.method === 'GET' && req.firebasePhone) {
+      const dep = await Dependent.findOne({
+        where: { phone: req.firebasePhone },
+        attributes: ['memberId', 'linkedMemberId']
+      });
+      const depHousehold = dep ? (dep.linkedMemberId || dep.memberId) : null;
+      if (depHousehold != null && String(depHousehold) === String(targetMemberId)) {
+        return next();
+      }
+    }
+
+    return res.status(403).json({ success: false, message: 'Forbidden' });
+  } catch (err) {
+    console.error('authorizeDependentAccess error:', err);
+    return res.status(500).json({ success: false, message: 'Authorization check failed' });
   }
 };
 
@@ -50,6 +138,7 @@ router.get('/validate-head-of-household/:phoneNumber', memberController.validate
 
 // Public: check if a phone number already exists (for admin add-member validation)
 router.get('/check-phone/:phoneNumber', memberController.checkPhoneExists);
+router.get('/check-email/:email', memberController.checkEmailExists);
 
 // Complete registration after Firebase Auth (prevents partial saves)
 router.post('/complete-registration/:firebaseUid', memberController.completeRegistration);
@@ -66,9 +155,11 @@ router.get('/cleanup-orphaned',
 );
 router.post('/login', validateLogin, memberController.login);
 
-// Firebase Auth profile routes (no JWT required)
-router.get('/profile/firebase/:uid', memberController.getProfileByFirebaseUid);
-router.put('/profile/firebase/:uid', validateProfileUpdate, memberController.updateProfileByFirebaseUid);
+// Firebase Auth profile routes — require a verified Firebase ID token.
+// The controllers bind the lookup to the token identity, so a caller can only
+// read or update their OWN profile (path :uid must equal the token uid).
+router.get('/profile/firebase/:uid', verifyFirebaseTokenOnly, memberController.getProfileByFirebaseUid);
+router.put('/profile/firebase/:uid', verifyFirebaseTokenOnly, validateProfileUpdate, memberController.updateProfileByFirebaseUid);
 
 // Member dues (current user's own dues) using Firebase token only
 router.get('/dues/my', verifyFirebaseTokenOnly, memberPaymentController.getMyDues);
@@ -93,13 +184,14 @@ router.get('/test-auth', firebaseAuthMiddleware, (req, res) => {
 // Firebase Auth admin routes (Firebase token verification)
 router.get('/all/firebase', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), validateMemberQuery, memberController.getAllMembersFirebase);
 
-// Dependents management routes (no JWT required - using member ID)
+// Dependents management routes — require a verified token AND household/staff
+// authorization (see authorizeDependentAccess).
 router.get('/dependents/count', firebaseAuthMiddleware, roleMiddleware(['admin', 'church_leadership', 'treasurer', 'secretary']), memberController.getTotalDependentsCount);
-router.get('/:memberId/dependents', validateMemberId, memberController.getMemberDependents);
-router.post('/:memberId/dependents', validateMemberId, validateDependentData, activityLoggerMiddleware('Dependent'), memberController.addDependent);
-router.put('/dependents/:dependentId', validateDependentId, validateDependentData, activityLoggerMiddleware('Dependent'), memberController.updateDependent);
-router.patch('/dependents/:dependentId', validateDependentId, validateDependentUpdate, activityLoggerMiddleware('Dependent'), memberController.updateDependent);
-router.delete('/dependents/:dependentId', validateDependentId, activityLoggerMiddleware('Dependent'), memberController.deleteDependent);
+router.get('/:memberId/dependents', verifyFirebaseTokenOnly, validateMemberId, authorizeDependentAccess, memberController.getMemberDependents);
+router.post('/:memberId/dependents', verifyFirebaseTokenOnly, validateMemberId, authorizeDependentAccess, validateDependentData, activityLoggerMiddleware('Dependent'), memberController.addDependent);
+router.put('/dependents/:dependentId', verifyFirebaseTokenOnly, validateDependentId, authorizeDependentAccess, validateDependentData, activityLoggerMiddleware('Dependent'), memberController.updateDependent);
+router.patch('/dependents/:dependentId', verifyFirebaseTokenOnly, validateDependentId, authorizeDependentAccess, validateDependentUpdate, activityLoggerMiddleware('Dependent'), memberController.updateDependent);
+router.delete('/dependents/:dependentId', verifyFirebaseTokenOnly, validateDependentId, authorizeDependentAccess, activityLoggerMiddleware('Dependent'), memberController.deleteDependent);
 
 // JWT-protected profile routes (for testing and JWT-based auth)
 router.get('/profile/jwt', authMiddleware, memberController.getProfile);
@@ -153,6 +245,17 @@ router.post('/:id/mark-welcomed',
   validateMemberId,
   activityLoggerMiddleware('Member'),
   memberController.markWelcomed
+);
+
+// Member reports (admin only) — must be registered before '/:id'
+router.get('/reports/member-information',
+  roleMiddleware(['admin']),
+  memberReportController.getMemberInformationReport
+);
+
+router.get('/reports/household-directory',
+  roleMiddleware(['admin']),
+  memberReportController.getHouseholdDirectoryReport
 );
 
 // Admin routes (require admin role)

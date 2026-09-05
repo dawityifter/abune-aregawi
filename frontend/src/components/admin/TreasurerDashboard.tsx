@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import BankUpload from '../finance/BankUpload';
 import BankTransactionList from '../finance/BankTransactionList';
+import MonthlyBankSummary from '../finance/MonthlyBankSummary';
 import { useAuth } from '../../contexts/AuthContext';
-import { getRolePermissions, getMergedPermissions, UserRole } from '../../utils/roles';
+import { getMergedPermissions, UserRole } from '../../utils/roles';
 import TransactionList from './TransactionList';
 import PaymentStats from './PaymentStats';
 import PaymentReports from './PaymentReports';
@@ -11,14 +12,21 @@ import AddExpenseModal from './AddExpenseModal';
 import ExpenseList from './ExpenseList';
 import WeeklyCollectionReport from './WeeklyCollectionReport';
 import ZelleReview from './ZelleReview';
+import SquareReview from './SquareReview';
 import MemberSearch from './MemberSearch';
+import MemberDuesViewer from './MemberDuesViewer';
 import EmployeeList from './EmployeeList';
 import VendorList from './VendorList';
+import LoansPage from './LoansPage';
+import LedgerSheetsPanel from './LedgerSheetsPanel';
+import SkippedNumbersModal from './SkippedNumbersModal';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PaymentStatsData {
   totalMembers: number;
   contributingMembers: number;
+  duesTrackedMembers?: number;
+  notDuesTrackedMembers?: number;
   upToDateMembers: number;
   behindMembers: number;
   totalAmountDue: number;
@@ -31,19 +39,44 @@ interface PaymentStatsData {
   outstandingAmount: number;
   currentBankBalance?: number;
   lastBankUpdate?: string;
+  reconciliation?: {
+    thresholdDollars: number;
+    hasBankData: boolean;
+    bankDeposits: number;
+    bankDebits: number;
+    receiptsReconciled: boolean;
+    receiptsDifference: number;
+    expensesReconciled: boolean;
+    expensesDifference: number;
+  };
 }
+
+type TreasurerTab =
+  | 'overview'
+  | 'payments'
+  | 'member-dues'
+  | 'expenses'
+  | 'loans'
+  | 'bank'
+  | 'reports'
+  | 'employees'
+  | 'vendors'
+  | 'zelle'
+  | 'square'
+  | 'backups';
 
 const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'expenses' | 'reports' | 'zelle' | 'member-dues' | 'employees' | 'vendors' | 'bank'>('overview');
+  const [activeTab, setActiveTab] = useState<TreasurerTab>('overview');
   const [activeReportTab, setActiveReportTab] = useState<'weekly' | 'payment'>('weekly');
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
-  const [showMemberSearch, setShowMemberSearch] = useState(false);
+  const [selectedMemberDuesId, setSelectedMemberDuesId] = useState<string | null>(null);
+  const [memberDuesAutoSelectionEnabled, setMemberDuesAutoSelectionEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -52,9 +85,18 @@ const TreasurerDashboard: React.FC = () => {
   const [showSkippedReceiptsModal, setShowSkippedReceiptsModal] = useState(false);
   const [skippedReceipts, setSkippedReceipts] = useState<number[]>([]);
   const [receiptRange, setReceiptRange] = useState<{ start: number; end: number } | null>(null);
-  const [loadingSkipped, setLoadingSkipped] = useState(false);
 
-  console.log('🏦 Firebase user:', firebaseUser);
+  // State for skipped check numbers modal
+  const [showSkippedChecksModal, setShowSkippedChecksModal] = useState(false);
+  const [skippedChecks, setSkippedChecks] = useState<number[]>([]);
+  const [checkRange, setCheckRange] = useState<{ start: number; end: number } | null>(null);
+
+  // Stats are only rendered on the Overview tab. When something changes them
+  // while another tab is open, flag them instead of paying for a fetch nobody sees.
+  const [statsStale, setStatsStale] = useState(false);
+  const statsRequestId = useRef(0);
+  const hasFetchedReceipts = useRef(false);
+  const hasFetchedChecks = useRef(false);
 
   // Check user permissions
   const memberData = userProfile?.data?.member || userProfile || currentUser;
@@ -64,9 +106,26 @@ const TreasurerDashboard: React.FC = () => {
   // Check if user has financial permissions
   const hasFinancialAccess = permissions.canViewFinancialRecords || permissions.canEditFinancialRecords;
 
-  const fetchSkippedReceipts = async () => {
+  const primaryTabs: Array<{ id: TreasurerTab; label: string; icon: string }> = [
+    { id: 'overview', label: t('treasurerDashboard.tabs.overview'), icon: 'fas fa-chart-line' },
+    { id: 'payments', label: t('treasurerDashboard.tabs.payments'), icon: 'fas fa-hand-holding-usd' },
+    { id: 'member-dues', label: t('treasurerDashboard.tabs.memberDues'), icon: 'fas fa-users' },
+    { id: 'expenses', label: t('treasurerDashboard.tabs.expenses'), icon: 'fas fa-receipt' },
+    { id: 'loans', label: t('treasurerDashboard.tabs.loans'), icon: 'fas fa-file-invoice-dollar' },
+    { id: 'bank', label: t('treasurerDashboard.tabs.bank'), icon: 'fas fa-university' },
+    { id: 'reports', label: t('treasurerDashboard.tabs.reports'), icon: 'fas fa-chart-bar' }
+  ];
+
+  const adminTabs: Array<{ id: TreasurerTab; label: string; icon: string }> = [
+    { id: 'employees', label: t('treasurerDashboard.tabs.employees'), icon: 'fas fa-id-badge' },
+    { id: 'vendors', label: t('treasurerDashboard.tabs.vendors'), icon: 'fas fa-store' },
+    { id: 'zelle', label: t('treasurerDashboard.tabs.zelle'), icon: 'fas fa-mobile-alt' },
+    { id: 'square', label: t('treasurerDashboard.tabs.square'), icon: 'fas fa-square' },
+    { id: 'backups', label: t('treasurerDashboard.tabs.backups'), icon: 'fas fa-database' }
+  ];
+
+  const fetchSkippedReceipts = useCallback(async () => {
     try {
-      setLoadingSkipped(true);
       const endpoint = '/api/transactions/skipped-receipts';
       const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}`, {
         headers: {
@@ -83,19 +142,48 @@ const TreasurerDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error('Error checking skipped receipts:', error);
-    } finally {
-      setLoadingSkipped(false);
     }
-  };
+  }, [firebaseUser]);
 
+  const fetchSkippedChecks = useCallback(async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/expenses/skipped-checks`, {
+        headers: {
+          'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSkippedChecks(data.data.skippedChecks || []);
+        setCheckRange(data.data.range);
+      } else {
+        console.error('Failed to fetch skipped checks');
+      }
+    } catch (error) {
+      console.error('Error checking skipped checks:', error);
+    }
+  }, [firebaseUser]);
+
+  // Fetch the gap lists when their tab is first opened rather than on mount —
+  // a treasurer who never visits a tab shouldn't pay for its scan.
   useEffect(() => {
-    if (permissions.canEditFinancialRecords) {
+    if (activeTab === 'payments' && permissions.canEditFinancialRecords && !hasFetchedReceipts.current) {
+      hasFetchedReceipts.current = true;
       fetchSkippedReceipts();
     }
-  }, [permissions.canEditFinancialRecords]);
+    if (activeTab === 'expenses' && permissions.canViewExpenses && !hasFetchedChecks.current) {
+      hasFetchedChecks.current = true;
+      fetchSkippedChecks();
+    }
+  }, [activeTab, permissions.canEditFinancialRecords, permissions.canViewExpenses, fetchSkippedReceipts, fetchSkippedChecks]);
 
   const openSkippedReceiptsModal = () => {
     setShowSkippedReceiptsModal(true);
+  };
+
+  const openSkippedChecksModal = () => {
+    setShowSkippedChecksModal(true);
   };
 
   useEffect(() => {
@@ -150,47 +238,36 @@ const TreasurerDashboard: React.FC = () => {
   }, [selectedYear]);
 
   const fetchPaymentStats = async () => {
+    // Keep the previous numbers on screen while refetching. Blanking them made
+    // every refresh look like a full page reload.
+    const requestId = ++statsRequestId.current;
     try {
-      console.log('🔍 Fetching payment stats...');
-      console.log('🔍 Current user:', currentUser);
-      console.log('🔍 Firebase user:', firebaseUser);
-
-      // Clear existing stats
-      setStats(null);
       setLoading(true);
 
-      // Fetch pledge/ledger-based stats
       const endpoint = `/api/payments/stats?year=${selectedYear}`;
-
-      console.log('🔍 Using endpoint:', endpoint);
-
       const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}`, {
         headers: {
           'Authorization': `Bearer ${await firebaseUser?.getIdToken()}`
         }
       });
 
-      console.log('🔍 Response status:', response.status);
-      console.log('🔍 Response ok:', response.ok);
+      // A slower earlier request must not overwrite a newer one (e.g. rapid
+      // year-selector changes).
+      if (requestId !== statsRequestId.current) return;
 
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 Payment stats data received:', data);
-        if (data.data) {
-          console.log('🔍 Data payload:', data.data);
-          console.log('🔍 Bank Balance:', data.data.currentBankBalance);
-          console.log('🔍 Last Update:', data.data.lastBankUpdate);
-        }
         setStats(data.data);
+        setStatsStale(false);
       } else {
         console.error('❌ Payment stats API error:', response.status, response.statusText);
-        const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Error data:', errorData);
       }
     } catch (error) {
       console.error('❌ Error fetching payment stats:', error);
     } finally {
-      setLoading(false);
+      if (requestId === statsRequestId.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -207,11 +284,50 @@ const TreasurerDashboard: React.FC = () => {
     } catch { /* non-critical */ }
   };
 
+  // Stats only exist on the Overview tab, so refetch them there and otherwise
+  // just mark them stale — the tab-change effect below picks them up on arrival.
+  const refreshStats = useCallback(() => {
+    if (activeTab === 'overview') {
+      fetchPaymentStats();
+    } else {
+      setStatsStale(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedYear, firebaseUser]);
+
+  useEffect(() => {
+    if (activeTab === 'overview' && statsStale && hasFinancialAccess) {
+      fetchPaymentStats();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, statsStale, hasFinancialAccess]);
+
+  // A payment changes both the stats and the receipt sequence.
   const refreshFinancialData = () => {
-    fetchPaymentStats();
-    if (permissions.canEditFinancialRecords) {
+    refreshStats();
+    if (permissions.canEditFinancialRecords && hasFetchedReceipts.current) {
       fetchSkippedReceipts();
     }
+  };
+
+  // An expense changes the stats and the check sequence — never the receipt
+  // sequence, which is derived from transactions.
+  const refreshAfterExpenseChange = () => {
+    refreshStats();
+    if (permissions.canViewExpenses) {
+      fetchSkippedChecks();
+    }
+    window.dispatchEvent(new CustomEvent('expenses:refresh'));
+  };
+
+  const handleMemberDuesSelect = (memberId: string) => {
+    setSelectedMemberDuesId(memberId);
+    setMemberDuesAutoSelectionEnabled(false);
+  };
+
+  const handleMemberDuesClear = () => {
+    setSelectedMemberDuesId(null);
+    setMemberDuesAutoSelectionEnabled(false);
   };
 
   if (loading || profileLoading) {
@@ -240,7 +356,7 @@ const TreasurerDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 print:hidden">
@@ -250,90 +366,52 @@ const TreasurerDashboard: React.FC = () => {
 
         {/* Tab Navigation */}
         <div className="border-b border-gray-200 mb-8 print:hidden">
-          <div className="-mb-px flex items-center justify-between">
-            <nav className="flex space-x-8">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.overview')}
-              </button>
-              <button
-                onClick={() => setActiveTab('bank')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'bank'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.bank')}
-              </button>
-              <button
-                onClick={() => setActiveTab('payments')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'payments'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.payments')}
-              </button>
-              <button
-                onClick={() => setActiveTab('expenses')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'expenses'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.expenses')}
-              </button>
-              <button
-                onClick={() => setActiveTab('reports')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'reports'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.reports')}
-              </button>
-              <button
-                onClick={() => setActiveTab('zelle')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'zelle'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.zelle')}
-              </button>
-              <button
-                onClick={() => setActiveTab('member-dues')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'member-dues'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.memberDues')}
-              </button>
-              <button
-                onClick={() => setActiveTab('employees')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'employees'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.employees')}
-              </button>
-              <button
-                onClick={() => setActiveTab('vendors')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'vendors'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-              >
-                {t('treasurerDashboard.tabs.vendors')}
-              </button>
-            </nav>
+          <div className="space-y-5 pb-2">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                Core Workflow
+              </p>
+              <div className="-mb-px overflow-x-auto">
+                <nav className="flex min-w-max items-center gap-6">
+                  {primaryTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${activeTab === tab.id
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        }`}
+                    >
+                      <i className={tab.icon} aria-hidden="true"></i>
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                Admin &amp; Maintenance
+              </p>
+              <div className="-mb-px overflow-x-auto">
+                <nav className="flex min-w-max items-center gap-6">
+                  {adminTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${activeTab === tab.id
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        }`}
+                    >
+                      <i className={tab.icon} aria-hidden="true"></i>
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -368,6 +446,7 @@ const TreasurerDashboard: React.FC = () => {
                   selectedYear={selectedYear}
                   availableYears={availableYears}
                   onYearChange={setSelectedYear}
+                  onNavigateToBank={() => setActiveTab('bank')}
                 />
               )}
             </div>
@@ -409,16 +488,42 @@ const TreasurerDashboard: React.FC = () => {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.tabs.expenses')}</h2>
-                {permissions.canAddExpenses && (
-                  <button
-                    onClick={() => setShowAddExpenseModal(true)}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
-                  >
-                    {t('treasurerDashboard.actions.addExpense')}
-                  </button>
-                )}
+                <div className="flex space-x-3">
+                  {skippedChecks.length > 0 && (
+                    <button
+                      onClick={openSkippedChecksModal}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md font-medium flex items-center"
+                    >
+                      <i className="fas fa-exclamation-triangle mr-2"></i>
+                      {t('treasurer.skippedChecks.button')}
+                    </button>
+                  )}
+                  {permissions.canAddExpenses && (
+                    <button
+                      onClick={() => setShowAddExpenseModal(true)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
+                    >
+                      {t('treasurerDashboard.actions.addExpense')}
+                    </button>
+                  )}
+                </div>
               </div>
-              <ExpenseList />
+              <ExpenseList
+                canEdit={permissions.canAddExpenses}
+                onExpenseChanged={refreshAfterExpenseChange}
+              />
+            </div>
+          )}
+
+          {activeTab === 'loans' && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900">Member Loans</h2>
+                  <p className="text-gray-600 mt-1">Track interest-free loans from members — liabilities, not donations</p>
+                </div>
+              </div>
+              <LoansPage />
             </div>
           )}
 
@@ -465,34 +570,51 @@ const TreasurerDashboard: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'square' && (
+            <div>
+              <SquareReview />
+            </div>
+          )}
+
           {activeTab === 'member-dues' && (
             <div>
-              <div className="flex justify-between items-center mb-6">
+              <div className="mb-6">
                 <div>
                   <h2 className="text-2xl font-semibold text-gray-900">{t('treasurerDashboard.memberDues.title')}</h2>
                   <p className="text-gray-600 mt-1">{t('treasurerDashboard.memberDues.subtitle')}</p>
                 </div>
-                <button
-                  onClick={() => setShowMemberSearch(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium flex items-center"
-                >
-                  <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  {t('treasurerDashboard.actions.searchMember')}
-                </button>
               </div>
-              <div className="bg-white rounded-lg shadow p-8 text-center">
-                <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('treasurerDashboard.memberDues.searchTitle')}</h3>
-                <p className="text-gray-600 mb-4">
-                  {t('treasurerDashboard.memberDues.searchDesc')}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {t('treasurerDashboard.memberDues.searchNote')}
-                </p>
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+                <MemberSearch
+                  embedded
+                  autoSelectFirst={memberDuesAutoSelectionEnabled}
+                  selectedMemberId={selectedMemberDuesId}
+                  onMemberSelect={handleMemberDuesSelect}
+                />
+                <div className="min-h-[700px]">
+                  {selectedMemberDuesId ? (
+                    <MemberDuesViewer
+                      memberId={selectedMemberDuesId}
+                      embedded
+                      onClose={handleMemberDuesClear}
+                    />
+                  ) : (
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm h-full flex items-center justify-center p-8 text-center">
+                      <div>
+                        <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">{t('treasurerDashboard.memberDues.searchTitle')}</h3>
+                        <p className="text-gray-600 mb-4">
+                          {t('treasurerDashboard.memberDues.searchDesc')}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {t('treasurerDashboard.memberDues.searchNote')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -506,6 +628,9 @@ const TreasurerDashboard: React.FC = () => {
                 </div>
               </div>
               <BankUpload onUploadSuccess={() => window.dispatchEvent(new CustomEvent('bank:refresh'))} />
+              <div className="mt-8">
+                <MonthlyBankSummary />
+              </div>
               <div className="mt-8">
                 <BankTransactionList refreshTrigger={0} />
               </div>
@@ -523,18 +648,11 @@ const TreasurerDashboard: React.FC = () => {
               <VendorList />
             </div>
           )}
-        </div>
 
-        {/* Member Search Modal */}
-        {showMemberSearch && (
-          <MemberSearch
-            onMemberSelect={(memberId) => {
-              // The MemberSearch component handles showing the MemberDuesViewer
-              console.log('Selected member:', memberId);
-            }}
-            onClose={() => setShowMemberSearch(false)}
-          />
-        )}
+          {activeTab === 'backups' && (
+            <LedgerSheetsPanel />
+          )}
+        </div>
 
         {/* Add Payment Modal */}
         {showAddPaymentModal && (
@@ -555,80 +673,39 @@ const TreasurerDashboard: React.FC = () => {
             onClose={() => setShowAddExpenseModal(false)}
             onSuccess={() => {
               setShowAddExpenseModal(false);
-              refreshFinancialData();
-              // Trigger refresh for expense list if on that tab
-              window.dispatchEvent(new CustomEvent('expenses:refresh'));
+              refreshAfterExpenseChange();
             }}
           />
         )}
 
         {/* Skipped Receipts Modal */}
         {showSkippedReceiptsModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full m-4">
-              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900 flex items-center text-yellow-600">
-                  <i className="fas fa-exclamation-triangle mr-2"></i>
-                  {t('treasurer.skippedReceipts.title')}
-                </h3>
-                <button
-                  onClick={() => setShowSkippedReceiptsModal(false)}
-                  className="text-gray-400 hover:text-gray-500"
-                >
-                  <span className="sr-only">Close</span>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="px-6 py-4">
-                <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                  <div className="flex">
-                    <div className="ml-3">
-                      <p className="text-sm text-yellow-700">
-                        {t('treasurer.skippedReceipts.warning')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+          <SkippedNumbersModal
+            title={t('treasurer.skippedReceipts.title')}
+            warning={t('treasurer.skippedReceipts.warning')}
+            note={t('treasurer.skippedReceipts.note')}
+            rangeLabel={t('treasurer.skippedReceipts.range')}
+            noneFoundLabel={t('treasurer.skippedReceipts.noneFound')}
+            closeLabel={t('treasurer.skippedReceipts.close')}
+            numbers={skippedReceipts}
+            range={receiptRange}
+            onClose={() => setShowSkippedReceiptsModal(false)}
+          />
+        )}
 
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">
-                    {t('treasurer.skippedReceipts.range')}: <span className="font-semibold">{receiptRange?.start} - {receiptRange?.end}</span>
-                  </p>
-
-                  {skippedReceipts.length > 0 ? (
-                    <div className="bg-gray-50 rounded-md p-3 max-h-60 overflow-y-auto border border-gray-200">
-                      <div className="flex flex-wrap gap-2">
-                        {skippedReceipts.map(num => (
-                          <span key={num} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            #{num}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-4 text-green-600">
-                      <i className="fas fa-check-circle text-2xl mb-2"></i>
-                      <p>{t('treasurer.skippedReceipts.noneFound')}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 text-sm text-gray-500">
-                  <p>{t('treasurer.skippedReceipts.note')}</p>
-                </div>
-              </div>
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-                <button
-                  onClick={() => setShowSkippedReceiptsModal(false)}
-                  className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  {t('treasurer.skippedReceipts.close')}
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* Skipped Check Numbers Modal */}
+        {showSkippedChecksModal && (
+          <SkippedNumbersModal
+            title={t('treasurer.skippedChecks.title')}
+            warning={t('treasurer.skippedChecks.warning')}
+            note={t('treasurer.skippedChecks.note')}
+            rangeLabel={t('treasurer.skippedChecks.range')}
+            noneFoundLabel={t('treasurer.skippedChecks.noneFound')}
+            closeLabel={t('treasurer.skippedChecks.close')}
+            numbers={skippedChecks}
+            range={checkRange}
+            onClose={() => setShowSkippedChecksModal(false)}
+          />
         )}
       </div>
     </div>

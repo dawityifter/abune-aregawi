@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useLanguage } from '../../contexts/LanguageContext';
+import React, { useState, useEffect, useCallback } from 'react';
 import { fetchActivityLogs, ActivityLog } from '../../utils/activityLogApi';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const ActivityLogViewer: React.FC = () => {
     const { t } = useLanguage();
@@ -17,11 +17,7 @@ const ActivityLogViewer: React.FC = () => {
     const [actionFilter, setActionFilter] = useState('');
     const [entityTypeFilter, setEntityTypeFilter] = useState('');
 
-    useEffect(() => {
-        loadLogs();
-    }, [page, actionFilter, entityTypeFilter]);
-
-    const loadLogs = async () => {
+    const loadLogs = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -36,11 +32,16 @@ const ActivityLogViewer: React.FC = () => {
             setLogs(response.logs);
             setTotalPages(response.pagination.pages);
         } catch (err: any) {
-            setError(err.message || 'Failed to load activity logs');
+            setError(err.message || t('activityLog.loadFailed'));
         } finally {
             setLoading(false);
         }
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [page, actionFilter, entityTypeFilter]);
+
+    useEffect(() => {
+        loadLogs();
+    }, [loadLogs]);
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= totalPages) {
@@ -84,14 +85,14 @@ const ActivityLogViewer: React.FC = () => {
     return (
         <div className="bg-white shadow rounded-lg p-6">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <h2 className="text-xl font-bold text-gray-800">Activity Logs</h2>
+                <h2 className="text-xl font-bold text-gray-800">{t('activityLog.title')}</h2>
                 <div className="flex flex-wrap gap-2">
                     <select
                         className="border rounded px-3 py-1 text-sm bg-white"
                         value={actionFilter}
                         onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
                     >
-                        <option value="">All Actions</option>
+                        <option value="">{t('activityLog.allActions')}</option>
                         <option value="CREATE">CREATE</option>
                         <option value="UPDATE">UPDATE</option>
                         <option value="DELETE">DELETE</option>
@@ -104,17 +105,17 @@ const ActivityLogViewer: React.FC = () => {
                         value={entityTypeFilter}
                         onChange={(e) => { setEntityTypeFilter(e.target.value); setPage(1); }}
                     >
-                        <option value="">All Types</option>
-                        <option value="Member">Member</option>
-                        <option value="Donation">Donation</option>
-                        <option value="Payment">Payment</option>
+                        <option value="">{t('activityLog.allTypes')}</option>
+                        <option value="Member">{t('activityLog.entityMember')}</option>
+                        <option value="Donation">{t('activityLog.entityDonation')}</option>
+                        <option value="Payment">{t('activityLog.entityPayment')}</option>
                     </select>
 
                     <button
                         onClick={() => loadLogs()}
                         className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm transition-colors"
                     >
-                        Refresh
+                        {t('activityLog.refresh')}
                     </button>
                 </div>
             </div>
@@ -127,7 +128,7 @@ const ActivityLogViewer: React.FC = () => {
 
             {loading ? (
                 <div className="text-center py-8 text-gray-500">
-                    Loading logs...
+                    {t('activityLog.loading')}
                 </div>
             ) : (
                 <>
@@ -136,19 +137,19 @@ const ActivityLogViewer: React.FC = () => {
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Date
+                                        {t('activityLog.colDate')}
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        User
+                                        {t('activityLog.colUser')}
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Action
+                                        {t('activityLog.colAction')}
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Entity
+                                        {t('activityLog.colEntity')}
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Details
+                                        {t('activityLog.colDetails')}
                                     </th>
                                 </tr>
                             </thead>
@@ -156,7 +157,7 @@ const ActivityLogViewer: React.FC = () => {
                                 {logs.length === 0 ? (
                                     <tr>
                                         <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                                            No activity logs found.
+                                            {t('activityLog.empty')}
                                         </td>
                                     </tr>
                                 ) : (
@@ -171,7 +172,7 @@ const ActivityLogViewer: React.FC = () => {
                                                         {log.actor.first_name} {log.actor.last_name}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-gray-400 italic">System / Unknown</span>
+                                                    <span className="text-gray-400 italic">{t('activityLog.systemUnknown')}</span>
                                                 )}
                                                 {log.ip_address && (
                                                     <div className="text-xs text-gray-400 max-w-[100px] truncate" title={log.ip_address}>
@@ -202,7 +203,7 @@ const ActivityLogViewer: React.FC = () => {
 
                     <div className="mt-4 flex items-center justify-between">
                         <div className="text-sm text-gray-500">
-                            Page {page} of {totalPages}
+                            {t('activityLog.pageOf', { page, total: totalPages })}
                         </div>
                         <div className="flex space-x-2">
                             <button
@@ -213,7 +214,7 @@ const ActivityLogViewer: React.FC = () => {
                                         : 'bg-white text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
-                                Previous
+                                {t('activityLog.previous')}
                             </button>
                             <button
                                 onClick={() => handlePageChange(page + 1)}
@@ -223,7 +224,7 @@ const ActivityLogViewer: React.FC = () => {
                                         : 'bg-white text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
-                                Next
+                                {t('activityLog.next')}
                             </button>
                         </div>
                     </div>

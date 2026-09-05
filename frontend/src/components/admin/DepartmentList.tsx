@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import CreateDepartmentModal from './CreateDepartmentModal';
@@ -35,12 +35,7 @@ const DepartmentList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState<any>(null);
 
-  useEffect(() => {
-    fetchDepartments();
-    fetchStats();
-  }, [typeFilter]);
-
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -81,9 +76,9 @@ const DepartmentList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser, typeFilter]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       if (!firebaseUser) return;
 
@@ -105,7 +100,12 @@ const DepartmentList: React.FC = () => {
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  };
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    fetchDepartments();
+    fetchStats();
+  }, [fetchDepartments, fetchStats]);
 
   const handleDepartmentCreated = () => {
     setShowCreateModal(false);

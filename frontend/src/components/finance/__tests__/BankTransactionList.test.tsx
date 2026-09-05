@@ -1,82 +1,235 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import BankTransactionList from '../BankTransactionList';
+import BankTransactionList, { BankTransaction } from '../BankTransactionList';
 
-// Mock contexts
 jest.mock('../../../contexts/AuthContext', () => ({
-    useAuth: () => ({
-        firebaseUser: {
-            getIdToken: () => Promise.resolve('mock-token'),
-        },
-    }),
+    useAuth: () => ({ firebaseUser: { getIdToken: () => Promise.resolve('mock-token') } }),
 }));
 
 jest.mock('../../../contexts/LanguageContext', () => ({
-    useLanguage: () => ({
-        t: (key: string) => key,
-    }),
+    useLanguage: () => ({ t: (key: string) => key }),
 }));
 
-// Mock fetch
 global.fetch = jest.fn();
 
-describe('BankTransactionList Year Selection', () => {
+const mockTransactions: BankTransaction[] = [
+    {
+        id: 1,
+        date: '2026-02-01',
+        amount: 100,
+        description: 'Test Payment',
+        type: 'ZELLE',
+        status: 'PENDING',
+        payer_name: 'John Doe',
+        check_number: null,
+    },
+];
+
+// Partial, not BankTransaction[]: every test below spreads mockTransactions[0]
+// and adds only the fields that test cares about (member, potential_matches,
+// suggested_match, reconciled_payee_name, ...), never the full interface.
+const setupFetchMock = (transactions: Partial<BankTransaction>[] = mockTransactions, pages = 1) => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+        json: () =>
+            Promise.resolve({
+                success: true,
+                data: { transactions, pagination: { pages }, current_balance: 1000 },
+            }),
+    });
+};
+
+describe('BankTransactionList', () => {
     beforeEach(() => {
         (global.fetch as jest.Mock).mockReset();
+        jest.spyOn(window, 'confirm').mockReturnValue(true);
     });
 
-    test('should show Year dropdown only when Membership Due is selected', async () => {
-        const mockTransactions = [
-            {
-                id: 1,
-                date: '2026-02-01',
-                amount: 100,
-                description: 'Test Zelle Payment',
-                type: 'ZELLE',
-                status: 'PENDING',
-                payer_name: 'John Doe',
-            },
-        ];
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
 
-        (global.fetch as jest.Mock).mockResolvedValue({
-            json: () => Promise.resolve({
-                success: true,
-                data: {
-                    transactions: mockTransactions,
-                    pagination: { pages: 1 },
-                    current_balance: 1000
-                }
-            }),
-        });
-
+    test('shows Details button for each transaction', async () => {
+        setupFetchMock();
         render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+        expect(screen.getByText('Details →')).toBeInTheDocument();
+    });
 
-        // Wait for data to load
-        await waitFor(() => {
-            expect(screen.getByText('Test Zelle Payment')).toBeInTheDocument();
-        });
+    test('does not show inline action buttons in table row', async () => {
+        setupFetchMock();
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+        expect(screen.queryByText('Link and Add Transaction')).not.toBeInTheDocument();
+        expect(screen.queryByText('Confirm Match')).not.toBeInTheDocument();
+        expect(screen.queryByText('Add Expense')).not.toBeInTheDocument();
+    });
 
-        // Click per-row "Link and Add Transaction" button
-        const linkBtn = screen.getByText('Link and Add Transaction');
-        fireEvent.click(linkBtn);
+    test('opens detail panel when Details button is clicked', async () => {
+        setupFetchMock();
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+        fireEvent.click(screen.getByText('Details →'));
+        expect(screen.getByRole('dialog', { name: 'Transaction Details' })).toBeInTheDocument();
+    });
 
-        // Verify modal opens
-        await waitFor(() => {
-            expect(screen.getByText('Link Transaction to Donor')).toBeInTheDocument();
-        });
+    test('shows potential duplicate as the existing transaction entry', async () => {
+        setupFetchMock([
+            {
+                ...mockTransactions[0],
+                potential_matches: [
+                    {
+                        id: 77,
+                        amount: 100,
+                        payment_date: '2026-01-30',
+                        payment_type: 'donation',
+                        payment_method: 'zelle',
+                        receipt_number: 'R-77',
+                        member: { first_name: 'Jane', last_name: 'Doe' },
+                    },
+                ],
+            },
+        ]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Possible existing entry'));
+        expect(screen.getByText(/Existing entry #77: Jane Doe, 2026-01-30, receipt R-77/)).toBeInTheDocument();
+        expect(screen.queryByText('Potential Duplicate')).not.toBeInTheDocument();
+    });
 
-        // Check Payment Type dropdown exists
-        const typeSelect = screen.getByLabelText('Payment Type');
-        expect(typeSelect).toBeInTheDocument();
+    test('labels ignored bank status as reconciled', async () => {
+        setupFetchMock([{ ...mockTransactions[0], status: 'IGNORED' }]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('RECONCILED'));
+        expect(screen.queryByText('IGNORED')).not.toBeInTheDocument();
+    });
 
-        // Year dropdown should NOT be visible initially (default is donation)
-        expect(screen.queryByLabelText('Year (Optional)')).not.toBeInTheDocument();
+    test('shows linked member for matched bank transactions', async () => {
+        setupFetchMock([
+            {
+                ...mockTransactions[0],
+                status: 'MATCHED',
+                member: { first_name: 'Linked', last_name: 'Member' },
+            },
+        ]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Matched: Linked Member'));
+        expect(screen.getByText('MATCHED')).toBeInTheDocument();
+    });
 
-        // Change to "Membership Due"
-        fireEvent.change(typeSelect, { target: { value: 'membership_due' } });
+    test('shows reconciled payee and memo in the detail panel for a matched expense', async () => {
+        setupFetchMock([
+            {
+                ...mockTransactions[0],
+                amount: -75,
+                status: 'MATCHED',
+                reconciled_payee_name: 'Acme Supplies',
+                reconciled_memo: 'Candles for the altar',
+            },
+        ]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+        fireEvent.click(screen.getByText('Details →'));
+        expect(screen.getByText('Expense Details')).toBeInTheDocument();
+        expect(screen.getByText('Acme Supplies')).toBeInTheDocument();
+        expect(screen.getByText('Candles for the altar')).toBeInTheDocument();
+    });
 
-        // Now Year dropdown SHOULD be visible
-        expect(screen.getByLabelText('Year (Optional)')).toBeInTheDocument();
+    test('does not render an empty Expense Details block when no payee or memo was recorded', async () => {
+        // Real case: reconcile-expense lets payee_name go null when neither the
+        // caller nor the bank txn's payer_name supplied one — the panel must not
+        // show a bare "Expense Details" header with nothing under it.
+        setupFetchMock([
+            {
+                ...mockTransactions[0],
+                amount: -50,
+                status: 'MATCHED',
+                reconciled_payee_name: null,
+                reconciled_memo: null,
+            },
+        ]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+        fireEvent.click(screen.getByText('Details →'));
+        expect(screen.queryByText('Expense Details')).not.toBeInTheDocument();
+    });
+
+    test('shows Expense Details when only a memo (no payee) was recorded', async () => {
+        setupFetchMock([
+            {
+                ...mockTransactions[0],
+                amount: -30,
+                status: 'MATCHED',
+                reconciled_payee_name: null,
+                reconciled_memo: 'Utility bill',
+            },
+        ]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+        fireEvent.click(screen.getByText('Details →'));
+        expect(screen.getByText('Expense Details')).toBeInTheDocument();
+        expect(screen.getByText('Utility bill')).toBeInTheDocument();
+        expect(screen.queryByText('Payee')).not.toBeInTheDocument();
+    });
+
+    test('resets pagination when search changes', async () => {
+        setupFetchMock(mockTransactions, 2);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+
+        fireEvent.click(screen.getByText('Next'));
+        await waitFor(() =>
+            expect((global.fetch as jest.Mock).mock.calls.some(([url]) => String(url).includes('page=2'))).toBe(true)
+        );
+
+        fireEvent.change(screen.getByPlaceholderText('Search transactions...'), { target: { value: 'payer' } });
+        await waitFor(() =>
+            expect((global.fetch as jest.Mock).mock.calls.some(([url]) =>
+                String(url).includes('page=1') && String(url).includes('description=payer')
+            )).toBe(true)
+        );
+    });
+
+    test('shows shared suggested member in bulk link modal when all selected transactions agree', async () => {
+        setupFetchMock([
+            {
+                ...mockTransactions[0],
+                suggested_match: {
+                    type: 'LEARNED_ACH',
+                    reason: 'Previously associated with this ACH payer',
+                    confidence: 'high',
+                    member: { id: 11, first_name: 'Shared', last_name: 'Member' },
+                },
+            },
+            {
+                ...mockTransactions[0],
+                id: 2,
+                description: 'Second Payment',
+                suggested_match: {
+                    type: 'FUZZY_NAME',
+                    reason: 'ACH payer name resembles this member',
+                    confidence: 'medium',
+                    member: { id: 11, first_name: 'Shared', last_name: 'Member' },
+                },
+            },
+        ]);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Second Payment'));
+
+        fireEvent.click(screen.getAllByRole('checkbox')[0]);
+        fireEvent.click(screen.getByText('Link 2 Transactions'));
+
+        expect(screen.getByText('Shared Suggested Member')).toBeInTheDocument();
+        expect(screen.getByText('Every selected transaction suggests this member.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Link 2 Transactions to Shared Member' })).toBeInTheDocument();
+    });
+
+    test('closes detail panel when backdrop is clicked', async () => {
+        setupFetchMock();
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+        fireEvent.click(screen.getByText('Details →'));
+        expect(screen.getByRole('dialog', { name: 'Transaction Details' })).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('panel-backdrop'));
+        expect(screen.queryByRole('dialog', { name: 'Transaction Details' })).not.toBeInTheDocument();
     });
 });

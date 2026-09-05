@@ -222,29 +222,31 @@ describe('Profile Component', () => {
       ok: true,
       json: () => Promise.resolve({
         data: {
-          firstName: 'Test',
-          lastName: 'User',
-          email: 'test@example.com',
-          role: 'member',
-          createdAt: '2024-01-01T00:00:00Z',
-          isActive: true,
-          phoneNumber: '+15555555555',
-          dateOfBirth: '1990-01-01',
-          gender: 'Male',
-          maritalStatus: 'Single',
-          emergencyContactName: 'Jane Doe',
-          emergencyContactPhone: '555-555-5555',
-          ministries: '["Choir"]',
-          languagePreference: 'English',
-          dateJoinedParish: '2020-01-01',
-          baptismName: 'TestBaptism',
-          interestedInServing: 'Yes',
-          streetLine1: '123 Main St',
-          apartmentNo: '1A',
-          city: 'Testville',
-          state: 'CA',
-          postalCode: '12345',
-          dependents: [],
+          member: {
+            firstName: 'Test',
+            lastName: 'User',
+            email: 'test@example.com',
+            role: 'member',
+            createdAt: '2024-01-01T00:00:00Z',
+            isActive: true,
+            phoneNumber: '+15555555555',
+            dateOfBirth: '1990-01-01',
+            gender: 'Male',
+            maritalStatus: 'Single',
+            emergencyContactName: 'Jane Doe',
+            emergencyContactPhone: '555-555-5555',
+            ministries: '["Choir"]',
+            languagePreference: 'English',
+            dateJoinedParish: '2020-01-01',
+            baptismName: 'TestBaptism',
+            interestedInServing: 'Yes',
+            streetLine1: '123 Main St',
+            apartmentNo: '1A',
+            city: 'Testville',
+            state: 'CA',
+            postalCode: '12345',
+            dependents: [],
+          },
         },
       }),
     });
@@ -264,8 +266,8 @@ describe('Profile Component', () => {
     expect(await screen.findByText('profile')).toBeInTheDocument();
     expect(screen.getByText('Test')).toBeInTheDocument();
     expect(screen.getByText('User')).toBeInTheDocument();
-    expect(screen.getByText('test@example.com')).toBeInTheDocument();
-    expect(screen.getByText('member')).toBeInTheDocument();
+    expect(screen.getAllByText('test@example.com').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('member').length).toBeGreaterThan(0);
   });
 
   it('enters edit mode and saves changes', async () => {

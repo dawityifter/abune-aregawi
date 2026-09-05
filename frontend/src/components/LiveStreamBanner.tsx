@@ -1,5 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
+
+// The backend caches live status for ~60s, so polling faster than this only adds
+// requests without detecting anything sooner.
+const POLL_INTERVAL_MS = 2 * 60 * 1000;
 
 interface LiveStreamBannerProps {
     channelId?: string;
@@ -12,29 +16,17 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
 }) => {
     const { t } = useI18n();
     const [isLive, setIsLive] = useState(false);
-    const [mainLive, setMainLive] = useState(false);
-    const [spiritualLive, setSpiritualLive] = useState(false);
     const [activeChannelId, setActiveChannelId] = useState(channelId);
     const [streamTitle, setStreamTitle] = useState<string | null>(null);
     const [showPlayer, setShowPlayer] = useState(false);
     const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
-
-    const spiritualChannelId = 'UCQXFCGSNdQ1y8GOmqbvRefg';
 
     const youtubeChannelUrl = `https://www.youtube.com/channel/${activeChannelId}`;
     const youtubeLiveUrl = activeVideoId
         ? `https://www.youtube.com/watch?v=${activeVideoId}`
         : `https://www.youtube.com/channel/${activeChannelId}/live`;
 
-    useEffect(() => {
-        checkIfLive();
-
-        // Check every 2 minutes (more frequent for better detection)
-        const interval = setInterval(checkIfLive, 2 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const checkIfLive = async () => {
+    const checkIfLive = useCallback(async () => {
         try {
             const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
             const response = await fetch(`${apiUrl}/api/youtube/multi-live-status`);
@@ -42,9 +34,6 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
 
             const isMainLive = data.main?.isLive || false;
             const isSpiritualLive = data.spiritual?.isLive || false;
-
-            setMainLive(isMainLive);
-            setSpiritualLive(isSpiritualLive);
 
             // Prioritize Main Channel if both are live (rare)
             if (isMainLive) {
@@ -55,6 +44,12 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
                 setActiveChannelId(data.spiritual.channelId);
                 setStreamTitle(data.spiritual.title || 'Spiritual Service');
                 setActiveVideoId(data.spiritual.videoId || null);
+            } else {
+                // Clear the previous stream so a stale video id can't be embedded
+                // after the broadcast ends.
+                setStreamTitle(null);
+                setActiveVideoId(null);
+                setShowPlayer(false);
             }
 
             setIsLive(isMainLive || isSpiritualLive);
@@ -62,7 +57,46 @@ const LiveStreamBanner: React.FC<LiveStreamBannerProps> = ({
             console.error('Error checking live status:', error);
             setIsLive(false);
         }
-    };
+    }, []);
+
+    // Poll only while the tab is actually being looked at. A background tab polling
+    // forever kept the backend calling the YouTube API around the clock for nobody.
+    useEffect(() => {
+        let interval: ReturnType<typeof setInterval> | null = null;
+
+        const stopPolling = () => {
+            if (interval) {
+                clearInterval(interval);
+                interval = null;
+            }
+        };
+
+        const startPolling = () => {
+            stopPolling();
+            interval = setInterval(checkIfLive, POLL_INTERVAL_MS);
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                stopPolling();
+            } else {
+                // Check right away — the stream may have started while we were paused.
+                checkIfLive();
+                startPolling();
+            }
+        };
+
+        if (!document.hidden) {
+            checkIfLive();
+            startPolling();
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            stopPolling();
+        };
+    }, [checkIfLive]);
 
     if (!isLive) {
         return null;

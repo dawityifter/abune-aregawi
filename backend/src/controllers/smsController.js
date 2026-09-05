@@ -297,7 +297,7 @@ exports.sendPendingPledges = async (req, res) => {
 
     // Get all members with pending pledges
     const pendingPledges = await Pledge.findAll({
-      where: { status: 'pending' },
+      where: { legacy_status: 'pending' },
       include: [{
         model: Member,
         as: 'member',
@@ -417,7 +417,7 @@ exports.sendFulfilledPledges = async (req, res) => {
 
     // Get all members with fulfilled pledges
     const fulfilledPledges = await Pledge.findAll({
-      where: { status: 'fulfilled' },
+      where: { legacy_status: 'fulfilled' },
       include: [{
         model: Member,
         as: 'member',
@@ -529,7 +529,7 @@ exports.getPendingPledgesRecipients = async (req, res) => {
   try {
     // Get all members with pending pledges
     const pendingPledges = await Pledge.findAll({
-      where: { status: 'pending' },
+      where: { legacy_status: 'pending' },
       include: [{
         model: Member,
         as: 'member',
@@ -640,7 +640,7 @@ exports.getFulfilledPledgesRecipients = async (req, res) => {
   try {
     // Get all members with fulfilled pledges
     const fulfilledPledges = await Pledge.findAll({
-      where: { status: 'fulfilled' },
+      where: { legacy_status: 'fulfilled' },
       include: [{
         model: Member,
         as: 'member',

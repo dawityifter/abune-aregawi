@@ -1,0 +1,263 @@
+const { Op } = require('sequelize');
+const {
+  isSquareConfigured, verifySquareSignature, listSquarePayments
+} = require('../services/squareClient');
+const {
+  upsertSquarePayment, createSquareTransaction
+} = require('../services/squarePaymentService');
+const { SquarePayment, Member, Transaction } = require('../models');
+
+// POST /api/square/webhook  (raw body, public, signature-verified)
+async function handleWebhook(req, res) {
+  const signature = req.headers['x-square-hmacsha256-signature'];
+  const rawBody = req.body; // Buffer, thanks to express.raw
+
+  if (!verifySquareSignature(rawBody, signature)) {
+    return res.status(400).send('Invalid signature');
+  }
+
+  let event;
+  try {
+    event = JSON.parse(Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : String(rawBody));
+  } catch (e) {
+    return res.status(400).send('Invalid JSON');
+  }
+
+  try {
+    if (event.type === 'payment.created' || event.type === 'payment.updated') {
+      const payment = event?.data?.object?.payment;
+      console.log(`Square webhook: type=${event.type} id=${payment?.id} status=${payment?.status}`);
+      if (payment) {
+        const result = await upsertSquarePayment(payment);
+        console.log(`Square webhook upsert: id=${payment?.id} stored=${!!result.row} created=${result.created}`);
+      }
+    } else {
+      // refunds, disputes, etc. — acknowledged, no action in v1
+      console.log(`Unhandled Square event type: ${event.type}`);
+    }
+    return res.json({ received: true });
+  } catch (error) {
+    console.error('Square webhook handler error:', error);
+    return res.status(500).json({ error: 'Webhook handler failed' });
+  }
+}
+
+// POST /api/square/sync  Body: { beginTime?, endTime? }
+async function syncFromSquare(req, res) {
+  try {
+    if (!isSquareConfigured()) {
+      return res.status(400).json({ success: false, message: 'Square is not configured' });
+    }
+    const { beginTime, endTime } = req.body || {};
+    const payments = await listSquarePayments({ beginTime, endTime });
+    let created = 0, seen = 0;
+    for (const p of payments) {
+      const { row, created: wasCreated } = await upsertSquarePayment(p);
+      if (row) { seen += 1; if (wasCreated) created += 1; }
+    }
+    return res.json({ success: true, stats: { fetched: payments.length, ingested: seen, created } });
+  } catch (error) {
+    console.error('Square sync error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+// GET /api/square/queue?status=&limit=
+async function getQueue(req, res) {
+  try {
+    const { status } = req.query;
+    const limit = Math.min(Number(req.query.limit || 50), 200);
+    const where = {};
+    if (status) {
+      where.status = String(status).toUpperCase();
+    } else {
+      // No explicit status requested: default to the review queue (pending
+      // items only) rather than returning every row ever ingested.
+      where.status = { [Op.in]: ['NEEDS_REVIEW', 'AUTO_MATCHED'] };
+    }
+    const rows = await SquarePayment.findAll({
+      where,
+      attributes: { exclude: ['raw'] },
+      order: [['square_created_at', 'DESC'], ['created_at', 'DESC']],
+      limit,
+      include: [
+        { model: Member, as: 'matchedMember', attributes: ['id', 'first_name', 'last_name'] },
+        { model: Transaction, as: 'transaction', attributes: ['id', 'amount', 'payment_type', 'payment_date', 'receipt_number'] }
+      ]
+    });
+    return res.json({ success: true, count: rows.length, items: rows });
+  } catch (error) {
+    console.error('Square queue list error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+async function processReview(item, user) {
+  const {
+    square_payment_id, note,
+    member_id, payment_type, for_year, receipt_number, buyer_name, donor_name
+  } = item || {};
+  const collected_by = user?.id || null;
+  if (!collected_by) throw new Error('Missing collector context');
+
+  const trimmedDonorName = (donor_name || '').trim();
+
+  // Server-authoritative amount/date: never trust the client's amount or
+  // payment_date for what actually gets recorded — pull them from the
+  // ingested SquarePayment row instead. This closes the gap where a
+  // tampered review-form POST could record a different amount/date than
+  // what Square actually reported for the payment.
+  const squarePaymentRow = square_payment_id
+    ? await SquarePayment.findOne({ where: { square_payment_id } })
+    : null;
+  if (!squarePaymentRow) {
+    return { success: false, message: 'Unknown Square payment' };
+  }
+
+  // A payment must be attributed to somebody: either a member, or a named
+  // non-member donor. Validated here as well as client-side because this
+  // endpoint is reachable directly. Runs after the payment-exists check so an
+  // unknown square_payment_id reports the more fundamental error.
+  if (!member_id && !trimmedDonorName) {
+    return {
+      success: false,
+      code: 'DONOR_REQUIRED',
+      message: 'A donor name is required when the payment is not attributed to a member'
+    };
+  }
+  if (trimmedDonorName.length > 255) {
+    return {
+      success: false,
+      code: 'DONOR_TOO_LONG',
+      message: 'Donor name must be 255 characters or fewer'
+    };
+  }
+  const amount = squarePaymentRow.amount;
+  const payment_date = squarePaymentRow.square_created_at
+    ? new Date(squarePaymentRow.square_created_at).toISOString().slice(0, 10)
+    : null;
+
+  const result = await createSquareTransaction({
+    square_payment_id, amount, payment_date, note,
+    member_id, payment_type, for_year, receipt_number, buyer_name,
+    donor_name: trimmedDonorName
+  }, collected_by);
+
+  // Resolve the queue row to CREATED on success, OR self-heal when a
+  // transaction already exists for this payment (code EXISTS): in both cases
+  // the payment is recorded (result.id is the transaction id), so link the row
+  // instead of stranding it in the pending list where a repeat confirm would
+  // 409 forever.
+  const alreadyExisted = !result.success && result.code === 'EXISTS' && result.id;
+  if ((result.success || alreadyExisted) && squarePaymentRow.status !== 'CREATED') {
+    try {
+      // On self-heal, reflect the member the existing transaction was recorded
+      // to (which may differ from the client's pick), not the review form's.
+      let resolvedMemberId = member_id || null;
+      if (alreadyExisted) {
+        const existingTx = await Transaction.findByPk(result.id, { attributes: ['member_id'] });
+        resolvedMemberId = existingTx ? existingTx.member_id : null;
+      }
+      await squarePaymentRow.update({
+        status: 'CREATED',
+        transaction_id: result.id,
+        matched_member_id: resolvedMemberId,
+        processed_at: new Date(),
+        error: null
+      });
+    } catch (e) {
+      console.warn('Square queue update warning:', e.message || e);
+    }
+  }
+
+  // Report a pre-existing transaction as a resolved success so the client shows
+  // "already recorded" and refreshes the now-non-pending row, rather than
+  // hitting a silent 409 dead-end.
+  if (alreadyExisted) {
+    return { success: true, id: result.id, alreadyExisted: true, message: result.message };
+  }
+  return result;
+}
+
+// POST /api/square/reconcile/create-transaction
+async function createTransactionFromReview(req, res) {
+  try {
+    const result = await processReview(req.body || {}, req.user);
+    if (!result.success && result.code === 'EXISTS') return res.status(409).json(result);
+    if (!result.success && ['DONOR_REQUIRED', 'DONOR_TOO_LONG'].includes(result.code)) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  } catch (error) {
+    console.error('Square create-transaction error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+// POST /api/square/reconcile/batch-create  Body: { items: [...] }
+async function createBatchTransactions(req, res) {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ success: false, message: 'items array is required' });
+    }
+    const results = [];
+    for (const item of items) {
+      try {
+        const result = await processReview(item, req.user);
+        results.push({ ...result, square_payment_id: item.square_payment_id });
+      } catch (e) {
+        results.push({ success: false, message: e.message, square_payment_id: item.square_payment_id });
+      }
+    }
+    return res.json({ success: true, results });
+  } catch (error) {
+    console.error('Square batch create error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+// POST /api/square/queue/:id/ignore
+async function ignoreQueueItem(req, res) {
+  try {
+    const row = await SquarePayment.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ success: false, message: 'Queue item not found' });
+    if (row.status === 'CREATED') {
+      return res.status(400).json({ success: false, message: 'Cannot ignore a payment that already has a transaction' });
+    }
+    await row.update({ status: 'IGNORED', processed_at: new Date() });
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Square queue ignore error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+// POST /api/square/queue/:id/restore
+// Reverse an ignore: move the payment back into the review queue.
+async function restoreQueueItem(req, res) {
+  try {
+    const row = await SquarePayment.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ success: false, message: 'Queue item not found' });
+    if (row.status !== 'IGNORED') {
+      return res.status(400).json({ success: false, message: 'Only ignored payments can be restored' });
+    }
+    // Return to a pending state, preferring AUTO_MATCHED when a match survives.
+    const status = row.matched_member_id ? 'AUTO_MATCHED' : 'NEEDS_REVIEW';
+    await row.update({ status, processed_at: null });
+    return res.json({ success: true, status });
+  } catch (error) {
+    console.error('Square queue restore error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+module.exports = {
+  handleWebhook,
+  syncFromSquare,
+  getQueue,
+  createTransactionFromReview,
+  createBatchTransactions,
+  ignoreQueueItem,
+  restoreQueueItem
+};

@@ -2,7 +2,7 @@ import React from 'react';
 
 const PrivacyPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen bg-gray-50 pt-top-nav">
       <div className="max-w-4xl mx-auto px-4 py-10">
         <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Privacy Policy</h1>
         <p className="text-sm text-gray-500 mb-8">Last updated: {new Date().toLocaleDateString()}</p>

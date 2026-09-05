@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
@@ -44,12 +44,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
   const [error, setError] = useState<string | null>(null);
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchDepartmentMembers();
-    fetchAllMembers();
-  }, []);
-
-  const fetchDepartmentMembers = async () => {
+  const fetchDepartmentMembers = useCallback(async () => {
     try {
       setLoading(true);
       const idToken = await firebaseUser?.getIdToken();
@@ -70,13 +65,13 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
       }
     } catch (error) {
       console.error('Error fetching department members:', error);
-      setError('Failed to load members');
+      setError(t('admin.departmentMembers.loadFailed'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser, department.id, t]);
 
-  const fetchAllMembers = async () => {
+  const fetchAllMembers = useCallback(async () => {
     try {
       const idToken = await firebaseUser?.getIdToken();
       const response = await fetch(
@@ -91,19 +86,21 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
 
       if (response.ok) {
         const data = await response.json();
-        // Backend returns: { success: true, data: [array of members] }
-        // So data.data is the array directly, not data.data.members
-        const membersArray = Array.isArray(data.data) ? data.data : (data.data?.members || []);
-        setAllMembers(membersArray);
+        setAllMembers(data.data.members || []);
       }
     } catch (error) {
       console.error('Error fetching all members:', error);
     }
-  };
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    fetchDepartmentMembers();
+    fetchAllMembers();
+  }, [fetchDepartmentMembers, fetchAllMembers]);
 
   const handleAddMembers = async () => {
     if (selectedMembers.length === 0) {
-      alert('Please select at least one member');
+      alert(t('admin.departmentMembers.selectAtLeastOne'));
       return;
     }
 
@@ -135,12 +132,12 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
       onUpdate();
     } catch (error) {
       console.error('Error adding members:', error);
-      alert('Failed to add members');
+      alert(t('admin.departmentMembers.addFailed'));
     }
   };
 
   const handleRemoveMember = async (memberId: number) => {
-    if (!window.confirm('Are you sure you want to remove this member?')) {
+    if (!window.confirm(t('admin.departmentMembers.removeConfirm'))) {
       return;
     }
 
@@ -166,7 +163,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
       onUpdate();
     } catch (error) {
       console.error('Error removing member:', error);
-      alert('Failed to remove member');
+      alert(t('admin.departmentMembers.removeFailed'));
     }
   };
 
@@ -196,7 +193,7 @@ const ManageDepartmentMembersModal: React.FC<ManageDepartmentMembersModalProps> 
       onUpdate();
     } catch (error) {
       console.error('Error updating member role:', error);
-      alert('Failed to update member role');
+      alert(t('admin.departmentMembers.roleUpdateFailed'));
     }
   };
 

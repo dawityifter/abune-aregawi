@@ -7,8 +7,10 @@ const { listAnnouncements, getActiveAnnouncements, createAnnouncement, updateAnn
 
 const ALLOWED_ROLES = ['admin', 'relationship'];
 
-// TV feed — active only, auth required
-router.get('/active', firebaseAuthMiddleware, getActiveAnnouncements);
+// Public feed — active announcements only, projected to public fields.
+// Deliberately unauthenticated: a visitor deciding whether to come on Sunday
+// needs to see what the parish has announced.
+router.get('/active', getActiveAnnouncements);
 // List all with ?status= filter
 router.get('/', firebaseAuthMiddleware, roleMiddleware(ALLOWED_ROLES), listAnnouncements);
 // Create

@@ -9,6 +9,7 @@ const {
   getTransactionStats,
   getMemberPaymentSummaries,
   getSkippedReceipts,
+  getLastReceiptNumber,
   updateTransactionPaymentType,
   generateTransactionReport
 } = require('../controllers/transactionController');
@@ -34,6 +35,10 @@ router.get('/member-summaries', roleMiddleware(viewRoles), getMemberPaymentSumma
 
 // Get skipped receipt numbers
 router.get('/skipped-receipts', roleMiddleware(viewRoles), getSkippedReceipts);
+
+// Highest receipt recorded so far — drives the skip warning on Add Payment.
+// MUST stay above any '/:id' route or that route swallows it.
+router.get('/last-receipt-number', roleMiddleware(viewRoles), getLastReceiptNumber);
 
 // Get all transactions (READ-ONLY)
 router.get('/', roleMiddleware(viewRoles), getAllTransactions);

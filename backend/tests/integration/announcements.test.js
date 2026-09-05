@@ -58,6 +58,42 @@ describe('Announcement API', () => {
     expect(res.body.data[0].title).toBe('Active');
   });
 
+  // GET /active is public (TV lobby, home page, member dashboard) and, per the
+  // PWA service worker's cacheability policy, its response lands in every
+  // phone's 24-hour CacheStorage and survives sign-out. announcementController.js
+  // hand-maintains PUBLIC_ANNOUNCEMENT_FIELDS to keep created_by_member_id (a
+  // staff identifier) and any future PII field out of that response. Pinning
+  // the exact key set here means widening the projection fails loudly instead
+  // of silently starting to cache more on every device.
+  it('GET /api/announcements/active projects only the public field list, excluding created_by_member_id', async () => {
+    const { v4: uuidv4 } = require('uuid');
+    await Announcement.create({
+      id: uuidv4(),
+      title: 'Active',
+      description: '<p>Hello</p>',
+      title_ti: 'ዓዎያ',
+      description_ti: '<p>ሰላም</p>',
+      start_date: '2026-01-01',
+      end_date: '2099-12-31',
+      status: 'active',
+      created_by_member_id: Number(process.env.TEST_ACTOR_ID),
+    });
+
+    const res = await request(app).get('/api/announcements/active');
+    expect(res.status).toBe(200);
+    expect(res.body.data.length).toBe(1);
+
+    const returnedFields = Object.keys(res.body.data[0]).sort();
+    const expectedFields = [
+      'id', 'title', 'description', 'title_ti', 'description_ti', 'start_date', 'end_date'
+    ].sort();
+    expect(returnedFields).toEqual(expectedFields);
+    expect(res.body.data[0]).not.toHaveProperty('created_by_member_id');
+    expect(res.body.data[0]).not.toHaveProperty('status');
+    expect(res.body.data[0]).not.toHaveProperty('createdAt');
+    expect(res.body.data[0]).not.toHaveProperty('updatedAt');
+  });
+
   it('PATCH /api/announcements/:id/cancel soft-cancels the announcement', async () => {
     const { v4: uuidv4 } = require('uuid');
     const ann = await Announcement.create({ id: uuidv4(), title: 'ToCancel', start_date: '2026-01-01', end_date: '2099-12-31', status: 'active' });

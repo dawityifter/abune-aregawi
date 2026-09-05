@@ -57,7 +57,7 @@ export default function DevBanner() {
     'This application is currently under development. Some sections may still be incomplete. We ask for your patience. Your help in identifying any issues would be a great blessing to us. God bless you.';
 
   const tigrignaMsg =
-    'እንኳዕ ደሓን መጻእኩም። እዚ ንኦርቶዶክስ ተዋህዶ ቤተክርስቲያን ትግራይ ዝኸውን መርበብ ሓበሬታ ኣብዚ ሕዚ እዋን ኣብ ምምዕባል ይርከብ። ገለ ክፍልታት ገና ዘይተማልኡ ክኾኑ ይኽእሉ እዮም። ትዕግስትኹም ንሓትት። ዝኾነ ጉዳይ ኣብ ምልላይ ትገብርዎ ሓገዝ ዓቢ በረኸት ምኾነና። ኣምላኽ እግዚአብሔር ይባርክኩም።';
+    'እንኳዕ ደሓን መጻእኩም። እዚ ንኦርቶዶክስ ተዋህዶ ቤተክርስቲያን ኣቡነ ኣረጋዊ ዝኸውን መርበብ ሓበሬታ ኣብዚ ሕዚ እዋን ኣብ ምምዕባል ይርከብ። ገለ ክፍልታት ገና ዘይተማልኡ ክኾኑ ይኽእሉ እዮም። ትዕግስትኹም ንሓትት። ዝኾነ ጉዳይ ኣብ ምልላይ ትገብርዎ ሓገዝ ዓቢ በረኸት ምኾነና። ኣምላኽ እግዚአብሔር ይባርክኩም።';
 
   const content = language === 'ti' ? tigrignaMsg : englishMsg;
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import { useI18n } from '../i18n/I18nProvider';
 
 type Language = 'en' | 'ti';
@@ -16,9 +16,9 @@ export const LanguageContext = createContext<LanguageContextType | undefined>(un
 const translations = {
   en: {
     // Hero Section
-    'church.name': 'Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church',
+    // 'church.name' migrated to dictionaries.ts (used by Navigation via useI18n)
     'welcome.headline': 'Welcome to Our Spiritual Home',
-    'welcome.subtitle': 'Welcome to Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church',
+    'welcome.subtitle': 'Welcome to Debre Tsehay Abune Aregawi Orthodox Tewahedo Church',
 
     // Service Times
     'service.times': 'Service Times',
@@ -43,7 +43,7 @@ const translations = {
     'stay.connected': 'Stay Connected',
     'newcomer': 'New to Our Church?',
     'grow.spiritually': 'Grow Spiritually',
-    'calendar.title': 'Orthodox Calendar 2025',
+    'calendar.title': 'Orthodox Calendar',
     'calendar.subtitle': 'Fasts & Feasts of the Year',
     'calendar.description': 'Our church observes the ancient liturgical calendar of the Ethiopian Orthodox Tewahedo Church. Stay updated with upcoming fasts, major feasts, and spiritual celebrations throughout the year.',
     'calendar.feasts': '9 Major Feasts',
@@ -88,6 +88,11 @@ const translations = {
     'firstLoginModal.body': 'Welcome! Please complete your registration to join our church community, or continue browsing as a guest.',
     'firstLoginModal.ok': 'Continue to registration',
     'firstLoginModal.cancel': 'Cancel',
+
+    // Promo Popup
+    'promo.close': 'Close',
+    'promo.previous': 'Previous Image',
+    'promo.next': 'Next Image',
 
     // Dashboard
     'member.dashboard': 'Member Dashboard',
@@ -250,6 +255,7 @@ const translations = {
     'select.giving.method': 'Select giving method',
     'cash': 'Cash',
     'check': 'Check',
+    'zelle': 'Zelle',
     'online': 'Online',
     'bank_transfer': 'Bank Transfer',
     'select.language': 'Select language',
@@ -258,6 +264,33 @@ const translations = {
     'amharic': 'Amharic',
     'no.children.registered': 'No children registered',
     'save.changes': 'Save Changes',
+    'edit.dependent': 'Edit Dependent',
+    'relationship': 'Relationship',
+    'is.baptized.label': 'Is Baptized',
+    'dependent.first.last.required': 'First name and last name are required',
+    'failed.to.update.dependent': 'Failed to update dependent',
+    'relationship.son': 'Son',
+    'relationship.daughter': 'Daughter',
+    'relationship.spouse': 'Spouse',
+    'relationship.parent': 'Parent',
+    'relationship.sibling': 'Sibling',
+    'relationship.other': 'Other',
+    'admin.departmentMembers.selectAtLeastOne': 'Please select at least one member',
+    'admin.departmentMembers.loadFailed': 'Failed to load members',
+    'admin.departmentMembers.addFailed': 'Failed to add members',
+    'admin.departmentMembers.removeConfirm': 'Are you sure you want to remove this member?',
+    'admin.departmentMembers.removeFailed': 'Failed to remove member',
+    'admin.departmentMembers.roleUpdateFailed': 'Failed to update member role',
+    'admin.voicemail.audioLoadFailed': 'Failed to load audio',
+    'admin.voicemail.audioLoading': 'Loading audio...',
+    'admin.voicemail.deleteConfirm': 'Delete this voicemail?',
+    'admin.voicemail.deleteFailed': 'Failed to delete voicemail',
+    'admin.voicemail.deleteTitle': 'Delete voicemail',
+    'admin.voicemail.noTranscription': 'No transcription available',
+    'admin.voicemail.pending': 'Pending...',
+    'admin.volunteer.respondConfirm': 'Mark this request as responded? It will be hidden from this list.',
+    'admin.volunteer.updateFailed': 'Failed to update status',
+    'admin.volunteer.updateError': 'Error updating status',
 
     // Profile
     'edit.profile': 'Edit Profile',
@@ -485,7 +518,7 @@ const translations = {
     'emergency.contact.phone.required': 'Emergency contact phone is required',
 
     // Gallery
-    'gallery.title': 'Abune Aregawi Tigray Orthodox Church Gallery',
+    'gallery.title': 'Abune Aregawi Orthodox Tewahedo Church Gallery',
     'gallery.subtitle': 'Capturing moments of faith, community, and celebration',
     'gallery.upload': 'Upload Photo',
     'gallery.uploading': 'Uploading...',
@@ -502,24 +535,7 @@ const translations = {
     'common.delete': 'Delete',
     'common.print': 'Print',
 
-    // Department Details
-    'department.tabs.meetings': 'Meetings',
-    'department.tabs.tasks': 'Tasks',
-    'department.tabs.members': 'Members',
-    'department.addMeeting': 'Add Meeting',
-    'department.addTask': 'Add Task',
-    'department.manageMembers': 'Manage Members',
-
-    // Meeting Details
-    'meeting.tasks.previous': 'Tasks from Previous Meeting',
-    'meeting.tasks.actionItems': 'Action Items from This Meeting',
-    'meeting.tasks.add': 'Add Task',
-    'meeting.tasks.none': 'No action items yet',
-    'meeting.agenda': 'Agenda',
-    'meeting.minutes': 'Meeting Notes',
-    'meeting.attendees': 'Attendees',
-    'meeting.assignedTo': 'Assigned to',
-    'meeting.due': 'Due',
+    // Department & Meeting keys migrated to dictionaries.ts (Batch 2b)
 
     // Skipped Receipts
     'treasurer.skippedReceipts.button': 'Show Skipped Receipt Numbers',
@@ -529,6 +545,13 @@ const translations = {
     'treasurer.skippedReceipts.noneFound': 'No skipped receipt numbers found in this range!',
     'treasurer.skippedReceipts.note': 'It is important to enter every receipt to maintain accurate financial records.',
     'treasurer.skippedReceipts.close': 'Close',
+    'treasurer.skippedChecks.button': 'Show Skipped Check Numbers',
+    'treasurer.skippedChecks.title': 'Missing Check Numbers',
+    'treasurer.skippedChecks.warning': 'Please check your checkbook. The following check numbers appear to be skipped or missing from the system.',
+    'treasurer.skippedChecks.range': 'Checked range',
+    'treasurer.skippedChecks.noneFound': 'No skipped check numbers found in this range!',
+    'treasurer.skippedChecks.note': 'It is important to record every check to maintain accurate financial records.',
+    'treasurer.skippedChecks.close': 'Close',
 
     // Treasurer Stats
     'treasurerDashboard.stats.currentBalance': 'Current Bank Balance',
@@ -541,6 +564,8 @@ const translations = {
 
     // New Keys for Treasurer Dashboard
     'treasurerDashboard.tabs.bank': 'Bank Integration',
+    'treasurerDashboard.tabs.loans': 'Loans (Not Donations)',
+    'treasurerDashboard.tabs.backups': 'Ledger Backup',
     'treasurerDashboard.bank.title': 'Bank Reconciliation',
     'treasurerDashboard.bank.subtitle': 'Upload Chase CSVs and match transactions to members.',
     'treasurerDashboard.health.title': 'Membership Health',
@@ -556,34 +581,34 @@ const translations = {
   },
   ti: {
     // Hero Section
-    'church.name': 'ደብረ ጸሓይ አቡነ አረጋዊ ትግራይ ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን',
+    // 'church.name' migrated to dictionaries.ts (used by Navigation via useI18n)
     'welcome.headline': 'ናብ መንበረ ስፍሓትና ብደሓን መጻእኩም',
-    'welcome.subtitle': 'እንኳዕ ናብ ቤተ ክርስትያን ኦርቶዶክስ ትግራይ ኣቡነ ኣረጋዊ ብደሓን መጻእኩም!',
+    'welcome.subtitle': 'እንኳዕ ናብ ቤተ ክርስትያን ኦርቶዶክስ ኣቡነ ኣረጋዊ ብደሓን መጻእኩም!',
 
     // Service Times
     'service.times': 'ግዜ ኣገልግሎት',
     'sunday': 'ሰንበት',
     'wednesday': 'ረቡዕ',
     'friday': 'ዓርቢ',
-    'location': 'ኩነታት',
-    'get.directions': 'ኣዛምድ',
+    'location': 'ቦታ',
+    'get.directions': 'መገዲ ርኸብ',
 
     // CTA Buttons
-    'plan.visit': 'ምብጻሕ ኣዘዝምድ',
+    'plan.visit': 'ምብጻሕ መደብ',
     'church.bylaw': 'ሕጊ ቤተ ክርስቲያን',
     'watch.live': 'ብቀጥታ ርኣይ',
-    'register.member': 'ደምድም ኣኽትም',
-    'view.dues': 'ክፍሊት ርኣይ / እተኻ',
+    'register.member': 'ኣባል መዝግብ',
+    'view.dues': 'ክፍሊት ርኣይ / እቶ',
     'view.youtube.channel': 'ቻነል ዩቲዩብና ርኣይ',
 
     // Section Headers
     'whats.happening': 'ምን እዩ ዘጋጥም',
     'watch.listen': 'ርኣይ ወይ ሰምዕ',
-    'participation': 'ክፍሊት ቀሊል እዩ',
+    'participation': 'ተሳትፎ ቀሊል እዩ',
     'stay.connected': 'ተራኺልካ ክትነብር',
     'newcomer': 'ሓድሽ እኹም ኣብ ቤተ ክርስቲያንና?',
     'grow.spiritually': 'ብመንፈስ ክትሰፍሕ',
-    'calendar.title': 'ናይ 2025 ዓውደ ኣዋርሕ ኦርቶዶክስ',
+    'calendar.title': 'ዓውደ ኣዋርሕ ኦርቶዶክስ',
     'calendar.subtitle': 'ናይ ዓመቱ ጾምን በዓላትን',
     'calendar.description': 'ቤተ ክርስቲያንና ጥንታዊ ስነ-ስርዓት ዓውደ ኣዋርሕ ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን ትኽተል። ብዛዕባ ዝመጽኡ ጾማት፣ ዓበይቲ በዓላት ከምኡ’ውን መንፈሳዊ ጽምብላት ንቐጻሊ ሓበሬታ ርኸቡ።',
     'calendar.feasts': '9 ዓበይቲ በዓላት',
@@ -591,7 +616,7 @@ const translations = {
     'calendar.dailyBible': 'ናይ መዓልቲ ንባብ ቅዱስ መጽሓፍን ዝኽርን',
 
     // Participation Cards
-    'volunteer': 'ተጋሩ',
+    'volunteer': 'ወለንተኛ',
     'volunteer.desc': 'ኣብ ጕጅለ ኣገልግሎትና ተጸምብር እሞ ንማሕበረሰብና ኣገልግል',
     'volunteer.sign.up': 'ኣኽትም',
     'give.online.desc': 'ቤተ ክርስቲያንና ብድሕሪት ሃብ ሓጋዚ እዩ',
@@ -623,11 +648,16 @@ const translations = {
     'send.reset.email': 'ኢመይል ምልኣኽ ልእኽ',
     'sending': 'እየ ልእኽ...',
 
-    // First Login Modal (TODO: translate)
-    'firstLoginModal.title': 'Complete your registration',
-    'firstLoginModal.body': 'Welcome! Please complete your registration to join our church community, or continue browsing as a guest.',
-    'firstLoginModal.ok': 'Continue to registration',
-    'firstLoginModal.cancel': 'Cancel',
+    // First Login Modal
+    'firstLoginModal.title': 'ምዝገባኹም ዛዝሙ',
+    'firstLoginModal.body': 'እንቋዕ ብደሓን መጻእኩም! ናብ ማሕበረሰብ ቤተ ክርስቲያንና ንምጽንባር ምዝገባኹም ዛዝሙ ወይ ከም ኣጋይሽ ምርኣይ ቀጽሉ።',
+    'firstLoginModal.ok': 'ናብ ምዝገባ ቀጽል',
+    'firstLoginModal.cancel': 'ሰርዝ',
+
+    // Promo Popup
+    'promo.close': 'ዕጸ',
+    'promo.previous': 'ዝሓለፈ ምስሊ',
+    'promo.next': 'ቀጻሊ ምስሊ',
 
     // Sign In Page - New translations
     'welcome.back': 'እንቋዕ ብሰላም መጻእኩም',
@@ -720,6 +750,83 @@ const translations = {
     'dashboard.admin.desc': 'ተጠቀምቲ፣ መራሕትን ቅንጡፍትን ኣመሓድሩ',
     'dashboard.admin.access': 'ናብ ፓነል ኣመሓዳሪ እተ',
 
+    // Backfill keys still used by parts of the UI
+    'account.info': 'ሓበሬታ ኣካውንት',
+    'actions': 'ተግባራት',
+    'admin.dashboard': 'ዳሽቦርድ ኣመሓዳሪ',
+    'baptism.name': 'ስም ጥምቀት',
+    'baptized': 'ዝተጠምቀ',
+    'cash': 'ጥረ ገንዘብ',
+    'check': 'ቼክ',
+    'zelle': 'ዘለ',
+    'children.and.dependents': 'ህጻናትን ተወሳኺ ኣባላትን',
+    'city': 'ከተማ',
+    'contribution.giving': 'ወፈያን ኣበርክቶን',
+    'country': 'ሃገር',
+    'dependents': 'ተወሳኺ ኣባላት',
+    'divorced': 'ዝተፈላለየ',
+    'enter.head.of.household.phone': 'ቁጽሪ ስልኪ ናይ ሓላፊ ቤተሰብ ኣእትው',
+    'family.info': 'ሓበሬታ ቤተሰብ',
+    'gender': 'ፆታ',
+    'head.of.household.phone': 'ቁጽሪ ስልኪ ናይ ሓላፊ ቤተሰብ',
+    'head.of.household.phone.help': 'ቁጽሪ ስልኪ ናይቲ ዘሎ ሓላፊ ቤተሰብ ኣባል ኣእትው። እዚ ቁጽሪ ከም ሓላፊ ቤተሰብ ተመዝጊቡ ክኸውን ኣለዎ።',
+    'head.of.household.phone.not.found': 'ብዚ ቁጽሪ ስልኪ ሓላፊ ቤተሰብ ኣይተረኽበን። ከም ሓላፊ ቤተሰብ ተመዝገቡ ወይ ትኽክለኛ ቁጽሪ ስልኪ ኣእትዉ።',
+    'head.of.household.phone.required': 'እንተዘይኮንኩም ሓላፊ ቤተሰብ፣ ቁጽሪ ስልኪ ናይ ሓላፊ ቤተሰብ የድሊ።',
+    'head.of.household.phone.validation.error': 'ቁጽሪ ስልኪ ናይ ሓላፊ ቤተሰብ እንተረጋገጽ ጌጋ ተፈጢሩ። በጃኹም ዳግማይ ፈትኑ።',
+    'login.email': 'ናይ መእተዊ ኢመይል',
+    'marital.status': 'ኩነታት መርዓ',
+    'married': 'ዝተመርዓወ',
+    'name': 'ስም',
+    'no': 'ኣይፋል',
+    'no.permission.to.edit': 'ኣባላት ንምእራም ፍቓድ የብልኩምን',
+    'online': 'ብኢንተርነት',
+    'personal.info': 'ውልቃዊ ሓበሬታ',
+    'phone': 'ስልኪ',
+    'postal.code': 'ፖስታ ኮድ',
+    'preferred.giving.method': 'ዝመረጽኩም መንገዲ ወፈያ',
+    'role': 'ሓላፍነት',
+    'save': 'ኣቐምጥ',
+    'save.changes': 'ለውጢታት ኣቐምጥ',
+    'search.members': 'ኣባላት ድለ',
+    'select.giving.method': 'መንገዲ ወፈያ ምረጹ',
+    'select.marital.status': 'ኩነታት መርዓ ምረጹ',
+    'single': 'ዘይተመርዓወ',
+    'spiritual.info': 'መንፈሳዊ ሓበሬታ',
+    'spouse.email': 'ኢመይል መጻምድቲ',
+    'state': 'ግዝኣት',
+    'total.members': 'ጠቕላላ ኣባላት',
+    'widowed': 'መበለት',
+    'yes': 'እወ',
+
+    // Dependent editing and admin messages
+    'edit.dependent': 'ተወሳኺ ኣባል ኣርም',
+    'relationship': 'ዝምድና',
+    'is.baptized.label': 'ተጠሚቑ ድዩ',
+    'dependent.first.last.required': 'ስም ቀዳማይን ናይ መወዳእታ ስምን የድሊ',
+    'failed.to.update.dependent': 'ተወሳኺ ኣባል ምምሕያሽ ኣይተኻእለን',
+    'relationship.son': 'ወዲ',
+    'relationship.daughter': 'ጓል',
+    'relationship.spouse': 'መጻምድቲ',
+    'relationship.parent': 'ወላዲ',
+    'relationship.sibling': 'ሓው ወይ ሓፍቲ',
+    'relationship.other': 'ካልእ',
+    'admin.departmentMembers.selectAtLeastOne': 'ብውሑዱ ሓደ ኣባል ምረጹ',
+    'admin.departmentMembers.loadFailed': 'ኣባላት ምጽዓን ኣይተኻእለን',
+    'admin.departmentMembers.addFailed': 'ኣባላት ምውሳኽ ኣይተኻእለን',
+    'admin.departmentMembers.removeConfirm': 'እዚ ኣባል ክትኣልይዎ ርግጸኛታት ዲኹም?',
+    'admin.departmentMembers.removeFailed': 'ኣባል ምእላይ ኣይተኻእለን',
+    'admin.departmentMembers.roleUpdateFailed': 'ሓላፍነት ኣባል ምሕዳስ ኣይተኻእለን',
+    'admin.voicemail.audioLoadFailed': 'ድምጺ ምጽዓን ኣይተኻእለን',
+    'admin.voicemail.audioLoading': 'ድምጺ ይጽዓን ኣሎ...',
+    'admin.voicemail.deleteConfirm': 'እዚ መልእኽቲ ድምጺ ክትስርዝዎ ዲኹም?',
+    'admin.voicemail.deleteFailed': 'መልእኽቲ ድምጺ ምስራዝ ኣይተኻእለን',
+    'admin.voicemail.deleteTitle': 'መልእኽቲ ድምጺ ሰርዝ',
+    'admin.voicemail.noTranscription': 'ጽሑፍ መልእኽቲ የለን',
+    'admin.voicemail.pending': 'ይጽበ ኣሎ...',
+    'admin.volunteer.respondConfirm': 'እዚ ጠለብ ከም ዝተመለሰ ክትምልክትዎ ዲኹም? ካብዚ ዝርዝር ክሕብእ እዩ።',
+    'admin.volunteer.updateFailed': 'ኩነታት ምሕዳስ ኣይተኻእለን',
+    'admin.volunteer.updateError': 'ኩነታት ኣብ ምሕዳስ ጌጋ ተፈጢሩ',
+
     // Profile
     'edit.profile': 'ፕሮፋይል ኣምልስ',
     'profile.information': 'ሓበሬታ ፕሮፋይል',
@@ -755,7 +862,7 @@ const translations = {
     'choir.member': 'ኣባል መደምደምታ',
     'sunday.school.teacher': 'ምሁር ትምህርቲ ሰንበት',
     'emergency.phone.number': 'ቁጽሪ ስልኪ ሓጋዚ',
-    'address': 'ኩነታት',
+    'address': 'ኣድራሻ',
     'date.joined.parish': 'ዕለተ መዓስ ቤተ ክርስቲያን',
     'baptism.name.placeholder': 'ስም ዕርድካ ኣእትው',
     'baptism.status': 'ዕርድ ምጥምታ',
@@ -832,6 +939,8 @@ const translations = {
 
     // New Keys for Treasurer Dashboard (Tigrinya)
     'treasurerDashboard.tabs.bank': 'ባንክ ምስምማዕ',
+    'treasurerDashboard.tabs.loans': 'ልቓሕ (ወፈያ ኣይኮነን)',
+    'treasurerDashboard.tabs.backups': 'ቅዳሕ ሌጀር',
     'treasurerDashboard.bank.title': 'ባንክ ምስምማዕ',
     'treasurerDashboard.bank.subtitle': 'ናይ Chase CSV ጽዓን እሞ ምስ ኣባላት ኣዛምድ።',
     'treasurerDashboard.health.title': 'ቅዋም ኣባላት',
@@ -860,6 +969,14 @@ const translations = {
     'treasurer.skippedReceipts.noneFound': 'ኣብዚ ዝተረጋገፀ ቁጽሪ ዝተዘለለ ቅብሊት የለን!',
     'treasurer.skippedReceipts.note': 'ልክዕ ዝኾነ ፋይናንስ መዝገብ ንምሓዝ ኩሉ ቅብሊት ክምዝገብ ኣገዳሲ እዩ።',
     'treasurer.skippedReceipts.close': 'ዕጸ',
+    // Skipped Check Numbers
+    'treasurer.skippedChecks.button': 'ዝተዘለሉ ቁጽሪ ቼክ ርኣይ',
+    'treasurer.skippedChecks.title': 'ዝጠፍኡ ቁጽሪ ቼክ',
+    'treasurer.skippedChecks.warning': 'በጃኹም መዝገብ ቼክኩም ተወከሱ። እዞም ዝስዕቡ ቁጽሪ ቼክ ኣብ መዝገብ የለውን።',
+    'treasurer.skippedChecks.range': 'ዝተረጋገፀ ካብ',
+    'treasurer.skippedChecks.noneFound': 'ኣብዚ ዝተረጋገፀ ቁጽሪ ዝተዘለለ ቼክ የለን!',
+    'treasurer.skippedChecks.note': 'ልክዕ ዝኾነ ፋይናንስ መዝገብ ንምሓዝ ኩሉ ቼክ ክምዝገብ ኣገዳሲ እዩ።',
+    'treasurer.skippedChecks.close': 'ዕጸ',
     'admin.no.new.requests': 'ሓድሽ ናይ ተወፉይነት ጠለብ የለን',
     'admin.voicemail.inbox': 'መልእኽቲ ድምጺ',
     'admin.refresh': 'ኣሐድስ',
@@ -882,25 +999,8 @@ const translations = {
     'required': 'የድለ',
     'optional': 'ኣማራጺ',
 
-    // Meeting Details
-    'meeting.tasks.previous': 'ናይ ዝሓለፈ ኣኼባ ትልምታት',
-    'meeting.tasks.actionItems': 'ናይዚ ኣኼባ ትልምታት',
-    'meeting.tasks.add': 'ትልሚ ወስኽ',
-    'meeting.tasks.none': 'ገና ዝተወጠነ ትልሚ የለን',
-    'meeting.agenda': 'ኣጀንዳ',
-    'meeting.minutes': 'ቃለ ጉባኤ',
-    'meeting.attendees': 'ተሳተፍቲ',
-    'meeting.assignedTo': 'ሓላፍነት ዝወሰደ',
-    'meeting.due': 'ክዛዘም ዘለዎ',
+    // Department & Meeting keys migrated to dictionaries.ts (Batch 2b)
     'common.print': 'ሕተም',
-
-    // Department Details
-    'department.tabs.meetings': 'ኣኼባታት',
-    'department.tabs.tasks': 'ትልምታት',
-    'department.tabs.members': 'ኣባላት',
-    'department.addMeeting': 'ኣኼባ ወስኽ',
-    'department.addTask': 'ትልሚ ወስኽ',
-    'department.manageMembers': 'ኣባላት ኣመሓድር',
 
     // Form Fields
     'first.name': 'ስም ቀዳማይ',
@@ -941,7 +1041,7 @@ const translations = {
     'has.dependents.help': 'እዚ ሳጹን እንተተሓትት ውልዲ ወይ ተራኺል ክትውስኽ እትደሊ እንተኾንካ። ካብ ዳሽቦርድካ ድማ ክትውስኾም ትኽእል እኹም።',
 
     // Processing
-    'processing': 'Processing...',
+    'processing': 'ይስራሕ ኣሎ...',
 
     // Missing Translation Keys - Registration & Authentication
     'member.registration': 'ምዝገባ ኣባል',
@@ -1024,12 +1124,21 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     setLang(newLang);
   };
 
+  const interpolate = (value: string, params?: Record<string, any>): string => {
+    if (!params) return value;
+    let out = value;
+    Object.entries(params).forEach(([paramKey, paramValue]) => {
+      out = out.replace(new RegExp(`{${paramKey}}`, 'g'), String(paramValue));
+    });
+    return out;
+  };
+
   const t = (key: string, params?: Record<string, any>): string => {
     // 1. Try global dictionary (dictionaries.ts) via i18n provider
     // The i18nT function returns the key if not found.
     const globalMatch = i18nT(key);
     if (globalMatch !== key) {
-      return globalMatch;
+      return interpolate(globalMatch, params);
     }
 
     // 2. Try local translations (legacy)

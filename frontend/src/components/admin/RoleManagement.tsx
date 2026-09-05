@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
@@ -9,7 +9,7 @@ interface RoleManagementProps {
 
 const RoleManagement: React.FC<RoleManagementProps> = () => {
   const { t } = useLanguage();
-  const { currentUser, firebaseUser } = useAuth();
+  const { firebaseUser } = useAuth();
   const [members, setMembers] = useState<any[]>([]);
   const [totalDependents, setTotalDependents] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -25,12 +25,7 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
   const [sortBy, setSortBy] = useState<'member' | 'role'>('member');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-  useEffect(() => {
-    fetchMembers();
-    fetchDependentsCount();
-  }, []);
-
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -39,35 +34,41 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
       }
 
       const idToken = await firebaseUser.getIdToken();
-      // Backend doesn't support pagination for this endpoint - it returns all members up to limit
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?limit=1000`, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const pageSize = 200;
+      let page = 1;
+      let allMembers: any[] = [];
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch members');
+      while (true) {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/members/all/firebase?page=${page}&limit=${pageSize}`, {
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch members');
+        }
+
+        const data = await response.json();
+        const pageMembers = (data?.data?.members) || [];
+        allMembers = allMembers.concat(pageMembers);
+
+        const hasNext = Boolean(data?.data?.pagination?.hasNext);
+        if (!hasNext) break;
+        page += 1;
       }
 
-      const data = await response.json();
-      // Backend returns: { success: true, data: [array of members] }
-      // So data.data is the array directly, not data.data.members
-      const membersArray = Array.isArray(data.data) ? data.data : (data.data?.members || []);
-      console.log('👥 RoleManagement - Members loaded:', membersArray.length);
-      
-      setMembers(membersArray);
+      setMembers(allMembers);
       setCurrentPage(1);
     } catch (error: any) {
-      console.error('❌ Error fetching members in RoleManagement:', error);
       setError(error.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser]);
 
-  const fetchDependentsCount = async () => {
+  const fetchDependentsCount = useCallback(async () => {
     try {
       if (!firebaseUser) return;
 
@@ -79,27 +80,20 @@ const RoleManagement: React.FC<RoleManagementProps> = () => {
         }
       });
 
-      console.log('📊 Dependents count response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('📊 Dependents count API response:', JSON.stringify(data, null, 2));
-        // Backend returns: { success: true, data: { count: number } }
-        // Handle both possible structures
-        const count = data?.data?.count ?? data?.count ?? 0;
-        console.log('👥 Total dependents count:', count);
-        setTotalDependents(Number(count));
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Failed to fetch dependents count:', response.status, errorText);
-        setTotalDependents(0);
+        setTotalDependents(data?.data?.count || 0);
       }
     } catch (error) {
-      console.error('❌ Error fetching dependents count:', error);
-      setTotalDependents(0);
+      console.error('Failed to fetch dependents count:', error);
       // Don't set error state - this is non-critical
     }
-  };
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    fetchMembers();
+    fetchDependentsCount();
+  }, [fetchMembers, fetchDependentsCount]);
 
   const handleRoleUpdate = async () => {
     if (!selectedMember) return;

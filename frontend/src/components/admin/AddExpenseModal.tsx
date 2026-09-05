@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getCurrentDateCST } from '../../utils/dateUtils';
+import { getCached, setCached, CACHE_KEYS } from '../../utils/referenceDataCache';
 
 interface ExpenseCategory {
   id: string;
@@ -62,17 +63,20 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
   // Error states
   const [error, setError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
+  const [checkNumberError, setCheckNumberError] = useState<string | null>(null);
 
-  // Fetch expense categories, employees, and vendors
-  useEffect(() => {
-    if (isOpen) {
-      fetchCategories();
-      fetchEmployees();
-      fetchVendors();
+  // Fetch expense categories, employees, and vendors.
+  // These change rarely, so they're cached for the life of the page — reopening
+  // the modal then costs no requests. Mutating screens (VendorList, EmployeeList)
+  // invalidate their key so a newly added payee still shows up immediately.
+  const fetchCategories = useCallback(async () => {
+    const cached = getCached<ExpenseCategory[]>(CACHE_KEYS.expenseCategories);
+    if (cached) {
+      setCategories(cached);
+      setLoadingCategories(false);
+      return;
     }
-  }, [isOpen]);
 
-  const fetchCategories = async () => {
     try {
       setLoadingCategories(true);
       const token = await firebaseUser?.getIdToken();
@@ -84,7 +88,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
 
       if (response.ok) {
         const data = await response.json();
-        setCategories(data.data || []);
+        const list = data.data || [];
+        setCached(CACHE_KEYS.expenseCategories, list);
+        setCategories(list);
       } else {
         setError('Failed to load expense categories');
       }
@@ -94,9 +100,15 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     } finally {
       setLoadingCategories(false);
     }
-  };
+  }, [firebaseUser]);
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
+    const cached = getCached<Employee[]>(CACHE_KEYS.employees);
+    if (cached) {
+      setEmployees(cached);
+      return;
+    }
+
     try {
       setLoadingEmployees(true);
       const token = await firebaseUser?.getIdToken();
@@ -108,7 +120,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
 
       if (response.ok) {
         const data = await response.json();
-        setEmployees(data.data || []);
+        const list = data.data || [];
+        setCached(CACHE_KEYS.employees, list);
+        setEmployees(list);
       }
     } catch (err) {
       console.error('Error fetching employees:', err);
@@ -116,9 +130,15 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     } finally {
       setLoadingEmployees(false);
     }
-  };
+  }, [firebaseUser]);
 
-  const fetchVendors = async () => {
+  const fetchVendors = useCallback(async () => {
+    const cached = getCached<Vendor[]>(CACHE_KEYS.vendors);
+    if (cached) {
+      setVendors(cached);
+      return;
+    }
+
     try {
       setLoadingVendors(true);
       const token = await firebaseUser?.getIdToken();
@@ -130,7 +150,9 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
 
       if (response.ok) {
         const data = await response.json();
-        setVendors(data.data || []);
+        const list = data.data || [];
+        setCached(CACHE_KEYS.vendors, list);
+        setVendors(list);
       }
     } catch (err) {
       console.error('Error fetching vendors:', err);
@@ -138,7 +160,15 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     } finally {
       setLoadingVendors(false);
     }
-  };
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchCategories();
+      fetchEmployees();
+      fetchVendors();
+    }
+  }, [isOpen, fetchCategories, fetchEmployees, fetchVendors]);
 
   const handleAmountChange = (value: string) => {
     // Allow only numbers and decimal point
@@ -178,13 +208,82 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
       return false;
     }
 
+    // Check payments must carry a check number so the checkbook stays auditable
+    if (paymentMethod === 'check' && !checkNumber.trim()) {
+      setCheckNumberError(t('treasurerDashboard.expenses.addModal.checkNumberRequired'));
+      return false;
+    }
+
     return true;
   };
+
+  // Ask the server whether this check number is free as soon as the treasurer
+  // leaves the field, rather than making them fill in the whole form to find
+  // out. The request is keyed to the value that triggered it so a slow answer
+  // for an old number can't overwrite the verdict on a newer one.
+  const checkNumberRequestRef = useRef(0);
+
+  const handleCheckNumberBlur = async () => {
+    if (paymentMethod !== 'check') return;
+
+    const value = checkNumber.trim();
+    if (!value) {
+      setCheckNumberError(t('treasurerDashboard.expenses.addModal.checkNumberRequired'));
+      return;
+    }
+
+    const requestId = ++checkNumberRequestRef.current;
+    try {
+      const token = await firebaseUser?.getIdToken();
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/expenses/check-number-availability?check_number=${encodeURIComponent(value)}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (requestId !== checkNumberRequestRef.current) return; // a newer edit won
+
+      if (data?.data && data.data.available === false) {
+        setCheckNumberError(
+          data.data.reason === 'NON_NUMERIC'
+            ? t('treasurerDashboard.expenses.addModal.checkNumberNumeric')
+            : t('treasurerDashboard.expenses.addModal.checkNumberDuplicate')
+        );
+      }
+    } catch (err) {
+      // A failed availability probe must not block entry; the server still
+      // rejects a duplicate on submit.
+      console.error('Check number availability check failed:', err);
+    }
+  };
+
+  // Save stays disabled until the entry is worth submitting. Mirrors the
+  // required-field rules in validateForm, plus any error already surfaced by a
+  // field (a duplicate check number found on blur, an unparseable amount), so
+  // the treasurer isn't invited to submit something the server will reject.
+  const isReadyToSave = (() => {
+    if (!glCode) return false;
+
+    const amountValue = parseFloat(amount);
+    if (!amount || !Number.isFinite(amountValue) || amountValue <= 0) return false;
+    if (amountError) return false;
+
+    if (!expenseDate) return false;
+
+    if (paymentMethod === 'check') {
+      if (!checkNumber.trim()) return false;
+      if (checkNumberError) return false;
+    }
+
+    return true;
+  })();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setAmountError(null);
+    setCheckNumberError(null);
 
     if (!validateForm()) {
       return;
@@ -212,9 +311,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
         requestBody.payee_name = payeeName;
       }
 
-      // Add check number if payment method is check
-      if (paymentMethod === 'check' && checkNumber) {
-        requestBody.check_number = checkNumber;
+      // Always send the check number for check payments so the server-side
+      // required/unique validation is reachable rather than shadowed by an
+      // omitted field.
+      if (paymentMethod === 'check') {
+        requestBody.check_number = checkNumber.trim();
       }
 
       // Add invoice number if provided
@@ -264,6 +365,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     if (!loading) {
       setError(null);
       setAmountError(null);
+      setCheckNumberError(null);
       // Reset form
       setGlCode('');
       setAmount('');
@@ -335,15 +437,81 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
             </div>
           )}
 
-          {/* Expense Category */}
+          {/* Payment Method */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('treasurerDashboard.expenses.addModal.paymentMethod')} <span className="text-red-500">*</span>
+            </label>
+            <div className="flex flex-col space-y-2">
+              <div className="flex space-x-4">
+                <label className="flex items-center text-gray-400 cursor-not-allowed" title="Paying in cash is discouraged">
+                  <input
+                    type="radio"
+                    value="cash"
+                    checked={paymentMethod === 'cash'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'check')}
+                    className="mr-2"
+                    disabled
+                  />
+                  {t('treasurerDashboard.transactionList.methods.cash')}
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value="check"
+                    checked={paymentMethod === 'check'}
+                    onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'check')}
+                    className="mr-2"
+                  />
+                  {t('treasurerDashboard.transactionList.methods.check')}
+                </label>
+              </div>
+              <p className="text-xs text-amber-600 italic">
+                Note: Paying in cash is discouraged. Please use {t('treasurerDashboard.transactionList.methods.check')} whenever possible.
+              </p>
+            </div>
+          </div>
+
+          {/* Check Number (required for check payments) */}
+          {paymentMethod === 'check' && (
+            <div>
+              <label htmlFor="expense-check-number" className="block text-sm font-medium text-gray-700 mb-2">
+                {t('treasurerDashboard.expenses.addModal.checkNumber')} <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                id="expense-check-number"
+                data-testid="check-number-input"
+                value={checkNumber}
+                onChange={(e) => {
+                  // Check numbers are the checkbook sequence — digits only, so
+                  // "1593" and "CHK-1593" can't both exist as the same check.
+                  setCheckNumber(e.target.value.replace(/\D/g, ''));
+                  setCheckNumberError(null);
+                }}
+                onBlur={handleCheckNumberBlur}
+                placeholder="1593"
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {checkNumberError && (
+                <p className="mt-1 text-xs text-red-600">{checkNumberError}</p>
+              )}
+            </div>
+          )}
+
+          {/* Expense Category */}
+          <div>
+            <label htmlFor="expense-category" className="block text-sm font-medium text-gray-700 mb-2">
               {t('treasurerDashboard.expenses.addModal.category')} <span className="text-red-500">*</span>
             </label>
             {loadingCategories ? (
               <div className="text-gray-500">Loading categories...</div>
             ) : (
               <select
+                id="expense-category"
                 value={glCode}
                 onChange={(e) => handleGlCodeChange(e.target.value)}
                 required
@@ -459,12 +627,13 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
 
           {/* Amount */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="expense-amount" className="block text-sm font-medium text-gray-700 mb-2">
               {t('treasurerDashboard.expenses.addModal.amount')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <span className="absolute left-3 top-2 text-gray-500">$</span>
               <input
+                id="expense-amount"
                 type="text"
                 inputMode="decimal"
                 value={amount}
@@ -481,10 +650,11 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
 
           {/* Expense Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="expense-date" className="block text-sm font-medium text-gray-700 mb-2">
               {t('treasurerDashboard.expenses.addModal.date')} <span className="text-red-500">*</span>
             </label>
             <input
+              id="expense-date"
               type="date"
               value={expenseDate}
               onChange={(e) => setExpenseDate(e.target.value)}
@@ -493,57 +663,6 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
-          {/* Payment Method */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('treasurerDashboard.expenses.addModal.paymentMethod')} <span className="text-red-500">*</span>
-            </label>
-            <div className="flex flex-col space-y-2">
-              <div className="flex space-x-4">
-                <label className="flex items-center text-gray-400 cursor-not-allowed" title="Paying in cash is discouraged">
-                  <input
-                    type="radio"
-                    value="cash"
-                    checked={paymentMethod === 'cash'}
-                    onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'check')}
-                    className="mr-2"
-                    disabled
-                  />
-                  {t('treasurerDashboard.transactionList.methods.cash')}
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="check"
-                    checked={paymentMethod === 'check'}
-                    onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'check')}
-                    className="mr-2"
-                  />
-                  {t('treasurerDashboard.transactionList.methods.check')}
-                </label>
-              </div>
-              <p className="text-xs text-amber-600 italic">
-                Note: Paying in cash is discouraged. Please use Check whenever possible.
-              </p>
-            </div>
-          </div>
-
-          {/* Check Number (only for check payments) */}
-          {paymentMethod === 'check' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('treasurerDashboard.expenses.addModal.checkNumber')}
-              </label>
-              <input
-                type="text"
-                value={checkNumber}
-                onChange={(e) => setCheckNumber(e.target.value)}
-                placeholder="CHK-1234"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          )}
 
           {/* Receipt Number */}
           <div>
@@ -608,7 +727,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
             </button>
             <button
               type="submit"
-              disabled={loading || loadingCategories}
+              disabled={loading || loadingCategories || !isReadyToSave}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t('treasurerDashboard.expenses.addModal.saving') : t('treasurerDashboard.expenses.addModal.save')}

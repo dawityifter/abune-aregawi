@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import BankTransactionDetail from './BankTransactionDetail';
 
-interface BankTransaction {
+export interface BankTransaction {
     id: number;
     date: string;
     amount: number;
@@ -11,22 +12,86 @@ interface BankTransaction {
     status: 'PENDING' | 'MATCHED' | 'IGNORED';
     payer_name: string | null;
     check_number: string | null;
+    receipt_number?: string | null;
+    reconciled_source?: string | null;
+    reconciled_at?: string | null;
+    reconciled_payee_name?: string | null;
+    reconciled_memo?: string | null;
+    /** The expense this debit is reconciled against, however it got linked. */
+    reconciled_expense?: {
+        id: number | string;
+        category: string;
+        category_name: string | null;
+        amount: number | string;
+        entry_date: string;
+        payment_method: string | null;
+        check_number: string | null;
+        receipt_number: string | null;
+        payee_name: string | null;
+        memo: string | null;
+        source_system: string | null;
+    } | null;
+    /**
+     * Present only on check debits. A cleared check is reconciled when it lines
+     * up with an expense the treasurer entered by hand; the server computes this
+     * per request rather than storing it.
+     */
+    check_status?: {
+        state: 'RECONCILED' | 'NOT_RECONCILED';
+        reason?: 'NO_MANUAL_ENTRY' | 'AMOUNT_MISMATCH' | 'NO_CHECK_NUMBER' | 'ALREADY_LINKED';
+        check_number: string | null;
+        bank_amount?: number;
+        expense_amount?: number;
+        ledger_entry_id?: string | null;
+    };
+    /**
+     * Present only on returned deposited items — a check the church deposited
+     * that bounced. The serial is the DONOR's, so this points at the gift being
+     * reversed, never at the church's own checkbook.
+     */
+    returned_item?: {
+        state: 'RETURNED';
+        reason?: 'ORIGINAL_NOT_FOUND' | 'NO_CHECK_SERIAL' | 'AMOUNT_MISMATCH' | null;
+        check_number: string | null;
+        bank_amount?: number;
+        original_amount?: number;
+        receipt_number?: string | null;
+        reverses_ledger_entry_id?: number | string | null;
+    };
     member?: {
         first_name: string;
         last_name: string;
     };
     suggested_match?: {
         type: string;
+        source?: string;
+        reason?: string;
+        confidence?: string;
         member: {
             id: number;
             first_name: string;
             last_name: string;
         }
     };
+    suggested_matches?: {
+        type: string;
+        source?: string;
+        reason?: string;
+        confidence?: string;
+        member: {
+            id: number;
+            first_name: string;
+            last_name: string;
+        }
+    }[];
     potential_matches?: {
         id: number;
         amount: number;
         payment_date: string;
+        payment_type?: string | null;
+        payment_method?: string | null;
+        receipt_number?: string | null;
+        note?: string | null;
         member?: {
             first_name: string;
             last_name: string;
@@ -47,13 +112,16 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     const [endDate, setEndDate] = useState<string>('');
     const [searchDescription, setSearchDescription] = useState<string>('');
     const [currentBalance, setCurrentBalance] = useState<number | null>(null);
+    const [selectedTxn, setSelectedTxn] = useState<BankTransaction | null>(null);
 
-    // Manual Link & Payment Type Selection
+    // On-demand auto-reconcile (batched sweep of the whole PENDING backlog)
+    const [autoReconciling, setAutoReconciling] = useState(false);
+    const [autoReconcileSummary, setAutoReconcileSummary] = useState<string | null>(null);
+
+    // Manual Link & Payment Type Selection (bulk mode)
     const [showLinkModal, setShowLinkModal] = useState(false);
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [txnToLink, setTxnToLink] = useState<BankTransaction | null>(null);
-    const [matchCandidate, setMatchCandidate] = useState<any>(null); // For Confirm Match
     const [selectedPaymentType, setSelectedPaymentType] = useState('donation');
+    const [selectedForYear, setSelectedForYear] = useState<number | ''>('');
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [searching, setSearching] = useState(false);
@@ -97,7 +165,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     const paymentTypes = [
         { value: 'donation', label: 'Donation (General)' },
         { value: 'tithe', label: 'Tithe (አስራት)' },
-        { value: 'membership_due', label: 'Membership Due (ወርhዊ ክፍያ)' },
+        { value: 'membership_due', label: 'Membership Due (ወርहዊ ክፍያ)' },
         { value: 'offering', label: 'Offering (መባእ)' },
         { value: 'building_fund', label: 'Building Fund (ንሕንጻ)' },
         { value: 'event', label: 'Event / Fundraising (ንበዓል)' },
@@ -107,7 +175,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         { value: 'other', label: 'Other (ሌላ)' },
     ];
 
-    const fetchTransactions = async () => {
+    const fetchTransactions = useCallback(async () => {
         if (!firebaseUser) return;
         try {
             setLoading(true);
@@ -139,11 +207,16 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         } finally {
             setLoading(false);
         }
-    };
+    }, [firebaseUser, page, filterStatus, filterType, startDate, endDate, searchDescription]);
 
     useEffect(() => {
         fetchTransactions();
-    }, [firebaseUser, page, filterStatus, filterType, startDate, endDate, searchDescription, refreshTrigger]);
+    }, [fetchTransactions, refreshTrigger]);
+
+    useEffect(() => {
+        setPage(1);
+        setSelectedTxnIds([]);
+    }, [filterStatus, filterType, startDate, endDate, searchDescription]);
 
     // Global refresh listener
     useEffect(() => {
@@ -154,58 +227,119 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         };
         window.addEventListener('bank:refresh', handleRefresh);
         return () => window.removeEventListener('bank:refresh', handleRefresh);
-    }, [firebaseUser, filterStatus, filterType, startDate, endDate, searchDescription]);
+    }, [fetchTransactions]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
     };
 
-    const [selectedForYear, setSelectedForYear] = useState<number | ''>(''); // Year override state
+    const formatStatusLabel = (status: BankTransaction['status']) => {
+        if (status === 'PENDING') return 'PENDING REVIEW';
+        if (status === 'MATCHED') return 'MATCHED';
+        return 'RECONCILED';
+    };
 
-    // ... existing code ...
+    const formatCheckStatusLabel = (txn: BankTransaction) => {
+        if (!txn.check_status) return null;
+        return txn.check_status.state === 'RECONCILED' ? 'RECONCILED' : 'NOT RECONCILED';
+    };
 
-    const handleReconcile = async (txn: BankTransaction, memberId?: number, paymentType: string = 'donation', existingTransactionId?: number) => {
-        if (!memberId && !existingTransactionId) return;
+    /** Why a cleared check has not been reconciled, in the treasurer's terms. */
+    const explainCheckStatus = (txn: BankTransaction) => {
+        const status = txn.check_status;
+        if (!status || status.state === 'RECONCILED') return null;
 
+        const number = status.check_number ? `#${status.check_number}` : '';
+        switch (status.reason) {
+            case 'AMOUNT_MISMATCH':
+                return `Check ${number}: expense recorded as ${formatCurrency(status.expense_amount ?? 0)}, bank cleared ${formatCurrency(status.bank_amount ?? 0)}`;
+            case 'ALREADY_LINKED':
+                return `Check ${number} is already reconciled against another bank transaction`;
+            case 'NO_CHECK_NUMBER':
+                return 'This check cleared without a check number on the bank record — enter it manually';
+            default:
+                return `No expense recorded for check ${number} — enter it to reconcile`;
+        }
+    };
+
+    /**
+     * A bounced deposit is money the books still show as received, so the row
+     * says what it reverses rather than sitting as an unexplained debit.
+     */
+    const explainReturnedItem = (txn: BankTransaction) => {
+        const r = txn.returned_item;
+        if (!r) return null;
+
+        const number = r.check_number ? `#${r.check_number}` : '';
+        switch (r.reason) {
+            case 'NO_CHECK_SERIAL':
+                return `Deposited item returned for ${formatCurrency(r.bank_amount ?? 0)} — the bank did not report a check serial`;
+            case 'ORIGINAL_NOT_FOUND':
+                return `Returned check ${number} for ${formatCurrency(r.bank_amount ?? 0)} — no recorded payment carries this serial, so the original gift must be found by hand`;
+            case 'AMOUNT_MISMATCH':
+                return `Returned check ${number}: recorded as ${formatCurrency(r.original_amount ?? 0)}, bank reversed ${formatCurrency(r.bank_amount ?? 0)} — reverses receipt #${r.receipt_number}`;
+            default:
+                return `Returned check ${number} for ${formatCurrency(r.bank_amount ?? 0)} — reverses receipt #${r.receipt_number}. The ledger still counts this gift as received.`;
+        }
+    };
+
+    const isAutoReconciled = (txn: BankTransaction) =>
+        txn.status === 'MATCHED' && !!txn.reconciled_source && txn.reconciled_source.startsWith('AUTO');
+
+    const autoReconcileTooltip = (source?: string | null) => {
+        if (source === 'AUTO_LINKED') return 'Automatically linked to an existing payment (e.g. created by the Zelle email automation)';
+        if (source === 'AUTO_MEMBER') return 'Payment automatically created for a previously-associated member';
+        if (source === 'AUTO_EXPENSE') return 'Expense automatically recorded from a previously-learned payee/GL classification';
+        if (source === 'AUTO_CHECK_MATCH') return 'Cleared check matched to a manually recorded expense on check number and amount';
+        return 'Automatically reconciled';
+    };
+
+    const handleUnreconcile = async (txn: BankTransaction) => {
+        if (!window.confirm('Undo this automatic reconciliation? The record it created/linked will be reverted and the row returns to Pending Review.')) return;
         try {
             const token = await firebaseUser?.getIdToken();
             const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-
-            const payload: any = {
-                transaction_id: txn.id,
-                payment_type: paymentType
-            };
-
-            if (existingTransactionId) {
-                payload.existing_transaction_id = existingTransactionId;
-            } else if (memberId) {
-                payload.member_id = memberId;
-            }
-
-            // Allow override year or use txn date year as default (backend handles null, but good to be explicit if user selected one)
-            if (selectedForYear) {
-                payload.for_year = selectedForYear;
-            }
-
-            const res = await fetch(`${apiUrl}/api/bank/reconcile`, {
+            const res = await fetch(`${apiUrl}/api/bank/transactions/${txn.id}/unreconcile`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
+                headers: { 'Authorization': `Bearer ${token}` }
             });
-
-            if (res.ok) {
-                fetchTransactions();
-                window.dispatchEvent(new CustomEvent('payments:refresh'));
-            } else {
-                alert('Failed to reconcile');
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || 'Undo failed');
             }
-        } catch (err) {
-            console.error(err);
+            fetchTransactions();
+            window.dispatchEvent(new CustomEvent('payments:refresh'));
+        } catch (err: any) {
+            alert(err.message || 'Error undoing reconciliation');
         }
     };
+
+    const formatPotentialMatchSummary = (txn: BankTransaction) => {
+        const match = txn.potential_matches?.[0];
+        if (!match) return null;
+        const memberName = match.member ? `${match.member.first_name} ${match.member.last_name}` : 'No member';
+        const receipt = match.receipt_number ? `, receipt ${match.receipt_number}` : '';
+        const more = txn.potential_matches && txn.potential_matches.length > 1 ? ` +${txn.potential_matches.length - 1} more` : '';
+        return `Existing entry #${match.id}: ${memberName}, ${match.payment_date}${receipt}${more}`;
+    };
+
+    const getSharedSuggestedMember = () => {
+        const selectedTransactions = transactions.filter(txn => selectedTxnIds.includes(txn.id));
+        if (selectedTransactions.length === 0) return null;
+
+        const suggestedMembers = selectedTransactions.map(txn => txn.suggested_match?.member || txn.suggested_matches?.[0]?.member);
+        if (suggestedMembers.some(member => !member)) return null;
+
+        const firstMember = suggestedMembers[0]!;
+        const allSameMember = suggestedMembers.every(member => member!.id === firstMember.id);
+        if (!allSameMember) return null;
+
+        return {
+            id: firstMember.id,
+            name: `${firstMember.first_name} ${firstMember.last_name}`,
+        };
+    };
+
 
     const handleBulkReconcile = async (member: any) => {
         if (selectedTxnIds.length === 0) return;
@@ -256,62 +390,58 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         }
     };
 
+    // Sweep the entire PENDING backlog through the batched auto-reconcile
+    // endpoint. Each call is bounded server-side; nextAfterId cursors forward
+    // so every row is examined exactly once regardless of backlog size.
+    const handleAutoReconcile = async () => {
+        if (autoReconciling) return;
+        setAutoReconciling(true);
+        setAutoReconcileSummary(null);
+        try {
+            const token = await firebaseUser?.getIdToken();
+            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+            const totals = { examined: 0, matched: 0 };
+            let afterId: string | number | null = null;
+            let done = false;
+
+            while (!done) {
+                const res: Response = await fetch(`${apiUrl}/api/bank/auto-reconcile`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(afterId ? { afterId } : {})
+                });
+                const data: any = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    throw new Error(data?.message || t('bankTransactions.autoReconcileFailed'));
+                }
+                const s: any = data.data || {};
+                totals.examined += s.examined || 0;
+                totals.matched += (s.autoLinked || 0) + (s.autoMember || 0) + (s.autoExpense || 0);
+                afterId = s.nextAfterId ?? null;
+                done = s.done !== false || !afterId; // afterId guard prevents an infinite loop
+            }
+
+            setAutoReconcileSummary(t('bankTransactions.autoReconcileDone', {
+                examined: totals.examined,
+                matched: totals.matched
+            }));
+            window.dispatchEvent(new Event('bank:refresh'));
+            window.dispatchEvent(new Event('payments:refresh'));
+        } catch (e: any) {
+            setAutoReconcileSummary(e.message || t('bankTransactions.autoReconcileFailed'));
+        } finally {
+            setAutoReconciling(false);
+        }
+    };
+
     // --- Modal Logic ---
-
-    // Open Confirm Modal (for suggested matches)
-    const openConfirmModal = (txn: BankTransaction, candidate: any) => {
-        setTxnToLink(txn);
-        setMatchCandidate(candidate);
-        setSelectedPaymentType('donation'); // Default
-        setSelectedForYear(''); // Reset year
-        setShowConfirmModal(true);
-    };
-
-    const handleConfirmReconcile = async () => {
-        if (!txnToLink || !matchCandidate) return;
-        await handleReconcile(txnToLink, matchCandidate.member.id, selectedPaymentType);
-        setShowConfirmModal(false);
-        setTxnToLink(null);
-        setMatchCandidate(null);
-        setSelectedForYear('');
-    };
-
-    const openLinkModal = (txn?: BankTransaction) => {
-        if (txn) {
-            // Single mode
-            setTxnToLink(txn);
-            setIsBulkMode(false);
-        } else {
-            // Bulk mode
-            setIsBulkMode(true);
-            setTxnToLink(null); // No single txn
-        }
-        setSearchTerm('');
-        setSearchResults([]);
-        setSelectedPaymentType('donation'); // Default
-        setSelectedForYear(''); // Reset year
-        setShowLinkModal(true);
-    };
-
-    const handleManualReconcile = async (member: any) => {
-        if (isBulkMode) {
-            await handleBulkReconcile(member);
-        } else {
-            if (!txnToLink) return;
-            // Rename confirmation text as requested: "Link and Add Transaction" implies adding to system
-            if (!window.confirm(`Link and Add Transaction: ${txnToLink.description} to ${member.name} as ${selectedPaymentType}?`)) return;
-
-            await handleReconcile(txnToLink, member.id, selectedPaymentType);
-            setShowLinkModal(false);
-            setTxnToLink(null);
-        }
-    };
-
-    const currentYear = new Date().getFullYear();
 
     return (
         <div className="space-y-4">
-            {/* ... (Balance Card Omitted for brevity in edit, keeping existing) ... */}
+            {/* Balance Card */}
             <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="px-4 py-5 sm:p-6">
                     <dt className="text-sm font-medium text-gray-500 truncate">Current Bank Balance</dt>
@@ -321,18 +451,17 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                 </div>
             </div>
 
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="p-4 border-b border-gray-200 flex flex-col xl:flex-row justify-between items-center bg-gray-50 gap-4">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-col items-center justify-between gap-4 border-b border-slate-200 bg-slate-50/80 p-4 xl:flex-row">
                     <h3 className="text-lg font-medium text-gray-900">Bank Transactions</h3>
                     <div className="flex flex-wrap gap-2 items-center">
                         <input
                             type="text"
-                            placeholder="Search description..."
+                            placeholder="Search transactions..."
                             value={searchDescription}
                             onChange={(e) => setSearchDescription(e.target.value)}
                             className="block w-40 pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
                         />
-                        {/* ... Date filters ... */}
                         <input
                             type="date"
                             value={startDate}
@@ -351,8 +480,8 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                             className="block w-32 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
                         >
                             <option value="">All Types</option>
-                            <option value="ZELLE">Zelle</option>
-                            <option value="CHECK">Check</option>
+                            <option value="ZELLE">{t('zelle')}</option>
+                            <option value="CHECK">{t('check')}</option>
                             <option value="ACH">ACH</option>
                             <option value="DEBIT">Debit</option>
                         </select>
@@ -364,11 +493,21 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                             <option value="">All Statuses</option>
                             <option value="PENDING">Pending Review</option>
                             <option value="MATCHED">Matched</option>
-                            <option value="IGNORED">Ignored</option>
+                            <option value="IGNORED">Reconciled</option>
                         </select>
+                        <button
+                            type="button"
+                            onClick={handleAutoReconcile}
+                            disabled={autoReconciling}
+                            title={t('bankTransactions.autoReconcileHelp')}
+                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
+                        >
+                            <i className={`fas ${autoReconciling ? 'fa-spinner fa-spin' : 'fa-magic'} mr-2`}></i>
+                            {autoReconciling ? t('bankTransactions.autoReconciling') : t('bankTransactions.autoReconcile')}
+                        </button>
                         {selectedTxnIds.length > 0 && (
                             <button
-                                onClick={() => openLinkModal()}
+                                onClick={() => { setIsBulkMode(true); setSearchTerm(''); setSearchResults([]); setSelectedPaymentType('donation'); setSelectedForYear(''); setShowLinkModal(true); }}
                                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
                             >
                                 Link {selectedTxnIds.length} Transactions
@@ -377,11 +516,17 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                     </div>
                 </div>
 
+                {autoReconcileSummary && (
+                    <div className="border-b border-slate-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+                        {autoReconcileSummary}
+                    </div>
+                )}
+
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-slate-200">
+                        <thead className="bg-slate-100/80">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                                     <input
                                         type="checkbox"
                                         checked={transactions.length > 0 && selectedTxnIds.length === transactions.filter(t => t.status === 'PENDING').length}
@@ -396,24 +541,23 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                     />
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Detected / Suggested</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Date</th>
+                                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Description</th>
+                                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Detected / Suggested</th>
+                                <th className="px-6 py-4 text-right text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Amount</th>
+                                <th className="px-6 py-4 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Status</th>
+                                <th className="px-6 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Action</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {/* ... Table Body ... */}
+                        <tbody className="divide-y divide-slate-100 bg-white">
                             {loading ? (
-                                <tr><td colSpan={7} className="px-6 py-4 text-center">Loading...</td></tr>
+                                <tr><td colSpan={7} className="px-6 py-6 text-center text-slate-500">Loading...</td></tr>
                             ) : transactions.length === 0 ? (
-                                <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500">No transactions found.</td></tr>
+                                <tr><td colSpan={7} className="px-6 py-6 text-center text-slate-500">No transactions found.</td></tr>
                             ) : (
-                                transactions.map((txn) => (
-                                    <tr key={txn.id} className={txn.status === 'PENDING' ? 'bg-yellow-50' : ''}>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                transactions.map((txn, index) => (
+                                    <tr key={txn.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/70'} ${txn.status === 'PENDING' ? 'ring-1 ring-inset ring-amber-200 bg-amber-50/60' : ''} hover:bg-blue-50/70 transition-colors`}>
+                                        <td className="whitespace-nowrap px-6 py-4">
                                             {txn.status === 'PENDING' && (
                                                 <input
                                                     type="checkbox"
@@ -429,69 +573,91 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                                 />
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-700">
                                             {txn.date}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" title={txn.description}>
-                                            {txn.description}
-                                            {txn.check_number && <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">Check #{txn.check_number}</span>}
+                                        <td className="max-w-xs px-6 py-4 text-sm text-slate-900" title={txn.description}>
+                                            <div className="truncate font-medium">{txn.description}</div>
+                                            {txn.check_number && <span className="mt-1 inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">{t('check')} #{txn.check_number}</span>}
                                         </td>
                                         <td className="px-6 py-4 text-sm font-medium">
-                                            <div className="text-gray-900">{txn.payer_name || '-'}</div>
+                                            <div className="text-slate-900">{txn.payer_name || '-'}</div>
                                             {txn.status === 'PENDING' && txn.suggested_match && (
-                                                <div className="text-xs text-blue-600 mt-1">
+                                                <div className="mt-1 text-xs text-blue-600">
                                                     Suggestion: {txn.suggested_match.member.first_name} {txn.suggested_match.member.last_name}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${txn.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            {formatCurrency(txn.amount)}
-                                            {txn.status === 'PENDING' && txn.potential_matches && txn.potential_matches.length > 0 && (
-                                                <div className="text-xs text-orange-600 font-bold mt-1">
-                                                    ⚠️ Potential Duplicate
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                                ${txn.status === 'MATCHED' ? 'bg-green-100 text-green-800' :
-                                                    txn.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                                        'bg-gray-100 text-gray-800'}`}>
-                                                {txn.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            {txn.status === 'PENDING' && (
-                                                <div className="flex space-x-2">
-                                                    {txn.amount < 0 ? (
-                                                        <span className="text-gray-400 italic text-xs">Expense</span>
-                                                    ) : (
-                                                        <>
-                                                            {txn.suggested_match ? (
-                                                                <button
-                                                                    onClick={() => openConfirmModal(txn, txn.suggested_match)}
-                                                                    className="text-green-600 hover:text-green-900 font-bold"
-                                                                >
-                                                                    Confirm Match
-                                                                </button>
-                                                            ) : (
-                                                                <button
-                                                                    onClick={() => openLinkModal(txn)}
-                                                                    className="text-blue-600 hover:text-blue-900 text-xs border border-blue-600 rounded px-2 py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                    disabled={!['ZELLE', 'OTHER'].includes((txn.type || '').toUpperCase())}
-                                                                    title={!['ZELLE', 'OTHER'].includes((txn.type || '').toUpperCase()) ? "Only available for Zelle or Other types" : "Link to member"}
-                                                                >
-                                                                    Link and Add Transaction
-                                                                </button>
-                                                            )}
-                                                        </>
+                                                    {txn.suggested_matches && txn.suggested_matches.length > 1 && (
+                                                        <span> +{txn.suggested_matches.length - 1} more</span>
                                                     )}
                                                 </div>
                                             )}
                                             {txn.status === 'MATCHED' && txn.member && (
-                                                <span className="text-gray-500 text-xs">
-                                                    Linked to: {txn.member.first_name} {txn.member.last_name}
+                                                <div className="mt-1 text-xs font-semibold text-emerald-700">
+                                                    Matched: {txn.member.first_name} {txn.member.last_name}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className={`whitespace-nowrap px-6 py-4 text-right text-sm font-semibold ${txn.amount >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                                            {formatCurrency(txn.amount)}
+                                            {txn.status === 'PENDING' && txn.potential_matches && txn.potential_matches.length > 0 && (
+                                                <div
+                                                    className="mt-1 max-w-64 whitespace-normal text-xs font-semibold leading-4 text-amber-700"
+                                                    title="Same amount, same payment method, transaction date within 2 days, and similar payer/member name."
+                                                >
+                                                    Possible existing entry
+                                                    <div className="font-medium text-amber-800">
+                                                        {formatPotentialMatchSummary(txn)}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="whitespace-nowrap px-6 py-4 text-center">
+                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold
+                                                ${txn.returned_item || txn.check_status?.state === 'NOT_RECONCILED' ? 'bg-red-100 text-red-800' :
+                                                    txn.status === 'MATCHED' ? 'bg-emerald-100 text-emerald-800' :
+                                                        txn.status === 'PENDING' ? 'bg-amber-100 text-amber-800' :
+                                                            'bg-slate-100 text-slate-700'}`}>
+                                                {txn.returned_item
+                                                    ? 'RETURNED ITEM'
+                                                    : formatCheckStatusLabel(txn) ?? formatStatusLabel(txn.status)}
+                                            </span>
+                                            {explainReturnedItem(txn) && (
+                                                <div className="mt-1 max-w-72 whitespace-normal text-xs font-medium leading-4 text-red-700">
+                                                    {explainReturnedItem(txn)}
+                                                </div>
+                                            )}
+                                            {explainCheckStatus(txn) && (
+                                                <div className="mt-1 text-xs text-red-700">
+                                                    {explainCheckStatus(txn)}
+                                                </div>
+                                            )}
+                                            {isAutoReconciled(txn) && (
+                                                <span
+                                                    className="ml-1 inline-flex rounded-full bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800"
+                                                    title={autoReconcileTooltip(txn.reconciled_source)}
+                                                >
+                                                    Auto
                                                 </span>
+                                            )}
+                                        </td>
+                                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
+                                            <button
+                                                onClick={() => setSelectedTxn(txn)}
+                                                className={`text-xs px-3 py-1.5 rounded font-semibold border transition-colors ${
+                                                    selectedTxn?.id === txn.id
+                                                        ? 'bg-blue-600 text-white border-blue-600'
+                                                        : 'bg-white text-blue-600 border-blue-600 hover:bg-blue-50'
+                                                }`}
+                                            >
+                                                Details →
+                                            </button>
+                                            {isAutoReconciled(txn) && (
+                                                <button
+                                                    onClick={() => handleUnreconcile(txn)}
+                                                    className="ml-2 text-xs px-3 py-1.5 rounded font-semibold border border-purple-500 bg-white text-purple-700 hover:bg-purple-50 transition-colors"
+                                                    title="Undo this automatic reconciliation"
+                                                >
+                                                    Undo
+                                                </button>
                                             )}
                                         </td>
                                     </tr>
@@ -500,20 +666,21 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                         </tbody>
                     </table>
                 </div>
-                {/* ... Pagination ... */}
-                <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+
+                {/* Pagination */}
+                <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/70 px-4 py-3 sm:px-6">
                     <div className="flex-1 flex justify-between sm:justify-end">
                         <button
                             onClick={() => setPage(p => Math.max(1, p - 1))}
                             disabled={page === 1}
-                            className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                            className="relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                         >
                             Previous
                         </button>
                         <button
                             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                             disabled={page === totalPages}
-                            className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                            className="ml-3 relative inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                         >
                             Next
                         </button>
@@ -521,8 +688,8 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                 </div>
             </div>
 
-            {/* Manual Link Modal */}
-            {showLinkModal && (txnToLink || isBulkMode) && (
+            {/* Manual Link Modal (bulk mode only) */}
+            {showLinkModal && isBulkMode && (
                 <div className="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowLinkModal(false)}></div>
@@ -530,22 +697,41 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
                             <div>
                                 <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                    Link Transaction to Donor
+                                    Link {selectedTxnIds.length === 1 ? 'Transaction' : 'Transactions'} to Member
                                 </h3>
                                 <div className="mt-2 text-sm text-gray-500">
                                     <div className="mb-4 text-xs bg-blue-50 p-2 rounded text-blue-700">
                                         Select "Membership Due" and specify a Year to apply this payment to a specific year's balance.
                                     </div>
                                     <p className="text-sm text-gray-500 mb-4">
-                                        {isBulkMode ? (
-                                            <strong>Linking {selectedTxnIds.length} transactions</strong>
-                                        ) : (
-                                            <>
-                                                Transaction: <strong>{txnToLink?.description}</strong><br />
-                                                Amount: {txnToLink && formatCurrency(txnToLink.amount)}
-                                            </>
-                                        )}
+                                        <strong>Linking {selectedTxnIds.length} transactions</strong>
                                     </p>
+
+                                    {(() => {
+                                        const sharedSuggestedMember = getSharedSuggestedMember();
+                                        if (!sharedSuggestedMember) return null;
+
+                                        return (
+                                            <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3">
+                                                <p className="text-xs font-bold uppercase tracking-wide text-green-700">
+                                                    Shared Suggested Member
+                                                </p>
+                                                <p className="mt-1 text-sm font-semibold text-gray-900">
+                                                    {sharedSuggestedMember.name}
+                                                </p>
+                                                <p className="mt-1 text-xs text-green-800">
+                                                    Every selected transaction suggests this member.
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleBulkReconcile(sharedSuggestedMember)}
+                                                    className="mt-3 inline-flex w-full justify-center rounded-md border border-transparent bg-green-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-800 focus:outline-none"
+                                                >
+                                                    Link {selectedTxnIds.length} Transactions to {sharedSuggestedMember.name}
+                                                </button>
+                                            </div>
+                                        );
+                                    })()}
 
                                     <div className="mb-4 grid grid-cols-2 gap-4">
                                         <div>
@@ -572,6 +758,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                                 >
                                                     <option value="">Default (Auto)</option>
                                                     {(() => {
+                                                        const currentYear = new Date().getFullYear();
                                                         // Range: 2025 to (CurrentYear - 1)
                                                         const minYear = 2025;
                                                         const maxYear = currentYear - 1;
@@ -588,7 +775,6 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         )}
                                     </div>
 
-                                    {/* ... existing member search code ... */}
                                     <input
                                         type="text"
                                         placeholder="Search member by name or phone..."
@@ -604,7 +790,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         {searchResults.map(member => (
                                             <div
                                                 key={member.id}
-                                                onClick={() => handleManualReconcile(member)}
+                                                onClick={() => handleBulkReconcile(member)}
                                                 className="cursor-pointer hover:bg-gray-100 p-2 rounded flex justify-between items-center border-b last:border-0"
                                             >
                                                 <div>
@@ -619,37 +805,6 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                                         )}
                                     </div>
 
-                                    {/* Potential Matches Section (Single Only) */}
-                                    {!isBulkMode && txnToLink?.potential_matches && txnToLink.potential_matches.length > 0 && (
-                                        <div className="mt-6 border-t pt-4">
-                                            <h4 className="text-sm font-medium text-orange-700 mb-2">Potential System Matches (Prevent Duplicates)</h4>
-                                            <div className="bg-orange-50 rounded-md p-2">
-                                                {(txnToLink.potential_matches || []).map(pm => (
-                                                    <div key={pm.id} className="flex justify-between items-center text-sm py-2 border-b border-orange-200 last:border-0">
-                                                        <div>
-                                                            <span className="font-bold">{formatCurrency(pm.amount)}</span>
-                                                            <span className="mx-2">-</span>
-                                                            <span>{pm.payment_date}</span>
-                                                            <span className="mx-2">-</span>
-                                                            <span className="text-gray-600">{pm.member?.first_name} {pm.member?.last_name}</span>
-                                                        </div>
-                                                        <button
-                                                            onClick={async () => {
-                                                                if (window.confirm('Link this bank transaction to the existing system record?')) {
-                                                                    await handleReconcile(txnToLink, undefined, undefined, pm.id);
-                                                                    setShowLinkModal(false);
-                                                                    setTxnToLink(null);
-                                                                }
-                                                            }}
-                                                            className="text-xs bg-white border border-orange-300 text-orange-700 px-2 py-1 rounded hover:bg-orange-100"
-                                                        >
-                                                            Link to Existing
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                             <div className="mt-5 sm:mt-6">
@@ -666,84 +821,15 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                 </div>
             )}
 
-            {/* Confirm Match Modal (Existing) ... */}
-            {showConfirmModal && txnToLink && matchCandidate && (
-                <div className="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowConfirmModal(false)}></div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-                            <div>
-                                <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                    Confirm Match & Payment Type
-                                </h3>
-                                <div className="mt-2 text-sm text-gray-500">
-                                    <p>Transaction: <strong>{txnToLink.description}</strong></p>
-                                    <p>Amount: {formatCurrency(txnToLink.amount)}</p>
-                                    <p className="mt-2">Match with Member: <strong className="text-gray-900">{matchCandidate.member.first_name} {matchCandidate.member.last_name}</strong></p>
-
-                                    <div className="mt-4 grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label htmlFor="confirm-payment-type" className="block text-sm font-medium text-gray-700">Payment Type</label>
-                                            <select
-                                                id="confirm-payment-type"
-                                                value={selectedPaymentType}
-                                                onChange={(e) => setSelectedPaymentType(e.target.value)}
-                                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md border"
-                                            >
-                                                {paymentTypes.map(type => (
-                                                    <option key={type.value} value={type.value}>{type.label}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        {selectedPaymentType === 'membership_due' && (
-                                            <div>
-                                                <label htmlFor="confirm-payment-year" className="block text-sm font-medium text-gray-700">Year (Optional)</label>
-                                                <select
-                                                    id="confirm-payment-year"
-                                                    value={selectedForYear}
-                                                    onChange={(e) => setSelectedForYear(e.target.value ? parseInt(e.target.value) : '')}
-                                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md border"
-                                                >
-                                                    <option value="">Default (Auto)</option>
-                                                    {(() => {
-                                                        // Range: 2025 to (CurrentYear - 1)
-                                                        const minYear = 2025;
-                                                        const maxYear = currentYear - 1;
-                                                        const yearOptions = [];
-                                                        for (let y = maxYear; y >= minYear; y--) {
-                                                            yearOptions.push(y);
-                                                        }
-                                                        return yearOptions.map(y => (
-                                                            <option key={y} value={y}>{y}</option>
-                                                        ));
-                                                    })()}
-                                                </select>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="mt-5 sm:mt-6 flex space-x-3">
-                                <button
-                                    type="button"
-                                    className="flex-1 justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:text-sm"
-                                    onClick={() => setShowConfirmModal(false)}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    className="flex-1 justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:text-sm"
-                                    onClick={handleConfirmReconcile}
-                                >
-                                    Confirm Match
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <BankTransactionDetail
+                txn={selectedTxn}
+                onClose={() => setSelectedTxn(null)}
+                onSuccess={() => {
+                    setSelectedTxn(null);
+                    fetchTransactions();
+                    window.dispatchEvent(new CustomEvent('payments:refresh'));
+                }}
+            />
         </div>
     );
 };

@@ -12,9 +12,13 @@ pnpm-debug.log*
 .env.test.local
 .env.production.local
 
+.superpowers/
 # Build outputs
 build/
 dist/
+
+# Git worktrees
+.worktrees/
 
 # Member data files (contain personal information)
 frontend/src/utils/members-2024.json
@@ -212,6 +216,13 @@ dist
 scripts/parsedMembers.json
 members-2024.md
 members.md
+# Member exports: name/phone/spouse rosters. Never commit these.
+members-info-*.csv
+members-*.csv
+
+# Local demo scripts
+docs/demo_script_en_v3.md
+docs/demo_script_ti_v3.md
 .DS_Store
 .DS_Store?
 ._*
@@ -308,7 +319,12 @@ frontend/e2e/auth-state/*.json
 frontend/e2e/test-results/
 frontend/e2e/playwright-report/
 
-# Shadow mode (local dev only)
-backend/src/shadow/
+# Shadow mode local logs (shadowCompare.js itself is tracked on main)
 backend/shadow-report.log
 backend/shadow-errors.log
+
+.claude/
+
+# Playwright MCP scratch output (screenshots/console logs from browsing the local
+# app — screenshots can capture real member data, so never commit these)
+.playwright-mcp/

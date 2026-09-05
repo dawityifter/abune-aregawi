@@ -228,7 +228,7 @@ export const transformDependentToBackend = (frontendDependent: FrontendDependent
 export interface BackendTransaction {
   id: number;
   member_id: number;
-  collected_by: number;
+  collected_by: number | null;
   payment_date: string;
   amount: number;
   payment_type: string;
@@ -256,7 +256,7 @@ export interface BackendTransaction {
 export interface FrontendTransaction {
   id: number;
   memberId: number;
-  collectedBy: number;
+  collectedBy: number | null;
   paymentDate: string;
   amount: number;
   paymentType: string;

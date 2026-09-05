@@ -82,6 +82,14 @@ const INCOME_CATEGORIES = [
     display_order: 10
   },
   {
+    gl_code: 'INC011',
+    name: 'Pledge Drive',
+    description: 'Payments toward a pledge campaign',
+    payment_type_mapping: 'pledge_drive',
+    is_active: true,
+    display_order: 11
+  },
+  {
     gl_code: 'INC999',
     name: 'Other Income',
     description: 'Miscellaneous income not covered by other categories',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getRoleDisplayName, UserRole } from '../../utils/roles';
@@ -29,6 +29,12 @@ interface Member {
     name: string;
     abbreviation: string | null;
   };
+  // Address fields (returned by getAllMembersFirebase)
+  streetLine1?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
 }
 
 interface MemberListProps {
@@ -57,6 +63,7 @@ const MemberList: React.FC<MemberListProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [addressFilter, setAddressFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [showAddMember, setShowAddMember] = useState(false);
@@ -67,8 +74,7 @@ const MemberList: React.FC<MemberListProps> = ({
   // Calculate total unique households
   const totalHouseholds = useMemo(() => {
     const uniqueFamilies = new Set();
-    // Guard against undefined allMembers
-    (allMembers || []).forEach(member => {
+    allMembers.forEach(member => {
       // If member shares a familyId, they belong to that household
       // If not, their own ID defines their household
       const householdId = member.familyId || member.id;
@@ -77,9 +83,11 @@ const MemberList: React.FC<MemberListProps> = ({
     return uniqueFamilies.size;
   }, [allMembers]);
 
+  const hasMissingAddress = (member: Member) => !member.streetLine1?.trim();
+
   // Client-side filtering and pagination
   const filteredMembers = useMemo(() => {
-    return (allMembers || []).filter(member => {
+    return allMembers.filter(member => {
       const searchLower = searchTerm.toLowerCase();
       const memberNumberRaw = (member as any).memberId ?? (member as any).member_id ?? member.id ?? '';
       const memberNumber = String(memberNumberRaw).toLowerCase();
@@ -92,10 +100,14 @@ const MemberList: React.FC<MemberListProps> = ({
 
       const matchesRole = !roleFilter || member.role === roleFilter;
       const matchesStatus = !statusFilter || member.isActive.toString() === statusFilter;
+      const matchesAddress = !addressFilter ||
+        (addressFilter === 'missing' && hasMissingAddress(member)) ||
+        (addressFilter === 'has' && !hasMissingAddress(member));
 
-      return matchesSearch && matchesRole && matchesStatus;
+      return matchesSearch && matchesRole && matchesStatus && matchesAddress;
     });
-  }, [allMembers, searchTerm, roleFilter, statusFilter]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allMembers, searchTerm, roleFilter, statusFilter, addressFilter]);
 
   // Pagination
   const totalMembers = filteredMembers.length;
@@ -104,7 +116,7 @@ const MemberList: React.FC<MemberListProps> = ({
   const endIndex = startIndex + itemsPerPage;
   const paginatedMembers = filteredMembers.slice(startIndex, endIndex);
 
-  const fetchAllMembers = async () => {
+  const fetchAllMembers = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -125,20 +137,13 @@ const MemberList: React.FC<MemberListProps> = ({
       const apiUrl = `${process.env.REACT_APP_API_URL}/api/members/all/firebase?limit=1000`;
       console.log('API URL:', apiUrl);
 
-      // Add timeout to prevent hanging
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
       const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${idToken}`,
           'Content-Type': 'application/json'
         },
-        credentials: 'include',
-        signal: controller.signal
+        credentials: 'include'
       });
-
-      clearTimeout(timeoutId);
 
       console.log('Response Status:', response.status);
       console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
@@ -148,31 +153,15 @@ const MemberList: React.FC<MemberListProps> = ({
       }
 
       const data = await response.json();
-      console.log('📊 MemberList API Response:', data);
-      // Backend returns: { success: true, data: [array of members] }
-      // So data.data is the array directly, not data.data.members
-      const membersArray = Array.isArray(data.data) ? data.data : (data.data?.members || []);
-      // Normalize isActive field - handle both "active" and "isActive" from backend
-      const normalizedMembers = membersArray.map((member: any) => ({
-        ...member,
-        isActive: member.isActive !== undefined ? member.isActive : (member.active !== undefined ? member.active : true)
-      }));
-      console.log('👥 Members loaded:', normalizedMembers.length);
-      console.log('📊 Sample member:', normalizedMembers[0]);
-      setAllMembers(normalizedMembers);
+      setAllMembers(data.data.members);
     } catch (error: any) {
-      console.error('❌ Error fetching members:', error);
-      if (error.name === 'AbortError') {
-        setError('Request timed out. Please try again.');
-      } else {
-        setError(error.message || 'Failed to fetch members');
-      }
+      setError(error.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser, currentUser]);
 
-  const fetchDependentsCount = async () => {
+  const fetchDependentsCount = useCallback(async () => {
     try {
       if (!firebaseUser) return;
 
@@ -184,26 +173,14 @@ const MemberList: React.FC<MemberListProps> = ({
         }
       });
 
-      console.log('📊 Dependents count response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('📊 Dependents count API response:', JSON.stringify(data, null, 2));
-        // Backend returns: { success: true, data: { count: number } }
-        // Handle both possible structures
-        const count = data?.data?.count ?? data?.count ?? 0;
-        console.log('👥 Total dependents count:', count);
-        setTotalDependents(Number(count));
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Failed to fetch dependents count:', response.status, errorText);
-        setTotalDependents(0);
+        setTotalDependents(data?.data?.count || 0);
       }
     } catch (error) {
-      console.error('❌ Error fetching dependents count:', error);
-      setTotalDependents(0);
+      console.error('Failed to fetch dependents count:', error);
     }
-  };
+  }, [firebaseUser]);
 
   useEffect(() => {
     if (!fetchedRef.current) {
@@ -211,19 +188,19 @@ const MemberList: React.FC<MemberListProps> = ({
       fetchDependentsCount();
       fetchedRef.current = true;
     }
-  }, []);
+  }, [fetchAllMembers, fetchDependentsCount]);
 
   // Refetch when parent signals a refresh (e.g., after save)
   useEffect(() => {
     if (typeof refreshToken === 'number') {
       fetchAllMembers();
     }
-  }, [refreshToken]);
+  }, [refreshToken, fetchAllMembers]);
 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, roleFilter, statusFilter]);
+  }, [searchTerm, roleFilter, statusFilter, addressFilter]);
 
   const handleDeleteMember = async (memberId: string) => {
     if (!window.confirm(t('admin.common.confirmDelete'))) {
@@ -251,13 +228,6 @@ const MemberList: React.FC<MemberListProps> = ({
       setError(error.message);
     }
   };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Search is now handled by debounced effect
-  };
-
-
 
   if (loading) {
     return (
@@ -415,6 +385,21 @@ const MemberList: React.FC<MemberListProps> = ({
               <option value="false">{t('admin.common.inactive')}</option>
             </select>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Address
+            </label>
+            <select
+              value={addressFilter}
+              onChange={(e) => setAddressFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">{t('admin.common.all')}</option>
+              <option value="missing">Missing address</option>
+              <option value="has">Has address</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -464,8 +449,16 @@ const MemberList: React.FC<MemberListProps> = ({
                             {String((member as any).memberId ?? (member as any).member_id ?? member.id)}
                             )</span>
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {member.dependentsCount ?? member.dependents?.length ?? 0} {t('admin.members.table.dependents')}
+                        <div className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
+                          <span>{member.dependentsCount ?? member.dependents?.length ?? 0} {t('admin.members.table.dependents')}</span>
+                          {hasMissingAddress(member) && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                              </svg>
+                              No address
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

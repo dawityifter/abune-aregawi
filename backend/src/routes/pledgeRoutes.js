@@ -1,6 +1,10 @@
 const express = require('express');
 const { body } = require('express-validator');
 const pledgeController = require('../controllers/pledgeController');
+const { firebaseAuthMiddleware } = require('../middleware/auth');
+const roleMiddleware = require('../middleware/role');
+const requireOpenCampaign = require('../middleware/requireOpenCampaign');
+const allocationController = require('../controllers/pledgeAllocationController');
 
 const router = express.Router();
 
@@ -48,19 +52,56 @@ const validatePledge = [
     .withMessage('Valid ZIP code is required')
 ];
 
-// Create a new pledge
-router.post('/', validatePledge, pledgeController.createPledge);
+// Same vocabulary as transactionRoutes.js — do not invent new role names.
+const viewRoles = ['admin', 'treasurer', 'church_leadership', 'secretary', 'bookkeeper', 'auditor', 'budget_committee', 'ar_team', 'ap_team'];
+const editRoles = ['admin', 'treasurer', 'bookkeeper', 'ar_team'];
 
-// Get all pledges (admin only)
-router.get('/', pledgeController.getAllPledges);
+// Aggregates are public (the progress bar on the public pledge page).
+// ?detail=true exposes donor names and requires auth + view role.
+const statsAuthGate = (req, res, next) => {
+  if (req.query.detail !== 'true') return next();
+  return firebaseAuthMiddleware(req, res, (err) =>
+    err ? next(err) : roleMiddleware(viewRoles)(req, res, next));
+};
 
-// Get pledge statistics
-router.get('/stats', pledgeController.getPledgeStats);
+// AUTHENTICATED. A pledge for future fulfillment must be attributable, because
+// member_id is what every downstream path keys on: automatic allocation, the
+// member's own balance, the Donate "apply to my pledge" option, and the Dues
+// banner all go dark when it is null. It used to be inferred from an email or
+// phone string match, which is a guess. Now it comes from the token.
+// Anonymous giving has its own path — it requires payment at the same time.
+router.post('/', firebaseAuthMiddleware, validatePledge, pledgeController.createPledge);
 
-// Get pledge by ID
-router.get('/:id', pledgeController.getPledge);
+router.get('/', firebaseAuthMiddleware, roleMiddleware(viewRoles), pledgeController.getAllPledges);
 
-// Update pledge (admin only)
-router.put('/:id', pledgeController.updatePledge);
+// Get pledge statistics - must come before /:id to avoid wildcard catch
+router.get('/stats', statsAuthGate, pledgeController.getPledgeStats);
+
+// Before /:id — otherwise "balance" is parsed as a pledge id.
+// Authenticated but unrestricted: the controller allows a member their own
+// record and requires a view role for anyone else's.
+router.get('/balance', firebaseAuthMiddleware, pledgeController.getPledgeBalance);
+
+// Creates the pledge AND its payment together. Campaign comes from
+// findLiveCampaign(), not from a pledge id, because no pledge exists yet —
+// which is also why requireOpenCampaign cannot be used here; the handler makes
+// the equivalent check itself.
+router.post('/with-payment', firebaseAuthMiddleware, roleMiddleware(editRoles),
+  allocationController.createPledgeWithPaymentHandler);
+
+router.get('/:id', firebaseAuthMiddleware, roleMiddleware(viewRoles), pledgeController.getPledge);
+router.put('/:id', firebaseAuthMiddleware, roleMiddleware(editRoles),
+  requireOpenCampaign(requireOpenCampaign.fromPledgeParam), pledgeController.updatePledge);
+
+// This router is mounted at /api/pledges, so :id here is a PLEDGE id —
+// fromPledgeParam resolves it by looking up the pledge directly.
+router.get('/:id/allocations', firebaseAuthMiddleware, roleMiddleware(viewRoles),
+  allocationController.listAllocations);
+
+router.post('/:id/allocations', firebaseAuthMiddleware, roleMiddleware(editRoles),
+  requireOpenCampaign(requireOpenCampaign.fromPledgeParam), allocationController.createAllocation);
+
+router.post('/:id/payments', firebaseAuthMiddleware, roleMiddleware(editRoles),
+  requireOpenCampaign(requireOpenCampaign.fromPledgeParam), allocationController.createPledgePayment);
 
 module.exports = router;

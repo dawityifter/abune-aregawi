@@ -52,13 +52,14 @@ module.exports = (sequelize) => {
     },
     collected_by: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'members',
         key: 'id'
       },
       onUpdate: 'CASCADE',
-      onDelete: 'RESTRICT'
+      onDelete: 'RESTRICT',
+      comment: 'Member who collected the payment. Null for online self-service gifts, which nobody collected.'
     },
     payment_date: {
       type: DataTypes.DATEONLY,
@@ -80,7 +81,7 @@ module.exports = (sequelize) => {
       comment: 'Payment amount in dollars and cents (minimum $1.00)'
     },
     payment_type: {
-      type: DataTypes.ENUM('membership_due', 'tithe', 'offering', 'donation', 'vow', 'building_fund', 'event', 'religious_item_sales', 'tigray_hunger_fundraiser', 'other'),
+      type: DataTypes.ENUM('membership_due', 'tithe', 'offering', 'donation', 'vow', 'building_fund', 'event', 'religious_item_sales', 'tigray_hunger_fundraiser', 'other', 'loan_received', 'loan_repayment', 'pledge_drive'),
       allowNull: false,
       comment: 'Type of payment (membership dues, tithes, offerings, donations, vows, building fund, events, religious item sales, fundraiser, etc.)'
     },
@@ -90,7 +91,7 @@ module.exports = (sequelize) => {
       comment: 'Method of payment (cash, check, electronic, etc.)'
     },
     status: {
-      type: DataTypes.ENUM('pending', 'succeeded', 'failed', 'canceled'),
+      type: DataTypes.ENUM('pending', 'succeeded', 'failed', 'canceled', 'refunded'),
       allowNull: false,
       defaultValue: 'succeeded',
       comment: 'Settlement status for the transaction'
@@ -104,6 +105,11 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true,
       comment: 'Additional notes about the payment'
+    },
+    donor_name: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Name of a non-member donor. Only set when member_id is null — a member-linked payment is attributed by member_id, not by name.'
     },
     external_id: {
       type: DataTypes.STRING(191),
@@ -180,6 +186,9 @@ module.exports = (sequelize) => {
       },
       {
         fields: ['donation_id']
+      },
+      {
+        fields: ['receipt_number']
       }
     ],
     hooks: {

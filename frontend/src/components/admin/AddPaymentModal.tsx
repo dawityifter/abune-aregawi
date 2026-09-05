@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import StripePayment from '../StripePayment';
 import ACHPayment from '../ACHPayment';
 import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from '../../config/stripe';
 import { fetchIncomeCategories, IncomeCategory, getIncomeCategoryByPaymentType } from '../../utils/incomeCategoryApi';
+import { digitsOnly, receiptNumberHelpText } from '../../utils/receiptNumber';
+import { fetchPledgeBalance, PledgeBalance } from '../../utils/pledgeBalanceApi';
 
 interface Member {
   id: string;
@@ -34,6 +37,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   initialPaymentType
 }) => {
   const { user, firebaseUser } = useAuth();
+  const { t } = useLanguage();
 
   const [members, setMembers] = useState<Member[]>([]);
   const [memberSearch, setMemberSearch] = useState('');
@@ -58,6 +62,17 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   const [paymentType, setPaymentType] = useState(initialPaymentType || '');
   const [forYear, setForYear] = useState('');
   const [receiptNumber, setReceiptNumber] = useState('');
+  // The serial printed on the donor's own check. Recorded so a returned deposit
+  // ("DEPOSITED ITEM RETURNED ... CHK SER# 1397") can be traced back to the gift
+  // it reverses instead of being reconstructed from a free-text memo.
+  const [payerCheckNumber, setPayerCheckNumber] = useState('');
+  // Skipped-receipt guard. The receipt book is a paper sequence, so jumping
+  // ahead usually means a receipt was written and never recorded — worth
+  // stopping for, but the treasurer may have a good reason, so it is a
+  // confirmable warning rather than a block.
+  const [skippedReceipts, setSkippedReceipts] = useState<number[]>([]);
+  const [lastReceiptNumber, setLastReceiptNumber] = useState<number | null>(null);
+  const [skipConfirmed, setSkipConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submissionId, setSubmissionId] = useState('');
   const [error, setError] = useState('');
@@ -67,6 +82,13 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   const [incomeCategories, setIncomeCategories] = useState<IncomeCategory[]>([]);
   const [selectedIncomeCategoryId, setSelectedIncomeCategoryId] = useState<string>('');
   const [incomeCategoriesLoading, setIncomeCategoriesLoading] = useState(false);
+  const [pledgeBalance, setPledgeBalance] = useState<PledgeBalance | null>(null);
+
+  // A pledge_drive payment from someone with no pledge is just drive income —
+  // correct, but it never appears in total_pledged, pledge_count, or the donor
+  // list. Ticking this records the promise alongside the money.
+  const [alsoRecordPledge, setAlsoRecordPledge] = useState(false);
+  const [pledgeAmount, setPledgeAmount] = useState('');
 
   // Amount input helpers (currency-like)
   const amountPattern = useMemo(() => /^[0-9]*([.][0-9]{0,2})?$/, []);
@@ -81,6 +103,38 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
 
   // Whether receipt number is required (new transaction flow only)
   const receiptRequired = useMemo(() => paymentView === 'new' && (paymentMethod === 'cash' || paymentMethod === 'check'), [paymentView, paymentMethod]);
+
+  // The pledge endpoint records an already-completed payment method as a
+  // string; it does not process a live card charge. Card/ACH payments go
+  // through the Stripe components below instead, so "also record this as a
+  // pledge" has nothing to do for those methods.
+  const pledgeUnavailableForMethod = useMemo(() => paymentMethod === 'credit_card' || paymentMethod === 'ach', [paymentMethod]);
+
+  // The treasurer is here to record money against the pledge already shown
+  // above the checkbox. A second pledge for the same member in the same
+  // campaign is what pledges_one_active_per_member_per_campaign and the
+  // endpoint's 409 exist to refuse, so the offer is withheld rather than left
+  // to fail at submit. Anonymous payments clear the member selection, so
+  // pledgeBalance is null for them and a walk-up pledge is still offered.
+  const memberAlreadyPledged = pledgeBalance !== null;
+
+  // A NAMED pledge takes its first/last name from the selected member. With no
+  // member selected those keys are simply absent from the request body, and
+  // Pledge.first_name is NOT NULL — so the endpoint fails on a field the
+  // treasurer was never asked for. An anonymous pledge is fine without one: it
+  // carries a baptism/church name instead.
+  const pledgeNeedsMember = paymentType === 'pledge_drive' && alsoRecordPledge
+    && !isAnonymous && !selectedMemberId;
+
+  // Never leave the checkbox stuck "on" once it no longer applies — to the
+  // chosen method, or to a member who already has a pledge. The render hides it
+  // in both cases, but this keeps the state itself from silently outliving the
+  // control the user saw and submitting a pledge nobody asked for.
+  useEffect(() => {
+    if (pledgeUnavailableForMethod || memberAlreadyPledged) {
+      setAlsoRecordPledge(false);
+    }
+  }, [pledgeUnavailableForMethod, memberAlreadyPledged]);
   const normalizeAmountOnBlur = () => {
     if (!amount) return;
     const num = Number(amount);
@@ -145,9 +199,19 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   }, [onClose]);
 
 
+  // Applied once. This effect depends on `members`, which the debounced member
+  // search replaces 300ms after every keystroke — and the body below does not
+  // ask whether it has already run, it simply re-asserts initialMemberId. So a
+  // treasurer who opened the modal from one member's dues page, picked someone
+  // else, then touched the search box had their choice silently reverted to the
+  // member whose page they came from, and any payment entered afterwards would
+  // have been filed against the wrong person.
+  const initialMemberApplied = useRef(false);
+
   // Set initial member ID if provided, but only after members are loaded
   useEffect(() => {
-    if (initialMemberId && members.length > 0 && firebaseUser) {
+    if (initialMemberId && members.length > 0 && firebaseUser && !initialMemberApplied.current) {
+      initialMemberApplied.current = true;
       // Verify the member exists in the loaded members list
       const memberExists = members.some(m => String(m.id) === String(initialMemberId));
       if (memberExists) {
@@ -280,12 +344,76 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
     }
   }, [paymentType, paymentMethod]);
 
+  // The treasurer needs to see what a pledge_drive payment will land on.
+  // Keyed on the modal's own selectedMemberId — member choice lives in this
+  // component's state, not in a prop. A failed lookup is not worth blocking
+  // payment entry, so it just clears.
+  useEffect(() => {
+    let cancelled = false;
+    const memberId = parseInt(selectedMemberId, 10);
+    if (!selectedMemberId || Number.isNaN(memberId)) { setPledgeBalance(null); return; }
+
+    fetchPledgeBalance(memberId)
+      .then((balance) => { if (!cancelled) setPledgeBalance(balance); })
+      .catch(() => { if (!cancelled) setPledgeBalance(null); });
+
+    return () => { cancelled = true; };
+  }, [selectedMemberId]);
+
+  // Checked as the treasurer leaves the field rather than on submit, so the
+  // gap is visible while the receipt book is still in their hand.
+  const handleReceiptBlur = async () => {
+    const entered = parseInt(receiptNumber.trim(), 10);
+    // "000" means no receipt was issued; it is not part of the sequence.
+    if (!Number.isFinite(entered) || receiptNumber.trim() === '000') {
+      setSkippedReceipts([]);
+      return;
+    }
+
+    try {
+      const token = await firebaseUser?.getIdToken();
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+      const res = await fetch(`${apiUrl}/api/transactions/last-receipt-number`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const last = data?.data?.last_receipt_number ?? null;
+      setLastReceiptNumber(last);
+
+      // Nothing recorded yet means no sequence to break.
+      if (last === null || entered <= last + 1) {
+        setSkippedReceipts([]);
+        return;
+      }
+
+      const gaps: number[] = [];
+      for (let i = last + 1; i < entered; i++) gaps.push(i);
+      setSkippedReceipts(gaps);
+      setSkipConfirmed(false);
+    } catch (err) {
+      // A failed lookup must not block recording a payment.
+      console.error('Could not check the last receipt number:', err);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
+      // A named pledge needs a member: the endpoint reads first_name/last_name
+      // off the selected member, and with none selected those keys are dropped
+      // by JSON.stringify entirely. Caught here so the treasurer is told which
+      // field is missing instead of watching the request fail.
+      if (pledgeNeedsMember) {
+        setError(t('fundraising.pledgeNeedsMember'));
+        setLoading(false);
+        return;
+      }
+
       // Validate amount for ALL flows (including Stripe)
       const amt = parseFloat(amount);
       if (!amount || !Number.isFinite(amt) || amt < 1) {
@@ -296,6 +424,13 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
       let response;
 
       if (paymentView === 'new') {
+        // A skipped receipt has to be acknowledged before the payment lands.
+        if (skippedReceipts.length > 0 && !skipConfirmed) {
+          setError('This receipt number skips one or more receipts. Confirm the skip before saving.');
+          setLoading(false);
+          return;
+        }
+
         // Enforce receipt number for cash/check per business rule
         if (receiptRequired && !receiptNumber.trim()) {
           setError('Receipt number is required for cash and check payments.');
@@ -312,6 +447,45 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           return;
         }
 
+        // One endpoint creates the pledge, the payment, the ledger entry and
+        // the allocation in a single DB transaction, so a payment can never
+        // exist with a failed allocation. Do not create the pledge with a
+        // second request.
+        if (paymentType === 'pledge_drive' && alsoRecordPledge) {
+          const selectedMember = members.find(m => String(m.id) === String(selectedMemberId));
+          const pledgeResponse = await fetch(`${process.env.REACT_APP_API_URL}/api/pledges/with-payment`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${await firebaseUser?.getIdToken()}`
+            },
+            body: JSON.stringify({
+              pledge_amount: parseFloat(pledgeAmount),
+              amount: parseFloat(amount),
+              payment_date: paymentDate,
+              payment_method: paymentMethod,
+              receipt_number: receiptNumber || null,
+              note: notes || null,
+              member_id: isAnonymous ? null : parseInt(selectedMemberId),
+              first_name: isAnonymous ? (donorName || 'Anonymous') : selectedMember?.firstName,
+              last_name: isAnonymous ? 'Giver' : selectedMember?.lastName,
+              baptism_name: isAnonymous ? donorName : null,
+              is_anonymous: isAnonymous
+            })
+          });
+
+          const pledgeData = await pledgeResponse.json();
+          if (!pledgeResponse.ok || !pledgeData.success) {
+            setError(pledgeData.message || 'Failed to record the pledge');
+            setLoading(false);
+            return;
+          }
+          try { window.dispatchEvent(new CustomEvent('payments:refresh')); } catch { }
+          onPaymentAdded();
+          onClose();
+          return;
+        }
+
         // Non-Stripe methods: post transaction directly
         const requestBody: any = {
           member_id: isAnonymous ? null : parseInt(selectedMemberId),
@@ -321,6 +495,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
           payment_type: paymentType,
           payment_method: paymentMethod,
           receipt_number: receiptNumber,
+          check_number: paymentMethod === 'check' ? payerCheckNumber : null,
           for_year: forYear ? parseInt(forYear) : null,
           note: notes,
           external_id: submissionId
@@ -398,9 +573,9 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   ];
 
   const paymentMethods = [
-    { value: 'Cash', label: 'Cash' },
-    { value: 'Check', label: 'Check' },
-    { value: 'Online', label: 'Online' }
+    { value: 'Cash', label: t('cash') },
+    { value: 'Check', label: t('check') },
+    { value: 'Online', label: t('online') }
   ];
 
   // New transaction payment types and methods
@@ -412,6 +587,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
       // Combine Donation and Other into one UI option mapping to 'donation'
       { value: 'donation', label: 'Other Donation / ካልእ' },
       { value: 'building_fund', label: 'Building Fund (ንሕንጻ ቤተክርስቲያን)' },
+      { value: 'pledge_drive', label: 'Pledge Drive / Fundraising (ወፈያ)' },
       { value: 'offering', label: 'Offering (መባእ)' },
       { value: 'vow', label: 'Vow (ስእለት)' },
       { value: 'tigray_hunger_fundraiser', label: 'Tigray Hunger Fundraiser (ረድኤት ንጥሙያት ትግራይ)' },
@@ -426,8 +602,8 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
   // Religious item sales are not donations, so they shouldn't use Stripe (card/ACH)
   const transactionPaymentMethods = useMemo(() => {
     const allMethods = [
-      { value: 'cash', label: 'Cash' },
-      { value: 'check', label: 'Check' },
+      { value: 'cash', label: t('cash') },
+      { value: 'check', label: t('check') },
       // Combine Debit and Credit into one UI option; backend expects 'credit_card' or 'debit_card'. Use 'credit_card'.
       { value: 'credit_card', label: 'Debit/Credit Card' },
       { value: 'ach', label: 'ACH' },
@@ -440,7 +616,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
     }
 
     return allMethods;
-  }, [paymentType]);
+  }, [paymentType, t]);
 
   // Detect if Stripe publishable key exists at build time
   const hasStripeKey = !!process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
@@ -513,7 +689,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
 
             {!isAnonymous && (
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="member-select" className="block text-sm font-medium text-gray-700 mb-2">
                   Member
                 </label>
                 <input
@@ -521,9 +697,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
                   placeholder="Search by name, email, or phone"
+                  aria-label="Search members"
                   className="w-full px-3 py-2 mb-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <select
+                  id="member-select"
                   value={selectedMemberId}
                   onChange={(e) => setSelectedMemberId(e.target.value)}
                   required={!isAnonymous}
@@ -635,10 +813,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="payment-method-0" className="block text-sm font-medium text-gray-700 mb-2">
                     Payment Method
                   </label>
                   <select
+                    id="payment-method-0"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     required
@@ -652,6 +831,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                     ))}
                   </select>
                 </div>
+
               </>
             ) : (
               // New transaction system fields
@@ -670,10 +850,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="payment-type-select" className="block text-sm font-medium text-gray-700 mb-2">
                     Payment Type
                   </label>
                   <select
+                    id="payment-type-select"
                     value={paymentType}
                     onChange={(e) => setPaymentType(e.target.value)}
                     required
@@ -686,6 +867,76 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                       </option>
                     ))}
                   </select>
+                  {pledgeBalance && (
+                    <p className="mt-2 text-sm text-primary-700">
+                      {t('fundraising.activePledge', {
+                        pledged: `$${pledgeBalance.pledged_amount.toLocaleString()}`,
+                        remaining: `$${pledgeBalance.remaining_amount.toLocaleString()}`
+                      })}
+                    </p>
+                  )}
+
+                  {paymentType === 'pledge_drive' && !memberAlreadyPledged && (
+                    <div className="mt-3 rounded-md bg-gray-50 p-3">
+                      {pledgeUnavailableForMethod ? (
+                        // The pledge endpoint records an already-completed payment; it does
+                        // not run a card charge. A live Stripe payment is handled entirely by
+                        // the components below, so there is nothing this checkbox could do —
+                        // show why instead of a control that would silently no-op.
+                        <p id="pledge-cash-only-note" className="text-sm text-gray-500">
+                          {t('fundraising.pledgeCashOnly')}
+                        </p>
+                      ) : (
+                        <>
+                          <label htmlFor="also-record-pledge" className="flex items-start gap-2 cursor-pointer">
+                            <input
+                              id="also-record-pledge" type="checkbox" checked={alsoRecordPledge}
+                              onChange={(e) => setAlsoRecordPledge(e.target.checked)}
+                              className="mt-1"
+                            />
+                            <span className="text-sm text-gray-700">{t('fundraising.alsoRecordPledge')}</span>
+                          </label>
+
+                          {pledgeNeedsMember && (
+                            <p role="alert" className="mt-2 text-sm text-red-600">
+                              {t('fundraising.pledgeNeedsMember')}
+                            </p>
+                          )}
+
+                          {alsoRecordPledge && (
+                            <div className="mt-3 space-y-3">
+                              <div>
+                                <label htmlFor="pledge-amount-field" className="block text-sm font-medium text-gray-700">
+                                  {t('fundraising.pledgeAmountLabel')}
+                                </label>
+                                <input
+                                  id="pledge-amount-field" type="number" min="1" step="0.01" value={pledgeAmount}
+                                  onChange={(e) => setPledgeAmount(e.target.value)}
+                                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                                />
+                                {isAnonymous && (
+                                  <p className="mt-1 text-xs text-gray-500">{t('fundraising.anonymousPaidInFull')}</p>
+                                )}
+                              </div>
+
+                              {isAnonymous && (
+                                <div>
+                                  <label htmlFor="pledge-baptism-name" className="block text-sm font-medium text-gray-700">
+                                    {t('fundraising.baptismNameLabel')}
+                                  </label>
+                                  <input
+                                    id="pledge-baptism-name" type="text" value={donorName}
+                                    onChange={(e) => setDonorName(e.target.value)}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {paymentType === 'membership_due' && (
@@ -744,10 +995,11 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="payment-method-1" className="block text-sm font-medium text-gray-700 mb-2">
                     Payment Method
                   </label>
                   <select
+                    id="payment-method-1"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     required
@@ -761,6 +1013,27 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                     ))}
                   </select>
                 </div>
+                {paymentMethod === 'check' && (
+                  <div>
+                    <label htmlFor="payer-check" className="block text-sm font-medium text-gray-700 mb-2">
+                      Check Number (on the donor's check)
+                    </label>
+                    <input
+                      id="payer-check"
+                      data-testid="payer-check-number"
+                      type="text"
+                      inputMode="numeric"
+                      value={payerCheckNumber}
+                      onChange={(e) => setPayerCheckNumber(e.target.value.replace(/\D/g, ''))}
+                      placeholder="1397"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Lets a bounced check be traced back to this payment.
+                    </p>
+                  </div>
+                )}
+
 
                 {/* Stripe payment forms when card/ACH selected */}
                 {(paymentMethod === 'credit_card' || paymentMethod === 'ach') && (
@@ -894,17 +1167,55 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="payment-receipt-number" className="block text-sm font-medium text-gray-700 mb-2">
                     Receipt Number {receiptRequired && <span className="text-red-600">*</span>}
                   </label>
                   <input
+                    id="payment-receipt-number"
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={receiptNumber}
-                    onChange={(e) => setReceiptNumber(e.target.value)}
+                    onChange={(e) => {
+                      setReceiptNumber(digitsOnly(e.target.value));
+                      // A different number is a different decision.
+                      setSkippedReceipts([]);
+                      setSkipConfirmed(false);
+                    }}
+                    onBlur={handleReceiptBlur}
                     placeholder={receiptRequired ? 'Enter receipt number (required for Cash/Check)' : 'Enter receipt number (optional)'}
                     required={receiptRequired}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  {skippedReceipts.length > 0 && (
+                    <div
+                      data-testid="receipt-skip-warning"
+                      className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2"
+                    >
+                      <p className="text-xs font-semibold text-amber-800">
+                        ⚠️ This skips {skippedReceipts.length === 1 ? 'a receipt' : `${skippedReceipts.length} receipts`}.
+                      </p>
+                      <p className="mt-1 text-xs text-amber-800">
+                        The last receipt recorded is <strong>{lastReceiptNumber}</strong>, so entering{' '}
+                        <strong>{receiptNumber}</strong> leaves{' '}
+                        <strong>
+                          {skippedReceipts.length <= 4
+                            ? skippedReceipts.join(', ')
+                            : `${skippedReceipts[0]}–${skippedReceipts[skippedReceipts.length - 1]}`}
+                        </strong>{' '}
+                        unrecorded.
+                      </p>
+                      <label className="mt-2 flex items-center gap-2 text-xs font-medium text-amber-900">
+                        <input
+                          data-testid="receipt-skip-confirm"
+                          type="checkbox"
+                          checked={skipConfirmed}
+                          onChange={(e) => setSkipConfirmed(e.target.checked)}
+                        />
+                        I meant to skip {skippedReceipts.length === 1 ? 'this number' : 'these numbers'} — continue
+                      </label>
+                    </div>
+                  )}
                   {receiptNumber === '000' && (
                     <p className="mt-1 text-xs text-amber-600 font-medium">
                       ⚠️ Using 000 means no receipt was given. A written receipt must be issued as soon as possible.
@@ -912,6 +1223,9 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
                   )}
                   {receiptRequired && receiptNumber !== '000' && (
                     <p className="mt-1 text-xs text-gray-600">Required for Cash and Check payments.</p>
+                  )}
+                  {!receiptRequired && (
+                    <p className="mt-1 text-xs text-gray-600">{receiptNumberHelpText}</p>
                   )}
                 </div>
 
@@ -978,7 +1292,7 @@ const AddPaymentModal: React.FC<AddPaymentModalProps> = ({
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || pledgeNeedsMember || (skippedReceipts.length > 0 && !skipConfirmed)}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-md"
               >
                 {loading

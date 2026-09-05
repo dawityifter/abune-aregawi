@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Pledge {
   id: number;
@@ -38,11 +39,20 @@ interface PledgeManagementProps {
 
 const PledgeManagement: React.FC<PledgeManagementProps> = ({ eventName }) => {
   const { t } = useLanguage();
+  const { firebaseUser } = useAuth();
   const [pledges, setPledges] = useState<Pledge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPledge, setSelectedPledge] = useState<Pledge | null>(null);
   const [showFulfillModal, setShowFulfillModal] = useState(false);
+
+  const authHeaders = async (): Promise<Record<string, string>> => {
+    const token = await firebaseUser?.getIdToken();
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    };
+  };
 
   const fetchPledges = async () => {
     try {
@@ -54,7 +64,10 @@ const PledgeManagement: React.FC<PledgeManagementProps> = ({ eventName }) => {
         params.append('event_name', eventName);
       }
 
-      const response = await fetch(`/api/pledges?${params.toString()}`);
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/pledges?${params.toString()}`,
+        { headers: await authHeaders() }
+      );
       const data = await response.json();
 
       if (data.success) {
@@ -81,13 +94,10 @@ const PledgeManagement: React.FC<PledgeManagementProps> = ({ eventName }) => {
         updateData.donation_id = donationId;
       }
 
-      const response = await fetch(`/api/pledges/${pledgeId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData),
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/pledges/${pledgeId}`,
+        { method: 'PUT', headers: await authHeaders(), body: JSON.stringify(updateData) }
+      );
 
       const data = await response.json();
 

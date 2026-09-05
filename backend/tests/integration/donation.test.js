@@ -29,7 +29,7 @@ jest.mock('../../src/middleware/auth', () => ({
 
 // Now require app and models
 const app = require('../../src/server');
-const { sequelize, Member, Donation } = require('../../src/models');
+const { sequelize, Member, Donation, PledgeCampaign } = require('../../src/models');
 
 describe('Donation Member Email Lookup Integration', () => {
     let memberWithEmail;
@@ -68,10 +68,6 @@ describe('Donation Member Email Lookup Integration', () => {
                 client_secret: `pi_test_${piCounter}_secret`,
             });
         });
-    });
-
-    afterAll(async () => {
-        await sequelize.close();
     });
 
     const baseDonationRequest = {
@@ -164,5 +160,151 @@ describe('Donation Member Email Lookup Integration', () => {
 
         const donation = await Donation.findByPk(res.body.donation_id);
         expect(donation.donor_email).toBe('abunearegawitx@gmail.com');
+    });
+});
+
+describe('pledge-and-pay checkout guard', () => {
+    // Reuses the module-level Stripe mock (mockCreate) and mocked auth
+    // middleware set up above. These tests exist because the guard in
+    // createPaymentIntent is the last point at which a bad pledge-and-pay
+    // request costs nothing — the "never called" assertion on mockCreate is
+    // what actually pins "before money moves"; a 400 alone would not catch a
+    // guard that ran too late.
+    const pledgeDriveRequest = (metadataOverrides = {}) => ({
+        amount: 400,
+        donation_type: 'one-time',
+        payment_method: 'card',
+        donor_first_name: 'Test',
+        donor_last_name: 'User',
+        metadata: {
+            purpose: 'pledge_drive',
+            pledgeIntent: 'immediate',
+            ...metadataOverrides
+        }
+    });
+
+    beforeEach(async () => {
+        await sequelize.sync({ force: true });
+        jest.clearAllMocks();
+        mockCreate.mockImplementation(() => Promise.resolve({
+            id: 'pi_should_not_be_created',
+            client_secret: 'pi_should_not_be_created_secret'
+        }));
+    });
+
+    it('rejects a pledge-and-pay checkout when no campaign is currently live', async () => {
+        // No PledgeCampaign row exists at all, so findLiveCampaign() finds none.
+        const res = await request(app)
+            .post('/api/donations/create-payment-intent')
+            .send(pledgeDriveRequest());
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('rejects an anonymous pledge-and-pay checkout with no baptism name', async () => {
+        await PledgeCampaign.create({
+            slug: '2026-drive', name: 'Test Drive', status: 'active',
+            start_date: '2026-01-01', end_date: null
+        });
+
+        const res = await request(app)
+            .post('/api/donations/create-payment-intent')
+            .send(pledgeDriveRequest({ isAnonymous: 'true' }));
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    // M1. The CHECK is `is_anonymous = false OR member_id IS NOT NULL OR
+    // baptism_name IS NOT NULL`, so a member link identifies the giver just as
+    // well as a baptism name. Demanding one from a signed-in member who ticked
+    // "show as anonymous" would reject the very flow §5.3 describes.
+    it('accepts a signed-in member giving anonymously with no baptism name', async () => {
+        await PledgeCampaign.create({
+            slug: '2026-drive', name: 'Test Drive', status: 'active',
+            start_date: '2026-01-01', end_date: null
+        });
+        const member = await Member.create({
+            first_name: 'Quiet',
+            last_name: 'Giver',
+            phone_number: '+15550000901',
+            role: 'member'
+        });
+
+        const res = await request(app)
+            .post('/api/donations/create-payment-intent')
+            .send(pledgeDriveRequest({
+                isAnonymous: 'true', memberId: String(member.id)
+            }));
+
+        expect(res.status).toBe(200);
+        expect(mockCreate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                metadata: expect.objectContaining({
+                    isAnonymous: 'true',
+                    memberId: String(member.id)
+                })
+            })
+        );
+    });
+
+    // I7. This endpoint is public, so without this a caller willing to pay a
+    // dollar could write any name onto the campaign donor list with member_id
+    // NULL and is_anonymous false — a named non-member pledge, which §5.3 says
+    // requires sign-in.
+    it('rejects a NAMED pledge-and-pay checkout with no member behind it', async () => {
+        await PledgeCampaign.create({
+            slug: '2026-drive', name: 'Test Drive', status: 'active',
+            start_date: '2026-01-01', end_date: null
+        });
+
+        const res = await request(app)
+            .post('/api/donations/create-payment-intent')
+            .send(pledgeDriveRequest());
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toMatch(/sign in/i);
+        expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('rejects a NAMED pledge-and-pay checkout whose memberId resolves to nobody', async () => {
+        await PledgeCampaign.create({
+            slug: '2026-drive', name: 'Test Drive', status: 'active',
+            start_date: '2026-01-01', end_date: null
+        });
+
+        const res = await request(app)
+            .post('/api/donations/create-payment-intent')
+            .send(pledgeDriveRequest({ memberId: '999999' }));
+
+        expect(res.status).toBe(400);
+        expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('accepts a NAMED pledge-and-pay checkout from a signed-in member', async () => {
+        await PledgeCampaign.create({
+            slug: '2026-drive', name: 'Test Drive', status: 'active',
+            start_date: '2026-01-01', end_date: null
+        });
+        const member = await Member.create({
+            first_name: 'Named',
+            last_name: 'Pledger',
+            phone_number: '+15550000902',
+            role: 'member', firebase_uid: 'uid-named-pledger'
+        });
+
+        const res = await request(app)
+            .post('/api/donations/create-payment-intent')
+            .send(pledgeDriveRequest({ firebaseUid: 'uid-named-pledger' }));
+
+        expect(res.status).toBe(200);
+        expect(mockCreate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                metadata: expect.objectContaining({ memberId: String(member.id) })
+            })
+        );
     });
 });

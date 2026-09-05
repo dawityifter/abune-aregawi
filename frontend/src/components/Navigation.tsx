@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, Fragment } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../i18n/I18nProvider';
 import { useAuth } from '../contexts/AuthContext';
-import { getRolePermissions, getMergedPermissions, UserRole } from '../utils/roles';
-import { isFeatureEnabled, featureFlags } from '../config/featureFlags';
+import { UserRole } from '../utils/roles';
+import { featureFlags } from '../config/featureFlags';
+import { useActiveCampaign } from '../hooks/useActiveCampaign';
 // import { Transition } from '@headlessui/react'; // Removed due to React 19 compatibility
 
 // type Language = 'en' | 'ti';
@@ -12,8 +13,17 @@ const Navigation: React.FC = () => {
   const { lang, setLang, t } = useI18n();
   const { currentUser, logout, getUserProfile } = useAuth();
   const location = useLocation();
+
+  // "Make a Pledge" is only worth offering while a drive is actually running;
+  // without one, /pledge shows its "no active campaign" state, so the header
+  // would be advertising a dead end from every page. Reads the same source as
+  // the home page card so the two cannot disagree, and fails closed the same
+  // way: loading and error both leave `campaign` null.
+  //
+  // Navigation is mounted outside <Routes>, so this fetches once per app load
+  // rather than on every navigation.
+  const { campaign: activeCampaign } = useActiveCampaign();
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +63,6 @@ const Navigation: React.FC = () => {
         }
 
         try {
-          setLoading(true);
           console.log('🔍 Navigation - currentUser:', currentUser);
 
           // Handle different user object structures
@@ -72,8 +81,6 @@ const Navigation: React.FC = () => {
           setUserProfile(profile);
         } catch (error) {
           console.error('Error fetching user profile:', error);
-        } finally {
-          setLoading(false);
         }
       }
     };
@@ -82,12 +89,17 @@ const Navigation: React.FC = () => {
 
   const member = userProfile?.data?.member || userProfile;
   const userRoles: UserRole[] = member?.roles || [member?.role || 'member'];
-  const permissions = getMergedPermissions(userRoles);
 
   // Show navigation on all pages including home page
 
+  // pt-safe-t, not a fixed offset: the bar's gradient fills the status-bar
+  // area (so it reads as one deliberate surface rather than a gap), while the
+  // h-16 content row below it stays reachable. Without it the whole row —
+  // hamburger, home link, Sign In — renders under the status bar in the
+  // installed PWA and is invisible, because index.html pairs viewport-fit=cover
+  // with a black-translucent status bar. Mirrors BottomNav's pb-safe-b.
   return (
-    <nav className="bg-gradient-to-r from-primary-700 to-primary-800 shadow-lg fixed w-full z-50 print:hidden">
+    <nav className="bg-gradient-to-r from-primary-700 to-primary-800 shadow-lg fixed w-full z-50 print:hidden pt-safe-t">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           {/* Church Name - Home Link */}
@@ -95,7 +107,7 @@ const Navigation: React.FC = () => {
             <Link to="/" className="flex items-center space-x-2 hover:opacity-90 transition-opacity" onClick={() => setIsMenuOpen(false)}>
               <i className="fas fa-church text-2xl text-white"></i>
               <span className="text-lg md:text-xl font-bold text-white hidden sm:inline-block ml-2">
-                Debre Tsehay Abune Aregawi Tigray Orthodox Tewahedo Church
+                {t('church.name')}
               </span>
             </Link>
           </div>
@@ -131,12 +143,14 @@ const Navigation: React.FC = () => {
                   {t('navigation.dashboard')}
                 </Link>
 
-                <Link
-                  to="/pledge"
-                  className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
-                >
-                  {t('nav.makePledge')}
-                </Link>
+                {activeCampaign && (
+                  <Link
+                    to="/pledge"
+                    className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
+                  >
+                    {t('nav.makePledge')}
+                  </Link>
+                )}
 
                 {/* Admin link removed from desktop header */}
                 {/* Outreach link removed; access via Dashboard Relationship Department card */}
@@ -266,14 +280,16 @@ const Navigation: React.FC = () => {
                   {t('navigation.dashboard')}
                 </Link>
 
-                <Link
-                  to="/pledge"
-                  className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <i className="fas fa-hand-holding-heart mr-3 w-5 text-center"></i>
-                  {t('nav.makePledge')}
-                </Link>
+                {activeCampaign && (
+                  <Link
+                    to="/pledge"
+                    className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <i className="fas fa-hand-holding-heart mr-3 w-5 text-center"></i>
+                    {t('nav.makePledge')}
+                  </Link>
+                )}
 
                 {/* Admin link removed from mobile header */}
                 {/* Outreach link removed from mobile; access via Dashboard Relationship Department card */}

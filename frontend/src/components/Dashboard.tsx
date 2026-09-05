@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getRolePermissions, getMergedPermissions, UserRole } from '../utils/roles';
+import { getMergedPermissions, UserRole } from '../utils/roles';
 import { getDisplayEmail } from '../utils/email';
 import { formatMemberName } from '../utils/formatName';
+import ParishAnnouncements from './ParishAnnouncements';
+import LiturgicalToday from './LiturgicalToday';
+import BaptismalNamePrompt from './BaptismalNamePrompt';
 
 interface UserProfile {
   success: boolean;
@@ -36,7 +39,7 @@ const Dashboard: React.FC = () => {
   const { t } = useLanguage();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
   // Temp user CTA timer should be declared at top-level, not conditionally
   const [showTempCta, setShowTempCta] = useState(false);
   const bgStyle: React.CSSProperties = {
@@ -54,12 +57,12 @@ const Dashboard: React.FC = () => {
     return () => clearTimeout(timer);
   }, [user]);
 
-  // Get user's display name for the welcome message
-  const userName = user?.first_name || user?.data?.member?.firstName || firebaseUser?.displayName || 'User';
-
   // Check if user has admin permissions
   const memberData = user?.data?.member || user;
-  const userRoles: UserRole[] = memberData?.roles || [memberData?.role || 'member'];
+  const userRoles: UserRole[] = useMemo(
+    () => memberData?.roles || [memberData?.role || 'member'],
+    [memberData]
+  );
   const permissions = getMergedPermissions(userRoles);
   const isTempUser = user?._temp || false;
   // Treat backend-returned 'dependent' as a restricted role for UI visibility
@@ -194,23 +197,8 @@ const Dashboard: React.FC = () => {
     navigate('/dues');
   };
 
-  const handleViewEvents = () => {
-    alert('View Events functionality coming soon!');
-    // TODO: Navigate to events page
-  };
-
-  const handleVolunteerSignUp = () => {
-    alert('Volunteer Sign Up functionality coming soon!');
-    // TODO: Navigate to volunteer signup page
-  };
-
   const handleDonate = () => {
     navigate('/donate');
-  };
-
-  const handleManageAccount = () => {
-    alert('Manage Account functionality coming soon!');
-    // TODO: Navigate to account settings page
   };
 
   const handleViewBylaw = () => {
@@ -251,11 +239,19 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16" style={bgStyle}>
+    <div className="min-h-screen bg-gray-50 pt-top-nav" style={bgStyle}>
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* First thing on the page, because it is the one thing that is
+              different every time the member opens it. */}
+          <LiturgicalToday variant="dashboard" />
+          {/* Below the liturgical band, so the member is given something before
+              being asked for something. Renders nothing once answered or
+              declined. */}
+          <BaptismalNamePrompt />
+          <ParishAnnouncements variant="dashboard" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
             {/* Profile Card */}
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-6">

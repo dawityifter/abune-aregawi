@@ -4,6 +4,8 @@ const { Op } = require('sequelize');
 const { Member } = require('../models');
 const logger = require('../utils/logger');
 const path = require('path');
+const { isDemoToken, DEMO_UID, DEMO_PHONE, DEMO_EMAIL } = require('../config/demoMode');
+const { recordLastSeen } = require('../utils/recordLastSeen');
 
 // Initialize Firebase Admin with better error handling
 let firebaseInitialized = false;
@@ -121,7 +123,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
   console.log(`🔵 Request URL: ${req.method} ${req.originalUrl}`);
 
   try {
-    console.log('🔵 Request Headers:', JSON.stringify(req.headers, null, 2));
+    // NOTE: never log req.headers here — it contains the Authorization bearer token.
 
     // Check if Firebase Admin is initialized
     if (!firebaseInitialized) {
@@ -144,33 +146,24 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       });
     }
     const firebaseToken = authHeader.substring(7); // Remove 'Bearer ' prefix
-    console.log('🔵 Firebase token (first 20 chars):', firebaseToken.substring(0, 20) + '...');
 
     console.log('🔵 Verifying Firebase token...');
 
     // Verify Firebase token and extract user info
     let decodedToken;
     try {
-      if (process.env.ENABLE_DEMO_MODE === 'true' && firebaseToken === 'MAGIC_DEMO_TOKEN') {
-        console.log('✨ Magic Demo Token detected - Bypassing verification');
-        console.warn('⚠️  WARNING: Demo mode is enabled. This should NOT be active in production!');
+      if (isDemoToken(firebaseToken)) {
+        console.warn('⚠️  Demo mode: bypassing Firebase verification (never available in production)');
         decodedToken = {
-          uid: 'magic-demo-uid',
-          phone_number: '+14699078229', // Matches user request
-          email: 'demo@admin.com',
+          uid: DEMO_UID,
+          phone_number: DEMO_PHONE,
+          email: DEMO_EMAIL,
           firebase: { sign_in_provider: 'phone' }
         };
       } else {
         decodedToken = await admin.auth().verifyIdToken(firebaseToken);
         console.log('✅ Firebase token verified successfully');
       }
-      console.log('🔵 Decoded token data:', JSON.stringify({
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-        phone_number: decodedToken.phone_number,
-        phoneNumber: decodedToken.phoneNumber,
-        phone: decodedToken.phone
-      }, null, 2));
     } catch (verifyError) {
       console.error('❌ Firebase token verification failed:', verifyError.message);
       return res.status(401).json({
@@ -214,26 +207,15 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       });
     }
 
-    // Find member by email or phone
+    // Resolve the member by phone first. Phone is what the user actually
+    // authenticated with (phone auth is the only supported login) and
+    // members.phone_number is unique, so it identifies exactly one row.
+    // Email is neither — the unique constraint was deliberately dropped in
+    // 20260412000001 because households share an address — so it is only a
+    // fallback, and only when it points at a single member.
     let member = null;
-    if (userEmail) {
-      logger.debug('Searching for member by email');
-      try {
-        member = await Member.findOne({
-          where: { email: userEmail }
-        });
-        logger.debug('Member search by email result', { found: !!member });
-      } catch (dbError) {
-        logger.error('Database error when searching by email', dbError);
-        return res.status(500).json({
-          success: false,
-          message: 'Database error during authentication.'
-        });
-      }
-    }
 
-    if (!member && userPhone) {
-      // Normalize phone number for search
+    if (userPhone) {
       const normalizedPhone = userPhone.startsWith('+') ? userPhone : `+${userPhone}`;
       logger.debug('Searching for member by phone');
       try {
@@ -250,13 +232,43 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       }
     }
 
+    if (!member && userEmail) {
+      logger.debug('Searching for member by email');
+      try {
+        // Fetch two: one row is unambiguous, more than one means this email
+        // cannot identify a member and picking either would be a coin flip
+        // between two people's accounts.
+        const emailMatches = await Member.findAll({
+          where: { email: userEmail },
+          limit: 2
+        });
+        logger.debug('Member search by email result', { count: emailMatches.length });
+
+        if (emailMatches.length > 1) {
+          logger.warn('Ambiguous email during authentication; refusing to guess', {
+            uid: decodedToken.uid
+          });
+          return res.status(401).json({
+            success: false,
+            message: 'This email is registered to more than one member. Please sign in with your phone number, or contact the church administrator.'
+          });
+        }
+
+        member = emailMatches[0] || null;
+      } catch (dbError) {
+        logger.error('Database error when searching by email', dbError);
+        return res.status(500).json({
+          success: false,
+          message: 'Database error during authentication.'
+        });
+      }
+    }
+
     if (!member) {
       logger.warn('Member not found during authentication', {
         hasEmail: !!userEmail,
         hasPhone: !!userPhone,
-        uid: decodedToken.uid,
-        userEmail,
-        userPhone
+        uid: decodedToken.uid
       });
 
       return res.status(401).json({
@@ -272,16 +284,13 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       });
     }
 
-    // Debug log the member data for troubleshooting
-    console.log('🔵 Member data from database:', JSON.stringify({
-      id: member.id,
-      email: member.email,
-      phone_number: member.phone_number,
-      role: member.role,
-      isActive: member.is_active,
-      firstName: member.first_name,
-      lastName: member.last_name
-    }, null, 2));
+    // Resolved member (avoid logging PII such as name/email/phone)
+    console.log(`🔵 Authenticated member id=${member.id} role=${member.role}`);
+
+    // Fire-and-forget: throttled internally, never awaited, never throws.
+    // Runs once here regardless of which branch above resolved `member`, so
+    // "did this member come back" is measured on every authenticated request.
+    recordLastSeen(member);
 
     // Sync Firebase UID if it has changed (e.g. user deleted and re-created in Firebase)
     if (member.firebase_uid !== decodedToken.uid) {
@@ -298,14 +307,7 @@ const firebaseAuthMiddleware = async (req, res, next) => {
     // Note: Do not enforce admin roles here. This middleware authenticates only.
     // Route-level authorization is handled by roleMiddleware on specific routes.
 
-    const identifier = userEmail || userPhone;
-    console.log('✅ Firebase auth successful for user:', identifier, 'Role:', member.role);
-    console.log('🔍 Setting req.user with:', {
-      id: member.id,
-      email: member.email,
-      role: member.role,
-      memberId: member.memberId
-    });
+    console.log(`✅ Firebase auth successful for member id=${member.id} role=${member.role}`);
 
     req.user = {
       id: member.id,
@@ -316,7 +318,6 @@ const firebaseAuthMiddleware = async (req, res, next) => {
       memberId: member.memberId
     };
 
-    console.log('✅ req.user set successfully:', req.user);
     next();
   } catch (error) {
     console.error('❌ Firebase auth middleware error:', error);

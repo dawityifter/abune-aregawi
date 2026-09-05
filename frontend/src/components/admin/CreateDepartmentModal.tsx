@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -29,12 +29,7 @@ const CreateDepartmentModal: React.FC<CreateDepartmentModalProps> = ({ onClose, 
     max_members: ''
   });
 
-  useEffect(() => {
-    fetchMembers();
-    fetchDepartments();
-  }, []);
-
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       const idToken = await firebaseUser?.getIdToken();
       console.log('Fetching members for leader dropdown...');
@@ -74,9 +69,9 @@ const CreateDepartmentModal: React.FC<CreateDepartmentModalProps> = ({ onClose, 
       console.error('Error fetching members:', error);
       setError('Failed to load members. Please try again.');
     }
-  };
+  }, [firebaseUser]);
 
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     try {
       const idToken = await firebaseUser?.getIdToken();
       const response = await fetch(
@@ -96,7 +91,12 @@ const CreateDepartmentModal: React.FC<CreateDepartmentModalProps> = ({ onClose, 
     } catch (error) {
       console.error('Error fetching departments:', error);
     }
-  };
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    fetchMembers();
+    fetchDepartments();
+  }, [fetchMembers, fetchDepartments]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

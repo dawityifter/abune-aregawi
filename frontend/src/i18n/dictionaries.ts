@@ -4,6 +4,9 @@
 export type Lang = 'en' | 'ti';
 
 export interface Dictionaries {
+  // Escape hatch for consolidated flat keys (e.g. "admin.panel") migrated from
+  // the legacy LanguageContext translations object. Prefer nested keys for new work.
+  [key: string]: any;
   common: {
     nav: {
       worship: string;
@@ -18,6 +21,7 @@ export interface Dictionaries {
       contact: string;
       latestTeaching: string;
     };
+    submitting?: string;
   };
   // Keys used by Navigation.tsx
   navigation?: {
@@ -60,6 +64,39 @@ export interface Dictionaries {
       culture: { title: string; desc: string };
     };
   };
+  parishNews?: {
+    title: string;
+    dashboardTitle: string;
+    through: string;
+    loadError: string;
+  };
+  liturgical?: {
+    heading: string;
+    feast: string;
+    fast: string;
+    ordinary: string;
+    dayOf: string;
+    commemoration: string;
+    nextFeast: string;
+    tomorrow: string;
+    inDays: string;
+  };
+  baptismalName?: {
+    title: string;
+    why: string;
+    label: string;
+    placeholder: string;
+    save: string;
+    saving: string;
+    notNow: string;
+    error: string;
+  };
+  docViewer?: {
+    openInNewTab: string;
+    download: string;
+    close: string;
+    unavailable: string;
+  };
   quicklinks: {
     priest: string;
     serviceTimes: string;
@@ -69,6 +106,98 @@ export interface Dictionaries {
   nav: {
     makePledge: string;
   };
+  pledge: {
+    homeCard: {
+      title: string;
+      description: string;
+    };
+    noCampaign: {
+      title: string;
+      body: string;
+    };
+    intent?: {
+      later: { title: string; body: string };
+      immediate: { title: string; body: string };
+      anonymous: { title: string; body: string };
+      signIn: { title: string; body: string };
+    };
+    existing?: {
+      title: string;
+      body: string;
+      settled: string;
+      payNow: string;
+      giveAgain: string;
+    };
+    info?: {
+      flexibleTitle: string;
+      flexibleBody: string;
+    };
+    success?: {
+      body: string;
+    };
+    checkout?: {
+      payInFullNote: string;
+      continue: string;
+      showAsAnonymous: string;
+      showAsAnonymousHelp: string;
+    };
+    anonymous?: {
+      baptismNameLabel: string;
+      baptismNameHelp: string;
+      contactLabel: string;
+      errors: {
+        baptismNameRequired: string;
+      };
+    };
+  };
+  fundraising: {
+    tab: string;
+    heading: string;
+    newCampaign: string;
+    edit: string;
+    name: string;
+    nameTi: string;
+    description: string;
+    descriptionTi: string;
+    startDate: string;
+    endDate: string;
+    goalAmount: string;
+    status: string;
+    window: string;
+    pledged: string;
+    collected: string;
+    outstanding: string;
+    donors: string;
+    toGoal: string;
+    noTotals: string;
+    viewDonors: string;
+    donorsIn: string;
+    donor: string;
+    noPledges: string;
+    close2: string;
+    legacy: string;
+    legacyHelp: string;
+    save: string;
+    cancel: string;
+    activate: string;
+    reactivate: string;
+    reactivateWarning: string;
+    windowPassedHint: string;
+    close: string;
+    closeWarning: string;
+    closeDraftWarning: string;
+    endBeforeStart: string;
+    noCampaigns: string;
+    activePledge: string;
+    overBy: string;
+    alsoRecordPledge: string;
+    pledgeAmountLabel: string;
+    baptismNameLabel: string;
+    anonymousPaidInFull: string;
+    pledgeCashOnly: string;
+    pledgeNeedsMember: string;
+  };
+
   dashboard: {
     welcome: string;
     settingUp: string;
@@ -96,6 +225,7 @@ export interface Dictionaries {
       expenses: string;
       reports: string;
       zelle: string;
+      square?: string;
       memberDues: string;
       employees: string;
       vendors: string;
@@ -148,9 +278,19 @@ export interface Dictionaries {
       otherIncome: string;
       currentBalance: string;
       lastUpdated: string;
+      balanceNote: string;
       target: string;
+      onPace: string;
+      onPaceHelp: string;
+      pledged: string;
       membershipDues: string;
       otherDonations: string;
+      reconcileRequired: string;
+      reconcileLedger: string;
+      reconcileBank: string;
+      reconcileDiff: string;
+      annualDuesProgressHelp: string;
+      annualOutstandingHelp: string;
     };
     health: {
       title: string;
@@ -164,6 +304,8 @@ export interface Dictionaries {
       behindOnDues: string;
       activeMembers: string;
       membershipDues: string;
+      membershipDuesHelp: string;
+      duesOutstandingHelp: string;
       otherDonations: string;
     };
     transactionList: {
@@ -172,6 +314,9 @@ export interface Dictionaries {
         receiptNumber: string;
         paymentType: string;
         paymentMethod: string;
+        cardSource: string;
+        minAmount: string;
+        maxAmount: string;
         dateRange: string;
         startDate: string;
         endDate: string;
@@ -179,10 +324,13 @@ export interface Dictionaries {
         placeholder: {
           search: string;
           receipt: string;
+          minAmount: string;
+          maxAmount: string;
         };
         options: {
           allTypes: string;
           allMethods: string;
+          allSources: string;
           allTime: string;
           today: string;
           week: string;
@@ -222,6 +370,17 @@ export interface Dictionaries {
         ach: string;
         other: string;
       };
+      source: {
+        label: string;
+        square: string;
+        stripe: string;
+        manual: string;
+      };
+      edit: {
+        edit: string;
+        save: string;
+        cancel: string;
+      };
       status: {
         pending: string;
         succeeded: string;
@@ -258,6 +417,9 @@ export interface Dictionaries {
         amount: string;
         method: string;
         checkNumber: string;
+        bankStatus: string;
+        reconciled: string;
+        notReconciled: string;
         recordedBy: string;
         memo: string;
         employee: string;
@@ -273,6 +435,9 @@ export interface Dictionaries {
         payeeType: string;
         paymentMethod: string;
         checkNumber: string;
+        checkNumberRequired: string;
+        checkNumberDuplicate: string;
+        checkNumberNumeric: string;
         receiptNumber: string;
         memo: string;
         cancel: string;
@@ -284,6 +449,20 @@ export interface Dictionaries {
           vendor: string;
           other: string;
         };
+      };
+      invoiceNumber: string;
+      missingCheckNumber: string;
+      edit: {
+        edit: string;
+        save: string;
+        saving: string;
+        cancel: string;
+        saveFailed: string;
+        payeeReadOnly: string;
+        categoryRequired: string;
+        amountInvalid: string;
+        dateRequired: string;
+        dateFuture: string;
       };
     };
     reportTabs: {
@@ -658,6 +837,7 @@ export const en: Dictionaries = {
       contact: "Contact",
       latestTeaching: "Latest Teaching",
     },
+    submitting: "Submitting…",
   },
   navigation: {
     dashboard: "Dashboard",
@@ -673,7 +853,15 @@ export const en: Dictionaries = {
     welcomeBack: "Welcome Back",
     loginSubtitle: "Sign in to access your community account",
   },
+  docViewer: {
+    openInNewTab: "Open in new tab",
+    download: "Download slides (.pptx)",
+    close: "Close",
+    unavailable: "If the document does not appear, open it in a new tab or download the slides."
+  },
   language: "Language",
+  // Full church name shown in the top navigation bar.
+  'church.name': 'Debre Tsehay Abune Aregawi Orthodox Tewahedo Church',
   hero: {
     title: "Welcome to Abune Aregawi Orthodox Tewahedo Church",
     subtitle: "Join us for worship, fellowship, and service. English & ትግርኛ",
@@ -708,14 +896,44 @@ export const en: Dictionaries = {
         desc: "Join us in supporting our community through outreach and charity programs."
       },
       teachings: {
-        title: "Tigray Orthodox Faith Teachings",
-        desc: "Explore the rich traditions and teachings of the Tigray Orthodox faith."
+        title: "Raising Children in the Orthodox Tewahedo Faith",
+        desc: "A guide for parents — helping children know, love, and live for God through prayer, worship, Scripture, and the life of the Church."
       },
       culture: {
         title: "Cultural Celebrations",
         desc: "Experience our heritage through festivals and community gatherings."
       }
     },
+  },
+  parishNews: {
+    title: "From the Parish",
+    dashboardTitle: "Parish News",
+    through: "Through",
+    loadError: "Announcements are unavailable right now.",
+  },
+  liturgical: {
+    heading: "Today in the Church",
+    feast: "Feast",
+    fast: "Fast",
+    ordinary: "An ordinary day",
+    dayOf: "Day {day} of {total}",
+    commemoration: "Commemoration",
+    nextFeast: "Next feast",
+    tomorrow: "tomorrow",
+    inDays: "in {days} days",
+  },
+  calendar: {
+    title: "Orthodox Calendar",
+  },
+  baptismalName: {
+    title: "What is your baptismal name?",
+    why: "Your baptismal name connects you to a saint and to a day in the church year. We would like to know it, so the parish can mark your name day.",
+    label: "Baptismal name",
+    placeholder: "In Ge'ez or English — e.g. Welde Mariam",
+    save: "Save",
+    saving: "Saving…",
+    notNow: "Not now",
+    error: "That did not save. Please try again.",
   },
   quicklinks: {
     priest: "Priest",
@@ -800,6 +1018,7 @@ export const en: Dictionaries = {
       expenses: "Expenses",
       reports: "Reports",
       zelle: "Zelle Review",
+      square: "Square Review",
       memberDues: "Member Dues",
       employees: "Employees",
       vendors: "Vendors"
@@ -852,9 +1071,19 @@ export const en: Dictionaries = {
       otherIncome: "Other Income",
       currentBalance: "Bank Balance",
       lastUpdated: "Updated",
+      balanceNote: "Balance reflects all transactions on record, not filtered by year",
       target: "Goal",
+      onPace: "On pace",
+      onPaceHelp: "Dues collected vs. what's expected by this point in the year (partial payments count). Can exceed 100% when members pay ahead.",
+      pledged: "pledged",
       membershipDues: "Membership Dues",
       otherDonations: "Other Donations",
+      reconcileRequired: "Doesn't match the bank statement — reconciliation required",
+      reconcileLedger: "Ledger",
+      reconcileBank: "Bank",
+      reconcileDiff: "Difference",
+      annualDuesProgressHelp: "Full-year view: this year's entire pledged total against what's been collected. Won't reach 100% until every member's full pledge is paid, no matter what month it is.",
+      annualOutstandingHelp: "Full-year total pledged minus total collected. This is the whole year's remaining gap, not just what's overdue right now — see \"still outstanding\" under Dues & Member Status for that.",
     },
     health: {
       title: "Membership Health",
@@ -868,6 +1097,8 @@ export const en: Dictionaries = {
       behindOnDues: "Behind on Dues",
       activeMembers: "Active Members",
       membershipDues: "Membership Dues",
+      membershipDuesHelp: "Year-to-date view: collected against what should have been paid by now — each member's pledge prorated through the current month. This is why it's a smaller number than Annual Dues Progress above, which counts the whole year.",
+      duesOutstandingHelp: "What should have been paid by now (pledge prorated through the current month) minus what's collected. Matches the Behind on Dues count below — it only counts dues-tracked members. Different from the \"still outstanding\" figure in Annual Dues Progress, which is the full year's remaining gap.",
       otherDonations: "Other Donations",
     },
     transactionList: {
@@ -876,17 +1107,23 @@ export const en: Dictionaries = {
         receiptNumber: "Receipt Number",
         paymentType: "Payment Type",
         paymentMethod: "Payment Method",
+        cardSource: "Card Source",
+        minAmount: "Min Amount",
+        maxAmount: "Max Amount",
         dateRange: "Date Range",
         startDate: "Start Date",
         endDate: "End Date",
         apply: "Apply Filters",
         placeholder: {
           search: "Search member (min 3 chars)...",
-          receipt: "Search receipt #..."
+          receipt: "Search receipt #...",
+          minAmount: "Minimum amount",
+          maxAmount: "Maximum amount"
         },
         options: {
           allTypes: "All Types",
           allMethods: "All Methods",
+          allSources: "All Sources",
           allTime: "All Time",
           today: "Today",
           week: "Last 7 Days",
@@ -926,6 +1163,17 @@ export const en: Dictionaries = {
         ach: "ACH",
         other: "Other"
       },
+      source: {
+        label: "Source",
+        square: "Square",
+        stripe: "Stripe",
+        manual: "Manual"
+      },
+      edit: {
+        edit: "Edit",
+        save: "Save",
+        cancel: "Cancel"
+      },
       status: {
         pending: "Pending",
         succeeded: "Succeeded",
@@ -962,6 +1210,9 @@ export const en: Dictionaries = {
         amount: "Amount",
         method: "Method",
         checkNumber: "Check #",
+        bankStatus: "Bank",
+        reconciled: "Reconciled",
+        notReconciled: "Not reconciled",
         recordedBy: "Recorded By",
         memo: "Memo",
         employee: "Employee",
@@ -977,6 +1228,9 @@ export const en: Dictionaries = {
         payeeType: "Payee Type",
         paymentMethod: "Payment Method",
         checkNumber: "Check Number",
+        checkNumberRequired: "Check number is required for check payments",
+        checkNumberDuplicate: "This check number has already been used. Please use a unique check number.",
+        checkNumberNumeric: "Check number must be numeric (digits only, e.g. 1593)",
         receiptNumber: "Receipt Number",
         memo: "Memo",
         cancel: "Cancel",
@@ -988,6 +1242,20 @@ export const en: Dictionaries = {
           vendor: "Vendor",
           other: "Other"
         }
+      },
+      invoiceNumber: "Invoice Number",
+      missingCheckNumber: "No check #",
+      edit: {
+        edit: "Edit",
+        save: "Save Changes",
+        saving: "Saving...",
+        cancel: "Cancel",
+        saveFailed: "Failed to save changes",
+        payeeReadOnly: "Payee cannot be changed after an expense is recorded.",
+        categoryRequired: "Please select an expense category",
+        amountInvalid: "Please enter a valid amount greater than $0.00",
+        dateRequired: "Please select an expense date",
+        dateFuture: "Expense date cannot be in the future"
       }
     },
     reportTabs: {
@@ -1355,7 +1623,1321 @@ export const en: Dictionaries = {
       save: "Save",
       saving: "Saving…"
     }
-  }
+  },
+
+  // ==== Consolidated legacy flat keys (Phase 1 migration from LanguageContext) ====
+  "admin.panel": "Admin Panel",
+  "manage.members": "Manage Members",
+  "manage.members.and.roles": "Manage members and roles",
+  "access.admin.panel": "Access Admin Panel",
+  "role.management": "Role Management",
+  "manage.member.roles.and.permissions": "Manage member roles and permissions",
+  "update.member.roles": "Update Member Roles",
+  "change.role": "Change Role",
+  "new.role": "New Role",
+  "current.role": "Current Role",
+  "role.descriptions": "Role Descriptions",
+  "update.role": "Update Role",
+  "updating.role.for": "Updating role for",
+  "new.permissions": "New Permissions",
+  "updating": "Updating...",
+  "statistics": "Statistics",
+  "overview.of.church.membership": "Overview of church membership",
+  "active.members": "Active Members",
+  "total.children": "Total Children",
+  "recent.registrations": "Recent Registrations",
+  "role.breakdown": "Role Breakdown",
+  "gender.breakdown": "Gender Breakdown",
+  "marital.status.breakdown": "Marital Status Breakdown",
+  "language.preference.breakdown": "Language Preference Breakdown",
+  "membership.status": "Membership Status",
+  "members.with.children": "Members with Children",
+  "activity.metrics": "Activity Metrics",
+  "new.registrations.30.days": "New Registrations (30 days)",
+  "avg.children.per.family": "Avg Children per Family",
+  "active.rate": "Active Rate",
+  "quick.actions": "Quick Actions",
+  "export.member.list": "Export Member List",
+  "generate.report": "Generate Report",
+  "send.communication": "Send Communication",
+  "refresh.statistics": "Refresh Statistics",
+  "no.data.available": "No data available",
+  "edit.member": "Edit Member",
+  "search": "Search",
+  "all.roles": "All Roles",
+  "all.statuses": "All Statuses",
+  "active": "Active",
+  "inactive": "Inactive",
+  "joined": "Joined",
+  "children": "Children",
+  "current.permissions": "Current Permissions",
+  "confirm.delete.member": "Are you sure you want to delete this member?",
+  "basic.info": "Basic Information",
+  "contact.info": "Contact Information",
+  "street.address": "Street Address",
+  "ministries": "Ministries",
+  "ministries.placeholder": "List ministries you are interested in...",
+  "bank_transfer": "Bank Transfer",
+  "select.language": "Select language",
+  "english": "English",
+  "tigrinya": "Tigrinya",
+  "amharic": "Amharic",
+  "no.children.registered": "No children registered",
+  "spiritual.father": "Spiritual Father",
+  "contact.address": "Contact & Address",
+  "common.edit": "Edit",
+  "common.delete": "Delete",
+
+  // ==== Shared: Gregorian month short names ====
+  months: {
+    short: {
+      january: "Jan", february: "Feb", march: "Mar", april: "Apr",
+      may: "May", june: "Jun", july: "Jul", august: "Aug",
+      september: "Sep", october: "Oct", november: "Nov", december: "Dec"
+    }
+  },
+
+  // ==== DuesPage (Phase 2a) ====
+  duesPage: {
+    signInRequired: "You must be signed in to view dues.",
+    dependentNotLinked: "Your dependent profile is not linked to a head of household yet. Please contact the head to link your profile or use the self-claim flow.",
+    loadFailed: "Failed to load dues",
+    statementFailed: "Failed to generate statement",
+    retry: "Retry",
+    title: "Member Dues",
+    calculatedFrom: "Calculated from parish join date",
+    monthlyStatus: "Monthly Status",
+    dueShort: "Due",
+    monthlyCommitment: "Monthly commitment:",
+    paymentHistory: "Payment History",
+    noPayments: "No payments found for this year.",
+    stat: {
+      collected: "Collected",
+      balanceDue: "Balance Due",
+      otherPayments: "Other Payments",
+      yearlyPledge: "Yearly Pledge"
+    },
+    col: {
+      date: "Date",
+      amount: "Amount",
+      type: "Type",
+      method: "Method",
+      receipt: "Receipt #",
+      note: "Note",
+      status: "Status"
+    },
+    status: {
+      pending: "Pending",
+      succeeded: "Succeeded"
+    },
+    statement: {
+      title: "Annual Contribution Statement",
+      desc: "Generate your tax-deductible contribution statement for {year}.",
+      print: "Print Statement"
+    },
+    pledgeBannerTitle: "You have an open pledge",
+    pledgeBannerBody: "{amount} still outstanding on your {campaign} pledge.",
+    pledgeBannerCta: "Pay toward my pledge",
+  },
+
+  // ==== DonatePage (Phase 2a) ====
+  donatePage: {
+    title: "Support Our Church",
+    subtitle: "Your generous donation helps us continue our mission and serve our community.",
+    onlineDonation: "Online Donation",
+    howOften: "How often would you like to donate?",
+    oneTime: "One-Time",
+    recurring: "Recurring",
+    frequency: "Frequency",
+    donationAmount: "Donation Amount",
+    paymentMethod: "Payment Method",
+    cardOption: "Credit/Debit Card",
+    achOption: "Bank Account (ACH)",
+    cardInformation: "Card Information",
+    bankInformation: "Bank Account Information",
+    donorInformation: "Donor Information",
+    prefillNoteLabel: "Note:",
+    prefillNoteBody: "Your information has been prefilled from your profile. You can update any fields if needed.",
+    resetToProfile: "Reset to Profile",
+    firstName: "First Name *",
+    lastName: "Last Name *",
+    email: "Email",
+    phoneNumber: "Phone Number",
+    billingAddress: "Billing Address",
+    zipCode: "Zip Code",
+    processing: "Processing...",
+    continueToPayment: "Continue to Payment - ${amount}",
+    paymentSuccessMsg: "Payment successful! Thank you for your donation.",
+    freq: {
+      weekly: "Weekly",
+      monthly: "Monthly",
+      quarterly: "Quarterly",
+      yearly: "Yearly"
+    },
+    errors: {
+      amountDecimals: "Enter a valid amount (numbers only, up to 2 decimals).",
+      amountDecimalsAlert: "Please enter a valid amount (numbers only, up to 2 decimals).",
+      amountExample: "Please enter a valid amount (e.g., 10 or 10.00)",
+      amountMin: "Minimum amount is $1.00",
+      amountMinAlert: "Please enter a valid amount (minimum $1.00)",
+      nameRequired: "Please fill in your first and last name",
+      cardNotReady: "Card payment processing is not ready. Please try again.",
+      achNotReady: "ACH payment processing is not ready. Please try again.",
+      unexpected: "An unexpected error occurred"
+    },
+    thankYou: "Thank you for your donation of ${amount}! Your payment has been processed successfully.",
+    auth: {
+      template: "I authorize this merchant or their agent to {action} in the amount above {recurring} as soon as I click the \"Continue to Payment\" button below. I agree that {method} transactions I authorize comply with all applicable law.",
+      chargeCard: "charge my credit card",
+      debitAccount: "debit my account",
+      recurringClause: "via {frequency} recurring payments",
+      methodCard: "credit card",
+      methodAch: "ACH"
+    },
+    zelle: {
+      title: "Donate via Zelle",
+      qrAlt: "Zelle QR code for Abune Aregawi Church",
+      imageFallbackPre: "If the image does not load, ",
+      imageFallbackLink: "open the QR code",
+      scanHint: "Scan this QR code in your banking app to donate via Zelle.",
+      emailLabel: "Zelle Email Address:",
+      copyTitle: "Click to copy email address",
+      howTitle: "How to donate via Zelle:",
+      step1: "Open your banking app or Zelle app",
+      step2: "Select \"Send Money\" or \"Send with Zelle\"",
+      step3: "Enter the email address:",
+      step4: "Enter your donation amount",
+      step5Pre: "Add a memo/note: ",
+      step5Memo: "\"[Your Phone Number] for [reason]\"",
+      step5Hint: "Please include your phone number for proper tracking.",
+      step6: "Review and send your payment",
+      quickCopyLabel: "✅ Quick Copy:",
+      quickCopyBody: "Click the email address above to copy it to your clipboard, then paste it directly into your Zelle app."
+    },
+    check: {
+      title: "Donate by Check",
+      payableTo: "Make checks payable to:",
+      payee: "Abune Aregawi Orthodox Tewahedo Church"
+    },
+    questions: {
+      title: "Questions?",
+      body: "For questions about donations, please contact us:"
+    },
+    applyToPledge: "Apply to my pledge",
+    pledgeRemaining: "{amount} still outstanding on your {campaign} pledge",
+  },
+
+  // ==== DependentsManagement (Phase 2a) ====
+  dependentsPage: {
+    loading: "Loading dependents...",
+    title: "Spouse & Dependents",
+    add: "Add Dependent",
+    householdRecord: "Household Record",
+    managedUnderPre: "This family record is managed under ",
+    managedUnderPost: ".",
+    dependentNote: " You can review the household here, but family updates should be handled by the head of household.",
+    headNote: " You can review and update the spouse and children linked to this household from this page.",
+    editTitle: "Edit Dependent",
+    addTitle: "Add New Dependent",
+    firstName: "First Name *",
+    middleName: "Middle Name",
+    lastName: "Last Name *",
+    dob: "Date of Birth",
+    optional: "Optional",
+    gender: "Gender *",
+    male: "Male",
+    female: "Female",
+    relationship: "Relationship",
+    selectRelationship: "Select Relationship",
+    phone: "Phone",
+    email: "Email",
+    baptismName: "Baptism Name",
+    isBaptized: "Is Baptized",
+    cancel: "Cancel",
+    update: "Update Dependent",
+    noneYet: "No dependents added yet.",
+    getStarted: "Click \"Add Dependent\" to get started.",
+    yes: "Yes",
+    no: "No",
+    edit: "Edit",
+    delete: "Delete",
+    col: {
+      name: "Name",
+      dob: "Date of Birth",
+      gender: "Gender",
+      relationship: "Relationship",
+      baptismName: "Baptism Name",
+      baptized: "Baptized",
+      actions: "Actions"
+    },
+    errors: {
+      prefix: "Error:",
+      notAuthenticated: "Not authenticated",
+      profileFailed: "Failed to get member profile",
+      resolveIdFailed: "Could not resolve member ID",
+      saveError: "Error saving dependent information",
+      deleteConfirm: "Are you sure you want to delete this dependent?",
+      deleteError: "Error deleting dependent"
+    }
+  },
+
+  // ==== PledgeForm (Phase 2a) ====
+  pledgeForm: {
+    title: "Make a Pledge",
+    subtitle: "Support our church with your generous pledge",
+    selectMember: "Select Member (Optional)",
+    searchPlaceholder: "Search by name or phone",
+    searchAria: "Search members by name or phone",
+    loadingMembers: "Loading members...",
+    selectMatched: "Select a matched member or clear to show all",
+    selectExisting: "Select existing member or leave blank for new",
+    noMatches: "No matches",
+    noMembers: "No members found",
+    clearSelection: "Clear selection to enter new member info",
+    eventName: "Event Name *",
+    eventNamePlaceholder: "e.g., Sunday Fundraising Event",
+    amount: "Pledge Amount *",
+    amountLabel: "Pledge Amount *",
+    notesLabel: "Notes (optional)",
+    customAmountPlaceholder: "Enter custom amount",
+    firstName: "First Name *",
+    lastName: "Last Name *",
+    email: "Email",
+    phone: "Phone",
+    autoFilledTitle: "Auto-filled from selected member",
+    autoFilledPlaceholder: "Auto-filled from member",
+    address: "Address",
+    autoFilledParen: "(Auto-filled from member)",
+    optionalParen: "(Optional)",
+    streetPlaceholder: "Street address",
+    addressModifyHint: "Address from selected member - you can modify if needed",
+    zip: "ZIP Code",
+    notes: "Notes (Optional)",
+    notesPlaceholder: "Any additional notes or dedication...",
+    processing: "Processing...",
+    submit: "Pledge ${amount}",
+    errors: {
+      amountMin: "Amount must be at least $1.00",
+      firstNameRequired: "First name is required",
+      lastNameRequired: "Last name is required",
+      emailInvalid: "Please enter a valid email address",
+      phoneRequired: "Phone number is required for new members"
+    }
+  },
+
+  pledge: {
+    homeCard: {
+      title: "Make a Pledge",
+      description: "Pledge your support for the church and pay when you're ready — we'll send payment instructions."
+    },
+    noCampaign: {
+      title: "No fundraising drive is running right now",
+      body: "There is no active pledge drive at the moment. Please check back, or contact the church office if you would like to give."
+    },
+    intent: {
+      later: {
+        title: "Pledge for later",
+        body: "Make a pledge now and pay it when you are ready."
+      },
+      immediate: {
+        title: "Pledge and pay now",
+        body: "Make your pledge and pay it in full in one step."
+      },
+      anonymous: {
+        title: "Give anonymously now",
+        body: "Give without your name appearing. Paid in full today; the church records a church name for its records only."
+      },
+      signIn: {
+        title: "Sign in to pledge",
+        body: "A pledge for later needs an account so we can credit your payments to it."
+      }
+    },
+    existing: {
+      title: "You already have a pledge",
+      body: "{remaining} remaining on your {campaign} pledge.",
+      settled: "Your {campaign} pledge is paid in full. Thank you.",
+      payNow: "Pay now",
+      giveAgain: "Give again"
+    },
+    info: {
+      flexibleTitle: "Flexible Payment",
+      flexibleBody: "Pay when you're ready, from the Give page or with a treasurer."
+    },
+    success: {
+      body: "Your pledge has been recorded. Thank you."
+    },
+    checkout: {
+      payInFullNote: "Paying now covers your pledge in full.",
+      continue: "Continue to payment",
+      showAsAnonymous: "Show my gift as anonymous",
+      showAsAnonymousHelp: "Your name is hidden from donor lists. The church still records the gift against your account, so it appears on your own giving statement."
+    },
+    anonymous: {
+      baptismNameLabel: "Baptism or church name *",
+      baptismNameHelp: "Kept for church records only. Your gift is reported as anonymous.",
+      contactLabel: "Phone or email (optional)",
+      errors: {
+        baptismNameRequired: "A baptism or church name is required."
+      }
+    }
+  },
+
+  fundraising: {
+    tab: "Fundraising",
+    heading: "Fundraising Campaigns",
+    newCampaign: "New Campaign",
+    edit: "Edit",
+    name: "Name",
+    nameTi: "Name (Tigrigna)",
+    description: "Description",
+    descriptionTi: "Description (Tigrigna)",
+    startDate: "Start date",
+    endDate: "End date",
+    goalAmount: "Goal amount",
+    status: "Status",
+    window: "Dates",
+    pledged: "Pledged",
+    collected: "Collected",
+    outstanding: "Outstanding",
+    donors: "Donors",
+    toGoal: "of goal collected",
+    noTotals: "No pledges recorded",
+    viewDonors: "View donors",
+    donorsIn: "Donors in",
+    donor: "Donor",
+    noPledges: "No pledges in this drive yet.",
+    close2: "Close",
+    legacy: "legacy record",
+    legacyHelp: "Recorded before payment-level tracking: this figure comes from the pledge's saved status, not from a matched transaction.",
+    save: "Save",
+    cancel: "Cancel",
+    activate: "Activate",
+    reactivate: "Reactivate",
+    reactivateWarning: "Reactivating makes this drive live again on the website. Members will be able to pledge to it.",
+    windowPassedHint: "This drive's end date has passed. Extend it with Edit before reactivating, or create a new campaign to keep the totals separate.",
+    close: "Close campaign",
+    closeWarning: "Closing a campaign stops new pledges and hides it from the website. An admin can reactivate it while its dates still cover today.",
+    closeDraftWarning: "This draft has never been visible to members. Closing it files it away as history.",
+    endBeforeStart: "The end date must be on or after the start date.",
+    noCampaigns: "No campaigns yet. Create one to start a drive.",
+    activePledge: "Active pledge: {pledged} — {remaining} remaining",
+    overBy: "over by {amount}",
+    alsoRecordPledge: "Also record this as a pledge",
+    pledgeAmountLabel: "Pledge amount",
+    baptismNameLabel: "Baptism or church name",
+    anonymousPaidInFull: "An anonymous pledge must be paid in full, so this must equal the payment amount.",
+    pledgeCashOnly: "Pledge recording is available for cash and check payments only.",
+    pledgeNeedsMember: "Select a member to record this pledge, or mark the payment anonymous and give a baptism or church name."
+  },
+
+
+  // ==== PledgeTracker (Phase 2a) ====
+  pledgeTracker: {
+    goalProgress: "Goal Progress",
+    ofGoalPledged: "of goal pledged",
+    loadFailed: "Failed to load pledge statistics",
+    tryAgain: "Try Again",
+    noData: "No pledge data available",
+    eventPledges: "{event} Pledges",
+    title: "Pledge Tracker",
+    subtitle: "See how our Abune Aregawi church community is coming together to support this cause.",
+    refresh: "Refresh",
+    totalPledged: "Total Pledged",
+    totalDonated: "Total Donated",
+    remaining: "Remaining",
+    fulfillmentProgress: "Fulfillment Progress",
+    pledgeStatus: "Pledge Status",
+    totalAmount: "Total Amount",
+    anonymous: "Anonymous",
+    lastUpdated: "Last updated: {time}"
+  },
+
+  // ==== ACHPayment (Phase 2a) ====
+  achPayment: {
+    bankInfo: "Bank Account Information",
+    accountHolderName: "Account Holder Name *",
+    routingNumber: "Routing Number *",
+    routingHint: "The 9-digit routing number found on your checks",
+    accountNumber: "Account Number *",
+    accountNumberHint: "Your bank account number",
+    accountType: "Account Type *",
+    checking: "Checking",
+    savings: "Savings",
+    amountLabel: "Amount:",
+    typeLabel: "Type:",
+    recurring: "Recurring",
+    oneTime: "One-time",
+    methodLabel: "Payment Method:",
+    methodValue: "Bank Account (ACH)",
+    importantLabel: "Important:",
+    importantText: "ACH payments typically take 3-5 business days to process. You will receive a confirmation email once the payment is processed.",
+    securityLabel: "Security:",
+    securityText: "Your bank account information is encrypted and securely processed. We do not store your account details on our servers.",
+    cancel: "Cancel",
+    processing: "Processing...",
+    pay: "Pay ${amount}",
+    errors: {
+      stripeNotLoaded: "Stripe has not loaded yet. Please try again.",
+      fillRequired: "Please fill in all required bank account information.",
+      routingLength: "Routing number must be 9 digits.",
+      accountLength: "Account number must be at least 4 digits.",
+      achFailed: "ACH confirmation failed",
+      unexpected: "An unexpected error occurred"
+    }
+  },
+
+  // ==== StripePayment (Phase 2a) ====
+  stripePayment: {
+    cardInformation: "Card Information",
+    cardAriaLabel: "Credit or debit card information",
+    nameOnCard: "Name on card",
+    nameOnCardPlaceholder: "Full name as shown on card",
+    paymentInformation: "Payment Information",
+    errors: {
+      paymentFailed: "Payment failed",
+      notSuccessful: "Payment was not successful. Please try again."
+    }
+  },
+
+  // ==== Batch 2b: Departments & Meetings ====
+  // -- DepartmentsPage (listing / browse) --
+  "departmentsPage.backToDashboard": "Back to Dashboard",
+  "departmentsPage.title": "Departments & Service",
+  "departmentsPage.subtitle": "View your departments or explore opportunities to serve",
+  "departmentsPage.myTab": "My Departments",
+  "departmentsPage.browseTab": "Browse All",
+  "departmentsPage.members": "members",
+  "departmentsPage.viewDetails": "View Details",
+  "departmentsPage.requestToJoin": "Request to Join",
+  "departmentsPage.requestComingSoon": "Request to join functionality coming soon!",
+  "departmentsPage.emptyMyTitle": "No Departments Found",
+  "departmentsPage.emptyAllTitle": "No Departments Available",
+  "departmentsPage.emptyMyDesc": "You haven't joined any departments yet. Browse the full list to find where you can serve.",
+  "departmentsPage.emptyAllDesc": "There are currently no active departments to join.",
+  "departmentsPage.browseDepartments": "Browse Departments",
+
+  // -- Department type labels (data enum) --
+  "departmentType.ministry": "Ministry",
+  "departmentType.committee": "Committee",
+  "departmentType.service": "Service",
+  "departmentType.social": "Social",
+  "departmentType.administrative": "Administrative",
+
+  // -- DepartmentDashboard (migrated from legacy + new) --
+  "department.tabs.meetings": "Meetings",
+  "department.tabs.tasks": "Tasks",
+  "department.tabs.members": "Members",
+  "department.addMeeting": "Add Meeting",
+  "department.addTask": "Add Task",
+  "department.manageMembers": "Manage Members",
+  "department.backToDashboard": "Back to Dashboard",
+  "department.notFound": "Department not found",
+  "department.loadFailed": "Failed to fetch department",
+  "department.leader": "Leader:",
+  "department.roleMember": "Member",
+  "department.noMembers": "No members yet",
+  "department.attendees": "attendees",
+  "department.noMeetings": "No meetings recorded yet",
+  "department.createFirstMeeting": "Create your first meeting",
+  "department.due": "Due:",
+  "department.edit": "Edit",
+  "department.noTasks": "No tasks yet",
+
+  // -- Task status / priority labels (data enums) --
+  "taskStatus.pending": "Not Started",
+  "taskStatus.in_progress": "In Progress",
+  "taskStatus.completed": "Completed",
+  "taskStatus.cancelled": "Cancelled",
+  "taskStatus.rejected": "Rejected",
+  "taskPriority.low": "Low",
+  "taskPriority.medium": "Medium",
+  "taskPriority.high": "High",
+  "taskPriority.urgent": "Urgent",
+
+  // -- AddMeetingModal --
+  "meetingModal.editTitle": "Edit Meeting",
+  "meetingModal.createTitle": "Schedule New Meeting",
+  "meetingModal.keyboard": "Keyboard:",
+  "meetingModal.englishLatin": "English (Latin)",
+  "meetingModal.title": "Meeting Title",
+  "meetingModal.dateTime": "Date & Time",
+  "meetingModal.location": "Location",
+  "meetingModal.purpose": "Purpose",
+  "meetingModal.agenda": "Agenda",
+  "meetingModal.attendees": "Attendees",
+  "meetingModal.notes": "Meeting Notes / Minutes",
+  "meetingModal.cancel": "Cancel",
+  "meetingModal.saving": "Saving...",
+  "meetingModal.update": "Update Meeting",
+  "meetingModal.create": "Create Meeting",
+  "meetingModal.saveFailed": "Failed to save meeting",
+  "meetingModal.genericError": "An error occurred",
+
+  // -- AddTaskModal --
+  "taskModal.editTitle": "Edit Task",
+  "taskModal.createTitle": "Create New Task",
+  "taskModal.objective": "Objective",
+  "taskModal.objectivePlaceholder": "Brief description of the task",
+  "taskModal.description": "Description",
+  "taskModal.descriptionPlaceholder": "Detailed description...",
+  "taskModal.status": "Status",
+  "taskModal.priority": "Priority",
+  "taskModal.assignedTo": "Assigned To",
+  "taskModal.unassigned": "Unassigned",
+  "taskModal.startDate": "Start Date",
+  "taskModal.endDate": "End Date",
+  "taskModal.rejectedDate": "Rejected Date",
+  "taskModal.notes": "Notes",
+  "taskModal.notesPlaceholder": "Additional notes...",
+  "taskModal.cancel": "Cancel",
+  "taskModal.saving": "Saving...",
+  "taskModal.update": "Update Task",
+  "taskModal.create": "Create Task",
+  "taskModal.rejectedDateRequired": "Rejected date is required when status is rejected",
+  "taskModal.saveFailed": "Failed to save task",
+  "taskModal.genericError": "An error occurred",
+
+  // -- MeetingDetailsPage / MeetingEmailModal (migrated from legacy + new) --
+  "meeting.tasks.previous": "Tasks from Previous Meeting",
+  "meeting.tasks.actionItems": "Action Items from This Meeting",
+  "meeting.tasks.add": "Add Task",
+  "meeting.tasks.none": "No action items yet",
+  "meeting.agenda": "Agenda",
+  "meeting.minutes": "Meeting Notes",
+  "meeting.attendees": "Attendees",
+  "meeting.assignedTo": "Assigned to",
+  "meeting.due": "Due",
+  "meeting.notFound": "Meeting not found",
+  "meeting.loadFailed": "Failed to fetch meeting",
+  "meeting.backToDepartment": "Back to Department",
+  "meeting.editMeeting": "Edit meeting",
+  "meeting.editTask": "Edit task",
+  "meeting.print.savePdf": "Print / Save PDF",
+  "meeting.print.record": "Meeting Record",
+  "meeting.print.overview": "Meeting Overview",
+  "meeting.print.department": "Department",
+  "meeting.print.date": "Date",
+  "meeting.print.location": "Location",
+  "meeting.print.purpose": "Purpose",
+  "meeting.print.generated": "Generated",
+  "meeting.print.language.english": "English",
+  "meeting.print.language.tigrinya": "Tigrinya",
+  "meeting.print.notProvided": "Not provided",
+  "meeting.print.noAttendees": "No attendees recorded",
+  "meeting.email.button": "Email Members",
+  "meeting.email.modalTitle": "Email Meeting Minutes",
+  "meeting.email.recipients": "Recipients",
+  "meeting.email.skipped": "Skipped",
+  "meeting.email.subject": "Subject",
+  "meeting.email.body": "Message",
+  "meeting.email.send": "Send Email",
+  "meeting.email.sending": "Sending...",
+  "meeting.email.cancel": "Cancel",
+  "meeting.email.noRecipients": "No active department members have a valid email address.",
+  "meeting.email.previewFailed": "Failed to load email preview",
+  "meeting.email.loadingPreview": "Loading email preview…",
+  "meeting.email.sendFailed": "Failed to send meeting email",
+  "meeting.email.sentSummary": "Members without a valid email were skipped.",
+  "meeting.email.reason.missing": "No email on file",
+  "meeting.email.reason.invalid": "Invalid email address",
+
+  // ==== Batch 2d (wave A): misc / auth small components ====
+  "creditsPage.title": "Tech Team / Credits",
+
+  "parishPulse.title": "Parish Pulse Sign-Up",
+  "parishPulse.description": "Sign up to receive important SMS messages and updates from our parish. You can opt out at any time by replying \"STOP\" to any message.",
+  "parishPulse.thankYou": "Thank you for signing up! You will receive SMS updates soon.",
+  "parishPulse.errorRequired": "Please enter your name and mobile number.",
+  "parishPulse.fullName": "Full Name",
+  "parishPulse.namePlaceholder": "Your Name",
+  "parishPulse.mobileNumber": "Mobile Number",
+  "parishPulse.phonePlaceholder": "e.g. (555) 123-4567",
+  "parishPulse.submit": "Sign Up",
+  "parishPulse.disclaimer": "By submitting your mobile number, you agree to receive SMS messages from Tigray Orthodox Church. Message & data rates may apply. Reply STOP to unsubscribe.",
+
+  "protectedRoute.retry": "Retry",
+  "protectedRoute.goToRegistration": "Go to Registration",
+
+  "liveEmbed.liveStream": "Live Stream",
+  "liveEmbed.unmute": "Unmute",
+  "liveEmbed.mute": "Mute",
+  "liveEmbed.unmuteAria": "Unmute live stream",
+  "liveEmbed.muteAria": "Mute live stream",
+  "liveEmbed.fallbackPrefix": "If the stream doesn’t start automatically, ",
+  "liveEmbed.openOnYouTube": "open the live page on YouTube",
+
+  "transliterationHelp.title": "Ge'ez Transliteration Guide",
+  "transliterationHelp.instruction": "Type the Latin characters to get the corresponding Ge'ez symbol.",
+  "transliterationHelp.close": "Close",
+
+  // ==== Batch 2d: RegistrationSteps (remaining hardcoded strings) ====
+  "registration.emailExists": "A member with this email already exists. You may still proceed.",
+  "registration.yearlyPledgeLabel": "Yearly Membership Pledge (USD)",
+  "registration.yearlyPledgePlaceholder": "e.g. 1200",
+  "registration.yearlyPledgeHelp": "This helps us set your monthly dues and track payments.",
+  "registration.selectRelationship": "Select Relationship",
+
+  // ==== Batch 2c: admin / finance ====
+  // -- BankUpload --
+  "bankUpload.title": "Upload Bank Statement",
+  "bankUpload.selectFile": "Select Chase CSV File",
+  "bankUpload.uploading": "Uploading...",
+  "bankUpload.upload": "Upload & Process",
+  "bankUpload.uploadFailed": "Upload failed",
+  "bankUpload.success": "Upload Successful!",
+  "bankUpload.imported": "Imported: {count} new transactions",
+  "bankUpload.skipped": "Skipped: {count} duplicates",
+  "bankUpload.autoReconciled": "Auto-reconciled: {count} of {examined} pending",
+  "bankUpload.autoLinked": "Linked to existing payments (e.g. Zelle automation): {count}",
+  "bankUpload.autoMember": "Member payments created from learned payers: {count}",
+  "bankUpload.autoExpense": "Expenses recorded from learned payees: {count}",
+  "bankUpload.needsReview": "Left for review: {count}",
+  "bankUpload.errors": "Errors: {count}",
+  "bankUpload.supportedFormat": "Supported format: Chase Activity CSV. System automatically detects Zelle donors and skips duplicate transactions.",
+  "bankUpload.autoDeferred": "Large import: automatic reconciliation was skipped to keep the upload fast. Use the \"Auto-reconcile pending\" button in Bank Transactions to run it.",
+
+  // -- Bank transactions: on-demand auto-reconcile --
+  "bankTransactions.autoReconcile": "Auto-reconcile pending",
+  "bankTransactions.autoReconciling": "Auto-reconciling…",
+  "bankTransactions.autoReconcileHelp": "Re-check all pending transactions against known payers, payees, and Zelle references. Runs in bounded batches.",
+  "bankTransactions.autoReconcileDone": "Examined {examined} pending transactions; {matched} matched or recorded automatically.",
+  "bankTransactions.autoReconcileFailed": "Auto-reconcile failed",
+
+  // -- Member Information report (Payment Reports tab) --
+  "memberInfoReport.type": "Member Information",
+  "memberInfoReport.title": "Member Information Report",
+  "memberInfoReport.generated": "Generated",
+  "memberInfoReport.activeMembers": "Active members",
+  "memberInfoReport.colId": "ID",
+  "memberInfoReport.colFirstName": "First Name",
+  "memberInfoReport.colLastName": "Last Name",
+  "memberInfoReport.colPhone": "Phone",
+  "memberInfoReport.colSpouseFirst": "Spouse First",
+  "memberInfoReport.colSpouseLast": "Spouse Last",
+  "memberInfoReport.colSpousePhone": "Spouse Phone",
+
+  // -- Admin Member Reports tab --
+  "memberReports.tab": "Reports",
+  "memberReports.selectLabel": "Report",
+  "memberReports.memberInformation": "Member Information",
+  "memberReports.householdDirectory": "Household Membership Directory",
+
+  // -- Household Membership Directory report --
+  "householdReport.title": "Household Membership Directory",
+  "householdReport.sortBy": "Sort by",
+  "householdReport.sortLastName": "Last name",
+  "householdReport.sortFirstName": "First name",
+  "householdReport.savePdf": "Save as PDF",
+  "householdReport.summaryTitle": "Membership Summary",
+  "householdReport.totalFamilies": "Total Families",
+  "householdReport.totalParishMembers": "Total Parish Members",
+  "householdReport.totalHeads": "Heads of Household",
+  "householdReport.totalSpouses": "Spouses",
+  "householdReport.totalDependents": "Dependents",
+  "householdReport.generatedOn": "Generated on",
+  "householdReport.generatedBy": "Generated by",
+  "householdReport.headOfHousehold": "Head of Household",
+  "householdReport.spouse": "Spouse",
+  "householdReport.dependentsSection": "Dependents",
+  "householdReport.householdMembers": "Household Members",
+  "householdReport.mobile": "Mobile",
+  "householdReport.memberId": "Member ID",
+  "householdReport.noResults": "No households found.",
+  "householdReport.page": "Page",
+  "householdReport.of": "of",
+  "householdReport.previous": "Previous",
+  "householdReport.next": "Next",
+
+  // -- MonthlyBankSummary --
+  "monthlyBankSummary.title": "Monthly Summary",
+  "monthlyBankSummary.subtitle": "Income and expenses from bank activity, last {count} months",
+  "monthlyBankSummary.showLast6": "Show last 6 months",
+  "monthlyBankSummary.showLast12": "Show last 12 months",
+  "monthlyBankSummary.colMonth": "Month",
+  "monthlyBankSummary.colIncome": "Total Income",
+  "monthlyBankSummary.colExpense": "Total Expense",
+  "monthlyBankSummary.colNet": "Net Surplus/(Deficit)",
+  "monthlyBankSummary.colBalance": "Ending Balance",
+  "monthlyBankSummary.colStatus": "Status",
+  "monthlyBankSummary.loading": "Loading...",
+  "monthlyBankSummary.empty": "No bank activity in the last 12 months. Upload a bank statement to get started.",
+  "monthlyBankSummary.reconciled": "Reconciled",
+  "monthlyBankSummary.pending": "{count} pending",
+  "monthlyBankSummary.awaitingReview": "{pending} of {total} transactions awaiting review",
+
+  // -- ActivityLogViewer --
+  "activityLog.loadFailed": "Failed to load activity logs",
+  "activityLog.title": "Activity Logs",
+  "activityLog.allActions": "All Actions",
+  "activityLog.allTypes": "All Types",
+  "activityLog.entityMember": "Member",
+  "activityLog.entityDonation": "Donation",
+  "activityLog.entityPayment": "Payment",
+  "activityLog.refresh": "Refresh",
+  "activityLog.loading": "Loading logs...",
+  "activityLog.colDate": "Date",
+  "activityLog.colUser": "User",
+  "activityLog.colAction": "Action",
+  "activityLog.colEntity": "Entity",
+  "activityLog.colDetails": "Details",
+  "activityLog.empty": "No activity logs found.",
+  "activityLog.systemUnknown": "System / Unknown",
+  "activityLog.pageOf": "Page {page} of {total}",
+  "activityLog.previous": "Previous",
+  "activityLog.next": "Next",
+  "activityLog.analyticsTitle": "Website Analytics",
+  "activityLog.analyticsDescription": "Page views, referrers and traffic for the church website, from our own analytics server.",
+  "activityLog.analyticsLink": "Open analytics dashboard",
+
+  // -- MemberSearch --
+  "memberSearch.title": "Search Members",
+  "memberSearch.subtitle": "Select a member to view their dues and payment history",
+  "memberSearch.placeholder": "Search by name, email, phone, or member ID...",
+  "memberSearch.loading": "Loading members...",
+  "memberSearch.noMembersTitle": "No members found",
+  "memberSearch.adjustSearch": "Try adjusting your search terms.",
+  "memberSearch.noneAvailable": "No members available.",
+  "memberSearch.noPledge": "No Pledge",
+  "memberSearch.perYear": "/year",
+  "memberSearch.found": "{count} members found",
+  "memberSearch.cancel": "Cancel",
+
+  // -- PaymentList --
+  "paymentList.searchLabel": "Search Members",
+  "paymentList.searchPlaceholder": "Search by name or member ID...",
+  "paymentList.statusFilter": "Status Filter",
+  "paymentList.filterAll": "All Members",
+  "paymentList.filterUpToDate": "Up to Date",
+  "paymentList.filterBehind": "Behind on Payments",
+  "paymentList.filterPartial": "Partial Payments",
+  "paymentList.applyFilters": "Apply Filters",
+  "paymentList.colMember": "Member",
+  "paymentList.colContact": "Contact",
+  "paymentList.colMonthly": "Monthly Payment",
+  "paymentList.colTotalDue": "Total Due",
+  "paymentList.colCollected": "Collected",
+  "paymentList.colBalance": "Balance",
+  "paymentList.colStatus": "Status",
+  "paymentList.spouse": "Spouse:",
+  "paymentList.statusNoDues": "No Dues",
+  "paymentList.statusUpToDate": "Up to Date",
+  "paymentList.statusPartial": "Partial",
+  "paymentList.statusBehind": "Behind",
+  "paymentList.pageOf": "Page {page} of {total}",
+  "paymentList.previous": "Previous",
+  "paymentList.next": "Next",
+
+  // -- LoansPage --
+  "loansPage.statOutstanding": "Total Outstanding",
+  "loansPage.statActive": "Active Loans",
+  "loansPage.statPartial": "Partially Repaid",
+  "loansPage.statLoaned": "Total Loaned",
+  "loansPage.recordLoan": "Record Loan",
+  "loansPage.allStatuses": "All Statuses",
+  "loansPage.statusActive": "Active",
+  "loansPage.statusPartiallyRepaid": "Partially Repaid",
+  "loansPage.statusClosed": "Closed",
+  "loansPage.startDate": "Start Date",
+  "loansPage.endDate": "End Date",
+  "loansPage.loanCount": "{count} loan(s)",
+  "loansPage.warning": "These are liability records — loans from members. They are NOT donations and NOT tax-deductible.",
+  "loansPage.colMember": "Member",
+  "loansPage.colLoanDate": "Loan Date",
+  "loansPage.colOriginal": "Original Amount",
+  "loansPage.colOutstanding": "Outstanding",
+  "loansPage.colStatus": "Status",
+  "loansPage.colMethod": "Payment Method",
+  "loansPage.colReceipt": "Receipt #",
+  "loansPage.colActions": "Actions",
+  "loansPage.loading": "Loading...",
+  "loansPage.empty": "No loans found",
+  "loansPage.btnRepayment": "Repayment",
+  "loansPage.btnReceipt": "Receipt",
+  "loansPage.previous": "Previous",
+  "loansPage.next": "Next",
+  "loansPage.pageOf": "Page {page} of {total}",
+
+  // -- VendorList / VendorFormModal (shared vendor domain) --
+  "vendorList.loadFailed": "Failed to load vendors",
+  "vendorList.confirmDelete": "Are you sure you want to delete {name}?",
+  "vendorList.deleteFailed": "Failed to delete vendor",
+  "vendorList.deleteError": "An error occurred while deleting the vendor",
+  "vendorList.title": "Vendor Management",
+  "vendorList.subtitle": "Manage vendors and suppliers",
+  "vendorList.add": "Add Vendor",
+  "vendorList.search": "Search",
+  "vendorList.searchPlaceholder": "Search by name, contact, or account number...",
+  "vendorList.typeLabel": "Vendor Type",
+  "vendorList.allTypes": "All Types",
+  "vendorList.typeUtility": "Utility",
+  "vendorList.typeSupplier": "Supplier",
+  "vendorList.typeServiceProvider": "Service Provider",
+  "vendorList.typeContractor": "Contractor",
+  "vendorList.typeLender": "Lender",
+  "vendorList.typeOther": "Other",
+  "vendorList.statusLabel": "Status",
+  "vendorList.allStatus": "All Status",
+  "vendorList.statusActive": "Active",
+  "vendorList.statusInactive": "Inactive",
+  "vendorList.empty": "No vendors found",
+  "vendorList.colName": "Vendor Name",
+  "vendorList.colType": "Type",
+  "vendorList.colContact": "Contact",
+  "vendorList.colAccount": "Account Number",
+  "vendorList.colTerms": "Payment Terms",
+  "vendorList.colStatus": "Status",
+  "vendorList.colActions": "Actions",
+  "vendorList.edit": "Edit",
+  "vendorList.delete": "Delete",
+
+  // -- VendorFormModal --
+  "vendorForm.errorNameRequired": "Vendor name is required",
+  "vendorForm.errorEmail": "Please enter a valid email address",
+  "vendorForm.errorWebsite": "Please enter a valid website URL (starting with http:// or https://)",
+  "vendorForm.saveFailedUpdate": "Failed to update vendor",
+  "vendorForm.saveFailedCreate": "Failed to create vendor",
+  "vendorForm.saveError": "An error occurred while saving the vendor",
+  "vendorForm.editTitle": "Edit Vendor",
+  "vendorForm.addTitle": "Add Vendor",
+  "vendorForm.editSubtitle": "Update vendor information",
+  "vendorForm.addSubtitle": "Add a new vendor to the system",
+  "vendorForm.name": "Vendor Name",
+  "vendorForm.type": "Vendor Type",
+  "vendorForm.contactInfo": "Contact Information",
+  "vendorForm.contactPerson": "Contact Person",
+  "vendorForm.email": "Email",
+  "vendorForm.phone": "Phone Number",
+  "vendorForm.website": "Website",
+  "vendorForm.address": "Address",
+  "vendorForm.businessDetails": "Business Details",
+  "vendorForm.accountNumber": "Account Number",
+  "vendorForm.accountPlaceholder": "Church account number with vendor",
+  "vendorForm.paymentTerms": "Payment Terms",
+  "vendorForm.paymentTermsPlaceholder": "e.g., Net 30, Due on receipt",
+  "vendorForm.taxId": "Tax ID / EIN",
+  "vendorForm.taxIdPlaceholder": "Vendor tax ID or EIN",
+  "vendorForm.activeVendor": "Active Vendor",
+  "vendorForm.notes": "Notes",
+  "vendorForm.notesPlaceholder": "Additional notes about this vendor...",
+  "vendorForm.cancel": "Cancel",
+  "vendorForm.saving": "Saving...",
+  "vendorForm.update": "Update Vendor",
+
+  // -- EmployeeList / EmployeeFormModal (shared employee domain) --
+  "employeeList.loadFailed": "Failed to load employees",
+  "employeeList.confirmDelete": "Are you sure you want to delete {name}?",
+  "employeeList.deleteFailed": "Failed to delete employee",
+  "employeeList.deleteError": "An error occurred while deleting the employee",
+  "employeeList.title": "Employee Management",
+  "employeeList.subtitle": "Manage church employees and staff",
+  "employeeList.add": "Add Employee",
+  "employeeList.search": "Search",
+  "employeeList.searchPlaceholder": "Search by name, email, or position...",
+  "employeeList.typeLabel": "Employment Type",
+  "employeeList.allTypes": "All Types",
+  "employeeList.typeFullTime": "Full-time",
+  "employeeList.typePartTime": "Part-time",
+  "employeeList.typeContract": "Contract",
+  "employeeList.typeVolunteer": "Volunteer",
+  "employeeList.statusLabel": "Status",
+  "employeeList.allStatus": "All Status",
+  "employeeList.statusActive": "Active",
+  "employeeList.statusInactive": "Inactive",
+  "employeeList.empty": "No employees found",
+  "employeeList.colName": "Name",
+  "employeeList.colPosition": "Position",
+  "employeeList.colType": "Employment Type",
+  "employeeList.colSalary": "Salary",
+  "employeeList.colStatus": "Status",
+  "employeeList.colActions": "Actions",
+  "employeeList.edit": "Edit",
+  "employeeList.delete": "Delete",
+  "employeeList.freqWeekly": "weekly",
+  "employeeList.freqBiWeekly": "bi-weekly",
+  "employeeList.freqMonthly": "monthly",
+  "employeeList.freqAnnual": "annual",
+  "employeeList.freqPerService": "per-service",
+
+  // -- EmployeeFormModal --
+  "employeeForm.errorFirstName": "First name is required",
+  "employeeForm.errorLastName": "Last name is required",
+  "employeeForm.errorEmail": "Please enter a valid email address",
+  "employeeForm.errorSsn": "SSN last four must be exactly 4 digits",
+  "employeeForm.saveFailedUpdate": "Failed to update employee",
+  "employeeForm.saveFailedCreate": "Failed to create employee",
+  "employeeForm.saveError": "An error occurred while saving the employee",
+  "employeeForm.editTitle": "Edit Employee",
+  "employeeForm.addTitle": "Add Employee",
+  "employeeForm.editSubtitle": "Update employee information",
+  "employeeForm.addSubtitle": "Add a new employee to the system",
+  "employeeForm.firstName": "First Name",
+  "employeeForm.lastName": "Last Name",
+  "employeeForm.position": "Position",
+  "employeeForm.positionPlaceholder": "e.g., Priest, Deacon, Secretary",
+  "employeeForm.type": "Employment Type",
+  "employeeForm.contactInfo": "Contact Information",
+  "employeeForm.email": "Email",
+  "employeeForm.phone": "Phone Number",
+  "employeeForm.address": "Address",
+  "employeeForm.employmentDetails": "Employment Details",
+  "employeeForm.hireDate": "Hire Date",
+  "employeeForm.terminationDate": "Termination Date",
+  "employeeForm.activeEmployee": "Active Employee",
+  "employeeForm.compensation": "Compensation",
+  "employeeForm.salaryAmount": "Salary Amount",
+  "employeeForm.salaryFrequency": "Salary Frequency",
+  "employeeForm.selectFrequency": "-- Select Frequency --",
+  "employeeForm.freqWeekly": "Weekly",
+  "employeeForm.freqBiWeekly": "Bi-weekly",
+  "employeeForm.freqMonthly": "Monthly",
+  "employeeForm.freqAnnual": "Annual",
+  "employeeForm.freqPerService": "Per Service",
+  "employeeForm.taxInfo": "Tax Information",
+  "employeeForm.ssnLastFour": "SSN Last Four",
+  "employeeForm.taxId": "Tax ID / EIN",
+  "employeeForm.taxIdPlaceholder": "For 1099 contractors",
+  "employeeForm.notes": "Notes",
+  "employeeForm.notesPlaceholder": "Additional notes about this employee...",
+  "employeeForm.cancel": "Cancel",
+  "employeeForm.saving": "Saving...",
+  "employeeForm.update": "Update Employee",
+
+  // -- MemberDuesViewer --
+  "memberDues.statementFailed": "Failed to generate statement",
+  "memberDues.duesFetchFailed": "Failed to fetch member dues",
+  "memberDues.unableToLoad": "Unable to load data",
+  "memberDues.goBack": "Go Back",
+  "memberDues.householdFinances": "Household Finances",
+  "memberDues.householdOf": "{name}'s Household",
+  "memberDues.membersCount": "{count} Members",
+  "memberDues.memberFinancialView": "Member Financial View",
+  "memberDues.addTransaction": "Add Transaction",
+  "memberDues.clearSelection": "Clear selection",
+  "memberDues.close": "Close",
+  "memberDues.financialYear": "Financial Year {year}",
+  "memberDues.membershipDues": "Membership Dues",
+  "memberDues.annualPledge": "Annual Pledge",
+  "memberDues.monthlyValue": "Monthly Value",
+  "memberDues.paidToDate": "Paid To Date",
+  "memberDues.balanceDue": "Balance Due",
+  "memberDues.percentComplete": "{percent}% COMPLETE",
+  "memberDues.duesCalcFrom": "Dues are calculated starting from {name}'s parish join date.",
+  "memberDues.duesCalcStandard": "Calculations based on standard contribution rates",
+  "memberDues.totalReceived": "Total Received",
+  "memberDues.yearOverYear": "Year-over-Year",
+  "memberDues.stableGrowth": "Stable Growth",
+  "memberDues.systemId": "System ID",
+  "memberDues.additionalContributions": "Additional Contributions Breakdown",
+  "memberDues.donations": "Donations",
+  "memberDues.pledges": "Pledges",
+  "memberDues.tithes": "Tithes",
+  "memberDues.offerings": "Offerings",
+  "memberDues.otherContrib": "Other",
+  "memberDues.totalAdditional": "Total Additional",
+  "memberDues.distributionTimeline": "Annual Distribution Timeline",
+  "memberDues.legendPaid": "Paid",
+  "memberDues.legendPending": "Pending",
+  "memberDues.legendUpcoming": "Upcoming",
+  "memberDues.received": "Received",
+  "memberDues.required": "Required",
+  "memberDues.ledgerTitle": "Detailed Transaction Ledger ({year})",
+  "memberDues.recordsFound": "{count} Records Found",
+  "memberDues.colPostDate": "Post Date",
+  "memberDues.colReference": "Reference",
+  "memberDues.colType": "Type",
+  "memberDues.colMechanism": "Mechanism",
+  "memberDues.colOrigin": "Origin",
+  "memberDues.colAmount": "Amount",
+  "memberDues.emptyLedger": "Historical records empty for {year}",
+  "memberDues.authorizedStatement": "Authorized Financial Statement • Generated {date}",
+  "memberDues.generating": "Generating...",
+  "memberDues.printStatement": "Print Statement",
+  "memberDues.clearSelectionBtn": "Clear Selection",
+  "memberDues.finishReview": "Finish Review",
+
+  // -- SmsBroadcast --
+  "smsBroadcast.notAuthenticated": "Not authenticated",
+  "smsBroadcast.messageRequired": "Message is required",
+  "smsBroadcast.messageTooLong": "Message is too long. Please reduce by {count} characters.",
+  "smsBroadcast.selectMemberError": "Please select a member",
+  "smsBroadcast.selectDepartmentError": "Please select a department",
+  "smsBroadcast.sendFailed": "Failed to send SMS",
+  "smsBroadcast.loadDepartmentsFailed": "Failed to load departments",
+  "smsBroadcast.loadMembersFailed": "Failed to load members",
+  "smsBroadcast.sentIndividual": "Message sent successfully to the selected member.",
+  "smsBroadcast.sentDepartment": "Department message sent to \"{name}\". Success: {success} / {total}",
+  "smsBroadcast.sentPending": "Message sent to members with pending pledges. Success: {success} / {total}",
+  "smsBroadcast.sentFulfilled": "Message sent to members with fulfilled pledges. Success: {success} / {total}",
+  "smsBroadcast.sentAll": "Broadcast request queued. Success: {success} / {total}",
+  "smsBroadcast.accessDenied": "Access Denied",
+  "smsBroadcast.noPermission": "You don't have permission to send SMS communications.",
+  "smsBroadcast.title": "SMS Communications",
+  "smsBroadcast.selectRecipientType": "Select Recipient Type",
+  "smsBroadcast.typeIndividual": "Individual",
+  "smsBroadcast.typeDepartment": "Department",
+  "smsBroadcast.typePending": "Pending Pledges",
+  "smsBroadcast.typeFulfilled": "Fulfilled Pledges",
+  "smsBroadcast.typeAll": "All Members",
+  "smsBroadcast.selectMember": "Select Member",
+  "smsBroadcast.searchMembersPlaceholder": "Search members by name or phone…",
+  "smsBroadcast.loadingMembers": "Loading members…",
+  "smsBroadcast.selectMemberOption": "-- Select a member --",
+  "smsBroadcast.selectDepartment": "Select Department",
+  "smsBroadcast.loadingDepartments": "Loading departments…",
+  "smsBroadcast.selectDepartmentOption": "-- Select a department --",
+  "smsBroadcast.deptOptionMembers": "members",
+  "smsBroadcast.onlyActiveDepts": "Only active departments with members are listed.",
+  "smsBroadcast.departmentMembers": "Department Members",
+  "smsBroadcast.loading": "Loading...",
+  "smsBroadcast.willReceiveSuffix": "members will receive this message",
+  "smsBroadcast.hide": "Hide",
+  "smsBroadcast.show": "Show",
+  "smsBroadcast.memberList": "member list",
+  "smsBroadcast.recipientList": "recipient list",
+  "smsBroadcast.noDeptMembers": "No active members with phone numbers found in this department.",
+  "smsBroadcast.pendingRecipients": "Pending Pledges Recipients",
+  "smsBroadcast.fulfilledRecipients": "Fulfilled Pledges Recipients",
+  "smsBroadcast.pendingPledgesCount": "{count} pending pledges (Total: ${total})",
+  "smsBroadcast.fulfilledPledgesCount": "{count} fulfilled pledges (Total: ${total})",
+  "smsBroadcast.noPendingPledges": "No members found with pending pledges.",
+  "smsBroadcast.noFulfilledPledges": "No members found with fulfilled pledges.",
+  "smsBroadcast.messageLabel": "Message",
+  "smsBroadcast.templateVarsTitle": "💡 Available Template Variables:",
+  "smsBroadcast.varFirstName": "First name",
+  "smsBroadcast.varLastName": "Last name",
+  "smsBroadcast.varFullName": "Full name",
+  "smsBroadcast.varAmount": "Pledge amount (single)",
+  "smsBroadcast.varTotalAmount": "Total of all pledges",
+  "smsBroadcast.varPledgeCount": "Number of pledges",
+  "smsBroadcast.varDueDate": "Due date (single)",
+  "smsBroadcast.personalizedNote": "Each member will receive a personalized message!",
+  "smsBroadcast.placeholderPending": "Example: Hi {firstName}, reminder about your pending pledge of {amount}. Due: {dueDate}. Thank you!",
+  "smsBroadcast.placeholderFulfilled": "Example: Thank you {firstName} for fulfilling your pledge of {amount}! God bless you.",
+  "smsBroadcast.placeholderDefault": "Type your SMS message…",
+  "smsBroadcast.tooLongBy": "Message is too long by {count} characters",
+  "smsBroadcast.charsRemaining": "{count} characters remaining",
+  "smsBroadcast.totalSmsChars": "Total SMS: {used} / {max} chars",
+  "smsBroadcast.costPrefix": "Est. Cost:",
+  "smsBroadcast.segmentsWord": "segments",
+  "smsBroadcast.recipientsWord": "recipients",
+  "smsBroadcast.segsWord": "segs",
+  "smsBroadcast.approxCost": "(Approx. ${cost})",
+  "smsBroadcast.standardEncoding": "Standard Encoding",
+  "smsBroadcast.unicodeEncoding": "Unicode Encoding",
+  "smsBroadcast.pricingBreakdown": "${base} base + ${carrier} carrier / seg",
+  "smsBroadcast.includeFooter": "Include automated footer",
+  "smsBroadcast.footerHelp": "Uncheck to remove the standard compliance message. Please ensure you still identify the sender manually.",
+  "smsBroadcast.sending": "Sending…",
+  "smsBroadcast.sendSms": "Send SMS",
+  square: {
+    title: 'Square Payments',
+    sync: 'Sync from Square',
+    from: 'From',
+    to: 'To',
+    status: 'Status',
+    amount: 'Amount',
+    date: 'Date',
+    card: 'Card',
+    buyer: 'Buyer',
+    note: 'Note',
+    matchedMember: 'Matched member',
+    searchMember: 'Search member…',
+    paymentType: 'Payment type',
+    year: 'Year',
+    receipt: 'Receipt #',
+    confirm: 'Confirm',
+    ignore: 'Ignore',
+    noneToReview: 'No Square payments to review.',
+    autoMatched: 'Auto-matched',
+    needsReview: 'Needs review',
+    suggested: 'Suggested',
+    awaitingReview: 'awaiting review',
+    loading: 'Loading…',
+    allCaughtUp: 'All caught up',
+    selectMember: 'Select member',
+    nonMemberDonor: 'Non-member donor',
+    donorName: 'Donor name',
+    donorNameRequired: 'Enter the donor name',
+    confirmHint: 'Select a member, or mark as a non-member donor and enter a name',
+    createdOk: 'Transaction created.',
+    alreadyRecorded: 'This payment was already recorded; the row has been linked to its existing transaction.',
+    ignoredOk: 'Payment ignored.',
+    review: 'To review',
+    ignoredTab: 'Ignored',
+    ignoredCountLabel: 'ignored',
+    restore: 'Restore',
+    restoredOk: 'Payment restored to review.',
+    noneIgnored: 'No ignored payments.',
+    selectAll: 'Select all',
+    selectedCount: 'selected',
+    bulkConfirm: 'Confirm',
+    clearSelection: 'Clear',
+    bulkDonorHint: 'All selected payments will be recorded under this donor name.',
+    bulkResult: 'confirmed',
+    bulkFailed: 'failed'
+  },
+  mobileNav: {
+    today: 'Today',
+    calendar: 'Calendar',
+    give: 'Give',
+    more: 'More',
+    label: 'Main',
+    closeMore: 'Close',
+    serviceTimes: 'Service Times',
+    watch: 'Watch Live',
+    profile: 'My Profile',
+    dependents: 'My Family',
+    departments: 'Departments',
+    gallery: 'Photo Gallery',
+    board: 'Board Members',
+    bylaw: 'Church Bylaw',
+    privacy: 'Privacy',
+    admin: 'Admin Panel',
+    treasurer: 'Treasurer',
+    outreach: 'Outreach',
+    sms: 'SMS Broadcast',
+    menuTitle: 'More',
+  },
+  pwa: {
+    updateAvailable: 'A new version is available.',
+    refresh: 'Refresh',
+    installTitle: 'Add to Home Screen',
+    installBody: 'Install the parish app for faster access.',
+    install: 'Install',
+    installDismiss: 'Not now',
+    iosInstallBody: 'Tap Share, then "Add to Home Screen".',
+  },
+  // ErrorBoundary's fallback UI. This is a class component reachable when
+  // other things have already broken (see ErrorBoundary.tsx), so it reads
+  // localStorage directly rather than via useI18n/useContext — it must not
+  // depend on any provider that might itself be implicated in the error.
+  errorBoundary: {
+    title: 'Something went wrong',
+    body: 'An error occurred. Please try refreshing the page.',
+    retry: 'Try Again',
+    detailsLabel: 'Error details',
+  },
+  survey: {
+    memberStatus: {
+      label: 'Member Status',
+      options: { firstTimeGuest: 'First-time / Guest', newMember: 'New Member', existingMember: 'Existing Member' }
+    },
+    intro: {
+      title: 'Church Services & Congregational Spiritual Life Assessment Survey',
+      blessing: '"In the name of the Father, the Son, and the Holy Spirit, One God. Amen."',
+      welcome: 'Dear Beloved Faithful in Christ, Peace be unto you. To glorify Almighty God and nurture our sacred worship, sacramental life, spiritual education, youth programs, parish facilities, and community outreach, we prayerfully invite your thoughtful and anonymous feedback.',
+      verse: '"Let all things be done decently and in order." — 1 Corinthians 14:40',
+      confidentialityNotice: 'Anonymous & confidential. Do not write your name or phone.'
+    },
+    section1: { title: 'About You & Your Spiritual Journey', instruction: 'These questions help us understand and serve our diverse faithful across all generations.' },
+    section2: { title: 'Divine Liturgy, Chanting (Zema) & Spiritual Services', instruction: 'Please reflect on Kidase, Kidan, Mahlet, Seatat, Zema/Mezmur, Sermon, Sunday School, Bible study, and other spiritual programs.' },
+    section3: { title: 'Language, Translation & Understanding', instruction: "Our church seeks to deliver its spiritual services to faithful in their mother tongue languages: Tigrinya, English, and Ge'ez (for Zema)." },
+    section4: { title: 'Holy Sacraments & Pastoral Care', instruction: 'Please answer from your experience. Sacraments include Baptism, Chrismation, Eucharist, Confession, Matrimony, Holy Orders, & Anointing of the Sick.' },
+    section5: { title: 'Youth, Children & Young Adult Ministry', instruction: 'Our children and youth are precious members of the Church and future servants of the Faith.' },
+    section6: { title: 'Church Environment, Facilities & Equipment', instruction: 'Please consider cleanliness, comfort, safety, accessibility, parking, classrooms, restrooms, sound, screens, seating, AC, and the elevator.' },
+    section7: { title: 'Communication, Fellowship & Community Support', instruction: 'Strong communication and loving fellowship help the church serve members in both joyful and difficult times.' },
+    section8: { title: 'Service, Volunteering & Stewardship', instruction: 'Every member has God-given gifts that build up the Church. Stewardship includes prayer, time, talent, and faithful giving.' },
+    section9: { title: 'Church Leadership, Administration & Financial Accountability', instruction: 'This section concerns clergy leadership, Sebeka Gubae, communication, property care, and faithful stewardship.' },
+    section10: { title: 'New Church Building, Growth & Evangelical Mission', instruction: "Please consider the parish's future, the new building, outreach, and service to present and future generations." },
+    section11: { title: 'Overall Spiritual Reflection & Prayerful Recommendations', instruction: 'Your final reflections will guide the spiritual growth, unity, and sacred mission of our parish.' },
+    q1: { label: 'What is your age group?', options: { under18: 'Under 18 years', age18to28: '18–28 years', age29to38: '29–38 years', age39to48: '39–48 years', age49to60: '49–60 years', age61to75: '61–75 years', age76plus: '76 years or older' } },
+    q2: { label: 'What is your gender?', options: { male: 'Male', female: 'Female' } },
+    q3: { label: 'How long have you been a member or visitor of this parish?', options: { firstTimeGuest: 'First-time / Guest', lessThan6Months: 'Less than 6 months', sixMonthsTo2Years: '6 months – 2 years', threeTo5Years: '3–5 years', moreThan5Years: 'More than 5 years' } },
+    q4: { label: 'What primarily inspired or guided you to join our parish?', options: { familyFriendInvitation: 'Family or friend invitation', movedToArea: 'Moved to the area', seekingSpiritualGuidance: 'Seeking spiritual guidance and peace in Christ', tigrayOrthodoxCommunity: 'Tigray Orthodox Tewahedo worship & community', holyDaySpecialProgram: 'A holy day or special program', childrenFamilyMinistry: 'Children or family ministry', other: 'Other' } },
+    q5: { label: 'What is your primary motivation for attending church regularly?', options: { growCloserToGod: 'To grow closer to God', receiveHolyMysteries: 'To receive the Holy Mysteries / Sacraments', liturgyPrayerChanting: 'Liturgy, prayer and chanting (Kidase / Zema)', sermonSpiritualTeaching: 'Sermon and spiritual teaching (Sibket)', fellowshipCommunity: 'Fellowship and community', childrenYouthEducation: 'Children and youth education', orthodoxTraditionCulture: 'Orthodox tradition and cultural connection' } },
+    q6: { label: 'When you come to church, do you feel welcomed, respected, and included in the church family?', options: { always: 'Always', often: 'Often', sometimes: 'Sometimes', rarely: 'Rarely', notYet: 'Not yet' } },
+    q7: { label: 'What would help visitors and members feel more welcomed and spiritually connected?' },
+    q8: { label: 'In which church services or programs do you participate most actively?', options: { divineLiturgyCommunion: 'Divine Liturgy (Kidase) & Holy Communion', mahletSeatatKidan: 'Mahlet, Seatat, and Kidan (Night/Morning Prayers)', sundaySibket: 'Sunday Sibket (Sermons & Spiritual Teachings)', sundaySchoolYouth: 'Sunday School & Youth Program', bibleStudyAdult: 'Bible Study & Adult Spiritual Classes', virtualOnlinePrograms: 'Virtual / Online Spiritual Programs' } },
+    q9: { label: 'How easy is it for you to follow the prayers, Kidase, readings, and responses?', options: { veryEasy: 'Very easy', mostlyEasy: 'Mostly easy', sometimesDifficult: 'Sometimes difficult', veryDifficult: 'Very difficult' } },
+    q10: { label: 'How do you evaluate the overall Sunday schedule and service timing?', options: { highlyAppropriate: 'Highly appropriate and spiritually fulfilling', acceptableNeedsAdjustment: 'Acceptable, but needs small timing adjustments', tooLongForFamily: 'Too long or challenging start/end time for family', preferAdjustedSchedule: 'Prefer adjusted schedule' } },
+    q11: { label: 'How do you feel about the usual Sunday Sermons (Sibket) length of about 30–40 minutes?', options: { deeplyEnrichingIdeal: 'Deeply enriching, practical, and ideal length', goodButLittleLong: 'Good, but sermon is a little too long', moderatelyHelpfulNeedsFocus: 'Moderately helpful; needs more focus on daily life/youth', desiresDeeperLongerSermon: 'Desires deeper teaching / longer sermon' } },
+    q12: { label: 'What is your assessment of the spiritual chanting, choir (Zema/Mezmur), and congregational participation?', options: { exceptionalUplifting: 'Exceptional, deeply moving, and uplifting', goodNeedsBroaderParticipation: 'Good, but needs broader congregational participation', fairNeedsOrganizationTraining: 'Fair; requires better organization & choir training', needsStructuralImprovement: 'Needs structural improvement' } },
+    q13: { label: 'What primarily prevents members from attending weekly Sunday Kidase regularly outside of major Feasts?', options: { workSchedules: 'Work schedules & modern life obligations', distanceTransportation: 'Distance & transportation constraints', languageComprehension: 'Language or comprehension barriers', needClearerSchedule: 'Need for clearer schedule & reminders', lackYouthEngagement: 'Lack of youth/children engagement during service', needPastoralOutreach: 'Need for stronger pastoral outreach & personal connection' } },
+    q14: { label: 'Please share one recommendation to strengthen worship, participation, or service timing:' },
+    q15: { label: 'Which language do you understand best for spiritual teaching?', options: { tigrinya: 'Tigrinya', english: 'English', geez: "Ge'ez", bilingual: 'Bilingual (Tigrinya/English)', other: 'Other' } },
+    q16: { label: 'Where would translation or language support help most?', options: { kidaseLiturgyTextScreens: 'Kidase / Liturgy text screens', sibketSermonTranslation: 'Sibket / Sermon translation', sundaySchoolYouth: 'Sunday School & Youth', sacramentPreparation: 'Sacrament Preparation', announcementsBulletins: 'Announcements & Bulletins', scriptureReadings: 'Scripture Readings' } },
+    q17: { label: 'How do you feel about the current practice of using more English on one Sunday each month for children, youth, and English-speaking members (3:1 language ratio)?', options: { stronglySupport: 'Strongly support', support: 'Support', neutralNoPreference: 'Neutral / no preference', doNotSupport: 'Do not support', needMoreInfo: 'Need more information' } },
+    q18: { label: 'What specific language support would help you or your children benefit more fully from church services, and why?' },
+    q19: { label: 'Do you currently have an assigned Repentance Father (Confessor)?', options: { yesAtThisParish: 'Yes, dedicated Spiritual Father at this parish', yesAtAnotherParish: 'Yes, at another Orthodox Tewahedo parish', noSeekingGuidance: 'No, but seeking guidance to find one', noNotCurrently: 'No, I do not currently have one' } },
+    q20: { label: 'How regularly do you meet with your Repentance Father or Clergy for spiritual counseling and confession?', options: { monthlyOrAsNeeded: 'Monthly or as needed', every2to3Months: 'Every 2–3 months', duringMajorFasts: 'During major Fasts/Feasts', rarelyOrNever: 'Rarely or Never' } },
+    q21: { label: 'When you request a sacramental or pastoral service, how supported do you feel by the clergy and church?', options: { verySupported: 'Very supported', supported: 'Supported', somewhatSupported: 'Somewhat supported', notSupportedEnough: 'Not supported enough', haveNotRequested: 'Have not requested' } },
+    q22: { label: "How often do clergy or designated church servants check on your family's spiritual and personal well-being?", options: { regularly: 'Regularly', sometimes: 'Sometimes', rarely: 'Rarely', never: 'Never', newToChurch: 'New to church' } },
+    q23: { label: 'Which forms of pastoral care should be strengthened most?', options: { homeHospitalVisits: 'Home/hospital visits for sick & elderly', financialPersonalHardship: 'Support during financial or personal hardship', spiritualCounseling: 'Spiritual counseling & repentance guidance', newcomerWelcome: 'Newcomer welcome and follow-up outreach', bereavementGrief: 'Support during bereavement & grief', preMaritalFamilyCounseling: 'Pre-marital & family counseling' } },
+    q24: { label: 'Please recommend one way our respected clergy/fathers and servants can strengthen pastoral care and relationships with the faithful:' },
+    q25: { label: 'Do you have children, teenagers, or young adults in your household attending church?', options: { yesAges0to9: 'Yes – ages 0–9', yesAges10to17: 'Yes – ages 10–17', yesAges18to30: 'Yes – ages 18–30', noNotApplicable: 'No / Not applicable' } },
+    q26: { label: 'How effective are church programs in nurturing the spiritual growth of youth and children?', options: { highlyEffective: 'Highly effective; robust Orthodox education', moderateNeedsModernBilingual: 'Moderate; needs modern & bilingual approaches', inadequateUrgentYouthMinistry: 'Inadequate; urgently needs dedicated Youth Ministry', unsureNotApplicable: 'Unsure / Not applicable' } },
+    q27: { label: 'Which programs should be strengthened for children and youth?', options: { ageGradedSundaySchool: 'Age-graded Sunday School curriculum', clergyMentorship: 'Clergy, deacon & adult mentorship programs', englishBibleStudyApologetics: 'English Bible Study & Apologetics classes', youthFellowshipRetreats: 'Youth fellowship retreats, outings & service projects', sacredZemaLiturgicalTraining: 'Sacred Zema, Mezmur, & Liturgical response training', parentSupport: 'Parent support and family faith resources' } },
+    q28: { label: 'What is the single most important action our parish must take to keep our youth strong in faith?' },
+    q29: { label: 'How do you rate the overall cleanliness, atmosphere, and comfort of church facilities? (Upstairs, Dejeselam, Classrooms, Restrooms, etc.)', options: { exceptionalExcellent: 'Exceptional / Excellent', satisfactoryGood: 'Satisfactory / Good', fairMinorCareNeeded: 'Fair (Minor care needed)', needsMajorCleanup: 'Needs major cleanup' } },
+    q30: { label: 'How do you rate the sound system and your ability to hear prayers, readings, mezmur, and sermons?', options: { excellent: 'Excellent', good: 'Good', fair: 'Fair', needsImprovement: 'Needs improvement' } },
+    q31: { label: 'How helpful are the display screens for prayers, readings, announcements, and translations?', options: { fullyFunctional: 'Fully functional, clear audio and screen visibility', adequateNeedsTextEnhancement: 'Adequate, but display text/translations need enhancement', soundNeedsTuning: 'Sound system needs tuning/clarity improvement', needsImmediateTechUpgrade: 'Needs immediate technical upgrade' } },
+    q32: { label: 'Which equipment or comfort item needs improvement first?', options: { soundSystem: 'Sound system', displayScreens: 'Display screens / visual', chairsSeating: 'Chairs or seating', airConditioning: 'Air conditioning / temp', elevator: 'Elevator', lighting: 'Lighting', other: 'Other' } },
+    q33: { label: 'Which facility area requires the most immediate attention?', options: { worshipArea: 'Worship area', dejeselamCommonAreas: 'Dejeselam and common areas', sanctuarySurroundings: 'Sanctuary surroundings', sundaySchoolClassrooms: "Sunday school and Children's classrooms", parkingTrafficFlow: 'Parking and traffic flow', accessibilityElders: 'Accessibility for elders & people with disabilities', buildingSafetySigns: 'Building safety and signs' } },
+    q34: { label: 'How do you rate church announcements and communication?', options: { excellent: 'Excellent', good: 'Good', fair: 'Fair', needsImprovement: 'Needs improvement' } },
+    q35: { label: 'How do you prefer to receive church announcements and spiritual resources?', options: { inPersonAnnouncement: 'In-person announcement', textSms: 'Text / SMS', whatsappViber: 'WhatsApp / Viber', email: 'Email', printedNotice: 'Printed notice', facebookSocialMedia: 'Facebook / social media', churchWebsite: 'Church website' } },
+    q36: { label: 'How well does the church support members during illness, bereavement, family crisis, or hardship?', options: { veryWell: 'Very well', well: 'Well', sometimes: 'Sometimes', needsImprovement: 'Needs improvement', iDoNotKnow: 'I do not know' } },
+    q37: { label: 'Which community ministries should be strengthened?', options: { newcomerWelcomeFollowUp: 'Newcomer welcome and follow-up', careElders: 'Care for elders and homebound members', familyFellowship: 'Family fellowship', youngAdultFellowship: 'Young-adult fellowship', charityOutreach: 'Charity and outreach', supportFamiliesInCrisis: 'Support for families in crisis', communityEducationWorkshops: 'Community education and workshops', evangelismMission: 'Evangelism and mission' } },
+    q38: { label: 'What is one practical way the church can strengthen Christian fellowship and care among members?' },
+    q39: { label: 'In which ways would you be willing to serve?', options: { zemaChoirWorshipSupport: 'Zema / choir / worship support', cleaningSetupMaintenance: 'Cleaning, setup, maintenance, or gardening', sundaySchoolYouthTeaching: 'Sunday School or youth teaching', welcomingNewcomerSupport: 'Welcoming and newcomer support', mediaSoundScreensTech: 'Media, sound, screens, or tech', charityVisitationOutreach: 'Charity, visitation, or outreach', fundraisingEventOrganization: 'Fundraising or event organization', professionalSkills: 'Professional skills (finance, legal, health, etc.)', needMoreInfo: 'I need more information before volunteering' } },
+    q40: { label: "How clear is the church's teaching and communication about Asrat, Bekurat, offerings, and other forms of stewardship?", options: { veryClear: 'Very clear', mostlyClear: 'Mostly clear', somewhatUnclear: 'Somewhat unclear', notClear: 'Not clear', newHaveNotReceivedInfo: 'I am new and have not received this information' } },
+    q41: { label: 'What would make it easier for members to volunteer or serve?', options: { clearMinistryRoles: 'Clear ministry roles', volunteerSignUpForm: 'A volunteer sign-up form', trainingGuidance: 'Training and guidance', personalInvitationFollowUp: 'Personal invitation and follow-up', regularSchedule: 'A regular schedule', childcareDuringActivities: 'Childcare during service activities', recognitionEncouragement: 'Recognition and encouragement', other: 'Other' } },
+    q42: { label: "Which type of support are you willing to offer for the church's mission?", options: { prayer: 'Prayer', regularGiving: 'Regular giving', specialProjectBuilding: 'Special project or building contribution', volunteerTime: 'Volunteer time', professionalTechnicalExpertise: 'Professional or technical expertise', invitingOthers: 'Inviting others', outreachCharity: 'Outreach & charity', needMoreInfo: 'Need more information' } },
+    q43: { label: "How much confidence do you have in the church leadership's spiritual direction and service to the congregation?", options: { veryHighConfidence: 'Very high confidence', highConfidence: 'High confidence', someConfidence: 'Some confidence', lowConfidence: 'Low confidence', notEnoughInfo: 'Not enough information to answer' } },
+    q44: { label: 'How clearly does the Sebeka Gubae communicate important decisions, plans, and responsibilities?', options: { veryClearly: 'Very clearly', clearly: 'Clearly', sometimesClearly: 'Sometimes clearly', notClearly: 'Not clearly', iDoNotKnow: 'I do not know' } },
+    q45: { label: 'How confident are you that church money, Asrat, Bekurat, offerings, and property are managed responsibly and transparently?', options: { veryConfident: 'Very confident', confident: 'Confident', somewhatConfident: 'Somewhat confident', notConfident: 'Not confident', notEnoughInfo: 'Not enough info' } },
+    q46: { label: 'Which administrative practices would most improve trust and participation?', options: { regularFinancialSummaries: 'Regular financial summaries', clearAnnualPlansGoals: 'Clear annual plans and goals', betterExplanationMajorDecisions: 'Better explanation of major decisions', moreOpportunitiesMemberQuestions: 'More opportunities for member questions', clearVolunteerMinistryResponsibilities: 'Clear volunteer and ministry responsibilities', fasterResponseToConcerns: 'Faster response to concerns', consistentPoliciesProcedures: 'Consistent policies and procedures' } },
+    q47: { label: 'What is one constructive recommendation for the clergy, Sebeka Gubae, or church administration?' },
+    q48: { label: 'Have you visited or seen the new church building project?', options: { yesVisitedInPerson: 'Yes – visited in person', seenPhotosUpdates: 'Seen photos or updates', awareButNotVisited: 'Aware, but not visited', notYetNotInformed: 'Not yet / not informed' } },
+    q49: { label: "How informed do you feel about the new building's progress, needs, and next steps?", options: { veryInformed: 'Very informed', informed: 'Informed', somewhatInformed: 'Somewhat informed', notInformed: 'Not informed' } },
+    q50: { label: 'How do you rate the progress of the building modification and preparation work?', options: { excellentProgress: 'Excellent progress', goodProgress: 'Good progress', satisfactory: 'Satisfactory', movingTooSlowly: 'Moving too slowly', notEnoughInfo: 'Not enough info' } },
+    q51: { label: 'Which priorities are most important as the church grows?', options: { completeNewBuildingResponsibly: 'Complete the new building responsibly', expandChildrenYouthMinistry: 'Expand children and youth ministry', strengthenClergyPastoralCapacity: 'Strengthen clergy and pastoral-care capacity', developCharityOutreach: 'Develop charity and community outreach', improveWorshipTeachingLanguageAccess: 'Improve worship, teaching, and language access', buildFinancialSustainability: 'Build stronger financial sustainability', trainFutureServantsDeaconsLeaders: 'Train future servants, deacons, teachers, & leaders', strengthenEvangelismWelcomeFamilies: 'Strengthen evangelism and welcome new families' } },
+    q52: { label: "What major recommendation do you have for expanding the church's evangelical mission and spiritual service?" },
+    q53: { label: "Overall, how satisfied are you with the church's worship, spiritual care, teaching, fellowship, facilities, and administration?", options: { verySatisfied: 'Very satisfied', satisfied: 'Satisfied', neutral: 'Neutral', dissatisfied: 'Dissatisfied', veryDissatisfied: 'Very dissatisfied' } },
+    q54: { label: 'What is one sacred practice or service that our church does especially well and should preserve?' },
+    q55: { label: 'What is the single most important recommendation or vision you wish to share with our Clergy and Sebeka Gubae?' },
+    q56: { label: 'Please share any other prayerful recommendation, concern, or idea that could strengthen the spiritual life, unity, and service of our church:' },
+    wizard: {
+      sectionProgress: 'Section {current} of {total}',
+      back: 'Back',
+      next: 'Next',
+      submit: 'Submit',
+      submitting: 'Submitting...',
+      skipHint: 'Skip any question that does not apply to you.',
+      otherPlaceholder: 'Please specify...',
+      selectUpTo: 'Select up to {n}',
+      submitError: 'Something went wrong submitting your response. Please try again.',
+      autosaveNotice: 'Your answers are saved on this device. You can close this page and finish later.'
+    },
+    resume: {
+      welcomeBack: 'Welcome back — we saved your progress.',
+      welcomeBackOn: 'Welcome back — we saved your progress from {date}.',
+      startOver: 'Start over',
+      confirmStartOver: 'Yes, erase my answers',
+      dismiss: 'Dismiss'
+    },
+    thankYou: {
+      title: 'Thank You',
+      body: 'May the God of peace, through the intercession of the Holy Mother Saint Mary and Saint Abune Aregawi, bless you and your family with abundant spiritual grace and peace. Amen.',
+      gratitude: 'Thank you for your pious contribution to the spiritual growth and mission of Debre Tsehay Abune Aregawi Church!'
+    },
+    homeCard: {
+      title: 'Church Services Survey',
+      description: 'Share your anonymous feedback on worship, ministry, and parish life — takes about 10 minutes.'
+    },
+    report: {
+      title: 'Church Services Survey — Report',
+      tab: 'Survey Report',
+      totalResponses: 'Total Responses',
+      answeredCount: '{answered} of {total} answered',
+      localeBreakdown: 'Survey Language',
+      locales: { en: 'English', ti: 'Tigrigna' },
+      freeTextAnswers: 'Free-text answers',
+      noResponsesYet: 'No responses yet.',
+      accessDenied: 'You do not have permission to view this page.',
+      loading: 'Loading report...',
+      loadError: 'Failed to load the survey report.'
+    }
+  },
 
 };
 
@@ -1374,6 +2956,7 @@ export const ti: Dictionaries = {
       contact: "ርክብ",
       latestTeaching: "ሓዱሽ ትምህርቲ",
     },
+    submitting: "የቐርብ ኣሎ...",
   },
   navigation: {
     dashboard: "ዳሽቦርድ",
@@ -1389,7 +2972,15 @@ export const ti: Dictionaries = {
     welcomeBack: "እንኳዕ ብደሓን መጻእኩም",
     loginSubtitle: "ናብ ማሕበረሰብ ኣካውንትኩም ንምእታው እተኻ",
   },
+  docViewer: {
+    openInNewTab: "ኣብ ሓድሽ ታብ ክፈት",
+    download: "ስላይዳት ኣውርድ (.pptx)",
+    close: "ዕጸ",
+    unavailable: "እቲ ሰነድ እንተዘይተራእየ፡ ኣብ ሓድሽ ታብ ክፈትዎ ወይ ስላይዳት ኣውርዱ።"
+  },
   language: "ቋንቋ",
+  // Full church name shown in the top navigation bar.
+  'church.name': 'ደብረ ጸሓይ ኣቡነ ኣረጋዊ ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን',
   hero: {
     // እንኳዕ ብደሓን መጻእኩም = “Welcome”
     // ቤ/ክ = ቤተ ክርስቲያን (shorthand)
@@ -1437,6 +3028,36 @@ export const ti: Dictionaries = {
         desc: "ባህልናን ውርስናን ብበዓላትን ማሕበራዊ ምትእኽኻብን ኣስተማቕሩ።"
       }
     },
+  },
+  parishNews: {
+    title: "ካብ ቤተ ክርስቲያን",
+    dashboardTitle: "ዜና ቤተ ክርስቲያን",
+    through: "ክሳብ",
+    loadError: "ሕጂ ሓበሬታታት ክቐርብ ኣይክእልን።",
+  },
+  liturgical: {
+    heading: "ሎሚ ኣብ ቤተ ክርስቲያን",
+    feast: "በዓል",
+    fast: "ጾም",
+    ordinary: "ንቡር መዓልቲ",
+    dayOf: "{day} መዓልቲ ካብ {total}",
+    commemoration: "ዝኽሪ",
+    nextFeast: "ዝቕጽል በዓል",
+    tomorrow: "ጽባሕ",
+    inDays: "ድሕሪ {days} መዓልታት",
+  },
+  calendar: {
+    title: "ዓውደ ኣዋርሕ ኦርቶዶክስ",
+  },
+  baptismalName: {
+    title: "ስመ ጥምቀትካ እንታይ እዩ?",
+    why: "ስመ ጥምቀትካ ምስ ሓደ ቅዱስን ምስ ሓደ መዓልቲ ናይ ዓውደ ኣዋርሕ ቤተ ክርስቲያንን የተኣሳስረካ። ንክንፈልጦ ንደሊ፡ ማሕበር ንመዓልቲ ስምካ ክዝክሮ።",
+    label: "ስመ ጥምቀት",
+    placeholder: "ብግእዝ ወይ ብእንግሊዝኛ — ኣብነት፡ ወልደ ማርያም",
+    save: "ዕቀብ",
+    saving: "ይዕቀብ ኣሎ…",
+    notNow: "ሕጂ ኣይኮነን",
+    error: "ኣይተዓቀበን። በጃኻ እንደገና ፈትን።",
   },
   quicklinks: {
     priest: "ካህን",
@@ -1520,7 +3141,8 @@ export const ti: Dictionaries = {
       payments: "ክፍሊት ኣባላት",
       expenses: "ወጪታት",
       reports: "ጸብጻባት",
-      zelle: "ዘለ (Zelle) ክፍሊታት",
+      zelle: "ዜል ክፍሊታት",
+      square: "ስኴር ግምጋም",
       memberDues: "ወርሓዊ ክፍሊት",
       employees: "ሰራሕተኛታት",
       vendors: "ሻየጥቲ"
@@ -1573,9 +3195,21 @@ export const ti: Dictionaries = {
       otherIncome: "ካልእ እቶት",
       currentBalance: "ሕሳብ ባንኪ",
       lastUpdated: "ዝተሓደሰሉ",
+      balanceNote: "ሕሳብ ኣብ መዝገብ ዘለዉ ኩሎም ንግዳት የንጸባርቕ እዩ፣ ብዓመት ኣይተፈልየን",
       target: "ዕላማ",
+      onPace: "ፍጥነት ኣከባ",
+      onPaceHelp: "ዝተኣከበ ክፍሊት ኣንጻር ክሳብ እዚ እዋን ክኽፈል ዝጽበ (ከፊላዊ ክፍሊት እውን ይቑጸር)። ኣባላት ኣቐዲሞም ምስ ዝኸፍሉ ካብ 100% ክሓልፍ ይኽእል።",
+      pledged: "ተማባጺዑ",
       membershipDues: "ናይ ኣባልነት ክፍሊት",
       otherDonations: "ካልእ ሽልማታት",
+      reconcileRequired: "ምስ ናይ ባንኪ መግለጺ ኣይሰማምዕን — ምዕራይ የድሊ",
+      reconcileLedger: "መዝገብ",
+      reconcileBank: "ባንኪ",
+      reconcileDiff: "ፍልልይ",
+      // NOTE: machine-drafted, not yet reviewed by a Tigrigna speaker — verify before relying on it.
+      annualDuesProgressHelp: "ናይ ምሉእ ዓመት ትርኢት፦ ናይዚ ዓመት ጠቕላላ ዝተማባጽዐ ገንዘብ ኣንጻር እቲ ክሳብ ሕጂ ዝተኣከበ። ኩሎም ኣባላት ምሉእ ተማብጻኦም ክሳብ ዝኸፍሉ 100% ኣይበጽሕን፣ ብዘየገድስ ኣየናይ ወርሒ ምዃኑ።",
+      // NOTE: machine-drafted, not yet reviewed by a Tigrigna speaker — verify before relying on it.
+      annualOutstandingHelp: "ጠቕላላ ናይ ምሉእ ዓመት ተማብጻ ነኪኻ እቲ ዝተኣከበ ገንዘብ። እዚ ናይ ምሉእ ዓመት ፍልልይ እዩ፣ ክሳብ ሕጂ ዝጸንሐ ዕዳ ጥራይ ኣይኮነን — ነቲ ኣብ ትሕቲ 'ክፍሊት ኣባልነትን ኩነታት ኣባላትን' ዘሎ 'ዝተረፈ' ርአ።",
     },
     health: {
       title: "ጥዕና ኣባልነት",
@@ -1589,6 +3223,10 @@ export const ti: Dictionaries = {
       behindOnDues: "ዕዳ ኣለዎ",
       activeMembers: "ንጡፋት ኣባላት",
       membershipDues: "ናይ ኣባልነት ክፍሊት",
+      // NOTE: machine-drafted, not yet reviewed by a Tigrigna speaker — verify before relying on it.
+      membershipDuesHelp: "ናይ ክሳብ ሕጂ ትርኢት፦ ክሳብ ሕጂ ክኽፈል ዝግብኦ (ናይ ነፍሲ ወከፍ ኣባል ተማብጻ ክሳብ ህሉው ወርሒ ተማቒሉ) ኣንጻር እቲ ዝተኣከበ። ስለዚ እዩ ካብቲ ልዕሊ ዘሎ ናይ ዓመት ኣባልነት ክፍሊት ንእሽቶ ቁጽሪ ዝኸውን።",
+      // NOTE: machine-drafted, not yet reviewed by a Tigrigna speaker — verify before relying on it.
+      duesOutstandingHelp: "ክሳብ ሕጂ ክኽፈል ዝግብኦ (ተማብጻ ክሳብ ህሉው ወርሒ ተማቒሉ) ነኪኻ ዝተኣከበ ገንዘብ። ምስቲ ትሕቲ ዘሎ ናይ 'ዕዳ ኣለዎ' ቁጽሪ ይሰማማዕ — ንዝተኸታተሉ ኣባላት ጥራይ እዩ ዝቖጽር። ካብቲ ኣብ ናይ ዓመት ኣባልነት ክፍሊት ዘሎ 'ዝተረፈ' ዝፍለ እዩ፣ ንሱ ናይ ምሉእ ዓመት ፍልልይ እዩ።",
       otherDonations: "ካልእ ሽልማታት",
     },
     transactionList: {
@@ -1597,17 +3235,23 @@ export const ti: Dictionaries = {
         receiptNumber: "ቁጽሪ ቅብሊት",
         paymentType: "ዓይነት ክፍሊት",
         paymentMethod: "ገባሪ ክፍሊት",
+        cardSource: "ምንጪ ካርድ",
+        minAmount: "ዝተሓተ መጠን",
+        maxAmount: "ዝለዓለ መጠን",
         dateRange: "እዋን",
         startDate: "መጀመሪ ዕለት",
         endDate: "መወዳእታ ዕለት",
         apply: "ኣጣሪ",
         placeholder: {
           search: "ኣባል ድለ (ብውሑዱ 3 ፊደላት)...",
-          receipt: "ቁጽሪ ቅብሊት ድለ..."
+          receipt: "ቁጽሪ ቅብሊት ድለ...",
+          minAmount: "ዝተሓተ መጠን",
+          maxAmount: "ዝለዓለ መጠን"
         },
         options: {
           allTypes: "ኩሉ ዓይነት",
           allMethods: "ኩሉ ገባሪ",
+          allSources: "ኩሉ ምንጪ",
           allTime: "ኩሉ ግዜ",
           today: "ሎሚ",
           week: "ዝሓለፈ 7 መዓልታት",
@@ -1640,12 +3284,23 @@ export const ti: Dictionaries = {
       },
       methods: {
         cash: "ብጥረ ገንዘብ",
-        check: "Check",
-        zelle: "Zelle",
+        check: "ቼክ",
+        zelle: "ዜል",
         credit_card: "Credit Card",
         debit_card: "Debit Card",
         ach: "ACH",
         other: "ካልእ"
+      },
+      source: {
+        label: "ምንጪ",
+        square: "Square",
+        stripe: "Stripe",
+        manual: "ብኢድ ዝኣተወ"
+      },
+      edit: {
+        edit: "ኣርም",
+        save: "ኣቐምጥ",
+        cancel: "ሰርዝ"
       },
       status: {
         pending: "Pending",
@@ -1682,7 +3337,10 @@ export const ti: Dictionaries = {
         payee: "ተቀባሊ",
         amount: "መጠን",
         method: "ኣገባብ",
-        checkNumber: "Check #",
+        checkNumber: "ቁጽሪ ቼክ",
+        bankStatus: "ባንኪ",
+        reconciled: "ተዓሪዩ",
+        notReconciled: "ኣይተዓረየን",
         recordedBy: "ዝመዝገቦ",
         memo: "መዘኻኸሪ",
         employee: "ሰራሕተኛ",
@@ -1697,7 +3355,10 @@ export const ti: Dictionaries = {
         category: "ዓይነት",
         payeeType: "ዓይነት ተቀባሊ",
         paymentMethod: "ኣገባብ ክፍሊት",
-        checkNumber: "Check Number",
+        checkNumber: "ቁጽሪ ቼክ",
+        checkNumberRequired: "ንክፍሊት ብቼክ ቁጽሪ ቼክ ኣድላዪ እዩ",
+        checkNumberDuplicate: "እዚ ቁጽሪ ቼክ ተጠቒሙ እዩ። በጃኹም ዘይተጠቕመ ቁጽሪ ቼክ ተጠቐሙ።",
+        checkNumberNumeric: "ቁጽሪ ቼክ ኣሃዛት ጥራይ ክኸውን ኣለዎ (ንኣብነት 1593)",
         receiptNumber: "ቁጽሪ ቅብሊት",
         memo: "መዘኻኸሪ",
         cancel: "ሰርዝ",
@@ -1709,6 +3370,20 @@ export const ti: Dictionaries = {
           vendor: "ሻያጣይ",
           other: "ካልእ"
         }
+      },
+      invoiceNumber: "ቁጽሪ ኢንቮይስ",
+      missingCheckNumber: "ቁጽሪ ቼክ የለን",
+      edit: {
+        edit: "ኣርም",
+        save: "ለውጥታት ኣቐምጥ",
+        saving: "የቐምጥ ኣሎ...",
+        cancel: "ሰርዝ",
+        saveFailed: "ለውጥታት ምቕማጥ ኣይተኻእለን",
+        payeeReadOnly: "ወጪ ድሕሪ ምምዝጋቡ ተቀባሊ ክቕየር ኣይክእልን።",
+        categoryRequired: "በጃኹም ዓይነት ወጪ ምረጹ",
+        amountInvalid: "በጃኹም ካብ $0.00 ዝዓቢ ቅኑዕ መጠን ኣእትዉ",
+        dateRequired: "በጃኹም ዕለት ወጪ ምረጹ",
+        dateFuture: "ዕለት ወጪ ኣብ መጻኢ ክኸውን ኣይክእልን"
       }
     },
     reportTabs: {
@@ -2076,6 +3751,1321 @@ export const ti: Dictionaries = {
       cancel: "ሰርዝ",
       save: "ቀምጥ",
       saving: "ይቅመጥ ኣሎ..."
+    }
+  },
+
+  // ==== Consolidated legacy flat keys (Phase 1 migration) — DRAFT, pending native review ====
+  "admin.panel": "ፓነል ኣመሓዳሪ",
+  "manage.members": "ኣባላት ኣመሓድር",
+  "manage.members.and.roles": "ኣባላትን ሓላፍነታትን ኣመሓድር",
+  "access.admin.panel": "ናብ ፓነል ኣመሓዳሪ እተ",
+  "role.management": "ምሕደራ ሓላፍነት",
+  "manage.member.roles.and.permissions": "ሓላፍነትን ፍቓዳትን ኣባላት ኣመሓድር",
+  "update.member.roles": "ሓላፍነታት ኣባላት ኣሐድስ",
+  "change.role": "ሓላፍነት ቀይር",
+  "new.role": "ሓድሽ ሓላፍነት",
+  "current.role": "ህሉው ሓላፍነት",
+  "role.descriptions": "መግለጺ ሓላፍነታት",
+  "update.role": "ሓላፍነት ኣሐድስ",
+  "updating.role.for": "ሓላፍነት የሐድስ ኣሎ ን",
+  "new.permissions": "ሓደስቲ ፍቓዳት",
+  "updating": "የሐድስ ኣሎ...",
+  "statistics": "ስታቲስቲክስ",
+  "overview.of.church.membership": "ሓፈሻዊ ትሕዝቶ ኣባልነት ቤተ ክርስቲያን",
+  "active.members": "ንጡፋት ኣባላት",
+  "total.children": "ጠቕላላ ህጻናት",
+  "recent.registrations": "ናይ ቀረባ እዋን ምዝገባታት",
+  "role.breakdown": "ኣከፋፍላ ሓላፍነት",
+  "gender.breakdown": "ኣከፋፍላ ጾታ",
+  "marital.status.breakdown": "ኣከፋፍላ ኩነታት መርዓ",
+  "language.preference.breakdown": "ኣከፋፍላ ምርጫ ቋንቋ",
+  "membership.status": "ኩነታት ኣባልነት",
+  "members.with.children": "ህጻናት ዘለዎም ኣባላት",
+  "activity.metrics": "መለክዒ ንጥፈታት",
+  "new.registrations.30.days": "ሓደስቲ ምዝገባታት (30 መዓልቲ)",
+  "avg.children.per.family": "ማእከላይ ህጻናት ብቤተሰብ",
+  "active.rate": "መጠን ንጡፋት",
+  "quick.actions": "ቅልጡፍ ተግባራት",
+  "export.member.list": "ዝርዝር ኣባላት ኣውጽእ",
+  "generate.report": "ጸብጻብ ኣውጽእ",
+  "send.communication": "መልእኽቲ ስደድ",
+  "refresh.statistics": "ስታቲስቲክስ ኣሐድስ",
+  "no.data.available": "ዳታ የለን",
+  "edit.member": "ኣባል ኣርም",
+  "search": "ድለ",
+  "all.roles": "ኩሎም ሓላፍነታት",
+  "all.statuses": "ኩሉ ኩነታት",
+  "active": "ንጡፍ",
+  "inactive": "ዘይንጡፍ",
+  "joined": "ዝተጸምበረ",
+  "children": "ህጻናት",
+  "current.permissions": "ህሉው ፍቓዳት",
+  "confirm.delete.member": "ነዚ ኣባል ክትድምስሶ ርግጸኛ ዲኻ?",
+  "basic.info": "ቀንዲ ሓበሬታ",
+  "contact.info": "ሓበሬታ ርክብ",
+  "street.address": "ኣድራሻ ጎደና",
+  "ministries": "ኣገልግሎታት",
+  "ministries.placeholder": "ዝግደሰሎም ኣገልግሎታት ዘርዝር...",
+  "bank_transfer": "ብባንኪ ምትሕልላፍ",
+  "select.language": "ቋንቋ ምረጽ",
+  "english": "እንግሊዝኛ",
+  "tigrinya": "ትግርኛ",
+  "amharic": "ኣምሓርኛ",
+  "no.children.registered": "ዝተመዝገበ ህጻን የለን",
+  "spiritual.father": "መንፈሳዊ ኣቦ",
+  "contact.address": "ርክብን ኣድራሻን",
+  "common.edit": "ኣርም",
+  "common.delete": "ደምስስ",
+
+  // ==== Shared: Gregorian month short names (DRAFT, transliteration) ====
+  months: {
+    short: {
+      january: "ጃን", february: "ፌብ", march: "ማርች", april: "ኤፕሪ",
+      may: "ሜይ", june: "ጁን", july: "ጁላይ", august: "ኦገስ",
+      september: "ሴፕቴ", october: "ኦክቶ", november: "ኖቬም", december: "ዲሴም"
+    }
+  },
+
+  // ==== DuesPage (Phase 2a) — DRAFT, pending native review ====
+  duesPage: {
+    signInRequired: "ክፍሊት ንምርኣይ ክትኣትዉ ኣለኩም።",
+    dependentNotLinked: "ናይ ተጸባዪ መለለዪኹም ምስ ሓላፊ ቤተሰብ ገና ኣይተኣሳሰረን። በጃኹም ንሓላፊ ቤተሰብ ተወከሱ ወይ ባዕልኹም ናይ ምጥያቕ መስርሕ ተጠቐሙ።",
+    loadFailed: "ክፍሊት ምጽዓን ኣይተኻእለን",
+    statementFailed: "መግለጺ ምውጻእ ኣይተኻእለን",
+    retry: "ዳግማይ ፈትን",
+    title: "ክፍሊት ኣባላት",
+    calculatedFrom: "ካብ ዕለት ምጽንባር ናብ ቤተ ክርስቲያን ዝተሓስበ",
+    monthlyStatus: "ወርሓዊ ኩነታት",
+    dueShort: "ክፍሊት",
+    monthlyCommitment: "ወርሓዊ ቃል ኪዳን:",
+    paymentHistory: "ታሪኽ ክፍሊት",
+    noPayments: "ኣብዚ ዓመት ዝተረኽበ ክፍሊት የለን።",
+    stat: {
+      collected: "ዝተኣከበ",
+      balanceDue: "ዝተረፈ ክፍሊት",
+      otherPayments: "ካልኦት ክፍሊታት",
+      yearlyPledge: "ዓመታዊ ቃል ኪዳን"
+    },
+    col: {
+      date: "ዕለት",
+      amount: "መጠን",
+      type: "ዓይነት",
+      method: "ኣገባብ",
+      receipt: "ቁ. ደረሰኝ",
+      note: "መዘኻኸሪ",
+      status: "ኩነታት"
+    },
+    status: {
+      pending: "ይጽበ ኣሎ",
+      succeeded: "ተዓዊቱ"
+    },
+    statement: {
+      title: "ዓመታዊ መግለጺ ወፈያ",
+      desc: "ንግብሪ ዝቕነስ መግለጺ ወፈያኹም ንዓመተ {year} ኣውጽኡ።",
+      print: "መግለጺ ሓትም"
+    },
+    pledgeBannerTitle: "ክፉት መብጽዓ ኣለኩም",
+    pledgeBannerBody: "ካብ መብጽዓኹም ናይ {campaign} {amount} ተሪፉ ኣሎ።",
+    pledgeBannerCta: "ናብ መብጽዓይ ክኸፍል",
+  },
+
+  // ==== DonatePage (Phase 2a) — DRAFT, pending native review ====
+  donatePage: {
+    title: "ንቤተ ክርስቲያንና ደግፉ",
+    subtitle: "ልግስኹም ወፈያ ተልእኾና ንኽንቕጽልን ንማሕበረሰብና ንኸነገልግልን ይሕግዘና።",
+    onlineDonation: "ብኢንተርነት ወፈያ",
+    howOften: "ክንደይ ግዜ ክትውፍዩ ትደልዩ?",
+    oneTime: "ሓደ ግዜ",
+    recurring: "ተደጋጋሚ",
+    frequency: "ድግግሞሽ",
+    donationAmount: "መጠን ወፈያ",
+    paymentMethod: "ኣገባብ ክፍሊት",
+    cardOption: "ክረዲት/ዴቢት ካርድ",
+    achOption: "ሕሳብ ባንኪ (ACH)",
+    cardInformation: "ሓበሬታ ካርድ",
+    bankInformation: "ሓበሬታ ሕሳብ ባንኪ",
+    donorInformation: "ሓበሬታ ወፋዪ",
+    prefillNoteLabel: "መዘኻኸሪ:",
+    prefillNoteBody: "ሓበሬታኹም ካብ ፕሮፋይልኩም ኣቐዲሙ ተመሊኡ ኣሎ። ኣድላዪ እንተኾይኑ ዝኾነ መዝገብ ከተመሓይሹ ትኽእሉ ኢኹም።",
+    resetToProfile: "ናብ ፕሮፋይል መልስ",
+    firstName: "ስም *",
+    lastName: "ስም ኣቦ *",
+    email: "ኢመይል",
+    phoneNumber: "ቁጽሪ ስልኪ",
+    billingAddress: "ኣድራሻ ክፍሊት",
+    zipCode: "ዚፕ ኮድ",
+    processing: "ይካየድ ኣሎ...",
+    continueToPayment: "ናብ ክፍሊት ቀጽል - ${amount}",
+    paymentSuccessMsg: "ክፍሊት ተዓዊቱ! ስለ ወፈያኹም ነመስግን።",
+    freq: {
+      weekly: "ሰሙናዊ",
+      monthly: "ወርሓዊ",
+      quarterly: "ርብዒ ዓመታዊ",
+      yearly: "ዓመታዊ"
+    },
+    errors: {
+      amountDecimals: "ቅኑዕ መጠን ኣእትዉ (ቁጽሪ ጥራይ፣ ክሳብ 2 ዓሽር)።",
+      amountDecimalsAlert: "በጃኹም ቅኑዕ መጠን ኣእትዉ (ቁጽሪ ጥራይ፣ ክሳብ 2 ዓሽር)።",
+      amountExample: "በጃኹም ቅኑዕ መጠን ኣእትዉ (ንኣብነት 10 ወይ 10.00)",
+      amountMin: "ዝወሓደ መጠን $1.00 እዩ",
+      amountMinAlert: "በጃኹም ቅኑዕ መጠን ኣእትዉ (ዝወሓደ $1.00)",
+      nameRequired: "በጃኹም ስምኩምን ስም ኣቦኹምን ምልኡ",
+      cardNotReady: "ናይ ካርድ ክፍሊት መስርሕ ገና ድሉው ኣይኮነን። በጃኹም ደጊምኩም ፈትኑ።",
+      achNotReady: "ናይ ACH ክፍሊት መስርሕ ገና ድሉው ኣይኮነን። በጃኹም ደጊምኩም ፈትኑ።",
+      unexpected: "ዘይተጸበኹሞ ጌጋ ተፈጢሩ"
+    },
+    thankYou: "ስለ ${amount} ወፈያኹም ነመስግን! ክፍሊትኩም ብዓወት ተሰሪሑ።",
+    auth: {
+      template: "ነዚ ነጋዳይ ወይ ወኪሉ ነቲ ኣብ ላዕሊ ተጠቒሱ ዘሎ መጠን {action} ንኽገብር ፍቓድ እህብ {recurring}፣ ነቲ ኣብ ታሕቲ ዘሎ \"ናብ ክፍሊት ቀጽል\" መልጎም ምስ ጠወቕኩ ብቕጽበት። እቲ ዝፈቕዶ {method} ግብይታት ምስ ኩሉ ተፈጻሚ ሕጊ ከም ዝሰማማዕ እቕበል።",
+      chargeCard: "ካብ ክረዲት ካርደይ ንኽትከፍሉ",
+      debitAccount: "ካብ ሕሳበይ ንኽትከፍሉ",
+      recurringClause: "ብ{frequency} ተደጋጋሚ ክፍሊታት",
+      methodCard: "ክረዲት ካርድ",
+      methodAch: "ACH"
+    },
+    zelle: {
+      title: "ብዘለ ውፈዩ",
+      qrAlt: "ናይ ኣቡነ ኣረጋዊ ቤተ ክርስቲያን ዘለ QR ኮድ",
+      imageFallbackPre: "ስእሊ እንተዘይተጻዒኑ፣ ",
+      imageFallbackLink: "QR ኮድ ክፈት",
+      scanHint: "ብዘለ ንምውፋይ ነዚ QR ኮድ ኣብ ናይ ባንኪ መተግበሪኹም ኣንብቡ።",
+      emailLabel: "ናይ ዘለ ኢመይል ኣድራሻ:",
+      copyTitle: "ኢመይል ኣድራሻ ንምቕዳሕ ጠውቕ",
+      howTitle: "ብዘለ ከመይ ከም እትውፍዩ:",
+      step1: "ናይ ባንኪ መተግበሪ ወይ ዘለ መተግበሪ ክፈቱ",
+      step2: "\"ገንዘብ ስደድ\" ወይ \"ብዘለ ስደድ\" ምረጹ",
+      step3: "ኢመይል ኣድራሻ ኣእትዉ:",
+      step4: "መጠን ወፈያኹም ኣእትዉ",
+      step5Pre: "መዘኻኸሪ/መልእኽቲ ወስኹ: ",
+      step5Memo: "\"[ቁጽሪ ስልክኹም] ን[ምኽንያት]\"",
+      step5Hint: "ንግቡእ ምክትታል በጃኹም ቁጽሪ ስልክኹም ኣካትቱ።",
+      step6: "ክፍሊትኩም ገምጊምኩም ስደዱ",
+      quickCopyLabel: "✅ ቅልጡፍ ቅዳሕ:",
+      quickCopyBody: "ነቲ ኣብ ላዕሊ ዘሎ ኢመይል ኣድራሻ ጠዊቕኩም ቅዳሕዎ፣ ሽዑ ናብ ዘለ መተግበሪኹም ለጥፍዎ።"
+    },
+    check: {
+      title: "ብቼክ ውፈዩ",
+      payableTo: "ቼክ ንዚ ግበሩ:",
+      payee: "ኣቡነ ኣረጋዊ ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን"
+    },
+    questions: {
+      title: "ሕቶታት?",
+      body: "ብዛዕባ ወፈያ ሕቶ እንተልዩኩም፣ በጃኹም ተወከሱና:"
+    },
+    applyToPledge: "ናብ መብጽዓይ የውዕሎ",
+    pledgeRemaining: "ካብ መብጽዓኹም ናይ {campaign} {amount} ተሪፉ ኣሎ",
+  },
+
+  // ==== DependentsManagement (Phase 2a) — DRAFT, pending native review ====
+  dependentsPage: {
+    loading: "ተጸበይቲ ይጽዕኑ ኣለዉ...",
+    title: "መጻምድትን ተጸበይትን",
+    add: "ተጸባዪ ወስኽ",
+    householdRecord: "መዝገብ ቤተሰብ",
+    managedUnderPre: "እዚ መዝገብ ቤተሰብ ኣብ ትሕቲ ",
+    managedUnderPost: " ይመሓደር።",
+    dependentNote: " ኣብዚ ንቤተሰብ ክትርእዩ ትኽእሉ ኢኹም፣ ግን ናይ ቤተሰብ ምምሕያሻት ብሓላፊ ቤተሰብ ክፍጸሙ ኣለዎም።",
+    headNote: " ካብዚ ገጽ ነቲ ምስዚ ቤተሰብ ዝተኣሳሰረ መጻምድትን ውሉድን ክትርእዩን ከተመሓይሹን ትኽእሉ ኢኹም።",
+    editTitle: "ተጸባዪ ኣርም",
+    addTitle: "ሓድሽ ተጸባዪ ወስኽ",
+    firstName: "ስም *",
+    middleName: "ስም ኣቦ",
+    lastName: "ስም ኣቦሓጎ *",
+    dob: "ዕለተ ልደት",
+    optional: "ኣማራጺ",
+    gender: "ጾታ *",
+    male: "ተባዕታይ",
+    female: "ኣንስተይቲ",
+    relationship: "ዝምድና",
+    selectRelationship: "ዝምድና ምረጹ",
+    phone: "ስልኪ",
+    email: "ኢመይል",
+    baptismName: "ስም ጥምቀት",
+    isBaptized: "ተጠሚቑ ድዩ",
+    cancel: "ሰርዝ",
+    update: "ተጸባዪ ኣሐድስ",
+    noneYet: "ገና ዝተወሰኸ ተጸባዪ የለን።",
+    getStarted: "ንምጅማር \"ተጸባዪ ወስኽ\" ጠውቑ።",
+    yes: "እወ",
+    no: "ኣይፋል",
+    edit: "ኣርም",
+    delete: "ደምስስ",
+    col: {
+      name: "ስም",
+      dob: "ዕለተ ልደት",
+      gender: "ጾታ",
+      relationship: "ዝምድና",
+      baptismName: "ስም ጥምቀት",
+      baptized: "ተጠሚቑ",
+      actions: "ተግባራት"
+    },
+    errors: {
+      prefix: "ጌጋ:",
+      notAuthenticated: "ኣይተረጋገጸን",
+      profileFailed: "ናይ ኣባል ፕሮፋይል ምርካብ ኣይተኻእለን",
+      resolveIdFailed: "መለለዪ ኣባል ክፍታሕ ኣይከኣለን",
+      saveError: "ሓበሬታ ተጸባዪ ምዕቃብ ጌጋ ኣጋጠመ",
+      deleteConfirm: "ነዚ ተጸባዪ ክትድምስሶ ርግጸኛ ዲኻ?",
+      deleteError: "ተጸባዪ ምድምሳስ ጌጋ ኣጋጠመ"
+    }
+  },
+
+  // ==== PledgeForm (Phase 2a) — DRAFT, pending native review ====
+  pledgeForm: {
+    title: "ቃል ኪዳን ኣቕርብ",
+    subtitle: "ብልግሲ ቃል ኪዳንኩም ንቤተ ክርስቲያንና ደግፉ",
+    selectMember: "ኣባል ምረጹ (ኣማራጺ)",
+    searchPlaceholder: "ብስም ወይ ብስልኪ ድለ",
+    searchAria: "ኣባላት ብስም ወይ ብስልኪ ድለ",
+    loadingMembers: "ኣባላት ይጽዕኑ ኣለዉ...",
+    selectMatched: "ዝተረኸበ ኣባል ምረጹ ወይ ንኹሎም ንምርኣይ ኣጽርዩ",
+    selectExisting: "ዘሎ ኣባል ምረጹ ወይ ንሓድሽ ባዶ ግደፍዎ",
+    noMatches: "ዝሰማማዕ የለን",
+    noMembers: "ኣባላት ኣይተረኽቡን",
+    clearSelection: "ሓበሬታ ሓድሽ ኣባል ንምእታው ምርጫ ኣጽርዩ",
+    eventName: "ስም ፍጻመ *",
+    eventNamePlaceholder: "ንኣብነት፣ ናይ ሰንበት ናይ ገንዘብ ምእካብ ፍጻመ",
+    amount: "መጠን ቃል ኪዳን *",
+    amountLabel: "መጠን ቃል ኪዳን *",
+    notesLabel: "መዘኻኸሪ (ኣማራጺ)",
+    customAmountPlaceholder: "ናይ ገዛእ ርእስኹም መጠን ኣእትዉ",
+    firstName: "ስም *",
+    lastName: "ስም ኣቦ *",
+    email: "ኢመይል",
+    phone: "ስልኪ",
+    autoFilledTitle: "ካብ ዝተመርጸ ኣባል ብኣውቶማቲክ ተመሊኡ",
+    autoFilledPlaceholder: "ካብ ኣባል ብኣውቶማቲክ ተመሊኡ",
+    address: "ኣድራሻ",
+    autoFilledParen: "(ካብ ኣባል ብኣውቶማቲክ ተመሊኡ)",
+    optionalParen: "(ኣማራጺ)",
+    streetPlaceholder: "ኣድራሻ ጎደና",
+    addressModifyHint: "ኣድራሻ ካብ ዝተመርጸ ኣባል - ኣድላዪ እንተኾይኑ ከተመሓይሽዎ ትኽእሉ",
+    zip: "ዚፕ ኮድ",
+    notes: "መዘኻኸሪ (ኣማራጺ)",
+    notesPlaceholder: "ዝኾነ ተወሳኺ መዘኻኸሪ ወይ መወፈዪ...",
+    processing: "ይካየድ ኣሎ...",
+    submit: "ቃል ኪዳን ${amount}",
+    errors: {
+      amountMin: "መጠን እንተወሓደ $1.00 ክኸውን ኣለዎ",
+      firstNameRequired: "ስም የድሊ",
+      lastNameRequired: "ስም ኣቦ የድሊ",
+      emailInvalid: "በጃኹም ቅኑዕ ኢመይል ኣድራሻ ኣእትዉ",
+      phoneRequired: "ንሓደስቲ ኣባላት ቁጽሪ ስልኪ የድሊ"
+    }
+  },
+
+  // DRAFT, pending native review
+  pledge: {
+    homeCard: {
+      title: "መብጽዓ ምእታው",
+      description: "ንቤተ ክርስቲያን ደገፍኩም ብመብጽዓ ኣረጋግጹ፤ ምስ ተዳለኹም ክትከፍሉ ትኽእሉ — መምርሒ ክፍሊት ክንሰደልኩም ኢና።"
+    },
+    noCampaign: {
+      title: "ሕጂ ዝካየድ ዘሎ ወፈያ የለን",
+      body: "ኣብዚ እዋን ንጡፍ መደብ መብጽዓ የለን። በጃኹም ደሓር ተመልከቱ፡ ወይ ክትህቡ እንተደሊኹም ንቤት ጽሕፈት ቤተ ክርስቲያን ተወከሱ።"
+    },
+    intent: {
+      later: {
+        title: "ንደሓር መብጽዓ",
+        body: "ሕጂ መብጽዓ ግበሩ፡ ምስ ተዳለኹም ድማ ክፈሉ።"
+      },
+      immediate: {
+        title: "መብጽዓን ክፍሊትን ሕጂ",
+        body: "መብጽዓኹም ግበሩ እሞ ብሓደ ግዜ ምሉእ ብምሉእ ክፈሉ።"
+      },
+      anonymous: {
+        title: "ስም ብዘይምግላጽ ሕጂ ውፈዩ",
+        body: "ስምኩም ከይተጠቕሰ ውፈዩ። ሎሚ ምሉእ ብምሉእ ይኽፈል፤ ቤተ ክርስቲያን ግና ንመዝገባ ጥራይ ስም ትጥቀም።"
+      },
+      signIn: {
+        title: "ንመብጽዓ እተዉ",
+        body: "ንደሓር ዝግበር መብጽዓ ኣካውንት የድልዮ፡ ክፍሊትኩም ናብኡ ምእንቲ ክንውስኾ።"
+      }
+    },
+    existing: {
+      title: "ድሮ መብጽዓ ኣለኩም",
+      body: "ካብ መብጽዓኹም ናይ {campaign} {remaining} ተሪፉ ኣሎ።",
+      settled: "መብጽዓኹም ናይ {campaign} ምሉእ ብምሉእ ተኸፊሉ እዩ። የቐንየልና።",
+      payNow: "ሕጂ ክፈሉ",
+      giveAgain: "እንደገና ውፈዩ"
+    },
+    info: {
+      flexibleTitle: "ተዓጻጻፊ ክፍሊት",
+      flexibleBody: "ምስ ተዳለኹም ካብ ገጽ ውህበት ወይ ብመንገዲ ገንዘብ ተቐባሊ ክፈሉ።"
+    },
+    success: {
+      body: "መብጽዓኹም ተመዝጊቡ ኣሎ። የቐንየልና።"
+    },
+    checkout: {
+      payInFullNote: "ሕጂ ምኽፋል ንመብጽዓኹም ምሉእ ብምሉእ ይሽፍኖ።",
+      continue: "ናብ ክፍሊት ቀጽል",
+      showAsAnonymous: "ውህበተይ ስም ብዘይምግላጽ የርኢ",
+      showAsAnonymousHelp: "ስምኩም ካብ ዝርዝር ወሃብቲ ይሕባእ። ቤተ ክርስቲያን ግና ነቲ ውህበት ኣብ ኣካውንትኩም ትምዝግቦ፡ ስለዚ ኣብ ናትኩም መግለጺ ውህበት ይረአ።"
+    },
+    anonymous: {
+      baptismNameLabel: "ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም *",
+      baptismNameHelp: "ንመዝገብ ቤተ ክርስቲያን ጥራይ ይቕመጥ። ውህበትኩም ከም ስም ብዘይምግላጽ ይምዝገብ።",
+      contactLabel: "ስልኪ ወይ ኢመይል (ኣማራጺ)",
+      errors: {
+        baptismNameRequired: "ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም የድሊ።"
+      }
+    }
+  },
+
+  // ==== Fundraising admin tab — DRAFT ti, pending native review ====
+  fundraising: {
+    tab: "ወፈያ",
+    heading: "መደባት ወፈያ",
+    newCampaign: "ሓድሽ መደብ",
+    edit: "ኣረም",
+    name: "ስም",
+    nameTi: "ስም (ትግርኛ)",
+    description: "መግለጺ",
+    descriptionTi: "መግለጺ (ትግርኛ)",
+    startDate: "መጀመሪ ዕለት",
+    endDate: "መወዳእታ ዕለት",
+    goalAmount: "ሸቶ መጠን",
+    status: "ኩነታት",
+    window: "ዕለታት",
+    pledged: "ተመባጺዑ",
+    collected: "ተኣኪቡ",
+    outstanding: "ተሪፉ",
+    donors: "ወሃብቲ",
+    toGoal: "ካብ ሸቶ ተኣኪቡ",
+    noTotals: "ዝተመዝገበ መብጽዓ የለን",
+    viewDonors: "ወሃብቲ ርአ",
+    donorsIn: "ወሃብቲ ኣብ",
+    donor: "ወሃቢ",
+    noPledges: "ኣብዚ መደብ ጌና መብጽዓ የለን።",
+    close2: "ዕጾ",
+    legacy: "ናይ ቀደም መዝገብ",
+    legacyHelp: "ቅድሚ ናይ ክፍሊት ምክትታል ዝተመዝገበ፦ እዚ ቁጽሪ ካብ ናይቲ መብጽዓ ዝተዓቀበ ኩነታት እዩ፡ ካብ ዝተዛመደ ልውውጥ ኣይኮነን።",
+    save: "ኣቐምጥ",
+    cancel: "ሰርዝ",
+    activate: "ኣንቅሕ",
+    reactivate: "እንደገና ኣንቅሕ",
+    reactivateWarning: "እንደገና ምንቃሕ ነዚ መደብ ኣብ ወብሳይት እንደገና ህያው ይገብሮ። ኣባላት መብጽዓ ክኣትዉ ክኽእሉ እዮም።",
+    windowPassedHint: "መወዳእታ ዕለት እዚ መደብ ሓሊፉ እዩ። ቅድሚ እንደገና ምንቃሕ ብ'ኣርም' ኣንውሕዎ፡ ወይ ከኣ ጸብጻባት ተፈላልዮም ክጸንሑ ሓድሽ መደብ ፍጠሩ።",
+    close: "መደብ ዕጾ",
+    closeWarning: "መደብ ምዕጻው ሓደስቲ መብጽዓታት ይዓግትን ካብ ወብሳይት ይሓብኦን። ዕለታቱ ሎሚ ክሳብ ዝሽፍኑ ኣድሚን እንደገና ከንቅሖ ይኽእል እዩ።",
+    closeDraftWarning: "እዚ ንድፊ ንኣባላት ተራእዩ ኣይፈልጥን። ምዕጻዉ ከም ታሪኽ የቐምጦ።",
+    endBeforeStart: "መወዳእታ ዕለት ካብ መጀመሪ ዕለት ንድሕሪት ክኸውን የብሉን።",
+    noCampaigns: "ጌና መደባት የለዉን። ንምጅማር ሓደ ፍጠሩ።",
+    activePledge: "ንጡፍ መብጽዓ፦ {pledged} — {remaining} ተሪፉ",
+    overBy: "ብ{amount} ኣሕሊፉ",
+    alsoRecordPledge: "እዚ እውን ከም መብጽዓ መዝግቦ",
+    pledgeAmountLabel: "መጠን ቃል ኪዳን",
+    baptismNameLabel: "ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም",
+    anonymousPaidInFull: "ስም ብዘይምግላጽ ዝግበር መብጽዓ ምሉእ ብምሉእ ክኽፈል ኣለዎ፣ ስለዚ እዚ ምስቲ መጠን ክፍሊት ማዕረ ክኸውን ኣለዎ።",
+    pledgeCashOnly: "ምዝገባ መብጽዓ ንጥረ ገንዘብን ቼክን ጥራይ ይርከብ።",
+    pledgeNeedsMember: "እዚ መብጽዓ ንምምዝጋብ ኣባል ምረጹ፣ ወይ ነቲ ክፍሊት ስም ብዘይምግላጽ ኣምልክቱ እሞ ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም ሃቡ።"
+  },
+
+
+  // ==== PledgeTracker (Phase 2a) — DRAFT, pending native review ====
+  pledgeTracker: {
+    goalProgress: "ኣብ ሸቶ ዝበጽሐ",
+    ofGoalPledged: "ካብ ሸቶ ተመባጺዑ",
+    loadFailed: "ስታቲስቲክስ ቃል ኪዳን ምጽዓን ኣይተኻእለን",
+    tryAgain: "ዳግማይ ፈትን",
+    noData: "ዳታ ቃል ኪዳን የለን",
+    eventPledges: "ቃል ኪዳናት {event}",
+    title: "ተኸታታሊ ቃል ኪዳን",
+    subtitle: "ማሕበረሰብ ቤተ ክርስቲያን ኣቡነ ኣረጋዊ ነዚ ዕላማ ንምድጋፍ ብኸመይ ይተኣኻኸብ ከም ዘሎ ተዓዘቡ።",
+    refresh: "ኣሐድስ",
+    totalPledged: "ጠቕላላ ቃል ኪዳን",
+    totalDonated: "ጠቕላላ ዝተወፈየ",
+    remaining: "ዝተረፈ",
+    fulfillmentProgress: "ናይ ምፍጻም ኣፈጻጽማ",
+    pledgeStatus: "ኩነታት ቃል ኪዳን",
+    totalAmount: "ጠቕላላ መጠን",
+    anonymous: "ብዘይ ስም",
+    lastUpdated: "ናይ መወዳእታ ዝተሓደሰሉ: {time}"
+  },
+
+  // ==== ACHPayment (Phase 2a) — DRAFT, pending native review ====
+  achPayment: {
+    bankInfo: "ሓበሬታ ሕሳብ ባንኪ",
+    accountHolderName: "ስም ወናኒ ሕሳብ *",
+    routingNumber: "ራውቲንግ ቁጽሪ *",
+    routingHint: "እቲ ኣብ ቼክኩም ዝርከብ 9-ኣሃዝ ራውቲንግ ቁጽሪ",
+    accountNumber: "ቁጽሪ ሕሳብ *",
+    accountNumberHint: "ቁጽሪ ሕሳብ ባንክኹም",
+    accountType: "ዓይነት ሕሳብ *",
+    checking: "ቸኪንግ",
+    savings: "ቁጠባ",
+    amountLabel: "መጠን:",
+    typeLabel: "ዓይነት:",
+    recurring: "ተደጋጋሚ",
+    oneTime: "ሓደ ግዜ",
+    methodLabel: "ኣገባብ ክፍሊት:",
+    methodValue: "ሕሳብ ባንኪ (ACH)",
+    importantLabel: "ኣገዳሲ:",
+    importantText: "ናይ ACH ክፍሊታት ብተለምዶ ንምስራሕ 3-5 ናይ ስራሕ መዓልትታት ይወስድ። ክፍሊት ምስ ተሰርሐ ናይ መረጋገጺ ኢመይል ክትቕበሉ ኢኹም።",
+    securityLabel: "ውሕስነት:",
+    securityText: "ሓበሬታ ሕሳብ ባንክኹም ተመስጢሩን ብውሑስ መንገዲን ይስራሕ። ንዝርዝር ሕሳብኩም ኣብ ሰርቨርና ኣይንዕቅቦን ኢና።",
+    cancel: "ሰርዝ",
+    processing: "ይካየድ ኣሎ...",
+    pay: "ክፈል ${amount}",
+    errors: {
+      stripeNotLoaded: "Stripe ገና ኣይተጻዕነን። በጃኹም ደጊምኩም ፈትኑ።",
+      fillRequired: "በጃኹም ኩሉ ዘድሊ ሓበሬታ ሕሳብ ባንኪ ምልኡ።",
+      routingLength: "ራውቲንግ ቁጽሪ 9 ኣሃዝ ክኸውን ኣለዎ።",
+      accountLength: "ቁጽሪ ሕሳብ እንተወሓደ 4 ኣሃዝ ክኸውን ኣለዎ።",
+      achFailed: "ናይ ACH መረጋገጺ ኣይተኻእለን",
+      unexpected: "ዘይተጸበኹሞ ጌጋ ተፈጢሩ"
+    }
+  },
+
+  // ==== StripePayment (Phase 2a) — DRAFT, pending native review ====
+  stripePayment: {
+    cardInformation: "ሓበሬታ ካርድ",
+    cardAriaLabel: "ናይ ክረዲት ወይ ዴቢት ካርድ ሓበሬታ",
+    nameOnCard: "ኣብ ካርድ ዘሎ ስም",
+    nameOnCardPlaceholder: "ኣብ ካርድ ከምዘሎ ምሉእ ስም",
+    paymentInformation: "ሓበሬታ ክፍሊት",
+    errors: {
+      paymentFailed: "ክፍሊት ኣይተዓወተን",
+      notSuccessful: "ክፍሊት ኣይተዓወተን። በጃኹም ደጊምኩም ፈትኑ።"
+    }
+  },
+
+  // ==== Batch 2b: Departments & Meetings — DRAFT, pending native review ====
+  // -- DepartmentsPage (listing / browse) --
+  "departmentsPage.backToDashboard": "ናብ ዳሽቦርድ ተመለስ",
+  "departmentsPage.title": "ክፍልታት ስራሕን ኣገልግሎትን",
+  "departmentsPage.subtitle": "ክፍልታት ስራሕኩም ርኣዩ ወይ ንኸተገልግሉ ዘኽእሉ ዕድላት ኣናድዩ",
+  "departmentsPage.myTab": "ክፍልታት ስራሕይ",
+  "departmentsPage.browseTab": "ኩሎም ርአ",
+  "departmentsPage.members": "ኣባላት",
+  "departmentsPage.viewDetails": "ዝርዝር ርአ",
+  "departmentsPage.requestToJoin": "ንምጽንባር ሕተት",
+  "departmentsPage.requestComingSoon": "ናይ ምጽንባር ሕቶ ኣገልግሎት ኣብ ቀረባ ግዜ ክመጽእ እዩ!",
+  "departmentsPage.emptyMyTitle": "ዝኾነ ክፍሊ ስራሕ ኣይተረኽበን",
+  "departmentsPage.emptyAllTitle": "ዝርከብ ክፍሊ ስራሕ የለን",
+  "departmentsPage.emptyMyDesc": "ገና ናብ ዝኾነ ክፍሊ ስራሕ ኣይተጸንበርኩምን። ክተገልግሉሉ እትኽእሉ ንምርካብ ምሉእ ዝርዝር ኣስሱ።",
+  "departmentsPage.emptyAllDesc": "ሕጂ ንምጽንባር ዝኸውን ንጡፍ ክፍሊ ስራሕ የለን።",
+  "departmentsPage.browseDepartments": "ክፍልታት ስራሕ ኣስስ",
+
+  // -- Department type labels (data enum) --
+  "departmentType.ministry": "ኣገልግሎት",
+  "departmentType.committee": "ኮሚቴ",
+  "departmentType.service": "ግልጋሎት",
+  "departmentType.social": "ማሕበራዊ",
+  "departmentType.administrative": "ምምሕዳራዊ",
+
+  // -- DepartmentDashboard (migrated from legacy + new) --
+  "department.tabs.meetings": "ኣኼባታት",
+  "department.tabs.tasks": "ትልምታት",
+  "department.tabs.members": "ኣባላት",
+  "department.addMeeting": "ኣኼባ ወስኽ",
+  "department.addTask": "ትልሚ ወስኽ",
+  "department.manageMembers": "ኣባላት ኣመሓድር",
+  "department.backToDashboard": "ናብ ዳሽቦርድ ተመለስ",
+  "department.notFound": "ክፍሊ ስራሕ ኣይተረኽበን",
+  "department.loadFailed": "ክፍሊ ስራሕ ምርካብ ኣይተኻእለን",
+  "department.leader": "መራሒ:",
+  "department.roleMember": "ኣባል",
+  "department.noMembers": "ገና ኣባላት የለዉን",
+  "department.attendees": "ተሳተፍቲ",
+  "department.noMeetings": "ገና ዝተመዝገበ ኣኼባ የለን",
+  "department.createFirstMeeting": "ናይ መጀመርታ ኣኼባኻ ፍጠር",
+  "department.due": "ክዛዘም ዘለዎ:",
+  "department.edit": "ኣርም",
+  "department.noTasks": "ገና ትልምታት የለዉን",
+
+  // -- Task status / priority labels (data enums) --
+  "taskStatus.pending": "ዘይተጀመረ",
+  "taskStatus.in_progress": "ኣብ መስርሕ",
+  "taskStatus.completed": "ተዛዚሙ",
+  "taskStatus.cancelled": "ተሰሪዙ",
+  "taskStatus.rejected": "ተነጺጉ",
+  "taskPriority.low": "ትሑት",
+  "taskPriority.medium": "ማእከላይ",
+  "taskPriority.high": "ላዕለዋይ",
+  "taskPriority.urgent": "ህጹጽ",
+
+  // -- AddMeetingModal --
+  "meetingModal.editTitle": "ኣኼባ ኣርም",
+  "meetingModal.createTitle": "ሓድሽ ኣኼባ መደብ",
+  "meetingModal.keyboard": "ኪቦርድ:",
+  "meetingModal.englishLatin": "እንግሊዝኛ (ላቲን)",
+  "meetingModal.title": "ርእሲ ኣኼባ",
+  "meetingModal.dateTime": "ዕለትን ሰዓትን",
+  "meetingModal.location": "ቦታ",
+  "meetingModal.purpose": "ዕላማ",
+  "meetingModal.agenda": "ኣጀንዳ",
+  "meetingModal.attendees": "ተሳተፍቲ",
+  "meetingModal.notes": "ቃለ ጉባኤ / ትሕዝቶ",
+  "meetingModal.cancel": "ሰርዝ",
+  "meetingModal.saving": "ይዕቀብ ኣሎ...",
+  "meetingModal.update": "ኣኼባ ኣሐድስ",
+  "meetingModal.create": "ኣኼባ ፍጠር",
+  "meetingModal.saveFailed": "ኣኼባ ምዕቃብ ኣይተኻእለን",
+  "meetingModal.genericError": "ጌጋ ተፈጢሩ",
+
+  // -- AddTaskModal --
+  "taskModal.editTitle": "ትልሚ ኣርም",
+  "taskModal.createTitle": "ሓድሽ ትልሚ ፍጠር",
+  "taskModal.objective": "ዕላማ",
+  "taskModal.objectivePlaceholder": "ሓጺር መግለጺ ናይቲ ትልሚ",
+  "taskModal.description": "መግለጺ",
+  "taskModal.descriptionPlaceholder": "ዝርዝር መግለጺ...",
+  "taskModal.status": "ኩነታት",
+  "taskModal.priority": "ቀዳምነት",
+  "taskModal.assignedTo": "ዝተመደበሉ",
+  "taskModal.unassigned": "ዘይተመደበ",
+  "taskModal.startDate": "መጀመሪ ዕለት",
+  "taskModal.endDate": "መወዳእታ ዕለት",
+  "taskModal.rejectedDate": "ዝተነጽገሉ ዕለት",
+  "taskModal.notes": "መዘኻኸሪ",
+  "taskModal.notesPlaceholder": "ተወሳኺ መዘኻኸሪ...",
+  "taskModal.cancel": "ሰርዝ",
+  "taskModal.saving": "ይዕቀብ ኣሎ...",
+  "taskModal.update": "ትልሚ ኣሐድስ",
+  "taskModal.create": "ትልሚ ፍጠር",
+  "taskModal.rejectedDateRequired": "ኩነታት ተነጺጉ ኮይኑ ዝተነጽገሉ ዕለት የድሊ",
+  "taskModal.saveFailed": "ትልሚ ምዕቃብ ኣይተኻእለን",
+  "taskModal.genericError": "ጌጋ ተፈጢሩ",
+
+  // -- MeetingDetailsPage / MeetingEmailModal (migrated from legacy + new) --
+  "meeting.tasks.previous": "ናይ ዝሓለፈ ኣኼባ ትልምታት",
+  "meeting.tasks.actionItems": "ናይዚ ኣኼባ ትልምታት",
+  "meeting.tasks.add": "ትልሚ ወስኽ",
+  "meeting.tasks.none": "ገና ዝተወጠነ ትልሚ የለን",
+  "meeting.agenda": "ኣጀንዳ",
+  "meeting.minutes": "ቃለ ጉባኤ",
+  "meeting.attendees": "ተሳተፍቲ",
+  "meeting.assignedTo": "ሓላፍነት ዝወሰደ",
+  "meeting.due": "ክዛዘም ዘለዎ",
+  "meeting.notFound": "ኣኼባ ኣይተረኽበን",
+  "meeting.loadFailed": "ኣኼባ ምርካብ ኣይተኻእለን",
+  "meeting.backToDepartment": "ናብ ክፍሊ ስራሕ ተመለስ",
+  "meeting.editMeeting": "ኣኼባ ኣርም",
+  "meeting.editTask": "ትልሚ ኣርም",
+  "meeting.print.savePdf": "ሕተም / PDF ኣድሕን",
+  "meeting.print.record": "መዝገብ ኣኼባ",
+  "meeting.print.overview": "ሓፈሻዊ ሓበሬታ ኣኼባ",
+  "meeting.print.department": "ክፍሊ ስራሕ",
+  "meeting.print.date": "ዕለት",
+  "meeting.print.location": "ቦታ",
+  "meeting.print.purpose": "ዕላማ",
+  "meeting.print.generated": "ዝተፈጥረ",
+  "meeting.print.language.english": "እንግሊዝኛ",
+  "meeting.print.language.tigrinya": "ትግርኛ",
+  "meeting.print.notProvided": "ኣይተዋህበን",
+  "meeting.print.noAttendees": "ተሳተፍቲ ኣይተመዝገቡን",
+  "meeting.email.button": "ንኣባላት ኢመይል ስደድ",
+  "meeting.email.modalTitle": "ቃለ ጉባኤ ብኢመይል ስደድ",
+  "meeting.email.recipients": "ተቐበልቲ",
+  "meeting.email.skipped": "ዝተሓለፉ",
+  "meeting.email.subject": "ኣርእስቲ",
+  "meeting.email.body": "መልእኽቲ",
+  "meeting.email.send": "ኢመይል ስደድ",
+  "meeting.email.sending": "ይስደድ ኣሎ...",
+  "meeting.email.cancel": "ሰርዝ",
+  "meeting.email.noRecipients": "ኣብዚ ክፍሊ ስራሕ ዘለዉ ኣባላት ዘረጋገጸ ኢመይል የብሎምን።",
+  "meeting.email.previewFailed": "ቅድመ እይታ ኢመይል ምጽዓን ኣይተኻእለን",
+  "meeting.email.loadingPreview": "ቅድመ እይታ ኢመይል ይጽዕን ኣሎ…",
+  "meeting.email.sendFailed": "ኢመይል ኣኼባ ምስዳድ ኣይተኻእለን",
+  "meeting.email.sentSummary": "ዘረጋገጸ ኢመይል ዘይብሎም ኣባላት ተሓሊፎም።",
+  "meeting.email.reason.missing": "ኣብ መዝገብ ኢመይል የለን",
+  "meeting.email.reason.invalid": "ዘይቅቡል ኣድራሻ ኢመይል",
+
+  // ==== Batch 2d (wave A): misc / auth small components — DRAFT, pending native review ====
+  "creditsPage.title": "ናይ ቴክኒክ ጉጅለ / ኣፍልጦ",
+
+  "parishPulse.title": "Parish Pulse ምዝገባ",
+  "parishPulse.description": "ካብ ማሕበርና ኣገደስቲ ናይ SMS መልእኽትታትን ሓበሬታን ንምቕባል ተመዝገቡ። ኣብ ዝኾነ እዋን ናብ ዝኾነ መልእኽቲ \"STOP\" ብምምላስ ክትቋረጹ ትኽእሉ።",
+  "parishPulse.thankYou": "ስለዝተመዝገብኩም የቐንየልና! ኣብ ቀረባ ግዜ ናይ SMS ሓበሬታ ክትቕበሉ ኢኹም።",
+  "parishPulse.errorRequired": "በጃኹም ሽምኩምን ቁጽሪ ሞባይልኩምን ኣእትዉ።",
+  "parishPulse.fullName": "ምሉእ ስም",
+  "parishPulse.namePlaceholder": "ሽምኩም",
+  "parishPulse.mobileNumber": "ቁጽሪ ሞባይል",
+  "parishPulse.phonePlaceholder": "ኣብነት፦ (555) 123-4567",
+  "parishPulse.submit": "ተመዝገብ",
+  "parishPulse.disclaimer": "ቁጽሪ ሞባይልኩም ብምእታው፡ ካብ Tigray Orthodox Church ናይ SMS መልእኽቲ ንምቕባል ትሰማምዑ ኣለኹም። ናይ መልእኽትን ዳታን ክፍሊት ክህሉ ይኽእል። ንምቁራጽ STOP ብምባል መልሱ።",
+
+  "protectedRoute.retry": "ደጊምካ ፈትን",
+  "protectedRoute.goToRegistration": "ናብ ምዝገባ ኪድ",
+
+  "liveEmbed.liveStream": "ቀጥታ ስርጭት",
+  "liveEmbed.unmute": "ድምጺ ክፈት",
+  "liveEmbed.mute": "ድምጺ ዕጾ",
+  "liveEmbed.unmuteAria": "ናይ ቀጥታ ስርጭት ድምጺ ክፈት",
+  "liveEmbed.muteAria": "ናይ ቀጥታ ስርጭት ድምጺ ዕጾ",
+  "liveEmbed.fallbackPrefix": "እቲ ስርጭት ብቐጥታ እንተዘይጀሚሩ፡ ",
+  "liveEmbed.openOnYouTube": "ኣብ YouTube ናይ ቀጥታ ገጽ ክፈት",
+
+  "transliterationHelp.title": "መምርሒ ናይ ግእዝ ኣጸሓሕፋ",
+  "transliterationHelp.instruction": "ተመሳሳሊ ናይ ግእዝ ፊደል ንምርካብ ናይ ላቲን ፊደላት ጸሓፍ።",
+  "transliterationHelp.close": "ዕጾ",
+
+  // ==== Batch 2d: RegistrationSteps (remaining hardcoded strings) — DRAFT, pending native review ====
+  "registration.emailExists": "በዚ ኢመይል ዝተመዝገበ ኣባል ኣሎ። ኮይኑ ግና ክትቕጽሉ ትኽእሉ ኢኹም።",
+  "registration.yearlyPledgeLabel": "ዓመታዊ ናይ ኣባልነት ቃል (USD)",
+  "registration.yearlyPledgePlaceholder": "ኣብነት፦ 1200",
+  "registration.yearlyPledgeHelp": "እዚ ወርሓዊ ክፍሊትኩም ንምውሳንን ክፍሊታት ንምክትታልን ይሕግዘና።",
+  "registration.selectRelationship": "ዝምድና ምረጽ",
+
+  // ==== Batch 2c: admin / finance — DRAFT, pending native review ====
+  // -- BankUpload --
+  "bankUpload.title": "ናይ ባንክ መግለጺ ጽዓን",
+  "bankUpload.selectFile": "ናይ Chase CSV ፋይል ምረጽ",
+  "bankUpload.uploading": "ይጽዓን ኣሎ...",
+  "bankUpload.upload": "ጽዓንን ኣካይድን",
+  "bankUpload.uploadFailed": "ምጽዓን ኣይተኻእለን",
+  "bankUpload.success": "ብዓወት ተጻዒኑ!",
+  "bankUpload.imported": "ዝኣተዉ፦ {count} ሓደስቲ ልውውጣት",
+  "bankUpload.skipped": "ዝተሓለፉ፦ {count} ድግማት",
+  "bankUpload.autoReconciled": "ብቐጥታ ዝተዓረቑ፦ {count} ካብ {examined} ተጸበይቲ",
+  "bankUpload.autoLinked": "ምስ ዘለዉ ክፍሊታት ዝተኣሳሰሩ (ንኣብነት Zelle ኣውቶሜሽን)፦ {count}",
+  "bankUpload.autoMember": "ካብ ዝተማህሩ ከፈልቲ ዝተፈጥሩ ክፍሊታት ኣባላት፦ {count}",
+  "bankUpload.autoExpense": "ካብ ዝተማህሩ ተቐበልቲ ዝተመዝገቡ ወጻኢታት፦ {count}",
+  "bankUpload.needsReview": "ንግምገማ ዝተረፉ፦ {count}",
+  "bankUpload.errors": "ጌጋታት፦ {count}",
+  "bankUpload.supportedFormat": "ዝድገፍ ቅርጺ፦ Chase Activity CSV። እቲ ስርዓት ብቐጥታ ናይ Zelle ወሃብቲ የለሊ ከምኡውን ዝተደገሙ ልውውጣት ይሓልፍ።",
+  "bankUpload.autoDeferred": "ዓቢ ምጽዓን፦ ምጽዓን ቅልጡፍ ንኽኸውን ኣውቶማቲክ ዕርቂ ተሓሊፉ። ኣብ ናይ ባንክ ልውውጣት ዘሎ \"ተጸበይቲ ኣወሃህድ\" መልጎም ተጠቐሙ።",
+
+  // -- Bank transactions: on-demand auto-reconcile --
+  "bankTransactions.autoReconcile": "ተጸበይቲ ኣወሃህድ",
+  "bankTransactions.autoReconciling": "የወሃህድ ኣሎ…",
+  "bankTransactions.autoReconcileHelp": "ኩሎም ተጸበይቲ ልውውጣት ኣንጻር ዝፍለጡ ከፈልቲ፡ ተቐበልትን ናይ Zelle መወከሲታትን ደጊምካ ፈትሽ። ብዝተወሰኑ ጉጅለታት ይሰርሕ።",
+  "bankTransactions.autoReconcileDone": "{examined} ተጸበይቲ ልውውጣት ተፈቲሾም፤ {matched} ብቐጥታ ተወሃሂዶም ወይ ተመዝጊቦም።",
+  "bankTransactions.autoReconcileFailed": "ኣውቶማቲክ ዕርቂ ኣይተዓወተን",
+
+  // -- Member Information report (Payment Reports tab) --
+  "memberInfoReport.type": "ሓበሬታ ኣባላት",
+  "memberInfoReport.title": "ጸብጻብ ሓበሬታ ኣባላት",
+  "memberInfoReport.generated": "ዝተፈጥረ",
+  "memberInfoReport.activeMembers": "ንጡፋት ኣባላት",
+  "memberInfoReport.colId": "መለለዪ",
+  "memberInfoReport.colFirstName": "ስም ቀዳማይ",
+  "memberInfoReport.colLastName": "ስም ኣቦ",
+  "memberInfoReport.colPhone": "ስልኪ",
+  "memberInfoReport.colSpouseFirst": "ስም መጻምዲ",
+  "memberInfoReport.colSpouseLast": "ስም ኣቦ መጻምዲ",
+  "memberInfoReport.colSpousePhone": "ስልኪ መጻምዲ",
+
+  // -- Admin Member Reports tab --
+  "memberReports.tab": "ጸብጻባት",
+  "memberReports.selectLabel": "ጸብጻብ",
+  "memberReports.memberInformation": "ሓበሬታ ኣባላት",
+  "memberReports.householdDirectory": "መዝገብ ኣባልነት ስድራቤት",
+
+  // -- Household Membership Directory report --
+  "householdReport.title": "መዝገብ ኣባልነት ስድራቤት",
+  "householdReport.sortBy": "ብ... ሰርዕ",
+  "householdReport.sortLastName": "ስም ኣቦ",
+  "householdReport.sortFirstName": "ቀዳማይ ስም",
+  "householdReport.savePdf": "ከም PDF ኣቐምጥ",
+  "householdReport.summaryTitle": "ጽማቕ ኣባልነት",
+  "householdReport.totalFamilies": "ጠቕላላ ስድራቤታት",
+  "householdReport.totalParishMembers": "ጠቕላላ ኣባላት ቤተ ክርስቲያን",
+  "householdReport.totalHeads": "ሓለፍቲ ስድራቤት",
+  "householdReport.totalSpouses": "መጻምድቲ",
+  "householdReport.totalDependents": "ጠቕላላ ተደገፍቲ",
+  "householdReport.generatedOn": "ዝተፈጥረሉ ዕለት",
+  "householdReport.generatedBy": "ዘውጽኦ",
+  "householdReport.headOfHousehold": "ሓላፊ ስድራቤት",
+  "householdReport.spouse": "መጻምዲ",
+  "householdReport.dependentsSection": "ተደገፍቲ",
+  "householdReport.householdMembers": "ኣባላት ስድራቤት",
+  "householdReport.mobile": "ሞባይል",
+  "householdReport.memberId": "መለለዪ ኣባል",
+  "householdReport.noResults": "ስድራቤት ኣይተረኽበን።",
+  "householdReport.page": "ገጽ",
+  "householdReport.of": "ካብ",
+  "householdReport.previous": "ዝሓለፈ",
+  "householdReport.next": "ቀጻሊ",
+
+  // -- MonthlyBankSummary --
+  "monthlyBankSummary.title": "ወርሓዊ ጽማቕ",
+  "monthlyBankSummary.subtitle": "ካብ ናይ ባንክ ንጥፈት እቶትን ወጻኢን፡ ናይ መወዳእታ {count} ኣዋርሕ",
+  "monthlyBankSummary.showLast6": "ናይ መወዳእታ 6 ኣዋርሕ ኣርኢ",
+  "monthlyBankSummary.showLast12": "ናይ መወዳእታ 12 ኣዋርሕ ኣርኢ",
+  "monthlyBankSummary.colMonth": "ወርሒ",
+  "monthlyBankSummary.colIncome": "ጠቕላላ እቶት",
+  "monthlyBankSummary.colExpense": "ጠቕላላ ወጻኢ",
+  "monthlyBankSummary.colNet": "ተረፍ ትርፊ/(ጉድለት)",
+  "monthlyBankSummary.colBalance": "መዛዘሚ ሚዛን",
+  "monthlyBankSummary.colStatus": "ኩነታት",
+  "monthlyBankSummary.loading": "ይጽዕን ኣሎ...",
+  "monthlyBankSummary.empty": "ኣብ ናይ መወዳእታ 12 ኣዋርሕ ናይ ባንክ ንጥፈት የለን። ንምጅማር ናይ ባንክ መግለጺ ጽዓን።",
+  "monthlyBankSummary.reconciled": "ተዓሪቑ",
+  "monthlyBankSummary.pending": "{count} ተጸበይቲ",
+  "monthlyBankSummary.awaitingReview": "{pending} ካብ {total} ልውውጣት ንግምገማ ይጽበዩ",
+
+  // -- ActivityLogViewer --
+  "activityLog.loadFailed": "ናይ ንጥፈት መዝገባት ምጽዓን ኣይተኻእለን",
+  "activityLog.title": "ናይ ንጥፈት መዝገባት",
+  "activityLog.allActions": "ኩሎም ተግባራት",
+  "activityLog.allTypes": "ኩሎም ዓይነታት",
+  "activityLog.entityMember": "ኣባል",
+  "activityLog.entityDonation": "ልገሳ",
+  "activityLog.entityPayment": "ክፍሊት",
+  "activityLog.refresh": "ኣሐድስ",
+  "activityLog.loading": "መዝገባት ይጽዕን ኣሎ...",
+  "activityLog.colDate": "ዕለት",
+  "activityLog.colUser": "ተጠቃሚ",
+  "activityLog.colAction": "ተግባር",
+  "activityLog.colEntity": "ኣካል",
+  "activityLog.colDetails": "ዝርዝራት",
+  "activityLog.empty": "ዝኾነ ናይ ንጥፈት መዝገብ ኣይተረኽበን።",
+  "activityLog.systemUnknown": "ስርዓት / ዘይተፈልጠ",
+  "activityLog.pageOf": "ገጽ {page} ካብ {total}",
+  "activityLog.previous": "ዝሓለፈ",
+  "activityLog.next": "ቀጻሊ",
+  "activityLog.analyticsTitle": "ናይ ወብሳይት ጸብጻብ",
+  "activityLog.analyticsDescription": "ናይ ቤተ ክርስቲያን ወብሳይት ብዝሒ ምርኣይ፡ ካበይ ከም ዝመጹን ትራፊክን፡ ካብ ናትና ሰርቨር።",
+  "activityLog.analyticsLink": "ናይ ጸብጻብ ዳሽቦርድ ክፈት",
+
+  // -- MemberSearch --
+  "memberSearch.title": "ኣባላት ድለ",
+  "memberSearch.subtitle": "ክፍሊታቶምን ታሪኽ ክፍሊቶምን ንምርኣይ ኣባል ምረጽ",
+  "memberSearch.placeholder": "ብስም፡ ኢመይል፡ ስልኪ ወይ ናይ ኣባል መለለዪ ድለ...",
+  "memberSearch.loading": "ኣባላት ይጽዕን ኣሎ...",
+  "memberSearch.noMembersTitle": "ኣባላት ኣይተረኽቡን",
+  "memberSearch.adjustSearch": "ናይ ምድላይ ቃላትኩም ኣስተኻኽሉ።",
+  "memberSearch.noneAvailable": "ዝርከቡ ኣባላት የለዉን።",
+  "memberSearch.noPledge": "ቃል የለን",
+  "memberSearch.perYear": "/ዓመት",
+  "memberSearch.found": "{count} ኣባላት ተረኺቦም",
+  "memberSearch.cancel": "ሰርዝ",
+
+  // -- PaymentList --
+  "paymentList.searchLabel": "ኣባላት ድለ",
+  "paymentList.searchPlaceholder": "ብስም ወይ ናይ ኣባል መለለዪ ድለ...",
+  "paymentList.statusFilter": "ናይ ኩነታት መጻረዪ",
+  "paymentList.filterAll": "ኩሎም ኣባላት",
+  "paymentList.filterUpToDate": "ኣብ ግዜኡ ዝኸፈለ",
+  "paymentList.filterBehind": "ብክፍሊት ዝደንጎየ",
+  "paymentList.filterPartial": "ኸፊላዊ ክፍሊት",
+  "paymentList.applyFilters": "መጻረዪታት ተግብር",
+  "paymentList.colMember": "ኣባል",
+  "paymentList.colContact": "መራኸቢ",
+  "paymentList.colMonthly": "ወርሓዊ ክፍሊት",
+  "paymentList.colTotalDue": "ጠቕላላ ዘለዎ",
+  "paymentList.colCollected": "ዝተኣከበ",
+  "paymentList.colBalance": "ተረፍ",
+  "paymentList.colStatus": "ኩነታት",
+  "paymentList.spouse": "መጻምዲ:",
+  "paymentList.statusNoDues": "ክፍሊት የለን",
+  "paymentList.statusUpToDate": "ኣብ ግዜኡ",
+  "paymentList.statusPartial": "ኸፊላዊ",
+  "paymentList.statusBehind": "ዝደንጎየ",
+  "paymentList.pageOf": "ገጽ {page} ካብ {total}",
+  "paymentList.previous": "ዝሓለፈ",
+  "paymentList.next": "ቀጻሊ",
+
+  // -- LoansPage --
+  "loansPage.statOutstanding": "ጠቕላላ ዘይተኸፍለ",
+  "loansPage.statActive": "ንጡፋት ልቓሓት",
+  "loansPage.statPartial": "ኸፊላዊ ዝተኸፍለ",
+  "loansPage.statLoaned": "ጠቕላላ ዝተለቓሕ",
+  "loansPage.recordLoan": "ልቓሕ መዝግብ",
+  "loansPage.allStatuses": "ኩሎም ኩነታት",
+  "loansPage.statusActive": "ንጡፍ",
+  "loansPage.statusPartiallyRepaid": "ኸፊላዊ ዝተኸፍለ",
+  "loansPage.statusClosed": "ዝተዓጽወ",
+  "loansPage.startDate": "መጀመሪ ዕለት",
+  "loansPage.endDate": "መወዳእታ ዕለት",
+  "loansPage.loanCount": "{count} ልቓሓት",
+  "loansPage.warning": "እዚኦም ናይ ዕዳ መዛግብቲ እዮም — ካብ ኣባላት ዝተወስዱ ልቓሓት። ልገሳ ኣይኮኑን ከምኡውን ካብ ግብሪ ዝንኪ ኣይኮኑን።",
+  "loansPage.colMember": "ኣባል",
+  "loansPage.colLoanDate": "ዕለት ልቓሕ",
+  "loansPage.colOriginal": "መበቆላዊ መጠን",
+  "loansPage.colOutstanding": "ዘይተኸፍለ",
+  "loansPage.colStatus": "ኩነታት",
+  "loansPage.colMethod": "መገዲ ክፍሊት",
+  "loansPage.colReceipt": "ቁጽሪ ቅብሊት",
+  "loansPage.colActions": "ተግባራት",
+  "loansPage.loading": "ይጽዕን ኣሎ...",
+  "loansPage.empty": "ልቓሓት ኣይተረኽቡን",
+  "loansPage.btnRepayment": "ምምላስ",
+  "loansPage.btnReceipt": "ቅብሊት",
+  "loansPage.previous": "ዝሓለፈ",
+  "loansPage.next": "ቀጻሊ",
+  "loansPage.pageOf": "ገጽ {page} ካብ {total}",
+
+  // -- VendorList / VendorFormModal (shared vendor domain) --
+  "vendorList.loadFailed": "ኣቕረብቲ ምጽዓን ኣይተኻእለን",
+  "vendorList.confirmDelete": "ብርግጽ ን{name} ክትድምስሱ ትደልዩ ዲኹም?",
+  "vendorList.deleteFailed": "ኣቕራቢ ምድምሳስ ኣይተኻእለን",
+  "vendorList.deleteError": "ኣቕራቢ ኣብ ምድምሳስ ጌጋ ኣጋጢሙ",
+  "vendorList.title": "ምሕደራ ኣቕረብቲ",
+  "vendorList.subtitle": "ኣቕረብትን ወሃብትን ኣመሓድር",
+  "vendorList.add": "ኣቕራቢ ወስኽ",
+  "vendorList.search": "ድለ",
+  "vendorList.searchPlaceholder": "ብስም፡ መራኸቢ ወይ ቁጽሪ ሕሳብ ድለ...",
+  "vendorList.typeLabel": "ዓይነት ኣቕራቢ",
+  "vendorList.allTypes": "ኩሎም ዓይነታት",
+  "vendorList.typeUtility": "ኣገልግሎት (ውሃ/ሓይሊ)",
+  "vendorList.typeSupplier": "ኣቕራቢ ኣቕሑ",
+  "vendorList.typeServiceProvider": "ወሃቢ ኣገልግሎት",
+  "vendorList.typeContractor": "ተቖራጻይ",
+  "vendorList.typeLender": "ኣለቓሒ",
+  "vendorList.typeOther": "ካልእ",
+  "vendorList.statusLabel": "ኩነታት",
+  "vendorList.allStatus": "ኩሉ ኩነታት",
+  "vendorList.statusActive": "ንጡፍ",
+  "vendorList.statusInactive": "ዘይንጡፍ",
+  "vendorList.empty": "ኣቕረብቲ ኣይተረኽቡን",
+  "vendorList.colName": "ስም ኣቕራቢ",
+  "vendorList.colType": "ዓይነት",
+  "vendorList.colContact": "መራኸቢ",
+  "vendorList.colAccount": "ቁጽሪ ሕሳብ",
+  "vendorList.colTerms": "ውዕል ክፍሊት",
+  "vendorList.colStatus": "ኩነታት",
+  "vendorList.colActions": "ተግባራት",
+  "vendorList.edit": "ኣርም",
+  "vendorList.delete": "ደምስስ",
+
+  // -- VendorFormModal --
+  "vendorForm.errorNameRequired": "ስም ኣቕራቢ የድሊ",
+  "vendorForm.errorEmail": "በጃኹም ቅቡል ኣድራሻ ኢመይል ኣእትዉ",
+  "vendorForm.errorWebsite": "በጃኹም ቅቡል ናይ ወብሳይት URL ኣእትዉ (ብhttp:// ወይ https:// ዝጅምር)",
+  "vendorForm.saveFailedUpdate": "ኣቕራቢ ምሕዳስ ኣይተኻእለን",
+  "vendorForm.saveFailedCreate": "ኣቕራቢ ምፍጣር ኣይተኻእለን",
+  "vendorForm.saveError": "ኣቕራቢ ኣብ ምዕቃብ ጌጋ ኣጋጢሙ",
+  "vendorForm.editTitle": "ኣቕራቢ ኣርም",
+  "vendorForm.addTitle": "ኣቕራቢ ወስኽ",
+  "vendorForm.editSubtitle": "ሓበሬታ ኣቕራቢ ኣሐድስ",
+  "vendorForm.addSubtitle": "ናብ ስርዓት ሓድሽ ኣቕራቢ ወስኽ",
+  "vendorForm.name": "ስም ኣቕራቢ",
+  "vendorForm.type": "ዓይነት ኣቕራቢ",
+  "vendorForm.contactInfo": "ናይ መራኸቢ ሓበሬታ",
+  "vendorForm.contactPerson": "መራኸቢ ሰብ",
+  "vendorForm.email": "ኢመይል",
+  "vendorForm.phone": "ቁጽሪ ስልኪ",
+  "vendorForm.website": "ወብሳይት",
+  "vendorForm.address": "ኣድራሻ",
+  "vendorForm.businessDetails": "ናይ ንግዲ ዝርዝራት",
+  "vendorForm.accountNumber": "ቁጽሪ ሕሳብ",
+  "vendorForm.accountPlaceholder": "ናይ ቤተ ክርስቲያን ቁጽሪ ሕሳብ ምስ ኣቕራቢ",
+  "vendorForm.paymentTerms": "ውዕል ክፍሊት",
+  "vendorForm.paymentTermsPlaceholder": "ኣብነት፦ Net 30፡ ኣብ ምቕባል",
+  "vendorForm.taxId": "ናይ ግብሪ መለለዪ / EIN",
+  "vendorForm.taxIdPlaceholder": "ናይ ኣቕራቢ ግብሪ መለለዪ ወይ EIN",
+  "vendorForm.activeVendor": "ንጡፍ ኣቕራቢ",
+  "vendorForm.notes": "መዘኻኸሪ",
+  "vendorForm.notesPlaceholder": "ብዛዕባ እዚ ኣቕራቢ ተወሳኺ መዘኻኸሪ...",
+  "vendorForm.cancel": "ሰርዝ",
+  "vendorForm.saving": "ይዕቀብ ኣሎ...",
+  "vendorForm.update": "ኣቕራቢ ኣሐድስ",
+
+  // -- EmployeeList / EmployeeFormModal (shared employee domain) --
+  "employeeList.loadFailed": "ሰራሕተኛታት ምጽዓን ኣይተኻእለን",
+  "employeeList.confirmDelete": "ብርግጽ ን{name} ክትድምስሱ ትደልዩ ዲኹም?",
+  "employeeList.deleteFailed": "ሰራሕተኛ ምድምሳስ ኣይተኻእለን",
+  "employeeList.deleteError": "ሰራሕተኛ ኣብ ምድምሳስ ጌጋ ኣጋጢሙ",
+  "employeeList.title": "ምሕደራ ሰራሕተኛታት",
+  "employeeList.subtitle": "ሰራሕተኛታት ቤተ ክርስቲያን ኣመሓድር",
+  "employeeList.add": "ሰራሕተኛ ወስኽ",
+  "employeeList.search": "ድለ",
+  "employeeList.searchPlaceholder": "ብስም፡ ኢመይል ወይ ስራሕ ድለ...",
+  "employeeList.typeLabel": "ዓይነት ስራሕ",
+  "employeeList.allTypes": "ኩሎም ዓይነታት",
+  "employeeList.typeFullTime": "ምሉእ ሰዓት",
+  "employeeList.typePartTime": "ፍርቂ ሰዓት",
+  "employeeList.typeContract": "ኮንትራት",
+  "employeeList.typeVolunteer": "ወለንተኛ",
+  "employeeList.statusLabel": "ኩነታት",
+  "employeeList.allStatus": "ኩሉ ኩነታት",
+  "employeeList.statusActive": "ንጡፍ",
+  "employeeList.statusInactive": "ዘይንጡፍ",
+  "employeeList.empty": "ሰራሕተኛታት ኣይተረኽቡን",
+  "employeeList.colName": "ስም",
+  "employeeList.colPosition": "ስራሕ",
+  "employeeList.colType": "ዓይነት ስራሕ",
+  "employeeList.colSalary": "ደሞዝ",
+  "employeeList.colStatus": "ኩነታት",
+  "employeeList.colActions": "ተግባራት",
+  "employeeList.edit": "ኣርም",
+  "employeeList.delete": "ደምስስ",
+  "employeeList.freqWeekly": "ሰሙናዊ",
+  "employeeList.freqBiWeekly": "ክልተ ሰሙናዊ",
+  "employeeList.freqMonthly": "ወርሓዊ",
+  "employeeList.freqAnnual": "ዓመታዊ",
+  "employeeList.freqPerService": "ብኣገልግሎት",
+
+  // -- EmployeeFormModal --
+  "employeeForm.errorFirstName": "ስም ቀዳማይ የድሊ",
+  "employeeForm.errorLastName": "ስም ኣቦ የድሊ",
+  "employeeForm.errorEmail": "በጃኹም ቅቡል ኣድራሻ ኢመይል ኣእትዉ",
+  "employeeForm.errorSsn": "ናይ SSN መወዳእታ ኣርባዕተ ልክዕ 4 ኣሃዛት ክኸውን ኣለዎ",
+  "employeeForm.saveFailedUpdate": "ሰራሕተኛ ምሕዳስ ኣይተኻእለን",
+  "employeeForm.saveFailedCreate": "ሰራሕተኛ ምፍጣር ኣይተኻእለን",
+  "employeeForm.saveError": "ሰራሕተኛ ኣብ ምዕቃብ ጌጋ ኣጋጢሙ",
+  "employeeForm.editTitle": "ሰራሕተኛ ኣርም",
+  "employeeForm.addTitle": "ሰራሕተኛ ወስኽ",
+  "employeeForm.editSubtitle": "ሓበሬታ ሰራሕተኛ ኣሐድስ",
+  "employeeForm.addSubtitle": "ናብ ስርዓት ሓድሽ ሰራሕተኛ ወስኽ",
+  "employeeForm.firstName": "ስም ቀዳማይ",
+  "employeeForm.lastName": "ስም ኣቦ",
+  "employeeForm.position": "ስራሕ",
+  "employeeForm.positionPlaceholder": "ኣብነት፦ ቄስ፡ ዲያቆን፡ ጸሓፊ",
+  "employeeForm.type": "ዓይነት ስራሕ",
+  "employeeForm.contactInfo": "ናይ መራኸቢ ሓበሬታ",
+  "employeeForm.email": "ኢመይል",
+  "employeeForm.phone": "ቁጽሪ ስልኪ",
+  "employeeForm.address": "ኣድራሻ",
+  "employeeForm.employmentDetails": "ዝርዝር ስራሕ",
+  "employeeForm.hireDate": "ዕለት ቆጸራ",
+  "employeeForm.terminationDate": "ዕለት ምቁራጽ",
+  "employeeForm.activeEmployee": "ንጡፍ ሰራሕተኛ",
+  "employeeForm.compensation": "ክፍሊት",
+  "employeeForm.salaryAmount": "መጠን ደሞዝ",
+  "employeeForm.salaryFrequency": "ተደጋጋምነት ደሞዝ",
+  "employeeForm.selectFrequency": "-- ተደጋጋምነት ምረጽ --",
+  "employeeForm.freqWeekly": "ሰሙናዊ",
+  "employeeForm.freqBiWeekly": "ክልተ ሰሙናዊ",
+  "employeeForm.freqMonthly": "ወርሓዊ",
+  "employeeForm.freqAnnual": "ዓመታዊ",
+  "employeeForm.freqPerService": "ብኣገልግሎት",
+  "employeeForm.taxInfo": "ናይ ግብሪ ሓበሬታ",
+  "employeeForm.ssnLastFour": "መወዳእታ 4 ናይ SSN",
+  "employeeForm.taxId": "ናይ ግብሪ መለለዪ / EIN",
+  "employeeForm.taxIdPlaceholder": "ን 1099 ተቖረጽቲ",
+  "employeeForm.notes": "መዘኻኸሪ",
+  "employeeForm.notesPlaceholder": "ብዛዕባ እዚ ሰራሕተኛ ተወሳኺ መዘኻኸሪ...",
+  "employeeForm.cancel": "ሰርዝ",
+  "employeeForm.saving": "ይዕቀብ ኣሎ...",
+  "employeeForm.update": "ሰራሕተኛ ኣሐድስ",
+
+  // -- MemberDuesViewer --
+  "memberDues.statementFailed": "መግለጺ ምፍጣር ኣይተኻእለን",
+  "memberDues.duesFetchFailed": "ናይ ኣባል ክፍሊት ምምጻእ ኣይተኻእለን",
+  "memberDues.unableToLoad": "ዳታ ምጽዓን ኣይተኻእለን",
+  "memberDues.goBack": "ተመለስ",
+  "memberDues.householdFinances": "ናይ ስድራቤት ገንዘብ",
+  "memberDues.householdOf": "ናይ {name} ስድራቤት",
+  "memberDues.membersCount": "{count} ኣባላት",
+  "memberDues.memberFinancialView": "ናይ ኣባል ገንዘባዊ ትርኢት",
+  "memberDues.addTransaction": "ልውውጥ ወስኽ",
+  "memberDues.clearSelection": "ምርጫ ኣጽሪ",
+  "memberDues.close": "ዕጾ",
+  "memberDues.financialYear": "ናይ ባጀት ዓመት {year}",
+  "memberDues.membershipDues": "ናይ ኣባልነት ክፍሊት",
+  "memberDues.annualPledge": "ዓመታዊ ቃል",
+  "memberDues.monthlyValue": "ወርሓዊ ዋጋ",
+  "memberDues.paidToDate": "ክሳብ ሕጂ ዝተኸፍለ",
+  "memberDues.balanceDue": "ዝተረፈ ክፍሊት",
+  "memberDues.percentComplete": "{percent}% ተዛዚሙ",
+  "memberDues.duesCalcFrom": "ክፍሊት ካብ ዕለት ምጽንባር {name} ናብ ደብሪ ጀሚሩ ይሕሰብ።",
+  "memberDues.duesCalcStandard": "ስሌት ኣብ ስሩዕ መጠን ወፈያ ተመስሪቱ",
+  "memberDues.totalReceived": "ጠቕላላ ዝተቐበለ",
+  "memberDues.yearOverYear": "ካብ ዓመት ናብ ዓመት",
+  "memberDues.stableGrowth": "ርጉእ ዕቤት",
+  "memberDues.systemId": "መለለዪ ስርዓት",
+  "memberDues.additionalContributions": "ዝርዝር ተወሰኽቲ ወፈያታት",
+  "memberDues.donations": "ልገሳታት",
+  "memberDues.pledges": "ቃላት",
+  "memberDues.tithes": "ዕሽር",
+  "memberDues.offerings": "መባእ",
+  "memberDues.otherContrib": "ካልእ",
+  "memberDues.totalAdditional": "ጠቕላላ ተወሳኺ",
+  "memberDues.distributionTimeline": "ዓመታዊ ናይ ምክፍፋል ግዜ ሰሌዳ",
+  "memberDues.legendPaid": "ዝተኸፍለ",
+  "memberDues.legendPending": "ተጸባዪ",
+  "memberDues.legendUpcoming": "ዝመጽእ",
+  "memberDues.received": "ዝተቐበለ",
+  "memberDues.required": "ዘድሊ",
+  "memberDues.ledgerTitle": "ዝርዝር መዝገብ ልውውጣት ({year})",
+  "memberDues.recordsFound": "{count} መዛግብቲ ተረኺቦም",
+  "memberDues.colPostDate": "ዕለት ምዝገባ",
+  "memberDues.colReference": "መወከሲ",
+  "memberDues.colType": "ዓይነት",
+  "memberDues.colMechanism": "መገዲ",
+  "memberDues.colOrigin": "መበቆል",
+  "memberDues.colAmount": "መጠን",
+  "memberDues.emptyLedger": "ን{year} ታሪኻዊ መዛግብቲ ባዶ እዩ",
+  "memberDues.authorizedStatement": "ዝተፈቕደ ገንዘባዊ መግለጺ • ዝተፈጥረ {date}",
+  "memberDues.generating": "ይፍጠር ኣሎ...",
+  "memberDues.printStatement": "መግለጺ ሕተም",
+  "memberDues.clearSelectionBtn": "ምርጫ ኣጽሪ",
+  "memberDues.finishReview": "ግምገማ ወድእ",
+
+  // -- SmsBroadcast --
+  "smsBroadcast.notAuthenticated": "ኣይተረጋገጸን",
+  "smsBroadcast.messageRequired": "መልእኽቲ የድሊ",
+  "smsBroadcast.messageTooLong": "መልእኽቲ ኣዝዩ ነዊሕ እዩ። በጃኹም ብ{count} ፊደላት ኣጉድሉ።",
+  "smsBroadcast.selectMemberError": "በጃኹም ኣባል ምረጹ",
+  "smsBroadcast.selectDepartmentError": "በጃኹም ክፍሊ ስራሕ ምረጹ",
+  "smsBroadcast.sendFailed": "SMS ምስዳድ ኣይተኻእለን",
+  "smsBroadcast.loadDepartmentsFailed": "ክፍልታት ስራሕ ምጽዓን ኣይተኻእለን",
+  "smsBroadcast.loadMembersFailed": "ኣባላት ምጽዓን ኣይተኻእለን",
+  "smsBroadcast.sentIndividual": "መልእኽቲ ናብቲ ዝተመርጸ ኣባል ብዓወት ተላኢኹ።",
+  "smsBroadcast.sentDepartment": "መልእኽቲ ናብ \"{name}\" ክፍሊ ስራሕ ተላኢኹ። ዕዉት፦ {success} / {total}",
+  "smsBroadcast.sentPending": "መልእኽቲ ናብ ተጸበይቲ ቃል ዘለዎም ኣባላት ተላኢኹ። ዕዉት፦ {success} / {total}",
+  "smsBroadcast.sentFulfilled": "መልእኽቲ ናብ ቃሎም ዝፈጸሙ ኣባላት ተላኢኹ። ዕዉት፦ {success} / {total}",
+  "smsBroadcast.sentAll": "ናይ ብሮድካስት ሕቶ ተሰሪዑ። ዕዉት፦ {success} / {total}",
+  "smsBroadcast.accessDenied": "መእተዊ ተኸልኪሉ",
+  "smsBroadcast.noPermission": "SMS መልእኽትታት ንምስዳድ ፍቓድ የብልኩምን።",
+  "smsBroadcast.title": "SMS መራኸቢ",
+  "smsBroadcast.selectRecipientType": "ዓይነት ተቐባሊ ምረጽ",
+  "smsBroadcast.typeIndividual": "ውልቀሰብ",
+  "smsBroadcast.typeDepartment": "ክፍሊ ስራሕ",
+  "smsBroadcast.typePending": "ተጸበይቲ ቃላት",
+  "smsBroadcast.typeFulfilled": "ዝተፈጸሙ ቃላት",
+  "smsBroadcast.typeAll": "ኩሎም ኣባላት",
+  "smsBroadcast.selectMember": "ኣባል ምረጽ",
+  "smsBroadcast.searchMembersPlaceholder": "ኣባላት ብስም ወይ ስልኪ ድለ…",
+  "smsBroadcast.loadingMembers": "ኣባላት ይጽዕን ኣሎ…",
+  "smsBroadcast.selectMemberOption": "-- ኣባል ምረጽ --",
+  "smsBroadcast.selectDepartment": "ክፍሊ ስራሕ ምረጽ",
+  "smsBroadcast.loadingDepartments": "ክፍልታት ስራሕ ይጽዕን ኣሎ…",
+  "smsBroadcast.selectDepartmentOption": "-- ክፍሊ ስራሕ ምረጽ --",
+  "smsBroadcast.deptOptionMembers": "ኣባላት",
+  "smsBroadcast.onlyActiveDepts": "ኣባላት ዘለዎም ንጡፋት ክፍልታት ስራሕ ጥራይ ተዘርዚሮም።",
+  "smsBroadcast.departmentMembers": "ኣባላት ክፍሊ ስራሕ",
+  "smsBroadcast.loading": "ይጽዕን ኣሎ...",
+  "smsBroadcast.willReceiveSuffix": "ኣባላት ነዚ መልእኽቲ ክቕበሉ እዮም",
+  "smsBroadcast.hide": "ሕባእ",
+  "smsBroadcast.show": "ኣርኢ",
+  "smsBroadcast.memberList": "ዝርዝር ኣባላት",
+  "smsBroadcast.recipientList": "ዝርዝር ተቐበልቲ",
+  "smsBroadcast.noDeptMembers": "ኣብዚ ክፍሊ ስራሕ ስልኪ ዘለዎም ንጡፋት ኣባላት ኣይተረኽቡን።",
+  "smsBroadcast.pendingRecipients": "ተቐበልቲ ተጸበይቲ ቃላት",
+  "smsBroadcast.fulfilledRecipients": "ተቐበልቲ ዝተፈጸሙ ቃላት",
+  "smsBroadcast.pendingPledgesCount": "{count} ተጸበይቲ ቃላት (ጠቕላላ፦ ${total})",
+  "smsBroadcast.fulfilledPledgesCount": "{count} ዝተፈጸሙ ቃላት (ጠቕላላ፦ ${total})",
+  "smsBroadcast.noPendingPledges": "ተጸበይቲ ቃል ዘለዎም ኣባላት ኣይተረኽቡን።",
+  "smsBroadcast.noFulfilledPledges": "ቃሎም ዝፈጸሙ ኣባላት ኣይተረኽቡን።",
+  "smsBroadcast.messageLabel": "መልእኽቲ",
+  "smsBroadcast.templateVarsTitle": "💡 ዝርከቡ ናይ ቅዲ ተለዋወጥቲ፦",
+  "smsBroadcast.varFirstName": "ስም ቀዳማይ",
+  "smsBroadcast.varLastName": "ስም ኣቦ",
+  "smsBroadcast.varFullName": "ምሉእ ስም",
+  "smsBroadcast.varAmount": "መጠን ቃል (ንጽል)",
+  "smsBroadcast.varTotalAmount": "ጠቕላላ ኩሎም ቃላት",
+  "smsBroadcast.varPledgeCount": "ቁጽሪ ቃላት",
+  "smsBroadcast.varDueDate": "ናይ ምኽፋል ዕለት (ንጽል)",
+  "smsBroadcast.personalizedNote": "ነፍሲ ወከፍ ኣባል ብዝተነጻጸለ መልእኽቲ ክቕበል እዩ!",
+  "smsBroadcast.placeholderPending": "ኣብነት፦ ሰላም {firstName}፡ ብዛዕባ {amount} ተጸባዪ ቃልኩም መዘኻኸሪ። ክሳብ፦ {dueDate}። የቐንየለይ!",
+  "smsBroadcast.placeholderFulfilled": "ኣብነት፦ የቐንየለይ {firstName} ናይ {amount} ቃልኩም ስለዝፈጸምኩም! እግዚኣብሔር ይባርኽኩም።",
+  "smsBroadcast.placeholderDefault": "ናይ SMS መልእኽትኹም ጽሓፉ…",
+  "smsBroadcast.tooLongBy": "መልእኽቲ ብ{count} ፊደላት ነዊሕ እዩ",
+  "smsBroadcast.charsRemaining": "{count} ፊደላት ተሪፎም",
+  "smsBroadcast.totalSmsChars": "ጠቕላላ SMS፦ {used} / {max} ፊደላት",
+  "smsBroadcast.costPrefix": "ግምታዊ ወጻኢ፦",
+  "smsBroadcast.segmentsWord": "ክፋላት",
+  "smsBroadcast.recipientsWord": "ተቐበልቲ",
+  "smsBroadcast.segsWord": "ክፋላት",
+  "smsBroadcast.approxCost": "(ገምጋም ${cost})",
+  "smsBroadcast.standardEncoding": "ስሩዕ ኢንኮዲንግ",
+  "smsBroadcast.unicodeEncoding": "ዩኒኮድ ኢንኮዲንግ",
+  "smsBroadcast.pricingBreakdown": "${base} መሰረት + ${carrier} ካሪየር / ክፋል",
+  "smsBroadcast.includeFooter": "ኣውቶማቲክ ፉተር ኣካትት",
+  "smsBroadcast.footerHelp": "ስሩዕ ናይ ተኣዛዝነት መልእኽቲ ንምውጋድ ኣይትሓርዩ። በጃኹም ንልኣኺ ባዕልኹም ከተለልዩ ኣረጋግጹ።",
+  "smsBroadcast.sending": "ይስደድ ኣሎ…",
+  "smsBroadcast.sendSms": "SMS ስደድ",
+  square: {
+    title: 'ክፍሊት ስኴር',
+    sync: 'ካብ ስኴር ኣምጽእ',
+    from: 'ካብ',
+    to: 'ናብ',
+    status: 'ኩነታት',
+    amount: 'መጠን',
+    date: 'ዕለት',
+    card: 'ካርድ',
+    buyer: 'ገዛኢ',
+    note: 'መዘኻኸሪ',
+    matchedMember: 'እተዛመደ ኣባል',
+    searchMember: 'ኣባል ድለ…',
+    paymentType: 'ዓይነት ክፍሊት',
+    year: 'ዓመት',
+    receipt: 'ቁ. ደረሰ',
+    confirm: 'ኣረጋግጽ',
+    ignore: 'ሸለል በል',
+    noneToReview: 'ንግምጋም ዝኸውን ክፍሊት ስኴር የለን።',
+    autoMatched: 'ብቕጥታ ተዛሚዱ',
+    needsReview: 'ግምጋም የድሊ',
+    suggested: 'እተመኸረ',
+    awaitingReview: 'ንግምጋም ይጽበዩ',
+    loading: 'ይጽዓን…',
+    allCaughtUp: 'ኩሉ ተወዲኡ',
+    selectMember: 'ኣባል ምረጽ',
+    nonMemberDonor: 'ኣባል ዘይኮነ ወሃቢ',
+    donorName: 'ስም ወሃቢ',
+    donorNameRequired: 'ስም ወሃቢ ኣእትዉ',
+    confirmHint: 'ኣባል ምረጽ፡ ወይ ኣባል ዘይኮነ ወሃቢ ኢልካ ምልክት ገይርካ ስም ኣእትው',
+    createdOk: 'ሸማ ተፈጢሩ።',
+    alreadyRecorded: 'እዚ ክፍሊት ድሮ ተመዝጊቡ ኣሎ፤ እታ መስመር ምስ ዘሎ ሸማ ተኣሳሲራ።',
+    ignoredOk: 'ክፍሊት ተሸለለ።',
+    review: 'ንግምጋም',
+    ignoredTab: 'እተሸለሉ',
+    ignoredCountLabel: 'እተሸለሉ',
+    restore: 'መልስ',
+    restoredOk: 'ክፍሊት ናብ ግምጋም ተመሊሱ።',
+    noneIgnored: 'እተሸለሉ ክፍሊታት የለዉን።',
+    selectAll: 'ኩሉ ምረጽ',
+    selectedCount: 'ተመሪጹ',
+    bulkConfirm: 'ኣረጋግጽ',
+    clearSelection: 'ኣጽሪ',
+    bulkDonorHint: 'ኩሎም እተመረጹ ክፍሊታት ብዚ ስም ወሃቢ ክምዝገቡ እዮም።',
+    bulkResult: 'ተረጋጊጹ',
+    bulkFailed: 'ኣይተሳኸዐን'
+  },
+  mobileNav: {
+    today: 'ሎሚ',
+    calendar: 'ዘመን መጽሓፍ',
+    give: 'ወፈያ',
+    more: 'ተወሳኺ',
+    label: 'ቀንዲ',
+    closeMore: 'ዕጸው',
+    serviceTimes: 'ሰዓታት ኣገልግሎት',
+    watch: 'ብቐጥታ ተኸታተል',
+    profile: 'መለለዪየይ',
+    dependents: 'ስድራይ',
+    departments: 'ክፍልታት',
+    gallery: 'ኣልበም ስእሊ',
+    board: 'ኣባላት ቦርድ',
+    // The next three reuse the terms this app already established elsewhere,
+    // rather than fresh translations. A member should not meet the same thing
+    // named two ways depending on which screen they are on.
+    bylaw: 'ሕጊ ቤተ ክርስቲያን',
+    privacy: 'ውልቃዊ ሓበሬታ',
+    admin: 'ኣድሚን ዳሽቦርድ',
+    treasurer: 'ተሓዝ ገንዘብ',
+    outreach: 'ምብጻሕ',
+    sms: 'መልእኽቲ ምዝርጋሕ',
+    menuTitle: 'ተወሳኺ',
+  },
+  pwa: {
+    updateAvailable: 'ሓድሽ ዝተመሓየሸ ወጺኡ ኣሎ።',
+    refresh: 'ኣሐድስ',
+    installTitle: 'ናብ መተግበሪ ገጽ ወስኽ',
+    installBody: 'ቀልጢፍካ ንምእታው ናይ ቤተ ክርስቲያን መተግበሪ ኣውርድ።',
+    install: 'ኣውርድ',
+    installDismiss: 'ሕጂ ኣይኮነን',
+    iosInstallBody: 'Share ጠውቕ፡ ደሓር "Add to Home Screen" ምረጽ።',
+  },
+  errorBoundary: {
+    title: 'ገለ ጸገም ኣጋጢሙ',
+    body: 'ጌጋ ኣጋጢሙ። በጃኹም ገጹ ኣሐድሱ።',
+    retry: 'ዳግማይ ፈትን',
+    detailsLabel: 'ዝርዝር ጌጋ',
+  },
+  survey: {
+    memberStatus: {
+      label: 'ኩነታት ኣባልነት',
+      options: { firstTimeGuest: 'ንመጀመርታ ግዜ/ጋሻ', newMember: 'ሓድሽ ኣባል', existingMember: 'ነባር ኣባል' }
+    },
+    intro: {
+      title: 'ናይ ቤተ ክርስቲያናዊ ኣገልግሎትን ማሕበረ ምእመናናዊ መንፈሳዊ ሂወትን መርመራ ዳህሳስ',
+      blessing: '"በስመ ኣብ ወወልድ ወመንፈስ ቅዱስ ሓደ ኣምላክ። ኣሜን።"',
+      welcome: 'ፍቁራት ምእመናን ክርስቶስ፣ ሰላም ይሃልኹም። ንልዑል እግዚኣብሔር ክብሪ ንምሃብን ቅዱስ ኣምልኾና፣ ምስጢራዊ ሂወትና፣ መንፈሳዊ ትምህርትና፣ ኣገልግሎት መንእሰያትና፣ ንብረት ደብርናን ኣገልግሎት ማሕበረሰብናን ንምሕያልን፣ በዘኽብር ናይ ግምት ሓሳብኩምን ስም ብዘይ ምጥቃስ ርእይቶኹምን ንዕድም።',
+      verse: '"ኩሉ ብስርዓትን ብግቡእ ኣገባብን ይኹን።" — 1 ቆረንቶስ 14:40',
+      confidentialityNotice: 'ስም ብዘይ ምጥቃስን ብምስጢርን ዝተታሕዘ። ስም ወይ ቁፅሪ ተሌፎን ኣይትፃሕፉ።'
+    },
+    section1: { title: 'ብዛዕባኹምን መንፈሳዊ ጉዕዞኹምን', instruction: 'እዞም ሕቶታት ኣብ ኩሉ ናይ ዕድመ ደረጃ ዘለዉ ምእመናንና ብዝበለፀ ክንፈልጥን ከነገልግልን ይሕግዙና።' },
+    section2: { title: 'ቅዳሴ፣ ዜማን መንፈሳዊ ኣገልግሎታትን', instruction: 'ብዛዕባ ቅዳሴ፣ ኪዳን፣ ማኅሌት፣ ሰዓታት፣ ዜማ/መዝሙር፣ ስብከትን ካልኦት መንፈሳዊ መደባትን ኣስተንትኑ።' },
+    section3: { title: 'ቋንቋ፣ ትርጉምን ምርዳእን', instruction: 'ቤተ ክርስቲያንና መንፈሳዊ ኣገልግሎት ብትግርኛ፣ እንግሊዝኛን ግእዝን ንምቕራብ ትፅዕር።' },
+    section4: { title: 'ቅዱሳት ምሥጢራትን ኣገልግሎት መጓሰን', instruction: 'ቅዱሳት ምሥጢራት፦ ጥምቀት፣ ሜሮን፣ ቁርባን፣ ንስሓ፣ ተክሊል፣ ክህነትን ቀንዲል (ቅብኣተ ሕሙማን)ን።' },
+    section5: { title: 'ኣገልግሎት ሕፃናትን መናእሰይን', instruction: 'ደቅናን መንእሰያትናን ክቡራት ኣባላት ቤተ ክርስቲያንን መጻኢ ኣገልገልትን እምነትን እዮም።' },
+    section6: { title: 'ከባቢ፣ ህንፃን ንዋያት ቤተ ክርስቲያንን', instruction: 'ፅሬት፣ ምቹውነት፣ ድሕንነት፣ ተበጻሕነት፣ መኪና መዕረፊ፣ ክፍልታት፣ ሽቓቕ፣ ድምጺ፣ ስክሪን፣ ወንበር፣ ኤርኮንዲሽንን ሊፍትን ኣስተውዕሉ።' },
+    section7: { title: 'ርክብ ቤተ ክርስቲያንን ምእመናንን', instruction: 'ፅኑዕ ርክብን ፍቕራዊ ሕብረትን ቤተ ክርስቲያን ኣብ ሓጎስን ፈተናን ኣባላታ ክተገልግል ይሕግዛ።' },
+    section8: { title: 'ኣገልግሎት፣ ተሳትፎን መጋቢነትን', instruction: 'ነፍስወከፍ ኣባል ካብ እግዚኣብሔር እተዋህበ ውህበት ኣለዎ ንቤተ ክርስቲያን ዘህንፅ። መጋቢነት ጸሎት፣ ግዜ፣ ክእለትን እሙን ውፈያን የጠቓልል።' },
+    section9: { title: 'መሪሕነት፣ ምምሕዳርን ገንዘባዊ ተሓታትነትን', instruction: 'እዚ ክፍሊ መሪሕነት ካህናት፣ ሰበካ ጉባኤ፣ ርክብ፣ ክንክን ንብረትን እሙን መጋቢነትን ይምልከት።' },
+    section10: { title: 'ሓድሽ ህንጻ፣ ዕብየትን ወንጌላዊ ተልእኾን', instruction: 'ብዛዕባ መጻኢ ደብርና፣ ሓድሽ ህንጻ፣ ወፃኢ ኣገልግሎትን ንህልውን መጻእን ወለዶ ዝወሃብ ኣገልግሎትን ኣስተንትኑ።' },
+    section11: { title: 'ጠቕላላ መንፈሳዊ ኣስተንትኖን ጸሎታዊ ምኽርን', instruction: 'ናይ መወዳእታ ሓሳባትኩም መንፈሳዊ ዕብየት፣ ሓድነትን ቅዱስ ተልእኾን ደብርና ክመርሕ እዩ።' },
+    q1: { label: 'ዕድመኹም ኣብ ኣየናይ ምድብ ይርከብ?', options: { under18: 'ትሕቲ 18 ዓመት', age18to28: '18–28 ዓመት', age29to38: '29–38 ዓመት', age39to48: '39–48 ዓመት', age49to60: '49–60 ዓመት', age61to75: '61–75 ዓመት', age76plus: '76 ዓመት ወይ ልዕሊኡ' } },
+    q2: { label: 'ጾታ?', options: { male: 'ተባዕታይ', female: 'ኣንስታይ' } },
+    q3: { label: 'ኣባል ወይ ተሳታፊ ናይዚ ደብሪ ካብ እትኾኑ ክንደይ ግዜ ገይርኩም?', options: { firstTimeGuest: 'ንመጀመርታ ግዜ/ጋሻ', lessThan6Months: 'ትሕቲ 6 ወርሒ', sixMonthsTo2Years: '6 ወርሒ–2 ዓመት', threeTo5Years: '3–5 ዓመት', moreThan5Years: 'ልዕሊ 5 ዓመት' } },
+    q4: { label: 'ናብዚ ደብሪ ክትፅንበሩ ብቐንዱ ዝሓገዘኩም እንታይ እዩ?', options: { familyFriendInvitation: 'ዕድመ ስድራ/መሓዛ', movedToArea: 'መንበሪአይ ናብዚ ከባቢ ስለዝቐየርኩ', seekingSpiritualGuidance: 'መንፈሳዊ መምርሒን ሰላም ክርስቶስን ብምድላይ', tigrayOrthodoxCommunity: 'ናይ ትግራይ ኦርቶዶክስ ተዋሕዶ ኣምልኾን ማሕበረሰብን', holyDaySpecialProgram: 'በዓል/ፍሉይ መርሓ ግብሪ', childrenFamilyMinistry: 'ኣገልግሎት ሕፃናት/ስድራ', other: 'ካልእ' } },
+    q5: { label: 'ቀፃላይነት ብዘለዎ ናብ ቤተ ክርስቲያን ንምምፃእ ዋና ምኽንያትኩም እንታይ እዩ?', options: { growCloserToGod: 'ናብ እግዚኣብሔር ዝያዳ ንምቕራብ', receiveHolyMysteries: 'ቅዱሳት ምሥጢራት ንምቕባል', liturgyPrayerChanting: 'ቅዳሴ፣ ጸሎትን መዝሙርን', sermonSpiritualTeaching: 'ስብከትን መንፈሳዊ ትምህርትን', fellowshipCommunity: 'ምሕዝነትን ማሕበርን', childrenYouthEducation: 'ትምህርቲ ሕፃናት/መንእሰያት', orthodoxTraditionCulture: 'ኦርቶዶክሳዊ ትውፊትን ባህልን' } },
+    q6: { label: 'ናብ ቤተ ክርስቲያን ክትመፁ ከለኹም፣ ተቐባልነት፣ ክብሪን ምሕዝነትን ይስምዓኩምዶ?', options: { always: 'ኩሉ ግዜ', often: 'ብዙሕ ግዜ', sometimes: 'ሓደ ሓደ ግዜ', rarely: 'ሳሕቲ', notYet: 'ገና ኣይተሰምዓንን' } },
+    q7: { label: 'ጋሻታትን ኣባላትን ዝያዳ ተቐባልነትን መንፈሳዊ ምትእስሳርን ክስምዖም እንታይ ምግባር ክሕግዝ ይኽእል ትብሉ?' },
+    q8: { label: 'ብቐጻሊ ኣብ ኣየኒኦም ኣገልግሎታት ትሳተፉ?', options: { divineLiturgyCommunion: 'ቅዳሴን ቁርባንን', mahletSeatatKidan: 'ማኅሌት፣ ሰዓታትን ኪዳንን', sundaySibket: 'ስብከተ ወንጌል', sundaySchoolYouth: 'ቤት ትምህርቲ ሰንበት/ንመንእሰያት', bibleStudyAdult: 'መጽናዕቲ መጽሓፍ ቅዱስ/ንዓበይቲ', virtualOnlinePrograms: 'ናይ Online መንፈሳዊ መደባት' } },
+    q9: { label: 'ጸሎት፣ ቅዳሴ፣ ንባብን ተሰጥኦን ክትከታተሉ ክንደይ ዝኣክል ቀሊል እዩ?', options: { veryEasy: 'ኣዝዩ ቀሊል', mostlyEasy: 'ብዙሕ ግዜ ቀሊል', sometimesDifficult: 'ሓደ ሓደ ግዜ/ከቢድ', veryDifficult: 'ኣዝዩ ከቢድ' } },
+    q10: { label: 'ናይ ሰንበት ጠቕላላ መርሓ ግብርታትን ናይ ኣገልግሎት ሰዓታትን ከመይ ትግምግምዎ?', options: { highlyAppropriate: 'ብጣዕሚ ግቡእን መንፈሳዊ ዕግበት ዝህብን', acceptableNeedsAdjustment: 'ብኣብዝሓ ፅቡቕ እዩ፣ ነገር ግን ንኡሽተይ ምስትኽኻል የድሊ', tooLongForFamily: 'ንስድራ ቤት ነዊሕ/ኣፀጋሚ', preferAdjustedSchedule: 'ብጠቕላላ እቲ ሰዓታቱ እንተዝቕየር እመርፅ' } },
+    q11: { label: 'ናይ ሰንበት ካብ 30–40 ደቓይቕ ንዝኸውን ግዜ ዝወሃብ ስብከተ ወንጌል ብኸመይ ትርእይዎ?', options: { deeplyEnrichingIdeal: 'ኣዝዩ ዝሃንፅን ግቡእን', goodButLittleLong: 'ፅቡቕ እዩ፤ ግና ቁሩብ ንውሕ ኢሉ', moderatelyHelpfulNeedsFocus: 'መጠነኛ ጠቓሚ፤ ኣብ ዕለታዊ ሕይወት/መንእሰያት እንተዘተኩር', desiresDeeperLongerSermon: 'ዝበለፀ ዕምቈት እንተዝህልዎ/ነዊሕ ስብከት እደሊ' } },
+    q12: { label: 'መንፈሳዊ መዝሙር፣ መዘምራንን ተሳትፎ ምእመናንን ከመይ ትግምግምዎ?', options: { exceptionalUplifting: 'ፍሉይ፣ ልቢ ዝትንክፍን ዘበራትዕን', goodNeedsBroaderParticipation: 'ጽቡቕ፤ ግና ሰፊሕ ተሳትፎ የድሊ', fairNeedsOrganizationTraining: 'መጠነኛ፤ ምውዳብን ስልጠናን የድሊ', needsStructuralImprovement: 'መዋቅራዊ ምምሕያሽ የድሊ' } },
+    q13: { label: 'ኣባላት ሰሙናዊ ቅዳሴ ከይሳተፉ ብቐንዱ ዝዓግቶም እንታይ እዩ?', options: { workSchedules: 'ሰዓት ስራሕ/ግዴታታት', distanceTransportation: 'ርሕቐት/መጓዓዝያ', languageComprehension: 'ቋንቋ/ምርዳእ', needClearerSchedule: 'ሰዓቱ ንፁር ስለዘይኮነ/መዘኻኸሪ ምጉዳል', lackYouthEngagement: 'ሕፃናት/መንእሰያት ዘይምስታፍ', needPastoralOutreach: 'ቀስቃሲ ምድላይ/ውልቃዊ ርክብ ምድላይ' } },
+    q14: { label: 'ስርዓተ ኣምልኾና፣ ተሳትፎ ምእመናን ወይ ናይ ኣገልግሎት ሰዓታት ንምሕያል ሓደ ምኽሪ ይሃቡ።' },
+    q15: { label: 'ንመንፈሳዊ ትምህርቲ ብዝበለፀ እትርድኡሉ ቋንቋ ኣየናይ እዩ?', options: { tigrinya: 'ትግርኛ', english: 'እንግሊዝኛ', geez: 'ግእዝ', bilingual: 'ክልቲኡ (ትግርኛን እንግሊዝኛን)', other: 'ካልእ' } },
+    q16: { label: 'ትርጉም ወይ ደገፍ ቋንቋ ኣብ ኣየናይ ክፍሊ ግልጋሎት ብዝበለፀ ይጠቅም?', options: { kidaseLiturgyTextScreens: 'ናይ ቅዳሴ ንባብ/ስክሪን', sibketSermonTranslation: 'ስብከት', sundaySchoolYouth: 'ቤት ትምህርቲ ሰንበት/መንእሰያት', sacramentPreparation: 'ምስጢራተ ቤተክርስቲያን እንትፍፀም', announcementsBulletins: 'ምልክታታት/ሓበሬታን መዘኻኸሪን', scriptureReadings: 'ንባብ ቅዱሳት መጻሕፍቲ' } },
+    q17: { label: 'ኣብ ወርሒ ሓደ ሰንበት ብዋናነት እንግሊዝኛ ምጥቃም (3፥1 ቋንቋ ኣጠቓቕማ) ከመይ ትርእይዎ?', options: { stronglySupport: 'ብፅኑዕ እድግፍ', support: 'እድግፍ', neutralNoPreference: 'ገለ ሓሳብ የብለይን/ግድን ኣይኮነን', doNotSupport: 'ኣይድግፍን', needMoreInfo: 'ዝያዳ ሓበሬታ የድልየኒ' } },
+    q18: { label: 'ንዓኻትኩም ወይ ንደቅኹም ዝያዳ ክትጥቀሙ እንታይ ዓይነት ደገፍ ቋንቋ የድሊ? ስለምንታይ?' },
+    q19: { label: 'ኣብዚ እዋን ዝተመደበ ንስሃ ኣቦ ኣለኩም ዶ?', options: { yesAtThisParish: 'እወ፣ ኣብዚ ደብሪ', yesAtAnotherParish: 'እወ፣ ኣብ ካልእ ደብሪ', noSeekingGuidance: 'ኣይብለይን፤ ንምርካብ ትምህርቲ እደሊ', noNotCurrently: 'ናይ ምሓዝ ድልየት ኣይብለይን' } },
+    q20: { label: 'ምስ ንስሃ ኣቦ ወይ ካህን ንመንፈሳዊ ምኽርን ንስሓን ክንደይ ግዜ ትራኸቡ?', options: { monthlyOrAsNeeded: 'ወርሓዊ/ከም ዘድሊ', every2to3Months: 'ኣብ 2–3 ወርሒ', duringMajorFasts: 'ኣብ ዓበይቲ ጾማት/በዓላት', rarelyOrNever: 'ኣይንራኸብን' } },
+    q21: { label: 'ቅዱስ ምሥጢር ወይ ካልእ መንፈሳዊ ኣገልግሎት ክትሓቱ ከለኹም ክንደይናይ ደገፍ ትረኽቡ?', options: { verySupported: 'ኣዝዩ ፅቡቕ', supported: 'ደገፍ ይግበረለይ', somewhatSupported: 'መጠነኛ', notSupportedEnough: 'እኹል ደገፍ የለን', haveNotRequested: 'ኣይሓተትኩን' } },
+    q22: { label: 'ካህናት ወይ ኣገልገልቲ መንፈሳዊን ውልቃዊን ኩነታት ስድራኹም ክንደይ ግዜ ይከታተሉኹም?', options: { regularly: 'ምቁርራፅ ብዘይብሉ ብተኸታታሊ', sometimes: 'ሓደ ሓደ ግዜ', rarely: 'ሳሕቲ', never: 'ኣይከታተሉናን', newToChurch: 'ሓድሽ እየ' } },
+    q23: { label: 'ኣቦታትና ካህናት ኣብ ኣየኒኦም መጓሰያዊ ኣገልግሎታት ብዝበለፀ ከተኩሩ ይግባእ?', options: { homeHospitalVisits: 'ምብፃሕ ሕሙማን/ኣረጋውያን', financialPersonalHardship: 'ደገፍ ኣብ ገንዘባዊ/ውልቃዊ ፀገም', spiritualCounseling: 'መንፈሳዊ ምኽሪ/ንስሓ', newcomerWelcome: 'ኣቀባብላ/ክትትል ሓደሽቲ', bereavementGrief: 'ደገፍ ኣብ ሓዘን', preMaritalFamilyCounseling: 'ምኽሪ ቅድመ ተክሊል/ስድራ' } },
+    q24: { label: 'ርክብ ካህናትን ምእመናንን፣ ከምኡ እውን መጓሰያዊ ኣገልግሎቶምን ንምሕያል ሓደ ምኽሪ ይሃቡ።' },
+    q25: { label: 'ካብ ገዛኹም ኣብ ቤተ ክርስቲያን ዝሳተፉ ሕፃናትን መናእሰይን ኣለዉዶ?', options: { yesAges0to9: 'እወ፣ 0–9', yesAges10to17: 'እወ፣ 10–17', yesAges18to30: 'እወ፣ 18–30', noNotApplicable: 'ኣይምልከተንን' } },
+    q26: { label: 'ናይ ቤተ ክርስቲያና መንፈሳዊ ግልጋሎታት ንመንፈሳዊ ዕብየት ሕፃናትን መናእሰይን ክንደየናይ ይሕግዙ?', options: { highlyEffective: 'ኣዝዩ ውጽኢታዊ', moderateNeedsModernBilingual: 'መጠነኛ፤ ዘመናዊ/ክልተ-ቋንቋ የድሊ', inadequateUrgentYouthMinistry: 'ዘይእኹል፤ ፍሉይ ኣገልግሎት መንእሰያት የድሊ', unsureNotApplicable: 'ኣይፈልጥን/ኣይምልከተንን' } },
+    q27: { label: 'ኣየኒኦም መደባት ሕፃናትን መንእሰያትን ክበራትዑ ይግባእ?', options: { ageGradedSundaySchool: 'ብዕድመ ዝተመደበ ትምህርቲ ሰንበት', clergyMentorship: 'ምኽሪን ማዕዳን ካህን', englishBibleStudyApologetics: 'መጽሓፍ ቅዱስ ፅንዓት/ዕቅበተ እምነት', youthFellowshipRetreats: 'ናይ መንእሰያት ሕብረት ጉዕዞን ኣገልግሎት ፕሮጀክትታትን', sacredZemaLiturgicalTraining: 'ምሥጢራት፣ ዜማ/መዝሙር ስልጠና', parentSupport: 'ደገፍ ወለዲ' } },
+    q28: { label: 'ሕፃናትን መናእሰያትናን ኣብ ሃይማኖቶም ፅኑዓት ክኾኑ ደብርና ክወስዶ ዘለዎ እቲ ኣዝዩ ኣገዳሲ ስጉምቲ እንታይ እዩ?' },
+    q29: { label: 'ጠቕላላ ጽሬት፣ ኣየርን ምቹውነትን ህንጻ ቤተ ክርስቲያን ከመይ ትግምግምዎ?', options: { exceptionalExcellent: 'ፍሉይ/ብሉጽ', satisfactoryGood: 'ኣዕጋቢ/ጽቡቕ', fairMinorCareNeeded: 'መጠነኛ', needsMajorCleanup: 'ሰፊሕ ናይ ፅሬት የድሊ' } },
+    q30: { label: 'ኣብ ቤተክርስቲያና ስርዓተ ጸሎት፣ ንባብ፣ መዝሙርን ስብከትን ብኣግባቡ ናይ ምድማፅ ኩነታት ከመይ ትግምግምዎ?', options: { excellent: 'ብሉፅ', good: 'ፅቡቕ', fair: 'መጠነኛ', needsImprovement: 'ምምሕያሽ የድሊ' } },
+    q31: { label: 'ናይ ስክሪን ሓገዝ ንጸሎት፣ ንባብ፣ ምልክታን ትርጉምን ክንደይ ጠቓሚ እዩ?', options: { fullyFunctional: 'ሙሉእ ብሙሉእ ይሰርሕ', adequateNeedsTextEnhancement: 'እኹል፤ ጽሑፍ/ትርጉም ይመሓየሽ', soundNeedsTuning: 'ድምፂ/ግልፅነት ይማሓየሽ', needsImmediateTechUpgrade: 'ቅልጡፍ ቴክኒካዊ ምምሕያሽ የድሊ' } },
+    q32: { label: 'ኣየናይ መሳርሒ ወይ ዘይምቹ ነገር ቀዳማይነት ተዋሂብዎ ክመሓየሽ ይግባእ?', options: { soundSystem: 'ስርዓት ድምጺ', displayScreens: 'ስክሪን/ምስሊ', chairsSeating: 'ወንበር', airConditioning: 'ኤር ኮንዲሽነር', elevator: 'ሊፍት', lighting: 'መብራህቲ', other: 'ካልእ' } },
+    q33: { label: 'ኣየናይ ክፍሊ ህንጻ ብቕልጡፍ ትኹረት የድልዮ?', options: { worshipArea: 'ኣምልኾ ቦታ/ ዋና ቤተ መቅደስ', dejeselamCommonAreas: 'ደጀሰላም/ሓባራዊ ቦታ', sanctuarySurroundings: 'ከባቢ ቅድስተ ቅዱሳን', sundaySchoolClassrooms: 'ክፍልታት ሰንበት ተምሃሮ/ሕፃናት', parkingTrafficFlow: 'መኪና መዕረፊ/ትራፊክ', accessibilityElders: 'ተበፃሕነት ኣረጋውያን/ኣካል ጉድኣት ዘለዎም', buildingSafetySigns: 'ድሕንነትን ምልክታትን ህንጻ' } },
+    q34: { label: 'ርክብን ምልክታታትን ቤተ ክርስቲያን ከመይ ትግምግምዎ?', options: { excellent: 'ብሉፅ', good: 'ፅቡቕ', fair: 'መጠነኛ', needsImprovement: 'ምምሕያሽ የድሊ' } },
+    q35: { label: 'ቤተ ክርስቲያን ስለ እትህቦም ግልጋሎታትን እተመሓላልፎም መልእኽትታትን ብኸመይ ክበፅሐኩም ትመርፁ?', options: { inPersonAnnouncement: 'ብኣካል', textSms: 'SMS', whatsappViber: 'WhatsApp / Viber', email: 'ኢመይል', printedNotice: 'ብወረቐት ዝተሓትመ ሓበሬታ', facebookSocialMedia: 'Facebook/ማሕበራዊ ሜድያ', churchWebsite: 'መርበብ ቤተ ክርስቲያን' } },
+    q36: { label: 'ቤተ ክርስቲያና ምእመናን ሕማም፣ ሓዘን፣ ወይ ካልእ ፀገም እንተጋጥሞም ክንደይናይ ትድግፍ?', options: { veryWell: 'ኣዝዩ ፅቡቕ', well: 'ፅቡቕ', sometimes: 'ሓደ ሓደ ግዜ', needsImprovement: 'ምምሕያሽ የድሊ', iDoNotKnow: 'ኣይፈልጥን' } },
+    q37: { label: 'ኣየናይ መንፈሳዊ ግልጋሎታት ብፍሉይ ክበራትዑ ይግባእ?', options: { newcomerWelcomeFollowUp: 'ኣቀባብላ/ክትትል ሓደሽቲ', careElders: 'ክንክን ኣረጋውያን/ኣብ ገዛ', familyFellowship: 'ሕብረት ስድራቤት', youngAdultFellowship: 'ሕብረት መንእሰያት ዓበይቲ', charityOutreach: 'ግብረ ሠናይን ወፃኢ ኣገልግሎትን', supportFamiliesInCrisis: 'ደገፍ ንኣብ ፀገም ዘለዋ ስድራቤታት', communityEducationWorkshops: 'ትምህርቲ/ስልጠና', evangelismMission: 'ወንጌል/ተልእኾ' } },
+    q38: { label: 'ኣብ መንጎ ምእመናንትና ክርስቲያናዊ ሕብረትን ሓልዮትን ንምሕያል ቤተ ክርስቲያን ክትገብሮ እትኽእል ሓደ ተግባራዊ ነገር እንታይ እዩ?' },
+    q39: { label: 'ብኣየናይ መንገዲ ከተገልግሉ ፍቓደኛታት ኢኹም?', options: { zemaChoirWorshipSupport: 'ዜማ/መዘምራን', cleaningSetupMaintenance: 'ፅሬት/ጽገና', sundaySchoolYouthTeaching: 'ትምህርቲ ሰንበት/መንእሰያት', welcomingNewcomerSupport: 'ሓደሽቲ ኣባላት ምቕባል', mediaSoundScreensTech: 'ሚድያ', charityVisitationOutreach: 'ምጽዋት/ምብጻሕ/ምውፋር', fundraisingEventOrganization: 'ምትእኽኻብ ገንዘብ', professionalSkills: 'ሞያዊ ክእለት', needMoreInfo: 'ዝያዳ ሓበሬታ የድልየኒ' } },
+    q40: { label: 'ብዛዕባ መባእ፣ ኣስራትን በኲራትን ዝወሃብ ትምህርቲ ክንደይናይ ግልፂ እዩ?', options: { veryClear: 'ኣዝዩ ግልፂ', mostlyClear: 'ብዙሕ ግዜ ግልፂ', somewhatUnclear: 'መጠነኛ', notClear: 'ግልጺ ኣይኮነን', newHaveNotReceivedInfo: 'ሓድሽ እየ/ሓበሬታ ኣይረኸብኩን' } },
+    q41: { label: 'ኣባላት ብቐሊሉ መንፈሳዊ ኣገልግሎት ክህቡ እንታይ ይሕግዞም?', options: { clearMinistryRoles: 'በየ ጊዜኡ ግልፂ ሓላፍነታት ምሃብ', volunteerSignUpForm: 'ቅጥዒ ምዝገባ', trainingGuidance: 'ስልጠና/ትምህርቲ', personalInvitationFollowUp: 'ውልቃዊ ክትትል', regularSchedule: 'ቀዋሚ ምደባ', childcareDuringActivities: 'ክንክን ሕፃናት', recognitionEncouragement: 'ኣፍልጦ/ምትብባዕ', other: 'ካልእ' } },
+    q42: { label: 'ንተልእኾ ቤተ ክርስቲያን እንታይ ዓይነት ደገፍ ክትህቡ ፍቓደኛታት ኢኹም?', options: { prayer: 'ጸሎት', regularGiving: 'ብቀዋሚነት ካብ ኣታዊና ኣስራትን በኹራትን ምኽፋል', specialProjectBuilding: 'ንህንፃ ቤተ ክርስቲያን መፈፀሚ ገንዘብ ምውፃእ', volunteerTime: 'ናይ በጎ ፍቓድ ግዜ', professionalTechnicalExpertise: 'ሞያዊ/ቴክኒካዊ ክእለት', invitingOthers: 'ካልኦት ምዕዳም', outreachCharity: 'ምጽዋት', needMoreInfo: 'ዝያዳ ሓበሬታ የድልየኒ' } },
+    q43: { label: 'ቅድስት ቤተ ክርስቲያና ኣብ ምምራሕን ኣገልግሎት ኣብ ምሃብን ዘለዋ ኣፈፃፅማ ከመይ ትግምግምዎ?', options: { veryHighConfidence: 'ኣዝዩ ልዑል', highConfidence: 'ልዑል', someConfidence: 'ማእኸላይ', lowConfidence: 'ዝተሓተ', notEnoughInfo: 'እኹል ሓበሬታ ኣይብለይን' } },
+    q44: { label: 'ሰበካ ጉባኤ ንዝውስኖም ውሳነታት፣ ዝእቅዶም ተግባራትን ሓላፍነታትን ክንደየናይ ብግልጺ የረድእ?', options: { veryClearly: 'ኣዝዩ ግልፂ', clearly: 'ግልፂ', sometimesClearly: 'ሓደ ሓደ ግዜ', notClearly: 'ግልፂ ኣይኮነን', iDoNotKnow: 'ኣይፈልጥን' } },
+    q45: { label: 'ሰበካ ጉባኤ ገንዘባዊ ኣታዊታት ብሓላፍነትን ብግልጽነትን ኣብ ምምሕዳር ዝገብሮ ምንቅስቓስ ከመይ ትግምግምዎ?', options: { veryConfident: 'ኣዝዩ ርግፀኛ', confident: 'ርግፀኛ', somewhatConfident: 'መጠነኛ', notConfident: 'ርግፀኛ ኣይኮንኩን', notEnoughInfo: 'እኹል ሓበሬታ የለን' } },
+    q46: { label: 'እምነትን ተሳትፎን ምእምናን ዘዕብዩ ኣየኒኦም ምምሕዳራዊ ተግባራት እዮም?', options: { regularFinancialSummaries: 'ገንዘባዊ ኣታዊናን ወፃኢናን ሓፂር ሪፖርት ብብወርሑ ምንጋር', clearAnnualPlansGoals: 'ዓመታዊ እቅድ/ሸቶ ግልፂ ምግባር', betterExplanationMajorDecisions: 'ንውሳነታት ሰበካ ጉባኤ በቢጊዜኡ መብርሂ ምሃብ', moreOpportunitiesMemberQuestions: 'ኣባላት ሕቶታት ንኽሓቱ ዕድላት ምምችቻው', clearVolunteerMinistryResponsibilities: 'ናይ ኣገልግሎት ሓላፍነት ግልፂ ምግባር', fasterResponseToConcerns: 'ንስክፍታ ምእምናን ቅልጡፍ መልሲ ምሃብ', consistentPoliciesProcedures: 'ተኸታታልነት ዘለዎ ፖሊስን ስርዓትን' } },
+    q47: { label: 'ቤተ ክርስቲያንን ምእመናንን ምሕደራ ብዝምልከት ንማሕበረ ካህናት ወይ ንሰበካ ጉባኤ ሓደ ሃናጺ ምኽሪ ይሃቡ።' },
+    q48: { label: 'ህንፀት እቲ ሓድሽ ቤተ ክርስቲያን ኣብ ምንታይ ደረጃ ከም ዘሎ ርኢኹምዎ ትፈልጡ ዶ?', options: { yesVisitedInPerson: 'እወ፣ ብኣካል', seenPhotosUpdates: 'ፎቶ/ሓበሬታ ርእየ', awareButNotVisited: 'ሰሚዐ ኣለኹ፣ ግን ኣይበፃሕኩን', notYetNotInformed: 'ገና ኣይፈለጥኩን' } },
+    q49: { label: 'ብዛዕባ ምዕባለ፣ ድሌታትን ዝቕጽል ስጉምትን ሓድሽ ህንጻ ክንደይ ሓበሬታ ኣለኩም?', options: { veryInformed: 'ኣዝዩ ብዙሕ', informed: 'ሓበሬታ ኣለኒ', somewhatInformed: 'መጠነኛ', notInformed: 'ሓበሬታ የብለይን' } },
+    q50: { label: 'ከይዲ ምምሕያሽን ምድላውን ህንፃ ሓዱሽ ቤተ ክርስቲያን ከመይ ትግምግምዎ?', options: { excellentProgress: 'ብሉፅ', goodProgress: 'ፅቡቕ', satisfactory: 'ኣዕጋቢ', movingTooSlowly: 'ደንጉዩ', notEnoughInfo: 'እኹል ሓበሬታ የለን' } },
+    q51: { label: 'ቤተ ክርስቲያን እናዓበየት ክትከይድ ኣየናይ ተግባር ብቀዳሚነት ክትክውኖ ዝግባእ እዩ ትብሉ?', options: { completeNewBuildingResponsibly: 'ሓድሽ ህንጻ ብሓላፍነት ምዝዛም', expandChildrenYouthMinistry: 'ኣገልግሎት ሕፃናት/መናእሰይ ምብዛሕ', strengthenClergyPastoralCapacity: 'ዓቕሚ ካህናት/መጓሰ ምዕባይ', developCharityOutreach: 'ግብረ ሠናይን ወፃኢ ኣገልግሎትን ምዕባይ', improveWorshipTeachingLanguageAccess: 'ኣምልኾ፣ ትምህርትን ቋንቋዊ ተበፃሕነትን ምምሕያሽ', buildFinancialSustainability: 'ገንዘባዊ ዘላቕነት ምርግጋፅ', trainFutureServantsDeaconsLeaders: 'ተተካእቲ መገልገልቲ/ዲያቆናት ብበዝሒ ምምሃር', strengthenEvangelismWelcomeFamilies: 'ወንጌላዊ ተልእኾን ኣቀባብላ ሓደስቲ ስድራቤታትን ምሕያል' } },
+    q52: { label: 'ወንጌላዊ ተልእኾን መንፈሳዊ ኣገልግሎትን ንምስፋሕ ዋና ምኽርኹም እንታይ እዩ?' },
+    q53: { label: 'ብጠቕላላ፣ ብኣምልኾ፣ መጓሰ፣ ትምህርቲ፣ ሕብረት፣ ህንጻን ምምሕዳርን ክንደይ ዓጊብኩም?', options: { verySatisfied: 'ኣዝየ ዓጊበ', satisfied: 'ዓጊበ', neutral: 'ማእከላይ', dissatisfied: 'ኣይዓገብኩን', veryDissatisfied: 'ፈፂመ ኣይዓገብኩን' } },
+    q54: { label: 'ቤተ ክርስቲያንና ብፍሉይ እትፍጽሞን ክትዕቅቦ ዘለዋን ሓደ ቅዱስ ልምዲ ወይ ኣገልግሎት እንታይ እዩ?' },
+    q55: { label: 'ንካህናትን ሰበካ ጉባኤን ክተካፍሉ እትደልዩ እቲ ኣዝዩ ኣገዳሲ ምኽሪ ወይ ራእይ እንታይ እዩ?' },
+    q56: { label: 'መንፈሳዊ ሕይወት፣ ሓድነትን ኣገልግሎትን ዘጠናኸር ካልእ ጸሎታዊ ምኽሪ፣ ስክፍታ ወይ ሓሳብ የካፈሉ።' },
+    wizard: {
+      sectionProgress: 'ክፍሊ {current} ካብ {total}',
+      back: 'ንድሕሪት',
+      next: 'ቀፃሊ',
+      submit: 'ኣቕርብ',
+      submitting: 'ይለኣኽ ኣሎ...',
+      skipHint: 'ዘይምልከተኩም ሕቶ ሰግሩ።',
+      otherPlaceholder: 'በጃኹም ግለጹ...',
+      selectUpTo: 'ክሳብ {n} ምረፁ',
+      submitError: 'ርእይቶኹም ኣብ ምልኣኽ ጌጋ ኣጋጢሙ። በጃኹም ደጊምኩም ፈትኑ።',
+      autosaveNotice: 'መልስታትኩም ኣብዚ መሳርሒ ተቐሚጦም ኣለዉ። ነዚ ገጽ ዓፂኹም ደሓር ክትውድእዎ ትኽእሉ ኢኹም።'
+    },
+    resume: {
+      welcomeBack: 'እንቋዕ ደሓን ተመለስኩም — ዝሓለፈ ስራሕኩም ተቐሚጡ ኣሎ።',
+      welcomeBackOn: 'እንቋዕ ደሓን ተመለስኩም — ናይ {date} ስራሕኩም ተቐሚጡ ኣሎ።',
+      startOver: 'ብሓድሽ ጀምር',
+      confirmStartOver: 'እወ፣ መልስታተይ ደምስስ',
+      dismiss: 'ዓጹ'
+    },
+    thankYou: {
+      title: 'የቐንየለይ',
+      body: 'ኣምላኽ ሰላም፣ ብምልጃ እታ ቅድስቲ ኣደ ማርያምን ቅዱስ ኣቡነ ኣረጋዊን፣ ንዓኻትኩምን ንስድራቤትኩምን ብብዝሒ መንፈሳዊ ፀጋን ሰላምን ይባርኽ። ኣሜን።',
+      gratitude: 'ንመንፈሳዊ ዕብየትን ተልእኾን ደብረ ፅሐይ ኣቡነ ኣረጋዊ ቤተ ክርስቲያን ብምሃብኩም ናይ ፅቡቕ ኣበርክቶኹም ነመስግን!'
+    },
+    homeCard: {
+      title: 'መርመራ ኣገልግሎት ቤተ ክርስቲያን',
+      description: 'ብዛዕባ ኣምልኾ፣ ኣገልግሎትን ሂወት ደብርን ስም ብዘይ ምጥቃስ ርእይቶኹም ኣካፍሉ — ኣስታት 10 ደቓይቕ ይወስድ።'
+    },
+    report: {
+      title: 'መርመራ ኣገልግሎት ቤተ ክርስቲያን — ሪፖርት',
+      tab: 'ሪፖርት መርመራ',
+      totalResponses: 'ጠቕላላ ምላሽ',
+      answeredCount: '{answered} ካብ {total} መሊሶም',
+      localeBreakdown: 'ቋንቋ መርመራ',
+      locales: { en: 'እንግሊዝኛ', ti: 'ትግርኛ' },
+      freeTextAnswers: 'ናይ ፅሑፍ ምላሻት',
+      noResponsesYet: 'ገና ምላሽ የለን።',
+      accessDenied: 'ነዚ ገጽ ንምርኣይ ፍቓድ የብልኩምን።',
+      loading: 'ሪፖርት ይጽዓን ኣሎ...',
+      loadError: 'ሪፖርት ምጽዓን ኣይተኻእለን።'
     }
   }
 };

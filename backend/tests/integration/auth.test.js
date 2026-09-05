@@ -58,14 +58,27 @@ describe('Authentication Endpoints', () => {
       authToken = response.body.data.token;
     });
 
-    it('should reject registration with duplicate email', async () => {
+    it('should reject registration with duplicate phone number', async () => {
       const response = await request(app)
         .post('/api/members/register')
-        .send(validMemberData)
+        .send(validMemberData)  // same phone number as first registration
         .expect(400);
 
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body.message).toContain('email');
+      expect(response.body.message).toContain('phone');
+    });
+
+    it('should allow registration with a duplicate email when phone differs', async () => {
+      const duplicateEmailData = {
+        ...validMemberData,
+        phoneNumber: '+1999999999'
+      };
+      const response = await request(app)
+        .post('/api/members/register')
+        .send(duplicateEmailData)
+        .expect(201);
+
+      expect(response.body).toHaveProperty('success', true);
     });
 
     it('should reject registration with invalid email format', async () => {
@@ -90,6 +103,27 @@ describe('Authentication Endpoints', () => {
         .expect(400);
 
       expect(response.body).toHaveProperty('success', false);
+    });
+  });
+
+  describe('GET /api/members/check-email/:email', () => {
+    it('returns exists: false for an unknown email', async () => {
+      const response = await request(app)
+        .get('/api/members/check-email/nobody@unknown.com')
+        .expect(200);
+
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('exists', false);
+    });
+
+    it('returns exists: true for a registered email', async () => {
+      // testMember was created in the POST /register tests above
+      const response = await request(app)
+        .get(`/api/members/check-email/${testMember.email}`)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('exists', true);
     });
   });
 

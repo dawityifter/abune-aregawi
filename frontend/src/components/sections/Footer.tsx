@@ -36,7 +36,7 @@ const Footer: React.FC = () => {
           </div>
         </div>
         <div className="text-center mt-8 pt-8 border-t border-accent-400">
-          <p className="text-white/90">&copy; 2026 Tigray Orthodox Church. All rights reserved.</p>
+          <p className="text-white/90">&copy; 2026 Debre Tsehay Abune Aregawi Orthodox Tewahedo Church. All rights reserved.</p>
           <p className="mt-4 flex items-center justify-center gap-4">
             {/* <a href="/credits" className="text-secondary-200 hover:text-secondary-100 transition-colors">
               <i className="fas fa-code mr-2"></i>

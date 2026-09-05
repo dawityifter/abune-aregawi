@@ -1,6 +1,49 @@
-const { ExpenseCategory, LedgerEntry, Member, Employee, Vendor, sequelize } = require('../models');
+const { ExpenseCategory, LedgerEntry, BankTransaction, Member, Employee, Vendor, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const tz = require('../config/timezone');
+const { DEFAULT_START_CHECK_NUMBER, normalizeCheckNumber } = require('../utils/checkNumber');
+
+// Check-method expenses must carry a unique check number. Enforcement is
+// application-level (no DB constraint), so both the create and the update path
+// have to run this — an edit that changes a check number would otherwise slip a
+// duplicate past the check done at insert time.
+// Returns { ok: true, value } or { ok: false, status, message }.
+async function validateCheckNumber({ paymentMethod, checkNumber, excludeId = null }) {
+  if (paymentMethod !== 'check') {
+    // Cash expenses never keep a check number, so a method switch clears it.
+    return { ok: true, value: null };
+  }
+
+  const normalized = normalizeCheckNumber(checkNumber);
+  if (!normalized.ok) {
+    return {
+      ok: false,
+      status: 400,
+      message: normalized.reason === 'empty'
+        ? 'Check number is required for check payments'
+        : 'Check number must be numeric (digits only, e.g. 1593)'
+    };
+  }
+  const value = normalized.value;
+
+  // Scoped to expenses: an incoming member check that happens to carry the same
+  // number is a different physical check and must not block the church's own.
+  const where = { type: 'expense', check_number: value };
+  if (excludeId) {
+    where.id = { [Op.ne]: excludeId };
+  }
+
+  const existing = await LedgerEntry.findOne({ where });
+  if (existing) {
+    return {
+      ok: false,
+      status: 409,
+      message: `Check number "${value}" has already been used. Please use a unique check number.`
+    };
+  }
+
+  return { ok: true, value };
+}
 
 // Get all expense categories (active only by default)
 const getExpenseCategories = async (req, res) => {
@@ -106,16 +149,17 @@ const createExpense = async (req, res) => {
       });
     }
 
-    // Check for duplicate check number
-    if (check_number) {
-      const existing = await LedgerEntry.findOne({ where: { check_number } });
-      if (existing) {
-        await t.rollback();
-        return res.status(409).json({
-          success: false,
-          message: `Check number "${check_number}" has already been used. Please use a unique check number.`
-        });
-      }
+    // Check number is required and must be unique for check payments
+    const checkResult = await validateCheckNumber({
+      paymentMethod: payment_method.toLowerCase(),
+      checkNumber: check_number
+    });
+    if (!checkResult.ok) {
+      await t.rollback();
+      return res.status(checkResult.status).json({
+        success: false,
+        message: checkResult.message
+      });
     }
 
     // Get collector (the logged-in user)
@@ -150,7 +194,7 @@ const createExpense = async (req, res) => {
         employee_id: employee_id || null,
         vendor_id: vendor_id || null,
         payee_name: payee_name || null,
-        check_number: check_number || null,
+        check_number: checkResult.value,
         invoice_number: invoice_number || null
       }, { transaction: t });
     } catch (ledgerError) {
@@ -213,6 +257,45 @@ const createExpense = async (req, res) => {
   }
 };
 
+// Sort columns the expense list accepts, mapped to their ORDER BY clauses.
+// A whitelist rather than interpolation: sort_by arrives straight from the
+// query string and must never reach SQL as text.
+//
+// check_number is a string column holding digits, so plain text ordering would
+// put "1000" before "999". Ordering by length first restores numeric order
+// without a cast that would throw on the legacy non-numeric values still in the
+// table. payee lives in three places depending on how the expense was entered.
+const EXPENSE_SORT_COLUMNS = {
+  entry_date: (dir) => [['entry_date', dir], ['created_at', dir]],
+  category: (dir) => [['category', dir]],
+  amount: (dir) => [['amount', dir]],
+  payment_method: (dir) => [['payment_method', dir]],
+  check_number: (dir) => [
+    [sequelize.literal('LENGTH("LedgerEntry"."check_number")'), dir],
+    ['check_number', dir]
+  ],
+  payee: (dir) => [
+    [sequelize.literal('COALESCE("LedgerEntry"."payee_name", "vendor"."name", "employee"."last_name")'), dir]
+  ]
+};
+
+const DEFAULT_EXPENSE_ORDER = [['entry_date', 'DESC'], ['created_at', 'DESC']];
+
+// Mirrors the ledger_entries payment_method enum. Manual entry only allows cash
+// and check, but bank reconciliation also writes ach, debit_card and other, so
+// the filter has to cover everything that can reach the table.
+const EXPENSE_PAYMENT_METHODS = [
+  'cash', 'check', 'zelle', 'credit_card', 'debit_card', 'ach', 'other'
+];
+
+function buildExpenseOrder(sortBy, sortDir) {
+  const build = EXPENSE_SORT_COLUMNS[sortBy];
+  if (!build) return DEFAULT_EXPENSE_ORDER;
+
+  const dir = String(sortDir).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  return build(dir);
+}
+
 // Get all expenses with filtering and pagination
 const getExpenses = async (req, res) => {
   try {
@@ -222,7 +305,10 @@ const getExpenses = async (req, res) => {
       start_date,
       end_date,
       gl_code,
-      payment_method
+      payee,
+      payment_method,
+      sort_by,
+      sort_dir
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -239,14 +325,26 @@ const getExpenses = async (req, res) => {
       }
     }
 
+    // Payment method filter. Whitelisted rather than passed through: the value
+    // comes straight from the query string into a where clause.
+    const methodFilter = String(payment_method || '').trim().toLowerCase();
+    if (EXPENSE_PAYMENT_METHODS.includes(methodFilter)) {
+      whereClause.payment_method = methodFilter;
+    }
+
     // GL code filter
     if (gl_code) {
       whereClause.category = gl_code.toUpperCase();
     }
 
-    // Payment method filter
-    if (payment_method) {
-      whereClause.payment_method = payment_method.toLowerCase();
+    // Payee filter (search across payee_name, employee name, and vendor name)
+    if (payee) {
+      whereClause[Op.or] = [
+        { payee_name: { [Op.iLike]: `%${payee}%` } },
+        { '$employee.first_name$': { [Op.iLike]: `%${payee}%` } },
+        { '$employee.last_name$': { [Op.iLike]: `%${payee}%` } },
+        { '$vendor.name$': { [Op.iLike]: `%${payee}%` } }
+      ];
     }
 
     const { count, rows } = await LedgerEntry.findAndCountAll({
@@ -270,7 +368,7 @@ const getExpenses = async (req, res) => {
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['entry_date', 'DESC'], ['created_at', 'DESC']]
+      order: buildExpenseOrder(sort_by, sort_dir)
     });
 
     // Fetch all unique GL codes from the results to get category names
@@ -288,7 +386,10 @@ const getExpenses = async (req, res) => {
       return {
         ...expenseData,
         category_name: category?.name || 'Unknown',
-        category_description: category?.description || null
+        category_description: category?.description || null,
+        // external_id holds the bank transaction hash once a cleared bank row
+        // has been linked to this expense.
+        is_reconciled: Boolean(expenseData.external_id)
       };
     });
 
@@ -311,6 +412,44 @@ const getExpenses = async (req, res) => {
     });
   }
 };
+
+// The bank row an expense was reconciled against, for the details drawer.
+//
+// external_id holds the bank transaction's hash — the same link auto-reconcile
+// writes when a cleared check is matched to a hand-entered expense. Fetched per
+// request rather than joined into the list, since it is only read when someone
+// opens one expense.
+//
+// amount_matches is computed here rather than in the UI: the bank stores a debit
+// as negative and the expense stores it positive, so the comparison is on
+// absolute values with a cent of tolerance. Getting that wrong in the UI would
+// show a false mismatch on every reconciled row.
+async function describeReconciliation(expense) {
+  if (!expense.external_id) return null;
+
+  const bankTxn = await BankTransaction.findOne({
+    where: { transaction_hash: expense.external_id }
+  });
+
+  // A link with no row behind it: the bank transaction was deleted, or the
+  // external_id came from somewhere other than a bank import. Report nothing
+  // rather than failing the whole request.
+  if (!bankTxn) return null;
+
+  const bankAmount = Number(bankTxn.amount);
+  return {
+    id: bankTxn.id,
+    date: bankTxn.date,
+    description: bankTxn.description,
+    amount: bankAmount,
+    type: bankTxn.type,
+    check_number: bankTxn.check_number,
+    status: bankTxn.status,
+    reconciled_source: bankTxn.reconciled_source,
+    reconciled_at: bankTxn.reconciled_at,
+    amount_matches: Math.abs(Math.abs(bankAmount) - Math.abs(Number(expense.amount))) < 0.005
+  };
+}
 
 // Get single expense by ID
 const getExpenseById = async (req, res) => {
@@ -346,7 +485,8 @@ const getExpenseById = async (req, res) => {
     const result = {
       ...expense.toJSON(),
       category_name: category?.name || 'Unknown',
-      category_description: category?.description || null
+      category_description: category?.description || null,
+      bank_transaction: await describeReconciliation(expense)
     };
 
     res.json({
@@ -375,7 +515,9 @@ const updateExpense = async (req, res) => {
       expense_date,
       payment_method,
       receipt_number,
-      memo
+      memo,
+      check_number,
+      invoice_number
     } = req.body;
 
     // Find the expense
@@ -462,6 +604,29 @@ const updateExpense = async (req, res) => {
     if (memo !== undefined) {
       updateData.memo = memo || null;
     }
+
+    if (invoice_number !== undefined) {
+      updateData.invoice_number = invoice_number || null;
+    }
+
+    // The request may change the method, the check number, or neither, so resolve
+    // the effective values before validating. Always run this: switching to check
+    // without supplying a number has to fail even when check_number is absent.
+    const effectiveMethod = updateData.payment_method || expense.payment_method;
+    const effectiveCheckNumber = check_number !== undefined ? check_number : expense.check_number;
+    const checkResult = await validateCheckNumber({
+      paymentMethod: effectiveMethod,
+      checkNumber: effectiveCheckNumber,
+      excludeId: expense.id
+    });
+    if (!checkResult.ok) {
+      await t.rollback();
+      return res.status(checkResult.status).json({
+        success: false,
+        message: checkResult.message
+      });
+    }
+    updateData.check_number = checkResult.value;
 
     // Update the expense
     await expense.update(updateData, { transaction: t });
@@ -657,6 +822,155 @@ const getExpenseStats = async (req, res) => {
   }
 };
 
+// Answer "is this check number free?" for the Add Expense form, so a duplicate
+// surfaces as the treasurer leaves the field rather than after a full submit.
+// Same rules as validateCheckNumber, kept in one place by reusing its helper.
+const getCheckNumberAvailability = async (req, res) => {
+  try {
+    const { check_number, exclude_id } = req.query;
+
+    if (check_number === undefined || String(check_number).trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'check_number is required'
+      });
+    }
+
+    const normalized = normalizeCheckNumber(check_number);
+    if (!normalized.ok) {
+      return res.json({
+        success: true,
+        data: { check_number: null, available: false, reason: 'NON_NUMERIC' }
+      });
+    }
+
+    const where = { type: 'expense', check_number: normalized.value };
+    if (exclude_id) {
+      where.id = { [Op.ne]: exclude_id };
+    }
+
+    const existing = await LedgerEntry.findOne({ where });
+
+    res.json({
+      success: true,
+      data: {
+        check_number: normalized.value,
+        available: !existing,
+        reason: existing ? 'DUPLICATE' : null
+      }
+    });
+  } catch (error) {
+    console.error('Error checking check number availability:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check check number availability',
+      error: error.message
+    });
+  }
+};
+
+// The payment methods expenses actually use, so the filter never offers a
+// choice that matches nothing. Derived rather than hardcoded: manual entry and
+// bank reconciliation write different sets, and that will drift over time.
+const getExpensePaymentMethods = async (req, res) => {
+  try {
+    const rows = await LedgerEntry.findAll({
+      attributes: ['payment_method'],
+      where: { type: 'expense' },
+      group: ['payment_method'],
+      raw: true
+    });
+
+    const methods = rows
+      .map((row) => row.payment_method)
+      .filter(Boolean)
+      .sort();
+
+    res.json({ success: true, data: methods });
+  } catch (error) {
+    console.error('Error fetching expense payment methods:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch expense payment methods',
+      error: error.message
+    });
+  }
+};
+
+// Identify gaps in the check number sequence so the treasurer can audit the
+// checkbook the same way skipped receipt numbers are audited on the payments side.
+const getSkippedChecks = async (req, res) => {
+  try {
+    // Expenses only: the church's own checkbook. A check number on an income
+    // entry is the number of a check a member wrote to the church, and counting
+    // those here manufactures gaps across an unrelated numbering sequence.
+    const rows = await LedgerEntry.findAll({
+      attributes: ['check_number'],
+      where: { type: 'expense', check_number: { [Op.ne]: null } },
+      raw: true
+    });
+
+    // check_number is free text, so "CHK-1042", "#1042" and "1042" are the same
+    // check. Strip everything that isn't a digit and parse what's left.
+    let ignoredNonNumeric = 0;
+    const numbers = [];
+    for (const row of rows) {
+      const digits = String(row.check_number).replace(/\D/g, '');
+      if (!digits) {
+        ignoredNonNumeric += 1;
+        continue;
+      }
+      numbers.push(parseInt(digits, 10));
+    }
+
+    if (numbers.length === 0) {
+      return res.json({
+        success: true,
+        data: { skippedChecks: [], range: null, ignoredNonNumeric }
+      });
+    }
+
+    // The audit anchors at the first check of the current checkbook. Numbers
+    // below it belong to a retired book and are not gaps to chase.
+    const envStart = parseInt(process.env.START_CHECK_NUMBER, 10);
+    const startCheck = Number.isFinite(envStart) ? envStart : DEFAULT_START_CHECK_NUMBER;
+
+    const inRange = numbers.filter((n) => n >= startCheck);
+    if (inRange.length === 0) {
+      return res.json({
+        success: true,
+        data: { skippedChecks: [], range: null, ignoredNonNumeric }
+      });
+    }
+
+    const checkSet = new Set(inRange);
+    const maxCheck = Math.max(...inRange);
+
+    const skippedChecks = [];
+    for (let i = startCheck; i < maxCheck; i++) {
+      if (!checkSet.has(i)) {
+        skippedChecks.push(i);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        skippedChecks,
+        range: { start: startCheck, end: maxCheck },
+        ignoredNonNumeric
+      }
+    });
+  } catch (error) {
+    console.error('Error checking skipped check numbers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check skipped check numbers',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getExpenseCategories,
   createExpense,
@@ -664,5 +978,8 @@ module.exports = {
   getExpenseById,
   updateExpense,
   deleteExpense,
-  getExpenseStats
+  getExpenseStats,
+  getSkippedChecks,
+  getExpensePaymentMethods,
+  getCheckNumberAvailability
 };

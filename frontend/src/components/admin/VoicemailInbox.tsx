@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getVoicemails, archiveVoicemail } from '../../utils/voicemailApi';
@@ -15,6 +15,7 @@ interface Voicemail {
 // Helper component to fetch audio with auth headers
 const SecureAudioPlayer: React.FC<{ streamUrl: string }> = ({ streamUrl }) => {
     const { firebaseUser } = useAuth();
+    const { t } = useLanguage();
     const [audioSrc, setAudioSrc] = useState<string | null>(null);
     const [error, setError] = useState(false);
 
@@ -49,8 +50,8 @@ const SecureAudioPlayer: React.FC<{ streamUrl: string }> = ({ streamUrl }) => {
         };
     }, [streamUrl, firebaseUser]);
 
-    if (error) return <span className="text-xs text-red-500">Failed to load</span>;
-    if (!audioSrc) return <span className="text-xs text-gray-400">Loading audio...</span>;
+    if (error) return <span className="text-xs text-red-500">{t('admin.voicemail.audioLoadFailed')}</span>;
+    if (!audioSrc) return <span className="text-xs text-gray-400">{t('admin.voicemail.audioLoading')}</span>;
 
     return <audio controls src={audioSrc} className="h-8 w-40" />;
 };
@@ -67,7 +68,7 @@ const VoicemailInbox: React.FC = () => {
     const [volPage, setVolPage] = useState(1);
     const [volTotalPages, setVolTotalPages] = useState(1);
 
-    const fetchVoicemails = async () => {
+    const fetchVoicemails = useCallback(async () => {
         if (!firebaseUser) return;
         try {
             setLoading(true);
@@ -83,26 +84,26 @@ const VoicemailInbox: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [firebaseUser, page]);
 
     useEffect(() => {
         fetchVoicemails();
-    }, [firebaseUser, page]);
+    }, [fetchVoicemails]);
 
     const handleArchive = async (id: number) => {
         if (!firebaseUser) return;
-        if (!window.confirm('Delete this voicemail?')) return;
+        if (!window.confirm(t('admin.voicemail.deleteConfirm'))) return;
         try {
             const token = await firebaseUser.getIdToken();
             await archiveVoicemail(token, id);
             // Remove from local state
             setVoicemails(prev => prev.filter(vm => vm.id !== id));
         } catch (err: any) {
-            alert('Failed to delete voicemail: ' + err.message);
+            alert(`${t('admin.voicemail.deleteFailed')}: ${err.message}`);
         }
     };
 
-    const fetchVolunteerRequests = async () => {
+    const fetchVolunteerRequests = useCallback(async () => {
         if (!firebaseUser) return;
         try {
             const token = await firebaseUser.getIdToken();
@@ -119,11 +120,11 @@ const VoicemailInbox: React.FC = () => {
         } catch (err) {
             console.error(err);
         }
-    };
+    }, [firebaseUser, volPage]);
 
     const handleMarkContacted = async (id: number) => {
         if (!firebaseUser) return;
-        if (!window.confirm('Mark this request as responded? It will be hidden from this list.')) return;
+        if (!window.confirm(t('admin.volunteer.respondConfirm'))) return;
         try {
             const token = await firebaseUser.getIdToken();
             const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -140,24 +141,24 @@ const VoicemailInbox: React.FC = () => {
                 // Remove from list
                 setVolunteerRequests(prev => prev.filter(r => r.id !== id));
             } else {
-                alert("Failed to update status");
+                alert(t('admin.volunteer.updateFailed'));
             }
         } catch (err) {
             console.error(err);
-            alert("Error updating status");
+            alert(t('admin.volunteer.updateError'));
         }
     };
 
     useEffect(() => {
         fetchVolunteerRequests();
-    }, [firebaseUser, volPage]);
+    }, [fetchVolunteerRequests]);
 
     if (loading && voicemails.length === 0) {
         return <div className="p-4 text-center">{t('admin.loading.inbox')}</div>;
     }
 
     if (error) {
-        return <div className="p-4 text-center text-red-600">Error: {error}</div>;
+        return <div className="p-4 text-center text-red-600">{t('error')}: {error}</div>;
     }
 
 
@@ -203,15 +204,15 @@ const VoicemailInbox: React.FC = () => {
                                         <SecureAudioPlayer streamUrl={`${process.env.REACT_APP_API_URL || 'http://localhost:5001'}/api/twilio/admin/voicemails/${vm.id}/stream`} />
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                                        <span title={vm.transcriptionText || 'No transcription available'}>
-                                            {vm.transcriptionText || <em className="text-gray-400">Pending...</em>}
+                                        <span title={vm.transcriptionText || t('admin.voicemail.noTranscription')}>
+                                            {vm.transcriptionText || <em className="text-gray-400">{t('admin.voicemail.pending')}</em>}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <button
                                             onClick={() => handleArchive(vm.id)}
                                             className="text-red-600 hover:text-red-900"
-                                            title="Delete voicemail"
+                                            title={t('admin.voicemail.deleteTitle')}
                                         >
                                             <i className="fas fa-trash mr-1"></i> {t('admin.delete')}
                                         </button>
