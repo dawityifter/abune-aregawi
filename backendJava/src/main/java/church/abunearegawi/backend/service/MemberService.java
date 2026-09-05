@@ -222,12 +222,16 @@ public class MemberService {
 
         dependent.setEmail(dto.getEmail());
         dependent.setBaptismName(dto.getBaptismName());
-        dependent.setIsBaptized(dto.getIsBaptized());
-        dependent.setMedicalConditions(dto.getMedicalConditions());
-        dependent.setAllergies(dto.getAllergies());
-        dependent.setMedications(dto.getMedications());
-        dependent.setDietaryRestrictions(dto.getDietaryRestrictions());
-        dependent.setNotes(dto.getNotes()); // Or store relationship here? "Relationship: " + dto.getRelationship() ?
+        // The six health/notes fields that stood here were set on a Member, and
+        // members has no such columns — this path could never have run against
+        // the real schema. They are Dependent's fields.
+        //
+        // The deeper problem is above: `Member dependent = new Member()`. This
+        // port stores a dependent as a members row with a fabricated
+        // "DEP-<uuid>" phone number to satisfy the unique constraint, while the
+        // Node backend has a dependents table and a Dependent model. Bringing
+        // this to parity means writing to dependents, not members. Recorded in
+        // docs/java-parity-gaps.md rather than half-fixed here.
 
         dependent.setFamilyHead(head);
         dependent.setHouseholdSize(1); // Default?
@@ -263,12 +267,7 @@ public class MemberService {
             dependent.setPhoneNumber(dto.getPhoneNumber());
 
         dependent.setBaptismName(dto.getBaptismName());
-        dependent.setIsBaptized(dto.getIsBaptized());
-        dependent.setMedicalConditions(dto.getMedicalConditions());
-        dependent.setAllergies(dto.getAllergies());
-        dependent.setMedications(dto.getMedications());
-        dependent.setDietaryRestrictions(dto.getDietaryRestrictions());
-        dependent.setNotes(dto.getNotes());
+        // Dependent-only fields dropped: see the note in addDependent above.
 
         return memberRepository.save(dependent);
     }
@@ -405,24 +404,14 @@ public class MemberService {
                 // ignore invalid value
             }
         }
-        if (request.getIsBaptized() != null)
-            member.setIsBaptized(request.getIsBaptized());
-
-        // Medical Information
-        if (request.getMedicalConditions() != null)
-            member.setMedicalConditions(request.getMedicalConditions());
-        if (request.getAllergies() != null)
-            member.setAllergies(request.getAllergies());
-        if (request.getMedications() != null)
-            member.setMedications(request.getMedications());
-        if (request.getDietaryRestrictions() != null)
-            member.setDietaryRestrictions(request.getDietaryRestrictions());
+        // isBaptized and the medical/notes fields are Dependent's, not a
+        // member's; members has no such columns, so these assignments could
+        // only ever have produced a failing UPDATE. See Member.
 
         // Other
         if (request.getHouseholdSize() != null)
             member.setHouseholdSize(request.getHouseholdSize());
-        if (request.getNotes() != null)
-            member.setNotes(request.getNotes());
+        // notes is Dependent's field; members has no such column.
 
         // Title - handle separately as it requires Title entity
         // Note: Title update would require TitleRepository injection if needed

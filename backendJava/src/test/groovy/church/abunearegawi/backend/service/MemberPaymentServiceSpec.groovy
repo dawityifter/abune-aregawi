@@ -418,20 +418,30 @@ class MemberPaymentServiceSpec extends Specification {
                 .yearlyPledge(new BigDecimal("1200.00"))
                 .build()
 
+        // The year must be the current one, or "past month" and "future month"
+        // stop meaning anything: query 2026 in 2027 and every month is past.
+        def thisYear = java.time.LocalDate.now().year
+
         memberRepository.findById(1L) >> Optional.of(member)
-        memberPaymentRepository.findByPhoneAndYear("+11234567890", 2026) >> Optional.of(testPayment)
+        memberPaymentRepository.findByPhoneAndYear("+11234567890", thisYear) >> Optional.of(testPayment)
         transactionService.findByMember(1L) >> []
 
         when:
-        def result = service.getDuesDetails(1L, 2026)
+        def result = service.getDuesDetails(1L, thisYear)
 
         then:
         def statuses = result.payment.monthStatuses
         statuses.size() == 12
         statuses[0].month == "january"
         statuses[0].status == "due" // 0 < 100
-        statuses[1].status == "due"
-        statuses[4].month == "may"
-        statuses[4].status == "upcoming" // Future month relative to the current month in this test year
+
+        // Anchored to the real calendar rather than to a hardcoded index. The
+        // original asserted statuses[4] ("may") was "upcoming", which held only
+        // while the suite ran before May 2026 — it began failing on 1 May and
+        // stayed failing. The rule under test is the one that matters: a month
+        // already begun is "due" when unpaid, a month still ahead is "upcoming".
+        def currentMonth = java.time.LocalDate.now().monthValue
+        statuses.take(currentMonth).every { it.status == "due" && !it.isFutureMonth }
+        statuses.drop(currentMonth).every { it.status == "upcoming" && it.isFutureMonth }
     }
 }

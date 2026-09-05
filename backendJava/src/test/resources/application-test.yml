@@ -1,0 +1,40 @@
+# Test profile.
+#
+# Points at a throwaway database built from a schema-only dump of the real one,
+# so it carries the true schema and none of the parish's data.  Recreate with:
+#
+#   pg_dump --schema-only --no-owner --no-privileges abune_aregawi > /tmp/s.sql
+#   dropdb --if-exists abune_aregawi_java_test && createdb abune_aregawi_java_test
+#   psql -q -d abune_aregawi_java_test -f /tmp/s.sql
+spring:
+  datasource:
+    url: ${TEST_DATABASE_URL:jdbc:postgresql://localhost:5432/abune_aregawi_java_test}
+    username: ${TEST_DATABASE_USER:dawit}
+    password: ${TEST_DATABASE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      # 'none', and never 'update'. The schema belongs to the Node backend's
+      # Sequelize migrations; Hibernate must not create or alter anything.
+      #
+      # Not 'validate' either, for now. The entities carry 50 cosmetic type
+      # mismatches — mostly varchar(255) where the column is varchar(100), which
+      # Hibernate reads and writes perfectly well — and validate refuses to
+      # start the context on the first one, which would block every test here.
+      # SchemaGapTest is the parity gate instead: it fails when a *structural*
+      # disagreement appears, and ignores the cosmetic ones. Tightening this to
+      # validate once the type mappings are corrected is the goal.
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+app:
+  enable-demo-mode: false
+
+logging:
+  level:
+    church.abunearegawi: WARN
+    org.springframework: WARN
+    org.hibernate.tool.schema: ERROR

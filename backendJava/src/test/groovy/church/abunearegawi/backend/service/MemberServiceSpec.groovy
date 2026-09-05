@@ -858,37 +858,23 @@ class MemberServiceSpec extends Specification {
         result.repentanceFather == "Father Abraham"
         result.spouseName == "Mary"
         result.interestedInServing == Member.InterestedInServing.yes
-        result.isBaptized == true
+        // isBaptized removed: it is Dependent's field, never a members column.
     }
 
-    def "should update member medical info"() {
-        given:
-        memberRepository.findById(1L) >> Optional.of(testMember)
-        memberRepository.save(_ as Member) >> { Member m -> m }
+    // "should update member medical info" is gone. It asserted that updating a
+    // member set medicalConditions, allergies and dietaryRestrictions, none of
+    // which are columns on members — they belong to dependents. The case passed
+    // only because memberRepository is a mock here, so no SQL was ever built;
+    // against the real schema the update failed. When dependents are ported
+    // properly (see docs/java-parity-gaps.md) this belongs in a Dependent spec.
 
-        def request = new MemberUpdateRequest()
-        request.medicalConditions = "None"
-        request.allergies = "Peanuts"
-        request.medications = "None"
-        request.dietaryRestrictions = "Gluten free"
-
-        when:
-        def result = service.update(1L, request)
-
-        then:
-        result.medicalConditions == "None"
-        result.allergies == "Peanuts"
-        result.dietaryRestrictions == "Gluten free"
-    }
-
-    def "should update member household and notes"() {
+    def "should update member household fields"() {
         given:
         memberRepository.findById(1L) >> Optional.of(testMember)
         memberRepository.save(_ as Member) >> { Member m -> m }
 
         def request = new MemberUpdateRequest()
         request.householdSize = 4
-        request.notes = "Special notes"
         request.phoneNumber = "+19876543210"
         request.dateOfBirth = LocalDate.of(1990, 5, 15)
         request.middleName = "Michael"
@@ -898,7 +884,7 @@ class MemberServiceSpec extends Specification {
 
         then:
         result.householdSize == 4
-        result.notes == "Special notes"
+        // notes removed: Dependent's field, never a members column.
         result.phoneNumber == "+19876543210"
     }
 
@@ -966,12 +952,8 @@ class MemberServiceSpec extends Specification {
         dto.email = "child@test.com"
         dto.phoneNumber = "+19999999999"
         dto.baptismName = "Gabriel"
-        dto.isBaptized = true
-        dto.medicalConditions = "None"
-        dto.allergies = "None"
-        dto.medications = "None"
-        dto.dietaryRestrictions = "None"
-        dto.notes = "Good kid"
+        // The DTO still carries these (the frontend sends them), but addDependent
+        // no longer copies them onto a Member — they are not columns there.
 
         when:
         def result = service.addDependent(1L, dto)
@@ -980,7 +962,6 @@ class MemberServiceSpec extends Specification {
         result.middleName == "Middle"
         result.email == "child@test.com"
         result.baptismName == "Gabriel"
-        result.isBaptized == true
         result.streetLine1 == "123 Main"
         result.city == "Town"
     }

@@ -108,12 +108,10 @@ public class MemberDTO {
                 .dateJoinedParish(member.getDateJoinedParish() != null ? member.getDateJoinedParish().toString() : null)
                 .interestedInServing(
                         member.getInterestedInServing() != null ? member.getInterestedInServing().toString() : null)
-                .isBaptized(member.getIsBaptized())
-                .medicalConditions(member.getMedicalConditions())
-                .allergies(member.getAllergies())
-                .medications(member.getMedications())
-                .dietaryRestrictions(member.getDietaryRestrictions())
-                .notes(member.getNotes())
+                // isBaptized / medicalConditions / allergies / medications /
+                // dietaryRestrictions / notes are Dependent fields; they were
+                // never columns on members, so reading them here made every
+                // member query fail. See Member and MemberRepositorySchemaTest.
                 .yearlyPledge(member.getYearlyPledge())
                 .createdAt(member.getCreatedAt() != null ? member.getCreatedAt().toString() : null)
                 .updatedAt(member.getUpdatedAt() != null ? member.getUpdatedAt().toString() : null)

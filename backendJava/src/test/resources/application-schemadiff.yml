@@ -1,0 +1,25 @@
+# Diagnostic profile: never used by a normal test run.
+#
+# Boots with ddl-auto disabled but asks Hibernate to WRITE the migration script
+# it would apply to make the database match the JPA entities. Nothing is
+# executed against the database. The resulting file is the complete list of
+# places the entities and the Node-owned schema disagree — the whole gap in one
+# pass, rather than one boot per mismatch.
+spring:
+  datasource:
+    url: ${TEST_DATABASE_URL:jdbc:postgresql://localhost:5432/abune_aregawi_java_test}
+    username: ${TEST_DATABASE_USER:dawit}
+    password: ${TEST_DATABASE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      dialect: org.hibernate.dialect.PostgreSQLDialect
+      jakarta.persistence.schema-generation.scripts.action: update
+      jakarta.persistence.schema-generation.scripts.create-target: build/schema-gap.sql
+      jakarta.persistence.schema-generation.create-source: metadata
+logging:
+  level:
+    church.abunearegawi: WARN
+    org.springframework: WARN

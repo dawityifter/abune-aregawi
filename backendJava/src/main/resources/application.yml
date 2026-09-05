@@ -4,15 +4,30 @@ spring:
   profiles:
      active: local
   datasource:
-     # Database Config - will use environment variables if available
-     # Prepended jdbc: prefix to ensure compatibility
-     url: jdbc:postgresql://localhost:5432/abune_aregawi_db
-     username: dawit
-     password:
+     # Every value is overridable by environment so no developer's local
+     # credentials are baked in. The default database is deliberately NOT the
+     # working dev database — see the ddl-auto note below.
+     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/abune_aregawi_java_dev}
+     username: ${DATABASE_USER:dawit}
+     password: ${DATABASE_PASSWORD:}
      driver-class-name: org.postgresql.Driver
   jpa:
      hibernate:
-        ddl-auto: update
+        # NEVER 'update'. The schema belongs to the Node backend's Sequelize
+        # migrations (backend/migrations, 81 of them and counting); they are the
+        # single source of truth and they run automatically on every deploy.
+        #
+        # With ddl-auto: update, Hibernate silently ALTERs tables to match these
+        # JPA entities on startup — adding columns, changing types, creating
+        # indexes — with no migration file, no review and no record in
+        # SequelizeMeta. Pointed at the dev database that means invisible drift;
+        # pointed at production it would rewrite the parish's financial tables.
+        #
+        # 'validate' instead: Hibernate checks the entities against the schema
+        # and refuses to start if they disagree. A mismatch becomes a loud
+        # failure at boot rather than a silent migration, which is exactly the
+        # signal this port needs while the entities are being brought to parity.
+        ddl-auto: ${JPA_DDL_AUTO:validate}
      show-sql: false
      properties:
         hibernate:

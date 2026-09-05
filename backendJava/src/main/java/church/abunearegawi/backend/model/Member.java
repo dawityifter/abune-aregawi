@@ -139,23 +139,12 @@ public class Member {
     @Builder.Default
     private InterestedInServing interestedInServing = InterestedInServing.maybe;
 
-    @Column(name = "is_baptized")
-    private Boolean isBaptized;
-
-    @Column(columnDefinition = "TEXT")
-    private String medicalConditions;
-
-    @Column(columnDefinition = "TEXT")
-    private String allergies;
-
-    @Column(columnDefinition = "TEXT")
-    private String medications;
-
-    @Column(columnDefinition = "TEXT")
-    private String dietaryRestrictions;
-
-    @Column(columnDefinition = "TEXT")
-    private String notes; // General notes about member/dependent
+    // isBaptized, medicalConditions, allergies, medications, dietaryRestrictions
+    // and notes were declared here but belong to Dependent, which is where the
+    // Node model defines them and where the columns actually exist. Hibernate
+    // names every column in its SELECT, so their presence here made the first
+    // read of any member fail with "column m1_0.allergies does not exist".
+    // See Dependent for the real fields; see MemberRepositorySchemaTest.
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
