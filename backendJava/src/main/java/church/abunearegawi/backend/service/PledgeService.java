@@ -21,9 +21,9 @@ public class PledgeService {
     private final MemberRepository memberRepository;
 
     @Transactional(readOnly = true)
-    public Page<Pledge> findAll(Pledge.Status status, Pledge.PledgeType pledgeType,
+    public Page<Pledge> findAll(String lifecycle, Pledge.PledgeType pledgeType,
                                String eventName, Long memberId, Pageable pageable) {
-        return pledgeRepository.findWithFilters(status, pledgeType, eventName, memberId, pageable);
+        return pledgeRepository.findWithFilters(lifecycle, pledgeType, eventName, memberId, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -57,10 +57,12 @@ public class PledgeService {
             pledge.setMember(linkedMember);
         }
 
-        // Set default values if not provided
-        if (pledge.getStatus() == null) {
-            pledge.setStatus(Pledge.Status.pending);
-        }
+        // Set default values if not provided.
+        //
+        // No status default any more: fulfilment is derived by summing
+        // pledge_allocations, not stored. legacy_status is the frozen 2025
+        // field and this backend must not write it. lifecycle,
+        // fulfillment_intent and is_anonymous all carry database defaults.
         if (pledge.getPledgeDate() == null) {
             pledge.setPledgeDate(java.time.LocalDateTime.now());
         }
@@ -80,7 +82,8 @@ public class PledgeService {
                 .orElseThrow(() -> new RuntimeException("Pledge not found"));
 
         if (pledge.getAmount() != null) existing.setAmount(pledge.getAmount());
-        if (pledge.getStatus() != null) existing.setStatus(pledge.getStatus());
+        // status is gone; see create(). lifecycle is the pledge's own state.
+        if (pledge.getLifecycle() != null) existing.setLifecycle(pledge.getLifecycle());
         if (pledge.getPledgeType() != null) existing.setPledgeType(pledge.getPledgeType());
         if (pledge.getEventName() != null) existing.setEventName(pledge.getEventName());
         if (pledge.getDueDate() != null) existing.setDueDate(pledge.getDueDate());

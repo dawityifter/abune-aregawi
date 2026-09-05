@@ -45,6 +45,7 @@ public class BankTransaction {
     private String type = "UNKNOWN";
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Builder.Default
     private Status status = Status.PENDING;
 

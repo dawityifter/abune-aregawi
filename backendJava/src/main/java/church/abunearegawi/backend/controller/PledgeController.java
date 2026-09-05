@@ -23,12 +23,12 @@ public class PledgeController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TREASURER', 'SECRETARY')")
     public ResponseEntity<ApiResponse<Page<Pledge>>> getAllPledges(
-            @RequestParam(required = false) Pledge.Status status,
+            @RequestParam(required = false) String lifecycle,
             @RequestParam(required = false) Pledge.PledgeType pledgeType,
             @RequestParam(required = false) String eventName,
             @RequestParam(required = false) Long memberId,
             Pageable pageable) {
-        Page<Pledge> pledges = pledgeService.findAll(status, pledgeType, eventName, memberId, pageable);
+        Page<Pledge> pledges = pledgeService.findAll(lifecycle, pledgeType, eventName, memberId, pageable);
         return ResponseEntity.ok(ApiResponse.success(pledges));
     }
 

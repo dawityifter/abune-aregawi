@@ -1,6 +1,8 @@
 package church.abunearegawi.backend.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -27,8 +29,19 @@ public class Transaction {
     @JoinColumn(name = "member_id")
     private Member member;
 
+    /**
+     * Who took the money. Null for an online gift, because nobody collected it.
+     *
+     * <p>The column was NOT NULL until the Node migration
+     * 20260823100000-make-transaction-collected-by-nullable dropped it: an
+     * anonymous online donation has no member and therefore no collector, and
+     * the old constraint meant such a gift could not be written at all — it
+     * stayed in Stripe, absent from the ledger. This entity still declared
+     * nullable = false, which is stricter than the schema and would have
+     * rejected exactly those gifts.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "collected_by", nullable = false)
+    @JoinColumn(name = "collected_by")
     private Member collector;
 
     @Column(name = "payment_date", nullable = false)
@@ -47,6 +60,7 @@ public class Transaction {
     private PaymentMethod paymentMethod;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable = false)
     @Builder.Default
     private Status status = Status.succeeded;

@@ -49,8 +49,16 @@ public class Member {
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
+    // marital_status and interested_in_serving are Postgres named enum types
+    // (enum_members_marital_status, enum_members_interested_in_serving), not
+    // varchar. @Enumerated(EnumType.STRING) alone binds a varchar, and Postgres
+    // will not implicitly cast it, so every member INSERT failed with
+    // "column is of type enum_... but expression is of type character varying".
+    // NAMED_ENUM binds the value as the enum type. Any entity mapping one of the
+    // schema's 23 enum columns needs the same treatment.
     @Column(name = "marital_status")
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private MaritalStatus maritalStatus;
 
     @Column(name = "baptism_name")
@@ -136,6 +144,7 @@ public class Member {
 
     @Column(name = "interested_in_serving")
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Builder.Default
     private InterestedInServing interestedInServing = InterestedInServing.maybe;
 

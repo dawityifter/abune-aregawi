@@ -181,14 +181,14 @@ public class SmsService {
     @Transactional
     public SmsLog sendToPendingPledges(Long senderId, String message) {
         java.util.List<church.abunearegawi.backend.model.Pledge> pledges = pledgeRepository
-                .findByStatus(church.abunearegawi.backend.model.Pledge.Status.pending);
+                .findOutstanding();
         return sendToPledgeList(senderId, pledges, message);
     }
 
     @Transactional
     public SmsLog sendToFulfilledPledges(Long senderId, String message) {
         java.util.List<church.abunearegawi.backend.model.Pledge> pledges = pledgeRepository
-                .findByStatus(church.abunearegawi.backend.model.Pledge.Status.fulfilled);
+                .findFulfilled();
         return sendToPledgeList(senderId, pledges, message);
     }
 
@@ -205,7 +205,7 @@ public class SmsService {
 
     @Transactional
     public java.util.List<church.abunearegawi.backend.dto.MemberDTO> getPendingPledgesRecipients() {
-        return pledgeRepository.findByStatus(church.abunearegawi.backend.model.Pledge.Status.pending).stream()
+        return pledgeRepository.findOutstanding().stream()
                 .map(church.abunearegawi.backend.model.Pledge::getMember)
                 .filter(m -> m != null && m.isActive())
                 .distinct()
@@ -215,7 +215,7 @@ public class SmsService {
 
     @Transactional
     public java.util.List<church.abunearegawi.backend.dto.MemberDTO> getFulfilledPledgesRecipients() {
-        return pledgeRepository.findByStatus(church.abunearegawi.backend.model.Pledge.Status.fulfilled).stream()
+        return pledgeRepository.findFulfilled().stream()
                 .map(church.abunearegawi.backend.model.Pledge::getMember)
                 .filter(m -> m != null && m.isActive())
                 .distinct()
