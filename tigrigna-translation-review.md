@@ -681,3 +681,18 @@ terms already in the dictionary: `ወብሳይት` (website, from `vendorForm.we
 | activityLog.analyticsTitle | Website Analytics | ናይ ወብሳይት ጸብጻብ | ⚠️ `ጸብጻብ` (report) is the nearest established term; confirm it carries "analytics/statistics" here rather than a written report, and that a borrowed term is not preferred |
 | activityLog.analyticsDescription | Page views, referrers and traffic for the church website, from our own analytics server. | ናይ ቤተ ክርስቲያን ወብሳይት ብዝሒ ምርኣይ፡ ካበይ ከም ዝመጹን ትራፊክን፡ ካብ ናትና ሰርቨር። | ⚠️ three web-analytics terms with no precedent in this dictionary — "page views" as `ብዝሒ ምርኣይ` (view count), "referrers" paraphrased as `ካበይ ከም ዝመጹ` (where they came from), and `ትራፊክ` borrowed. Confirm all three, and that `ካብ ናትና ሰርቨር` conveys self-hosted rather than merely "from our server" |
 | activityLog.analyticsLink | Open analytics dashboard | ናይ ጸብጻብ ዳሽቦርድ ክፈት | ⚠️ confirm this works as a short button label; compare `sms.open` (`ኤስ.ኤም.ኤስ ክፈት`) for the imperative pattern |
+
+## Campaign reactivation — admin fundraising tab (Sep 2026)
+
+Three new keys plus a **correction to an existing one**. `fundraising.closeWarning`
+previously told admins that closing a campaign was permanent and left read-only
+history; reactivation makes that untrue, so both languages were reworded. The
+Tigrigna there is a redraft, not a new string — please review it as carefully as
+the new ones. Admin-facing only. Drafts by a non-native speaker.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| fundraising.reactivate | Reactivate | እንደገና ኣንቅሕ | ⚠️ built as "again" + the existing `fundraising.activate` verb `ኣንቅሕ`; confirm the pair reads naturally as a button and that `እንደገና` is the right intensifier |
+| fundraising.reactivateWarning | Reactivating makes this drive live again on the website. Members will be able to pledge to it. | እንደገና ምንቃሕ ነዚ መደብ ኣብ ወብሳይት እንደገና ህያው ይገብሮ። ኣባላት መብጽዓ ክኣትዉ ክኽእሉ እዮም። | ⚠️ shown in a browser confirm dialog before the action; confirm `ህያው` (living/alive) is right for "live on a website" rather than a biological sense |
+| fundraising.windowPassedHint | This drive's end date has passed. Extend it with Edit before reactivating, or create a new campaign to keep the totals separate. | መወዳእታ ዕለት እዚ መደብ ሓሊፉ እዩ። ቅድሚ እንደገና ምንቃሕ ብ'ኣርም' ኣንውሕዎ፡ ወይ ከኣ ጸብጻባት ተፈላልዮም ክጸንሑ ሓድሽ መደብ ፍጠሩ። | ⚠️ two instructions in one note — confirm they read as alternatives, and that `ኣርም` matches whatever `fundraising.edit` renders as on the button it refers to |
+| fundraising.closeWarning | Closing a campaign stops new pledges and hides it from the website. An admin can reactivate it while its dates still cover today. | መደብ ምዕጻው ሓደስቲ መብጽዓታት ይዓግትን ካብ ወብሳይት ይሓብኦን። ዕለታቱ ሎሚ ክሳብ ዝሽፍኑ ኣድሚን እንደገና ከንቅሖ ይኽእል እዩ። | ⚠️ **replaces an earlier draft that said closing was permanent** — the old wording is now wrong, so this must not be reverted. Confirm the second sentence conveys the date condition rather than an unconditional promise |

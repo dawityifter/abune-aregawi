@@ -108,6 +108,20 @@ const FundraisingCampaigns: React.FC<FundraisingCampaignsProps> = ({ canManage =
     setError(null);
   };
 
+  // A campaign is only *live* when it is active AND today is inside its window,
+  // so reactivating a finished drive would flip the status here and change
+  // nothing members can see. The API refuses it (CAMPAIGN_WINDOW_PASSED) and is
+  // the authority; this only avoids offering an action that cannot work. The
+  // comparison is the browser's day against an ISO date, so it can differ from
+  // the church timezone by hours at a boundary — the server settles it.
+  const windowHasPassed = (campaign: AdminCampaign) => {
+    if (!campaign.end_date) return false;
+    const today = new Date();
+    const localToday = new Date(today.getTime() - today.getTimezoneOffset() * 60000)
+      .toISOString().slice(0, 10);
+    return campaign.end_date < localToday;
+  };
+
   // The 409 body names the conflicting drive, so show the server's message
   // verbatim rather than a generic failure.
   const handleStatus = async (campaign: AdminCampaign, status: 'active' | 'closed') => {
@@ -255,6 +269,23 @@ const FundraisingCampaigns: React.FC<FundraisingCampaignsProps> = ({ canManage =
                     >
                       {t('fundraising.activate')}
                     </button>
+                  )}
+                  {canManage && campaign.status === 'closed' && !windowHasPassed(campaign) && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm(t('fundraising.reactivateWarning'))) {
+                          handleStatus(campaign, 'active');
+                        }
+                      }}
+                      className="px-3 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
+                    >
+                      {t('fundraising.reactivate')}
+                    </button>
+                  )}
+                  {canManage && campaign.status === 'closed' && windowHasPassed(campaign) && (
+                    <p className="text-sm text-gray-500 max-w-xs">
+                      {t('fundraising.windowPassedHint')}
+                    </p>
                   )}
                   {canManage && campaign.status === 'active' && (
                     <button

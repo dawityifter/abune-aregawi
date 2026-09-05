@@ -1,6 +1,6 @@
 const { PledgeCampaign, CampaignTotal, ActivityLog } = require('../models');
 const { Op } = require('sequelize');
-const { findLiveCampaign, findOverlappingActive } = require('../services/pledgeCampaignService');
+const { findLiveCampaign, findOverlappingActive, todayInChurchTz } = require('../services/pledgeCampaignService');
 
 // PUBLIC — powers the unauthenticated pledge form used at events. Select the
 // column list explicitly (never the whole model, never joined with
@@ -209,6 +209,30 @@ const update = async (req, res) => {
         end_date: updateData.end_date !== undefined ? updateData.end_date : campaign.end_date
       });
       if (conflict) return res.status(409).json(conflict);
+    }
+
+    // A campaign is only *live* when it is active AND today sits inside its
+    // window (pledgeCampaignService.isLive). Flipping a finished drive back to
+    // 'active' would therefore change the admin list and nothing else: the
+    // pledge page would still report no campaign and the header link would
+    // stay hidden. Refuse rather than hand back a success that does nothing.
+    //
+    // Scoped to a transition INTO active, not to any request that leaves the
+    // campaign active. An already-active drive whose window has passed must
+    // stay editable — including the very date change that repairs it — and
+    // the resulting end date is what gets checked, so reactivating and
+    // extending in one request is allowed.
+    if (previousStatus !== 'active' && nextStatus === 'active') {
+      const nextEndDate = updateData.end_date !== undefined
+        ? updateData.end_date
+        : campaign.end_date;
+      if (nextEndDate && nextEndDate < todayInChurchTz()) {
+        return res.status(409).json({
+          success: false,
+          code: 'CAMPAIGN_WINDOW_PASSED',
+          message: `${campaign.name} ended on ${nextEndDate}. Extend its end date before activating it, or create a new campaign so the two drives keep separate totals.`
+        });
+      }
     }
 
     await campaign.update(updateData);

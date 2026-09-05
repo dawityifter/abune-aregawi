@@ -2,7 +2,7 @@
 process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'sqlite::memory:';
 
-const { sequelize, PledgeCampaign } = require('../../models');
+const { sequelize, PledgeCampaign, Member } = require('../../models');
 const { listActive } = require('../../controllers/pledgeCampaignController');
 const { todayInChurchTz } = require('../../services/pledgeCampaignService');
 
@@ -142,5 +142,129 @@ describe('campaign overlap enforcement', () => {
     expect(res.statusCode).toBe(200);
     await existing.reload();
     expect(existing.name).toBe('Renamed Drive');
+  });
+});
+
+// A campaign is only *live* when it is active AND today sits inside its window
+// (services/pledgeCampaignService.isLive). So flipping a long-finished drive
+// back to 'active' changes the admin list and nothing else: the pledge page
+// still reports no campaign and the header link stays hidden. That silent
+// no-op is what these tests refuse.
+describe('reactivating a closed campaign', () => {
+  // A real member row: update() writes an ActivityLog whose user_id is a
+  // foreign key into members, and these cases are the first here that get far
+  // enough to reach it.
+  let actor;
+  beforeAll(async () => {
+    actor = await Member.create({
+      first_name: 'Campaign', last_name: 'Admin',
+      phone_number: '+15550000902', is_active: true, role: 'admin'
+    });
+  });
+
+  const adminReq = (body, params = {}) => ({ body, params, user: { id: actor.id }, ip: '127.0.0.1' });
+
+  const shiftDays = (isoDate, days) => {
+    const d = new Date(`${isoDate}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+  const today = () => todayInChurchTz();
+
+  it('reactivates a closed campaign whose window still contains today', async () => {
+    const closed = await PledgeCampaign.create({
+      slug: 'closed-early', name: 'Closed Early', status: 'closed',
+      start_date: shiftDays(today(), -10), end_date: shiftDays(today(), 30)
+    });
+
+    const res = mockRes();
+    await update(adminReq({ status: 'active' }, { id: String(closed.id) }), res);
+
+    expect(res.statusCode).toBe(200);
+    await closed.reload();
+    expect(closed.status).toBe('active');
+  });
+
+  it('reactivates a closed campaign that has no end date', async () => {
+    const closed = await PledgeCampaign.create({
+      slug: 'open-ended', name: 'Open Ended', status: 'closed',
+      start_date: shiftDays(today(), -10), end_date: null
+    });
+
+    const res = mockRes();
+    await update(adminReq({ status: 'active' }, { id: String(closed.id) }), res);
+
+    expect(res.statusCode).toBe(200);
+    await closed.reload();
+    expect(closed.status).toBe('active');
+  });
+
+  it('refuses to reactivate a campaign whose window has already passed', async () => {
+    const stale = await PledgeCampaign.create({
+      slug: 'last-year', name: 'Last Year Drive', status: 'closed',
+      start_date: shiftDays(today(), -400), end_date: shiftDays(today(), -30)
+    });
+
+    const res = mockRes();
+    await update(adminReq({ status: 'active' }, { id: String(stale.id) }), res);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.payload.code).toBe('CAMPAIGN_WINDOW_PASSED');
+    await stale.reload();
+    expect(stale.status).toBe('closed');
+  });
+
+  // The same guard must not fire on a stale draft either: activating one has
+  // exactly the same invisible result.
+  it('refuses to activate a draft whose window has already passed', async () => {
+    const stale = await PledgeCampaign.create({
+      slug: 'stale-draft', name: 'Stale Draft', status: 'draft',
+      start_date: shiftDays(today(), -400), end_date: shiftDays(today(), -30)
+    });
+
+    const res = mockRes();
+    await update(adminReq({ status: 'active' }, { id: String(stale.id) }), res);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.payload.code).toBe('CAMPAIGN_WINDOW_PASSED');
+  });
+
+  // Reactivating together with a new window is the documented repair, so the
+  // guard has to read the resulting dates rather than the stored ones.
+  it('reactivates when the same request also extends the window', async () => {
+    const stale = await PledgeCampaign.create({
+      slug: 'extend-me', name: 'Extend Me', status: 'closed',
+      start_date: shiftDays(today(), -400), end_date: shiftDays(today(), -30)
+    });
+
+    const res = mockRes();
+    await update(
+      adminReq({ status: 'active', end_date: shiftDays(today(), 30) }, { id: String(stale.id) }),
+      res
+    );
+
+    expect(res.statusCode).toBe(200);
+    await stale.reload();
+    expect(stale.status).toBe('active');
+  });
+
+  // The guard is scoped to transitions INTO active. Without that scoping an
+  // admin could no longer fix an already-active expired drive — including
+  // PATCHing the very dates that would repair it.
+  it('still lets an admin extend an already-active campaign whose window passed', async () => {
+    const expired = await PledgeCampaign.create({
+      slug: 'expired-active', name: 'Expired Active', status: 'active',
+      start_date: shiftDays(today(), -400), end_date: shiftDays(today(), -30)
+    });
+
+    const res = mockRes();
+    await update(
+      adminReq({ end_date: shiftDays(today(), 30) }, { id: String(expired.id) }),
+      res
+    );
+
+    expect(res.statusCode).toBe(200);
+    await expired.reload();
+    expect(expired.end_date).toBe(shiftDays(today(), 30));
   });
 });

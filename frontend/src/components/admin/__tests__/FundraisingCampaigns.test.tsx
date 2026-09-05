@@ -237,3 +237,77 @@ describe('drilling into a campaign\'s donors', () => {
     expect(await screen.findByText('donors-panel')).toBeInTheDocument();
   });
 });
+
+// The backend has always accepted closed -> active; only the button was
+// missing, so a drive closed early or by mistake had no way back. It refuses
+// when the window has passed, because "active" alone is not "live": the pledge
+// page and the header both key off the date window too.
+describe('FundraisingCampaigns reactivation', () => {
+  // Relative to today rather than fixed dates, so these do not quietly change
+  // meaning when the calendar passes a hardcoded year.
+  const shift = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const closedInWindow = {
+    ...CAMPAIGN, id: 21, name: 'Closed Early', status: 'closed' as const,
+    start_date: shift(-10), end_date: shift(30)
+  };
+  const closedAndExpired = {
+    ...CAMPAIGN, id: 22, name: 'Last Year Drive', status: 'closed' as const,
+    start_date: shift(-400), end_date: shift(-30)
+  };
+
+  let confirmSpy: jest.SpyInstance;
+  beforeEach(() => {
+    confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
+  });
+  afterEach(() => confirmSpy.mockRestore());
+
+  it('offers to reactivate a closed campaign whose window still covers today', async () => {
+    mockFetchAll.mockResolvedValue([closedInWindow]);
+    renderTab();
+
+    expect(await screen.findByRole('button', { name: /reactivate/i })).toBeInTheDocument();
+  });
+
+  it('sends the campaign back to active when reactivate is confirmed', async () => {
+    mockFetchAll.mockResolvedValue([closedInWindow]);
+    renderTab();
+
+    await userEvent.click(await screen.findByRole('button', { name: /reactivate/i }));
+
+    await waitFor(() =>
+      expect(mockUpdate).toHaveBeenCalledWith(closedInWindow.id, { status: 'active' }));
+  });
+
+  it('does not reactivate when the confirmation is dismissed', async () => {
+    confirmSpy.mockReturnValue(false);
+    mockFetchAll.mockResolvedValue([closedInWindow]);
+    renderTab();
+
+    await userEvent.click(await screen.findByRole('button', { name: /reactivate/i }));
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  // Flipping this one to active would change the admin list and nothing else,
+  // so the admin is pointed at the repair instead of handed a silent no-op.
+  it('explains instead of offering reactivation once the window has passed', async () => {
+    mockFetchAll.mockResolvedValue([closedAndExpired]);
+    renderTab();
+
+    expect(await screen.findByText(/end date has passed/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /reactivate/i })).not.toBeInTheDocument();
+  });
+
+  it('offers nothing to a viewer who cannot manage campaigns', async () => {
+    mockFetchAll.mockResolvedValue([closedInWindow]);
+    renderReadOnly();
+
+    await screen.findByText('Closed Early');
+    expect(screen.queryByRole('button', { name: /reactivate/i })).not.toBeInTheDocument();
+  });
+});
