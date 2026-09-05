@@ -4,6 +4,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../utils/roles';
 import { featureFlags } from '../config/featureFlags';
+import { useActiveCampaign } from '../hooks/useActiveCampaign';
 // import { Transition } from '@headlessui/react'; // Removed due to React 19 compatibility
 
 // type Language = 'en' | 'ti';
@@ -12,6 +13,16 @@ const Navigation: React.FC = () => {
   const { lang, setLang, t } = useI18n();
   const { currentUser, logout, getUserProfile } = useAuth();
   const location = useLocation();
+
+  // "Make a Pledge" is only worth offering while a drive is actually running;
+  // without one, /pledge shows its "no active campaign" state, so the header
+  // would be advertising a dead end from every page. Reads the same source as
+  // the home page card so the two cannot disagree, and fails closed the same
+  // way: loading and error both leave `campaign` null.
+  //
+  // Navigation is mounted outside <Routes>, so this fetches once per app load
+  // rather than on every navigation.
+  const { campaign: activeCampaign } = useActiveCampaign();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -132,12 +143,14 @@ const Navigation: React.FC = () => {
                   {t('navigation.dashboard')}
                 </Link>
 
-                <Link
-                  to="/pledge"
-                  className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
-                >
-                  {t('nav.makePledge')}
-                </Link>
+                {activeCampaign && (
+                  <Link
+                    to="/pledge"
+                    className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
+                  >
+                    {t('nav.makePledge')}
+                  </Link>
+                )}
 
                 {/* Admin link removed from desktop header */}
                 {/* Outreach link removed; access via Dashboard Relationship Department card */}
@@ -267,14 +280,16 @@ const Navigation: React.FC = () => {
                   {t('navigation.dashboard')}
                 </Link>
 
-                <Link
-                  to="/pledge"
-                  className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <i className="fas fa-hand-holding-heart mr-3 w-5 text-center"></i>
-                  {t('nav.makePledge')}
-                </Link>
+                {activeCampaign && (
+                  <Link
+                    to="/pledge"
+                    className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <i className="fas fa-hand-holding-heart mr-3 w-5 text-center"></i>
+                    {t('nav.makePledge')}
+                  </Link>
+                )}
 
                 {/* Admin link removed from mobile header */}
                 {/* Outreach link removed from mobile; access via Dashboard Relationship Department card */}
