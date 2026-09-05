@@ -696,3 +696,16 @@ the new ones. Admin-facing only. Drafts by a non-native speaker.
 | fundraising.reactivateWarning | Reactivating makes this drive live again on the website. Members will be able to pledge to it. | እንደገና ምንቃሕ ነዚ መደብ ኣብ ወብሳይት እንደገና ህያው ይገብሮ። ኣባላት መብጽዓ ክኣትዉ ክኽእሉ እዮም። | ⚠️ shown in a browser confirm dialog before the action; confirm `ህያው` (living/alive) is right for "live on a website" rather than a biological sense |
 | fundraising.windowPassedHint | This drive's end date has passed. Extend it with Edit before reactivating, or create a new campaign to keep the totals separate. | መወዳእታ ዕለት እዚ መደብ ሓሊፉ እዩ። ቅድሚ እንደገና ምንቃሕ ብ'ኣርም' ኣንውሕዎ፡ ወይ ከኣ ጸብጻባት ተፈላልዮም ክጸንሑ ሓድሽ መደብ ፍጠሩ። | ⚠️ two instructions in one note — confirm they read as alternatives, and that `ኣርም` matches whatever `fundraising.edit` renders as on the button it refers to |
 | fundraising.closeWarning | Closing a campaign stops new pledges and hides it from the website. An admin can reactivate it while its dates still cover today. | መደብ ምዕጻው ሓደስቲ መብጽዓታት ይዓግትን ካብ ወብሳይት ይሓብኦን። ዕለታቱ ሎሚ ክሳብ ዝሽፍኑ ኣድሚን እንደገና ከንቅሖ ይኽእል እዩ። | ⚠️ **replaces an earlier draft that said closing was permanent** — the old wording is now wrong, so this must not be reverted. Confirm the second sentence conveys the date condition rather than an unconditional promise |
+
+### Follow-up: closing a draft (Sep 2026)
+
+One more key in the same admin fundraising tab. A draft campaign had no Close
+button, so the only route was to activate it first — which the new window guard
+refuses once its dates have passed, leaving stale drafts stuck. Closing a draft
+needs its own warning because the standard `fundraising.closeWarning` speaks of
+stopping new pledges and hiding the drive from the website, and a draft has
+never been on it.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| fundraising.closeDraftWarning | This draft has never been visible to members. Closing it files it away as history. | እዚ ንድፊ ንኣባላት ተራእዩ ኣይፈልጥን። ምዕጻዉ ከም ታሪኽ የቐምጦ። | ⚠️ shown in a browser confirm dialog. `ንድፊ` is used for "draft" — confirm it reads as an unpublished draft rather than a drawing or sketch, since that is the whole point of the sentence. Also confirm `ተራእዩ ኣይፈልጥን` carries "has never been seen" rather than "is not currently visible" |

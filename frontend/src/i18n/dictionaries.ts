@@ -185,6 +185,7 @@ export interface Dictionaries {
     windowPassedHint: string;
     close: string;
     closeWarning: string;
+    closeDraftWarning: string;
     endBeforeStart: string;
     noCampaigns: string;
     activePledge: string;
@@ -2016,6 +2017,7 @@ export const en: Dictionaries = {
     windowPassedHint: "This drive's end date has passed. Extend it with Edit before reactivating, or create a new campaign to keep the totals separate.",
     close: "Close campaign",
     closeWarning: "Closing a campaign stops new pledges and hides it from the website. An admin can reactivate it while its dates still cover today.",
+    closeDraftWarning: "This draft has never been visible to members. Closing it files it away as history.",
     endBeforeStart: "The end date must be on or after the start date.",
     noCampaigns: "No campaigns yet. Create one to start a drive.",
     activePledge: "Active pledge: {pledged} — {remaining} remaining",
@@ -4146,6 +4148,7 @@ export const ti: Dictionaries = {
     windowPassedHint: "መወዳእታ ዕለት እዚ መደብ ሓሊፉ እዩ። ቅድሚ እንደገና ምንቃሕ ብ'ኣርም' ኣንውሕዎ፡ ወይ ከኣ ጸብጻባት ተፈላልዮም ክጸንሑ ሓድሽ መደብ ፍጠሩ።",
     close: "መደብ ዕጾ",
     closeWarning: "መደብ ምዕጻው ሓደስቲ መብጽዓታት ይዓግትን ካብ ወብሳይት ይሓብኦን። ዕለታቱ ሎሚ ክሳብ ዝሽፍኑ ኣድሚን እንደገና ከንቅሖ ይኽእል እዩ።",
+    closeDraftWarning: "እዚ ንድፊ ንኣባላት ተራእዩ ኣይፈልጥን። ምዕጻዉ ከም ታሪኽ የቐምጦ።",
     endBeforeStart: "መወዳእታ ዕለት ካብ መጀመሪ ዕለት ንድሕሪት ክኸውን የብሉን።",
     noCampaigns: "ጌና መደባት የለዉን። ንምጅማር ሓደ ፍጠሩ።",
     activePledge: "ንጡፍ መብጽዓ፦ {pledged} — {remaining} ተሪፉ",

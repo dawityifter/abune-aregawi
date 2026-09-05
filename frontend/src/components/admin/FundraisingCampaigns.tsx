@@ -287,10 +287,20 @@ const FundraisingCampaigns: React.FC<FundraisingCampaignsProps> = ({ canManage =
                       {t('fundraising.windowPassedHint')}
                     </p>
                   )}
-                  {canManage && campaign.status === 'active' && (
+                  {/* Drafts are closable too. Offering only Activate meant the
+                      sole route to closing a draft was to activate it first,
+                      which the window guard refuses once its dates have passed
+                      — leaving stale drafts stuck. The API has always accepted
+                      draft -> closed. The warning differs because the standard
+                      one speaks of stopping pledges and hiding the drive from
+                      the website, neither true of something never published. */}
+                  {canManage && (campaign.status === 'active' || campaign.status === 'draft') && (
                     <button
                       onClick={() => {
-                        if (window.confirm(t('fundraising.closeWarning'))) {
+                        const warning = campaign.status === 'draft'
+                          ? t('fundraising.closeDraftWarning')
+                          : t('fundraising.closeWarning');
+                        if (window.confirm(warning)) {
                           handleStatus(campaign, 'closed');
                         }
                       }}

@@ -248,6 +248,23 @@ describe('reactivating a closed campaign', () => {
     expect(stale.status).toBe('active');
   });
 
+  // Closing is what the admin UI offers a stale draft instead of activation.
+  // Neither the overlap check nor the window guard fires on a transition that
+  // does not end in 'active', so a long-finished draft can always be filed away.
+  it('closes a draft whose window has long passed', async () => {
+    const stale = await PledgeCampaign.create({
+      slug: 'stale-to-close', name: 'Stale To Close', status: 'draft',
+      start_date: shiftDays(today(), -400), end_date: shiftDays(today(), -200)
+    });
+
+    const res = mockRes();
+    await update(adminReq({ status: 'closed' }, { id: String(stale.id) }), res);
+
+    expect(res.statusCode).toBe(200);
+    await stale.reload();
+    expect(stale.status).toBe('closed');
+  });
+
   // The guard is scoped to transitions INTO active. Without that scoping an
   // admin could no longer fix an already-active expired drive — including
   // PATCHing the very dates that would repair it.

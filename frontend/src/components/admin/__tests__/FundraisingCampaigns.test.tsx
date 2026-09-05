@@ -5,6 +5,7 @@ import '@testing-library/jest-dom';
 import { I18nProvider } from '../../../i18n/I18nProvider';
 import { LanguageProvider } from '../../../contexts/LanguageContext';
 import FundraisingCampaigns from '../FundraisingCampaigns';
+import { en } from '../../../i18n/dictionaries';
 
 const mockFetchAll = jest.fn();
 const mockCreate = jest.fn();
@@ -309,5 +310,88 @@ describe('FundraisingCampaigns reactivation', () => {
 
     await screen.findByText('Closed Early');
     expect(screen.queryByRole('button', { name: /reactivate/i })).not.toBeInTheDocument();
+  });
+});
+
+// A draft was only ever offered Activate, so the sole way to close one was to
+// activate it first and close it after. The window guard refuses that
+// activation for a draft whose dates have passed, which left such drafts stuck
+// with no way out. draft -> closed is accepted by the API; only the button was
+// missing.
+describe('FundraisingCampaigns closing a draft', () => {
+  const shift = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const staleDraft = {
+    ...CAMPAIGN, id: 31, name: 'Stale Draft', status: 'draft' as const,
+    start_date: shift(-400), end_date: shift(-200)
+  };
+  const activeDrive = {
+    ...CAMPAIGN, id: 32, name: 'Running Drive', status: 'active' as const,
+    start_date: shift(-10), end_date: shift(30)
+  };
+
+  let confirmSpy: jest.SpyInstance;
+  beforeEach(() => {
+    confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
+  });
+  afterEach(() => confirmSpy.mockRestore());
+
+  it('offers to close a draft campaign', async () => {
+    mockFetchAll.mockResolvedValue([staleDraft]);
+    renderTab();
+
+    expect(await screen.findByRole('button', { name: /close campaign/i })).toBeInTheDocument();
+  });
+
+  it('closes the draft when confirmed', async () => {
+    mockFetchAll.mockResolvedValue([staleDraft]);
+    renderTab();
+
+    await userEvent.click(await screen.findByRole('button', { name: /close campaign/i }));
+
+    await waitFor(() =>
+      expect(mockUpdate).toHaveBeenCalledWith(staleDraft.id, { status: 'closed' }));
+  });
+
+  // The standard warning talks about stopping new pledges and hiding the drive
+  // from the website — neither true of something members have never seen.
+  it('warns in terms that fit a draft, not a running drive', async () => {
+    mockFetchAll.mockResolvedValue([staleDraft]);
+    renderTab();
+
+    await userEvent.click(await screen.findByRole('button', { name: /close campaign/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(en.fundraising.closeDraftWarning);
+  });
+
+  it('keeps the running-drive warning for an active campaign', async () => {
+    mockFetchAll.mockResolvedValue([activeDrive]);
+    renderTab();
+
+    await userEvent.click(await screen.findByRole('button', { name: /close campaign/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(en.fundraising.closeWarning);
+  });
+
+  it('does not close the draft when the confirmation is dismissed', async () => {
+    confirmSpy.mockReturnValue(false);
+    mockFetchAll.mockResolvedValue([staleDraft]);
+    renderTab();
+
+    await userEvent.click(await screen.findByRole('button', { name: /close campaign/i }));
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('offers no close button to a viewer who cannot manage campaigns', async () => {
+    mockFetchAll.mockResolvedValue([staleDraft]);
+    renderReadOnly();
+
+    await screen.findByText('Stale Draft');
+    expect(screen.queryByRole('button', { name: /close campaign/i })).not.toBeInTheDocument();
   });
 });
