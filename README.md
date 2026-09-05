@@ -19,25 +19,42 @@ The system aims to:
 
 ## 🏗️ Architecture Overview
 
+### Repository Layout
+
+| Path | What it is |
+|---|---|
+| `frontend/` | React 19 + TypeScript app (Create React App). Deploys to Firebase Hosting. |
+| `backend/` | Node/Express + Sequelize API. **The deployed backend.** Runs on OCI Compute. |
+| `backendJava/` | Spring Boot port of the same API. **A stub on `main`** — the sources live on the `java` branch. See *Two Backend Implementations*. |
+| `docs/` | Design specs, implementation plans and historical notes. Start with `docs/Objective.md`. |
+| `scripts/` | One-off data utilities and the pre-commit hook. |
+| `.github/workflows/` | Two pipelines: Firebase Hosting for `frontend/**`, OCI for `backend/**`. |
+
 ### System Architecture Diagram
 ```mermaid
 graph TB
     User["👤 User"]
     
     subgraph "Frontend Layer"
-        FE["React 18 + TypeScript<br/>TailwindCSS<br/>Firebase Auth"]
+        FE["React 19 + TypeScript<br/>TailwindCSS<br/>Firebase Phone Auth"]
         i18n["i18n Context<br/>English/Tigrigna"]
     end
     
     subgraph "Authentication"
-        FB["Firebase Auth<br/>Phone + Email"]
+        FB["Firebase Auth<br/>Phone (SMS OTP)"]
         JWT["JWT Tokens<br/>Dual Verification"]
     end
     
-    subgraph "Backend Layer"
-        API["Express.js API<br/>Controllers + Routes"]
-        Services["Service Layer<br/>Business Logic<br/>GL Codes, Payments,<br/>Reconciliation"]
-        Models["Sequelize Models<br/>33 Models,<br/>67+ Migrations"]
+    subgraph "Backend Layer — Node.js (deployed)"
+        API["Express.js API<br/>28 Controllers + 27 Routes"]
+        Services["Service Layer<br/>Business Logic<br/>GL Codes, Payments,<br/>Pledges, Reconciliation"]
+        Models["Sequelize Models<br/>37 Models,<br/>81 Migrations"]
+    end
+
+    subgraph "Backend Layer — Java (parallel, not deployed)"
+        JAPI["Spring Boot REST<br/>31 Controllers"]
+        JServices["Service Layer<br/>27 Services"]
+        JModels["JPA Entities<br/>28 Entities,<br/>28 Repositories"]
     end
     
     subgraph "External Services"
@@ -59,6 +76,15 @@ graph TB
     API -->|Verify JWT| JWT
     API -->|Business Rules| Services
     API -->|Query/Write| Models
+
+    %% The frontend targets one backend at a time via REACT_APP_API_URL. The
+    %% Java implementation answers the same contract but serves no traffic
+    %% today; it lives on the `java` branch, not on `main`.
+    FE -.->|REACT_APP_API_URL<br/>alternate target| JAPI
+    JAPI -.->|Verify JWT| JWT
+    JAPI -.-> JServices
+    JAPI -.-> JModels
+    JModels -.->|JPA / Hibernate| PG
     
     Services -->|Send SMS| Twilio
     Services -->|Process Payments| Stripe
@@ -70,7 +96,41 @@ graph TB
     style Services fill:#8ec5fc
     style JWT fill:#90EE90
     style Twilio fill:#FFB6C1
+
+    %% Dashed and pale: present in the design, absent from production.
+    style JAPI fill:#f0f0f0,stroke:#999,stroke-dasharray: 5 5
+    style JServices fill:#f0f0f0,stroke:#999,stroke-dasharray: 5 5
+    style JModels fill:#f0f0f0,stroke:#999,stroke-dasharray: 5 5
 ```
+
+### Two Backend Implementations
+
+The frontend talks to one backend at a time, chosen by `REACT_APP_API_URL`.
+
+| | Node.js | Java |
+|---|---|---|
+| Location | `backend/` on `main` | `backendJava/` on the **`java` branch** |
+| Stack | Express 4 + Sequelize 6 | Spring Boot 4.0.1 on Java 25, JPA/Hibernate |
+| Port | 10000 (behind nginx) | 8080 |
+| Size | 28 controllers, 15 services, 37 models | 31 controllers, 27 services, 28 entities, 28 repositories |
+| Database | PostgreSQL (Supabase) | the same PostgreSQL database |
+| Status | **Serves all production traffic** | **Not deployed.** No pipeline builds it, no DNS points at it |
+
+The Java implementation is a parallel port of the same API contract, kept as an
+architectural direction rather than a live service. Two things are worth knowing
+before reading it:
+
+- **`main` carries only a stub.** The `backendJava/` directory on `main` has no
+  `src/main` at all — build files and notes only. Every Java source lives on the
+  `java` branch, which trails `main` in features.
+- **It has no tests yet.** The Node backend's suite is the safety net for the
+  behaviour both implementations share.
+
+Conventions on the Java side differ from the Node side and are documented in
+`backendJava/CLAUDE.md`: responses are wrapped in `ApiResponse<T>`
+(`{ success, message, data }`), a servlet filter turns a Firebase token into a
+`FirebaseUserDetails`, and roles are enforced with `@PreAuthorize` using
+upper-case names such as `hasAnyRole('ADMIN', 'TREASURER')`.
 
 ### Deployment Architecture
 ```mermaid
@@ -82,7 +142,11 @@ graph LR
     end
     
     subgraph "OCI Compute (Always-Free)"
-        BE_PROD["Express.js Backend<br/>api.abunearegawi.church<br/>Port 10000"]
+        BE_PROD["Express.js Backend<br/>api.abunearegawi.church<br/>nginx -> pm2, port 10000"]
+    end
+
+    subgraph "Not deployed"
+        BE_JAVA["Spring Boot Backend<br/>port 8080<br/>branch: java"]
     end
     
     subgraph "Supabase"
@@ -97,11 +161,16 @@ graph LR
     FE_PROD -->|HTTPS| BE_PROD
     BE_PROD -->|TCP 6543<br/>Connection Pool| DB_PROD
     GH -->|Deploy| FE_PROD
-    GH -->|Deploy SSH| BE_PROD
+    GH -->|Deploy SSH<br/>+ sequelize db:migrate| BE_PROD
+
+    %% Same database, same contract — but no pipeline builds or ships it, and
+    %% no DNS points at it. Drawn so the option is visible, not implied live.
+    BE_JAVA -.->|would use the same DB| DB_PROD
     
     style FE_PROD fill:#FFD700
     style BE_PROD fill:#90EE90
     style DB_PROD fill:#87CEEB
+    style BE_JAVA fill:#f0f0f0,stroke:#999,stroke-dasharray: 5 5
 ```
 
 ### Role-Based Access Control (RBAC)
@@ -136,7 +205,7 @@ The system implements 7+ specialized roles with granular permissions:
 
 ### Database Schema Overview
 
-**33 Sequelize Models** across key domains:
+**37 Sequelize Models** across key domains, applied through **81 migrations**:
 
 **Membership**
 - `Member` (id, firebaseUid, firstName, middleName, lastName, email, phoneNumber, status, rolesJson, etc.)
@@ -178,7 +247,7 @@ Plus 10+ other models for payments, pledges, expenses, budget tracking, etc.
 | **Frontend** | Firebase Hosting | ✅ Active | [abune-aregawi-church-app.web.app](https://abune-aregawi-church-app.web.app) |
 | **Backend API** | OCI Compute | ✅ Active | [api.abunearegawi.church](https://api.abunearegawi.church) |
 | **Database** | Supabase PostgreSQL | ✅ Connected | PostgreSQL 17.4 (Free Tier) |
-| **Authentication** | Firebase | ✅ Active | Phone + Email Auth |
+| **Authentication** | Firebase | ✅ Active | Phone / SMS one-time code |
 | **CI/CD** | GitHub Actions | ✅ Automated | Auto-deploys on push to main |
 
 ### 📊 System Status
@@ -292,26 +361,37 @@ Plus 10+ other models for payments, pledges, expenses, budget tracking, etc.
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **Framework**: React 18 + TypeScript (strict mode)
+- **Framework**: React 19 + TypeScript, built with Create React App
 - **Styling**: TailwindCSS + Custom Church Theme with gradients
 - **State Management**: React Context API
-- **Authentication**: Firebase Auth SDK (Phone + Email with reCAPTCHA)
-- **Internationalization**: Custom i18n context (English/Tigrigna)
-- **Testing**: Jest + React Testing Library with utilities
-- **Router**: React Router v7 with future-flags enabled
+- **Authentication**: Firebase Auth SDK — phone/SMS one-time code with reCAPTCHA
+- **Internationalization**: Custom i18n context (English/Tigrigna), parity-tested
+- **Testing**: Jest + React Testing Library — 85 suites, 822 tests (Sep 2026)
+- **Router**: React Router v6.30
+- **Analytics**: Self-hosted Umami; Sentry for error tracking (both inert without their env vars)
 - **Deployment**: Firebase Hosting with auto CI/CD
 
-### Backend
-- **Runtime**: Node.js 18+ with Express.js framework
-- **ORM**: Sequelize 6 with 33 models and 67+ migrations
+### Backend — Node.js (deployed)
+- **Runtime**: Node.js 18+ with Express.js 4
+- **ORM**: Sequelize 6 with 37 models and 81 migrations
 - **Database**: PostgreSQL 17.4 via Supabase with connection pooling
 - **Authentication**: Firebase Admin SDK + dual JWT + custom middleware
 - **Validation**: express-validator with custom rules
 - **Security**: Helmet, CORS, rate limiting, input sanitization
 - **SMS Gateway**: Twilio SDK integration for communications
-- **Testing**: Jest with integration and unit test suites
+- **Testing**: Jest — 96 suites, 750 tests (Sep 2026), run against in-memory SQLite
 - **Logging**: Comprehensive audit trails for financial and SMS operations
-- **Deployment**: OCI Compute via automated GitHub Actions
+- **Deployment**: OCI Compute via automated GitHub Actions; migrations run on deploy
+
+### Backend — Java (parallel, not deployed)
+- **Runtime**: Java 25, Spring Boot 4.0.1, built with Gradle 9.2.1
+- **ORM**: Spring Data JPA / Hibernate — 28 entities, 28 repositories
+- **Shape**: 31 controllers, 27 services, responses wrapped in `ApiResponse<T>`
+- **Authentication**: Firebase token verified by a servlet filter into `FirebaseUserDetails`
+- **Authorization**: `@PreAuthorize` with upper-case roles, e.g. `hasAnyRole('ADMIN', 'TREASURER')`
+- **Testing**: none yet
+- **Location**: the **`java` branch** only — `main` carries a stub directory with no `src/main`
+- **Deployment**: none. See *Two Backend Implementations* above
 
 ### External Services
 - **Authentication**: Firebase Authentication (Phone/Email methods)
@@ -339,7 +419,7 @@ Plus 10+ other models for payments, pledges, expenses, budget tracking, etc.
 - ✅ Bilingual Support (English/Tigrigna) with context-based switching
 - ✅ Member Registration: Multi-step form with comprehensive validation
 - ✅ Children/Dependents Management: Add, edit, manage with proper data validation
-- ✅ User Authentication: Firebase Auth (Phone + Email) with reCAPTCHA Enterprise
+- ✅ User Authentication: Firebase Auth (phone / SMS one-time code) with reCAPTCHA Enterprise
 - ✅ Role-Based Access Control: 7+ specialized roles with granular permissions
 - ✅ Profile Management: First, middle, last name fields with backend synchronization
 - ✅ Responsive Design: Mobile-first with custom church theme and gradients
@@ -375,14 +455,24 @@ Plus 10+ other models for payments, pledges, expenses, budget tracking, etc.
 - ✅ Enhanced Search: Fast filtering of large member lists
 - ✅ Member Count Tracking: Visual display of department composition
 
+### ✅ Shipped since this list was last revised
+- **Stripe Payment Gateway**: Card and ACH giving, including pledge-and-pay in one step
+- **Calendar Integration**: Orthodox liturgical calendar with fasting seasons and events
+- **Activity Audit Logs**: `activity_logs` table plus an admin viewer (Admin → Activity Logs)
+- **Pledge Drives**: Campaigns, pledges, allocation against payments, and donor anonymity
+- **Web Analytics**: Self-hosted Umami, reachable from the Activity Logs tab
+
 ### 🚧 In Progress / Planned
-- **Stripe Payment Gateway**: Online donation processing and subscription management
-- **Email Notifications**: Member communication system with templates
+- **Email Notifications**: Member communication system with templates. Pledge
+  confirmation and reminder emails are deliberately deferred — the pledge page no
+  longer promises them.
 - **Report Generation**: PDF exports for financial and membership reports
-- **Calendar Integration**: Church calendar with events and scheduling
 - **Vendor Management**: Advanced AP features (vendor portal, invoice matching, recurring payments)
 - **Budget Planning**: Budget creation, approval, and variance analysis
-- **Activity Audit Logs**: Enhanced system logging for compliance and security audits
+- **Java Backend**: Bring `backendJava` to parity with the Node implementation and
+  add a test suite before it could serve traffic. See *Two Backend Implementations*.
+- **Automatic Pledge Allocation** from Zelle, bank reconciliation and Square — each
+  needs a new `pledge_allocations.source` value and a migration widening that CHECK.
 
 
 ## 🔧 Environment Setup & Configuration
@@ -534,8 +624,78 @@ npm run db:migrate:undo:all
 # See backend/.claude/skills/db-migrations/SKILL.md for detailed procedures
 ```
 
-## � Security Features
-        bigint collectedBy FK
+```mermaid
+erDiagram
+    MEMBERS {
+        bigint id PK
+        string firebaseUid UK
+        string firstName
+        string middleName
+        string lastName
+        string email
+        string phoneNumber "E.164 — the login identity"
+        date dateOfBirth
+        enum gender
+        enum maritalStatus
+        string baptismName
+        string repentanceFather
+        bigint familyId FK
+        bigint titleId FK
+        string role
+        decimal yearlyPledge
+        date dateJoinedParish
+    }
+
+    CHILDREN {
+        bigint id PK
+        bigint memberId FK
+        string firstName
+        string lastName
+        date dateOfBirth
+        enum gender
+        string relationship
+        string phone
+        string email
+        text allergies
+        text medications
+    }
+
+    PLEDGE_CAMPAIGNS {
+        bigint id PK
+        string slug UK
+        string name
+        string nameTi
+        date startDate
+        date endDate "null means open-ended"
+        decimal goalAmount
+        string status "draft | active | closed"
+        bigint incomeCategoryId FK
+    }
+
+    PLEDGES {
+        bigint id PK
+        bigint campaignId FK
+        bigint memberId FK "null for a walk-up giver"
+        decimal amount
+        string fulfillmentIntent "later | immediate"
+        boolean isAnonymous
+        string baptismName "internal id for an anonymous giver"
+        string lifecycle "active | cancelled"
+    }
+
+    PLEDGE_ALLOCATIONS {
+        bigint id PK
+        bigint pledgeId FK
+        bigint transactionId FK
+        decimal amount "negative rows reverse, never deleted"
+        string source
+        text reason
+    }
+
+    TRANSACTIONS {
+        bigint id PK
+        bigint memberId FK "null for an anonymous gift"
+        bigint collectedBy FK "null when nobody collected it — online giving"
         date paymentDate
         decimal amount "min 1.00"
         enum paymentType
@@ -597,11 +757,15 @@ npm run db:migrate:undo:all
     DEPARTMENTS ||--o{ DEPARTMENTS : "parent of"
     DEPARTMENTS ||--o{ DEPARTMENT_MEMBERS : "contains"
     MEMBERS ||--o{ DEPARTMENT_MEMBERS : "belongs to"
+    PLEDGE_CAMPAIGNS ||--o{ PLEDGES : "collects"
+    MEMBERS ||--o{ PLEDGES : "promises"
+    PLEDGES ||--o{ PLEDGE_ALLOCATIONS : "fulfilled by"
+    TRANSACTIONS ||--o{ PLEDGE_ALLOCATIONS : "credited to"
 ```
 
 ## 🔐 Security Features
 
-- **Authentication**: Firebase Auth (phone + email) with dual JWT verification
+- **Authentication**: Firebase Auth — phone/SMS one-time code only; there is no email/password sign-in. Dual JWT verification
 - **Authorization**: 12-role hierarchical RBAC with granular permissions
 - **Input Validation**: Express-validator with custom rules and Sequelize validations
 - **SQL Injection Protection**: Sequelize ORM with parameterized queries
@@ -726,10 +890,18 @@ npm run db:test
 
 ## 📊 Monitoring & Analytics
 
+- **Umami**: Self-hosted, privacy-preserving web analytics at `analytics.abunearegawi.church`.
+  No cookies and no cross-site identifiers, so no consent banner is required, and the
+  parish's traffic data never reaches an ad network. Admins reach the dashboard from
+  **Admin → Activity Logs**. Inert unless `REACT_APP_UMAMI_SRC` and
+  `REACT_APP_UMAMI_WEBSITE_ID` are set at build time.
+- **Sentry**: Frontend error tracking, production builds only; the chunk is never
+  fetched when `REACT_APP_SENTRY_DSN` is absent.
+- **Activity Logs**: In-app audit trail of member, financial and campaign changes
+  (admin only), separate from the traffic analytics above.
 - **Firebase Hosting Logs**: Frontend hosting logs and deployment status
 - **OCI Logs**: Backend application logs (`/var/log/abune-aregawi`)
 - **Supabase Metrics**: Database performance monitoring
-- **Firebase Analytics**: User behavior tracking
 
 ## 🤝 Contributing
 
@@ -783,10 +955,11 @@ This project is created for the Debre Tsehay Abune Aregawi Tigray Orthodox Tewah
 
 *Built with love for the Tigray Orthodox Christian community* 
 
-**Last Updated**: August 2026
-**Version**: 2.0.0
+**Last Updated**: September 2026
+**Version**: 2.1.0
 
 ### Version History
+- **v2.1.0** (September 2026): Pledge drives with campaigns, allocation and donor anonymity; self-hosted Umami analytics; README architecture refreshed to cover both backend implementations
 - **v2.0.0** (August 2026): 11-agent specialized architecture, financial role expansion, comprehensive documentation
 - **v1.3.0** (October 2025): Department Management System, route preservation, API optimization
 - **v1.2.0** (January 2026): Financial role granularity (Bookkeeper, AR/AP, Budget Committee, Auditor)
