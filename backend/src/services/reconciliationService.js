@@ -51,12 +51,20 @@ async function findMemberByFuzzyName(nameText) {
 
     if (tokens.length === 0) return { id: null, confidence: 0 };
 
+    // ILIKE is Postgres-only. SQLite (local dev and the test suite) rejects it
+    // outright, and because this runs inside getBankTransactions' enrichment
+    // block the throw was caught and logged, leaving pending rows with no
+    // suggestions and no visible reason. LIKE is already case-insensitive for
+    // ASCII in SQLite, so the match behaves the same on both.
+    // Same idiom as bankMemoMatchService's name search.
+    const likeOp = sequelize.getDialect() === 'postgres' ? Op.iLike : Op.like;
+
     // Find members matching ANY token in First, Last, or Middle
     const tokenClauses = tokens.map(t => ({
         [Op.or]: [
-            { first_name: { [Op.iLike]: `%${t}%` } },
-            { last_name: { [Op.iLike]: `%${t}%` } },
-            // { middle_name: { [Op.iLike]: `%${t}%` } } // Add if middle_name exists on model
+            { first_name: { [likeOp]: `%${t}%` } },
+            { last_name: { [likeOp]: `%${t}%` } },
+            // { middle_name: { [likeOp]: `%${t}%` } } // Add if middle_name exists on model
         ]
     }));
 
