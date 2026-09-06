@@ -241,6 +241,7 @@ export interface Dictionaries {
     reports: {
       weeklyCollection: string;
       paymentReports: string;
+      expenseReport: string;
     };
     memberDues: {
       title: string;
@@ -1034,7 +1035,8 @@ export const en: Dictionaries = {
     },
     reports: {
       weeklyCollection: "📅 Weekly Collection Report",
-      paymentReports: "Payment Reports"
+      paymentReports: "Payment Reports",
+      expenseReport: "Expense Report"
     },
     memberDues: {
       title: "Member Dues Viewer",
@@ -2367,6 +2369,114 @@ export const en: Dictionaries = {
   "monthlyBankSummary.pending": "{count} pending",
   "monthlyBankSummary.awaitingReview": "{pending} of {total} transactions awaiting review",
 
+  // Expense Report — category-level companion to the Monthly Summary above.
+  "expenseReport.title": "Expense Report",
+  "expenseReport.subtitle": "What the church spent the money on, by month and by category",
+  "expenseReport.loading": "Loading...",
+  "expenseReport.error": "Failed to load the expense report",
+  "expenseReport.retry": "Try again",
+  "expenseReport.empty": "No expenses in this range.",
+  "expenseReport.uncategorized": "Uncategorized / Needs Review",
+
+  "expenseReport.actions.exportCsv": "Export CSV",
+  "expenseReport.actions.print": "Print",
+
+  "expenseReport.filters.title": "Filters",
+  "expenseReport.filters.year": "Year",
+  "expenseReport.filters.startDate": "Start Date",
+  "expenseReport.filters.endDate": "End Date",
+  "expenseReport.filters.category": "Category",
+  "expenseReport.filters.allCategories": "All categories",
+  "expenseReport.filters.paymentMethod": "Payment Method",
+  "expenseReport.filters.allMethods": "All methods",
+  "expenseReport.filters.source": "Source",
+  "expenseReport.filters.status": "Status",
+  "expenseReport.filters.payee": "Payee",
+  "expenseReport.filters.payeePlaceholder": "Search payee or description...",
+  "expenseReport.filters.clear": "Clear filters",
+
+  "expenseReport.source.all": "All sources",
+  "expenseReport.source.ledger": "Recorded expenses",
+  "expenseReport.source.bank": "Bank only (uncategorized)",
+
+  "expenseReport.statusFilter.all": "All statuses",
+  "expenseReport.statusFilter.matched": "Matched to bank",
+  "expenseReport.statusFilter.recorded": "Recorded, not cleared",
+  "expenseReport.statusFilter.imported": "Imported, needs review",
+  "expenseReport.statusFilter.dismissed": "Dismissed",
+
+  "expenseReport.status.matched": "Matched",
+  "expenseReport.status.recorded": "Recorded",
+  "expenseReport.status.imported": "Needs review",
+  "expenseReport.status.dismissed": "Dismissed",
+
+  "expenseReport.method.cash": "Cash",
+  "expenseReport.method.check": "Check",
+  "expenseReport.method.ach": "ACH",
+  "expenseReport.method.debit_card": "Debit card",
+  "expenseReport.method.credit_card": "Credit card",
+  "expenseReport.method.other": "Other",
+
+  "expenseReport.cards.ytd": "YTD Expenses",
+  "expenseReport.cards.ytdNote": "{start} to {end}",
+  "expenseReport.cards.currentMonth": "Current Month",
+  "expenseReport.cards.outsideRange": "Outside the selected range",
+  "expenseReport.cards.averageMonthly": "Average Monthly",
+  "expenseReport.cards.averageNote": "Across {count} months so far",
+  "expenseReport.cards.largestCategory": "Largest Category",
+  "expenseReport.cards.count": "Number of Expenses",
+  "expenseReport.cards.countNote": "Recorded expenses plus uncategorized bank debits",
+
+  "expenseReport.uncategorizedBanner.title": "Expenses need categorization",
+  "expenseReport.uncategorizedBanner.body": "{amount} across {count} bank transactions has no expense category — {percent}% of total spending. These are counted in the totals below as Uncategorized.",
+  "expenseReport.uncategorizedBanner.dismissed": "Includes {amount} across {count} transactions dismissed during reconciliation.",
+  "expenseReport.uncategorizedBanner.review": "Review these",
+
+  "expenseReport.monthly.title": "Monthly Expense Trend",
+  "expenseReport.monthly.subtitle": "Every month in the range, including months with no spending",
+
+  "expenseReport.matrix.title": "Monthly Expenses by Category",
+  "expenseReport.matrix.subtitle": "Click any amount to see the transactions behind it",
+
+  "expenseReport.categories.title": "YTD Expenses by Category",
+  "expenseReport.categories.subtitle": "Highest spending first",
+
+  "expenseReport.col.month": "Month",
+  "expenseReport.col.expenses": "Expenses",
+  "expenseReport.col.count": "Count",
+  "expenseReport.col.share": "Share",
+  "expenseReport.col.category": "Category",
+  "expenseReport.col.glCode": "GL Code",
+  "expenseReport.col.ytd": "YTD",
+  "expenseReport.col.ytdTotal": "YTD Total",
+  "expenseReport.col.ytdExpenses": "YTD Expenses",
+  "expenseReport.col.percentOfTotal": "% of Total",
+  "expenseReport.col.total": "Total",
+  "expenseReport.col.date": "Date",
+  "expenseReport.col.payee": "Payee",
+  "expenseReport.col.amount": "Amount",
+  "expenseReport.col.method": "Method",
+  "expenseReport.col.source": "Source",
+  "expenseReport.col.status": "Status",
+
+  "expenseReport.drill.title": "Transactions",
+  "expenseReport.drill.close": "Close",
+  "expenseReport.drill.empty": "No transactions behind this figure.",
+  "expenseReport.drill.noPayee": "(no payee recorded)",
+  "expenseReport.drill.count": "{count} transactions",
+
+  "expenseReport.reconciliation.title": "How this ties to the Monthly Summary",
+  "expenseReport.reconciliation.explainer": "The Monthly Summary counts bank activity alone. This report adds expenses that have been recorded but not yet cleared the bank (outstanding checks and cash), and leaves out returned deposited items, which reverse income rather than spend money. The lines below account for the whole difference.",
+  "expenseReport.reconciliation.reportTotal": "Report total",
+  "expenseReport.reconciliation.bankDebits": "Bank debits (Monthly Summary)",
+  "expenseReport.reconciliation.difference": "Difference",
+  "expenseReport.reconciliation.unlinked": "Recorded but not on a statement",
+  "expenseReport.reconciliation.returned": "Returned deposited items (excluded)",
+  "expenseReport.reconciliation.timing": "Timing (written and cleared in different months)",
+  "expenseReport.reconciliation.filtered": "The comparison against the Monthly Summary is available without a category, payee, method, source or status filter — bank activity cannot be narrowed the same way.",
+  "expenseReport.csv.range": "Range",
+
+
   // -- ActivityLogViewer --
   "activityLog.loadFailed": "Failed to load activity logs",
   "activityLog.title": "Activity Logs",
@@ -3159,7 +3269,8 @@ export const ti: Dictionaries = {
     },
     reports: {
       weeklyCollection: "📅 ሰሙናዊ ጸብጻብ ክፍሊት",
-      paymentReports: "ጸብጻብ ክፍሊታት"
+      paymentReports: "ጸብጻብ ክፍሊታት",
+      expenseReport: "ጸብጻብ ወጻኢ"
     },
     memberDues: {
       title: "መርኣዪ ወርሓዊ ክፍሊት",
@@ -4498,6 +4609,114 @@ export const ti: Dictionaries = {
   "monthlyBankSummary.reconciled": "ተዓሪቑ",
   "monthlyBankSummary.pending": "{count} ተጸበይቲ",
   "monthlyBankSummary.awaitingReview": "{pending} ካብ {total} ልውውጣት ንግምገማ ይጽበዩ",
+
+  // Expense Report — DRAFT Tigrigna, pending native-speaker review.
+  "expenseReport.title": "ጸብጻብ ወጻኢ",
+  "expenseReport.subtitle": "ቤተ ክርስቲያን ገንዘብ ኣበይ ከም ዘውጽአት፡ ብወርሕን ብምድብን",
+  "expenseReport.loading": "ይጽዕን ኣሎ...",
+  "expenseReport.error": "ጸብጻብ ወጻኢ ምጽዓን ኣይተኻእለን",
+  "expenseReport.retry": "እንደገና ፈትን",
+  "expenseReport.empty": "ኣብዚ ግዜ እዚ ወጻኢ የለን።",
+  "expenseReport.uncategorized": "ዘይተመደበ / ምርመራ ዘድልዮ",
+
+  "expenseReport.actions.exportCsv": "CSV ኣውጽእ",
+  "expenseReport.actions.print": "ሕተም",
+
+  "expenseReport.filters.title": "መጻረዪታት",
+  "expenseReport.filters.year": "ዓመት",
+  "expenseReport.filters.startDate": "መጀመሪ ዕለት",
+  "expenseReport.filters.endDate": "መወዳእታ ዕለት",
+  "expenseReport.filters.category": "ምድብ",
+  "expenseReport.filters.allCategories": "ኩሉ ምድባት",
+  "expenseReport.filters.paymentMethod": "ኣገባብ ክፍሊት",
+  "expenseReport.filters.allMethods": "ኩሉ ኣገባባት",
+  "expenseReport.filters.source": "ምንጪ",
+  "expenseReport.filters.status": "ኩነታት",
+  "expenseReport.filters.payee": "ተኸፋሊ",
+  "expenseReport.filters.payeePlaceholder": "ተኸፋሊ ወይ መግለጺ ድለ...",
+  "expenseReport.filters.clear": "መጻረዪታት ኣጽሪ",
+
+  "expenseReport.source.all": "ኩሉ ምንጪታት",
+  "expenseReport.source.ledger": "ዝተመዝገበ ወጻኢ",
+  "expenseReport.source.bank": "ባንክ ጥራይ (ዘይተመደበ)",
+
+  "expenseReport.statusFilter.all": "ኩሉ ኩነታት",
+  "expenseReport.statusFilter.matched": "ምስ ባንክ ዝተዛመደ",
+  "expenseReport.statusFilter.recorded": "ተመዝጊቡ፡ ገና ዘይወጸ",
+  "expenseReport.statusFilter.imported": "ተኣትዩ፡ ምርመራ ዘድልዮ",
+  "expenseReport.statusFilter.dismissed": "ዝተሓደገ",
+
+  "expenseReport.status.matched": "ዝተዛመደ",
+  "expenseReport.status.recorded": "ዝተመዝገበ",
+  "expenseReport.status.imported": "ምርመራ ዘድልዮ",
+  "expenseReport.status.dismissed": "ዝተሓደገ",
+
+  "expenseReport.method.cash": "ጥረ ገንዘብ",
+  "expenseReport.method.check": "ቸክ",
+  "expenseReport.method.ach": "ACH",
+  "expenseReport.method.debit_card": "ደቢት ካርድ",
+  "expenseReport.method.credit_card": "ክረዲት ካርድ",
+  "expenseReport.method.other": "ካልእ",
+
+  "expenseReport.cards.ytd": "ናይ ዓመት ወጻኢ",
+  "expenseReport.cards.ytdNote": "ካብ {start} ክሳብ {end}",
+  "expenseReport.cards.currentMonth": "ናይዚ ወርሒ",
+  "expenseReport.cards.outsideRange": "ካብቲ ዝተመርጸ ግዜ ወጻኢ",
+  "expenseReport.cards.averageMonthly": "ማእከላይ ወርሓዊ",
+  "expenseReport.cards.averageNote": "ኣብ {count} ኣዋርሕ",
+  "expenseReport.cards.largestCategory": "ዝዓበየ ምድብ",
+  "expenseReport.cards.count": "ብዝሒ ወጻኢታት",
+  "expenseReport.cards.countNote": "ዝተመዝገበ ወጻኢን ዘይተመደበ ናይ ባንክ ወጻኢን",
+
+  "expenseReport.uncategorizedBanner.title": "ምድብ ዘድልዮም ወጻኢታት",
+  "expenseReport.uncategorizedBanner.body": "{amount} ኣብ {count} ናይ ባንክ ንጥፈታት ምድብ ወጻኢ የብሉን — {percent}% ናይቲ ጠቕላላ ወጻኢ። ኣብ ታሕቲ ከም ዘይተመደበ ተቖጺሮም ኣለዉ።",
+  "expenseReport.uncategorizedBanner.dismissed": "{amount} ኣብ {count} ንጥፈታት ኣብ ግዜ ምዝማድ ዝተሓድጉ የጠቓልል።",
+  "expenseReport.uncategorizedBanner.review": "እዚኦም ርአ",
+
+  "expenseReport.monthly.title": "ወርሓዊ ኣንፈት ወጻኢ",
+  "expenseReport.monthly.subtitle": "ኩሉ ወርሒ፡ ወጻኢ ዘይብሎም ኣዋርሕ ሓዊሱ",
+
+  "expenseReport.matrix.title": "ወርሓዊ ወጻኢ ብምድብ",
+  "expenseReport.matrix.subtitle": "ነቲ ድሕሪኡ ዘሎ ንጥፈታት ንምርኣይ ዝኾነ መጠን ጠውቕ",
+
+  "expenseReport.categories.title": "ናይ ዓመት ወጻኢ ብምድብ",
+  "expenseReport.categories.subtitle": "ዝለዓለ ወጻኢ ቀዲሙ",
+
+  "expenseReport.col.month": "ወርሒ",
+  "expenseReport.col.expenses": "ወጻኢታት",
+  "expenseReport.col.count": "ብዝሒ",
+  "expenseReport.col.share": "ብጽሒት",
+  "expenseReport.col.category": "ምድብ",
+  "expenseReport.col.glCode": "GL ኮድ",
+  "expenseReport.col.ytd": "ናይ ዓመት",
+  "expenseReport.col.ytdTotal": "ጠቕላላ ናይ ዓመት",
+  "expenseReport.col.ytdExpenses": "ናይ ዓመት ወጻኢ",
+  "expenseReport.col.percentOfTotal": "% ካብ ጠቕላላ",
+  "expenseReport.col.total": "ጠቕላላ",
+  "expenseReport.col.date": "ዕለት",
+  "expenseReport.col.payee": "ተኸፋሊ",
+  "expenseReport.col.amount": "መጠን",
+  "expenseReport.col.method": "ኣገባብ",
+  "expenseReport.col.source": "ምንጪ",
+  "expenseReport.col.status": "ኩነታት",
+
+  "expenseReport.drill.title": "ንጥፈታት",
+  "expenseReport.drill.close": "ዕጾ",
+  "expenseReport.drill.empty": "ድሕሪ እዚ ቁጽሪ ዘሎ ንጥፈት የለን።",
+  "expenseReport.drill.noPayee": "(ተኸፋሊ ኣይተመዝገበን)",
+  "expenseReport.drill.count": "{count} ንጥፈታት",
+
+  "expenseReport.reconciliation.title": "ምስ ወርሓዊ ጽማቕ ብኸመይ ይዛመድ",
+  "expenseReport.reconciliation.explainer": "ወርሓዊ ጽማቕ ናይ ባንክ ንጥፈት ጥራይ እዩ ዝቖጽር። እዚ ጸብጻብ እዚ ግና ተመዝጊቡ ገና ካብ ባንክ ዘይወጸ ወጻኢ (ዘይተኸፍለ ቸክን ጥረ ገንዘብን) ይውስኽ፡ ተመሊሶም ዝመጹ ዝተቐመጡ ቸክ ድማ ይገድፍ — እቲኦም እቶት እዮም ዝመልሱ እምበር ወጻኢ ኣይኮኑን። እቲ ኣብ ታሕቲ ዘሎ መስመራት ንኹሉ ፍልልይ የረድእ።",
+  "expenseReport.reconciliation.reportTotal": "ጠቕላላ ጸብጻብ",
+  "expenseReport.reconciliation.bankDebits": "ናይ ባንክ ወጻኢ (ወርሓዊ ጽማቕ)",
+  "expenseReport.reconciliation.difference": "ፍልልይ",
+  "expenseReport.reconciliation.unlinked": "ተመዝጊቡ ኣብ ናይ ባንክ መግለጺ ዘየሎ",
+  "expenseReport.reconciliation.returned": "ተመሊሶም ዝመጹ ዝተቐመጡ (ዘይተቖጽሩ)",
+  "expenseReport.reconciliation.timing": "ግዜ (ኣብ ዝተፈላለየ ወርሒ ዝተጻሕፈን ዝወጸን)",
+  "expenseReport.reconciliation.filtered": "ምስ ወርሓዊ ጽማቕ ዝግበር ንጽጽር፡ ብምድብ፡ ተኸፋሊ፡ ኣገባብ፡ ምንጪ ወይ ኩነታት መጻረዪ ከይተገብረ ጥራይ እዩ ዝርአ — ናይ ባንክ ንጥፈት በዚ ኣገባብ ክጽበብ ኣይክእልን።",
+  "expenseReport.csv.range": "ግዜ",
+
 
   // -- ActivityLogViewer --
   "activityLog.loadFailed": "ናይ ንጥፈት መዝገባት ምጽዓን ኣይተኻእለን",

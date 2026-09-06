@@ -45,6 +45,7 @@ describe('dictionaries en/ti parity', () => {
       'treasurerDashboard.transactionList.methods.credit_card',
       'treasurerDashboard.transactionList.methods.debit_card',
       'treasurerDashboard.transactionList.methods.ach',
+      'expenseReport.method.ach',
       'treasurerDashboard.transactionList.source.square',
       'treasurerDashboard.transactionList.source.stripe',
       'treasurerDashboard.transactionList.status.pending',

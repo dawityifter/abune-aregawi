@@ -1001,6 +1001,45 @@ const getSkippedChecks = async (req, res) => {
   }
 };
 
+// Category-level expense report: monthly totals, a month x category matrix and
+// the YTD category breakdown, including the bank debits nothing has classified.
+//
+// Deliberately separate from getExpenseStats, which reports the ledger alone.
+// Every total here comes from one pass in expenseReportService so the sections
+// cannot disagree with each other; see that file for what counts as an expense
+// and why a manually entered expense and its cleared bank row are one number.
+const getExpenseReport = async (req, res) => {
+  try {
+    const { buildExpenseReport } = require('../services/expenseReportService');
+    const data = await buildExpenseReport(req.query);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error building expense report:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to build expense report',
+      error: error.message
+    });
+  }
+};
+
+// The individual transactions behind a report figure, from both the ledger and
+// the unclassified bank debits, under the same filters the report used.
+const getExpenseReportTransactions = async (req, res) => {
+  try {
+    const { listExpenseReportTransactions } = require('../services/expenseReportService');
+    const { rows, total, pagination } = await listExpenseReportTransactions(req.query);
+    res.json({ success: true, data: rows, total, pagination });
+  } catch (error) {
+    console.error('Error fetching expense report transactions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch expense report transactions',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getExpenseCategories,
   createExpense,
@@ -1009,6 +1048,8 @@ module.exports = {
   updateExpense,
   deleteExpense,
   getExpenseStats,
+  getExpenseReport,
+  getExpenseReportTransactions,
   getSkippedChecks,
   getExpensePaymentMethods,
   getCheckNumberAvailability

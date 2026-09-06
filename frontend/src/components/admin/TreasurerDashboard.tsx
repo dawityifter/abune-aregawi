@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import BankUpload from '../finance/BankUpload';
 import BankTransactionList from '../finance/BankTransactionList';
 import MonthlyBankSummary from '../finance/MonthlyBankSummary';
+import ExpenseReport from '../finance/ExpenseReport';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMergedPermissions, UserRole } from '../../utils/roles';
 import TransactionList from './TransactionList';
@@ -69,7 +70,7 @@ const TreasurerDashboard: React.FC = () => {
   const { currentUser, firebaseUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TreasurerTab>('overview');
-  const [activeReportTab, setActiveReportTab] = useState<'weekly' | 'payment'>('weekly');
+  const [activeReportTab, setActiveReportTab] = useState<'weekly' | 'payment' | 'expense'>('weekly');
   const [stats, setStats] = useState<PaymentStatsData | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([new Date().getFullYear()]);
@@ -548,18 +549,36 @@ const TreasurerDashboard: React.FC = () => {
                 >
                   {t('treasurerDashboard.reports.paymentReports')}
                 </button>
+                {permissions.canViewExpenses && (
+                  <button
+                    onClick={() => setActiveReportTab('expense')}
+                    className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeReportTab === 'expense'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                  >
+                    {t('treasurerDashboard.reports.expenseReport')}
+                  </button>
+                )}
               </div>
 
-              {activeReportTab === 'weekly' ? (
+              {activeReportTab === 'weekly' && (
                 <div>
                   <h2 className="text-2xl font-semibold text-gray-900 mb-6 print:hidden">{t('treasurerDashboard.reports.weeklyCollection')}</h2>
                   <WeeklyCollectionReport />
                 </div>
-              ) : (
+              )}
+              {activeReportTab === 'payment' && (
                 <div>
                   <h2 className="text-2xl font-semibold text-gray-900 mb-6 print:hidden">{t('treasurerDashboard.reports.paymentReports')}</h2>
                   <PaymentReports paymentView="new" />
                 </div>
+              )}
+              {/* Guarded like the Expenses tab: the same permission governs
+                  both, so a role that cannot see expenses cannot see the
+                  report built from them either. */}
+              {activeReportTab === 'expense' && permissions.canViewExpenses && (
+                <ExpenseReport availableYears={availableYears} />
               )}
             </div>
           )}
