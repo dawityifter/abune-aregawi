@@ -62,6 +62,16 @@ export interface BankTransaction {
         first_name: string;
         last_name: string;
     };
+    // Expense classification this debit's payee was last given. Present only
+    // on pending debits, and only when a prior manual reconciliation taught it.
+    suggested_expense?: {
+        gl_code: string;
+        category_name: string;
+        payee_name?: string | null;
+        vendor_id?: string | null;
+        employee_id?: string | null;
+        reason?: string;
+    };
     suggested_match?: {
         type: string;
         source?: string;

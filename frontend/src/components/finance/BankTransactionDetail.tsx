@@ -146,6 +146,22 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
     );
   }, [txn?.id, txn?.status, txn?.suggested_match]);
 
+  // Pre-fill the expense form from the classification this payee was last
+  // given. Card purchases are deliberately never booked automatically — one
+  // merchant's GL code varies from charge to charge — so this is the whole
+  // benefit of having learned it: the treasurer confirms, or corrects it and
+  // the correction is what gets learned next.
+  //
+  // Never overwrites a choice already made by hand, same as the member
+  // pre-fill above.
+  useEffect(() => {
+    if (!txn || txn.status !== 'PENDING') return;
+    const suggested = txn.suggested_expense;
+    if (!suggested) return;
+    setExpGlCode((prev) => prev || suggested.gl_code);
+    setExpPayeeName((prev) => prev || suggested.payee_name || '');
+  }, [txn?.id, txn?.status, txn?.suggested_expense]);
+
   const handleReconcile = async (memberId: number, paymentType: string = selectedPaymentType) => {
     const token = await firebaseUser?.getIdToken();
     const payload: any = { transaction_id: txn!.id, action: 'MATCH', member_id: memberId, payment_type: paymentType };
@@ -565,6 +581,25 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
           {txn.status === 'PENDING' && txn.amount < 0 && (
             <div className="border-t border-gray-200 pt-4">
               <p className="text-xs text-gray-400 uppercase font-semibold mb-3">Record as Expense</p>
+
+              {/* What this payee was classified as last time. The fields below
+                  are filled in from it, and stay editable — the suggestion is a
+                  starting point, not a decision. */}
+              {txn.suggested_expense && (
+                <div className="mb-3 rounded-md border border-blue-200 bg-blue-50 p-3">
+                  <p className="text-xs font-semibold text-blue-800">
+                    <i className="fas fa-lightbulb mr-1" aria-hidden="true"></i>
+                    Suggested from a previous charge
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-blue-900">
+                    {txn.suggested_expense.gl_code} · {txn.suggested_expense.category_name}
+                    {txn.suggested_expense.payee_name && ` · ${txn.suggested_expense.payee_name}`}
+                  </p>
+                  {txn.suggested_expense.reason && (
+                    <p className="mt-1 text-xs text-blue-700">{txn.suggested_expense.reason}</p>
+                  )}
+                </div>
+              )}
 
               {expError && <p className="text-red-600 text-xs mb-3">{expError}</p>}
 

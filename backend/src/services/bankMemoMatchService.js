@@ -69,6 +69,26 @@ function normalizeDescriptionForKey(description, sourceType) {
       .replace(/IND ID:[^\s]+/ig, ' ')
       .replace(/TRACE[^\s]*/ig, ' ')
       .replace(/TRN[^\s]*/ig, ' ');
+  } else if (sourceType.includes('CARD')) {
+    // A card purchase description ends with a tail that belongs to the
+    // transaction rather than the merchant:
+    //
+    //   Spectrum 855-707-7328 MO                     09/28
+    //   THE HOME DEPOT #0550 DALLAS TX       002096  05/15
+    //   DNH*GODADDY#4038200691 480-5058855 AZ        03/18
+    //
+    // The posting date changes every month and the auth reference changes
+    // every charge, so keeping them made each visit from the same merchant
+    // learn a key that could never match again — which is why a repeat card
+    // charge was never recognized.
+    //
+    // Only a digit run the description ENDS on is stripped: a phone number is
+    // part of the merchant's identity, and a store number (#0550) stays so one
+    // chain's locations remain separately classifiable.
+    clean = clean
+      .replace(/\s+\d{1,2}\/\d{1,2}\s*$/, '')  // posting date
+      .replace(/\s+\d{4,}\s*$/, '')            // auth reference the date hid
+      .replace(/#\d{7,}/g, ' ');               // order number on the merchant
   } else {
     clean = clean
       .replace(/^CHECK\s+\d+\s*/i, '')

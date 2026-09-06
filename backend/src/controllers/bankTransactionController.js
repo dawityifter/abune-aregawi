@@ -191,6 +191,41 @@ async function describeReturnedItem(txn, plain) {
     };
 }
 
+/**
+ * The expense classification a debit's payee was last given, for the reconcile
+ * screen to pre-fill.
+ *
+ * Read-only: it reuses the same learned mapping auto-reconcile consults, so a
+ * suggestion and an automatic booking can never disagree about a payee. The
+ * category name is resolved here rather than in the UI, which has no GL code
+ * lookup on the bank screen.
+ *
+ * Returns null whenever nothing was learned, or when several learnings for the
+ * payee disagree — findLearnedExpense withholds a mapping in that case, and a
+ * suggestion the treasurer cannot trust is worse than none.
+ */
+async function suggestExpenseClassification(plain) {
+    const { findLearnedExpense } = require('../services/autoReconcileService');
+    const mapping = await findLearnedExpense(plain);
+    if (!mapping) return null;
+
+    const category = await ExpenseCategory.findOne({
+        where: { gl_code: mapping.gl_code },
+        attributes: ['gl_code', 'name', 'is_active']
+    });
+    // An inactive GL code would fail validation on submit, so do not offer it.
+    if (!category || !category.is_active) return null;
+
+    return {
+        gl_code: mapping.gl_code,
+        category_name: category.name,
+        payee_name: mapping.payee_name || null,
+        vendor_id: mapping.vendor_id || null,
+        employee_id: mapping.employee_id || null,
+        reason: 'Previously classified for this payee'
+    };
+}
+
 async function describeCheckStatus(txn, plain) {
     const { checkNumberFor } = require('../services/autoReconcileService');
     const { sourceTypeFor } = require('../services/bankMemoMatchService');
@@ -428,9 +463,31 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
                 if (potentialMatches && potentialMatches.length > 0) {
                     plain.potential_matches = potentialMatches;
                 }
+
             } catch (err) {
                 console.error(`Error enriching transaction ${txn.id}:`, err.message);
                 // Continue without enrichment to avoid blocking list loading
+            }
+
+            // 3. Suggest an expense classification for a debit whose payee the
+            // treasurer has classified before. Auto-reconcile records these
+            // itself for ACH, so in practice this surfaces on card purchases,
+            // which are deliberately left for confirmation — one merchant's GL
+            // code varies from charge to charge.
+            //
+            // Deliberately outside the block above: those are member-matching
+            // concerns, and a failure in one of them used to take every later
+            // enrichment down with it. An expense suggestion does not depend on
+            // any of them, so it should not share their fate.
+            if (Number(plain.amount) < 0) {
+                try {
+                    const suggestion = await suggestExpenseClassification(plain);
+                    if (suggestion) {
+                        plain.suggested_expense = suggestion;
+                    }
+                } catch (err) {
+                    console.error(`Error suggesting expense for transaction ${txn.id}:`, err.message);
+                }
             }
         }
         return plain;

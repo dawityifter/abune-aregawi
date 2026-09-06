@@ -476,7 +476,12 @@ describe('Automatic Bank Reconciliation', () => {
             return LedgerEntry.findOne({ where: { external_id: hash } });
         }
 
-        test('records a debit card purchase as debit_card, not other', async () => {
+        // A card purchase no longer reaches this path at all: it is learned
+        // but left for the treasurer to confirm, because one merchant's GL
+        // code varies from charge to charge. Card payment-method labelling is
+        // covered on the manual path instead — see 'records a manually
+        // reconciled card debit as debit_card, not check' below.
+        test('records no automatic expense for a card purchase', async () => {
             const expense = await learnedDebit({
                 type: 'DEBIT_CARD',
                 description: 'SOME MERCHANT PURCHASE',
@@ -484,8 +489,7 @@ describe('Automatic Bank Reconciliation', () => {
                 payer: 'Some Merchant'
             });
 
-            expect(expense).not.toBeNull();
-            expect(expense.payment_method).toBe('debit_card');
+            expect(expense).toBeNull();
         });
 
         test('still records an ACH debit as ach', async () => {
@@ -551,6 +555,57 @@ describe('Automatic Bank Reconciliation', () => {
             expect(expense.type).toBe('expense');
             expect(expense.category).toBe('EXP100');
             expect(Number(expense.amount)).toBe(175.5); // uses the new amount
+        });
+
+        // Cards are the one debit kind that is learned but never acted on.
+        // A recurring ACH vendor keeps its GL code month to month, but one
+        // card merchant does not: a hardware store trip is Building Repairs
+        // one week and Supplies the next, so booking it automatically would
+        // silently file real money under the wrong code. The learned mapping
+        // is still kept — it becomes a suggestion the treasurer confirms.
+        test('suggests but never auto-records a repeat card purchase', async () => {
+            const priorCard = await BankTransaction.create({
+                date: new Date('2024-12-28'),
+                amount: -189.99,
+                description: 'Spectrum 855-707-7328 MO                     12/28',
+                type: 'DEBIT_CARD',
+                status: 'MATCHED',
+                transaction_hash: 'bankhash-card-old',
+                raw_data: {}
+            });
+            await learnExpenseMemoMatch(priorCard.get({ plain: true }), {
+                gl_code: 'EXP100',
+                payee_name: 'Spectrum'
+            });
+
+            const repeatCard = await BankTransaction.create({
+                date: new Date('2025-01-28'),
+                amount: -194.99,
+                description: 'Spectrum 855-707-7328 MO                     01/28',
+                type: 'DEBIT_CARD',
+                status: 'PENDING',
+                transaction_hash: 'bankhash-card-new',
+                raw_data: {}
+            });
+
+            await autoReconcilePending({ user: adminUser });
+
+            await repeatCard.reload();
+            expect(repeatCard.status).toBe('PENDING');
+            expect(repeatCard.reconciled_source).toBeNull();
+
+            const expense = await LedgerEntry.findOne({
+                where: { external_id: 'bankhash-card-new' }
+            });
+            expect(expense).toBeNull();
+
+            // Learned all the same — this is what the pending row offers the
+            // treasurer as a suggestion. Nothing is booked until they confirm.
+            const { findLearnedExpense } = require('../../src/services/autoReconcileService');
+            const mapping = await findLearnedExpense(repeatCard.get({ plain: true }));
+            expect(mapping).not.toBeNull();
+            expect(mapping.gl_code).toBe('EXP100');
+            expect(mapping.payee_name).toBe('Spectrum');
         });
 
         test('leaves unclassified debits PENDING', async () => {

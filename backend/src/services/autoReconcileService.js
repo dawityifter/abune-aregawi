@@ -453,6 +453,19 @@ async function autoReconcileDebit(txn, user) {
     return 'AUTO_EXPENSE';
   }
 
+  // Card purchases are learned but never booked automatically. A recurring
+  // ACH vendor keeps its GL code from month to month, so recording it is safe;
+  // one card merchant does not. A hardware store trip is Building Repairs one
+  // week and Supplies the next, and the amount differs every time, so an
+  // automatic booking would file real money under the wrong code with nothing
+  // to prompt a second look. The mapping still exists — getBankTransactions
+  // surfaces it as suggested_expense on the pending row, and the treasurer
+  // confirms or corrects it. Correcting re-learns, since reconcileExpense
+  // calls learnExpenseMemoMatch on every submit.
+  if (sourceTypeFor(txn.get ? txn.get({ plain: true }) : txn).includes('CARD')) {
+    return null;
+  }
+
   const mapping = await findLearnedExpense(txn);
   if (!mapping) return null;
 
