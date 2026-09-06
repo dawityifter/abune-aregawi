@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDateForDisplay } from '../../utils/dateUtils';
+import { isVoidMemo } from '../../utils/voidMemo';
 
 interface Expense {
   id: string;
@@ -399,8 +400,15 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ canEdit = false, onExpenseCha
   const validateEdit = (form: EditForm): string | null => {
     if (!form.gl_code) return t('treasurerDashboard.expenses.edit.categoryRequired');
 
+    // $0.00 is legal for a voided check and nothing else, judged against the
+    // memo this edit would leave behind — so a memo-only correction to an
+    // existing void entry saves, and dropping the void wording does not.
     const amountValue = parseFloat(form.amount);
-    if (!form.amount || !Number.isFinite(amountValue) || amountValue <= 0) {
+    const amountAcceptable =
+      !!form.amount &&
+      Number.isFinite(amountValue) &&
+      (amountValue > 0 || (amountValue === 0 && isVoidMemo(form.memo)));
+    if (!amountAcceptable) {
       return t('treasurerDashboard.expenses.edit.amountInvalid');
     }
 

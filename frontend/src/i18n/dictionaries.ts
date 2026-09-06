@@ -438,6 +438,7 @@ export interface Dictionaries {
         checkNumberRequired: string;
         checkNumberDuplicate: string;
         checkNumberNumeric: string;
+        amountPositiveOrVoid: string;
         receiptNumber: string;
         memo: string;
         cancel: string;
@@ -1231,6 +1232,7 @@ export const en: Dictionaries = {
         checkNumberRequired: "Check number is required for check payments",
         checkNumberDuplicate: "This check number has already been used. Please use a unique check number.",
         checkNumberNumeric: "Check number must be numeric (digits only, e.g. 1593)",
+        amountPositiveOrVoid: "Enter an amount greater than $0.00 — or write \"void\" in the memo to record a voided check.",
         receiptNumber: "Receipt Number",
         memo: "Memo",
         cancel: "Cancel",
@@ -1253,7 +1255,7 @@ export const en: Dictionaries = {
         saveFailed: "Failed to save changes",
         payeeReadOnly: "Payee cannot be changed after an expense is recorded.",
         categoryRequired: "Please select an expense category",
-        amountInvalid: "Please enter a valid amount greater than $0.00",
+        amountInvalid: "Please enter a valid amount greater than $0.00, or $0.00 with \"void\" in the memo for a voided check",
         dateRequired: "Please select an expense date",
         dateFuture: "Expense date cannot be in the future"
       }
@@ -3359,6 +3361,7 @@ export const ti: Dictionaries = {
         checkNumberRequired: "ንክፍሊት ብቼክ ቁጽሪ ቼክ ኣድላዪ እዩ",
         checkNumberDuplicate: "እዚ ቁጽሪ ቼክ ተጠቒሙ እዩ። በጃኹም ዘይተጠቕመ ቁጽሪ ቼክ ተጠቐሙ።",
         checkNumberNumeric: "ቁጽሪ ቼክ ኣሃዛት ጥራይ ክኸውን ኣለዎ (ንኣብነት 1593)",
+        amountPositiveOrVoid: "ካብ $0.00 ዝዓቢ መጠን ኣእትዉ — ወይ ድማ ዝተሰረዘ ቼክ ንምምዝጋብ ኣብ መዘኻኸሪ \"void\" ጽሓፉ።",
         receiptNumber: "ቁጽሪ ቅብሊት",
         memo: "መዘኻኸሪ",
         cancel: "ሰርዝ",
@@ -3381,7 +3384,7 @@ export const ti: Dictionaries = {
         saveFailed: "ለውጥታት ምቕማጥ ኣይተኻእለን",
         payeeReadOnly: "ወጪ ድሕሪ ምምዝጋቡ ተቀባሊ ክቕየር ኣይክእልን።",
         categoryRequired: "በጃኹም ዓይነት ወጪ ምረጹ",
-        amountInvalid: "በጃኹም ካብ $0.00 ዝዓቢ ቅኑዕ መጠን ኣእትዉ",
+        amountInvalid: "በጃኹም ካብ $0.00 ዝዓቢ ቅኑዕ መጠን ኣእትዉ፡ ወይ ድማ ንዝተሰረዘ ቼክ ኣብ መዘኻኸሪ \"void\" ጽሒፍኩም $0.00 ኣእትዉ",
         dateRequired: "በጃኹም ዕለት ወጪ ምረጹ",
         dateFuture: "ዕለት ወጪ ኣብ መጻኢ ክኸውን ኣይክእልን"
       }

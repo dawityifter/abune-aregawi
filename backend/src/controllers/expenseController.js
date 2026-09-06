@@ -2,6 +2,7 @@ const { ExpenseCategory, LedgerEntry, BankTransaction, Member, Employee, Vendor,
 const { Op } = require('sequelize');
 const tz = require('../config/timezone');
 const { DEFAULT_START_CHECK_NUMBER, normalizeCheckNumber } = require('../utils/checkNumber');
+const { isVoidMemo } = require('../utils/voidMemo');
 
 // Check-method expenses must carry a unique check number. Enforcement is
 // application-level (no DB constraint), so both the create and the update path
@@ -74,6 +75,16 @@ const getExpenseCategories = async (req, res) => {
   }
 };
 
+const ZERO_AMOUNT_MESSAGE =
+  'Amount must be a positive number, or $0.00 for a check marked void in the memo';
+
+/** Positive always; zero only when the memo marks the entry as a voided check. */
+function isValidExpenseAmount(expenseAmount, memo) {
+  if (!Number.isFinite(expenseAmount)) return false;
+  if (expenseAmount > 0) return true;
+  return expenseAmount === 0 && isVoidMemo(memo);
+}
+
 // Create a new expense
 const createExpense = async (req, res) => {
   const t = await sequelize.transaction();
@@ -93,8 +104,10 @@ const createExpense = async (req, res) => {
       invoice_number
     } = req.body;
 
-    // Validate required fields
-    if (!gl_code || !amount || !expense_date || !payment_method) {
+    // Validate required fields. Amount is compared explicitly rather than by
+    // truthiness so a voided check's 0 still counts as supplied.
+    const amountSupplied = amount !== undefined && amount !== null && amount !== '';
+    if (!gl_code || !amountSupplied || !expense_date || !payment_method) {
       await t.rollback();
       return res.status(400).json({
         success: false,
@@ -102,13 +115,15 @@ const createExpense = async (req, res) => {
       });
     }
 
-    // Validate amount
+    // Validate amount. A voided check is the one expense worth $0.00: the check
+    // number is spent and has to be on the books, but no money left the account.
+    // The memo is what says so — see utils/voidMemo.
     const expenseAmount = parseFloat(amount);
-    if (!Number.isFinite(expenseAmount) || expenseAmount <= 0) {
+    if (!isValidExpenseAmount(expenseAmount, memo)) {
       await t.rollback();
       return res.status(400).json({
         success: false,
-        message: 'Amount must be a positive number'
+        message: ZERO_AMOUNT_MESSAGE
       });
     }
 
@@ -198,6 +213,17 @@ const createExpense = async (req, res) => {
         invoice_number: invoice_number || null
       }, { transaction: t });
     } catch (ledgerError) {
+      // This catch is here for a missing ledger_entries table during the
+      // gradual migration. A validation error is a genuine rejection of the
+      // row — swallowing it commits nothing while telling the treasurer the
+      // expense was recorded, which loses the entry with no trace.
+      if (ledgerError.name === 'SequelizeValidationError') {
+        await t.rollback();
+        return res.status(400).json({
+          success: false,
+          message: ledgerError.errors?.[0]?.message || 'Invalid expense'
+        });
+      }
       console.warn('⚠️  Could not create ledger entry:', ledgerError.message);
     }
 
@@ -560,12 +586,16 @@ const updateExpense = async (req, res) => {
     }
 
     if (amount !== undefined) {
+      // A $0.00 amount stays legal only for a voided check, judged against the
+      // memo this edit leaves behind — the new one if the edit supplies it,
+      // otherwise the one already on the row.
+      const effectiveMemo = memo !== undefined ? memo : expense.memo;
       const expenseAmount = parseFloat(amount);
-      if (!Number.isFinite(expenseAmount) || expenseAmount <= 0) {
+      if (!isValidExpenseAmount(expenseAmount, effectiveMemo)) {
         await t.rollback();
         return res.status(400).json({
           success: false,
-          message: 'Amount must be a positive number'
+          message: ZERO_AMOUNT_MESSAGE
         });
       }
       updateData.amount = expenseAmount;

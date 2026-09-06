@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getCurrentDateCST } from '../../utils/dateUtils';
 import { getCached, setCached, CACHE_KEYS } from '../../utils/referenceDataCache';
+import { isVoidMemo } from '../../utils/voidMemo';
 
 interface ExpenseCategory {
   id: string;
@@ -178,6 +179,16 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     }
   };
 
+  // A voided check is the one expense worth $0.00: the check number is spent
+  // and belongs on the books — otherwise it reads as a gap in the checkbook
+  // sequence forever — but no money left the account. The memo is what marks
+  // it, and may say more besides ("Void - misprinted, reissued as 1594").
+  const amountValue = parseFloat(amount);
+  const isAmountAcceptable =
+    !!amount &&
+    Number.isFinite(amountValue) &&
+    (amountValue > 0 || (amountValue === 0 && isVoidMemo(memo)));
+
   const validateForm = (): boolean => {
     // Validate GL code
     if (!glCode) {
@@ -186,9 +197,8 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
     }
 
     // Validate amount
-    const amountValue = parseFloat(amount);
-    if (!amount || !Number.isFinite(amountValue) || amountValue <= 0) {
-      setAmountError('Please enter a valid amount greater than $0.00');
+    if (!isAmountAcceptable) {
+      setAmountError(t('treasurerDashboard.expenses.addModal.amountPositiveOrVoid'));
       return false;
     }
 
@@ -265,8 +275,7 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
   const isReadyToSave = (() => {
     if (!glCode) return false;
 
-    const amountValue = parseFloat(amount);
-    if (!amount || !Number.isFinite(amountValue) || amountValue <= 0) return false;
+    if (!isAmountAcceptable) return false;
     if (amountError) return false;
 
     if (!expenseDate) return false;
@@ -646,6 +655,13 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
             {amountError && (
               <p className="mt-1 text-xs text-red-600">{amountError}</p>
             )}
+            {/* Say why Save is still greyed out at $0.00, rather than leaving
+                the treasurer to guess at the void-memo rule. */}
+            {!amountError && amount !== '' && amountValue === 0 && !isVoidMemo(memo) && (
+              <p className="mt-1 text-xs text-amber-600">
+                {t('treasurerDashboard.expenses.addModal.amountPositiveOrVoid')}
+              </p>
+            )}
           </div>
 
           {/* Expense Date */}
@@ -701,12 +717,18 @@ const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ isOpen, onClose, onSu
 
           {/* Memo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="expense-memo" className="block text-sm font-medium text-gray-700 mb-2">
               {t('treasurerDashboard.expenses.addModal.memo')}
             </label>
             <textarea
+              id="expense-memo"
               value={memo}
-              onChange={(e) => setMemo(e.target.value)}
+              onChange={(e) => {
+                setMemo(e.target.value);
+                // The memo decides whether $0.00 is legal, so a memo edit can
+                // settle an amount error the last submit raised.
+                setAmountError(null);
+              }}
               placeholder="Additional notes about this expense..."
               maxLength={500}
               rows={3}

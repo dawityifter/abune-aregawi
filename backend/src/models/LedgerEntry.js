@@ -1,6 +1,7 @@
 'use strict';
 
 const { Model, DataTypes } = require('sequelize');
+const { isVoidMemo } = require('../utils/voidMemo');
 
 module.exports = (sequelize) => {
   class LedgerEntry extends Model {
@@ -86,7 +87,21 @@ module.exports = (sequelize) => {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       validate: {
-        min: 0.01
+        // Money moved, so the amount is positive — with one exception. A voided
+        // check is worth $0.00 but still has to be on the books, because its
+        // number is spent and would otherwise read as a permanent gap in the
+        // checkbook sequence. The memo is what marks it; see utils/voidMemo.
+        positiveUnlessVoid(value) {
+          const parsed = parseFloat(value);
+          if (!Number.isFinite(parsed)) {
+            throw new Error('Amount must be a number');
+          }
+          if (parsed > 0) return;
+          if (parsed === 0 && isVoidMemo(this.memo)) return;
+          throw new Error(
+            'Amount must be greater than 0, or 0 for a check marked void in the memo'
+          );
+        }
       }
     },
     fund: {

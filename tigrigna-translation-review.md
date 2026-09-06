@@ -709,3 +709,16 @@ never been on it.
 | Key | English | Tigrigna (draft) | Flag |
 |-----|---------|------------------|------|
 | fundraising.closeDraftWarning | This draft has never been visible to members. Closing it files it away as history. | እዚ ንድፊ ንኣባላት ተራእዩ ኣይፈልጥን። ምዕጻዉ ከም ታሪኽ የቐምጦ። | ⚠️ shown in a browser confirm dialog. `ንድፊ` is used for "draft" — confirm it reads as an unpublished draft rather than a drawing or sketch, since that is the whole point of the sentence. Also confirm `ተራእዩ ኣይፈልጥን` carries "has never been seen" rather than "is not currently visible" |
+
+### Follow-up: voided check hint (Sep 2026)
+
+One key in the Add Expense modal. A voided check has to be recorded — its
+number is spent and would otherwise read as a permanent gap in the checkbook
+sequence — so the form now accepts $0.00 when the memo marks the check void.
+The hint appears under the Amount field once a $0.00 amount is entered without
+that memo, explaining why Save is still greyed out.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| treasurerDashboard.expenses.edit.amountInvalid | Please enter a valid amount greater than $0.00, or $0.00 with "void" in the memo for a voided check | በጃኹም ካብ $0.00 ዝዓቢ ቅኑዕ መጠን ኣእትዉ፡ ወይ ድማ ንዝተሰረዘ ቼክ ኣብ መዘኻኸሪ "void" ጽሒፍኩም $0.00 ኣእትዉ | ⚠️ **an existing key whose Tigrigna was already reviewed; only the new second clause needs checking.** Same `void`-stays-English question as the row above |
+| treasurerDashboard.expenses.addModal.amountPositiveOrVoid | Enter an amount greater than $0.00 — or write "void" in the memo to record a voided check. | ካብ $0.00 ዝዓቢ መጠን ኣእትዉ — ወይ ድማ ዝተሰረዘ ቼክ ንምምዝጋብ ኣብ መዘኻኸሪ "void" ጽሓፉ። | ⚠️ the literal word `void` is deliberately left in English because it is what the form actually matches on — confirm that reads as an instruction to type that exact word, not as untranslated text. Also confirm `ዝተሰረዘ` ("cancelled") is right for a voided check rather than a cancelled payment |
