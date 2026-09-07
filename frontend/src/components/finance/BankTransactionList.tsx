@@ -333,6 +333,23 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         return `Existing entry #${match.id}: ${memberName}, ${match.payment_date}${receipt}${more}`;
     };
 
+    // Which way the money went decides what a bulk selection can even mean.
+    // A deposit is linked to a member with a payment type; a debit is money
+    // spent, and belongs to an expense with a category and a payee. Offering
+    // the member flow for either used to put debits in front of a dialog
+    // asking which member had donated them.
+    //
+    // 'mixed' is its own answer rather than a fallback: acting on the deposits
+    // and quietly dropping the debits is what let selected debits go unnoticed.
+    const selectionKind: 'none' | 'credits' | 'debits' | 'mixed' = (() => {
+        const selected = transactions.filter(txn => selectedTxnIds.includes(txn.id));
+        if (selected.length === 0) return 'none';
+        const hasCredit = selected.some(txn => Number(txn.amount) >= 0);
+        const hasDebit = selected.some(txn => Number(txn.amount) < 0);
+        if (hasCredit && hasDebit) return 'mixed';
+        return hasDebit ? 'debits' : 'credits';
+    })();
+
     const getSharedSuggestedMember = () => {
         const selectedTransactions = transactions.filter(txn => selectedTxnIds.includes(txn.id));
         if (selectedTransactions.length === 0) return null;
@@ -389,7 +406,13 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                 window.dispatchEvent(new CustomEvent('payments:refresh'));
 
                 if (data.data.errors.length > 0) {
-                    alert(`Completed with some errors: ${data.data.errors.length} failed.`);
+                    // The endpoint already says why each row failed; showing
+                    // only the count left the treasurer with no way to tell a
+                    // duplicate receipt from a row that was already reconciled.
+                    const detail = data.data.errors
+                        .map((e: any) => `• #${e.id}: ${e.message}`)
+                        .join('\n');
+                    alert(`${data.data.errors.length} of ${selectedTxnIds.length} could not be linked:\n\n${detail}`);
                 }
             } else {
                 alert('Failed to bulk reconcile: ' + (data.message || 'Unknown error'));
@@ -515,13 +538,26 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                             <i className={`fas ${autoReconciling ? 'fa-spinner fa-spin' : 'fa-magic'} mr-2`}></i>
                             {autoReconciling ? t('bankTransactions.autoReconciling') : t('bankTransactions.autoReconcile')}
                         </button>
-                        {selectedTxnIds.length > 0 && (
+                        {selectionKind === 'credits' && (
                             <button
                                 onClick={() => { setIsBulkMode(true); setSearchTerm(''); setSearchResults([]); setSelectedPaymentType('donation'); setSelectedForYear(''); setShowLinkModal(true); }}
                                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
                             >
-                                Link {selectedTxnIds.length} Transactions
+                                Link {selectedTxnIds.length} {selectedTxnIds.length === 1 ? 'Transaction' : 'Transactions'}
                             </button>
+                        )}
+                        {selectionKind === 'debits' && (
+                            <span className="inline-flex items-center rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-200">
+                                <i className="fas fa-circle-info mr-2" aria-hidden="true"></i>
+                                {selectedTxnIds.length} {selectedTxnIds.length === 1 ? 'debit' : 'debits'} selected.
+                                Debits are recorded as expenses — open one to categorize it.
+                            </span>
+                        )}
+                        {selectionKind === 'mixed' && (
+                            <span className="inline-flex items-center rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-200">
+                                <i className="fas fa-circle-info mr-2" aria-hidden="true"></i>
+                                Select deposits or debits, not both — they reconcile differently.
+                            </span>
                         )}
                     </div>
                 </div>

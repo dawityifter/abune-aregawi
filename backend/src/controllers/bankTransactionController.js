@@ -601,6 +601,37 @@ exports.reconcileBulkTransactions = asyncHandler(async (req, res) => {
         throw new Error('Member ID required for bulk matching');
     }
 
+    // Bulk member-linking is for deposits. A debit is money the church spent
+    // and belongs to an expense with a GL code and a payee, not to a member
+    // with a payment type.
+    //
+    // Checked up front, over the whole batch, for two reasons. A debit that
+    // reached processReconciliation had its NEGATIVE amount passed into a
+    // member donation, and was stopped only by Transaction.amount's $1.00
+    // minimum — a rule about how small a gift may be, which rejects a negative
+    // one by coincidence rather than by intent. And rejecting per row inside
+    // the loop would leave the deposits in a mixed selection reconciled while
+    // the debits failed, reported as a 200 with a bare "N failed" — which is
+    // how selected debits went unnoticed to begin with.
+    const { Op } = require('sequelize');
+    const debits = await BankTransaction.findAll({
+        where: { id: transaction_ids, amount: { [Op.lt]: 0 } },
+        attributes: ['id']
+    });
+
+    if (debits.length > 0) {
+        const ids = debits.map((row) => row.id).join(', ');
+        // status on the error, not on res: the global handler reads
+        // error.status and would otherwise report this as a 500.
+        const err = new Error(
+            `Selection contains ${debits.length} debit ${debits.length === 1 ? 'transaction' : 'transactions'} `
+            + `(${ids}). Debits are money spent and must be recorded as expenses with an expense `
+            + 'category, not linked to a member. Select deposits only.'
+        );
+        err.status = 400;
+        throw err;
+    }
+
     const { processReconciliation } = require('../services/reconciliationService');
 
     const results = {
