@@ -664,6 +664,53 @@ exports.reconcileBulkTransactions = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Record one bank debit as an expense and mark the row matched.
+ *
+ * Shared by the single-transaction endpoint and the bulk one so both derive the
+ * payment method, resolve the check number and link external_id the same way —
+ * that link is what keeps a debit from being counted twice by the reports.
+ *
+ * The caller owns the database transaction, which is what lets the bulk path
+ * commit its whole batch or none of it.
+ */
+async function recordExpenseForBankTxn(bankTxn, {
+    gl_code, payee_name, vendor_id, employee_id, memo, check_number, userId
+}, t) {
+    // Derived from the bank row, not assumed. This used to hardcode 'check',
+    // which filed every ACH and card debit as a check with no check number —
+    // the same phantom "missing check number" rows the automatic pass used
+    // to produce.
+    const { paymentMethodForBankTxn, checkNumberFor } = require('../services/autoReconcileService');
+    const paymentMethod = paymentMethodForBankTxn(bankTxn);
+    const resolvedCheckNumber = paymentMethod === 'check'
+        ? (parseCheckNumber(check_number) || checkNumberFor(bankTxn))
+        : null;
+
+    const expense = await LedgerEntry.create({
+        type:           'expense',
+        category:       gl_code,
+        amount:         Math.abs(bankTxn.amount),
+        entry_date:     bankTxn.date,
+        payment_method: paymentMethod,
+        check_number:   resolvedCheckNumber,
+        memo:           memo || bankTxn.description,
+        payee_name:     payee_name || bankTxn.payer_name || null,
+        vendor_id:      vendor_id  || null,
+        employee_id:    employee_id || null,
+        external_id:    bankTxn.transaction_hash,
+        collected_by:   userId,
+        source_system:  'bank_reconciliation',
+    }, { transaction: t });
+
+    bankTxn.status = 'MATCHED';
+    bankTxn.reconciled_source = 'MANUAL';
+    bankTxn.reconciled_at = new Date();
+    await bankTxn.save({ transaction: t });
+
+    return expense;
+}
+
+/**
  * @desc    Reconcile a bank debit by recording an expense ledger entry
  * @route   POST /api/bank/reconcile-expense
  * @access  Private (Admin/Treasurer/Bookkeeper)
@@ -683,36 +730,10 @@ exports.reconcileExpense = asyncHandler(async (req, res) => {
         const category = await ExpenseCategory.findOne({ where: { gl_code, is_active: true }, transaction: t });
         if (!category) { res.status(400); throw new Error('Invalid or inactive GL code'); }
 
-        // Derived from the bank row, not assumed. This used to hardcode 'check',
-        // which filed every ACH and card debit as a check with no check number —
-        // the same phantom "missing check number" rows the automatic pass used
-        // to produce.
-        const { paymentMethodForBankTxn, checkNumberFor } = require('../services/autoReconcileService');
-        const paymentMethod = paymentMethodForBankTxn(bankTxn);
-        const resolvedCheckNumber = paymentMethod === 'check'
-            ? (parseCheckNumber(check_number) || checkNumberFor(bankTxn))
-            : null;
-
-        const expense = await LedgerEntry.create({
-            type:           'expense',
-            category:       gl_code,
-            amount:         Math.abs(bankTxn.amount),
-            entry_date:     bankTxn.date,
-            payment_method: paymentMethod,
-            check_number:   resolvedCheckNumber,
-            memo:           memo || bankTxn.description,
-            payee_name:     payee_name || bankTxn.payer_name || null,
-            vendor_id:      vendor_id  || null,
-            employee_id:    employee_id || null,
-            external_id:    bankTxn.transaction_hash,
-            collected_by:   req.user.id,
-            source_system:  'bank_reconciliation',
-        }, { transaction: t });
-
-        bankTxn.status = 'MATCHED';
-        bankTxn.reconciled_source = 'MANUAL';
-        bankTxn.reconciled_at = new Date();
-        await bankTxn.save({ transaction: t });
+        const expense = await recordExpenseForBankTxn(bankTxn, {
+            gl_code, payee_name, vendor_id, employee_id, memo, check_number,
+            userId: req.user.id
+        }, t);
         await t.commit();
 
         // Learn payee/description → GL classification for future auto-reconcile
@@ -728,6 +749,122 @@ exports.reconcileExpense = asyncHandler(async (req, res) => {
         await t.rollback();
         throw err;
     }
+});
+
+/**
+ * @desc    Record several bank debits as expenses under one category
+ * @route   POST /api/bank/reconcile-expense-bulk
+ * @access  Private (Admin/Treasurer/Bookkeeper)
+ *
+ * For a backlog from one merchant — twelve months of the same subscription —
+ * that would otherwise be categorized a row at a time. Each row keeps its own
+ * amount, date and description; only the category and payee are shared.
+ *
+ * The whole batch is validated before any row is written and committed in one
+ * database transaction, so a selection is either filed completely or not at
+ * all. Filing half of it and reporting success is how wrongly-selected rows go
+ * unnoticed.
+ */
+exports.reconcileExpenseBulk = asyncHandler(async (req, res) => {
+    const { transaction_ids, gl_code, payee_name, vendor_id, employee_id, memo } = req.body;
+
+    const fail = (message) => {
+        const err = new Error(message);
+        err.status = 400;
+        throw err;
+    };
+
+    if (!Array.isArray(transaction_ids) || transaction_ids.length === 0) {
+        fail('Transaction IDs array required');
+    }
+    if (!gl_code) {
+        fail('gl_code is required');
+    }
+
+    const category = await ExpenseCategory.findOne({ where: { gl_code, is_active: true } });
+    if (!category) {
+        fail(`Invalid or inactive expense category: ${gl_code}`);
+    }
+
+    const rows = await BankTransaction.findAll({ where: { id: transaction_ids } });
+
+    const missing = transaction_ids.filter(
+        (id) => !rows.some((row) => String(row.id) === String(id))
+    );
+    if (missing.length > 0) {
+        fail(`Bank transactions not found: ${missing.join(', ')}`);
+    }
+
+    // A credit is a gift received, not money spent. Same refusal the
+    // single-transaction endpoint makes, applied to the whole selection.
+    const credits = rows.filter((row) => Number(row.amount) >= 0);
+    if (credits.length > 0) {
+        fail(
+            `Selection contains ${credits.length} deposit ${credits.length === 1 ? 'transaction' : 'transactions'} `
+            + `(${credits.map((r) => r.id).join(', ')}). Deposits are money received and are linked to a member, `
+            + 'not recorded as expenses. Select debits only.'
+        );
+    }
+
+    const settled = rows.filter((row) => row.status !== 'PENDING');
+    if (settled.length > 0) {
+        fail(
+            `Already reconciled: ${settled.map((r) => r.id).join(', ')}. `
+            + 'Refresh the list and select only pending transactions.'
+        );
+    }
+
+    const t = await sequelize.transaction();
+    let expenses;
+    try {
+        expenses = [];
+        for (const row of rows) {
+            expenses.push(await recordExpenseForBankTxn(row, {
+                gl_code, payee_name, vendor_id, employee_id, memo,
+                userId: req.user.id
+            }, t));
+        }
+        await t.commit();
+    } catch (err) {
+        await t.rollback();
+        throw err;
+    }
+
+    // Learn only when the whole batch is one merchant.
+    //
+    // A learned mapping drives every later suggestion, so teaching one category
+    // for a batch of unrelated merchants would put a classification nobody
+    // chose per-merchant in front of the treasurer from then on. Twelve charges
+    // from the same payee are a deliberate statement about that payee; twenty
+    // assorted charges filed under Supplies are not.
+    const { getBankMatchKeys } = require('../services/bankMemoMatchService');
+    const keySets = rows.map((row) => getBankMatchKeys(row.get({ plain: true }))
+        .map((k) => k.matchKey).sort().join('|'));
+    const oneMerchant = keySets.length > 0
+        && keySets[0] !== ''
+        && keySets.every((keys) => keys === keySets[0]);
+
+    let learned = false;
+    if (oneMerchant) {
+        try {
+            const { learnExpenseMemoMatch } = require('../services/autoReconcileService');
+            await learnExpenseMemoMatch(rows[0], { gl_code, payee_name, vendor_id, employee_id });
+            learned = true;
+        } catch (learnErr) {
+            console.warn('Expense memo learning warning:', learnErr.message);
+        }
+    }
+
+    res.status(201).json({
+        success: true,
+        message: `Recorded ${expenses.length} ${expenses.length === 1 ? 'expense' : 'expenses'}`,
+        data: {
+            recorded: expenses.length,
+            learned,
+            gl_code,
+            expense_ids: expenses.map((e) => e.id)
+        }
+    });
 });
 
 /**

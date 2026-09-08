@@ -94,11 +94,11 @@ describe('Bulk selection depends on which way the money went', () => {
         );
     });
 
-    it('explains what to do with selected debits instead', async () => {
+    it('offers the expense flow for selected debits instead', async () => {
         await showList([CREDIT, DEBIT]);
         await selectRow(/Spectrum/);
 
-        expect(await screen.findByText(/recorded as expenses/i)).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: /Categorize 1 Expense/i })).toBeInTheDocument();
     });
 
     it('refuses a mixed selection rather than acting on half of it', async () => {
@@ -114,6 +114,6 @@ describe('Bulk selection depends on which way the money went', () => {
         await showList([CREDIT, DEBIT]);
 
         expect(screen.queryByRole('button', { name: /Link .* Transaction/i })).not.toBeInTheDocument();
-        expect(screen.queryByText(/recorded as expenses/i)).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Categorize .* Expense/i })).not.toBeInTheDocument();
     });
 });

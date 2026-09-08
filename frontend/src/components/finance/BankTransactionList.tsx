@@ -172,6 +172,13 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     const [selectedTxnIds, setSelectedTxnIds] = useState<number[]>([]);
     const [isBulkMode, setIsBulkMode] = useState(false);
 
+    // Bulk expense state (debit selections)
+    const [showBulkExpenseModal, setShowBulkExpenseModal] = useState(false);
+    const [bulkGlCode, setBulkGlCode] = useState('');
+    const [bulkPayee, setBulkPayee] = useState('');
+    const [bulkExpenseSaving, setBulkExpenseSaving] = useState(false);
+    const [expenseCategories, setExpenseCategories] = useState<{ gl_code: string; name: string }[]>([]);
+
     const paymentTypes = [
         { value: 'donation', label: 'Donation (General)' },
         { value: 'tithe', label: 'Tithe (አስራት)' },
@@ -368,6 +375,75 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     };
 
 
+    // The rows a bulk expense would file, and what they add up to. The total is
+    // the check the treasurer actually reads before applying one category to
+    // all of them.
+    const selectedDebits = transactions.filter(
+        txn => selectedTxnIds.includes(txn.id) && Number(txn.amount) < 0
+    );
+    const selectedDebitTotal = selectedDebits.reduce(
+        (sum, txn) => sum + Math.abs(Number(txn.amount)), 0
+    );
+
+    const openBulkExpense = async () => {
+        setBulkGlCode('');
+        setBulkPayee('');
+        setShowBulkExpenseModal(true);
+        try {
+            const token = await firebaseUser?.getIdToken();
+            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+            const res = await fetch(`${apiUrl}/api/expenses/categories`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res?.ok) {
+                const data = await res.json();
+                setExpenseCategories((data.data || []).filter((c: any) => c.is_active));
+            }
+        } catch {
+            // Leave the list empty; the submit button stays disabled without a
+            // category, so this cannot file anything uncategorized.
+        }
+    };
+
+    const handleBulkExpense = async () => {
+        if (!bulkGlCode || selectedTxnIds.length === 0) return;
+        setBulkExpenseSaving(true);
+        try {
+            const token = await firebaseUser?.getIdToken();
+            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+            const res = await fetch(`${apiUrl}/api/bank/reconcile-expense-bulk`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    transaction_ids: selectedTxnIds,
+                    gl_code: bulkGlCode,
+                    payee_name: bulkPayee || undefined,
+                }),
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                setSelectedTxnIds([]);
+                setShowBulkExpenseModal(false);
+                fetchTransactions();
+                window.dispatchEvent(new CustomEvent('payments:refresh'));
+            } else {
+                // The endpoint refuses the whole batch and says which rows are
+                // at fault; showing that verbatim is the only way the treasurer
+                // can act on it.
+                alert(data.message || 'Failed to record expenses');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error recording expenses');
+        } finally {
+            setBulkExpenseSaving(false);
+        }
+    };
+
     const handleBulkReconcile = async (member: any) => {
         if (selectedTxnIds.length === 0) return;
         if (!window.confirm(`Link ${selectedTxnIds.length} transactions to ${member.name} as ${selectedPaymentType}?`)) return;
@@ -547,11 +623,13 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                             </button>
                         )}
                         {selectionKind === 'debits' && (
-                            <span className="inline-flex items-center rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-200">
-                                <i className="fas fa-circle-info mr-2" aria-hidden="true"></i>
-                                {selectedTxnIds.length} {selectedTxnIds.length === 1 ? 'debit' : 'debits'} selected.
-                                Debits are recorded as expenses — open one to categorize it.
-                            </span>
+                            <button
+                                onClick={openBulkExpense}
+                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700 focus:outline-none"
+                            >
+                                <i className="fas fa-receipt mr-2" aria-hidden="true"></i>
+                                Categorize {selectedTxnIds.length} {selectedTxnIds.length === 1 ? 'Expense' : 'Expenses'}
+                            </button>
                         )}
                         {selectionKind === 'mixed' && (
                             <span className="inline-flex items-center rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-200">
@@ -733,6 +811,104 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
                     </div>
                 </div>
             </div>
+
+            {/* Bulk Expense Modal (debit selections) */}
+            {showBulkExpenseModal && (
+                <div className="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="bulk-expense-title" role="dialog" aria-modal="true">
+                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowBulkExpenseModal(false)}></div>
+                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+                        <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+                            <h3 id="bulk-expense-title" className="text-lg leading-6 font-medium text-gray-900 mb-1">
+                                Record {selectedDebits.length} {selectedDebits.length === 1 ? 'Debit' : 'Debits'} as Expenses
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-4">
+                                One category applies to every row below. Each keeps its own amount and date.
+                            </p>
+
+                            {/* What is about to be filed. Seeing the rows and the
+                                total is what makes a wrong category obvious before
+                                it is committed rather than after. */}
+                            <div className="mb-4 max-h-48 overflow-y-auto rounded-md border border-slate-200">
+                                <table className="min-w-full text-sm">
+                                    <tbody className="divide-y divide-slate-100">
+                                        {selectedDebits.map(txn => (
+                                            <tr key={txn.id}>
+                                                <td className="px-3 py-2 whitespace-nowrap text-slate-500">
+                                                    {new Date(txn.date).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-3 py-2 text-slate-700 truncate max-w-[16rem]" title={txn.description}>
+                                                    {txn.description}
+                                                </td>
+                                                <td className="px-3 py-2 whitespace-nowrap text-right font-medium text-red-700">
+                                                    {formatCurrency(Math.abs(Number(txn.amount)))}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot className="bg-slate-50">
+                                        <tr>
+                                            <td className="px-3 py-2 font-semibold text-slate-700" colSpan={2}>Total</td>
+                                            <td className="px-3 py-2 whitespace-nowrap text-right font-bold text-slate-900">
+                                                {formatCurrency(selectedDebitTotal)}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <div className="mb-3">
+                                <label htmlFor="bulk-exp-category" className="block text-sm font-medium text-gray-700 mb-1">
+                                    Expense Category *
+                                </label>
+                                <select
+                                    id="bulk-exp-category"
+                                    value={bulkGlCode}
+                                    onChange={(e) => setBulkGlCode(e.target.value)}
+                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                                >
+                                    <option value="">-- Select category --</option>
+                                    {expenseCategories.map(c => (
+                                        <option key={c.gl_code} value={c.gl_code}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="mb-4">
+                                <label htmlFor="bulk-exp-payee" className="block text-sm font-medium text-gray-700 mb-1">
+                                    Payee (optional)
+                                </label>
+                                <input
+                                    id="bulk-exp-payee"
+                                    type="text"
+                                    value={bulkPayee}
+                                    onChange={(e) => setBulkPayee(e.target.value)}
+                                    placeholder="Applies to every row"
+                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                                />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowBulkExpenseModal(false)}
+                                    className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleBulkExpense}
+                                    disabled={!bulkGlCode || bulkExpenseSaving}
+                                    className="flex-1 rounded-md bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {bulkExpenseSaving
+                                        ? 'Recording...'
+                                        : `Record ${selectedDebits.length} ${selectedDebits.length === 1 ? 'Expense' : 'Expenses'}`}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Manual Link Modal (bulk mode only) */}
             {showLinkModal && isBulkMode && (
