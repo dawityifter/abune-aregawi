@@ -131,12 +131,29 @@ export interface Dictionaries {
       payNow: string;
       giveAgain: string;
     };
+    hero?: {
+      defaultDescription: string;
+      tagline: string;
+    };
+    form?: {
+      title: string;
+      subtitle: string;
+    };
+    progress?: {
+      title: string;
+      body: string;
+    };
     info?: {
       flexibleTitle: string;
       flexibleBody: string;
+      secureTitle: string;
+      secureBody: string;
+      differenceTitle: string;
+      differenceBody: string;
     };
     success?: {
       body: string;
+      redirecting: string;
     };
     checkout?: {
       payInFullNote: string;
@@ -1962,6 +1979,18 @@ export const en: Dictionaries = {
     qr: {
       caption: "Scan to give from your phone"
     },
+    hero: {
+      defaultDescription: "Support our church with your generous pledge",
+      tagline: "Your pledge helps us continue our mission of serving our Abune Aregawi church community"
+    },
+    form: {
+      title: "Make Your Pledge",
+      subtitle: "Fill out the form below to make your pledge. All information is kept confidential."
+    },
+    progress: {
+      title: "Annual Fundraising Progress",
+      body: "Track our progress for the Abune Aregawi church yearly fundraising event."
+    },
     existing: {
       title: "You already have a pledge",
       body: "{remaining} remaining on your {campaign} pledge.",
@@ -1971,10 +2000,15 @@ export const en: Dictionaries = {
     },
     info: {
       flexibleTitle: "Flexible Payment",
-      flexibleBody: "Pay when you're ready, from the Give page or with a treasurer."
+      flexibleBody: "Pay when you're ready, from the Give page or with a treasurer.",
+      secureTitle: "Secure & Private",
+      secureBody: "Your pledge information is kept confidential and secure.",
+      differenceTitle: "Make a Difference",
+      differenceBody: "In the spirit of Abune Aregawi and in the name of our Lord Jesus Christ, your pledge helps renew His Church, sustain our worship, and bless our community."
     },
     success: {
-      body: "Your pledge has been recorded. Thank you."
+      body: "Your pledge has been recorded. Thank you.",
+      redirecting: "Redirecting to thank you page..."
     },
     checkout: {
       payInFullNote: "Paying now covers your pledge in full.",
@@ -4205,6 +4239,18 @@ export const ti: Dictionaries = {
     qr: {
       caption: "ብስልክኹም ንምውፋይ ስካን ግበሩ"
     },
+    hero: {
+      defaultDescription: "ብልግሲ ዝመልኦ መብጽዓኹም ንቤተ ክርስቲያንና ደግፉ።",
+      tagline: "መብጽዓኹም ንማሕበረሰብ ቤተ ክርስቲያን ኣቡነ ኣረጋዊ ናይ ምግልጋል ተልእኾና ንኽንቅጽል ይሕግዘና።"
+    },
+    form: {
+      title: "መብጽዓኹም ግበሩ",
+      subtitle: "መብጽዓኹም ንምግባር ነቲ ኣብ ታሕቲ ዘሎ ቅጥዒ ምልእዎ። ኵሉ ሓበሬታ ብሚስጥር ይተሓዝ።"
+    },
+    progress: {
+      title: "ዓመታዊ ናይ ወፈያ ምዕባለ",
+      body: "ንዓመታዊ መደብ ወፈያ ቤተ ክርስቲያን ኣቡነ ኣረጋዊ ዘሎ ምዕባለ ተኸታተሉ።"
+    },
     existing: {
       title: "ድሮ መብጽዓ ኣለኩም",
       body: "ካብ መብጽዓኹም ናይ {campaign} {remaining} ተሪፉ ኣሎ።",
@@ -4214,10 +4260,15 @@ export const ti: Dictionaries = {
     },
     info: {
       flexibleTitle: "ተዓጻጻፊ ክፍሊት",
-      flexibleBody: "ምስ ተዳለኹም ካብ ገጽ ውህበት ወይ ብመንገዲ ገንዘብ ተቐባሊ ክፈሉ።"
+      flexibleBody: "ምስ ተዳለኹም ካብ ገጽ ውህበት ወይ ብመንገዲ ገንዘብ ተቐባሊ ክፈሉ።",
+      secureTitle: "ውሑስን ሚስጥራውን",
+      secureBody: "ሓበሬታ መብጽዓኹም ብሚስጥርን ብውሕስነትን ይተሓዝ።",
+      differenceTitle: "ለውጢ ኣምጽኡ",
+      differenceBody: "ብመንፈስ ኣቡነ ኣረጋዊን ብስም ጐይታና ኢየሱስ ክርስቶስን፡ መብጽዓኹም ቤተ ክርስቲያኑ ንኽትሕደስ፡ ኣምልኾና ንኽቕጽል፡ ማሕበረሰብናውን ንኽባረኽ ይሕግዝ።"
     },
     success: {
-      body: "መብጽዓኹም ተመዝጊቡ ኣሎ። የቐንየልና።"
+      body: "መብጽዓኹም ተመዝጊቡ ኣሎ። የቐንየልና።",
+      redirecting: "ናብ ገጽ ምስጋና ይመርሓኩም ኣሎ..."
     },
     checkout: {
       payInFullNote: "ሕጂ ምኽፋል ንመብጽዓኹም ምሉእ ብምሉእ ይሽፍኖ።",

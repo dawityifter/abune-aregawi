@@ -5,6 +5,7 @@ import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { LanguageProvider } from '../../contexts/LanguageContext';
 import PledgePage from '../PledgePage';
+import { ti } from '../../i18n/dictionaries';
 import ThankYouPage from '../ThankYouPage';
 
 const mockUseActiveCampaign = jest.fn();
@@ -305,5 +306,69 @@ describe('PledgePage sign-in return destination', () => {
     fireEvent.click(screen.getByRole('button', { name: /sign in to pledge/i }));
 
     expect(screen.getByText(/login stub, from: \/pledge/)).toBeInTheDocument();
+  });
+});
+
+// t() silently falls back to English when a key is missing, so an untranslated
+// string on this page is invisible to the parity test — it is not a key at all,
+// it is English sitting directly in the JSX. These assert on what a Tigrigna
+// reader actually sees.
+describe('PledgePage in Tigrigna', () => {
+  beforeEach(() => {
+    localStorage.setItem('app.lang', 'ti');
+    mockUseActiveCampaign.mockReturnValue({ campaign: CAMPAIGN, loading: false, error: null });
+    mockUsePledgeBalance.mockReturnValue({ balance: null, loading: false });
+    mockUseAuth.mockReturnValue({ user: null, currentUser: null, firebaseUser: null });
+  });
+
+  afterEach(() => localStorage.removeItem('app.lang'));
+
+  it('leaves no English in the hero, the progress heading, or the info cards', () => {
+    renderPage();
+
+    const english = [
+      'Your pledge helps us continue our mission of serving our Abune Aregawi church community',
+      'Annual Fundraising Progress',
+      'Track our progress for the Abune Aregawi church yearly fundraising event.',
+      'Secure & Private',
+      'Your pledge information is kept confidential and secure.',
+      'Make a Difference'
+    ];
+
+    for (const phrase of english) {
+      expect(screen.queryByText(phrase)).not.toBeInTheDocument();
+    }
+  });
+
+  it('translates the description a drive falls back to when it has none of its own', () => {
+    // name/description come from the campaign record; only this fallback is
+    // the page's own copy.
+    mockUseActiveCampaign.mockReturnValue({
+      campaign: { ...CAMPAIGN, description: null, description_ti: null },
+      loading: false, error: null
+    });
+
+    renderPage();
+
+    expect(screen.queryByText('Support our church with your generous pledge')).not.toBeInTheDocument();
+  });
+
+  it('translates the success panel a giver is left looking at', async () => {
+    jest.useFakeTimers();
+    try {
+      const { container } = renderPage();
+
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(ti.pledge.intent!.anonymous.title) }));
+      // Addressed by id, so driving the form does not depend on the label language.
+      fireEvent.change(container.querySelector('#checkout-amount')!, { target: { value: '100' } });
+      fireEvent.change(container.querySelector('#checkout-baptism-name')!, { target: { value: 'Tekle' } });
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(ti.pledge.checkout!.continue) }));
+      fireEvent.click(await screen.findByRole('button', { name: /simulate successful payment/i }));
+
+      expect(screen.queryByText(/Redirecting to thank you page/i)).not.toBeInTheDocument();
+      expect(screen.getByText(ti.pledge.success!.redirecting)).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

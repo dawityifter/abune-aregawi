@@ -735,3 +735,30 @@ screen.
 | Key | English | Tigrigna (draft) | Flag |
 |-----|---------|------------------|------|
 | pledge.qr.caption | Scan to give from your phone | ብስልክኹም ንምውፋይ ስካን ግበሩ | ⚠️ `ስካን` is the English "scan" borrowed directly — confirm that is what people actually say for pointing a phone camera at a code, rather than a native verb. Also confirm `ንምውፋይ` ("to give/donate") is the right register here rather than a word for pledging specifically, since the code opens the page where both choices are offered |
+
+### Follow-up: pledge page body copy (Sep 2026)
+
+Eleven keys. These were never translations that drifted — they were English
+sitting directly in `PledgePage.tsx`, which the parity test cannot see because
+untranslated literals are not keys at all. A Tigrigna reader saw the hero
+tagline, the fundraising-progress heading, the form heading, and all three
+information cards in English.
+
+**Not covered here:** the drive's own name and description ("2026 Pledge
+Drive") come from the `pledge_campaigns` record, not the dictionary. The page
+already prefers `name_ti`/`description_ti` when set, and the admin fundraising
+tab already collects them — that campaign row simply has them empty.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| pledge.hero.defaultDescription | Support our church with your generous pledge | ብልግሲ ዝመልኦ መብጽዓኹም ንቤተ ክርስቲያንና ደግፉ። | ⚠️ only shown for a drive with no description of its own |
+| pledge.hero.tagline | Your pledge helps us continue our mission of serving our Abune Aregawi church community | መብጽዓኹም ንማሕበረሰብ ቤተ ክርስቲያን ኣቡነ ኣረጋዊ ናይ ምግልጋል ተልእኾና ንኽንቅጽል ይሕግዘና። | ⚠️ confirm `ተልእኾ` is the right word for "mission" in the sense of the church's calling, not a sent errand |
+| pledge.form.title | Make Your Pledge | መብጽዓኹም ግበሩ | ⚠️ a heading above a form, so it should read as an instruction |
+| pledge.form.subtitle | Fill out the form below to make your pledge. All information is kept confidential. | መብጽዓኹም ንምግባር ነቲ ኣብ ታሕቲ ዘሎ ቅጥዒ ምልእዎ። ኵሉ ሓበሬታ ብሚስጥር ይተሓዝ። | ⚠️ confirm `ቅጥዒ` reads as a form to fill in |
+| pledge.progress.title | Annual Fundraising Progress | ዓመታዊ ናይ ወፈያ ምዕባለ | ⚠️ `ምዕባለ` for "progress" toward a goal — confirm it does not read as "development" |
+| pledge.progress.body | Track our progress for the Abune Aregawi church yearly fundraising event. | ንዓመታዊ መደብ ወፈያ ቤተ ክርስቲያን ኣቡነ ኣረጋዊ ዘሎ ምዕባለ ተኸታተሉ። | ⚠️ same `ምዕባለ` question |
+| pledge.info.secureTitle | Secure & Private | ውሑስን ሚስጥራውን | ⚠️ a two-word card heading; confirm it stands alone as a phrase |
+| pledge.info.secureBody | Your pledge information is kept confidential and secure. | ሓበሬታ መብጽዓኹም ብሚስጥርን ብውሕስነትን ይተሓዝ። | |
+| pledge.info.differenceTitle | Make a Difference | ለውጢ ኣምጽኡ | ⚠️ literally "bring change" — confirm that carries the encouraging sense rather than sounding political |
+| pledge.info.differenceBody | In the spirit of Abune Aregawi and in the name of our Lord Jesus Christ, your pledge helps renew His Church, sustain our worship, and bless our community. | ብመንፈስ ኣቡነ ኣረጋዊን ብስም ጐይታና ኢየሱስ ክርስቶስን፡ መብጽዓኹም ቤተ ክርስቲያኑ ንኽትሕደስ፡ ኣምልኾና ንኽቕጽል፡ ማሕበረሰብናውን ንኽባረኽ ይሕግዝ። | ⚠️ **highest priority — devotional register.** Confirm the naming of our Lord and the three-part structure read properly in a liturgical voice; this is the one sentence on the page where a clumsy translation would be felt |
+| pledge.success.redirecting | Redirecting to thank you page... | ናብ ገጽ ምስጋና ይመርሓኩም ኣሎ... | ⚠️ shown for ~2 seconds after a gift; confirm the progressive sense ("is taking you there now") |

@@ -97,7 +97,7 @@ const PledgePage: React.FC = () => {
             </p>
           </div>
           <div className="text-sm text-gray-500">
-            Redirecting to thank you page...
+            {t('pledge.success.redirecting')}
           </div>
         </div>
       </div>
@@ -139,10 +139,10 @@ const PledgePage: React.FC = () => {
               {campaignName}
             </h1>
             <p className="text-xl md:text-2xl mb-6 opacity-90">
-              {campaignDescription || 'Support our church with your generous pledge'}
+              {campaignDescription || t('pledge.hero.defaultDescription')}
             </p>
             <div className="text-lg opacity-75">
-              Your pledge helps us continue our mission of serving our Abune Aregawi church community
+              {t('pledge.hero.tagline')}
             </div>
           </div>
         </div>
@@ -173,9 +173,9 @@ const PledgePage: React.FC = () => {
                   question or a "you already have one" notice read oddly. */}
               {intent === 'later' && !hasExistingPledge && (
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Make Your Pledge</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('pledge.form.title')}</h2>
                   <p className="text-gray-600">
-                    Fill out the form below to make your pledge. All information is kept confidential.
+                    {t('pledge.form.subtitle')}
                   </p>
                 </div>
               )}
@@ -225,9 +225,9 @@ const PledgePage: React.FC = () => {
             {/* Pledge Tracker */}
             <div>
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Annual Fundraising Progress</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('pledge.progress.title')}</h2>
                 <p className="text-gray-600">
-                  Track our progress for the Abune Aregawi church yearly fundraising event.
+                  {t('pledge.progress.body')}
                 </p>
               </div>
 
@@ -249,8 +249,8 @@ const PledgePage: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Secure & Private</h3>
-                <p className="text-gray-600">Your pledge information is kept confidential and secure.</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('pledge.info.secureTitle')}</h3>
+                <p className="text-gray-600">{t('pledge.info.secureBody')}</p>
               </div>
 
               <div className="text-center">
@@ -269,8 +269,8 @@ const PledgePage: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Make a Difference</h3>
-                <p className="text-gray-600">In the spirit of Abune Aregawi and in the name of our Lord Jesus Christ, your pledge helps renew His Church, sustain our worship, and bless our community.</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('pledge.info.differenceTitle')}</h3>
+                <p className="text-gray-600">{t('pledge.info.differenceBody')}</p>
               </div>
             </div>
           </div>
