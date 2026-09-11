@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const { body } = require('express-validator');
 const donationController = require('../controllers/donationController');
 const { firebaseAuthMiddleware } = require('../middleware/auth');
@@ -10,6 +11,36 @@ const router = express.Router();
 // read giving history is one decision rather than three.
 const viewRoles = ['admin', 'treasurer', 'church_leadership', 'secretary',
   'bookkeeper', 'auditor', 'budget_committee', 'ar_team', 'ap_team'];
+
+/**
+ * Card testing is the threat: a public payment endpoint is a convenient oracle
+ * for validating stolen card numbers in bulk, and the damage arrives as
+ * chargebacks and Stripe account standing rather than as an outage. This
+ * endpoint previously sat behind only the global 5000-per-15-minutes limiter,
+ * while the survey form — which risks far less — had a dedicated cap of 20.
+ *
+ * The default is deliberately generous, because the limiter is per IP and a
+ * congregation giving from the church's WiFi all shares one. A cap that blocks
+ * genuine gifts during a drive costs more than the abuse it prevents, so this
+ * is sized to sit far above any plausible burst of real giving while still
+ * cutting the ceiling roughly fortyfold. DONATION_RATE_LIMIT_MAX raises it
+ * without a deploy if a drive ever approaches it.
+ */
+const donationLimiter = rateLimit({
+  windowMs: Number(process.env.DONATION_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+  max: Number(process.env.DONATION_RATE_LIMIT_MAX || 120),
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Logged rather than silently dropped: if this ever fires during a drive it
+  // is either an attack or a limit set too low, and both need to be visible.
+  handler: (req, res, next, options) => {
+    console.warn(`⚠️  Donation rate limit reached for ${req.ip} on ${req.originalUrl}`);
+    res.status(options.statusCode).json({
+      success: false,
+      message: 'Too many payment attempts from this network. Please wait a few minutes and try again.'
+    });
+  }
+});
 
 // Validation middleware for donation creation
 const validateDonation = [
@@ -55,10 +86,10 @@ const validateDonation = [
 ];
 
 // Create payment intent
-router.post('/create-payment-intent', validateDonation, donationController.createPaymentIntent);
+router.post('/create-payment-intent', donationLimiter, validateDonation, donationController.createPaymentIntent);
 
 // Confirm payment
-router.post('/confirm-payment', donationController.confirmPayment);
+router.post('/confirm-payment', donationLimiter, donationController.confirmPayment);
 
 // READ ROUTES ARE STAFF-ONLY.
 //
