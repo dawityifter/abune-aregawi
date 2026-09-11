@@ -121,6 +121,9 @@ export interface Dictionaries {
       anonymous: { title: string; body: string };
       signIn: { title: string; body: string };
     };
+    qr?: {
+      caption: string;
+    };
     existing?: {
       title: string;
       body: string;
@@ -1955,6 +1958,9 @@ export const en: Dictionaries = {
         title: "Sign in to pledge",
         body: "A pledge for later needs an account so we can credit your payments to it."
       }
+    },
+    qr: {
+      caption: "Scan to give from your phone"
     },
     existing: {
       title: "You already have a pledge",
@@ -4195,6 +4201,9 @@ export const ti: Dictionaries = {
         title: "ንመብጽዓ እተዉ",
         body: "ንደሓር ዝግበር መብጽዓ ኣካውንት የድልዮ፡ ክፍሊትኩም ናብኡ ምእንቲ ክንውስኾ።"
       }
+    },
+    qr: {
+      caption: "ብስልክኹም ንምውፋይ ስካን ግበሩ"
     },
     existing: {
       title: "ድሮ መብጽዓ ኣለኩም",

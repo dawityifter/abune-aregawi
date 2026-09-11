@@ -722,3 +722,16 @@ that memo, explaining why Save is still greyed out.
 |-----|---------|------------------|------|
 | treasurerDashboard.expenses.edit.amountInvalid | Please enter a valid amount greater than $0.00, or $0.00 with "void" in the memo for a voided check | በጃኹም ካብ $0.00 ዝዓቢ ቅኑዕ መጠን ኣእትዉ፡ ወይ ድማ ንዝተሰረዘ ቼክ ኣብ መዘኻኸሪ "void" ጽሒፍኩም $0.00 ኣእትዉ | ⚠️ **an existing key whose Tigrigna was already reviewed; only the new second clause needs checking.** Same `void`-stays-English question as the row above |
 | treasurerDashboard.expenses.addModal.amountPositiveOrVoid | Enter an amount greater than $0.00 — or write "void" in the memo to record a voided check. | ካብ $0.00 ዝዓቢ መጠን ኣእትዉ — ወይ ድማ ዝተሰረዘ ቼክ ንምምዝጋብ ኣብ መዘኻኸሪ "void" ጽሓፉ። | ⚠️ the literal word `void` is deliberately left in English because it is what the form actually matches on — confirm that reads as an instruction to type that exact word, not as untranslated text. Also confirm `ዝተሰረዘ` ("cancelled") is right for a voided check rather than a cancelled payment |
+
+### Follow-up: pledge page QR code (Sep 2026)
+
+One key. The pledge page now shows a QR code below the anonymous giving card so
+a congregation watching the page on a television can open it on their own
+phones. The caption sits directly under the code, with the address repeated
+beneath in plain text for anyone whose camera will not focus. Desktop and TV
+only — it is hidden on phones, where it would point at the page already on
+screen.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| pledge.qr.caption | Scan to give from your phone | ብስልክኹም ንምውፋይ ስካን ግበሩ | ⚠️ `ስካን` is the English "scan" borrowed directly — confirm that is what people actually say for pointing a phone camera at a code, rather than a native verb. Also confirm `ንምውፋይ` ("to give/donate") is the right register here rather than a word for pledging specifically, since the code opens the page where both choices are offered |

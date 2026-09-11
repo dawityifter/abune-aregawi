@@ -4,6 +4,20 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
+// This jsdom version ships no TextEncoder/TextDecoder, but Jest resolves the
+// Node build of some browser-safe dependencies (qrcode, for one) and those
+// expect the globals every real browser provides. Node's implementations are
+// the same API, so handing them over closes the gap without changing what
+// ships.
+import { TextEncoder, TextDecoder } from 'util';
+
+if (typeof globalThis.TextEncoder === 'undefined') {
+  (globalThis as any).TextEncoder = TextEncoder;
+}
+if (typeof globalThis.TextDecoder === 'undefined') {
+  (globalThis as any).TextDecoder = TextDecoder;
+}
+
 // Mock Firebase Auth
 const mockGetAuth = jest.fn(() => ({
   app: {
