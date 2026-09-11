@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { LanguageProvider } from '../../contexts/LanguageContext';
 import PledgePage from '../PledgePage';
@@ -272,5 +272,38 @@ describe('PledgePage pay-now redirect', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+// ProtectedRoute already records `state={{ from: location }}` when it bounces a
+// signed-out visitor to /login. The pledge page's sign-in card has to speak the
+// same language, or a member who clicks it lands on the dashboard having lost
+// the pledge they came to make.
+describe('PledgePage sign-in return destination', () => {
+  const LoginStub: React.FC = () => {
+    const location = useLocation();
+    const from = (location.state as any)?.from;
+    return <div>login stub, from: {typeof from === 'string' ? from : JSON.stringify(from)}</div>;
+  };
+
+  it('tells the login page to come back to /pledge', () => {
+    mockUseActiveCampaign.mockReturnValue({ campaign: CAMPAIGN, loading: false, error: null });
+    mockUsePledgeBalance.mockReturnValue({ balance: null, loading: false });
+    mockUseAuth.mockReturnValue({ user: null, currentUser: null, firebaseUser: null });
+
+    render(
+      <MemoryRouter initialEntries={['/pledge']}>
+        <I18nProvider><LanguageProvider>
+          <Routes>
+            <Route path="/pledge" element={<PledgePage />} />
+            <Route path="/login" element={<LoginStub />} />
+          </Routes>
+        </LanguageProvider></I18nProvider>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /sign in to pledge/i }));
+
+    expect(screen.getByText(/login stub, from: \/pledge/)).toBeInTheDocument();
   });
 });

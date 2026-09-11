@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { signInWithPhoneNumber, User, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { normalizePhoneNumber } from "../utils/formatPhoneNumber";
+import { resolvePostLoginPath } from "../utils/postLoginRedirect";
 import { auth } from "../firebase";
 
 const PROFILE_FETCH_TIMEOUT_MS = Number(process.env.REACT_APP_PROFILE_FETCH_TIMEOUT_MS || 20000);
@@ -44,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const [backendStarting, setBackendStarting] = useState<boolean>(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Cache for 404 results to prevent retry storms
   const [newUserCache, setNewUserCache] = useState<Set<string>>(new Set());
@@ -267,6 +269,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearNewUserCacheRef = useRef(clearNewUserCache);
   const probeBackendReadyRef = useRef(probeBackendReady);
   const navigateRef = useRef(navigate);
+  // The auth-state handler runs outside render, so it reads the current
+  // location the same way it reads navigate: through a ref kept fresh below.
+  const locationRef = useRef(location);
 
   useEffect(() => {
     checkUserProfileRef.current = checkUserProfile;
@@ -283,6 +288,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     navigateRef.current = navigate;
   }, [navigate]);
+
+  useEffect(() => {
+    locationRef.current = location;
+  }, [location]);
 
   // Phone sign-in with OTP verification
   const loginWithPhone = useCallback(async (phone: string, appVerifier: any, otp?: string, confirmationResult?: any) => {
@@ -530,19 +539,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             _temp: false
           });
 
-          // Only navigate to dashboard if on login page or public pages
-          // Don't redirect if user is already on a protected page (let them stay there)
-          const REDIRECT_TO_DASHBOARD_PATHS = new Set<string>([
-            '/login',
-            '/credits',
-            '/church-bylaw',
-            '/donate',
-            '/parish-pulse-sign-up',
-          ]);
+          // Honour where the member was actually headed — ProtectedRoute and
+          // the pledge page both record it as `from` — falling back to the
+          // dashboard. A null result means they are already somewhere they
+          // chose to be and should be left alone.
           const currentPath = window.location.pathname;
-          if (REDIRECT_TO_DASHBOARD_PATHS.has(currentPath)) {
-            console.log('🔄 Navigating to dashboard from public/login page');
-            navigateRef.current('/dashboard');
+          const destination = resolvePostLoginPath(
+            currentPath,
+            (locationRef.current?.state as any)?.from
+          );
+          if (destination) {
+            console.log('🔄 Navigating after sign-in to:', destination);
+            navigateRef.current(destination);
           } else {
             console.log('✅ User already on protected route, staying on:', currentPath);
           }
@@ -570,14 +578,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               roles: profile.roles || [profile.role],
               _temp: false
             });
-            // Only navigate to dashboard if on login page or public pages
-            const REDIRECT_TO_DASHBOARD_PATHS = new Set<string>([
-              '/login', '/credits', '/church-bylaw', '/donate', '/parish-pulse-sign-up',
-            ]);
             const currentPath = window.location.pathname;
-            if (REDIRECT_TO_DASHBOARD_PATHS.has(currentPath)) {
-              console.log('🔄 Navigating to dashboard from public/login page after warm-up');
-              navigateRef.current('/dashboard');
+            const destination = resolvePostLoginPath(
+              currentPath,
+              (locationRef.current?.state as any)?.from
+            );
+            if (destination) {
+              console.log('🔄 Navigating after sign-in (post warm-up) to:', destination);
+              navigateRef.current(destination);
             } else {
               console.log('✅ User already on protected route after warm-up, staying on:', currentPath);
             }

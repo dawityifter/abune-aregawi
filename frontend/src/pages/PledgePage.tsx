@@ -206,7 +206,10 @@ const PledgePage: React.FC = () => {
                 <PledgeIntentSelector
                   signedIn={signedIn}
                   onChoose={setIntent}
-                  onSignIn={() => navigate('/login')}
+                  // Same convention ProtectedRoute uses, so the member comes
+                  // back here to finish the pledge they came to make rather
+                  // than landing on the dashboard.
+                  onSignIn={() => navigate('/login', { state: { from: '/pledge' } })}
                 />
               ) : intent === 'later' ? (
                 <PledgeLaterForm onSubmit={handlePledgeSubmit} loading={loading} />
