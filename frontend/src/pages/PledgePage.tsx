@@ -32,6 +32,18 @@ const PledgePage: React.FC = () => {
   const hasExistingPledge = signedIn && Boolean(pledgeBalance);
   const pledgeSettled = Boolean(pledgeBalance && pledgeBalance.remaining_amount <= 0);
 
+  // Every giving path ends on the same success panel, and that panel tells the
+  // giver they are being redirected. Scheduling the redirect here, rather than
+  // in each caller, is what stops the promise and the navigation from drifting
+  // apart: the pay-now branch was added wired only to setSuccess(true), so it
+  // sat on that panel announcing a redirect that was never coming.
+  const completePledge = (pledgeId?: number) => {
+    setSuccess(true);
+    setTimeout(() => {
+      navigate('/thank-you', pledgeId ? { state: { pledgeId } } : undefined);
+    }, 2000);
+  };
+
   const handlePledgeSubmit = async (formData: { amount: string; notes?: string }) => {
     try {
       setLoading(true);
@@ -57,10 +69,7 @@ const PledgePage: React.FC = () => {
 
       const data = await response.json();
       if (data.success) {
-        setSuccess(true);
-        setTimeout(() => {
-          navigate('/thank-you', { state: { pledgeId: data.pledge.id } });
-        }, 2000);
+        completePledge(data.pledge.id);
       } else {
         setError(data.message || 'Failed to submit pledge');
       }
@@ -205,7 +214,7 @@ const PledgePage: React.FC = () => {
                 <PledgeCheckoutForm
                   anonymous={intent === 'anonymous'}
                   campaignId={campaign.id}
-                  onSuccess={() => setSuccess(true)}
+                  onSuccess={completePledge}
                 />
               )}
             </div>

@@ -1,10 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { LanguageProvider } from '../../contexts/LanguageContext';
 import PledgePage from '../PledgePage';
+import ThankYouPage from '../ThankYouPage';
 
 const mockUseActiveCampaign = jest.fn();
 jest.mock('../../hooks/useActiveCampaign', () => ({
@@ -25,6 +26,15 @@ jest.mock('../../hooks/usePledgeBalance', () => ({
 // The tracker fetches on mount; keep it quiet and irrelevant to these cases.
 jest.mock('../../components/PledgeTracker', () => () => <div>tracker</div>);
 
+// Stripe.js cannot run in jsdom, so the card form itself is stubbed down to a
+// single button that fires the success callback. What is under test is what
+// PledgePage does *after* a payment succeeds, not the payment.
+jest.mock('../../components/StripePayment', () => (props: any) => (
+  <button onClick={() => props.onSuccess({ id: 99, payment_intent_id: 'pi_test' })}>
+    simulate successful payment
+  </button>
+));
+
 const CAMPAIGN = {
   id: 7, slug: 'test-drive', name: 'Test Building Drive', name_ti: null,
   description: 'Help us finish the hall.', description_ti: null,
@@ -34,6 +44,20 @@ const CAMPAIGN = {
 
 const renderPage = () => render(
   <MemoryRouter><I18nProvider><LanguageProvider><PledgePage /></LanguageProvider></I18nProvider></MemoryRouter>
+);
+
+// Navigation is the behaviour under test, so it has to be real: a bare
+// MemoryRouter would swallow navigate() and let a broken redirect pass.
+// Landing on the actual ThankYouPage is the only honest assertion.
+const renderPageWithRoutes = () => render(
+  <MemoryRouter initialEntries={['/pledge']}>
+    <I18nProvider><LanguageProvider>
+      <Routes>
+        <Route path="/pledge" element={<PledgePage />} />
+        <Route path="/thank-you" element={<ThankYouPage />} />
+      </Routes>
+    </LanguageProvider></I18nProvider>
+  </MemoryRouter>
 );
 
 // Shared default: a signed-out visitor with no pledge balance, unless a test
@@ -185,6 +209,66 @@ describe('PledgePage intent chooser', () => {
       await waitFor(() => expect(screen.getByText('Thank You!')).toBeInTheDocument());
 
       expect(screen.queryByText(/confirmation email/i)).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+// The pay-now branch (both anonymous and signed-in) set `success` but never
+// scheduled the navigate that the pledge-for-later branch does, so the shared
+// success panel sat forever announcing a redirect that was never coming.
+describe('PledgePage pay-now redirect', () => {
+  beforeEach(() => {
+    mockUseActiveCampaign.mockReturnValue({ campaign: CAMPAIGN, loading: false, error: null });
+    mockUsePledgeBalance.mockReturnValue({ balance: null, loading: false });
+    mockUseAuth.mockReturnValue({ user: null, currentUser: null, firebaseUser: null });
+  });
+
+  const settle = async () => {
+    // The success panel shows for 2s before redirecting; drive that clock
+    // rather than waiting on it.
+    await act(async () => { jest.advanceTimersByTime(2000); });
+  };
+
+  it('sends an anonymous giver to the thank-you page after paying', async () => {
+    jest.useFakeTimers();
+    try {
+      renderPageWithRoutes();
+
+      fireEvent.click(screen.getByRole('button', { name: /give anonymously now/i }));
+      fireEvent.change(screen.getByLabelText(/pledge amount/i), { target: { value: '100' } });
+      fireEvent.change(screen.getByLabelText(/baptism|church name/i), { target: { value: 'Tekle Haymanot' } });
+      fireEvent.click(screen.getByRole('button', { name: /continue to payment/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /simulate successful payment/i }));
+
+      await settle();
+
+      // "What's Next?" is unique to ThankYouPage; both screens say "Thank You!".
+      await waitFor(() => expect(screen.getByText(/What's Next\?/i)).toBeInTheDocument());
+      expect(screen.queryByText(/redirecting to thank you page/i)).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('sends a signed-in member paying now to the thank-you page', async () => {
+    jest.useFakeTimers();
+    try {
+      mockUseAuth.mockReturnValue({
+        user: { id: 42, first_name: 'Signed', last_name: 'In' },
+        currentUser: { id: 42 }, firebaseUser: null
+      });
+      renderPageWithRoutes();
+
+      fireEvent.click(screen.getByRole('button', { name: /pledge and pay now/i }));
+      fireEvent.change(screen.getByLabelText(/pledge amount/i), { target: { value: '100' } });
+      fireEvent.click(screen.getByRole('button', { name: /continue to payment/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /simulate successful payment/i }));
+
+      await settle();
+
+      await waitFor(() => expect(screen.getByText(/What's Next\?/i)).toBeInTheDocument());
     } finally {
       jest.useRealTimers();
     }
