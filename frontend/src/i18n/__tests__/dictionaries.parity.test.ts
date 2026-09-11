@@ -63,3 +63,36 @@ describe('dictionaries en/ti parity', () => {
     expect(identical).toEqual([]);
   });
 });
+
+/**
+ * Spec D6: the pledge flow must not promise messages the system never sends.
+ *
+ * Nothing in the pledge path sends an SMS or an email — `emailService` is wired
+ * only to statements and department meetings, and Stripe is never given a
+ * `receipt_email`. The promise has already been removed from the pledge page
+ * and the thank-you page once each; this stops it reappearing in either
+ * language, where it is otherwise invisible until a giver waits for a message
+ * that never arrives.
+ *
+ * Scoped to the pledge and thank-you namespaces on purpose. `achPayment` makes
+ * a similar claim about a confirmation email that is also unverified, but it
+ * belongs to a different flow and has not been ruled on.
+ */
+describe('spec D6: the pledge flow promises nothing it does not send', () => {
+  const inScope = (k: string) => k.startsWith('pledge.') || k.startsWith('thankYou.');
+
+  it('makes no English promise to send a message', () => {
+    const offenders = Object.keys(enFlat)
+      .filter(inScope)
+      .filter((k) => /payment instructions|confirmation email|confirmation text/i.test(enFlat[k]));
+    expect(offenders).toEqual([]);
+  });
+
+  it('makes no Tigrigna promise to send a message', () => {
+    // ክንሰደልኩም — "we will send it to you".
+    const offenders = Object.keys(tiFlat)
+      .filter(inScope)
+      .filter((k) => tiFlat[k].includes('ክንሰደልኩም'));
+    expect(offenders).toEqual([]);
+  });
+});

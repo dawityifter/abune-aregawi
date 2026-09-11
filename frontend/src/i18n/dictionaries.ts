@@ -2015,7 +2015,7 @@ export const en: Dictionaries = {
   pledge: {
     homeCard: {
       title: "Make a Pledge",
-      description: "Pledge your support for the church and pay when you're ready — we'll send payment instructions."
+      description: "Pledge your support for the church and pay when you're ready."
     },
     noCampaign: {
       title: "No fundraising drive is running right now",
@@ -4311,7 +4311,7 @@ export const ti: Dictionaries = {
   pledge: {
     homeCard: {
       title: "መብጽዓ ምእታው",
-      description: "ንቤተ ክርስቲያን ደገፍኩም ብመብጽዓ ኣረጋግጹ፤ ምስ ተዳለኹም ክትከፍሉ ትኽእሉ — መምርሒ ክፍሊት ክንሰደልኩም ኢና።"
+      description: "ንቤተ ክርስቲያን ደገፍኩም ብመብጽዓ ኣረጋግጹ፤ ምስ ተዳለኹም ድማ ክፈሉ።"
     },
     noCampaign: {
       title: "ሕጂ ዝካየድ ዘሎ ወፈያ የለን",

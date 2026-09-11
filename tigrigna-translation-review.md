@@ -806,3 +806,21 @@ promise in both languages — EN "we'll send payment instructions", TI "መም�
 | thankYou.footer.title | Your Pledge Makes a Difference | መብጽዓኹም ለውጢ የምጽእ | |
 | thankYou.footer.body | Every pledge, no matter the size, contributes to our mission of serving our community and spreading God's word. Thank you for your generous commitment and continued support. | ነፍሲ ወከፍ መብጽዓ፡ ብዝኾነ መጠን፡ ንማሕበረሰብና ናይ ምግልጋልን ቃል ኣምላኽ ናይ ምስፍሕፋሕን ተልእኾና የበርክት። ስለ ልግስኹምን ቀጻሊ ደገፍኩምን የቐንየልና። | ⚠️ devotional register |
 | thankYou.footer.blessing | God Bless You | ኣምላኽ ይባርኽኩም | ⚠️ a blessing — confirm the form is right for addressing a congregation |
+
+### Follow-up: home card promise removed (Sep 2026)
+
+`pledge.homeCard.description` carried the same never-kept promise in both
+languages and is now cut back to what actually happens. A guard in
+`dictionaries.parity.test.ts` fails if the promise reappears under `pledge.*`
+or `thankYou.*` in either language.
+
+| Key | English (was → now) | Tigrigna (was → now) | Flag |
+|-----|---------------------|----------------------|------|
+| pledge.homeCard.description | …pay when you're ready — **we'll send payment instructions.** → …pay when you're ready. | …ምስ ተዳለኹም ክትከፍሉ ትኽእሉ — **መምርሒ ክፍሊት ክንሰደልኩም ኢና።** → …ምስ ተዳለኹም ድማ ክፈሉ። | ⚠️ the new Tigrigna reuses the `pledge.intent.later.body` phrasing (`ምስ ተዳለኹም ድማ ክፈሉ።`) so the two read consistently — confirm that is right here too |
+
+**Still unresolved, different flow:** `achPayment.importantText` says "You will
+receive a confirmation email once the payment is processed." Nothing in the
+backend sends it — `emailService` is wired only to statements and department
+meetings, and Stripe is never given a `receipt_email`. It may still be true if
+automatic receipts are switched on in the Stripe Dashboard, which is outside
+this repo. Needs a decision: verify the Dashboard setting, or cut the sentence.
