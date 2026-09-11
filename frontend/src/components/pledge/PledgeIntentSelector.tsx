@@ -1,6 +1,5 @@
 import React from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
-import PledgeQrCode from './PledgeQrCode';
 
 export type PledgeIntent = 'later' | 'immediate' | 'anonymous';
 
@@ -49,10 +48,6 @@ const PledgeIntentSelector: React.FC<PledgeIntentSelectorProps> = ({
         <div className="font-semibold text-gray-900">{t('pledge.intent.anonymous.title')}</div>
         <div className="text-sm text-gray-600 mt-1">{t('pledge.intent.anonymous.body')}</div>
       </button>
-
-      {/* For a congregation watching this page on a television. Hidden on
-          phones, where it would point at the page already on screen. */}
-      <PledgeQrCode />
     </div>
   );
 };

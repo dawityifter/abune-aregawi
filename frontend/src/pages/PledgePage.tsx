@@ -9,6 +9,7 @@ import { usePledgeBalance } from '../hooks/usePledgeBalance';
 import PledgeIntentSelector, { PledgeIntent } from '../components/pledge/PledgeIntentSelector';
 import PledgeLaterForm from '../components/pledge/PledgeLaterForm';
 import PledgeCheckoutForm from '../components/pledge/PledgeCheckoutForm';
+import PledgeQrCode from '../components/pledge/PledgeQrCode';
 
 const PledgePage: React.FC = () => {
   const navigate = useNavigate();
@@ -220,6 +221,16 @@ const PledgePage: React.FC = () => {
                   onSuccess={completePledge}
                 />
               )}
+
+              {/* Deliberately outside the conditional above. This page gets
+                  left up on a television for a congregation to scan, so the
+                  code has to survive whatever state the page is in — someone
+                  picking an option, or a member who already pledged seeing
+                  their balance instead of the chooser. It hides itself on
+                  phones, where it would point at the page already on screen. */}
+              <div className="mt-6">
+                <PledgeQrCode />
+              </div>
             </div>
 
             {/* Pledge Tracker */}

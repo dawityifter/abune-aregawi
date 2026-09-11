@@ -5,7 +5,6 @@ import QRCode from 'qrcode';
 import { I18nProvider } from '../../../i18n/I18nProvider';
 import { LanguageProvider } from '../../../contexts/LanguageContext';
 import PledgeQrCode, { PLEDGE_QR_URL, PLEDGE_QR_OPTIONS } from '../PledgeQrCode';
-import PledgeIntentSelector from '../PledgeIntentSelector';
 
 const wrap = (ui: React.ReactElement) =>
   render(<I18nProvider><LanguageProvider>{ui}</LanguageProvider></I18nProvider>);
@@ -63,22 +62,5 @@ describe('PledgeQrCode', () => {
   it('shows the address in readable text for a camera that will not focus', async () => {
     wrap(<PledgeQrCode />);
     expect(await screen.findByText('abunearegawi.church/pledge')).toBeInTheDocument();
-  });
-});
-
-describe('PledgeIntentSelector QR placement', () => {
-  it('shows the QR code below the anonymous giving card', async () => {
-    const { container } = wrap(
-      <PledgeIntentSelector signedIn={false} onChoose={jest.fn()} onSignIn={jest.fn()} />
-    );
-
-    await waitFor(() => expect(container.querySelector('svg')).not.toBeNull());
-
-    const anonymousCard = screen.getByRole('button', { name: /give anonymously now/i });
-    const qrRoot = container.querySelector('svg')!.closest('[data-testid="pledge-qr"]')!;
-
-    // DOCUMENT_POSITION_FOLLOWING: the QR comes after the card in the document.
-    expect(anonymousCard.compareDocumentPosition(qrRoot) & Node.DOCUMENT_POSITION_FOLLOWING)
-      .toBeTruthy();
   });
 });

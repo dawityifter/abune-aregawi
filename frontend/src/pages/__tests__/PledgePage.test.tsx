@@ -372,3 +372,48 @@ describe('PledgePage in Tigrigna', () => {
     }
   });
 });
+
+// The QR exists so a congregation can scan it off a television. Living inside
+// the intent chooser meant it vanished the moment anyone picked an option, and
+// never appeared at all for a member who already had a pledge — so the screen
+// most likely to be left on display was the one state that lost it.
+describe('PledgePage QR code stays on screen', () => {
+  beforeEach(() => {
+    mockUseActiveCampaign.mockReturnValue({ campaign: CAMPAIGN, loading: false, error: null });
+    mockUsePledgeBalance.mockReturnValue({ balance: null, loading: false });
+    mockUseAuth.mockReturnValue({ user: null, currentUser: null, firebaseUser: null });
+  });
+
+  it('keeps the QR code visible after a giver picks an option', async () => {
+    renderPage();
+    expect(await screen.findByTestId('pledge-qr')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /give anonymously now/i }));
+
+    expect(screen.getByTestId('pledge-qr')).toBeInTheDocument();
+  });
+
+  it('places the QR code after the giving options, not above them', async () => {
+    renderPage();
+    const qr = await screen.findByTestId('pledge-qr');
+    const anonymousCard = screen.getByRole('button', { name: /give anonymously now/i });
+
+    // DOCUMENT_POSITION_FOLLOWING: the code comes after the options a giver
+    // came to use, so it never pushes them down the page.
+    expect(anonymousCard.compareDocumentPosition(qr) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+  });
+
+  it('shows the QR code to a member who already has a pledge', async () => {
+    mockUseAuth.mockReturnValue({ user: { id: 1 }, currentUser: { id: 1 }, firebaseUser: null });
+    mockUsePledgeBalance.mockReturnValue({
+      balance: { id: 3, campaign_name: 'Test Building Drive',
+                 pledged_amount: 500, paid_amount: 200, remaining_amount: 300 },
+      loading: false
+    });
+
+    renderPage();
+
+    expect(await screen.findByTestId('pledge-qr')).toBeInTheDocument();
+  });
+});
