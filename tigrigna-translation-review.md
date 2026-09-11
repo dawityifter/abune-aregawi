@@ -762,3 +762,47 @@ tab already collects them — that campaign row simply has them empty.
 | pledge.info.differenceTitle | Make a Difference | ለውጢ ኣምጽኡ | ⚠️ literally "bring change" — confirm that carries the encouraging sense rather than sounding political |
 | pledge.info.differenceBody | In the spirit of Abune Aregawi and in the name of our Lord Jesus Christ, your pledge helps renew His Church, sustain our worship, and bless our community. | ብመንፈስ ኣቡነ ኣረጋዊን ብስም ጐይታና ኢየሱስ ክርስቶስን፡ መብጽዓኹም ቤተ ክርስቲያኑ ንኽትሕደስ፡ ኣምልኾና ንኽቕጽል፡ ማሕበረሰብናውን ንኽባረኽ ይሕግዝ። | ⚠️ **highest priority — devotional register.** Confirm the naming of our Lord and the three-part structure read properly in a liturgical voice; this is the one sentence on the page where a clumsy translation would be felt |
 | pledge.success.redirecting | Redirecting to thank you page... | ናብ ገጽ ምስጋና ይመርሓኩም ኣሎ... | ⚠️ shown for ~2 seconds after a gift; confirm the progressive sense ("is taking you there now") |
+
+### Follow-up: thank-you page (Sep 2026)
+
+Twenty-two keys. `ThankYouPage.tsx` had no i18n wiring at all — not one `t()`
+call — so a Tigrigna giver reached the page after giving and read the whole
+thing in English. The fundraising-progress heading and body reuse
+`pledge.progress.*` rather than duplicating them.
+
+**A content change, not just a translation:** step 1 read "Check Your Text
+Message — You'll receive a confirmation text message with your pledge details
+and payment instructions." No SMS is sent anywhere in the pledge path. This is
+the same promise spec D6 stripped off the pledge page (two regression tests
+there guard it) which survived on this page. Replaced with `thankYou.step1`,
+which says the pledge is recorded. **Confirm the new English before trusting
+the Tigrigna.**
+
+**Still outstanding:** `pledge.homeCard.description` carries the same false
+promise in both languages — EN "we'll send payment instructions", TI "መምርሒ
+ክፍሊት ክንሰደልኩም ኢና።". Not changed here; needs the same decision.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| thankYou.title | Thank You! | የቐንየልና! | |
+| thankYou.subtitle | Your pledge has been received and recorded | መብጽዓኹም ተቐቢልናዮን መዝጊብናዮን ኣለና | ⚠️ confirm the two verbs read naturally joined rather than as a list |
+| thankYou.whatsNext | What's Next? | ቀጺሉ እንታይ? | |
+| thankYou.step1.title | Your Pledge Is Recorded | መብጽዓኹም ተመዝጊቡ ኣሎ | ⚠️ **new English copy — confirm the English first** |
+| thankYou.step1.body | Your pledge now counts toward this year's drive, and the church has a record of it. | መብጽዓኹም ሕጂ ናብ ናይዚ ዓመት ወፈያ ይቑጸር ኣሎ፡ ቤተ ክርስቲያንውን መዝገብ ኣለዋ። | ⚠️ **new English copy.** Also confirm `ይቑጸር` carries "counts toward a total" |
+| thankYou.step2.title | Choose Your Payment Method | ናይ ክፍሊት ኣገባብኩም ምረጹ | |
+| thankYou.step2.body | Pay when you're ready using credit card, bank transfer, cash, Zelle, or other preferred methods. | ምስ ተዳለኹም ብክረዲት ካርድ፡ ብባንክ ምትሕልላፍ፡ ብጥረ ገንዘብ፡ ብZelle ወይ ብኻልእ እትመርጽዎ ኣገባብ ክፈሉ። | ⚠️ `Zelle` deliberately left in Latin script as a brand name — confirm that is right |
+| thankYou.step3.title | Track Your Impact | ጽልዋኹም ተኸታተሉ | ⚠️ confirm `ጽልዋ` reads as positive impact rather than influence over someone |
+| thankYou.step3.body | Witness how your generous contribution helps expand God's house for our growing congregation. | ልግሲ ዝመልኦ ወፈያኹም ንዝዓቢ ዘሎ ማሕበረሰብና ቤት ኣምላኽ ንኸስፍሕ ከመይ ከም ዝሕግዝ ተዓዘቡ። | ⚠️ devotional register; confirm `ቤት ኣምላኽ` is the right phrase for God's house |
+| thankYou.questions.title | Questions? | ሕቶ ኣለኩም? | |
+| thankYou.questions.body | If you have any questions about your pledge or need assistance with payment, please contact us: | ብዛዕባ መብጽዓኹም ሕቶ እንተሃልዩኩም ወይ ብዛዕባ ክፍሊት ሓገዝ እንተደሊኹም፡ በጃኹም ርኸቡና፦ | |
+| thankYou.questions.emailLabel | Email: | ኢመይል፦ | ⚠️ confirm `፦` is the right terminator before a value |
+| thankYou.questions.addressLabel | Address: | ኣድራሻ፦ | |
+| thankYou.returnHome | Return to Home | ናብ መእተዊ ገጽ ተመለሱ | |
+| thankYou.additionalDonation | Make Additional Donation | ተወሳኺ ውህበት ግበሩ | |
+| thankYou.share.title | Share Your Support | ደገፍኩም ኣካፍሉ | |
+| thankYou.share.body | Help us spread the word about this important cause. | ብዛዕባ እዚ ኣገዳሲ ዕላማ ንኸነስፋሕፍሕ ሓግዙና። | |
+| thankYou.share.facebook | Share on Facebook | ብፌስቡክ ኣካፍሉ | ⚠️ confirm transliterating the platform name is preferred over leaving it Latin |
+| thankYou.share.twitter | Share on Twitter | ብትዊተር ኣካፍሉ | ⚠️ same question; also the button still says Twitter rather than X |
+| thankYou.footer.title | Your Pledge Makes a Difference | መብጽዓኹም ለውጢ የምጽእ | |
+| thankYou.footer.body | Every pledge, no matter the size, contributes to our mission of serving our community and spreading God's word. Thank you for your generous commitment and continued support. | ነፍሲ ወከፍ መብጽዓ፡ ብዝኾነ መጠን፡ ንማሕበረሰብና ናይ ምግልጋልን ቃል ኣምላኽ ናይ ምስፍሕፋሕን ተልእኾና የበርክት። ስለ ልግስኹምን ቀጻሊ ደገፍኩምን የቐንየልና። | ⚠️ devotional register |
+| thankYou.footer.blessing | God Bless You | ኣምላኽ ይባርኽኩም | ⚠️ a blessing — confirm the form is right for addressing a congregation |

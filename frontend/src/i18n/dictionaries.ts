@@ -106,6 +106,33 @@ export interface Dictionaries {
   nav: {
     makePledge: string;
   };
+  thankYou: {
+    title: string;
+    subtitle: string;
+    whatsNext: string;
+    step1: { title: string; body: string };
+    step2: { title: string; body: string };
+    step3: { title: string; body: string };
+    questions: {
+      title: string;
+      body: string;
+      emailLabel: string;
+      addressLabel: string;
+    };
+    returnHome: string;
+    additionalDonation: string;
+    share: {
+      title: string;
+      body: string;
+      facebook: string;
+      twitter: string;
+    };
+    footer: {
+      title: string;
+      body: string;
+      blessing: string;
+    };
+  };
   pledge: {
     homeCard: {
       title: string;
@@ -1949,6 +1976,42 @@ export const en: Dictionaries = {
     }
   },
 
+  thankYou: {
+    title: "Thank You!",
+    subtitle: "Your pledge has been received and recorded",
+    whatsNext: "What's Next?",
+    step1: {
+      title: "Your Pledge Is Recorded",
+      body: "Your pledge now counts toward this year's drive, and the church has a record of it."
+    },
+    step2: {
+      title: "Choose Your Payment Method",
+      body: "Pay when you're ready using credit card, bank transfer, cash, Zelle, or other preferred methods."
+    },
+    step3: {
+      title: "Track Your Impact",
+      body: "Witness how your generous contribution helps expand God's house for our growing congregation."
+    },
+    questions: {
+      title: "Questions?",
+      body: "If you have any questions about your pledge or need assistance with payment, please contact us:",
+      emailLabel: "Email:",
+      addressLabel: "Address:"
+    },
+    returnHome: "Return to Home",
+    additionalDonation: "Make Additional Donation",
+    share: {
+      title: "Share Your Support",
+      body: "Help us spread the word about this important cause.",
+      facebook: "Share on Facebook",
+      twitter: "Share on Twitter"
+    },
+    footer: {
+      title: "Your Pledge Makes a Difference",
+      body: "Every pledge, no matter the size, contributes to our mission of serving our community and spreading God's word. Thank you for your generous commitment and continued support.",
+      blessing: "God Bless You"
+    }
+  },
   pledge: {
     homeCard: {
       title: "Make a Pledge",
@@ -4209,6 +4272,42 @@ export const ti: Dictionaries = {
   },
 
   // DRAFT, pending native review
+  thankYou: {
+    title: "የቐንየልና!",
+    subtitle: "መብጽዓኹም ተቐቢልናዮን መዝጊብናዮን ኣለና",
+    whatsNext: "ቀጺሉ እንታይ?",
+    step1: {
+      title: "መብጽዓኹም ተመዝጊቡ ኣሎ",
+      body: "መብጽዓኹም ሕጂ ናብ ናይዚ ዓመት ወፈያ ይቑጸር ኣሎ፡ ቤተ ክርስቲያንውን መዝገብ ኣለዋ።"
+    },
+    step2: {
+      title: "ናይ ክፍሊት ኣገባብኩም ምረጹ",
+      body: "ምስ ተዳለኹም ብክረዲት ካርድ፡ ብባንክ ምትሕልላፍ፡ ብጥረ ገንዘብ፡ ብZelle ወይ ብኻልእ እትመርጽዎ ኣገባብ ክፈሉ።"
+    },
+    step3: {
+      title: "ጽልዋኹም ተኸታተሉ",
+      body: "ልግሲ ዝመልኦ ወፈያኹም ንዝዓቢ ዘሎ ማሕበረሰብና ቤት ኣምላኽ ንኸስፍሕ ከመይ ከም ዝሕግዝ ተዓዘቡ።"
+    },
+    questions: {
+      title: "ሕቶ ኣለኩም?",
+      body: "ብዛዕባ መብጽዓኹም ሕቶ እንተሃልዩኩም ወይ ብዛዕባ ክፍሊት ሓገዝ እንተደሊኹም፡ በጃኹም ርኸቡና፦",
+      emailLabel: "ኢመይል፦",
+      addressLabel: "ኣድራሻ፦"
+    },
+    returnHome: "ናብ መእተዊ ገጽ ተመለሱ",
+    additionalDonation: "ተወሳኺ ውህበት ግበሩ",
+    share: {
+      title: "ደገፍኩም ኣካፍሉ",
+      body: "ብዛዕባ እዚ ኣገዳሲ ዕላማ ንኸነስፋሕፍሕ ሓግዙና።",
+      facebook: "ብፌስቡክ ኣካፍሉ",
+      twitter: "ብትዊተር ኣካፍሉ"
+    },
+    footer: {
+      title: "መብጽዓኹም ለውጢ የምጽእ",
+      body: "ነፍሲ ወከፍ መብጽዓ፡ ብዝኾነ መጠን፡ ንማሕበረሰብና ናይ ምግልጋልን ቃል ኣምላኽ ናይ ምስፍሕፋሕን ተልእኾና የበርክት። ስለ ልግስኹምን ቀጻሊ ደገፍኩምን የቐንየልና።",
+      blessing: "ኣምላኽ ይባርኽኩም"
+    }
+  },
   pledge: {
     homeCard: {
       title: "መብጽዓ ምእታው",
