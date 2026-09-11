@@ -1,8 +1,15 @@
 const express = require('express');
 const { body } = require('express-validator');
 const donationController = require('../controllers/donationController');
+const { firebaseAuthMiddleware } = require('../middleware/auth');
+const roleMiddleware = require('../middleware/role');
 
 const router = express.Router();
+
+// Mirrors the view roles used by the pledge and campaign routers, so who may
+// read giving history is one decision rather than three.
+const viewRoles = ['admin', 'treasurer', 'church_leadership', 'secretary',
+  'bookkeeper', 'auditor', 'budget_committee', 'ar_team', 'ap_team'];
 
 // Validation middleware for donation creation
 const validateDonation = [
@@ -53,11 +60,28 @@ router.post('/create-payment-intent', validateDonation, donationController.creat
 // Confirm payment
 router.post('/confirm-payment', donationController.confirmPayment);
 
-// Get donation by ID
-router.get('/:id', donationController.getDonation);
+// READ ROUTES ARE STAFF-ONLY.
+//
+// These two were reachable by anyone: the list below was marked "admin only"
+// in a comment while carrying no middleware at all, and returned every donor's
+// name, email and amount — with the page size chosen by the caller. Giving
+// history is among the most sensitive data the church holds, and this file was
+// the only financial router without a router.use(firebaseAuthMiddleware).
+//
+// The guards stay on the individual routes rather than a router-level use(),
+// because the two routes above them must remain public: an anonymous giver has
+// no token when they reach the payment form.
+router.get('/:id',
+  firebaseAuthMiddleware,
+  roleMiddleware(viewRoles),
+  donationController.getDonation
+);
 
-// Get all donations (admin only)
-router.get('/', donationController.getAllDonations);
+router.get('/',
+  firebaseAuthMiddleware,
+  roleMiddleware(viewRoles),
+  donationController.getAllDonations
+);
 
 // Webhook is mounted in server.js before body parsers to preserve raw body for signature verification
 
