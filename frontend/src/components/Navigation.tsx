@@ -143,20 +143,26 @@ const Navigation: React.FC = () => {
                   {t('navigation.dashboard')}
                 </Link>
 
-                {activeCampaign && (
-                  <Link
-                    to="/pledge"
-                    className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
-                  >
-                    {t('nav.makePledge')}
-                  </Link>
-                )}
 
                 {/* Admin link removed from desktop header */}
                 {/* Outreach link removed; access via Dashboard Relationship Department card */}
                 {/* SMS link removed; access via Dashboard Communications card */}
                 {/* Profile link removed as requested */}
               </>
+            )}
+
+            {/* Outside the signed-in branch on purpose. A visitor who has not
+                signed in is exactly who a drive most needs to reach, and
+                pledging does not require an account — the page offers
+                anonymous giving. Still gated on a running drive: without one,
+                /pledge only shows its "no active campaign" state. */}
+            {activeCampaign && (
+              <Link
+                to="/pledge"
+                className="px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 rounded-md transition-colors"
+              >
+                {t('nav.makePledge')}
+              </Link>
             )}
           </div>
 
@@ -280,16 +286,6 @@ const Navigation: React.FC = () => {
                   {t('navigation.dashboard')}
                 </Link>
 
-                {activeCampaign && (
-                  <Link
-                    to="/pledge"
-                    className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <i className="fas fa-hand-holding-heart mr-3 w-5 text-center"></i>
-                    {t('nav.makePledge')}
-                  </Link>
-                )}
 
                 {/* Admin link removed from mobile header */}
                 {/* Outreach link removed from mobile; access via Dashboard Relationship Department card */}
@@ -310,6 +306,18 @@ const Navigation: React.FC = () => {
                   {t('sign.out')}
                 </button>
               </>
+            )}
+
+            {/* Outside the signed-in branch on purpose — see the desktop header. */}
+            {activeCampaign && (
+              <Link
+                to="/pledge"
+                className="block px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-100 mx-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <i className="fas fa-hand-holding-heart mr-3 w-5 text-center"></i>
+                {t('nav.makePledge')}
+              </Link>
             )}
 
             {!currentUser && (

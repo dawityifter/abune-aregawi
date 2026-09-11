@@ -79,6 +79,26 @@ describe('Navigation church name heading', () => {
 describe('Navigation pledge link', () => {
   const pledgeLinks = () => screen.queryAllByText(en.nav.makePledge);
 
+  // A visitor who has not signed in is exactly who a fundraising drive most
+  // needs to reach, and the link sat behind a currentUser check alongside the
+  // Dashboard link — so the people least likely to find /pledge on their own
+  // were the only ones not offered it.
+  it('offers the pledge link to a signed-out visitor', () => {
+    mockCurrentUser = null;
+    mockCampaignState = { campaign: LIVE_CAMPAIGN, loading: false, error: null };
+    renderNav('en');
+
+    expect(pledgeLinks().length).toBeGreaterThan(0);
+  });
+
+  it('still hides it from a signed-out visitor when no drive is running', () => {
+    mockCurrentUser = null;
+    mockCampaignState = { campaign: null, loading: false, error: null };
+    renderNav('en');
+
+    expect(pledgeLinks()).toHaveLength(0);
+  });
+
   it('offers the pledge link while a drive is running', () => {
     mockCurrentUser = { uid: 'member-1' };
     mockCampaignState = { campaign: LIVE_CAMPAIGN, loading: false, error: null };
