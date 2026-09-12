@@ -8,7 +8,7 @@ const CalendarSection: React.FC = () => {
     return (
         <section className="py-16 bg-accent-50/50">
             <div className="container mx-auto px-4">
-                <h2 className="section-title text-center mb-12">
+                <h2 className="section-title mb-12">
                     {t('calendar.title')}
                 </h2>
                 <div className="flex flex-col items-center justify-center gap-12">

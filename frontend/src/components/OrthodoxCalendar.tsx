@@ -181,7 +181,7 @@ const OrthodoxCalendar: React.FC = () => {
     return (
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-accent-100 w-full max-w-7xl mx-auto flex flex-col lg:flex-row">
             {/* SIDEBARS: FASTS & FEASTS */}
-            <CalendarSidebar title={language === 'ti' ? '7 ዓበይቲ ጾማት' : '7 Major Fasts'} icon="fas fa-moon" items={MAJOR_FASTS_LIST} language={language} color="purple" />
+            <CalendarSidebar title={language === 'ti' ? '7 ዓበይቲ ጾማት' : '7 Major Fasts'} icon="fas fa-moon" items={MAJOR_FASTS_LIST} language={language} color="fast" />
 
             {/* CENTER: CALENDAR */}
             <div className="flex-grow flex flex-col min-w-0">
@@ -218,7 +218,7 @@ const OrthodoxCalendar: React.FC = () => {
                 <CalendarDetailsPane ethInfo={ethInfo} selectedEvent={selectedEvent} language={language} />
             </div>
 
-            <CalendarSidebar title={language === 'ti' ? '9 ዓበይቲ በዓላት' : '9 Major Feasts'} icon="fas fa-sun" items={MAJOR_FEASTS_LIST} language={language} color="amber" />
+            <CalendarSidebar title={language === 'ti' ? '9 ዓበይቲ በዓላት' : '9 Major Feasts'} icon="fas fa-sun" items={MAJOR_FEASTS_LIST} language={language} color="feast" />
         </div>
     );
 };
@@ -240,13 +240,13 @@ const CalendarCell: React.FC<{
 
     if (event) {
         if (event.type === 'fast') {
-            bgClass = isSelected ? "bg-purple-600" : "bg-purple-100 hover:bg-purple-200";
-            textClass = isSelected ? "text-white" : "text-purple-900";
-            dotClass = isSelected ? "bg-white" : "bg-purple-500";
+            bgClass = isSelected ? "bg-tsaeda-600" : "bg-tsaeda-100 hover:bg-tsaeda-200";
+            textClass = isSelected ? "text-white" : "text-tsaeda-800";
+            dotClass = isSelected ? "bg-white" : "bg-tsaeda-500";
         } else if (event.type === 'major_feast') {
-            bgClass = isSelected ? "bg-amber-600" : "bg-amber-100 hover:bg-amber-200";
-            textClass = isSelected ? "text-white" : "text-amber-900";
-            dotClass = isSelected ? "bg-white" : "bg-amber-500";
+            bgClass = isSelected ? "bg-secondary-600" : "bg-secondary-100 hover:bg-secondary-200";
+            textClass = isSelected ? "text-white" : "text-secondary-800";
+            dotClass = isSelected ? "bg-white" : "bg-secondary-500";
         } else {
             bgClass = isSelected ? "bg-primary-600" : "bg-primary-100 hover:bg-primary-200";
             textClass = isSelected ? "text-white" : "text-primary-900";
@@ -258,12 +258,12 @@ const CalendarCell: React.FC<{
     }
 
     if (isSelected) {
-        bgClass = "bg-white ring-4 ring-amber-500 ring-offset-2 shadow-2xl scale-110 z-20 border-primary-600";
+        bgClass = "bg-white ring-4 ring-secondary-500 ring-offset-2 shadow-2xl scale-110 z-20 border-primary-600";
         textClass = "text-primary-950 font-black";
         if (event) {
             // Keep event color hints but make them more subtle when selected
-            if (event.type === 'fast') bgClass = "bg-purple-50 ring-4 ring-amber-500 ring-offset-2 shadow-2xl scale-110 z-20 border-purple-600";
-            else if (event.type === 'major_feast') bgClass = "bg-amber-50 ring-4 ring-amber-500 ring-offset-2 shadow-2xl scale-110 z-20 border-amber-600";
+            if (event.type === 'fast') bgClass = "bg-tsaeda-50 ring-4 ring-secondary-500 ring-offset-2 shadow-2xl scale-110 z-20 border-tsaeda-600";
+            else if (event.type === 'major_feast') bgClass = "bg-secondary-50 ring-4 ring-secondary-500 ring-offset-2 shadow-2xl scale-110 z-20 border-secondary-600";
         }
     }
 
@@ -300,19 +300,21 @@ const CalendarCell: React.FC<{
     );
 };
 
-const CalendarSidebar: React.FC<{ title: string; icon: string; items: any[]; language: string; color: 'purple' | 'amber' }> = ({ title, icon, items, language, color }) => {
-    const isPurple = color === 'purple';
+const CalendarSidebar: React.FC<{ title: string; icon: string; items: any[]; language: string; color: 'fast' | 'feast' }> = ({ title, icon, items, language, color }) => {
+    // Fasts read verdigris, feasts gold — the colour now names the kind
+    // of day rather than a hue picked from Tailwind's defaults.
+    const isFast = color === 'fast';
     return (
-        <div className={`w-full lg:w-64 ${isPurple ? 'bg-purple-50 border-r border-purple-100' : 'bg-amber-50 border-l border-amber-100'} p-6`}>
-            <h4 className={`${isPurple ? 'text-purple-900' : 'text-amber-900'} font-serif font-bold text-lg mb-4 flex items-center gap-2`}>
+        <div className={`w-full lg:w-64 ${isFast ? 'bg-tsaeda-50 border-r border-tsaeda-100' : 'bg-secondary-50 border-l border-secondary-100'} p-6`}>
+            <h4 className={`${isFast ? 'text-tsaeda-800' : 'text-secondary-800'} font-serif font-bold text-lg mb-4 flex items-center gap-2`}>
                 <i className={icon}></i>
                 {title}
             </h4>
             <ul className="space-y-3">
                 {items.map((item, idx) => (
                     <li key={idx} className="flex items-start gap-2 group">
-                        <div className={`mt-1.5 w-1.5 h-1.5 rounded-full ${isPurple ? 'bg-purple-400' : 'bg-amber-400'} shrink-0`}></div>
-                        <span className={`text-sm ${isPurple ? 'text-purple-800' : 'text-amber-800'} font-medium`}>
+                        <div className={`mt-1.5 w-1.5 h-1.5 rounded-full ${isFast ? 'bg-tsaeda-400' : 'bg-secondary-400'} shrink-0`}></div>
+                        <span className={`text-sm ${isFast ? 'text-tsaeda-700' : 'text-secondary-700'} font-medium`}>
                             {language === 'ti' ? item.titleTi : item.title}
                         </span>
                     </li>
@@ -323,9 +325,9 @@ const CalendarSidebar: React.FC<{ title: string; icon: string; items: any[]; lan
                 generated, so a member gets the current year either way and a
                 stale download would only mislead. The attribution stays: the
                 2025 calendar is what the generator's rules were derived from. */}
-            {!isPurple && (
+            {!isFast && (
                 <div className="mt-auto pt-8">
-                    <p className="text-[10px] font-medium text-amber-900/60 italic text-center leading-relaxed">
+                    <p className="text-[10px] font-medium text-secondary-800/60 italic text-center leading-relaxed">
                         Acknowledging ቦክረ ሊቃዉንት መምህር አፈወርቅ, whose Orthodox Calendar these dates follow
                     </p>
                 </div>
@@ -351,8 +353,8 @@ const CalendarDetailsPane: React.FC<{ ethInfo: any; selectedEvent: any; language
                             {language === 'ti' ? `${ethInfo.monthTi} ${ethInfo.day}, ${ethInfo.year}` : `${ethInfo.month} ${ethInfo.day}, ${ethInfo.year}`}
                         </div>
                         {selectedEvent && (
-                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${selectedEvent.type === 'fast' ? 'bg-purple-200 text-purple-800' :
-                                selectedEvent.type === 'major_feast' ? 'bg-amber-200 text-amber-800' :
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${selectedEvent.type === 'fast' ? 'bg-tsaeda-200 text-tsaeda-700' :
+                                selectedEvent.type === 'major_feast' ? 'bg-secondary-200 text-secondary-700' :
                                     'bg-primary-200 text-primary-800'
                                 }`}>
                                 {selectedEvent.type.replace('_', ' ')}

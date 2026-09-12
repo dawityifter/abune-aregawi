@@ -69,9 +69,9 @@ const LiturgicalToday: React.FC<{ variant?: Variant; now?: Date }> = ({
   // band and the grid agree with each other at a glance.
   const isFeast = todaysEvent && todaysEvent.type !== 'fast';
   const accent = isFeast
-    ? { chip: 'bg-amber-100 text-amber-900', dot: 'bg-amber-500', rule: 'border-amber-200' }
+    ? { chip: 'bg-secondary-100 text-secondary-800', dot: 'bg-secondary-500', rule: 'border-secondary-200' }
     : fast
-      ? { chip: 'bg-purple-100 text-purple-900', dot: 'bg-purple-500', rule: 'border-purple-200' }
+      ? { chip: 'bg-tsaeda-100 text-tsaeda-800', dot: 'bg-tsaeda-500', rule: 'border-tsaeda-200' }
       : { chip: 'bg-primary-100 text-primary-900', dot: 'bg-primary-500', rule: 'border-accent-200' };
 
   const eventTitle = todaysEvent ? (ti ? todaysEvent.titleTi : todaysEvent.title) : '';
@@ -159,7 +159,7 @@ const LiturgicalToday: React.FC<{ variant?: Variant; now?: Date }> = ({
               .replace('{total}', String(fast.totalDays))}
           </p>
           <div
-            className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-purple-100"
+            className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-tsaeda-100"
             role="progressbar"
             aria-valuenow={fast.dayOfSeason}
             aria-valuemin={1}
@@ -167,7 +167,7 @@ const LiturgicalToday: React.FC<{ variant?: Variant; now?: Date }> = ({
             aria-label={ti ? fast.season.titleTi : fast.season.title}
           >
             <div
-              className="h-full rounded-full bg-purple-500 transition-all"
+              className="h-full rounded-full bg-tsaeda-500 transition-all"
               style={{ width: `${(fast.dayOfSeason / fast.totalDays) * 100}%` }}
             />
           </div>

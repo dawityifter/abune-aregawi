@@ -9,7 +9,7 @@ const GrowSpirituallySection: React.FC = () => {
   return (
     <section id="watch" className="py-16">
       <div className="container mx-auto px-4">
-        <h2 className="section-title flex items-center justify-center gap-3">
+        <h2 className="section-title flex items-center gap-3">
           {t('grow.spiritually')}
         </h2>
         <div className="mt-6 flex justify-center w-full">
