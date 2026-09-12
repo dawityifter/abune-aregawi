@@ -147,7 +147,7 @@ const DuesPage: React.FC = () => {
   // of how the dues fetch itself is going.
   const pledgeBanner = pledgeBalance && pledgeBalance.remaining_amount > 0 && (
     <div className="mb-6 rounded-lg border border-primary-200 bg-primary-50 p-4">
-      <div className="font-semibold text-accent-900">{t('duesPage.pledgeBannerTitle')}</div>
+      <div className="font-semibold text-accent-700">{t('duesPage.pledgeBannerTitle')}</div>
       <p className="mt-1 text-sm text-accent-700">
         {t('duesPage.pledgeBannerBody', {
           amount: `$${pledgeBalance.remaining_amount.toLocaleString()}`,

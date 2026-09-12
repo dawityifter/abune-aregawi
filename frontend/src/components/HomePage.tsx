@@ -6,6 +6,8 @@ import LiveStreamBanner from './LiveStreamBanner';
 import QuickLinks from './QuickLinks';
 import ParishAnnouncements from './ParishAnnouncements';
 import LiturgicalToday from './LiturgicalToday';
+import NextService from './NextService';
+import FullSchedule from './FullSchedule';
 import WhatsHappeningSection from './sections/WhatsHappeningSection';
 import CalendarSection from './sections/CalendarSection';
 import GrowSpirituallySection from './sections/GrowSpirituallySection';
@@ -29,16 +31,25 @@ const HomePage: React.FC = () => {
     <div className={`min-h-screen bg-neutral-50 ${lang === 'ti' ? 'text-tigrigna' : ''}`}>
       <Hero />
       <LiveStreamBanner />
-      <QuickLinks />
-      {/* Above the calendar: a visitor should learn what today is without
-          having to read a grid. */}
+
+      {/* The two questions a member actually opens the site to ask, answered
+          first: what day is it in the Church, and when can I come.
+          Both used to sit below a five-card grid whose largest card was a
+          forty-line class schedule. */}
       <div className="container mx-auto px-4 pt-8">
         <LiturgicalToday variant="home" />
       </div>
+      <NextService />
+      <FullSchedule />
+
       <ParishAnnouncements />
+      <WhatsHappeningSection />
       <CalendarSection />
       <GrowSpirituallySection />
-      <WhatsHappeningSection />
+      {/* Demoted below the parish's own news: the priest, the map and the
+          survey are things a visitor looks up once, not what a returning
+          member came for. */}
+      <QuickLinks />
       <Footer />
       <PromoPopup />
     </div>

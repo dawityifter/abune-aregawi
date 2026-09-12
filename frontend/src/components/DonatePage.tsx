@@ -282,7 +282,7 @@ const DonatePage: React.FC = () => {
                         className="mt-1"
                       />
                       <span>
-                        <span className="block font-medium text-accent-900">
+                        <span className="block font-medium text-accent-700">
                           {t('donatePage.applyToPledge')}
                         </span>
                         <span className="block text-sm text-accent-700">

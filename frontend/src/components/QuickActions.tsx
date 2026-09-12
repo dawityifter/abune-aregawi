@@ -16,7 +16,7 @@ const Card: React.FC<{ icon: string; title: string; desc: string; to: string; co
           <i className={icon} />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-accent-900">{title}</h3>
+          <h3 className="text-lg font-semibold text-accent-700">{title}</h3>
           <p className="mt-1 text-sm text-accent-700">{desc}</p>
         </div>
       </div>

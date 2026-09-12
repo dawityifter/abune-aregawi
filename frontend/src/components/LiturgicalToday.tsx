@@ -115,7 +115,7 @@ const LiturgicalToday: React.FC<{ variant?: Variant; now?: Date }> = ({
 
       {/* Date line — both calendars, since members use both */}
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-lg font-semibold text-accent-900">{ethDate}</span>
+        <span className="text-lg font-semibold text-accent-700">{ethDate}</span>
         <span className="text-sm text-accent-500">{gregDate}</span>
       </div>
 
@@ -143,14 +143,14 @@ const LiturgicalToday: React.FC<{ variant?: Variant; now?: Date }> = ({
           printing both just says it twice; on Gahad of Gena the event names a
           day inside a longer fast and is worth keeping. */}
       {todaysEvent && !eventDuplicatesSeason && (
-        <p className="mt-2 text-base font-medium text-accent-900">
+        <p className="mt-2 text-base font-medium text-accent-700">
           {eventTitle}
         </p>
       )}
 
       {fast && (
         <div className="mt-2">
-          <p className="text-base font-medium text-accent-900">
+          <p className="text-base font-medium text-accent-700">
             {ti ? fast.season.titleTi : fast.season.title}
           </p>
           <p className="mt-0.5 text-sm text-accent-600">

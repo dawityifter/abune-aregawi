@@ -118,7 +118,7 @@
   }
 
   .nav-link {
-    @apply text-accent-600 hover:text-accent-900 transition-colors duration-200 font-nav;
+    @apply text-accent-600 hover:text-accent-700 transition-colors duration-200 font-nav;
   }
   
   .nav-link-active {

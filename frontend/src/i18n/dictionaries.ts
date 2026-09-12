@@ -105,6 +105,29 @@ export interface Dictionaries {
     location: string;
     getDirections: string;
   };
+  schedule: {
+    nextService: string;
+    fullSchedule: string;
+    hideSchedule: string;
+    today: string;
+    tomorrow: string;
+    inDays: string;
+    timesVary: string;
+    allWelcome: string;
+    directions: string;
+    items: {
+      abnetClass: string;
+      kidaseClass: string;
+      geezFidelClass: string;
+      mezmurPractice: string;
+      churchCleaning: string;
+      youthAdultMezmur: string;
+      morningPrayers: string;
+      divineLiturgy: string;
+      kidsYouthClass: string;
+      sundaySchool: string;
+    };
+  };
   nav: {
     makePledge: string;
   };
@@ -1020,6 +1043,30 @@ export const en: Dictionaries = {
     serviceTimes: "Service Times",
     location: "Location",
     getDirections: "Get Directions",
+  },
+  schedule: {
+    nextService: "Next service",
+    fullSchedule: "Full weekly schedule",
+    hideSchedule: "Hide schedule",
+    today: "Today",
+    tomorrow: "Tomorrow",
+    // {n} is replaced with the number of days.
+    inDays: "In {n} days",
+    timesVary: "Times may vary depending on the service.",
+    allWelcome: "All are welcome.",
+    directions: "Directions",
+    items: {
+      abnetClass: "Abnet Class",
+      kidaseClass: "Kidase Class",
+      geezFidelClass: "Ge'ez Fidel Class",
+      mezmurPractice: "Mezmur Practice",
+      churchCleaning: "Church Cleaning",
+      youthAdultMezmur: "Youth & Adult Mezmur",
+      morningPrayers: "Morning Prayers",
+      divineLiturgy: "Kidase / Divine Liturgy",
+      kidsYouthClass: "Kids & Youth Class",
+      sundaySchool: "Sunday School",
+    },
   },
   nav: {
     makePledge: "Make a Pledge",
@@ -3342,6 +3389,32 @@ export const ti: Dictionaries = {
     serviceTimes: "ሰዓታት ስግደ",
     location: "ቦታ",
     getDirections: "መንገዲ ርኣይ",
+  },
+  // These strings were previously hard-coded English literals in QuickLinks.tsx,
+  // so the schedule stayed in English no matter what language was selected.
+  // Translations added with the extraction — worth a native speaker's review.
+  schedule: {
+    nextService: "ዝቕጽል ኣገልግሎት",
+    fullSchedule: "ምሉእ ሰሙናዊ መደብ",
+    hideSchedule: "መደብ ሓብእ",
+    today: "ሎሚ",
+    tomorrow: "ጽባሕ",
+    inDays: "ድሕሪ {n} መዓልታት",
+    timesVary: "ሰዓታት ከከም ኣገልግሎቱ ክቀያየር ይኽእል እዩ።",
+    allWelcome: "ኩሉኹም እንኳዕ ብደሓን መጻእኩም።",
+    directions: "መንገዲ",
+    items: {
+      abnetClass: "ትምህርቲ ኣብነት",
+      kidaseClass: "ትምህርቲ ቅዳሴ",
+      geezFidelClass: "ትምህርቲ ግእዝ ፊደል",
+      mezmurPractice: "ልምምድ መዝሙር",
+      churchCleaning: "ጽሬት ቤተ ክርስቲያን",
+      youthAdultMezmur: "መዝሙር መንእሰያትን ዓበይትን",
+      morningPrayers: "ናይ ንግሆ ጸሎት",
+      divineLiturgy: "ቅዳሴ",
+      kidsYouthClass: "ትምህርቲ ቆልዑን መንእሰያትን",
+      sundaySchool: "ሰንበት ትምህርቲ",
+    },
   },
   nav: {
     makePledge: "መብጽዓ ምእታው",
