@@ -8,17 +8,12 @@ import React from 'react';
  */
 const RouteFallback: React.FC = () => (
   <div
-    className="min-h-screen flex items-center justify-center"
+    className="min-h-screen flex items-center justify-center bg-neutral-50"
     role="status"
     aria-live="polite"
     aria-label="Loading"
-    style={{
-      backgroundImage: `url(${process.env.PUBLIC_URL || ''}/bylaws/TigrayOrthodox-background.png)`,
-      backgroundRepeat: 'repeat',
-      backgroundPosition: 'top left'
-    }}
   >
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800" />
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-700" />
   </div>
 );
 

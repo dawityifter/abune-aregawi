@@ -213,12 +213,6 @@ const Profile: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState<ProfileData>(emptyProfileData);
 
-  const bgStyle: React.CSSProperties = {
-    backgroundImage: `url(${process.env.PUBLIC_URL}/bylaws/TigrayOrthodox-background.png)`,
-    backgroundRepeat: 'repeat',
-    backgroundPosition: 'top left',
-    backgroundSize: 'auto',
-  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -483,7 +477,7 @@ const Profile: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-800"></div>
       </div>
     );
@@ -491,7 +485,7 @@ const Profile: React.FC = () => {
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="profile-card mx-4 max-w-lg p-10 text-center">
           <div className="text-red-600 text-lg mb-4">Profile not found</div>
           <p className="text-gray-600 mb-6">
@@ -600,7 +594,7 @@ const Profile: React.FC = () => {
   );
 
   return (
-    <div className="profile-shell min-h-screen" style={bgStyle}>
+    <div className="profile-shell min-h-screen">
       <main className="profile-surface mx-auto max-w-6xl px-4 pb-8 pt-24 sm:px-6 lg:px-8">
         <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">

@@ -26,15 +26,7 @@ const HomePage: React.FC = () => {
   }, [hash]);
 
   return (
-    <div
-      className={`min-h-screen ${lang === 'ti' ? 'text-tigrigna' : ''}`}
-      style={{
-        backgroundImage: `url(${process.env.PUBLIC_URL || ''}/bylaws/TigrayOrthodox-background.png)`,
-        backgroundRepeat: 'repeat',
-        backgroundPosition: 'top left',
-        backgroundSize: 'auto',
-      }}
-    >
+    <div className={`min-h-screen bg-neutral-50 ${lang === 'ti' ? 'text-tigrigna' : ''}`}>
       <Hero />
       <LiveStreamBanner />
       <QuickLinks />

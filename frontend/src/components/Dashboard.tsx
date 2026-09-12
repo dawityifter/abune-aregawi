@@ -42,12 +42,6 @@ const Dashboard: React.FC = () => {
   const [error] = useState<string | null>(null);
   // Temp user CTA timer should be declared at top-level, not conditionally
   const [showTempCta, setShowTempCta] = useState(false);
-  const bgStyle: React.CSSProperties = {
-    backgroundImage: `url(${process.env.PUBLIC_URL || ''}/bylaws/TigrayOrthodox-background.png)`,
-    backgroundRepeat: 'repeat',
-    backgroundPosition: 'top left',
-    backgroundSize: 'auto',
-  };
   useEffect(() => {
     if (!(user?._temp)) {
       setShowTempCta(false);
@@ -109,7 +103,7 @@ const Dashboard: React.FC = () => {
   // Show loading state while auth is initializing or loading
   if (!authReady || loading || authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-800"></div>
       </div>
     );
@@ -118,7 +112,7 @@ const Dashboard: React.FC = () => {
   // Tailored banner for unlinked dependent logins
   if (user?.unlinkedDependent) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8" style={bgStyle}>
+      <div className="min-h-screen bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
           <div className="bg-white shadow rounded-lg p-6 border border-yellow-200">
             <div className="flex items-start">
@@ -156,7 +150,7 @@ const Dashboard: React.FC = () => {
 
   if (isTempUser) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8" style={bgStyle}>
+      <div className="min-h-screen bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">{t('dashboard.welcome')}</h2>
@@ -207,7 +201,7 @@ const Dashboard: React.FC = () => {
 
   if (!userProfile) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('dashboard.incomplete.title')}</h2>
           <p className="text-gray-600 mb-6">{t('dashboard.incomplete.desc')}</p>
@@ -224,7 +218,7 @@ const Dashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={bgStyle}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-600 text-lg mb-4">{error}</div>
           <button
@@ -239,7 +233,7 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-top-nav" style={bgStyle}>
+    <div className="min-h-screen bg-neutral-50 pt-top-nav">
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">

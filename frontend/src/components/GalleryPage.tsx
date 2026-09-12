@@ -111,17 +111,11 @@ const GalleryPage: React.FC = () => {
 
     const canUpload = ['admin', 'church_leadership', 'secretary'].includes(userRole || '');
 
-    const bgStyle: React.CSSProperties = {
-        backgroundImage: `url(${process.env.PUBLIC_URL || ''}/bylaws/TigrayOrthodox-background.png)`,
-        backgroundRepeat: 'repeat',
-        backgroundPosition: 'top left',
-        backgroundSize: 'auto',
-    };
 
     const currentImage = images[currentIndex];
 
     return (
-        <div className="min-h-screen bg-gray-50 pt-20 pb-12 px-4 sm:px-6 lg:px-8" style={bgStyle}>
+        <div className="min-h-screen bg-neutral-50 pt-20 pb-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto">
                 <div className="bg-white/90 backdrop-blur-sm shadow rounded-lg p-6 mb-8">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-4">
