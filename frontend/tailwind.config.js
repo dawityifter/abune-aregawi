@@ -1,4 +1,15 @@
 /** @type {import('tailwindcss').Config} */
+
+// "Brana" design tokens — see the design direction doc.
+//
+// The palette is borrowed from Ge'ez manuscript illumination and Tigray rock-church
+// fresco rather than from generic church-website red: parchment ground, rubric
+// vermilion, ochre gold, and a chalky blue-green that gives the palette a cool pole
+// so "this is information" can look different from "this is an action".
+//
+// The scale NAMES are deliberately unchanged (primary/secondary/accent/neutral).
+// `primary-*` alone appears ~430 times in this codebase, so re-pointing the scales
+// restyles most of the app in one edit without touching a single component.
 module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
@@ -7,52 +18,80 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Qeyih (ቀይሕ) — manuscript rubric red. Replaces Tailwind's #dc2626, which
+        // is a browser-error red. 700 is the canonical vermilion and the one
+        // .btn-primary and the nav use: white on it is 7.4:1.
         primary: {
-          50: '#fef2f2',
-          100: '#fee2e2',
-          200: '#fecaca',
-          300: '#fca5a5',
-          400: '#f87171',
-          500: '#dc2626', // Main Tigray red
-          600: '#b91c1c',
-          700: '#991b1b',
-          800: '#7f1d1d',
+          50: '#fcf4f2',
+          100: '#f7e3df',
+          200: '#edc8c1',
+          300: '#dea79d',
+          400: '#c97e72',
+          500: '#b65349',
+          600: '#a93a32',
+          700: '#9e2b25', // canonical vermilion
+          800: '#7e221d', // hover / gradient end
         },
+        // Werq (ወርቂ) — ochre gold. The 400-600 steps are SURFACE colours and must
+        // carry ink text, never white: white on 600 is 2.0:1, which is what the
+        // old amber button was failing at. 700/800 are the text-safe steps for
+        // ochre type on a light ground (5.2:1).
         secondary: {
-          50: '#fefce8',
-          100: '#fef9c3',
-          200: '#fef08a',
-          300: '#fde047',
-          400: '#facc15',
-          500: '#eab308',
-          600: '#fbbf24',
-          700: '#f59e0b',
-          800: '#d97706',
+          50: '#fdf7e9',
+          100: '#f8ebc8',
+          200: '#f0d99a',
+          300: '#e3c066',
+          400: '#d2a845',
+          500: '#c89a3c', // gold surface — ink text is 6.3:1
+          600: '#b8842b',
+          700: '#8a5f16', // text-safe on light
+          800: '#6b4810',
         },
+        // The warm neutral ramp. Body text is text-accent-700 (ink) and borders are
+        // border-accent-200, so this scale carries most of the app's quiet surface.
         accent: {
-          50: '#f5f3ef',
-          100: '#ede9e3',
-          200: '#e7d8c9',
-          300: '#d6bfa7',
-          400: '#bfa07a',
-          500: '#92400e', // Deep ceremonial brown
-          600: '#78350f',
-          700: '#451a03',
+          50: '#fbf8f1',  // wax — raised surface
+          100: '#f4efe3',
+          200: '#e3dbc9', // borders
+          300: '#cfc4ac',
+          400: '#a99c88', // muted labels
+          500: '#6f6557', // muted text
+          600: '#4a4238',
+          700: '#241f19', // ink — body text
         },
         neutral: {
-          50: '#ffffff',
-          100: '#fef7cd',
-          200: '#fef3c7',
-          300: '#f9fafb',
-          400: '#e5e7eb',
-          500: '#6b7280',
-          600: '#374151',
+          50: '#ede7d9',  // brana — the page ground
+          100: '#f4efe3',
+          200: '#e3dbc9',
+          300: '#fbf8f1', // wax
+          400: '#cfc4ac',
+          500: '#6f6557',
+          600: '#4a4238',
+        },
+        // Tsaeda — fresco verdigris. New scale, opt-in: nothing currently uses it,
+        // so adding it disturbs nothing. This is the "informational, not an action"
+        // pole the palette has never had.
+        tsaeda: {
+          50: '#eaf2f0',
+          100: '#dbe7e4',
+          200: '#b8cecb',
+          300: '#8db3ae',
+          400: '#5b918b',
+          500: '#3c7a74',
+          600: '#2e5e5a',
+          700: '#25514d',
+          800: '#1c3d3a',
         },
       },
       fontFamily: {
-        'serif': ['Georgia', 'Times New Roman', 'serif'],
-        'sans': ['Inter', 'system-ui', 'sans-serif'],
-        'tigrigna': ['Noto Sans Ethiopic', 'serif'],
+        // Literata is chosen to sit beside Noto Serif Ethiopic: both are vertical,
+        // low-contrast and even in colour. Ethiopic picks the Latin face here, not
+        // the other way round.
+        'serif': ['Literata', 'Georgia', 'Times New Roman', 'serif'],
+        // IBM Plex Sans ships tabular figures, which a dues-and-ledger app needs.
+        'sans': ['IBM Plex Sans', 'system-ui', '-apple-system', 'sans-serif'],
+        'tigrigna': ['Noto Serif Ethiopic', 'Literata', 'serif'],
+        'tigrigna-sans': ['Noto Sans Ethiopic', 'IBM Plex Sans', 'sans-serif'],
       },
       fontSize: {
         'h1': ['2.25rem', { lineHeight: '2.5rem', fontWeight: '700' }],
@@ -62,6 +101,27 @@ module.exports = {
         'body': ['1rem', { lineHeight: '1.5rem', fontWeight: '400' }],
         'nav': ['0.875rem', { lineHeight: '1.25rem', fontWeight: '500' }],
         'caption': ['0.75rem', { lineHeight: '1rem', fontWeight: '400' }],
+      },
+      // Three shapes, not four radii applied by whoever wrote the component.
+      // Square-ish is the default for everything; `full` stays for pills and
+      // avatars; `arch` is the Aksumite window silhouette and is allowed on at
+      // most one element per page.
+      borderRadius: {
+        'md': '3px',
+        'lg': '3px',
+        'xl': '4px',
+        '2xl': '4px',
+        '3xl': '6px',
+        'arch': '46% 46% 6px 6px / 26% 26% 6px 6px',
+      },
+      // Two elevations. Flat for everything that sits on the page, raised for the
+      // few things that genuinely float (sheets, modals, sticky bars).
+      boxShadow: {
+        'sm': '0 1px 2px rgba(36, 31, 25, 0.06)',
+        'md': '0 1px 2px rgba(36, 31, 25, 0.06)',
+        'lg': '0 1px 2px rgba(36, 31, 25, 0.06), 0 8px 24px -12px rgba(36, 31, 25, 0.22)',
+        'xl': '0 1px 2px rgba(36, 31, 25, 0.06), 0 8px 24px -12px rgba(36, 31, 25, 0.22)',
+        '2xl': '0 1px 2px rgba(36, 31, 25, 0.06), 0 8px 24px -12px rgba(36, 31, 25, 0.22)',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
@@ -103,4 +163,3 @@ module.exports = {
     require('@tailwindcss/typography'),
   ],
 }
-

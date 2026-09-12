@@ -22,8 +22,16 @@ describe('PWA manifest', () => {
   });
 
   it('uses the parish red as the theme color', () => {
-    // primary-700, where the nav gradient starts.
-    expect(manifest.theme_color).toBe('#991b1b');
+    // primary-700, where the nav gradient starts. Moved from #991b1b to the
+    // Brana palette's rubric vermilion when the design tokens landed; if the
+    // scale moves again, this and index.html's theme-color move with it.
+    expect(manifest.theme_color).toBe('#9e2b25');
+  });
+
+  it('splashes on the parchment ground rather than white', () => {
+    // neutral-50 — the same ground <body> paints, so the installed app does
+    // not flash white before the first paint.
+    expect(manifest.background_color).toBe('#ede7d9');
   });
 
   it('points the 512 icon at a genuinely 512px file', () => {

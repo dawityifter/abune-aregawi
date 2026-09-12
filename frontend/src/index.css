@@ -1,6 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@300;400;500;600;700&display=swap');
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
+/* Fonts and Font Awesome are loaded via <link> tags in public/index.html, not
+   @import. A chain of three remote @imports is serialised — the browser cannot
+   even request the second sheet until the first has parsed — so they blocked
+   first paint three times over. <link> lets them fetch in parallel. */
 
 @tailwind base;
 @tailwind components;
@@ -8,41 +9,85 @@
 
 @layer base {
   html {
-    font-family: 'Inter', sans-serif;
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   }
-  
+
   body {
     @apply bg-neutral-50 text-accent-700;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Georgia', 'Times New Roman', serif;
+    font-family: 'Literata', Georgia, 'Times New Roman', serif;
+    text-wrap: balance;
+  }
+
+  /* Ge'ez has a taller x-height than Latin and crowds at Latin leading, so
+     Ethiopic runs get their own line-height rather than inheriting. */
+  :lang(ti) {
+    line-height: 1.6;
+  }
+
+  /* Every control needs a focus ring a keyboard user can actually see. The old
+     sheet only styled focus on .btn, so links, inputs and icon buttons had
+     nothing but the browser default that Tailwind's preflight removes. */
+  :focus-visible {
+    outline: 2.5px solid theme('colors.primary.700');
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
 @layer components {
+  /* Four buttons, and no more. If a screen needs a fifth, the system is wrong
+     rather than the screen.
+       primary   — the one action a screen wants
+       secondary — gold; wallet/giving emphasis, ALWAYS with ink text
+       outline   — a real but lesser action
+       quiet     — navigation dressed as a link, because that is what it is
+     min-h-[48px] is not decorative: it is the touch-target floor, and older
+     members are the hardest case this design has to pass. */
   .btn {
-    @apply inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 min-h-[48px] border border-transparent text-base font-semibold rounded-md transition-colors duration-150 focus:outline-none;
   }
-  
+
   .btn-primary {
-    @apply bg-primary-700 text-white hover:bg-primary-800 focus:ring-primary-500 transform hover:-translate-y-0.5;
+    @apply bg-primary-700 text-white hover:bg-primary-800;
   }
-  
+
+  /* Ink on ochre, not white on amber. The old rule was white on #fbbf24 —
+     about 1.9:1, far under the 4.5:1 floor, and it was the most-used button on
+     the site. Ink on secondary-500 is 6.3:1. */
   .btn-secondary {
-    @apply bg-secondary-600 text-white hover:bg-secondary-700 focus:ring-secondary-500 transform hover:-translate-y-0.5;
+    @apply bg-secondary-500 text-accent-700 hover:bg-secondary-600;
   }
-  
+
   .btn-accent {
-    @apply bg-accent-600 text-white hover:bg-accent-700 focus:ring-accent-500 transform hover:-translate-y-0.5;
+    @apply bg-accent-600 text-white hover:bg-accent-700;
   }
-  
+
   .btn-outline {
-    @apply bg-transparent text-primary-700 border-primary-700 hover:bg-primary-700 hover:text-white focus:ring-primary-500;
+    @apply bg-transparent text-accent-700 border-accent-300 hover:bg-accent-100;
   }
-  
+
+  .btn-quiet {
+    @apply bg-transparent text-tsaeda-600 hover:text-tsaeda-700 hover:underline px-0 min-h-0 py-2;
+  }
+
   .btn-small {
-    @apply px-4 py-2 text-sm;
+    @apply px-4 py-2 min-h-0 text-sm;
+  }
+
+  .btn-block {
+    @apply flex w-full;
   }
   
   .lang-btn {
@@ -53,16 +98,23 @@
     @apply bg-primary-700 border-primary-700 text-white;
   }
   
+  /* Flat by default. Border, fill, radius and shadow each say "separate
+     object"; spending all four on every block flattens the hierarchy instead
+     of creating it. The hover-lift is gone — it made every card look equally
+     interactive when most of them are not. */
   .card {
-    @apply bg-white rounded-xl shadow-lg p-6 transition-transform duration-300 hover:-translate-y-1 border border-accent-200;
+    @apply bg-accent-50 rounded-md p-6 border border-accent-200;
   }
-  
+
+  /* Left-aligned. Centred section titles are the single strongest signal of a
+     2012 church template; centring is reserved for the one ceremonial element
+     per page (the liturgical date). */
   .section-title {
-    @apply text-h2 font-serif text-center mb-8 text-primary-700;
+    @apply text-h2 font-serif mb-8 text-primary-700;
   }
-  
+
   .hero-gradient {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #fbbf24 100%);
+    background: linear-gradient(135deg, #9e2b25 0%, #7e221d 55%, #4a4238 100%);
   }
 
   .nav-link {
@@ -74,7 +126,7 @@
   }
 
   .content-card {
-    @apply bg-white rounded-lg shadow-md p-6 border border-accent-200 hover:shadow-lg transition-shadow duration-300;
+    @apply bg-accent-50 rounded-md p-6 border border-accent-200;
   }
 
   .info-block {
@@ -177,7 +229,13 @@
 
 @layer utilities {
   .text-tigrigna {
-    font-family: 'Noto Sans Ethiopic', serif;
+    font-family: 'Noto Serif Ethiopic', 'Literata', serif;
+    line-height: 1.6;
+  }
+
+  .text-tigrigna-sans {
+    font-family: 'Noto Sans Ethiopic', 'IBM Plex Sans', sans-serif;
+    line-height: 1.6;
   }
   
   .glass-effect {
@@ -203,12 +261,28 @@
   /* Subtle cross lattice background inspired by traditional motifs */
   .bg-cross-lattice {
     background-image:
-      linear-gradient(45deg, rgba(146, 64, 14, 0.06) 25%, rgba(0,0,0,0) 25%),
-      linear-gradient(-45deg, rgba(146, 64, 14, 0.06) 25%, rgba(0,0,0,0) 25%),
-      linear-gradient(45deg, rgba(146, 64, 14, 0.06) 75%, rgba(0,0,0,0) 75%),
-      linear-gradient(-45deg, rgba(146, 64, 14, 0.06) 75%, rgba(0,0,0,0) 75%);
+      linear-gradient(45deg, rgba(158, 43, 37, 0.05) 25%, rgba(0,0,0,0) 25%),
+      linear-gradient(-45deg, rgba(158, 43, 37, 0.05) 25%, rgba(0,0,0,0) 25%),
+      linear-gradient(45deg, rgba(158, 43, 37, 0.05) 75%, rgba(0,0,0,0) 75%),
+      linear-gradient(-45deg, rgba(158, 43, 37, 0.05) 75%, rgba(0,0,0,0) 75%);
     background-size: 20px 20px;
     background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  }
+
+  /* Tibeb — the woven band at the edge of a netela, as a geometric strip.
+     Allowed under the hero and at the head of the footer, nowhere else. It is
+     a structural divider that happens to be cultural, not an ornament: about
+     300 bytes of gradient against the 1.5 MB tiled image it replaces. */
+  .tibeb-band {
+    height: 9px;
+    background-color: #b8842b;
+    background-image:
+      linear-gradient(135deg, #9e2b25 25%, transparent 25%),
+      linear-gradient(225deg, #9e2b25 25%, transparent 25%),
+      linear-gradient(315deg, #2e5e5a 25%, transparent 25%),
+      linear-gradient(45deg, #2e5e5a 25%, transparent 25%);
+    background-size: 14px 9px;
+    background-position: 0 0, 0 0, 0 0, 0 0;
   }
 }
 
