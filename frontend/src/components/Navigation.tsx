@@ -183,7 +183,7 @@ const Navigation: React.FC = () => {
             <div className="flex rounded-md overflow-hidden border border-white/20">
               <button
                 className={`px-3 py-1.5 text-sm font-medium transition-colors ${lang === 'en'
-                  ? 'bg-secondary-600 text-white'
+                  ? 'bg-secondary-500 text-accent-700'
                   : 'bg-transparent text-white hover:bg-white/10'
                   }`}
                 onClick={() => setLang('en')}
@@ -193,7 +193,7 @@ const Navigation: React.FC = () => {
               <div className="h-6 w-px bg-white/30"></div>
               <button
                 className={`px-3 py-1.5 text-sm font-medium transition-colors ${lang === 'ti'
-                  ? 'bg-secondary-600 text-white'
+                  ? 'bg-secondary-500 text-accent-700'
                   : 'bg-transparent text-white hover:bg-white/10'
                   }`}
                 onClick={() => setLang('ti')}
@@ -236,7 +236,7 @@ const Navigation: React.FC = () => {
                 {featureFlags.enableEmailPasswordAuth && (
                   <Link
                     to="/register"
-                    className="px-4 py-1.5 bg-secondary-600 text-white text-sm font-medium rounded-md hover:bg-secondary-700 transition-colors"
+                    className="px-4 py-1.5 bg-secondary-500 text-accent-700 text-sm font-medium rounded-md hover:bg-secondary-700 transition-colors"
                   >
                     {t('auth.sign.up')}
                   </Link>
