@@ -41,6 +41,10 @@ const SmsBroadcast: React.FC = () => {
   const [pledgeRecipients, setPledgeRecipients] = useState<any[]>([]);
   const [pledgeRecipientsCount, setPledgeRecipientsCount] = useState(0);
   const [pledgeRecipientsLoading, setPledgeRecipientsLoading] = useState(false);
+  // undefined = not looked up yet; null = looked up, no drive is running. The
+  // distinction matters: a bare zero recipients could mean either, and that
+  // ambiguity is what made the old stale audience so hard to notice.
+  const [pledgeCampaign, setPledgeCampaign] = useState<{ id: number; name: string } | null | undefined>(undefined);
   const [showPledgeRecipientsList, setShowPledgeRecipientsList] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -144,6 +148,7 @@ const SmsBroadcast: React.FC = () => {
       if (recipientType !== 'pending_pledges' && recipientType !== 'fulfilled_pledges') {
         setPledgeRecipients([]);
         setPledgeRecipientsCount(0);
+        setPledgeCampaign(undefined);
         return;
       }
 
@@ -164,16 +169,24 @@ const SmsBroadcast: React.FC = () => {
 
         setPledgeRecipients(data?.data?.recipients || []);
         setPledgeRecipientsCount(data?.data?.totalCount || 0);
+        setPledgeCampaign(data?.data?.campaign ?? null);
       } catch (e: any) {
         console.error('Failed to load pledge recipients:', e);
         setPledgeRecipients([]);
         setPledgeRecipientsCount(0);
+        setPledgeCampaign(undefined);
       } finally {
         setPledgeRecipientsLoading(false);
       }
     };
     fetchPledgeRecipients();
   }, [firebaseUser, canSend, recipientType]);
+
+  // The server refuses these sends outright when no drive is live; this only
+  // keeps the button from looking available.
+  const noLiveDriveSelected =
+    (recipientType === 'pending_pledges' || recipientType === 'fulfilled_pledges') &&
+    pledgeCampaign === null;
 
   const [allRecipientsCount, setAllRecipientsCount] = useState(0);
   const [pricing, setPricing] = useState<{ basePrice: number; carrierFeeEstimate: number; currency: string } | null>(null);
@@ -588,8 +601,22 @@ const SmsBroadcast: React.FC = () => {
                 {pledgeRecipientsLoading && <span className="text-xs text-blue-600">{t('smsBroadcast.loading')}</span>}
               </div>
 
-              {!pledgeRecipientsLoading && (
+              {!pledgeRecipientsLoading && pledgeCampaign === null && (
+                <p
+                  data-testid="pledge-no-live-drive"
+                  className="text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded p-2"
+                >
+                  {t('smsBroadcast.noLiveDrive')}
+                </p>
+              )}
+
+              {!pledgeRecipientsLoading && pledgeCampaign && (
                 <>
+                  {/* Naming the drive is the point: these audiences used to be
+                      silently stale, and a count alone never showed it. */}
+                  <p className="text-xs text-blue-700 mb-1">
+                    {t('smsBroadcast.targetingDrive', { campaign: pledgeCampaign.name })}
+                  </p>
                   <p className="text-sm text-blue-800 mb-2">
                     <strong>{pledgeRecipientsCount}</strong> {t('smsBroadcast.willReceiveSuffix')}
                   </p>
@@ -615,14 +642,19 @@ const SmsBroadcast: React.FC = () => {
                             <div className="text-gray-500">
                               {recipient.phoneNumber} {recipient.email && `• ${recipient.email}`}
                             </div>
-                            {recipientType === 'pending_pledges' && recipient.pendingPledges && (
+                            {recipientType === 'pending_pledges' && recipient.remainingAmount != null && (
                               <div className="text-blue-600 mt-0.5">
-                                {t('smsBroadcast.pendingPledgesCount', { count: recipient.pendingPledges.length, total: recipient.pendingPledges.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0).toFixed(2) })}
+                                {t('smsBroadcast.owesOfPledged', {
+                                  remaining: parseFloat(recipient.remainingAmount).toFixed(2),
+                                  pledged: parseFloat(recipient.pledgedAmount || 0).toFixed(2)
+                                })}
                               </div>
                             )}
-                            {recipientType === 'fulfilled_pledges' && recipient.fulfilledPledges && (
+                            {recipientType === 'fulfilled_pledges' && recipient.pledgedAmount != null && (
                               <div className="text-green-600 mt-0.5">
-                                {t('smsBroadcast.fulfilledPledgesCount', { count: recipient.fulfilledPledges.length, total: recipient.fulfilledPledges.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0).toFixed(2) })}
+                                {t('smsBroadcast.paidInFull', {
+                                  pledged: parseFloat(recipient.pledgedAmount).toFixed(2)
+                                })}
                               </div>
                             )}
                           </li>
@@ -631,7 +663,7 @@ const SmsBroadcast: React.FC = () => {
                     </div>
                   )}
 
-                  {pledgeRecipientsCount === 0 && (
+                  {pledgeRecipientsCount === 0 && pledgeCampaign && (
                     <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">
                       {recipientType === 'pending_pledges' ? t('smsBroadcast.noPendingPledges') : t('smsBroadcast.noFulfilledPledges')}
                     </p>
@@ -744,8 +776,8 @@ const SmsBroadcast: React.FC = () => {
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={submitting || message.length > MAX_USER_CHARS}
-              className={`px-4 py-2 rounded text-white ${submitting || message.length > MAX_USER_CHARS ? 'bg-gray-400' : 'bg-primary-600 hover:bg-primary-700'}`}
+              disabled={submitting || message.length > MAX_USER_CHARS || noLiveDriveSelected}
+              className={`px-4 py-2 rounded text-white ${submitting || message.length > MAX_USER_CHARS || noLiveDriveSelected ? 'bg-gray-400' : 'bg-primary-600 hover:bg-primary-700'}`}
             >
               {submitting ? t('smsBroadcast.sending') : t('smsBroadcast.sendSms')}
             </button>

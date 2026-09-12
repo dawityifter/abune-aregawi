@@ -824,3 +824,17 @@ backend sends it — `emailService` is wired only to statements and department
 meetings, and Stripe is never given a `receipt_email`. It may still be true if
 automatic receipts are switched on in the Stripe Dashboard, which is outside
 this repo. Needs a decision: verify the Dashboard setting, or cut the sentence.
+
+### Follow-up: SMS pledge audience (Sep 2026)
+
+Four keys. The SMS page's "Pending Pledges" / "Fulfilled Pledges" audiences now
+follow the drive that is running rather than 2025's hand-entered
+`legacy_status`, so the panel names the drive it is about to text and says when
+there is none.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| smsBroadcast.noLiveDrive | No fundraising drive is running right now, so there is no pledge audience to text. | ሕጂ ዝካየድ ዘሎ ወፈያ የለን፡ ስለዚ መልእኽቲ ዝለኣኸሉ ናይ መብጽዓ ኣኼባ የለን። | ⚠️ `ኣኼባ` was chosen for "audience" in the sense of a group of recipients — confirm it does not read as "meeting" |
+| smsBroadcast.targetingDrive | Targeting {campaign} | ዕላማ፦ {campaign} | ⚠️ confirm `ዕላማ` reads as "this is who/what it is aimed at" and not "purpose" |
+| smsBroadcast.owesOfPledged | ${remaining} still owed of ${pledged} pledged | ካብ ${pledged} መብጽዓ ${remaining} ተሪፉ | ⚠️ the two amounts are swapped relative to English so the sentence reads naturally — confirm the order is not confusing |
+| smsBroadcast.paidInFull | ${pledged} pledged, paid in full | ${pledged} መብጽዓ፡ ምሉእ ብምሉእ ተኸፊሉ | |
