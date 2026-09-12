@@ -50,6 +50,8 @@ export interface Dictionaries {
       whatsapp: string;
     };
     mission: string;
+    parishKind: string;
+    location: string;
   };
   actions: {
     worship: { title: string; desc: string };
@@ -943,10 +945,14 @@ export const en: Dictionaries = {
       give: "Give Online",
       times: "Worship Times",
       watch: "Watch Live",
-      viewChannel: "View Our Youtube Channel",
+      viewChannel: "Watch on YouTube",
       whatsapp: "Join us on WhatsApp",
     },
-    mission: "We want everyone, everywhere to have an everyday relationship with the lord. By uniting through the Eucharist.",
+    mission: "We want everyone, everywhere to have an everyday relationship with the Lord. By uniting through the Eucharist.",
+    // Shown under the parish name in the hero, so a visitor learns what kind
+    // of church this is and where it is without leaving the first screen.
+    parishKind: "Orthodox Tewahedo Church",
+    location: "Garland, Texas",
   },
   actions: {
     worship: {
@@ -3262,10 +3268,13 @@ export const ti: Dictionaries = {
       give: "ልገሳ ኣንታዊ",
       times: "ሰዓታት ስግደ",
       watch: "ቀጥታ ርእይ",
-      viewChannel: "ቻነል ዩቲዩብና ርኣይ",
+      viewChannel: "ኣብ ዩቲዩብ ርአ",
       whatsapp: "ናብ WhatsApp ተሳተፍ",
     },
     mission: "ንሕና ኩሉ ሰብ፣ ኣብ ኩሉ ቦታ፣ ምስ ጎይታ መዓልታዊ ርክብ ክህልዎ ንደሊ። ብቅዱስ ቁርባን ብምሕባር።",
+    // ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን = "Orthodox Tewahedo Church"
+    parishKind: "ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን",
+    location: "ጋርላንድ፣ ተክሳስ",
   },
   actions: {
     worship: {
