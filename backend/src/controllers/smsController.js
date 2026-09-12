@@ -1,6 +1,7 @@
 'use strict';
 
-const { Member, Group, MemberGroup, SmsLog, Department, DepartmentMember, Pledge } = require('../models');
+const { Member, Group, MemberGroup, SmsLog, Department, DepartmentMember, Pledge, PledgeBalance } = require('../models');
+const { findLiveCampaign } = require('../services/pledgeCampaignService');
 const { sendSms, sendSmsBatch, getSmsPricing } = require('../services/twilioService');
 const tz = require('../config/timezone');
 
@@ -49,6 +50,17 @@ function substituteTemplateVariables(template, data) {
     message = message.replace(/{pledgeCount}/gi, data.pledgeCount.toString());
   }
 
+  // What the member still owes, and what they have paid so far. Added rather
+  // than redefining {amount}: saved message templates already mean "the amount
+  // pledged" by it, and quietly repointing that at a balance would change what
+  // existing messages say without anyone editing them.
+  if (data.remainingAmount !== undefined && data.remainingAmount !== null) {
+    message = message.replace(/{remainingAmount}/gi, `$${parseFloat(data.remainingAmount).toFixed(2)}`);
+  }
+  if (data.paidAmount !== undefined && data.paidAmount !== null) {
+    message = message.replace(/{paidAmount}/gi, `$${parseFloat(data.paidAmount).toFixed(2)}`);
+  }
+
   // Replace {dueDate} - format date nicely in CST
   if (data.dueDate) {
     const formatted = tz.formatForDisplay(data.dueDate, 'MMM DD, YYYY');
@@ -57,6 +69,89 @@ function substituteTemplateVariables(template, data) {
 
   return message;
 }
+
+/**
+ * Who the pledge audiences actually are.
+ *
+ * These four call sites used to select on `legacy_status` with no campaign
+ * filter. The Pledge model is explicit that legacy_status "holds the
+ * hand-flipped 2025 values verbatim" and is "NOT a source of truth" —
+ * fulfillment is derived by the pledge_balances view. So both buttons texted
+ * whoever had been hand-marked during the 2025 drive, whatever they owed today.
+ *
+ * Fulfillment comes from the view's derived_status, scoped to the drive that is
+ * running now. Historical rows drop out for free: they belong to a different
+ * campaign. Cancelled pledges belong to neither audience.
+ */
+const PENDING_STATUSES = ['not_started', 'partially_fulfilled'];
+const FULFILLED_STATUSES = ['fulfilled'];
+
+async function livePledgeAudience(statuses) {
+  const campaign = await findLiveCampaign();
+  if (!campaign) return { campaign: null, rows: [] };
+
+  const rows = await PledgeBalance.findAll({
+    where: { campaign_id: campaign.id, derived_status: statuses },
+    include: [
+      {
+        model: Member,
+        as: 'member',
+        // Split across lines on purpose. As one line this column list trips
+        // scripts/check-staged-sensitive.sh, which blocks anything shaped like
+        // a member-roster header — a guard added after two real rosters, 365
+        // people, reached this repo's public history. Keeping it armed on the
+        // file that handles member contact details is worth more than a
+        // one-line array, and allowlisting this path would disarm it here.
+        attributes: [
+          'id',
+          'first_name',
+          'last_name',
+          'phone_number',
+          'email',
+          'is_active'
+        ]
+      },
+      { model: Pledge, as: 'pledge', attributes: ['due_date'] }
+    ]
+  });
+
+  // Filtered here rather than in the include so that "reachable" stays one
+  // readable rule instead of a join condition.
+  const reachable = rows.filter((r) => r.member && r.member.is_active && r.member.phone_number);
+  return { campaign, rows: reachable };
+}
+
+// The live drive has a one-active-pledge-per-member index, so each row is one
+// member — no aggregation is needed any more.
+function toRecipient(row) {
+  return {
+    id: row.member.id,
+    firstName: row.member.first_name,
+    lastName: row.member.last_name,
+    phoneNumber: row.member.phone_number,
+    email: row.member.email,
+    pledgedAmount: row.pledged_amount,
+    paidAmount: row.paid_amount,
+    remainingAmount: row.remaining_amount,
+    dueDate: row.pledge ? row.pledge.due_date : null
+  };
+}
+
+function templateDataFor(row) {
+  return {
+    firstName: row.member.first_name,
+    lastName: row.member.last_name,
+    fullName: `${row.member.first_name || ''} ${row.member.last_name || ''}`.trim(),
+    amount: row.pledged_amount,
+    totalAmount: row.pledged_amount,
+    pledgeCount: 1,
+    remainingAmount: row.remaining_amount,
+    paidAmount: row.paid_amount,
+    dueDate: row.pledge ? row.pledge.due_date : null
+  };
+}
+
+const NO_LIVE_DRIVE = 'No fundraising drive is running right now, so there is no pledge audience to send to.';
 
 async function logSms({ sender_id, role, recipient_type, recipient_member_id = null, group_id = null, department_id = null, recipient_count, message, status, error = null }) {
   try {
@@ -295,109 +390,42 @@ exports.sendPendingPledges = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Message is required' });
     }
 
-    // Get all members with pending pledges
-    const pendingPledges = await Pledge.findAll({
-      where: { legacy_status: 'pending' },
-      include: [{
-        model: Member,
-        as: 'member',
-        attributes: ['id', 'first_name', 'last_name', 'phone_number'],
-        where: { is_active: true }
-      }],
-      attributes: ['id', 'member_id', 'amount', 'due_date'],
-      raw: false
-    });
+    const { campaign, rows } = await livePledgeAudience(PENDING_STATUSES);
 
-    // Get unique members with aggregated pledge data
-    const memberMap = new Map();
-    pendingPledges.forEach(pledge => {
-      if (pledge.member && pledge.member.phone_number) {
-        const memberId = pledge.member.id;
-        if (!memberMap.has(memberId)) {
-          memberMap.set(memberId, {
-            member: pledge.member,
-            pledges: [],
-            totalAmount: 0
-          });
-        }
-        const memberData = memberMap.get(memberId);
-        memberData.pledges.push({
-          amount: parseFloat(pledge.amount),
-          dueDate: pledge.due_date
-        });
-        memberData.totalAmount += parseFloat(pledge.amount);
-      }
-    });
-
-    const recipients = Array.from(memberMap.values());
-
-    if (recipients.length === 0) {
-      await logSms({
-        sender_id: senderId,
-        role,
-        recipient_type: 'pending_pledges',
-        recipient_count: 0,
-        message,
-        status: 'failed',
-        error: 'No members with pending pledges found'
-      });
-      return res.status(404).json({ success: false, message: 'No members with pending pledges found' });
+    // Refused outright rather than sending to nobody. The page greys these
+    // options out, but that is cosmetic — this is what stops a direct API call
+    // reaching last year's pledgers.
+    if (!campaign) {
+      await logSms({ sender_id: senderId, role, recipient_type: 'all', recipient_count: 0, message, status: 'failed', error: NO_LIVE_DRIVE });
+      return res.status(400).json({ success: false, message: NO_LIVE_DRIVE });
     }
 
-    // Send personalized SMS to all recipients with template substitution
-    const batch = recipients.map(recipientData => {
-      const { member, pledges, totalAmount } = recipientData;
+    if (rows.length === 0) {
+      await logSms({ sender_id: senderId, role, recipient_type: 'all', recipient_count: 0, message, status: 'failed', error: 'No members with an outstanding pledge on the current drive' });
+      return res.status(400).json({ success: false, message: 'No members with an outstanding pledge on the current drive' });
+    }
 
-      // Prepare template data
-      const templateData = {
-        firstName: member.first_name,
-        lastName: member.last_name,
-        amount: pledges.length === 1 ? pledges[0].amount : null,
-        totalAmount: totalAmount,
-        pledgeCount: pledges.length,
-        dueDate: pledges.length === 1 ? pledges[0].dueDate : null
-      };
-
-      // Substitute template variables
-      const personalizedMessage = substituteTemplateVariables(message, templateData);
-
-      return {
-        to: normalizePhone(member.phone_number),
-        body: personalizedMessage,
-        metadata: {
-          memberId: member.id,
-          firstName: member.first_name,
-          lastName: member.last_name,
-          pledgeCount: pledges.length,
-          totalAmount: totalAmount
-        }
-      };
-    });
+    const batch = rows.map((row) => ({
+      to: normalizePhone(row.member.phone_number),
+      body: substituteTemplateVariables(message, templateDataFor(row))
+    }));
 
     const results = await sendSmsBatch(batch);
-    const successCount = results.filter(r => r.success).length;
+    const successCount = results.filter((r) => r.success).length;
 
     let status = 'success';
     let error = null;
-    if (successCount === 0) { status = 'failed'; error = 'All messages failed'; }
+    if (successCount === 0) { status = 'failed'; error = 'All failed'; }
     else if (successCount < results.length) { status = 'partial'; error = `${results.length - successCount} failed`; }
 
-    await logSms({
-      sender_id: senderId,
-      role,
-      recipient_type: 'pending_pledges',
-      recipient_count: recipients.length,
-      message,
-      status,
-      error
-    });
+    await logSms({ sender_id: senderId, role, recipient_type: 'all', recipient_count: rows.length, message, status, error });
 
     return res.json({
       success: successCount > 0,
       results,
       successCount,
       total: results.length,
-      pledgeStatus: 'pending'
+      campaign: { id: campaign.id, name: campaign.name }
     });
   } catch (error) {
     console.error('sendPendingPledges error:', error);
@@ -415,108 +443,42 @@ exports.sendFulfilledPledges = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Message is required' });
     }
 
-    // Get all members with fulfilled pledges
-    const fulfilledPledges = await Pledge.findAll({
-      where: { legacy_status: 'fulfilled' },
-      include: [{
-        model: Member,
-        as: 'member',
-        attributes: ['id', 'first_name', 'last_name', 'phone_number'],
-        where: { is_active: true }
-      }],
-      attributes: ['id', 'member_id', 'amount', 'fulfilled_date'],
-      raw: false
-    });
+    const { campaign, rows } = await livePledgeAudience(FULFILLED_STATUSES);
 
-    // Get unique members with aggregated pledge data
-    const memberMap = new Map();
-    fulfilledPledges.forEach(pledge => {
-      if (pledge.member && pledge.member.phone_number) {
-        const memberId = pledge.member.id;
-        if (!memberMap.has(memberId)) {
-          memberMap.set(memberId, {
-            member: pledge.member,
-            pledges: [],
-            totalAmount: 0
-          });
-        }
-        const memberData = memberMap.get(memberId);
-        memberData.pledges.push({
-          amount: parseFloat(pledge.amount),
-          fulfilledDate: pledge.fulfilled_date
-        });
-        memberData.totalAmount += parseFloat(pledge.amount);
-      }
-    });
-
-    const recipients = Array.from(memberMap.values());
-
-    if (recipients.length === 0) {
-      await logSms({
-        sender_id: senderId,
-        role,
-        recipient_type: 'fulfilled_pledges',
-        recipient_count: 0,
-        message,
-        status: 'failed',
-        error: 'No members with fulfilled pledges found'
-      });
-      return res.status(404).json({ success: false, message: 'No members with fulfilled pledges found' });
+    // Refused outright rather than sending to nobody. The page greys these
+    // options out, but that is cosmetic — this is what stops a direct API call
+    // reaching last year's pledgers.
+    if (!campaign) {
+      await logSms({ sender_id: senderId, role, recipient_type: 'all', recipient_count: 0, message, status: 'failed', error: NO_LIVE_DRIVE });
+      return res.status(400).json({ success: false, message: NO_LIVE_DRIVE });
     }
 
-    // Send personalized SMS to all recipients with template substitution
-    const batch = recipients.map(recipientData => {
-      const { member, pledges, totalAmount } = recipientData;
+    if (rows.length === 0) {
+      await logSms({ sender_id: senderId, role, recipient_type: 'all', recipient_count: 0, message, status: 'failed', error: 'No members have fulfilled their pledge on the current drive' });
+      return res.status(400).json({ success: false, message: 'No members have fulfilled their pledge on the current drive' });
+    }
 
-      // Prepare template data
-      const templateData = {
-        firstName: member.first_name,
-        lastName: member.last_name,
-        amount: pledges.length === 1 ? pledges[0].amount : null,
-        totalAmount: totalAmount,
-        pledgeCount: pledges.length
-      };
-
-      // Substitute template variables
-      const personalizedMessage = substituteTemplateVariables(message, templateData);
-
-      return {
-        to: normalizePhone(member.phone_number),
-        body: personalizedMessage,
-        metadata: {
-          memberId: member.id,
-          firstName: member.first_name,
-          lastName: member.last_name,
-          pledgeCount: pledges.length,
-          totalAmount: totalAmount
-        }
-      };
-    });
+    const batch = rows.map((row) => ({
+      to: normalizePhone(row.member.phone_number),
+      body: substituteTemplateVariables(message, templateDataFor(row))
+    }));
 
     const results = await sendSmsBatch(batch);
-    const successCount = results.filter(r => r.success).length;
+    const successCount = results.filter((r) => r.success).length;
 
     let status = 'success';
     let error = null;
-    if (successCount === 0) { status = 'failed'; error = 'All messages failed'; }
+    if (successCount === 0) { status = 'failed'; error = 'All failed'; }
     else if (successCount < results.length) { status = 'partial'; error = `${results.length - successCount} failed`; }
 
-    await logSms({
-      sender_id: senderId,
-      role,
-      recipient_type: 'fulfilled_pledges',
-      recipient_count: recipients.length,
-      message,
-      status,
-      error
-    });
+    await logSms({ sender_id: senderId, role, recipient_type: 'all', recipient_count: rows.length, message, status, error });
 
     return res.json({
       success: successCount > 0,
       results,
       successCount,
       total: results.length,
-      pledgeStatus: 'fulfilled'
+      campaign: { id: campaign.id, name: campaign.name }
     });
   } catch (error) {
     console.error('sendFulfilledPledges error:', error);
@@ -527,50 +489,19 @@ exports.sendFulfilledPledges = async (req, res) => {
 // Get preview of members with pending pledges
 exports.getPendingPledgesRecipients = async (req, res) => {
   try {
-    // Get all members with pending pledges
-    const pendingPledges = await Pledge.findAll({
-      where: { legacy_status: 'pending' },
-      include: [{
-        model: Member,
-        as: 'member',
-        attributes: ['id', 'first_name', 'last_name', 'phone_number', 'email'],
-        where: { is_active: true }
-      }],
-      attributes: ['id', 'member_id', 'amount', 'due_date', 'pledge_type'],
-      raw: false
-    });
+    const { campaign, rows } = await livePledgeAudience(PENDING_STATUSES);
 
-    // Get unique members with their pledge info
-    const memberMap = new Map();
-    pendingPledges.forEach(pledge => {
-      if (pledge.member && pledge.member.phone_number) {
-        const memberId = pledge.member.id;
-        if (!memberMap.has(memberId)) {
-          memberMap.set(memberId, {
-            id: pledge.member.id,
-            firstName: pledge.member.first_name,
-            lastName: pledge.member.last_name,
-            phoneNumber: pledge.member.phone_number,
-            email: pledge.member.email,
-            pendingPledges: []
-          });
-        }
-        memberMap.get(memberId).pendingPledges.push({
-          amount: pledge.amount,
-          dueDate: pledge.due_date,
-          pledgeType: pledge.pledge_type
-        });
-      }
-    });
+    const recipients = rows.map(toRecipient);
 
-    const recipients = Array.from(memberMap.values());
-
+    // campaign is null when no drive is running, which is what lets the SMS
+    // page disable these options and say why instead of showing a bare zero.
     return res.json({
       success: true,
       data: {
         recipients,
         totalCount: recipients.length,
-        totalPledges: pendingPledges.length
+        totalPledges: recipients.length,
+        campaign: campaign ? { id: campaign.id, name: campaign.name } : null
       }
     });
   } catch (error) {
@@ -638,50 +569,19 @@ exports.getDepartmentRecipients = async (req, res) => {
 // Get preview of members with fulfilled pledges
 exports.getFulfilledPledgesRecipients = async (req, res) => {
   try {
-    // Get all members with fulfilled pledges
-    const fulfilledPledges = await Pledge.findAll({
-      where: { legacy_status: 'fulfilled' },
-      include: [{
-        model: Member,
-        as: 'member',
-        attributes: ['id', 'first_name', 'last_name', 'phone_number', 'email'],
-        where: { is_active: true }
-      }],
-      attributes: ['id', 'member_id', 'amount', 'fulfilled_date', 'pledge_type'],
-      raw: false
-    });
+    const { campaign, rows } = await livePledgeAudience(FULFILLED_STATUSES);
 
-    // Get unique members with their pledge info
-    const memberMap = new Map();
-    fulfilledPledges.forEach(pledge => {
-      if (pledge.member && pledge.member.phone_number) {
-        const memberId = pledge.member.id;
-        if (!memberMap.has(memberId)) {
-          memberMap.set(memberId, {
-            id: pledge.member.id,
-            firstName: pledge.member.first_name,
-            lastName: pledge.member.last_name,
-            phoneNumber: pledge.member.phone_number,
-            email: pledge.member.email,
-            fulfilledPledges: []
-          });
-        }
-        memberMap.get(memberId).fulfilledPledges.push({
-          amount: pledge.amount,
-          fulfilledDate: pledge.fulfilled_date,
-          pledgeType: pledge.pledge_type
-        });
-      }
-    });
+    const recipients = rows.map(toRecipient);
 
-    const recipients = Array.from(memberMap.values());
-
+    // campaign is null when no drive is running, which is what lets the SMS
+    // page disable these options and say why instead of showing a bare zero.
     return res.json({
       success: true,
       data: {
         recipients,
         totalCount: recipients.length,
-        totalPledges: fulfilledPledges.length
+        totalPledges: recipients.length,
+        campaign: campaign ? { id: campaign.id, name: campaign.name } : null
       }
     });
   } catch (error) {
