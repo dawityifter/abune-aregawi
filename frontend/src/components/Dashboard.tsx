@@ -8,6 +8,8 @@ import { formatMemberName } from '../utils/formatName';
 import ParishAnnouncements from './ParishAnnouncements';
 import LiturgicalToday from './LiturgicalToday';
 import BaptismalNamePrompt from './BaptismalNamePrompt';
+import MemberStanding from './MemberStanding';
+import NextService from './NextService';
 
 interface UserProfile {
   success: boolean;
@@ -232,413 +234,91 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  const member = userProfile?.data?.member;
+
+  type DashLink = { to: string; icon: string; title: string; desc: string };
+
+  const memberLinks: DashLink[] = [
+    { to: '/profile', icon: 'fas fa-user', title: t('dashboard.profile.title'), desc: (member ? formatMemberName(member) : getDisplayEmail(firebaseUser?.email)) || '' },
+    { to: '/dues', icon: 'fas fa-dollar-sign', title: t('dashboard.dues.title'), desc: isDependent ? t('dashboard.dues.dependentView') : t('dashboard.dues.viewAndPay') },
+    { to: '/donate', icon: 'fas fa-heart', title: t('dashboard.give.title'), desc: t('dashboard.give.desc') },
+    ...(isDependent ? [] : [{ to: '/dependents', icon: 'fas fa-child', title: t('dashboard.family.title'), desc: t('dashboard.family.desc') }]),
+    { to: '/departments', icon: 'fas fa-users', title: t('dashboard.service.title'), desc: t('dashboard.service.desc') },
+    { to: '/gallery', icon: 'fas fa-images', title: t('dashboard.gallery.title'), desc: t('dashboard.gallery.desc') },
+    { to: '/board-members', icon: 'fas fa-church', title: t('board.title'), desc: t('board.card.desc') },
+    { to: '/church-bylaw', icon: 'fas fa-book-open', title: t('dashboard.bylaw.title'), desc: t('dashboard.bylaw.desc') },
+  ];
+
+  // Same permission gates as before, just collected rather than interleaved
+  // with the member's own destinations.
+  const adminLinks: DashLink[] = [
+    ...(permissions.canSendCommunications ? [{ to: '/sms', icon: 'fas fa-sms', title: t('dashboard.communications.title'), desc: t('dashboard.communications.desc') }] : []),
+    ...(permissions.canAccessOutreachDashboard || permissions.canManageOnboarding ? [{ to: '/outreach', icon: 'fas fa-hands-helping', title: t('dashboard.relationships.title'), desc: t('dashboard.relationships.desc') }] : []),
+    ...(permissions.canViewFinancialRecords || permissions.canEditFinancialRecords ? [{ to: '/treasurer', icon: 'fas fa-coins', title: t('dashboard.treasurer.title'), desc: t('dashboard.treasurer.desc') }] : []),
+    ...(permissions.canAccessAdminPanel ? [{ to: '/admin', icon: 'fas fa-shield-alt', title: t('dashboard.admin.title'), desc: t('dashboard.admin.desc') }] : []),
+  ];
+
   return (
     <div className="min-h-screen bg-neutral-50 pt-top-nav">
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* First thing on the page, because it is the one thing that is
-              different every time the member opens it. */}
+          {/* The member's own situation, before any navigation. */}
+          <MemberStanding firstName={member?.firstName} />
+          {/* The one thing that is different every time they open it. */}
           <LiturgicalToday variant="dashboard" />
+          <NextService />
           {/* Below the liturgical band, so the member is given something before
               being asked for something. Renders nothing once answered or
               declined. */}
           <BaptismalNamePrompt />
           <ParishAnnouncements variant="dashboard" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-            {/* Profile Card */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-user text-primary-800"></i>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {t('dashboard.profile.title')}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {(userProfile?.data?.member ? formatMemberName(userProfile.data.member) : getDisplayEmail(firebaseUser?.email)) || 'User'}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4">
+          {/* Twelve near-identical cards in twelve unrelated Tailwind hues
+              became two lists. Colour no longer encodes category — it had no
+              meaning to encode — and administration is separated out rather
+              than sitting among a member's own destinations at equal weight. */}
+          <nav aria-label={t('dashboard.nav.member')} className="card divide-y divide-accent-200 p-0">
+            {memberLinks.map((link) => (
+              <button
+                key={link.to}
+                type="button"
+                onClick={() => navigate(link.to)}
+                className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-accent-100 transition-colors"
+              >
+                <i className={`${link.icon} w-5 text-center text-primary-700`} aria-hidden="true" />
+                <span className="flex-1">
+                  <span className="block font-semibold text-accent-700">{link.title}</span>
+                  <span className="block text-sm text-accent-500">{link.desc}</span>
+                </span>
+                <i className="fas fa-chevron-right text-accent-400" aria-hidden="true" />
+              </button>
+            ))}
+          </nav>
+
+          {adminLinks.length > 0 && (
+            <section className="mt-8">
+              <h2 className="font-serif text-h4 text-accent-500 mb-2">
+                {t('dashboard.nav.administration')}
+              </h2>
+              <nav aria-label={t('dashboard.nav.administration')} className="card divide-y divide-accent-200 p-0">
+                {adminLinks.map((link) => (
                   <button
-                    onClick={handleViewProfile}
-                    className="w-full bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
+                    key={link.to}
+                    type="button"
+                    onClick={() => navigate(link.to)}
+                    className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-accent-100 transition-colors"
                   >
-                    {t('dashboard.profile.view')}
+                    <i className={`${link.icon} w-5 text-center text-accent-500`} aria-hidden="true" />
+                    <span className="flex-1">
+                      <span className="block font-semibold text-accent-700">{link.title}</span>
+                      <span className="block text-sm text-accent-500">{link.desc}</span>
+                    </span>
+                    <i className="fas fa-chevron-right text-accent-400" aria-hidden="true" />
                   </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Church Bylaw Card */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-book-open text-indigo-800"></i>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {t('dashboard.bylaw.title')}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {t('dashboard.bylaw.desc')}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <button
-                    onClick={handleViewBylaw}
-                    className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
-                  >
-                    {t('dashboard.bylaw.view')}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Dues Card (visible to all, dependents see head-of-household dues) */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-dollar-sign text-green-800"></i>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {t('dashboard.dues.title')}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {isDependent ? t('dashboard.dues.dependentView') : t('dashboard.dues.viewAndPay')}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <button
-                    onClick={handleViewDues}
-                    className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
-                  >
-                    {t('dashboard.dues.view')}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Events Card - Hidden for now */}
-            {/* <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-calendar text-blue-800"></i>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {t('dashboard.events.title')}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {t('dashboard.events.upcoming')}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <button
-                    onClick={handleViewEvents}
-                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-                  >
-                    {t('dashboard.events.view')}
-                  </button>
-                </div>
-              </div>
-            </div> */}
-
-            {/* Photo Gallery Card */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-images text-orange-800"></i>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {t('dashboard.gallery.title') || 'Photo Gallery'}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {t('dashboard.gallery.desc') || 'View photos from our latest church events'}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <button
-                    onClick={() => navigate('/gallery')}
-                    className="w-full bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
-                  >
-                    {t('dashboard.gallery.view') || 'View Gallery'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Department Card */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-users text-purple-800"></i>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {t('dashboard.service.title')}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {t('dashboard.service.desc')}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <button
-                    onClick={() => {
-                      // TODO: Fetch user departments and implement smart routing
-                      // For now, just navigate to a departments page
-                      navigate('/departments');
-                    }}
-                    className="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors"
-                  >
-                    {t('dashboard.service.view')}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Board Members Card */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-church text-amber-800"></i>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {t('board.title') || "Board Members"}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {t('board.card.desc') || "View our church leadership and board members"}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <button
-                    onClick={() => navigate('/board-members')}
-                    className="w-full bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 transition-colors"
-                  >
-                    {t('board.view') || "View Leadership"}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Giving Card */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                      <i className="fas fa-heart text-yellow-800"></i>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {t('dashboard.give.title')}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {t('dashboard.give.desc')}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <button
-                    onClick={handleDonate}
-                    className="w-full bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors"
-                  >
-                    {t('dashboard.give.action')}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Children Management Card (hidden for dependents) */}
-            {!isDependent && (
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
-                        <i className="fas fa-child text-pink-800"></i>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {t('dashboard.family.title')}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {t('dashboard.family.desc')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <button
-                      onClick={() => navigate('/dependents')}
-                      className="w-full bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 transition-colors"
-                    >
-                      {t('dashboard.family.manage')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Communications Card (visible to admin, church leadership, secretary) */}
-            {(permissions.canSendCommunications) && (
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                        <i className="fas fa-sms text-gray-800"></i>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {t('dashboard.communications.title')}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {t('dashboard.communications.desc')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <button
-                      onClick={() => navigate('/sms')}
-                      className="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
-                    >
-                      {t('dashboard.communications.open')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Relationship Department Card (visible to roles with outreach/onboarding permissions) */}
-            {(permissions.canAccessOutreachDashboard || permissions.canManageOnboarding) && (
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
-                        <i className="fas fa-hands-helping text-teal-800"></i>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {t('dashboard.relationships.title')}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {t('dashboard.relationships.desc')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <button
-                      onClick={() => navigate('/outreach')}
-                      className="w-full bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700 transition-colors"
-                    >
-                      {t('dashboard.relationships.open')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Treasurer Card - Show for treasurer, admin, and church_leadership roles */}
-            {(permissions.canViewFinancialRecords || permissions.canEditFinancialRecords) && (
-              <div className="bg-white overflow-hidden shadow rounded-lg border-2 border-green-200">
-                <div className="p-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                        <i className="fas fa-coins text-green-800"></i>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {t('dashboard.treasurer.title')}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {t('dashboard.treasurer.desc')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <button
-                      onClick={() => navigate('/treasurer')}
-                      className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
-                    >
-                      <i className="fas fa-coins mr-2"></i>
-                      {t('dashboard.treasurer.view')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Admin Panel Card - Only show for admin users */}
-            {permissions.canAccessAdminPanel && (
-              <div className="bg-white overflow-hidden shadow rounded-lg border-2 border-red-200">
-                <div className="p-6">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                        <i className="fas fa-shield-alt text-red-800"></i>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {t('dashboard.admin.title')}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {t('dashboard.admin.desc')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <button
-                      onClick={() => navigate('/admin')}
-                      className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
-                    >
-                      <i className="fas fa-shield-alt mr-2"></i>
-                      {t('dashboard.admin.access')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+                ))}
+              </nav>
+            </section>
+          )}
         </div>
       </main>
     </div>

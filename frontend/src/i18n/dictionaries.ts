@@ -295,6 +295,18 @@ export interface Dictionaries {
   };
 
   dashboard: {
+    greeting: string;
+    greetingNoName: string;
+    standing: {
+      membership: string;
+      givenThisYear: string;
+      paid: string;
+      due: string;
+      forYear: string;
+      unknown: string;
+      viewDues: string;
+    };
+    nav: { member: string; administration: string };
     welcome: string;
     settingUp: string;
     complete: string;
@@ -1072,6 +1084,23 @@ export const en: Dictionaries = {
     makePledge: "Make a Pledge",
   },
   dashboard: {
+    // {name} is the member's first name.
+    greeting: "Selam, {name}",
+    greetingNoName: "Selam",
+    standing: {
+      membership: "Membership",
+      givenThisYear: "Given in {year}",
+      paid: "Paid",
+      // {amount} is a formatted currency figure.
+      due: "{amount} due",
+      forYear: "for {year}",
+      unknown: "Not available",
+      viewDues: "See your dues",
+    },
+    nav: {
+      member: "Your church",
+      administration: "Church administration",
+    },
     welcome: "Welcome!",
     settingUp: "We're setting up your account. This will just take a moment...",
     complete: "Complete Registration",
@@ -3426,6 +3455,21 @@ export const ti: Dictionaries = {
     makePledge: "መብጽዓ ምእታው",
   },
   dashboard: {
+    greeting: "ሰላም፣ {name}",
+    greetingNoName: "ሰላም",
+    standing: {
+      membership: "ኣባልነት",
+      givenThisYear: "ኣብ {year} እተዋህበ",
+      paid: "ተኸፊሉ",
+      due: "{amount} ይተርፍ",
+      forYear: "ናይ {year}",
+      unknown: "ኣይተረኽበን",
+      viewDues: "ክፍሊትካ ርአ",
+    },
+    nav: {
+      member: "ቤተ ክርስቲያንካ",
+      administration: "ምሕደራ ቤተ ክርስቲያን",
+    },
     welcome: "እንኳዕ ብደሓን መጻእኩም!",
     settingUp: "ኣካውንትኩም ነዳሉ ኣለና። እዚ ቁሩብ ግዜ ክወስድ እዩ...",
     complete: "ምዝገባ ወድእ",
