@@ -188,7 +188,7 @@ describe('Authentication Flow Integration', () => {
 
       // Fill in phone form with test number (should bypass reCAPTCHA)
       const phoneInput = screen.getByPlaceholderText('(555) 123-4567');
-      const initialButton = screen.getByRole('button', { name: /enter 10 digits|complete recaptcha first|send (code|otp)/i });
+      const initialButton = screen.getByRole('button', { name: /send (code|otp)/i });
 
       await act(async () => {
         fireEvent.change(phoneInput, { target: { value: '5551234567' } });
@@ -208,16 +208,16 @@ describe('Authentication Flow Integration', () => {
 
       // Fill in phone form with invalid number
       const phoneInput = screen.getByPlaceholderText('(555) 123-4567');
-      const submitBtn = screen.getByRole('button', { name: /enter 10 digits|complete recaptcha first|send (code|otp)/i });
+      const submitBtn = screen.getByRole('button', { name: /send (code|otp)/i });
 
       await act(async () => {
         fireEvent.change(phoneInput, { target: { value: '123' } });
       });
 
-      // Button should remain disabled with "Enter 10 Digits" label; no error banner is shown
+      // The button stays disabled and a hint explains why; no error banner is shown
       await waitFor(() => {
         expect(submitBtn).toBeDisabled();
-        expect(submitBtn).toHaveTextContent(/enter 10 digits/i);
+        expect(submitBtn).toBeDisabled();
         expect(screen.queryByText('Please enter a valid phone number.')).toBeNull();
       });
     });
@@ -235,7 +235,7 @@ describe('Authentication Flow Integration', () => {
 
       // Fill in phone form with valid test number
       const phoneInput = screen.getByPlaceholderText('(555) 123-4567');
-      const initialBtn = screen.getByRole('button', { name: /enter 10 digits|send (code|otp)/i });
+      const initialBtn = screen.getByRole('button', { name: /send (code|otp)/i });
 
       await act(async () => {
         fireEvent.change(phoneInput, { target: { value: '5551234567' } });
@@ -264,7 +264,7 @@ describe('Authentication Flow Integration', () => {
 
       // Fill in phone form with test number
       const phoneInput = screen.getByPlaceholderText('(555) 123-4567');
-      const initialBtn2 = screen.getByRole('button', { name: /enter 10 digits|send (code|otp)/i });
+      const initialBtn2 = screen.getByRole('button', { name: /send (code|otp)/i });
 
       await act(async () => {
         fireEvent.change(phoneInput, { target: { value: '5551234567' } });
@@ -300,8 +300,8 @@ describe('Authentication Flow Integration', () => {
 
       const phoneInput = screen.getByPlaceholderText('(555) 123-4567');
 
-      // Initially button shows Enter 10 Digits; after valid input it becomes Send OTP/Code and enables
-      const initialBtn = screen.getByRole('button', { name: /enter 10 digits|send (code|otp)/i });
+      // The button always reads 'Send code'; valid input is what enables it
+      const initialBtn = screen.getByRole('button', { name: /send (code|otp)/i });
 
       fireEvent.change(phoneInput, { target: { value: '5551234567' } });
 

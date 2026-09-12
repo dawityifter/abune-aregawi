@@ -3,6 +3,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { RecaptchaVerifier } from "firebase/auth";
 import { auth } from "../../firebase";
 import ErrorBoundary from "../ErrorBoundary";
+import AksumCross from "../common/AksumCross";
 import { formatPhoneNumber, isValidPhoneNumber, normalizePhoneNumber } from "../../utils/formatPhoneNumber";
 import { useLanguage } from "../../contexts/LanguageContext";
 
@@ -365,7 +366,7 @@ const SignIn: React.FC = () => {
           {/* Church Icon Header */}
           <div className="text-center mb-6">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-700 rounded-full mb-4">
-              <i className="fas fa-cross text-2xl text-white"></i>
+              <AksumCross className="h-8 w-auto text-secondary-300" />
             </div>
             <h2 className="text-3xl font-serif font-bold text-primary-700 mb-2">{t('auth.welcomeBack')}</h2>
             <p className="text-accent-600 text-sm">{t('auth.loginSubtitle')}</p>
@@ -379,9 +380,9 @@ const SignIn: React.FC = () => {
           {!confirmationResult && (
             <form onSubmit={handlePhoneSignIn} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-accent-700 mb-2">
+                <label htmlFor="signin-phone" className="block text-sm font-medium text-accent-700 mb-2">
                   <i className="fas fa-phone mr-2 text-primary-700"></i>
-                  Phone Number
+                  {t('signIn.phoneLabel')}
                 </label>
                 <input
                   value={phone}
@@ -390,6 +391,7 @@ const SignIn: React.FC = () => {
                     const formatted = formatPhoneNumber(rawValue);
                     setPhone(formatted);
                   }}
+                  id="signin-phone"
                   placeholder="(555) 123-4567"
                   type="tel"
                   required
@@ -397,7 +399,7 @@ const SignIn: React.FC = () => {
                 />
                 <div className="text-xs text-accent-600 mt-2 flex items-center">
                   <i className="fas fa-info-circle mr-1"></i>
-                  Enter 10 digits (e.g., 5551234567) - will auto-format
+                  {t('signIn.phoneHint')}
                 </div>
               </div>
 
@@ -460,17 +462,14 @@ const SignIn: React.FC = () => {
                 </div>
               )}
               {/* SMS consent disclaimer */}
-              <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 text-gray-700 p-3">
-                <div className="flex items-start gap-2">
-                  <i className="fas fa-sms mt-0.5 text-primary-700"></i>
-                  <div className="text-[11px] sm:text-xs leading-relaxed">
-                    <span className="font-semibold text-gray-800">SMS Consent:</span> By entering your phone number you consent to receive SMS notifications from Abune Aregawi Church about event reminders.
-                    <div className="mt-1 text-gray-600">
-                      Frequency may vary; SMS and data rates may apply. Consent is not a condition of purchase. Reply <span className="font-semibold">HELP</span> for help and <span className="font-semibold">STOP</span> to unsubscribe.
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* One line, with the rest behind a disclosure. This block used
+                  to be longer than everything else on the screen, so a member's
+                  first impression of the account system was a legal notice. The
+                  full text is unchanged and still one tap away. */}
+              <details className="mt-4 text-xs text-accent-500">
+                <summary className="cursor-pointer">{t('signIn.smsConsentShort')}</summary>
+                <p className="mt-2 leading-relaxed">{t('signIn.smsConsentDetail')}</p>
+              </details>
 
               <div className="mt-4 md:mt-6 sticky md:static bottom-above-nav md:bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur supports-backdrop-blur:bg-white/80 py-2">
                 <button
@@ -484,25 +483,18 @@ const SignIn: React.FC = () => {
                   {loading ? (
                     <>
                       <i className="fas fa-spinner fa-spin mr-2"></i>
-                      Sending OTP...
-                    </>
-                  ) : !isValidPhoneNumber(phone) ? (
-                    <>
-                      <i className="fas fa-keyboard mr-2"></i>
-                      Enter 10 Digits
-                    </>
-                  ) : recaptchaSolved ? (
-                    <>
-                      <i className="fas fa-paper-plane mr-2"></i>
-                      Send OTP
+                      {t('signIn.sending')}
                     </>
                   ) : (
-                    <>
-                      <i className="fas fa-shield-alt mr-2"></i>
-                      Complete reCAPTCHA First
-                    </>
+                    t('signIn.sendCode')
                   )}
                 </button>
+                {!loading && !isValidPhoneNumber(phone) && (
+                  <p className="mt-2 text-center text-xs text-accent-500">{t('signIn.needPhone')}</p>
+                )}
+                {!loading && isValidPhoneNumber(phone) && !recaptchaSolved && (
+                  <p className="mt-2 text-center text-xs text-accent-500">{t('signIn.needCaptcha')}</p>
+                )}
               </div>
             </form>
           )}

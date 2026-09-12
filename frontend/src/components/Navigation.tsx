@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../utils/roles';
 import { featureFlags } from '../config/featureFlags';
 import { useActiveCampaign } from '../hooks/useActiveCampaign';
+import AksumCross from './common/AksumCross';
 // import { Transition } from '@headlessui/react'; // Removed due to React 19 compatibility
 
 // type Language = 'en' | 'ti';
@@ -102,12 +103,22 @@ const Navigation: React.FC = () => {
     <nav className="bg-gradient-to-r from-primary-700 to-primary-800 shadow-lg fixed w-full z-50 print:hidden pt-safe-t">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          {/* Church Name - Home Link */}
-          <div className="flex-shrink-0 flex items-center">
-            <Link to="/" className="flex items-center space-x-2 hover:opacity-90 transition-opacity" onClick={() => setIsMenuOpen(false)}>
-              <i className="fas fa-church text-2xl text-white"></i>
-              <span className="text-lg md:text-xl font-bold text-white hidden sm:inline-block ml-2">
-                {t('church.name')}
+          {/* The parish mark and name.
+              The name used to be `hidden sm:inline-block`, so on a phone the
+              header showed a generic Font Awesome church glyph and nothing
+              else — the one piece of chrome present on every screen said
+              nothing about whose church this is. The short name fits at 390px;
+              the full name takes over from `md`. */}
+          <div className="flex-shrink-0 flex items-center min-w-0">
+            <Link
+              to="/"
+              className="flex items-center gap-2.5 hover:opacity-90 transition-opacity min-w-0"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <AksumCross className="h-7 w-auto flex-shrink-0 text-secondary-300" />
+              <span className="font-serif text-base sm:text-lg md:text-xl font-bold text-white truncate">
+                <span className="md:hidden">{t('church.shortName')}</span>
+                <span className="hidden md:inline">{t('church.name')}</span>
               </span>
             </Link>
           </div>

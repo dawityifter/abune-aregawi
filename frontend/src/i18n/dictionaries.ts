@@ -973,6 +973,20 @@ export const en: Dictionaries = {
   language: "Language",
   // Full church name shown in the top navigation bar.
   'church.name': 'Debre Tsehay Abune Aregawi Orthodox Tewahedo Church',
+  // Shown in the header below the md breakpoint, where the full name does not
+  // fit. The alternative was hiding the name entirely, which is what the
+  // header used to do.
+  'church.shortName': 'Debre Tsehay',
+  // Sign-in screen. These were hard-coded English literals, so the one screen
+  // every member has to pass through was untranslated.
+  'signIn.phoneLabel': 'Phone number',
+  'signIn.phoneHint': 'Ten digits — we will format it for you.',
+  'signIn.sendCode': 'Send code',
+  'signIn.sending': 'Sending code...',
+  'signIn.needPhone': 'Enter your ten-digit phone number to continue.',
+  'signIn.needCaptcha': 'Complete the check above to continue.',
+  'signIn.smsConsentShort': 'We will text you a sign-in code. Message rates may apply.',
+  'signIn.smsConsentDetail': 'By entering your phone number you consent to receive SMS notifications from Abune Aregawi Church about event reminders. Frequency may vary; SMS and data rates may apply. Consent is not a condition of purchase. Reply HELP for help and STOP to unsubscribe.',
   hero: {
     title: "Welcome to Abune Aregawi Orthodox Tewahedo Church",
     subtitle: "Join us for worship, fellowship, and service. English & ትግርኛ",
@@ -3338,6 +3352,15 @@ export const ti: Dictionaries = {
   language: "ቋንቋ",
   // Full church name shown in the top navigation bar.
   'church.name': 'ደብረ ጸሓይ ኣቡነ ኣረጋዊ ኦርቶዶክስ ተዋሕዶ ቤተ ክርስቲያን',
+  'church.shortName': 'ደብረ ጸሓይ',
+  'signIn.phoneLabel': 'ቁጽሪ ስልኪ',
+  'signIn.phoneHint': 'ዓሰርተ ኣሃዝ — ንሕና ኢና ንሰርዖ።',
+  'signIn.sendCode': 'ኮድ ስደድ',
+  'signIn.sending': 'ኮድ ይስደድ ኣሎ...',
+  'signIn.needPhone': 'ንምቕጻል ዓሰርተ ኣሃዝ ቁጽሪ ስልክኻ ኣእቱ።',
+  'signIn.needCaptcha': 'ንምቕጻል ነቲ ኣብ ላዕሊ ዘሎ መረጋገጺ ወድእ።',
+  'signIn.smsConsentShort': 'ናይ ምእታዊ ኮድ ብመልእኽቲ ክንሰደልካ ኢና። ዋጋ መልእኽቲ ክውስኸካ ይኽእል።',
+  'signIn.smsConsentDetail': 'ቁጽሪ ስልክኻ ብምእታው ካብ ቤተ ክርስቲያን ኣቡነ ኣረጋዊ ብዛዕባ መዘኻኸሪ ንጥፈታት ናይ ሓጺር መልእኽቲ ሓበሬታ ንኽትቕበል ትሰማማዕ ኣለኻ። ቁጽሪ መልእኽትታት ክቀያየር ይኽእል፣ ናይ መልእኽትን ዳታን ክፍሊት ክውስኸካ ይኽእል። እዚ ምስምማዕ ንዕድጊ ቅድመ ኩነት ኣይኮነን። ንሓገዝ HELP፣ ንምቁራጽ ከኣ STOP ብምባል መልሲ።',
   hero: {
     // እንኳዕ ብደሓን መጻእኩም = “Welcome”
     // ቤ/ክ = ቤተ ክርስቲያን (shorthand)

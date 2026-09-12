@@ -187,17 +187,17 @@ describe('SignIn Component', () => {
   describe('Phone Authentication', () => {
     it('should render phone form by default', () => {
       renderSignIn();
-      expect(screen.getByText('Phone Number')).toBeInTheDocument();
+      expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText('(555) 123-4567')).toBeInTheDocument();
       // Initial submit button prompt
-      expect(screen.getByText('Enter 10 Digits')).toBeInTheDocument();
+      expect(screen.getByText(/enter your ten-digit phone number/i)).toBeInTheDocument();
     });
 
     it('should render phone form with proper instructions', () => {
       renderSignIn();
-      expect(screen.getByText('Phone Number')).toBeInTheDocument();
+      expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText('(555) 123-4567')).toBeInTheDocument();
-      expect(screen.getByText('Enter 10 digits (e.g., 5551234567) - will auto-format')).toBeInTheDocument();
+      expect(screen.getByText(/ten digits — we will format it for you/i)).toBeInTheDocument();
     });
 
     it('should format phone number input', () => {
@@ -221,8 +221,8 @@ describe('SignIn Component', () => {
         options.callback();
       }
 
-      // Wait for the enabled Send OTP button and click it
-      const submitBtn = await screen.findByRole('button', { name: /send otp/i });
+      // Wait for the enabled Send code button and click it
+      const submitBtn = await screen.findByRole('button', { name: /send code/i });
       await waitFor(() => expect(submitBtn).toBeEnabled());
       fireEvent.click(submitBtn);
 
@@ -235,8 +235,8 @@ describe('SignIn Component', () => {
       renderSignIn();
       const phoneInput = screen.getByPlaceholderText('(555) 123-4567');
       fireEvent.change(phoneInput, { target: { value: '555' } });
-      // Button remains 'Enter 10 Digits' and disabled; error appears only on submit handler, so no click.
-      expect(screen.getByText('Enter 10 Digits')).toBeInTheDocument();
+      // The button stays disabled and the hint explains why; no click..
+      expect(screen.getByText(/enter your ten-digit phone number/i)).toBeInTheDocument();
     });
   });
 
@@ -246,14 +246,14 @@ describe('SignIn Component', () => {
     it('should show loading state during phone sign in (button disabled)', () => {
       mockAuth.loading = true;
       renderSignIn();
-      const button = screen.getByRole('button', { name: /enter 10 digits|send otp|sending otp/i });
+      const button = screen.getByRole('button', { name: /send code|sending code/i });
       expect(button).toBeDisabled();
     });
 
     it('should disable submit button during loading', () => {
       mockAuth.loading = true;
       renderSignIn();
-      const button = screen.getByRole('button', { name: /enter 10 digits|send otp|sending otp/i });
+      const button = screen.getByRole('button', { name: /send code|sending code/i });
       expect(button).toBeDisabled();
     });
   });
