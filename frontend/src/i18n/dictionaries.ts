@@ -1897,6 +1897,12 @@ export const en: Dictionaries = {
     zipCode: "Zip Code",
     processing: "Processing...",
     continueToPayment: "Continue to Payment - ${amount}",
+    // Replaces continueToPayment on the submit button: it names the amount
+    // being given rather than an amount of nothing, and says what happens.
+    giveAmount: "Give ${amount}",
+    giveNoAmount: "Choose an amount",
+    otherAmount: "Other amount",
+    otherWaysToGive: "Other ways to give",
     paymentSuccessMsg: "Payment successful! Thank you for your donation.",
     freq: {
       weekly: "Weekly",
@@ -1917,7 +1923,7 @@ export const en: Dictionaries = {
     },
     thankYou: "Thank you for your donation of ${amount}! Your payment has been processed successfully.",
     auth: {
-      template: "I authorize this merchant or their agent to {action} in the amount above {recurring} as soon as I click the \"Continue to Payment\" button below. I agree that {method} transactions I authorize comply with all applicable law.",
+      template: "I authorize this merchant or their agent to {action} in the amount above {recurring} as soon as I click the give button below. I agree that {method} transactions I authorize comply with all applicable law.",
       chargeCard: "charge my credit card",
       debitAccount: "debit my account",
       recurringClause: "via {frequency} recurring payments",
@@ -4250,6 +4256,10 @@ export const ti: Dictionaries = {
     zipCode: "ዚፕ ኮድ",
     processing: "ይካየድ ኣሎ...",
     continueToPayment: "ናብ ክፍሊት ቀጽል - ${amount}",
+    giveAmount: "${amount} ለግስ",
+    giveNoAmount: "መጠን ምረጽ",
+    otherAmount: "ካልእ መጠን",
+    otherWaysToGive: "ካልኦት መንገድታት ልገሳ",
     paymentSuccessMsg: "ክፍሊት ተዓዊቱ! ስለ ወፈያኹም ነመስግን።",
     freq: {
       weekly: "ሰሙናዊ",
@@ -4270,7 +4280,7 @@ export const ti: Dictionaries = {
     },
     thankYou: "ስለ ${amount} ወፈያኹም ነመስግን! ክፍሊትኩም ብዓወት ተሰሪሑ።",
     auth: {
-      template: "ነዚ ነጋዳይ ወይ ወኪሉ ነቲ ኣብ ላዕሊ ተጠቒሱ ዘሎ መጠን {action} ንኽገብር ፍቓድ እህብ {recurring}፣ ነቲ ኣብ ታሕቲ ዘሎ \"ናብ ክፍሊት ቀጽል\" መልጎም ምስ ጠወቕኩ ብቕጽበት። እቲ ዝፈቕዶ {method} ግብይታት ምስ ኩሉ ተፈጻሚ ሕጊ ከም ዝሰማማዕ እቕበል።",
+      template: "ነዚ ነጋዳይ ወይ ወኪሉ ነቲ ኣብ ላዕሊ ተጠቒሱ ዘሎ መጠን {action} ንኽገብር ፍቓድ እህብ {recurring}፣ ነቲ ኣብ ታሕቲ ዘሎ መልጎም ልገሳ ምስ ጠወቕኩ ብቕጽበት። እቲ ዝፈቕዶ {method} ግብይታት ምስ ኩሉ ተፈጻሚ ሕጊ ከም ዝሰማማዕ እቕበል።",
       chargeCard: "ካብ ክረዲት ካርደይ ንኽትከፍሉ",
       debitAccount: "ካብ ሕሳበይ ንኽትከፍሉ",
       recurringClause: "ብ{frequency} ተደጋጋሚ ክፍሊታት",

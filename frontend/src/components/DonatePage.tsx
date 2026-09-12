@@ -8,6 +8,14 @@ import { Elements } from '@stripe/react-stripe-js';
 import { stripePromise } from '../config/stripe';
 import { usePledgeBalance } from '../hooks/usePledgeBalance';
 
+/**
+ * Suggested gifts. Stored already normalised to two decimals so tapping a
+ * preset and typing the same figure by hand produce identical state — the
+ * amount field normalises on blur, and a mismatch would un-highlight the
+ * preset the member just chose.
+ */
+const PRESET_AMOUNTS = ['25.00', '50.00', '100.00', '250.00'];
+
 const DonatePage: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -77,6 +85,11 @@ const DonatePage: React.FC = () => {
       // Do not update amount, but show a gentle inline error
       setAmountError(t('donatePage.errors.amountDecimals'));
     }
+  };
+
+  const handlePresetClick = (preset: string) => {
+    setAmount(preset);
+    setAmountError(null);
   };
 
   const normalizeAmountOnBlur = () => {
@@ -187,58 +200,98 @@ const DonatePage: React.FC = () => {
     <Elements stripe={stripePromise}>
       <div className="min-h-screen pt-top-nav py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">{t('donatePage.title')}</h1>
-          <p className="text-lg text-gray-600">
+        <div className="mb-8">
+          <h1 className="font-serif text-3xl font-bold text-accent-700 mb-3">{t('donatePage.title')}</h1>
+          <p className="text-lg text-accent-500">
             {t('donatePage.subtitle')}
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="space-y-8">
           {/* Online Donation Form */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">{t('donatePage.onlineDonation')}</h2>
+          <div className="card">
+            <h2 className="font-serif text-2xl font-semibold text-accent-700 mb-6">{t('donatePage.onlineDonation')}</h2>
             
             <form onSubmit={handleFormSubmit} className="space-y-6">
+                {/* Amount first: it is the decision the member came to make.
+                    The form used to open on an empty $0.00 field, below two
+                    other questions, with no suggested amounts at all. */}
+                <div>
+                  <label htmlFor="donation-amount" className="block text-sm font-semibold text-accent-700 mb-2">
+                    {t('donatePage.donationAmount')}
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {PRESET_AMOUNTS.map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => handlePresetClick(preset)}
+                        aria-pressed={amount === preset}
+                        className={`min-h-[48px] rounded-md border-2 font-semibold tabular-nums transition-colors ${
+                          amount === preset
+                            ? 'border-primary-700 bg-primary-50 text-primary-700'
+                            : 'border-accent-200 bg-accent-50 text-accent-700 hover:border-accent-300'
+                        }`}
+                      >
+                        ${Number(preset).toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="relative mt-3">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-accent-500" aria-hidden="true">$</span>
+                    <input
+                      id="donation-amount"
+                      type="text"
+                      inputMode="decimal"
+                      value={amount}
+                      onChange={(e) => handleAmountChange(e.target.value)}
+                      onBlur={normalizeAmountOnBlur}
+                      placeholder={t('donatePage.otherAmount')}
+                      required
+                      aria-describedby={amountError ? 'donation-amount-error' : undefined}
+                      className="w-full min-h-[48px] border border-accent-200 rounded-md pl-8 pr-3 py-2 text-lg tabular-nums"
+                    />
+                  </div>
+                  {amountError && (
+                    <p id="donation-amount-error" className="mt-1 text-sm text-primary-700">{amountError}</p>
+                  )}
+                </div>
+
                 {/* Donation Type */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <span className="block text-sm font-semibold text-accent-700 mb-2">
                     {t('donatePage.howOften')}
-                  </label>
-                  <div className="flex space-x-4">
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        value="one-time"
-                        checked={donationType === 'one-time'}
-                        onChange={(e) => setDonationType(e.target.value as 'one-time' | 'recurring')}
-                        className="mr-2"
-                      />
-                      {t('donatePage.oneTime')}
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        value="recurring"
-                        checked={donationType === 'recurring'}
-                        onChange={(e) => setDonationType(e.target.value as 'one-time' | 'recurring')}
-                        className="mr-2"
-                      />
-                      {t('donatePage.recurring')}
-                    </label>
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['one-time', 'recurring'] as const).map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setDonationType(option)}
+                        aria-pressed={donationType === option}
+                        className={`min-h-[48px] rounded-md border-2 font-semibold transition-colors ${
+                          donationType === option
+                            ? 'border-primary-700 bg-primary-50 text-primary-700'
+                            : 'border-accent-200 bg-accent-50 text-accent-700 hover:border-accent-300'
+                        }`}
+                      >
+                        {option === 'one-time' ? t('donatePage.oneTime') : t('donatePage.recurring')}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Frequency (for recurring) */}
                 {donationType === 'recurring' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="donation-frequency" className="block text-sm font-semibold text-accent-700 mb-2">
                       {t('donatePage.frequency')}
                     </label>
                     <select
+                      id="donation-frequency"
                       value={frequency}
                       onChange={(e) => setFrequency(e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      className="w-full min-h-[48px] border border-accent-200 rounded-md px-3 py-2"
                     >
                       <option value="weekly">{t('donatePage.freq.weekly')}</option>
                       <option value="monthly">{t('donatePage.freq.monthly')}</option>
@@ -247,29 +300,6 @@ const DonatePage: React.FC = () => {
                     </select>
                   </div>
                 )}
-
-                {/* Amount */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('donatePage.donationAmount')}
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2 text-gray-500">$</span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={amount}
-                      onChange={(e) => handleAmountChange(e.target.value)}
-                      onBlur={normalizeAmountOnBlur}
-                      placeholder="0.00"
-                      required
-                      className="w-full border border-gray-300 rounded-md pl-8 pr-3 py-2"
-                    />
-                    {amountError && (
-                      <p className="mt-1 text-xs text-red-600">{amountError}</p>
-                    )}
-                  </div>
-                </div>
 
                 {canApplyToPledge && pledgeBalance && (
                   <div className="mb-6 rounded-lg border border-primary-200 bg-primary-50 p-4">
@@ -298,7 +328,7 @@ const DonatePage: React.FC = () => {
 
                 {/* Payment Method */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-accent-700 mb-2">
                     {t('donatePage.paymentMethod')}
                   </label>
                   <div className="flex space-x-4">
@@ -327,9 +357,8 @@ const DonatePage: React.FC = () => {
 
                 {/* Payment Form Fields - Show inline based on payment method */}
                 {paymentMethod === 'card' && (
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">{t('donatePage.cardInformation')}</h3>
-                    <div className="border border-gray-300 rounded-md p-3 bg-white">
+                  <div className="bg-accent-100 p-4 rounded-md">
+                    <div className="border border-accent-200 rounded-md p-3 bg-accent-50">
                       <StripePayment
                         donationData={donationData}
                         onSuccess={handlePaymentSuccess}
@@ -344,8 +373,8 @@ const DonatePage: React.FC = () => {
                 )}
 
                 {paymentMethod === 'ach' && (
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">{t('donatePage.bankInformation')}</h3>
+                  <div className="bg-accent-100 p-4 rounded-md">
+                    <h3 className="font-serif text-lg font-semibold text-accent-700 mb-4">{t('donatePage.bankInformation')}</h3>
                     <ACHPayment
                       donationData={donationData}
                       onSuccess={handlePaymentSuccess}
@@ -360,18 +389,18 @@ const DonatePage: React.FC = () => {
 
                 {/* Donor Information */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-800">{t('donatePage.donorInformation')}</h3>
+                  <h3 className="font-serif text-lg font-semibold text-accent-700">{t('donatePage.donorInformation')}</h3>
 
                   {user && !user._temp && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                    <div className="bg-tsaeda-50 border border-tsaeda-200 rounded-md p-3 mb-4">
                       <div className="flex justify-between items-center">
-                        <p className="text-sm text-blue-700">
+                        <p className="text-sm text-tsaeda-700">
                           <strong>{t('donatePage.prefillNoteLabel')}</strong> {t('donatePage.prefillNoteBody')}
                         </p>
                         <button
                           type="button"
                           onClick={resetToProfileData}
-                          className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors"
+                          className="text-xs bg-tsaeda-600 hover:bg-tsaeda-700 text-white px-3 py-1.5 rounded-md transition-colors"
                         >
                           {t('donatePage.resetToProfile')}
                         </button>
@@ -381,7 +410,7 @@ const DonatePage: React.FC = () => {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-accent-700 mb-2">
                         {t('donatePage.firstName')}
                       </label>
                       <input
@@ -389,11 +418,11 @@ const DonatePage: React.FC = () => {
                         value={donorInfo.firstName}
                         onChange={(e) => setDonorInfo({...donorInfo, firstName: e.target.value})}
                         required
-                        className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        className="w-full min-h-[48px] border border-accent-200 rounded-md px-3 py-2"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-accent-700 mb-2">
                         {t('donatePage.lastName')}
                       </label>
                       <input
@@ -401,59 +430,59 @@ const DonatePage: React.FC = () => {
                         value={donorInfo.lastName}
                         onChange={(e) => setDonorInfo({...donorInfo, lastName: e.target.value})}
                         required
-                        className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        className="w-full min-h-[48px] border border-accent-200 rounded-md px-3 py-2"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-accent-700 mb-2">
                       {t('donatePage.email')}
                     </label>
                     <input
                       type="email"
                       value={donorInfo.email}
                       onChange={(e) => setDonorInfo({...donorInfo, email: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      className="w-full min-h-[48px] border border-accent-200 rounded-md px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-accent-700 mb-2">
                       {t('donatePage.phoneNumber')}
                     </label>
                     <input
                       type="tel"
                       value={donorInfo.phone}
                       onChange={(e) => setDonorInfo({...donorInfo, phone: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      className="w-full min-h-[48px] border border-accent-200 rounded-md px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-accent-700 mb-2">
                       {t('donatePage.billingAddress')}
                     </label>
                     <input
                       type="text"
                       value={donorInfo.address}
                       onChange={(e) => setDonorInfo({...donorInfo, address: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      className="w-full min-h-[48px] border border-accent-200 rounded-md px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-accent-700 mb-2">
                       {t('donatePage.zipCode')}
                     </label>
                     <input
                       type="text"
                       value={donorInfo.zipCode}
                       onChange={(e) => setDonorInfo({...donorInfo, zipCode: e.target.value})}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      className="w-full min-h-[48px] border border-accent-200 rounded-md px-3 py-2"
                     />
                   </div>
                 </div>
 
                 {/* Authorization */}
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <p className="text-sm text-gray-700">
+                <div className="bg-accent-100 p-4 rounded-md">
+                  <p className="text-sm text-accent-500">
                     {t('donatePage.auth.template', {
                       action: paymentMethod === 'card' ? t('donatePage.auth.chargeCard') : t('donatePage.auth.debitAccount'),
                       recurring: donationType === 'recurring'
@@ -464,34 +493,48 @@ const DonatePage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Submit Button */}
+                {/* The button used to read "Continue to Payment - $0.00" in
+                    Stripe's default blue — a colour used nowhere else on the
+                    site, naming an amount of nothing. It now says what will
+                    happen, in the parish's own red. */}
                 <button
                   type="submit"
                   disabled={isProcessing}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg text-lg transition duration-200"
+                  className="btn btn-primary btn-block text-lg disabled:bg-accent-400"
                 >
-                  {isProcessing ? t('donatePage.processing') : t('donatePage.continueToPayment', { amount: amount || '0.00' })}
+                  {isProcessing
+                    ? t('donatePage.processing')
+                    : amount
+                      ? t('donatePage.giveAmount', { amount: Number(amount).toLocaleString(undefined, { minimumFractionDigits: 2 }) })
+                      : t('donatePage.giveNoAmount')}
                 </button>
               </form>
 
             {paymentError && (
-              <div className="mt-4 bg-red-50 border border-red-200 rounded-md p-3">
-                <p className="text-sm text-red-600">{paymentError}</p>
+              <div className="mt-4 bg-primary-50 border border-primary-200 rounded-md p-3">
+                <p className="text-sm text-primary-700">{paymentError}</p>
               </div>
             )}
 
             {paymentSuccess && (
-              <div className="mt-4 bg-green-50 border border-green-200 rounded-md p-3">
-                <p className="text-sm text-green-600">{t('donatePage.paymentSuccessMsg')}</p>
+              <div className="mt-4 bg-tsaeda-50 border border-tsaeda-200 rounded-md p-3">
+                <p className="text-sm text-tsaeda-700">{t('donatePage.paymentSuccessMsg')}</p>
               </div>
             )}
           </div>
 
-          {/* Alternative Payment Methods */}
-          <div className="space-y-6">
+          {/* Alternative Payment Methods.
+              Behind a disclosure rather than beside the form: Zelle and cheque
+              are still one tap away, but they no longer compete with the card
+              path for a member who just wants to give and be done. */}
+          <details className="rounded-md border border-accent-200 bg-accent-50 p-6">
+            <summary className="cursor-pointer list-none font-semibold text-tsaeda-600 marker:hidden">
+              {t('donatePage.otherWaysToGive')}
+            </summary>
+            <div className="mt-6 space-y-6">
             {/* Zelle */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">{t('donatePage.zelle.title')}</h3>
+            <div className="card">
+              <h3 className="font-serif text-xl font-semibold text-accent-700 mb-4">{t('donatePage.zelle.title')}</h3>
               <div className="bg-blue-50 border border-blue-200 rounded p-4">
                 <div className="text-center space-y-4">
                   {/* QR Code */}
@@ -558,28 +601,29 @@ const DonatePage: React.FC = () => {
             </div>
 
             {/* Check */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">{t('donatePage.check.title')}</h3>
-              <div className="bg-green-50 border border-green-200 rounded p-4 flex flex-col items-center">
-                <span className="text-lg font-bold text-green-700">{t('donatePage.check.payableTo')}</span>
-                <span className="text-lg text-green-900">{t('donatePage.check.payee')}</span>
+            <div className="card">
+              <h3 className="font-serif text-xl font-semibold text-accent-700 mb-4">{t('donatePage.check.title')}</h3>
+              <div className="bg-accent-100 border border-accent-200 rounded-md p-4 flex flex-col items-center">
+                <span className="text-lg font-bold text-accent-700">{t('donatePage.check.payableTo')}</span>
+                <span className="text-lg text-accent-700">{t('donatePage.check.payee')}</span>
               </div>
             </div>
 
             {/* Contact Info */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">{t('donatePage.questions.title')}</h3>
-              <p className="text-gray-600 mb-4">
+            <div className="card">
+              <h3 className="font-serif text-xl font-semibold text-accent-700 mb-4">{t('donatePage.questions.title')}</h3>
+              <p className="text-accent-500 mb-4">
                 {t('donatePage.questions.body')}
               </p>
               <a 
                 href="mailto:abunearegawitx@gmail.com" 
-                className="text-blue-600 underline hover:text-blue-800"
+                className="text-tsaeda-600 underline hover:text-tsaeda-700"
               >
                 abunearegawitx@gmail.com
               </a>
             </div>
-          </div>
+            </div>
+          </details>
         </div>
       </div>
       </div>

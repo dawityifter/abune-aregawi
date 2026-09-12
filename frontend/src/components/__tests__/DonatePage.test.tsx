@@ -80,13 +80,13 @@ describe('DonatePage', () => {
     renderWithProviders(<DonatePage />);
     
     // Fill in required fields
-    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '50.00' } });
+    fireEvent.change(screen.getByLabelText('Donation Amount'), { target: { value: '50.00' } });
     fireEvent.change(screen.getByDisplayValue('John'), { target: { value: 'John' } });
     fireEvent.change(screen.getByDisplayValue('Doe'), { target: { value: 'Doe' } });
     fireEvent.change(screen.getByDisplayValue('test@example.com'), { target: { value: 'test@example.com' } });
     
     // Submit the form by clicking the submit button
-    const submitButton = screen.getByRole('button', { name: /Continue to Payment/ });
+    const submitButton = screen.getByRole('button', { name: /Give|Choose an amount/ });
     fireEvent.click(submitButton);
     
     await waitFor(() => {
@@ -103,13 +103,13 @@ describe('DonatePage', () => {
     fireEvent.click(achRadio);
     
     // Fill in required fields
-    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '50.00' } });
+    fireEvent.change(screen.getByLabelText('Donation Amount'), { target: { value: '50.00' } });
     fireEvent.change(screen.getByDisplayValue('John'), { target: { value: 'John' } });
     fireEvent.change(screen.getByDisplayValue('Doe'), { target: { value: 'Doe' } });
     fireEvent.change(screen.getByDisplayValue('test@example.com'), { target: { value: 'test@example.com' } });
     
     // Submit the form by clicking the submit button
-    const submitButton = screen.getByRole('button', { name: /Continue to Payment/ });
+    const submitButton = screen.getByRole('button', { name: /Give|Choose an amount/ });
     fireEvent.click(submitButton);
     
     await waitFor(() => {
@@ -122,11 +122,55 @@ describe('DonatePage', () => {
     renderWithProviders(<DonatePage />);
     
     // Try to submit without filling required fields
-    const submitButton = screen.getByRole('button', { name: /Continue to Payment/ });
+    const submitButton = screen.getByRole('button', { name: /Give|Choose an amount/ });
     fireEvent.click(submitButton);
     
     // Should show validation error via alert (format validation first)
     expect(mockAlert).toHaveBeenCalledWith('Please enter a valid amount (numbers only, up to 2 decimals).');
+  });
+
+
+  test('offers preset amounts so nobody has to meet an empty field', () => {
+    renderWithProviders(<DonatePage />);
+
+    ['$25', '$50', '$100', '$250'].forEach((label) => {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    });
+  });
+
+  test('tapping a preset fills the amount and marks itself chosen', () => {
+    renderWithProviders(<DonatePage />);
+
+    const fifty = screen.getByRole('button', { name: '$50' });
+    expect(fifty).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(fifty);
+
+    expect(screen.getByLabelText('Donation Amount')).toHaveValue('50.00');
+    expect(fifty).toHaveAttribute('aria-pressed', 'true');
+    // The preset stores an already-normalised value, so typing the same figure
+    // by hand and blurring cannot un-highlight the chosen preset.
+    expect(screen.getByRole('button', { name: '$25' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('the submit button names the gift rather than $0.00', () => {
+    renderWithProviders(<DonatePage />);
+
+    expect(screen.getByRole('button', { name: 'Choose an amount' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '$100' }));
+
+    expect(screen.getByRole('button', { name: 'Give $100.00' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /\$0\.00/ })).not.toBeInTheDocument();
+  });
+
+  test('keeps Zelle and cheque available but out of the card path', () => {
+    renderWithProviders(<DonatePage />);
+
+    // Collapsed by default, so it no longer competes with the card form.
+    const disclosure = screen.getByText('Other ways to give');
+    expect(disclosure.closest('details')).not.toHaveAttribute('open');
+    expect(screen.getByText('Donate via Zelle')).toBeInTheDocument();
   });
 
   test('prefills donor information from user profile', () => {
