@@ -388,17 +388,26 @@ const getPledge = async (req, res) => {
   }
 };
 
-// Update pledge — lifecycle (active/cancelled) and notes only. Fulfillment is
-// never stored here; it is always derived from real payments (pledge_balances).
+// Update pledge — lifecycle (active/cancelled), notes, and the pledged amount.
+// Fulfillment is never stored here; it is always derived from real payments
+// (pledge_balances), so correcting the amount changes what is owed, never what
+// was received.
 const updatePledge = async (req, res) => {
   try {
     const { id } = req.params;
-    const { lifecycle, notes } = req.body;
+    const { lifecycle, notes, amount } = req.body;
 
     if (lifecycle !== undefined && !['active', 'cancelled'].includes(lifecycle)) {
       return res.status(400).json({
         success: false,
         message: "lifecycle must be 'active' or 'cancelled'"
+      });
+    }
+
+    if (amount !== undefined && !(parseFloat(amount) >= 1)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Amount must be at least $1.00'
       });
     }
 
@@ -410,21 +419,49 @@ const updatePledge = async (req, res) => {
       });
     }
 
+    // A historical row has no allocations: pledge_balances reads its
+    // paid_amount straight off p.amount via legacy_status. Editing the amount
+    // would silently restate how much a closed drive collected, so the only
+    // safe answer is no.
+    if (amount !== undefined && pledge.is_historical) {
+      return res.status(400).json({
+        success: false,
+        message: 'A historical pledge amount cannot be edited'
+      });
+    }
+
     const previousLifecycle = pledge.lifecycle;
+    const previousAmount = pledge.amount;
 
     const updateData = {};
     if (notes !== undefined) updateData.notes = notes;
     if (lifecycle !== undefined) updateData.lifecycle = lifecycle;
+    if (amount !== undefined) updateData.amount = parseFloat(amount).toFixed(2);
 
     await pledge.update(updateData);
 
+    // One row per request, carrying only what actually moved. Lifecycle keeps
+    // its original flat {from,to} shape; amount nests under its own key.
+    const details = {};
     if (lifecycle !== undefined && lifecycle !== previousLifecycle) {
+      details.from = previousLifecycle;
+      details.to = lifecycle;
+    }
+    // Normalized on both sides: SQLite hands back a bare '500' where Postgres
+    // gives '500.00', and an audit trail that reads differently per dialect is
+    // worse than useless.
+    const money = (value) => parseFloat(value).toFixed(2);
+    if (amount !== undefined && money(pledge.amount) !== money(previousAmount)) {
+      details.amount = { from: money(previousAmount), to: money(pledge.amount) };
+    }
+
+    if (Object.keys(details).length > 0) {
       await ActivityLog.create({
         user_id: req.user.id,
         action: 'UPDATE',
         entity_type: 'Pledge',
         entity_id: String(pledge.id),
-        details: { from: previousLifecycle, to: lifecycle },
+        details,
         ip_address: req.ip
       });
     }

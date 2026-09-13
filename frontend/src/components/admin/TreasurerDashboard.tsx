@@ -21,6 +21,7 @@ import VendorList from './VendorList';
 import LoansPage from './LoansPage';
 import LedgerSheetsPanel from './LedgerSheetsPanel';
 import SkippedNumbersModal from './SkippedNumbersModal';
+import TreasurerPledges from './TreasurerPledges';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PaymentStatsData {
@@ -55,6 +56,7 @@ interface PaymentStatsData {
 type TreasurerTab =
   | 'overview'
   | 'payments'
+  | 'pledges'
   | 'member-dues'
   | 'expenses'
   | 'loans'
@@ -110,6 +112,7 @@ const TreasurerDashboard: React.FC = () => {
   const primaryTabs: Array<{ id: TreasurerTab; label: string; icon: string }> = [
     { id: 'overview', label: t('treasurerDashboard.tabs.overview'), icon: 'fas fa-chart-line' },
     { id: 'payments', label: t('treasurerDashboard.tabs.payments'), icon: 'fas fa-hand-holding-usd' },
+    { id: 'pledges', label: t('treasurerDashboard.tabs.pledges'), icon: 'fas fa-hand-holding-heart' },
     { id: 'member-dues', label: t('treasurerDashboard.tabs.memberDues'), icon: 'fas fa-users' },
     { id: 'expenses', label: t('treasurerDashboard.tabs.expenses'), icon: 'fas fa-receipt' },
     { id: 'loans', label: t('treasurerDashboard.tabs.loans'), icon: 'fas fa-file-invoice-dollar' },
@@ -592,6 +595,17 @@ const TreasurerDashboard: React.FC = () => {
           {activeTab === 'square' && (
             <div>
               <SquareReview />
+            </div>
+          )}
+
+          {activeTab === 'pledges' && (
+            <div>
+              {/* Entry is admin/treasurer only: POST /api/pledges honors an
+                  explicit member_id for those roles and silently files the
+                  pledge under the caller for anyone else. */}
+              <TreasurerPledges
+                canRecord={userRoles.some((r) => ['admin', 'treasurer'].includes(r))}
+              />
             </div>
           )}
 

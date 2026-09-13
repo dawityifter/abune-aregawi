@@ -18,7 +18,9 @@ interface Member {
 }
 
 interface MemberSearchProps {
-  onMemberSelect: (memberId: string) => void;
+  /** The id is the selection; the member is passed for callers that need its
+      name or contact details without refetching the directory. */
+  onMemberSelect: (memberId: string, member?: Member) => void;
   onClose?: () => void;
   embedded?: boolean;
   selectedMemberId?: string | null;
@@ -95,13 +97,13 @@ const MemberSearch: React.FC<MemberSearchProps> = ({
     return () => clearTimeout(timeoutId);
   }, [firebaseUser, searchQuery]);
 
-  const handleMemberSelect = (member: Member) => onMemberSelect(String(member.id));
+  const handleMemberSelect = (member: Member) => onMemberSelect(String(member.id), member);
 
   useEffect(() => {
     if (!embedded) return;
     if (!autoSelectFirst) return;
     if (selectedMemberId || members.length === 0) return;
-    onMemberSelect(String(members[0].id));
+    onMemberSelect(String(members[0].id), members[0]);
   }, [embedded, autoSelectFirst, selectedMemberId, members, onMemberSelect]);
 
   // Check if member has no pledge (null, undefined, or 0)

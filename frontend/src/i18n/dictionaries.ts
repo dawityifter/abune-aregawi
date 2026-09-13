@@ -198,6 +198,19 @@ export interface Dictionaries {
     };
   };
   fundraising: {
+    pledgesTitle: string;
+    recordPledge: string;
+    recordPledgeTitle: string;
+    noDrive: string;
+    savePledge: string;
+    alreadyPledged: string;
+    cancelPledge: string;
+    confirmCancel: string;
+    cancelReason: string;
+    newAmount: string;
+    saveAmount: string;
+    notesOptional: string;
+    paid: string;
     tab: string;
     heading: string;
     newCampaign: string;
@@ -274,6 +287,7 @@ export interface Dictionaries {
       zelle: string;
       square?: string;
       memberDues: string;
+      pledges: string;
       employees: string;
       vendors: string;
     };
@@ -1069,6 +1083,7 @@ export const en: Dictionaries = {
       zelle: "Zelle Review",
       square: "Square Review",
       memberDues: "Member Dues",
+      pledges: "Pledges",
       employees: "Employees",
       vendors: "Vendors"
     },
@@ -2090,6 +2105,19 @@ export const en: Dictionaries = {
   },
 
   fundraising: {
+    pledgesTitle: "Pledges",
+    recordPledge: "Record Pledge",
+    recordPledgeTitle: "Record a pledge",
+    noDrive: "No pledge drive is running right now.",
+    savePledge: "Save pledge",
+    alreadyPledged: "{name} already has a pledge of {pledged} in this drive — {remaining} still outstanding.",
+    cancelPledge: "Cancel pledge",
+    confirmCancel: "Confirm cancel",
+    cancelReason: "Reason",
+    newAmount: "New amount",
+    saveAmount: "Save amount",
+    notesOptional: "Notes (optional)",
+    paid: "Paid",
     tab: "Fundraising",
     heading: "Fundraising Campaigns",
     newCampaign: "New Campaign",
@@ -3363,6 +3391,7 @@ export const ti: Dictionaries = {
       zelle: "ዜል ክፍሊታት",
       square: "ስኴር ግምጋም",
       memberDues: "ወርሓዊ ክፍሊት",
+      pledges: "መብጽዓታት",
       employees: "ሰራሕተኛታት",
       vendors: "ሻየጥቲ"
     },
@@ -4391,6 +4420,19 @@ export const ti: Dictionaries = {
 
   // ==== Fundraising admin tab — DRAFT ti, pending native review ====
   fundraising: {
+    pledgesTitle: "መብጽዓታት",
+    recordPledge: "መብጽዓ መዝግብ",
+    recordPledgeTitle: "መብጽዓ ምምዝጋብ",
+    noDrive: "ሕጂ ዝካየድ መደብ ወፈያ የለን።",
+    savePledge: "መብጽዓ ኣቐምጥ",
+    alreadyPledged: "{name} ኣብዚ መደብ {pledged} መብጽዓ ኣለዎ — {remaining} ተሪፉ።",
+    cancelPledge: "መብጽዓ ሰርዝ",
+    confirmCancel: "ምስራዝ ኣረጋግጽ",
+    cancelReason: "ምኽንያት",
+    newAmount: "ሓድሽ መጠን",
+    saveAmount: "መጠን ኣቐምጥ",
+    notesOptional: "መብርሂ (ብዘይግዴታ)",
+    paid: "ተኸፊሉ",
     tab: "ወፈያ",
     heading: "መደባት ወፈያ",
     newCampaign: "ሓድሽ መደብ",
