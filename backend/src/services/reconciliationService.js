@@ -261,7 +261,7 @@ exports.findPotentialMatches = async (bankTxn, { dayWindow = 2 } = {}) => {
  * - Updates LedgerEntry
  * - Learns Zelle Match
  */
-exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user, existingTransactionId, forYear, receiptNumber }) => {
+exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user, existingTransactionId, forYear, receiptNumber, pledgeAmount = null }) => {
     const { BankTransaction, Transaction, LedgerEntry, IncomeCategory, ZelleMemoMatch, sequelize } = require('../models');
     const { validateReceiptNumber } = require('../utils/receiptNumber');
 
@@ -413,5 +413,66 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
         // We don't fail the whole request for ledger sync, just log it
     }
 
-    return { txn, donation };
+    // 5. Pledge side. Until this existed, a Zelle gift approved here never
+    // touched a pledge at all: this path builds its Transaction directly rather
+    // than through transactionService, which is where every other payment picks
+    // up its allocation.
+    //
+    // Two cases, both gated on the treasurer having chosen 'pledge_drive':
+    // an open pledge is credited, and a supplied pledgeAmount opens one and
+    // credits it in the same act.
+    //
+    // The whole thing runs in its own transaction and its failure is caught,
+    // never rethrown. Recording money always wins — a payment that cannot be
+    // allocated is reconciled and sits in the unallocated queue, which is a
+    // state a treasurer can see and fix. The reverse (losing the payment over a
+    // pledge problem) is not. Note that catching a DB-level error is not on its
+    // own enough: the failing statement aborts its transaction, so the
+    // allocation needs one of its own rather than sharing the caller's.
+    let pledgeError = null;
+    try {
+        const pledgeAllocation = require('./pledgeAllocationService');
+        await sequelize.transaction(async (t) => {
+            if (pledgeAmount != null) {
+                const { createPledgeWithPayment } = require('./pledgeFulfillmentService');
+                const { findLiveCampaign } = require('./pledgeCampaignService');
+
+                const campaign = await findLiveCampaign();
+                if (!campaign) throw new Error('No pledge drive is currently open');
+
+                // Pledge.first_name/last_name are NOT NULL and the bank row
+                // carries only a payer string, so they come from the member
+                // record the treasurer matched.
+                const member = await Member.findByPk(donation.member_id, { transaction: t });
+                if (!member) throw new Error('Cannot open a pledge without a member');
+
+                await createPledgeWithPayment({
+                    campaignId: campaign.id,
+                    amount: parseFloat(pledgeAmount),
+                    paymentAmount: parseFloat(donation.amount),
+                    transactionId: donation.id,
+                    memberId: donation.member_id,
+                    firstName: member.first_name,
+                    lastName: member.last_name,
+                    source: 'treasurer_manual',
+                    allocatedBy: user.id
+                }, { transaction: t });
+            } else {
+                // Self-gating: a no-op unless payment_type is 'pledge_drive',
+                // the payment succeeded, and the member holds an open pledge.
+                await pledgeAllocation.maybeAllocateToPledge(
+                    donation,
+                    { source: 'treasurer_manual', allocatedBy: user.id },
+                    { transaction: t }
+                );
+            }
+        });
+    } catch (pledgeErr) {
+        // Reported back to the caller rather than only logged: a treasurer who
+        // asked for a pledge needs to know it did not happen.
+        pledgeError = pledgeErr.message;
+        console.error('⚠️ Pledge allocation failed for bank reconciliation:', pledgeErr.message);
+    }
+
+    return { txn, donation, pledgeError };
 };

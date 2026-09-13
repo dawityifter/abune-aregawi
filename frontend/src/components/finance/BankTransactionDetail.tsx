@@ -3,6 +3,7 @@ import { BankTransaction } from './BankTransactionList';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { digitsOnly } from '../../utils/receiptNumber';
+import { fetchPledgeBalance, PledgeBalance } from '../../utils/pledgeBalanceApi';
 
 interface Props {
   txn: BankTransaction | null;
@@ -28,6 +29,14 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
   const [selectedForYear, setSelectedForYear] = useState<number | ''>('');
   const [receiptNumber, setReceiptNumber] = useState('');
   const [selectedMember, setSelectedMember] = useState<{ id: number; name: string; phoneNumber?: string | null } | null>(null);
+  // Pledge side of a pledge_drive reconciliation. `pledgeChecked` distinguishes
+  // "not looked up yet" from "looked up, none found" — without it the panel
+  // flashes "no open pledge" before the answer arrives.
+  const [pledgeBalance, setPledgeBalance] = useState<PledgeBalance | null>(null);
+  const [pledgeChecked, setPledgeChecked] = useState(false);
+  const [recordPledge, setRecordPledge] = useState(false);
+  const [pledgeAmount, setPledgeAmount] = useState('');
+  const [pledgeWarning, setPledgeWarning] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
@@ -47,6 +56,7 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
     { value: 'building_fund', label: 'Building Fund (ንሕንጻ)' },
     { value: 'event', label: 'Event / Fundraising (ንበዓል)' },
     { value: 'tigray_hunger_fundraiser', label: 'Tigray Hunger Fundraiser (ረድኤት ንትግራይ)' },
+    { value: 'pledge_drive', label: 'Pledge Drive (መብጸዓ)' },
     { value: 'vow', label: 'Vow / Selet (ስለት)' },
     { value: 'religious_item_sales', label: 'Religious Item Sales (ንዋየ ቅድሳት)' },
     { value: 'other', label: 'Other (ሌላ)' },
@@ -146,6 +156,36 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
     );
   }, [txn?.id, txn?.status, txn?.suggested_match]);
 
+  // Ask what this member already owes the live drive, but only for the payment
+  // type that can be allocated. maybeAllocateToPledge on the server is gated the
+  // same way, so looking it up for a tithe would show a pledge that the approval
+  // is never going to credit.
+  useEffect(() => {
+    if (selectedPaymentType !== 'pledge_drive' || !selectedMember) {
+      setPledgeBalance(null);
+      setPledgeChecked(false);
+      setRecordPledge(false);
+      return;
+    }
+
+    let cancelled = false;
+    fetchPledgeBalance(selectedMember.id)
+      .then((balance) => {
+        if (cancelled) return;
+        setPledgeBalance(balance);
+        setPledgeChecked(true);
+        // Defaulting to the payment files the pledge as paid in full; raising it
+        // leaves a balance, which createPledgeWithPayment records as a 'later'
+        // pledge that stays collectable.
+        if (!balance) setPledgeAmount(String(txn?.amount ?? ''));
+      })
+      .catch(() => {
+        if (!cancelled) { setPledgeBalance(null); setPledgeChecked(true); }
+      });
+
+    return () => { cancelled = true; };
+  }, [selectedPaymentType, selectedMember, txn?.amount]);
+
   // Pre-fill the expense form from the classification this payee was last
   // given. Card purchases are deliberately never booked automatically — one
   // merchant's GL code varies from charge to charge — so this is the whole
@@ -167,12 +207,30 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
     const payload: any = { transaction_id: txn!.id, action: 'MATCH', member_id: memberId, payment_type: paymentType };
     if (selectedForYear) payload.for_year = selectedForYear;
     if (receiptNumber.trim()) payload.receipt_number = receiptNumber.trim();
+    // Only when opening a new pledge. An existing pledge needs nothing here —
+    // the server finds it from the live campaign and the payer.
+    if (paymentType === 'pledge_drive' && !pledgeBalance && recordPledge && parseFloat(pledgeAmount) >= 1) {
+      payload.pledge_amount = parseFloat(pledgeAmount);
+    }
+    setPledgeWarning(null);
     const res = await fetch(`${apiUrl}/api/bank/reconcile`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(payload),
     });
-    if (res.ok) { onSuccess(); onClose(); }
+    if (res.ok) {
+      const data = await res.json().catch(() => ({} as any));
+      // The payment is recorded either way; the pledge side is allowed to fail
+      // without taking it down. Staying open with the reason is the only way the
+      // treasurer learns the pledge did not happen.
+      if (data?.pledgeError) {
+        setPledgeWarning(data.pledgeError);
+        onSuccess();
+        return;
+      }
+      onSuccess();
+      onClose();
+    }
   };
 
   const handleIgnore = async () => {
@@ -500,6 +558,78 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
                       <option key={y} value={y}>{y}</option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {selectedPaymentType === 'pledge_drive' && selectedMember && pledgeChecked && (
+                <div className="mb-3">
+                  {pledgeBalance ? (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                      <p className="text-xs font-bold text-emerald-800 mb-1">
+                        Open pledge · {pledgeBalance.campaign_name}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div>
+                          <p className="text-xs text-gray-500">Pledged</p>
+                          <p className="font-semibold">{formatCurrency(pledgeBalance.pledged_amount)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Paid</p>
+                          <p className="font-semibold">{formatCurrency(pledgeBalance.paid_amount)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Outstanding</p>
+                          <p className="font-semibold">{formatCurrency(pledgeBalance.remaining_amount)}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-emerald-700 mt-2">
+                        Approving credits {formatCurrency(txn.amount)} to this pledge.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <p className="text-xs font-bold text-amber-800 mb-2">No open pledge in this drive</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="detail-record-pledge"
+                          type="checkbox"
+                          checked={recordPledge}
+                          onChange={(e) => setRecordPledge(e.target.checked)}
+                        />
+                        <label htmlFor="detail-record-pledge" className="text-sm text-gray-800">
+                          Record a pledge with this payment
+                        </label>
+                      </div>
+                      {recordPledge && (
+                        <div className="mt-2">
+                          <label htmlFor="detail-pledge-amount" className="block text-xs font-semibold text-gray-600 mb-1">
+                            Pledge amount
+                          </label>
+                          <input
+                            id="detail-pledge-amount"
+                            type="number"
+                            min="1"
+                            step="0.01"
+                            value={pledgeAmount}
+                            onChange={(e) => setPledgeAmount(e.target.value)}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                          />
+                          <p className="text-xs text-gray-600 mt-1">
+                            {parseFloat(pledgeAmount) > txn.amount
+                              ? `Paying ${formatCurrency(txn.amount)} now — leaves ${formatCurrency(parseFloat(pledgeAmount) - txn.amount)} outstanding.`
+                              : `Paid in full by this ${formatCurrency(txn.amount)} payment.`}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {pledgeWarning && (
+                <div className="mb-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-xs font-bold text-red-800 mb-1">Payment recorded, pledge was not</p>
+                  <p className="text-sm text-red-900">{pledgeWarning}</p>
                 </div>
               )}
 

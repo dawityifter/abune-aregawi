@@ -563,6 +563,29 @@ exports.reconcileTransaction = asyncHandler(async (req, res) => {
         throw new Error('Member ID or Existing Transaction ID required for matching');
     }
 
+    // Opening a pledge for someone else is narrower than reconciling. This route
+    // admits bookkeeper, but PLEDGE_ON_BEHALF_ROLES in pledgeController does not
+    // — and POST /api/pledges quietly files the pledge under the caller rather
+    // than refusing, so a bookkeeper's pledge would land on the wrong member.
+    // Checked before processReconciliation so a refusal leaves the bank row
+    // untouched rather than matched-but-pledgeless.
+    const { pledge_amount } = req.body;
+    if (pledge_amount != null) {
+        // status on the error, not on res — the global handler reads
+        // error.status and would otherwise render both of these as a 500.
+        const roles = req.user.roles || [];
+        if (!roles.some((r) => ['admin', 'treasurer'].includes(r))) {
+            const err = new Error('Only an admin or treasurer may open a pledge on a member\'s behalf');
+            err.status = 403;
+            throw err;
+        }
+        if (!(parseFloat(pledge_amount) >= 1)) {
+            const err = new Error('Pledge amount must be at least $1.00');
+            err.status = 400;
+            throw err;
+        }
+    }
+
     try {
         const { processReconciliation } = require('../services/reconciliationService');
         const results = await processReconciliation({
@@ -572,7 +595,8 @@ exports.reconcileTransaction = asyncHandler(async (req, res) => {
             user: req.user,
             existingTransactionId: existing_transaction_id,
             forYear: req.body.for_year, // Pass year override if provided
-            receiptNumber: receipt_number
+            receiptNumber: receipt_number,
+            pledgeAmount: pledge_amount ?? null
         });
 
         res.json({ success: true, ...results });
