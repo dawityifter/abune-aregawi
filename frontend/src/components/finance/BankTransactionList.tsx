@@ -113,7 +113,11 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     const { firebaseUser } = useAuth();
     const { t } = useLanguage();
     const [transactions, setTransactions] = useState<BankTransaction[]>([]);
+    // First load only. Later fetches set `refreshing` instead, so reconciling a
+    // row refreshes the numbers under the treasurer without blanking the table
+    // and throwing away their scroll position.
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [filterStatus, setFilterStatus] = useState<string>('');
@@ -195,7 +199,7 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     const fetchTransactions = useCallback(async () => {
         if (!firebaseUser) return;
         try {
-            setLoading(true);
+            setRefreshing(true);
             const token = await firebaseUser.getIdToken();
             const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -215,14 +219,21 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
 
             const data = await res.json();
             if (data.success) {
+                const pages = data.data.pagination.pages;
                 setTransactions(data.data.transactions);
-                setTotalPages(data.data.pagination.pages);
+                setTotalPages(pages);
                 setCurrentBalance(data.data.current_balance);
+                // Reconciling the last rows of the last page shrinks the result
+                // set out from under whoever is standing on it. Fall back to the
+                // last page that still exists rather than stranding them on an
+                // empty table.
+                if (pages >= 1 && page > pages) setPage(pages);
             }
         } catch (err) {
             console.error(err);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     }, [firebaseUser, page, filterStatus, filterType, startDate, endDate, searchDescription]);
 
@@ -238,8 +249,9 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
     // Global refresh listener
     useEffect(() => {
         const handleRefresh = () => {
-            setPage(1); // Reset to first page on refresh
-            setSelectedTxnIds([]); // Clear selection on refresh
+            // Filters and page stay put — a refresh should return the treasurer
+            // to the rows they were working through, not to the top of the list.
+            setSelectedTxnIds([]); // rows may have changed status underneath it
             fetchTransactions();
         };
         window.addEventListener('bank:refresh', handleRefresh);
@@ -562,7 +574,15 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
 
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div className="flex flex-col items-center justify-between gap-4 border-b border-slate-200 bg-slate-50/80 p-4 xl:flex-row">
-                    <h3 className="text-lg font-medium text-gray-900">Bank Transactions</h3>
+                    <div className="flex items-center gap-3">
+                        <h3 className="text-lg font-medium text-gray-900">Bank Transactions</h3>
+                        {refreshing && !loading && (
+                            <span className="text-xs text-slate-500">
+                                <i className="fas fa-spinner fa-spin mr-1" aria-hidden="true"></i>
+                                Refreshing…
+                            </span>
+                        )}
+                    </div>
                     <div className="flex flex-wrap gap-2 items-center">
                         <input
                             type="text"

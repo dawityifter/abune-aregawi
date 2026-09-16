@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import BankTransactionList, { BankTransaction } from '../BankTransactionList';
 
@@ -25,6 +25,13 @@ const mockTransactions: BankTransaction[] = [
         check_number: null,
     },
 ];
+
+const SUGGESTED_MATCH = {
+    type: 'LEARNED_ZELLE',
+    reason: 'Previously associated with this Zelle payer',
+    confidence: 'high',
+    member: { id: 7, first_name: 'Approve', last_name: 'Me' },
+};
 
 // Partial, not BankTransaction[]: every test below spreads mockTransactions[0]
 // and adds only the fields that test cares about (member, potential_matches,
@@ -231,5 +238,108 @@ describe('BankTransactionList', () => {
         expect(screen.getByRole('dialog', { name: 'Transaction Details' })).toBeInTheDocument();
         fireEvent.click(screen.getByTestId('panel-backdrop'));
         expect(screen.queryByRole('dialog', { name: 'Transaction Details' })).not.toBeInTheDocument();
+    });
+
+    test('keeps the current page and filters when a bank refresh fires', async () => {
+        setupFetchMock(mockTransactions, 3);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+
+        fireEvent.change(screen.getByDisplayValue('All Statuses'), { target: { value: 'PENDING' } });
+        await waitFor(() =>
+            expect((global.fetch as jest.Mock).mock.calls.some(([url]) => String(url).includes('status=PENDING'))).toBe(true)
+        );
+        fireEvent.click(screen.getByText('Next'));
+        await waitFor(() =>
+            expect((global.fetch as jest.Mock).mock.calls.some(([url]) => String(url).includes('page=2'))).toBe(true)
+        );
+
+        (global.fetch as jest.Mock).mockClear();
+        act(() => {
+            window.dispatchEvent(new Event('bank:refresh'));
+        });
+
+        await waitFor(() => expect((global.fetch as jest.Mock).mock.calls.length).toBeGreaterThan(0));
+        const refreshed = String((global.fetch as jest.Mock).mock.calls[0][0]);
+        expect(refreshed).toContain('page=2');
+        expect(refreshed).toContain('status=PENDING');
+    });
+
+    test('falls back to the last page when the current page no longer exists', async () => {
+        setupFetchMock(mockTransactions, 3);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+
+        fireEvent.click(screen.getByText('Next'));
+        await waitFor(() =>
+            expect((global.fetch as jest.Mock).mock.calls.some(([url]) => String(url).includes('page=2'))).toBe(true)
+        );
+
+        // Reconciling the last pending rows shrinks the result set to a single page.
+        (global.fetch as jest.Mock).mockClear();
+        setupFetchMock(mockTransactions, 1);
+        act(() => {
+            window.dispatchEvent(new Event('bank:refresh'));
+        });
+
+        await waitFor(() => {
+            const calls = (global.fetch as jest.Mock).mock.calls;
+            expect(String(calls[calls.length - 1][0])).toContain('page=1');
+        });
+    });
+
+    test('keeps rows on screen while refreshing instead of blanking the table', async () => {
+        setupFetchMock();
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+
+        act(() => {
+            window.dispatchEvent(new Event('bank:refresh'));
+        });
+
+        expect(screen.getByText('Test Payment')).toBeInTheDocument();
+        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    // The bug this guards: approving used to leave the treasurer back on page 1
+    // with the filters cleared, so a reconciliation pass had to be restarted.
+    test('keeps the page and filters after approving from the detail panel', async () => {
+        setupFetchMock([{ ...mockTransactions[0], suggested_match: SUGGESTED_MATCH }], 3);
+        render(<BankTransactionList refreshTrigger={0} />);
+        await waitFor(() => screen.getByText('Test Payment'));
+
+        fireEvent.change(screen.getByDisplayValue('All Statuses'), { target: { value: 'PENDING' } });
+        fireEvent.click(screen.getByText('Next'));
+        await waitFor(() =>
+            expect((global.fetch as jest.Mock).mock.calls.some(([url]) =>
+                String(url).includes('page=2') && String(url).includes('status=PENDING')
+            )).toBe(true)
+        );
+
+        fireEvent.click(screen.getByText('Details →'));
+        (global.fetch as jest.Mock).mockClear();
+        (global.fetch as jest.Mock).mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({
+                success: true,
+                data: { transactions: [], pagination: { pages: 3 }, current_balance: 1000 },
+            }),
+        });
+
+        fireEvent.click(screen.getByText('Approve'));
+
+        await waitFor(() =>
+            expect((global.fetch as jest.Mock).mock.calls.some(([url]) =>
+                String(url).includes('/api/bank/transactions?')
+            )).toBe(true)
+        );
+        const refetch = String(
+            (global.fetch as jest.Mock).mock.calls
+                .map(([url]) => String(url))
+                .filter((url) => url.includes('/api/bank/transactions?'))
+                .pop()
+        );
+        expect(refetch).toContain('page=2');
+        expect(refetch).toContain('status=PENDING');
     });
 });

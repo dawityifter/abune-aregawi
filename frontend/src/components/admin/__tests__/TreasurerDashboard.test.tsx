@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import TreasurerDashboard from '../TreasurerDashboard';
 
@@ -18,7 +18,16 @@ jest.mock('../../../contexts/AuthContext', () => ({
 
 // Children are irrelevant to the refresh behavior under test; stub the heavy ones.
 jest.mock('../../finance/BankUpload', () => () => <div />);
-jest.mock('../../finance/BankTransactionList', () => () => <div />);
+// Counts mounts so a test can prove the Bank tab is not torn down and rebuilt
+// (which is how the table used to lose its filters and page).
+let mockBankListMounts = 0;
+jest.mock('../../finance/BankTransactionList', () => () => {
+  const ReactLib = require('react');
+  ReactLib.useEffect(() => {
+    mockBankListMounts += 1;
+  }, []);
+  return <div data-testid="bank-transaction-list" />;
+});
 jest.mock('../../finance/MonthlyBankSummary', () => () => <div />);
 jest.mock('../TransactionList', () => () => <div />);
 jest.mock('../PaymentStats', () => () => <div data-testid="payment-stats" />);
@@ -48,6 +57,7 @@ const urlsHit = (fragment: string) =>
 beforeEach(() => {
   jest.clearAllMocks();
   triggerExpenseSuccess = null;
+  mockBankListMounts = 0;
   global.fetch = jest.fn().mockImplementation((url: string) => {
     if (String(url).includes('/skipped-checks')) {
       return Promise.resolve({
@@ -64,6 +74,13 @@ beforeEach(() => {
     return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: {} }) });
   }) as any;
 });
+
+const goToBankTab = async () => {
+  render(<TreasurerDashboard />);
+  const tab = await screen.findByText('treasurerDashboard.tabs.bank');
+  fireEvent.click(tab);
+  await screen.findByTestId('bank-transaction-list');
+};
 
 const goToExpensesTab = async () => {
   render(<TreasurerDashboard />);
@@ -134,5 +151,58 @@ describe('TreasurerDashboard — refresh scoping', () => {
     await goToExpensesTab();
 
     expect(screen.queryByText('treasurer.skippedChecks.button')).not.toBeInTheDocument();
+  });
+
+  it('does not tear down the Bank tab when a payment refresh fires', async () => {
+    await goToBankTab();
+    expect(mockBankListMounts).toBe(1);
+
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('payments:refresh'));
+    });
+
+    expect(screen.getByTestId('bank-transaction-list')).toBeInTheDocument();
+    // A remount here would reset the table's filters and pagination.
+    expect(mockBankListMounts).toBe(1);
+  });
+
+  it('does not refetch payment stats when a payment refresh fires off the Overview tab', async () => {
+    await goToBankTab();
+
+    // Guards against a vacuous pass: stats must be reachable in this harness.
+    await waitFor(() => expect(urlsHit('/api/payments/stats').length).toBeGreaterThan(0));
+    const statsBefore = urlsHit('/api/payments/stats').length;
+
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('payments:refresh'));
+    });
+
+    expect(urlsHit('/api/payments/stats').length).toBe(statsBefore);
+  });
+
+  it('keeps the dashboard on screen while a stats refresh is in flight', async () => {
+    render(<TreasurerDashboard />);
+    await screen.findByTestId('payment-stats');
+
+    // Hold the refresh open so the loading flag is still set while we assert.
+    let releaseStats: () => void = () => {};
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (String(url).includes('/api/payments/stats')) {
+        return new Promise((resolve) => {
+          releaseStats = () => resolve({ ok: true, json: () => Promise.resolve({ data: {} }) });
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ data: {} }) });
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('payments:refresh'));
+    });
+
+    expect(screen.getByTestId('payment-stats')).toBeInTheDocument();
+
+    await act(async () => {
+      releaseStats();
+    });
   });
 });

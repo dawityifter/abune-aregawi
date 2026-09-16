@@ -80,8 +80,14 @@ const TreasurerDashboard: React.FC = () => {
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [selectedMemberDuesId, setSelectedMemberDuesId] = useState<string | null>(null);
   const [memberDuesAutoSelectionEnabled, setMemberDuesAutoSelectionEnabled] = useState(true);
+  // First paint only; a background stats refresh never raises it again.
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
+  // Latches on the first successful paint. After that the dashboard never
+  // returns to the full-screen spinner: replacing the whole tree unmounts the
+  // open tab and destroys its state — which is how the bank table lost its
+  // filters and its page every time a transaction was reconciled.
+  const [hasPainted, setHasPainted] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
   // State for skipped receipts modal
@@ -217,7 +223,16 @@ const TreasurerDashboard: React.FC = () => {
     };
 
     fetchUserProfile();
-  }, [currentUser, getUserProfile]);
+    // Keyed on the uid, not on `currentUser`/`getUserProfile`: AuthContext
+    // rebuilds both on every one of its renders, and re-running this refetched
+    // the profile and raised profileLoading — swapping the dashboard for the
+    // spinner below and unmounting whatever tab was open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.uid || currentUser?.id]);
+
+  useEffect(() => {
+    if (!loading && !profileLoading) setHasPainted(true);
+  }, [loading, profileLoading]);
 
   useEffect(() => {
     if (hasFinancialAccess) {
@@ -226,14 +241,6 @@ const TreasurerDashboard: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasFinancialAccess]);
-
-  // Keep stats in sync when payments complete (Stripe or non-Stripe)
-  useEffect(() => {
-    const listener = () => fetchPaymentStats();
-    window.addEventListener('payments:refresh' as any, listener);
-    return () => window.removeEventListener('payments:refresh' as any, listener);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -246,8 +253,6 @@ const TreasurerDashboard: React.FC = () => {
     // every refresh look like a full page reload.
     const requestId = ++statsRequestId.current;
     try {
-      setLoading(true);
-
       const endpoint = `/api/payments/stats?year=${selectedYear}`;
       const response = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}`, {
         headers: {
@@ -306,6 +311,16 @@ const TreasurerDashboard: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, statsStale, hasFinancialAccess]);
 
+  // Keep stats in sync when payments complete (Stripe or non-Stripe). This goes
+  // through refreshStats, not fetchPaymentStats, so a payment recorded from
+  // another tab only marks the numbers stale — refetching from here would
+  // touch dashboard state that tab has no reason to disturb.
+  useEffect(() => {
+    const listener = () => refreshStats();
+    window.addEventListener('payments:refresh' as any, listener);
+    return () => window.removeEventListener('payments:refresh' as any, listener);
+  }, [refreshStats]);
+
   // A payment changes both the stats and the receipt sequence.
   const refreshFinancialData = () => {
     refreshStats();
@@ -334,7 +349,7 @@ const TreasurerDashboard: React.FC = () => {
     setMemberDuesAutoSelectionEnabled(false);
   };
 
-  if (loading || profileLoading) {
+  if (!hasPainted && (loading || profileLoading)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
