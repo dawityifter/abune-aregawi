@@ -137,6 +137,21 @@ describe('SurveyPage', () => {
     // timezones this suite might run in.
     const SAVED_AT = Date.UTC(2026, 7, 17, 12, 0, 0);
 
+    // loadDraft discards anything older than DRAFT_TTL_DAYS, so a fixed
+    // SAVED_AT quietly stops being restorable once the real clock passes it —
+    // this suite started failing exactly 30 days after the date above. Pinning
+    // "now" beside the draft keeps these tests about restoring a draft rather
+    // than about how long ago it was written. The TTL itself is covered in
+    // utils/__tests__/surveyDraft.test.ts, which dates its drafts relative to
+    // now and so cannot rot this way.
+    let nowSpy: jest.SpyInstance;
+    beforeEach(() => {
+      nowSpy = jest.spyOn(Date, 'now').mockReturnValue(SAVED_AT + 2 * 24 * 60 * 60 * 1000);
+    });
+    afterEach(() => {
+      nowSpy.mockRestore();
+    });
+
     const writeDraft = (draft: Record<string, unknown>) =>
       window.localStorage.setItem(DRAFT_KEY, JSON.stringify({ otherTexts: {}, savedAt: SAVED_AT, ...draft }));
 
