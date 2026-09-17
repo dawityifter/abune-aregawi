@@ -106,6 +106,9 @@ export interface CampaignDonor {
       from allocations, so those figures cannot be tied to a transaction. */
   is_historical: boolean;
   pledge_type: string | null;
+  /** Payment methods behind paid_amount. Empty when nothing has been collected,
+      and on legacy drives whose figures never came from a transaction. */
+  payment_methods: string[];
   created_at: string;
 }
 
@@ -125,6 +128,10 @@ export async function fetchCampaignDonors(campaignId: number): Promise<CampaignD
   // The API groups donors under each derived status; flatten to rows and
   // carry the group's status down onto each one.
   return (data.stats?.status_breakdown || []).flatMap((group: any) =>
-    (group.pledges || []).map((p: any) => ({ ...p, status: group.status }))
+    (group.pledges || []).map((p: any) => ({
+      ...p,
+      status: group.status,
+      payment_methods: p.payment_methods || []
+    }))
   );
 }

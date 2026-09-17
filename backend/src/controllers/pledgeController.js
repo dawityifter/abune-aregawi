@@ -1,4 +1,5 @@
-const { Pledge, Member, Donation, PledgeBalance, ActivityLog } = require('../models');
+const { Pledge, Member, Donation, PledgeBalance, PledgeAllocation, Transaction,
+  ActivityLog } = require('../models');
 const { validationResult } = require('express-validator');
 const { findLiveCampaign } = require('../services/pledgeCampaignService');
 
@@ -523,6 +524,59 @@ const updatePledge = async (req, res) => {
   }
 };
 
+/**
+ * Which payment methods actually funded each of these pledges.
+ *
+ * pledge_allocations is append-only — a correction is a negative reversing row,
+ * never an UPDATE — so the methods are netted per pledge and only those still
+ * holding money are reported. A method whose payment was taken back stops being
+ * reported as paid. Only succeeded transactions count, matching how
+ * pledge_balances computes paid_amount.
+ *
+ * Deliberately a separate query rather than a column on the pledge_balances
+ * view: string aggregation is spelled differently on Postgres and SQLite
+ * (STRING_AGG vs GROUP_CONCAT) and that view has to run on both.
+ *
+ * Keys are stringified because BIGINT comes back as a string on Postgres and a
+ * number on SQLite.
+ */
+const paymentMethodsByPledge = async (pledgeIds) => {
+  const byPledge = new Map();
+  if (!pledgeIds.length) return byPledge;
+
+  const allocations = await PledgeAllocation.findAll({
+    attributes: ['pledge_id', 'amount'],
+    where: { pledge_id: pledgeIds },
+    include: [{
+      model: Transaction,
+      as: 'transaction',
+      attributes: ['payment_method'],
+      where: { status: 'succeeded' },
+      required: true
+    }]
+  });
+
+  const nettedByPledge = new Map();
+  allocations.forEach((allocation) => {
+    const method = allocation.transaction?.payment_method;
+    if (!method) return;
+
+    const key = String(allocation.pledge_id);
+    if (!nettedByPledge.has(key)) nettedByPledge.set(key, new Map());
+    const perMethod = nettedByPledge.get(key);
+    perMethod.set(method, (perMethod.get(method) || 0) + (parseFloat(allocation.amount) || 0));
+  });
+
+  nettedByPledge.forEach((perMethod, key) => {
+    byPledge.set(key, [...perMethod.entries()]
+      .filter(([, net]) => net > 0)
+      .map(([method]) => method)
+      .sort());
+  });
+
+  return byPledge;
+};
+
 // Get pledge statistics — derived from pledge_balances (real payments), not
 // the frozen legacy_status column. See docs/superpowers/specs/
 // 2026-08-20-pledge-modernization-design.md section 8.4.
@@ -560,6 +614,12 @@ const getPledgeStats = async (req, res) => {
       ],
       order: [[{ model: Pledge, as: 'pledge' }, 'created_at', 'DESC']]
     });
+
+    // Detail rows say how each pledge was paid; the public tracker gets
+    // aggregates only, so it never pays for this lookup.
+    const methodsByPledge = wantDetail
+      ? await paymentMethodsByPledge(balances.map((balance) => balance.pledge_id))
+      : new Map();
 
     let totalPledged = 0;
     let totalFulfilled = 0;
@@ -612,6 +672,10 @@ const getPledgeStats = async (req, res) => {
           ? null
           : (balance.member?.spouse_name || null),
         pledge_type: balance.pledge.pledge_type,
+        // How the collected figure was actually paid. Empty for a pledge with
+        // nothing received, and for pre-allocation drives whose fulfilment came
+        // from legacy_status rather than from a transaction.
+        payment_methods: methodsByPledge.get(String(balance.pledge_id)) || [],
         created_at: balance.pledge.created_at
       });
     });

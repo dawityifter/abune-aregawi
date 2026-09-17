@@ -237,6 +237,17 @@ export interface Dictionaries {
     close2: string;
     legacy: string;
     legacyHelp: string;
+    paymentMethod: string;
+    allStatuses: string;
+    allPayments: string;
+    noMatches: string;
+    showing: string;
+    statusLabels: {
+      fulfilled: string;
+      partially_fulfilled: string;
+      not_started: string;
+      cancelled: string;
+    };
     save: string;
     cancel: string;
     activate: string;
@@ -2144,6 +2155,17 @@ export const en: Dictionaries = {
     close2: "Close",
     legacy: "legacy record",
     legacyHelp: "Recorded before payment-level tracking: this figure comes from the pledge's saved status, not from a matched transaction.",
+    paymentMethod: "Payment",
+    allStatuses: "All statuses",
+    allPayments: "All payments",
+    noMatches: "No donors match these filters.",
+    showing: "Showing {shown} of {total}",
+    statusLabels: {
+      fulfilled: "Fulfilled",
+      partially_fulfilled: "Partially fulfilled",
+      not_started: "Not started",
+      cancelled: "Cancelled"
+    },
     save: "Save",
     cancel: "Cancel",
     activate: "Activate",
@@ -4459,6 +4481,17 @@ export const ti: Dictionaries = {
     close2: "ዕጾ",
     legacy: "ናይ ቀደም መዝገብ",
     legacyHelp: "ቅድሚ ናይ ክፍሊት ምክትታል ዝተመዝገበ፦ እዚ ቁጽሪ ካብ ናይቲ መብጽዓ ዝተዓቀበ ኩነታት እዩ፡ ካብ ዝተዛመደ ልውውጥ ኣይኮነን።",
+    paymentMethod: "ዓይነት ክፍሊት",
+    allStatuses: "ኩሉ ኩነታት",
+    allPayments: "ኩሉ ዓይነት ክፍሊት",
+    noMatches: "በዚ መጽረዪ ዝሰማማዕ ወሃቢ የለን።",
+    showing: "{shown} ካብ {total} ይርአ",
+    statusLabels: {
+      fulfilled: "ተፈጺሙ",
+      partially_fulfilled: "ብኸፊል ተፈጺሙ",
+      not_started: "ኣይተጀመረን",
+      cancelled: "ተሰሪዙ"
+    },
     save: "ኣቐምጥ",
     cancel: "ሰርዝ",
     activate: "ኣንቅሕ",
