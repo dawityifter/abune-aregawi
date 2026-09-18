@@ -16,18 +16,6 @@ OCI Compute via GitHub Actions (`.github/workflows/`).
 | `docs/` | ~60 historical implementation notes/summaries — reference archive, do not read wholesale. Start with `docs/Objective.md` (product goals) and `docs/CLEAN_ARCHITECTURE.md` |
 | `scripts/` | one-off data utilities (CSV cleanup, member import, phone lists) + `pre-commit.sh` |
 
-## Root commands
-
-```
-npm run dev              # frontend + backend concurrently
-npm run dev:frontend / dev:backend
-npm run build            # frontend build
-npm run install:all      # root + frontend + backend deps
-npm run test             # backend tests then frontend tests
-npm run test:backend / test:frontend
-npm run emulators        # firebase auth emulator (via frontend)
-```
-
 ## Sensitive data — important
 
 This app manages real member PII and financial data (dues, pledges, loans, bank/Zelle
