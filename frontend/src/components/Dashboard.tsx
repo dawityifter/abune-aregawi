@@ -184,23 +184,6 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  const handleViewProfile = () => {
-    // Navigate to profile page using React Router
-    navigate('/profile');
-  };
-
-  const handleViewDues = () => {
-    navigate('/dues');
-  };
-
-  const handleDonate = () => {
-    navigate('/donate');
-  };
-
-  const handleViewBylaw = () => {
-    navigate('/church-bylaw');
-  };
-
   if (!userProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
