@@ -19,6 +19,12 @@ The system aims to:
 
 ## 🏗️ Architecture Overview
 
+### Runtime Architecture
+
+[![Runtime architecture: member requests flow from the React SPA through nginx and the Express API to PostgreSQL, with Firebase Auth, YouTube, payment webhooks, SMS, Zelle ingestion and the ledger export alongside](docs/runtime-architecture.png)](https://raw.githack.com/dawityifter/abune-aregawi/main/docs/runtime-architecture.html)
+
+Click the image for the interactive version (pan/zoom, search, relationship tracing). Source: [`docs/runtime-architecture.html`](docs/runtime-architecture.html), generated from [`docs/runtime-architecture.architecture.json`](docs/runtime-architecture.architecture.json).
+
 ### Repository Layout
 
 | Path | What it is |

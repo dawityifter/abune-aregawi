@@ -6,7 +6,7 @@
     "quality_profile": "showcase",
     "viewBox": [
       1380,
-      560
+      590
     ]
   },
   "components": [
@@ -17,7 +17,7 @@
       "sublabel": "browser / mobile",
       "pos": [
         40,
-        240
+        270
       ],
       "size": [
         130,
@@ -31,7 +31,7 @@
       "sublabel": "Firebase Hosting",
       "pos": [
         240,
-        240
+        270
       ],
       "size": [
         140,
@@ -45,8 +45,8 @@
       "label": "Firebase Auth",
       "sublabel": "phone OTP only",
       "pos": [
-        240,
-        50
+        670,
+        80
       ],
       "size": [
         140,
@@ -61,7 +61,7 @@
       "sublabel": "TLS, 60s proxy",
       "pos": [
         460,
-        240
+        270
       ],
       "size": [
         130,
@@ -75,7 +75,7 @@
       "sublabel": "pm2 :10000",
       "pos": [
         670,
-        240
+        270
       ],
       "size": [
         140,
@@ -90,7 +90,7 @@
       "sublabel": "ledger, reconcile, pledges",
       "pos": [
         900,
-        240
+        270
       ],
       "size": [
         170,
@@ -104,7 +104,7 @@
       "sublabel": "Supabase",
       "pos": [
         1160,
-        240
+        270
       ],
       "size": [
         140,
@@ -113,31 +113,16 @@
       "brand": "supabase"
     },
     {
-      "id": "stripe",
+      "id": "payments",
       "type": "external",
-      "label": "Stripe",
-      "sublabel": "online giving",
+      "label": "Stripe / Square",
+      "sublabel": "online & in-person giving",
       "pos": [
-        590,
-        440
+        665,
+        470
       ],
       "size": [
-        130,
-        60
-      ],
-      "brand": "stripe"
-    },
-    {
-      "id": "square",
-      "type": "external",
-      "label": "Square",
-      "sublabel": "in-person giving",
-      "pos": [
-        760,
-        440
-      ],
-      "size": [
-        130,
+        160,
         60
       ]
     },
@@ -148,7 +133,7 @@
       "sublabel": "SMS",
       "pos": [
         900,
-        440
+        470
       ],
       "size": [
         130,
@@ -162,7 +147,7 @@
       "sublabel": "Zelle emails",
       "pos": [
         1060,
-        440
+        470
       ],
       "size": [
         130,
@@ -176,21 +161,35 @@
       "sublabel": "ledger backup",
       "pos": [
         1220,
-        440
+        470
       ],
       "size": [
         130,
         60
       ]
+    },
+    {
+      "id": "youtube",
+      "type": "external",
+      "label": "YouTube",
+      "sublabel": "Data API + live player",
+      "pos": [
+        905,
+        80
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "brand": "youtube"
     }
   ],
   "boundaries": [
     {
       "kind": "region",
-      "label": "Firebase / Google Cloud",
+      "label": "Firebase Hosting",
       "wraps": [
-        "spa",
-        "auth"
+        "spa"
       ]
     },
     {
@@ -231,7 +230,9 @@
       "from": "spa",
       "to": "auth",
       "label": "sign in",
-      "variant": "security"
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "left"
     },
     {
       "id": "spa-nginx",
@@ -253,8 +254,8 @@
       "to": "auth",
       "label": "verifyIdToken",
       "variant": "security",
-      "fromSide": "top",
-      "toSide": "right"
+      "labelDx": 48,
+      "labelDy": -45
     },
     {
       "id": "api-services",
@@ -270,19 +271,10 @@
       "variant": "emphasis"
     },
     {
-      "id": "stripe-webhook",
-      "from": "stripe",
+      "id": "payment-webhooks",
+      "from": "payments",
       "to": "api",
-      "label": "signed webhook",
-      "variant": "dashed",
-      "fromSide": "top",
-      "toSide": "bottom"
-    },
-    {
-      "id": "square-webhook",
-      "from": "square",
-      "to": "api",
-      "label": "webhook",
+      "label": "signed webhooks",
       "variant": "dashed",
       "fromSide": "top",
       "toSide": "bottom"
@@ -313,6 +305,23 @@
       "variant": "dashed",
       "fromSide": "bottom",
       "toSide": "top"
+    },
+    {
+      "id": "services-youtube",
+      "from": "services",
+      "to": "youtube",
+      "label": "live status",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "spa-youtube",
+      "from": "spa",
+      "to": "youtube",
+      "label": "embed player",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "top"
     }
   ],
   "cards": [
@@ -338,7 +347,8 @@
       "title": "Background jobs",
       "items": [
         "Zelle sync polls Gmail, auto-reconciles",
-        "Scheduled ledger export to Google Sheets"
+        "Scheduled ledger export to Google Sheets",
+        "Live banner polls /api/youtube, cached 60s"
       ]
     },
     {
