@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useStripe } from '@stripe/react-stripe-js';
 import { createPaymentIntent } from '../config/stripe';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -150,12 +150,19 @@ const ACHPayment: React.FC<ACHPaymentProps> = ({
     }
   }, [bankInfo, donationData, onSuccess, onError, purpose, onRefreshHistory, stripe, t]);
 
-  // Expose the payment processing function to parent component
+  // Expose the payment processing function to parent component.
+  // One stable function that always runs the latest processPayment — see the
+  // matching comment in StripePayment for why handing up processPayment looped.
+  const processPaymentRef = useRef(processPayment);
+  const onPaymentReadyRef = useRef(onPaymentReady);
   useEffect(() => {
-    if (onPaymentReady) {
-      onPaymentReady(processPayment);
-    }
-  }, [processPayment, onPaymentReady]);
+    processPaymentRef.current = processPayment;
+    onPaymentReadyRef.current = onPaymentReady;
+  });
+  const runLatestProcessPayment = useCallback(() => processPaymentRef.current(), []);
+  useEffect(() => {
+    onPaymentReadyRef.current?.(runLatestProcessPayment);
+  }, [runLatestProcessPayment]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();

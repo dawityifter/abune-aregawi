@@ -221,12 +221,21 @@ const PaymentForm: React.FC<StripePaymentProps> = ({
     t,
   ]);
 
-  // Expose the payment processing function to parent component
+  // Expose the payment processing function to parent component.
+  // The parent gets one stable function that always runs the latest
+  // processPayment. Handing up processPayment itself looped forever: it changes
+  // whenever the parent's callbacks do, and the parent stores it in state, which
+  // re-renders the parent and makes new callbacks.
+  const processPaymentRef = useRef(processPayment);
+  const onPaymentReadyRef = useRef(onPaymentReady);
   useEffect(() => {
-    if (onPaymentReady) {
-      onPaymentReady(processPayment);
-    }
-  }, [onPaymentReady, processPayment]);
+    processPaymentRef.current = processPayment;
+    onPaymentReadyRef.current = onPaymentReady;
+  });
+  const runLatestProcessPayment = useCallback(() => processPaymentRef.current(), []);
+  useEffect(() => {
+    onPaymentReadyRef.current?.(runLatestProcessPayment);
+  }, [runLatestProcessPayment]);
 
   // Removed custom aria-hidden manipulations to avoid conflicts with Stripe Elements internals
 
