@@ -1,0 +1,353 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Abune Aregawi Runtime Architecture",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1380,
+      560
+    ]
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "Members & Staff",
+      "sublabel": "browser / mobile",
+      "pos": [
+        40,
+        240
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "spa",
+      "type": "frontend",
+      "label": "React SPA",
+      "sublabel": "Firebase Hosting",
+      "pos": [
+        240,
+        240
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "brand": "firebase"
+    },
+    {
+      "id": "auth",
+      "type": "security",
+      "label": "Firebase Auth",
+      "sublabel": "phone OTP only",
+      "pos": [
+        240,
+        50
+      ],
+      "size": [
+        140,
+        64
+      ],
+      "tag": "ID token"
+    },
+    {
+      "id": "nginx",
+      "type": "cloud",
+      "label": "nginx",
+      "sublabel": "TLS, 60s proxy",
+      "pos": [
+        460,
+        240
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "Express API",
+      "sublabel": "pm2 :10000",
+      "pos": [
+        670,
+        240
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "tag": "auth + role guards"
+    },
+    {
+      "id": "services",
+      "type": "backend",
+      "label": "Domain Services",
+      "sublabel": "ledger, reconcile, pledges",
+      "pos": [
+        900,
+        240
+      ],
+      "size": [
+        170,
+        60
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "Supabase",
+      "pos": [
+        1160,
+        240
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "brand": "supabase"
+    },
+    {
+      "id": "stripe",
+      "type": "external",
+      "label": "Stripe",
+      "sublabel": "online giving",
+      "pos": [
+        590,
+        440
+      ],
+      "size": [
+        130,
+        60
+      ],
+      "brand": "stripe"
+    },
+    {
+      "id": "square",
+      "type": "external",
+      "label": "Square",
+      "sublabel": "in-person giving",
+      "pos": [
+        760,
+        440
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "twilio",
+      "type": "external",
+      "label": "Twilio",
+      "sublabel": "SMS",
+      "pos": [
+        900,
+        440
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "gmail",
+      "type": "external",
+      "label": "Gmail API",
+      "sublabel": "Zelle emails",
+      "pos": [
+        1060,
+        440
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "sheets",
+      "type": "external",
+      "label": "Google Sheets",
+      "sublabel": "ledger backup",
+      "pos": [
+        1220,
+        440
+      ],
+      "size": [
+        130,
+        60
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Firebase / Google Cloud",
+      "wraps": [
+        "spa",
+        "auth"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "OCI Compute VM",
+      "wraps": [
+        "nginx",
+        "api",
+        "services"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Trusted: verified token + role",
+      "wraps": [
+        "api",
+        "services"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Supabase",
+      "wraps": [
+        "db"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "users-spa",
+      "from": "users",
+      "to": "spa",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "spa-auth",
+      "from": "spa",
+      "to": "auth",
+      "label": "sign in",
+      "variant": "security"
+    },
+    {
+      "id": "spa-nginx",
+      "from": "spa",
+      "to": "nginx",
+      "label": "Bearer token",
+      "variant": "emphasis"
+    },
+    {
+      "id": "nginx-api",
+      "from": "nginx",
+      "to": "api",
+      "label": "proxy",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-auth",
+      "from": "api",
+      "to": "auth",
+      "label": "verifyIdToken",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "right"
+    },
+    {
+      "id": "api-services",
+      "from": "api",
+      "to": "services",
+      "variant": "emphasis"
+    },
+    {
+      "id": "services-db",
+      "from": "services",
+      "to": "db",
+      "label": "Sequelize",
+      "variant": "emphasis"
+    },
+    {
+      "id": "stripe-webhook",
+      "from": "stripe",
+      "to": "api",
+      "label": "signed webhook",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "square-webhook",
+      "from": "square",
+      "to": "api",
+      "label": "webhook",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "services-twilio",
+      "from": "services",
+      "to": "twilio",
+      "label": "send SMS",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 100
+    },
+    {
+      "id": "services-gmail",
+      "from": "services",
+      "to": "gmail",
+      "label": "poll",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "services-sheets",
+      "from": "services",
+      "to": "sheets",
+      "label": "export",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Primary path",
+      "items": [
+        "SPA \u2192 nginx \u2192 Express \u2192 services \u2192 Postgres",
+        "nginx 60s timeout: slow calls look like CORS errors"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Trust boundaries",
+      "items": [
+        "Firebase phone OTP is the only login",
+        "auth.js verifies token; role.js gates roles",
+        "Webhooks keep raw body for signature checks"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Background jobs",
+      "items": [
+        "Zelle sync polls Gmail, auto-reconciles",
+        "Scheduled ledger export to Google Sheets"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Deploy & ops",
+      "items": [
+        "GitHub Actions \u2192 Firebase Hosting / OCI pm2",
+        "Migrations run in deploy; Sentry + Umami"
+      ]
+    }
+  ]
+}
