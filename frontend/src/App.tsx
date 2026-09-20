@@ -72,6 +72,10 @@ const SurveyPage = lazy(() => import('./components/survey/SurveyPage'));
 const ThankYouPage = lazy(() => import('./pages/ThankYouPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const CalendarPage = lazy(() => import('./pages/CalendarPage'));
+// Event merchandise. Hosted Stripe Checkout, so unlike the two payment routes
+// above these pull in no Stripe Elements bundle.
+const MerchPage = lazy(() => import('./pages/MerchPage'));
+const MerchThankYouPage = lazy(() => import('./pages/MerchThankYouPage'));
 
 function App() {
   const [moreOpen, setMoreOpen] = useState(false);
@@ -184,6 +188,8 @@ function App() {
                 <Route path="/thank-you" element={<ThankYouPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/merch" element={<MerchPage />} />
+                <Route path="/merch/thank-you" element={<MerchThankYouPage />} />
                 <Route path="/departments" element={<ProtectedRoute><DepartmentsPage /></ProtectedRoute>} />
                 <Route path="/departments/:id" element={<ProtectedRoute><DepartmentDashboard /></ProtectedRoute>} />
                 <Route path="/departments/:departmentId/meetings/:meetingId" element={<ProtectedRoute><MeetingDetailsPage /></ProtectedRoute>} />
