@@ -18,6 +18,7 @@ These payment types have direct mappings in the `income_categories.payment_type_
 | `donation` | INC004 | Special Donation | Special donations, holidays, one-time gifts |
 | `vow` | INC008 | Vow (Selet) & Tselot | Vows and Tselot offerings |
 | `religious_item_sales` | INC009 | Religious Item Sales | Income from sales of Bibles, candles, and other religious articles |
+| `event_merchandise` | INC012 | Event Merchandise Sales | Merchandise sold at church events (e.g. fundraiser t-shirts). See `MERCHANDISE_SALES.md` |
 | `other` | INC999 | Other Income | Miscellaneous income |
 
 ---
@@ -124,6 +125,7 @@ All payment types available in the system:
 6. ✅ **donation** → INC004 (Special Donation)
 7. ✅ **vow** → INC008 (Vow & Tselot)
 8. ✅ **religious_item_sales** → INC009 (Religious Item Sales) - **Not a donation**
+8b. ✅ **event_merchandise** → INC012 (Event Merchandise Sales) - **Not a donation**
 9. ✅ **other** → INC999 (Other Income)
 
 ---
@@ -256,3 +258,4 @@ To add a new fallback mapping:
 2025-01-31 - Added religious_item_sales payment type (INC009) for sales of religious items (not donations)
 2025-10-10 - Fixed INC007 duplicate mapping issue
 2025-10-03 - Added tithe and building_fund fallback mappings
+2026-09-19 - Added event_merchandise payment type (INC012) for merchandise sold at events; kept separate from religious_item_sales so fundraiser inventory is reportable on its own
