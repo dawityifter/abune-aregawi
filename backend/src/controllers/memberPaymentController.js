@@ -2,6 +2,17 @@ const { MemberPayment, Member, Transaction, Dependent, LedgerEntry, Title, BankT
 const { Op, literal, fn, col, where, cast } = require('sequelize');
 const { getReconcileThresholdValue } = require('./churchSettingController');
 
+// A cancelled or failed payment is not money, so it counts for nothing that
+// reports what the parish collected: not the ledger a member's screen lists,
+// not Total Received, not the surplus carried between years. A payment entered
+// three times by mistake and cancelled twice was being reported at three times
+// its value on every figure at once.
+//
+// `pending` stays in. ACH gifts are recorded as pending and settle later, and
+// dropping them would hide a payment the treasurer had just entered. This
+// matches the church-wide totals in transactionController.
+const SETTLED = { [Op.notIn]: ['failed', 'canceled'] };
+
 // Compare the ledger totals for a year against the bank statement totals so the
 // Payment Overview can flag when reconciliation is required. Receipts compare to
 // bank deposits (amount > 0); expenses compare to bank debits (|amount < 0|).
@@ -233,9 +244,9 @@ const generatePaymentReport = async (req, res) => {
       const now = new Date();
       const start = new Date(now.getFullYear(), 0, 1);
       const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-      const totalAmount = await Transaction.sum('amount', { where: { payment_date: { [Op.gte]: start, [Op.lte]: end } } }).catch(() => 0);
+      const totalAmount = await Transaction.sum('amount', { where: { payment_date: { [Op.gte]: start, [Op.lte]: end }, status: SETTLED } }).catch(() => 0);
       const uniqueMembers = await Transaction.findAll({
-        where: { payment_date: { [Op.gte]: start, [Op.lte]: end } },
+        where: { payment_date: { [Op.gte]: start, [Op.lte]: end }, status: SETTLED },
         attributes: [[literal('DISTINCT "member_id"'), 'member_id']],
         raw: true
       }).catch(() => []);
@@ -847,16 +858,6 @@ async function computeAndReturnDues(res, member, requestedYear) {
   // We need two sets:
   // A. ALL historical "membership_due" transactions for this family (for rollover calculation)
   // B. Transactions to display for this specific year (for the list view)
-
-  // A cancelled or failed payment is not money, so it counts for nothing here:
-  // not in the ledger the screen lists, not in Total Received, not in the
-  // rollover. A payment entered three times by mistake and cancelled twice was
-  // being reported at three times its value on every figure at once.
-  //
-  // `pending` stays in. ACH gifts are recorded as pending and settle later,
-  // and dropping them would hide a payment the treasurer had just entered.
-  // This matches the church-wide totals in transactionController.
-  const SETTLED = { [Op.notIn]: ['failed', 'canceled'] };
 
   // Fetch A: All historical dues
   const allDuesTransactions = await Transaction.findAll({
