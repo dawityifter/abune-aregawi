@@ -28,6 +28,7 @@ jest.mock('../../controllers/churchSettingController', () => ({
   getReconcileThresholdValue: jest.fn().mockResolvedValue(0)
 }));
 
+const { Op } = require('sequelize');
 const { Member, Transaction } = require('../../models');
 const { computeAndReturnDues } = require('../../controllers/memberPaymentController');
 
@@ -49,11 +50,25 @@ const makeMember = (overrides = {}) => ({
 // Transaction.findAll is called twice: once for all historical membership_due
 // rows (the rollover input), once for every row dated inside the year (the
 // ledger list the screen shows). Route each call by its `where`.
+//
+// The status clause is applied here rather than ignored, so that a query which
+// forgets to exclude cancelled rows actually returns them — otherwise these
+// tests could not tell a filtered query from an unfiltered one.
+const applyStatusFilter = (rows, where = {}) => {
+  const clause = where.status;
+  if (!clause) return rows;
+  const excluded = clause[Op.notIn];
+  if (!excluded) return rows;
+  return rows.filter(r => !excluded.includes(r.status || 'succeeded'));
+};
+
 const mockTransactions = (rows) => {
   Transaction.findAll.mockImplementation(async (opts = {}) => {
-    const wantsDuesOnly = opts.where && opts.where.payment_type === 'membership_due';
-    if (wantsDuesOnly) return rows.filter(r => r.payment_type === 'membership_due');
-    return rows.map(r => ({ ...r, member: { first_name: 'Testmember' } }));
+    const where = opts.where || {};
+    const wantsDuesOnly = where.payment_type === 'membership_due';
+    const visible = applyStatusFilter(rows, where);
+    if (wantsDuesOnly) return visible.filter(r => r.payment_type === 'membership_due');
+    return visible.map(r => ({ ...r, member: { first_name: 'Testmember' } }));
   });
 };
 
@@ -140,5 +155,86 @@ describe('member dues "Total Received" (grandTotal)', () => {
     expect(data.payment.duesCollected).toBe(300);
     expect(data.payment.totalOtherContributions).toBe(100);
     expect(data.payment.grandTotal).toBe(400);
+  });
+});
+
+describe('member dues and cancelled transactions', () => {
+  // A payment entered three times by mistake, two of them cancelled. The
+  // cancellation has to reach every figure on the screen at once: the ledger
+  // list, Total Received, and the Additional Contributions breakdown.
+  const triplicate = (type) => ([
+    { id: 1, member_id: 1, payment_date: `${YEAR}-02-01`, amount: 1000, payment_type: type, for_year: null, status: 'succeeded' },
+    { id: 2, member_id: 1, payment_date: `${YEAR}-02-01`, amount: 1000, payment_type: type, for_year: null, status: 'canceled' },
+    { id: 3, member_id: 1, payment_date: `${YEAR}-02-01`, amount: 1000, payment_type: type, for_year: null, status: 'canceled' }
+  ]);
+
+  it('leaves cancelled payments out of the ledger the screen lists', async () => {
+    const data = await capture(makeMember({ yearly_pledge: 0 }), triplicate('donation'));
+
+    expect(data.transactions).toHaveLength(1);
+    expect(data.transactions[0].id).toBe(1);
+  });
+
+  it('leaves cancelled payments out of Total Received', async () => {
+    const data = await capture(makeMember({ yearly_pledge: 0 }), triplicate('donation'));
+
+    expect(data.payment.grandTotal).toBe(1000);
+  });
+
+  it('leaves cancelled payments out of Total Additional', async () => {
+    const data = await capture(makeMember({ yearly_pledge: 0 }), triplicate('donation'));
+
+    expect(data.payment.otherContributions.donation).toBe(1000);
+    expect(data.payment.totalOtherContributions).toBe(1000);
+  });
+
+  it('leaves cancelled dues out of the pledge progress and its rollover', async () => {
+    const rows = [
+      // Prior year: one real payment plus a cancelled duplicate. Counting the
+      // duplicate would manufacture surplus that rolls into this year.
+      { id: 1, member_id: 1, payment_date: `${YEAR - 1}-06-01`, amount: 600, payment_type: 'membership_due', for_year: null, status: 'succeeded' },
+      { id: 2, member_id: 1, payment_date: `${YEAR - 1}-06-01`, amount: 600, payment_type: 'membership_due', for_year: null, status: 'canceled' },
+      { id: 3, member_id: 1, payment_date: `${YEAR}-06-01`, amount: 200, payment_type: 'membership_due', for_year: null, status: 'succeeded' }
+    ];
+    const member = makeMember({ yearly_pledge: 600, date_joined_parish: `${YEAR - 1}-01-01` });
+
+    Member.findAll.mockResolvedValue([member]);
+    Transaction.findAll.mockImplementation(async (opts = {}) => {
+      const where = opts.where || {};
+      const visible = applyStatusFilter(rows, where);
+      if (where.payment_type === 'membership_due') return visible.filter(r => r.payment_type === 'membership_due');
+      return visible
+        .filter(r => String(r.payment_date).startsWith(String(YEAR)))
+        .map(r => ({ ...r, member: { first_name: 'Testmember' } }));
+    });
+    const res = { json: jest.fn() };
+    await computeAndReturnDues(res, member, YEAR);
+    const data = res.json.mock.calls[0][0].data;
+
+    // Prior year settled exactly, so no surplus carries in: dues for this year
+    // are the $200 actually paid, not $200 plus a phantom $600.
+    expect(data.payment.duesCollected).toBe(200);
+    expect(data.payment.grandTotal).toBe(200);
+  });
+
+  it('keeps a pending payment, which has not failed and is not cancelled', async () => {
+    // ACH gifts are written as pending and settle later; dropping them would
+    // hide a payment the treasurer just recorded.
+    const data = await capture(makeMember({ yearly_pledge: 0 }), [
+      { id: 1, member_id: 1, payment_date: `${YEAR}-02-01`, amount: 50, payment_type: 'donation', for_year: null, status: 'pending' }
+    ]);
+
+    expect(data.transactions).toHaveLength(1);
+    expect(data.payment.grandTotal).toBe(50);
+  });
+
+  it('leaves failed payments out too', async () => {
+    const data = await capture(makeMember({ yearly_pledge: 0 }), [
+      { id: 1, member_id: 1, payment_date: `${YEAR}-02-01`, amount: 50, payment_type: 'donation', for_year: null, status: 'succeeded' },
+      { id: 2, member_id: 1, payment_date: `${YEAR}-03-01`, amount: 75, payment_type: 'donation', for_year: null, status: 'failed' }
+    ]);
+
+    expect(data.transactions).toHaveLength(1);
+    expect(data.payment.grandTotal).toBe(50);
   });
 });

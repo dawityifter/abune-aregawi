@@ -848,11 +848,22 @@ async function computeAndReturnDues(res, member, requestedYear) {
   // A. ALL historical "membership_due" transactions for this family (for rollover calculation)
   // B. Transactions to display for this specific year (for the list view)
 
+  // A cancelled or failed payment is not money, so it counts for nothing here:
+  // not in the ledger the screen lists, not in Total Received, not in the
+  // rollover. A payment entered three times by mistake and cancelled twice was
+  // being reported at three times its value on every figure at once.
+  //
+  // `pending` stays in. ACH gifts are recorded as pending and settle later,
+  // and dropping them would hide a payment the treasurer had just entered.
+  // This matches the church-wide totals in transactionController.
+  const SETTLED = { [Op.notIn]: ['failed', 'canceled'] };
+
   // Fetch A: All historical dues
   const allDuesTransactions = await Transaction.findAll({
     where: {
       member_id: { [Op.in]: familyMemberIds },
-      payment_type: 'membership_due'
+      payment_type: 'membership_due',
+      status: SETTLED
     },
     raw: true
   });
@@ -918,7 +929,8 @@ async function computeAndReturnDues(res, member, requestedYear) {
   const memberTransactions = await Transaction.findAll({
     where: {
       member_id: { [Op.in]: familyMemberIds },
-      payment_date: { [Op.gte]: `${year}-01-01`, [Op.lte]: `${year}-12-31` }
+      payment_date: { [Op.gte]: `${year}-01-01`, [Op.lte]: `${year}-12-31` },
+      status: SETTLED
     },
     include: [
       {
