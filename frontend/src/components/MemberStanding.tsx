@@ -68,7 +68,7 @@ const MemberStanding: React.FC<{ firstName?: string }> = ({ firstName }) => {
           ) : (
             <>
               <div className="mt-1 font-serif text-h3 font-semibold text-accent-700 tabular-nums">
-                {currency(dues.duesCollected)}
+                {currency(dues.totalGiven)}
               </div>
               <div className="mt-0.5 text-sm text-accent-500">
                 <Link to="/dues" className="text-tsaeda-600 hover:underline">

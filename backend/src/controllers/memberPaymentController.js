@@ -984,8 +984,15 @@ async function computeAndReturnDues(res, member, requestedYear) {
     futureDues = monthStatuses.filter(ms => ms.isFutureMonth && ms.status !== 'pre-membership').reduce((s, m) => s + m.due, 0);
   } else {
     // ... No Pledge Logic (Keep existing simple view) ...
+    // Dues only, exactly as the pledge branch above. This loop used to take
+    // every transaction in the year, which made `duesCollected` mean "all
+    // giving" for a pledge-less member — and since grandTotal is
+    // duesCollected + totalOtherContributions, every donation, tithe and
+    // offering was then added a second time. A lone $100 donation reported as
+    // $200 received.
     const totalsByCalendarMonth = new Array(12).fill(0);
     for (const t of memberTransactions) { // Use the strictly-this-year ledger
+      if (String(t.payment_type) !== 'membership_due') continue;
       const parts = String(t.payment_date).split('-');
       const transMonth = parseInt(parts[1]) - 1;
       totalsByCalendarMonth[transMonth] += Number(t.amount || 0);
@@ -1042,7 +1049,17 @@ async function computeAndReturnDues(res, member, requestedYear) {
   });
 
   const totalOtherContributions = Object.values(contributionsByType).reduce((sum, val) => sum + val, 0);
-  const grandTotal = totalCollected + totalOtherContributions;
+
+  // "Total Received" is cash that arrived during `year` — so it is exactly the
+  // ledger printed beneath it on the screen, and is derived from the same rows.
+  //
+  // It deliberately does not reuse `totalCollected`. That figure is the accrual
+  // view of membership dues: it carries surplus forward from earlier years, and
+  // it counts a payment dated in another year that was earmarked `for_year`.
+  // Both are right for the dues progress bar and wrong here — a member who
+  // overpaid by $100 in the previous year and paid $100 in this one was shown
+  // $200 received against a ledger listing a single $100 payment.
+  const grandTotal = memberTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
   return res.json({
     success: true,
