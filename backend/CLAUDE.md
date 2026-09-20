@@ -48,6 +48,8 @@ npm run export:ledger:sheets[:preflight|:year|:scheduled]
 - `CHURCH_TRANSACTIONS.md` — transactions model/flows
 - `EXPENSE_TRACKING_RUNBOOK.md` — expense tracking operations
 - `PAYMENT_TYPE_MAPPINGS.md` — payment type mapping rules
+- `MERCHANDISE_SALES.md` — event merchandise (t-shirt) Stripe Checkout flow, INC012,
+  webhook idempotency, and the Texas sales-tax caveat
 - `INCOME_GL_CODES_*.md` — income GL code definitions/mappings
 - (other `*.md` siblings cover narrower features — check filenames before re-deriving)
 
