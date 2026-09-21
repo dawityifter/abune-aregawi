@@ -25,10 +25,14 @@ const {
 } = require('../../models');
 const merchController = require('../../controllers/merchController');
 const merchRoutes = require('../../routes/merchRoutes');
-const { OCTOBER_5K_EVENT_KEY, getEventProduct, findSize } = require('../../config/merchCatalog');
+const { OCTOBER_5K_EVENT_KEY, getEvent, findProduct, findSize } = require('../../config/merchCatalog');
 
-const product = getEventProduct(OCTOBER_5K_EVENT_KEY);
-// Sizes cost different amounts, so every expected total is derived per size.
+const EVENT = getEvent(OCTOBER_5K_EVENT_KEY);
+// Cases below order the adult shirt unless they say otherwise; the youth one is
+// used where the point is that the two are distinct garments.
+const product = findProduct(EVENT, 'adult_heavy_cotton');
+const YOUTH = findProduct(EVENT, 'youth_heavy_cotton');
+// Every expected total is derived from the catalog, never restated.
 const priceOf = (size) => findSize(product, size).unit_amount;
 
 function buildPublicApp() {
@@ -137,7 +141,7 @@ beforeEach(async () => {
 
 describe('POST /api/merch/checkout-session — validation', () => {
   it('rejects a missing purchaser name', async () => {
-    const res = await post({ purchaser_name: '', items: [{ size: 'S', quantity: 1 }] });
+    const res = await post({ purchaser_name: '', items: [{ product_key: product.product_key, size: 'S', quantity: 1 }] });
 
     expect(res.status).toBe(400);
     expect(mockSessionCreate).not.toHaveBeenCalled();
@@ -145,10 +149,57 @@ describe('POST /api/merch/checkout-session — validation', () => {
   });
 
   it('rejects a malformed email', async () => {
-    const res = await post({ purchaser_email: 'not-an-email', items: [{ size: 'S', quantity: 1 }] });
+    const res = await post({ purchaser_email: 'not-an-email', items: [{ product_key: product.product_key, size: 'S', quantity: 1 }] });
 
     expect(res.status).toBe(400);
     expect(await MerchOrder.count()).toBe(0);
+  });
+
+  // Pickup is arranged by phone, so that is the detail the parish cannot do
+  // without — the mandatory contact swapped from email to phone.
+  it('rejects a missing phone number', async () => {
+    const res = await post({
+      purchaser_phone: '',
+      items: [{ product_key: product.product_key, size: 'S', quantity: 1 }]
+    });
+
+    expect(res.status).toBe(400);
+    expect(mockSessionCreate).not.toHaveBeenCalled();
+    expect(await MerchOrder.count()).toBe(0);
+  });
+
+  it('rejects a malformed phone number', async () => {
+    const res = await post({
+      purchaser_phone: 'not-a-phone',
+      items: [{ product_key: product.product_key, size: 'S', quantity: 1 }]
+    });
+
+    expect(res.status).toBe(400);
+    expect(await MerchOrder.count()).toBe(0);
+  });
+
+  it('takes an order with no email at all', async () => {
+    const res = await post({
+      purchaser_email: '',
+      items: [{ product_key: product.product_key, size: 'S', quantity: 1 }]
+    });
+
+    expect(res.status).toBe(200);
+    const order = await MerchOrder.findOne();
+    expect(order.purchaser_email).toBeNull();
+    expect(order.purchaser_phone).toBe('+12145550000');
+  });
+
+  // Stripe rejects an empty customer_email outright, and Checkout collects one
+  // on its own page anyway, so the field is left off rather than sent blank.
+  it('leaves customer_email off the Stripe session when none was given', async () => {
+    await post({
+      purchaser_email: '',
+      items: [{ product_key: product.product_key, size: 'S', quantity: 1 }]
+    });
+
+    const args = mockSessionCreate.mock.calls[0][0];
+    expect(args).not.toHaveProperty('customer_email');
   });
 
   it('rejects an order with no items', async () => {
@@ -161,7 +212,7 @@ describe('POST /api/merch/checkout-session — validation', () => {
   // The whole order is refused, so nothing half-valid reaches Stripe and no
   // pending row is orphaned.
   it('rejects a size the catalog does not carry and writes nothing', async () => {
-    const res = await post({ items: [{ size: 'XXXXL', quantity: 1 }] });
+    const res = await post({ items: [{ product_key: product.product_key, size: 'XXXXL', quantity: 1 }] });
 
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
@@ -172,7 +223,7 @@ describe('POST /api/merch/checkout-session — validation', () => {
 
   it('rejects a quantity above the per-size maximum', async () => {
     const res = await post({
-      items: [{ size: 'S', quantity: product.max_quantity_per_size + 1 }]
+      items: [{ product_key: product.product_key, size: 'S', quantity: product.max_quantity_per_size + 1 }]
     });
 
     expect(res.status).toBe(400);
@@ -182,7 +233,7 @@ describe('POST /api/merch/checkout-session — validation', () => {
 
 describe('POST /api/merch/checkout-session — order creation', () => {
   it('creates a pending order with its items and returns the checkout url', async () => {
-    const res = await post({ items: [{ size: 'S', quantity: 2 }, { size: 'L', quantity: 1 }] });
+    const res = await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 2 }, { product_key: product.product_key, size: 'L', quantity: 1 }] });
 
     expect(res.status).toBe(200);
     expect(res.body.url).toBe('https://checkout.stripe.com/c/pay/cs_test_merch_1');
@@ -200,7 +251,7 @@ describe('POST /api/merch/checkout-session — order creation', () => {
   // The endpoint is public; trusting a posted price is how a $25 shirt gets
   // bought for a penny.
   it('prices from the catalog, ignoring a price posted by the caller', async () => {
-    await post({ items: [{ size: 'L', quantity: 1, unit_amount: 1 }] });
+    await post({ items: [{ product_key: product.product_key, size: 'L', quantity: 1, unit_amount: 1 }] });
 
     const order = await MerchOrder.findOne();
     expect(Number(order.subtotal)).toBeCloseTo(priceOf('L') / 100, 2);
@@ -211,7 +262,7 @@ describe('POST /api/merch/checkout-session — order creation', () => {
   });
 
   it('opens the session in payment mode and carries the merchandise metadata', async () => {
-    await post({ items: [{ size: 'S', quantity: 1 }] });
+    await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 1 }] });
 
     const args = mockSessionCreate.mock.calls[0][0];
     const order = await MerchOrder.findOne();
@@ -234,7 +285,7 @@ describe('POST /api/merch/checkout-session — order creation', () => {
    * page underneath us.
    */
   it('offers card payment only, matching the donation flow', async () => {
-    await post({ items: [{ size: 'S', quantity: 1 }] });
+    await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 1 }] });
 
     const args = mockSessionCreate.mock.calls[0][0];
     expect(args.payment_method_types).toEqual(['card']);
@@ -251,14 +302,14 @@ describe('POST /api/merch/checkout-session — order creation', () => {
    * or not shown.
    */
   it('does not display Link, or the save-my-information prompt it brings', async () => {
-    await post({ items: [{ size: 'S', quantity: 1 }] });
+    await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 1 }] });
 
     const args = mockSessionCreate.mock.calls[0][0];
     expect(args.wallet_options).toEqual({ link: { display: 'never' } });
   });
 
   it('does not enable the buy-now-pay-later methods', async () => {
-    await post({ items: [{ size: 'S', quantity: 1 }] });
+    await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 1 }] });
 
     const methods = mockSessionCreate.mock.calls[0][0].payment_method_types;
     ['klarna', 'affirm', 'afterpay_clearpay', 'cashapp', 'link'].forEach((m) => {
@@ -269,14 +320,14 @@ describe('POST /api/merch/checkout-session — order creation', () => {
   // Pickup at the church or the event only — collecting a shipping address
   // would promise a service the parish is not offering.
   it('does not collect a shipping address', async () => {
-    await post({ items: [{ size: 'S', quantity: 1 }] });
+    await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 1 }] });
 
     const args = mockSessionCreate.mock.calls[0][0];
     expect(args.shipping_address_collection).toBeUndefined();
   });
 
   it('adds a tax line and records the tax on the order in manual mode', async () => {
-    await post({ items: [{ size: 'S', quantity: 2 }] });
+    await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 2 }] });
 
     const subtotalCents = priceOf('S') * 2;
     const expectedTaxCents = Math.round((subtotalCents * 825) / 10000);
@@ -293,9 +344,43 @@ describe('POST /api/merch/checkout-session — order creation', () => {
 
 describe('POST /api/merch/webhook', () => {
   async function pendingOrder() {
-    await post({ items: [{ size: 'S', quantity: 2 }] });
+    await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 2 }] });
     return MerchOrder.findOne();
   }
+
+  // Email is optional on the form, but Stripe Checkout collects one before it
+  // takes payment. Keeping it is the difference between a phone-only order the
+  // parish can follow up and one with no address on record at all.
+  it('stores the email Stripe collected when the purchaser gave none', async () => {
+    await post({
+      purchaser_email: '',
+      items: [{ product_key: product.product_key, size: 'S', quantity: 1 }]
+    });
+    const order = await MerchOrder.findOne();
+    expect(order.purchaser_email).toBeNull();
+
+    await deliver(completedEvent(order, {
+      customer_details: { name: order.purchaser_name, email: 'collected.at.stripe@example.org' }
+    }));
+
+    await order.reload();
+    expect(order.status).toBe('paid');
+    expect(order.purchaser_email).toBe('collected.at.stripe@example.org');
+  });
+
+  // The address someone typed on the parish's own form is the one they chose to
+  // give the church. Stripe's must not quietly replace it.
+  it('does not overwrite an email the purchaser gave us', async () => {
+    const order = await pendingOrder();
+    expect(order.purchaser_email).toBe('test.purchaser@example.org');
+
+    await deliver(completedEvent(order, {
+      customer_details: { name: order.purchaser_name, email: 'different.at.stripe@example.org' }
+    }));
+
+    await order.reload();
+    expect(order.purchaser_email).toBe('test.purchaser@example.org');
+  });
 
   it('rejects a bad signature and leaves the order pending', async () => {
     const order = await pendingOrder();

@@ -41,21 +41,32 @@ const validateCheckout = [
     .trim()
     .isLength({ min: 1, max: 255 })
     .withMessage('Name is required'),
-  body('purchaser_email')
-    .trim()
-    .isEmail()
-    .withMessage('A valid email address is required'),
+  // Pickup is arranged by phone, so that is the detail the parish cannot do
+  // without. Email is welcome but optional — Stripe collects its own for the
+  // receipt regardless of what is given here.
   body('purchaser_phone')
-    .optional({ checkFalsy: true })
+    .trim()
     .isMobilePhone('any')
     .withMessage('A valid phone number is required'),
+  body('purchaser_email')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isEmail()
+    .withMessage('Enter a valid email address or leave it blank'),
   body('event_key')
     .optional({ checkFalsy: true })
     .trim()
     .isLength({ min: 1, max: 100 }),
   body('items')
     .isArray({ min: 1 })
-    .withMessage('Please choose at least one size')
+    .withMessage('Please choose at least one size'),
+  // Which garment, not just which size. Required rather than defaulted: youth
+  // and adult shirts share size letters, so a missing key would otherwise be
+  // resolved by guessing and ship the wrong shirt.
+  body('items.*.product_key')
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Please choose a shirt')
 ];
 
 // PUBLIC

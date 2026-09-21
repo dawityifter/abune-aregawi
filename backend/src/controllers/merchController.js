@@ -20,7 +20,7 @@ const {
 const { validationResult } = require('express-validator');
 const { buildOrderDraft, MerchValidationError } = require('../services/merchPricingService');
 const { getTaxConfig, computeTaxCents } = require('../config/merchTax');
-const { OCTOBER_5K_EVENT_KEY, getEventProduct, sizeNames } = require('../config/merchCatalog');
+const { OCTOBER_5K_EVENT_KEY, getEvent, productSizePairs } = require('../config/merchCatalog');
 
 /**
  * Marks a Checkout Session as ours. The donation webhook and this one are
@@ -36,6 +36,18 @@ const MERCH_PURPOSE = 'merchandise_sale';
 const MERCH_PAYMENT_TYPE = 'event_merchandise';
 
 const centsToDollars = (cents) => Math.round(cents) / 100;
+
+/**
+ * The email Stripe Checkout collected, whichever field it lands in. Null rather
+ * than '' when there is none, so it can be OR'd against a stored address
+ * without blanking one.
+ */
+function stripeEmail(session) {
+  const email = (session.customer_details && session.customer_details.email)
+    || session.customer_email
+    || null;
+  return email ? String(email).trim() || null : null;
+}
 
 function frontendBaseUrl() {
   // FRONTEND_URL may be a comma-separated allow-list (see server.js CORS).
@@ -88,7 +100,7 @@ const createCheckoutSession = async (req, res) => {
       throw err;
     }
 
-    const { product, lineItems, subtotalCents } = draft;
+    const { event, lineItems, subtotalCents } = draft;
     const taxCents = computeTaxCents(subtotalCents);
     const { mode: taxMode, rateBps } = getTaxConfig();
     const totalCents = subtotalCents + taxCents;
@@ -98,15 +110,15 @@ const createCheckoutSession = async (req, res) => {
     const order = await sequelize.transaction(async (t) => {
       const created = await MerchOrder.create({
         purchaser_name: purchaserName.trim(),
-        purchaser_email: purchaserEmail.trim(),
-        purchaser_phone: purchaserPhone ? String(purchaserPhone).trim() : null,
+        purchaser_email: purchaserEmail ? String(purchaserEmail).trim() : null,
+        purchaser_phone: String(purchaserPhone).trim(),
         status: 'pending',
         fulfillment_status: 'unfulfilled',
         subtotal: centsToDollars(subtotalCents),
         tax: centsToDollars(taxCents),
         total: centsToDollars(totalCents),
-        currency: product.currency,
-        event_key: product.event_key
+        currency: event.currency,
+        event_key: event.event_key
       }, { transaction: t });
 
       await MerchOrderItem.bulkCreate(lineItems.map((line) => ({
@@ -124,11 +136,11 @@ const createCheckoutSession = async (req, res) => {
     const stripeLineItems = lineItems.map((line) => ({
       quantity: line.quantity,
       price_data: {
-        currency: product.currency,
+        currency: event.currency,
         unit_amount: line.unit_amount,
         product_data: {
           name: `${line.product_name} — Size ${line.size}`,
-          description: product.description
+          description: event.description
         }
       }
     }));
@@ -141,7 +153,7 @@ const createCheckoutSession = async (req, res) => {
       stripeLineItems.push({
         quantity: 1,
         price_data: {
-          currency: product.currency,
+          currency: event.currency,
           unit_amount: taxCents,
           product_data: { name: `Sales Tax (${(rateBps / 100).toFixed(2)}%)` }
         }
@@ -175,14 +187,17 @@ const createCheckoutSession = async (req, res) => {
       // at all and is turned off in the Stripe Dashboard (Checkout settings →
       // Use Apple Pay), since it rides along with the `card` type.
       wallet_options: { link: { display: 'never' } },
-      customer_email: purchaserEmail.trim(),
+      // Omitted rather than sent empty when the purchaser gave no email. Stripe
+      // Checkout always collects one on its own page, so the receipt still
+      // reaches them; passing '' would be rejected outright.
+      ...(purchaserEmail ? { customer_email: String(purchaserEmail).trim() } : {}),
       // Pickup only — no shipping_address_collection, deliberately. The parish
       // hands these over at the church or at the event.
       success_url: `${frontendBaseUrl()}/merch/thank-you?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${frontendBaseUrl()}/merch?canceled=1`,
       metadata: {
         order_id: String(order.id),
-        event_key: product.event_key,
+        event_key: event.event_key,
         purpose: MERCH_PURPOSE
       }
     };
@@ -393,6 +408,14 @@ async function handleCheckoutCompleted(session) {
       status: 'paid',
       stripe_payment_intent_id: paymentIntentId,
       stripe_checkout_session_id: order.stripe_checkout_session_id || session.id,
+      // Email is optional on the order form, but Stripe Checkout collects one
+      // of its own before taking payment. Keeping it means a phone-only order
+      // still leaves the parish a way to reach the purchaser, and the admin
+      // list shows the address the receipt actually went to.
+      //
+      // Only ever fills a blank — an address the purchaser typed on our form is
+      // the one they chose to give the church, and Stripe's must not overwrite it.
+      purchaser_email: order.purchaser_email || stripeEmail(session),
       subtotal,
       tax,
       total,
@@ -503,8 +526,12 @@ const getSizeSummary = async (req, res) => {
   try {
     const eventKey = req.query.event_key || OCTOBER_5K_EVENT_KEY;
 
+    // Grouped by product as well as size. Youth and adult shirts share size
+    // letters, so summing on size alone would tell whoever places the supplier
+    // order to buy the wrong garments — in exactly the right quantities.
     const rows = await MerchOrderItem.findAll({
       attributes: [
+        'product_name',
         'size',
         [sequelize.fn('SUM', sequelize.col('MerchOrderItem.quantity')), 'total_quantity']
       ],
@@ -515,20 +542,33 @@ const getSizeSummary = async (req, res) => {
         where: { status: 'paid', event_key: eventKey },
         required: true
       }],
-      group: ['MerchOrderItem.size'],
+      group: ['MerchOrderItem.product_name', 'MerchOrderItem.size'],
       raw: true
     });
 
-    const counts = new Map(rows.map((r) => [r.size, Number(r.total_quantity) || 0]));
-    const product = getEventProduct(eventKey);
+    const keyOf = (productName, size) => `${productName}|${size}`;
+    const counts = new Map(
+      rows.map((r) => [keyOf(r.product_name, r.size), Number(r.total_quantity) || 0])
+    );
+
     // Catalog order, not alphabetical, and every size present even at zero —
     // whoever places the order wants a complete, readable size run.
-    const sizeOrder = sizeNames(product);
+    const sizes = productSizePairs(getEvent(eventKey)).map(({ product_name: productName, size }) => ({
+      product_name: productName,
+      size,
+      quantity: counts.get(keyOf(productName, size)) || 0
+    }));
 
-    const sizes = sizeOrder.map((size) => ({ size, quantity: counts.get(size) || 0 }));
-    // A size sold before it left the catalog still has to be produced.
-    for (const [size, quantity] of counts) {
-      if (!sizeOrder.includes(size)) sizes.push({ size, quantity });
+    // Anything sold before it left the catalog still has to be produced.
+    const listed = new Set(sizes.map((s) => keyOf(s.product_name, s.size)));
+    for (const row of rows) {
+      if (!listed.has(keyOf(row.product_name, row.size))) {
+        sizes.push({
+          product_name: row.product_name,
+          size: row.size,
+          quantity: Number(row.total_quantity) || 0
+        });
+      }
     }
 
     return res.status(200).json({
@@ -589,22 +629,25 @@ const updateFulfillment = async (req, res) => {
  */
 const getCatalog = async (req, res) => {
   const eventKey = req.query.event_key || OCTOBER_5K_EVENT_KEY;
-  const product = getEventProduct(eventKey);
-  if (!product) {
+  const event = getEvent(eventKey);
+  if (!event) {
     return res.status(404).json({ success: false, message: 'Unknown event' });
   }
   const { mode } = getTaxConfig();
   return res.status(200).json({
     success: true,
-    product: {
-      event_key: product.event_key,
+    event_key: event.event_key,
+    description: event.description,
+    currency: event.currency,
+    // Every garment the event sells. The order page renders one picker per
+    // product, because a youth S and an adult S are different shirts.
+    products: event.products.map((product) => ({
+      product_key: product.product_key,
       product_name: product.product_name,
-      description: product.description,
-      currency: product.currency,
       // Each size carries its own price; there is no product-wide unit_amount.
       sizes: product.sizes.map((s) => ({ size: s.size, unit_amount: s.unit_amount })),
       max_quantity_per_size: product.max_quantity_per_size
-    },
+    })),
     // The page says "tax calculated at checkout" rather than showing a number
     // it would have to keep in step with the server.
     tax_applies: mode !== 'none'

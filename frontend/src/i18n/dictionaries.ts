@@ -169,7 +169,7 @@ export interface Dictionaries {
       nameLabel: string;
       emailLabel: string;
       phoneLabel: string;
-      phoneOptional: string;
+      emailOptional: string;
       submit: string;
       submitting: string;
       summaryTitle: string;
@@ -961,7 +961,7 @@ export interface Dictionaries {
 export const en: Dictionaries = {
   merch: {
     hero: {
-      title: "5K Fundraiser T-Shirt",
+      title: "5K Fundraiser T-Shirts",
       subtitle: "Wear it on race day and support the parish.",
       tagline: "October 5K Fundraiser"
     },
@@ -983,7 +983,7 @@ export const en: Dictionaries = {
       nameLabel: "Full name",
       emailLabel: "Email",
       phoneLabel: "Phone",
-      phoneOptional: "optional",
+      emailOptional: "optional",
       submit: "Continue to payment",
       submitting: "Starting checkout…",
       summaryTitle: "Your order",
@@ -995,7 +995,7 @@ export const en: Dictionaries = {
       network: "Network error. Please try again.",
       noItems: "Please choose at least one size.",
       generic: "We could not start checkout. Please try again.",
-      contactRequired: "Please enter your name and email."
+      contactRequired: "Please enter your name and phone number."
     },
     thankYou: {
       title: "Thank you for your order!",
@@ -3390,7 +3390,7 @@ export const en: Dictionaries = {
 export const ti: Dictionaries = {
   merch: {
     hero: {
-      title: "ናይ 5ኪ.ሜ ምውጻእ ገንዘብ ማልያ",
+      title: "ናይ 5ኪ.ሜ ምውጻእ ገንዘብ ማልያታት",
       subtitle: "በዕለተ ውድድር ተኸዲንኩም ንቤተ ክርስቲያን ደግፉ።",
       tagline: "ናይ ጥቅምቲ 5ኪ.ሜ ምውጻእ ገንዘብ"
     },
@@ -3412,7 +3412,7 @@ export const ti: Dictionaries = {
       nameLabel: "ምሉእ ስም",
       emailLabel: "ኢመይል",
       phoneLabel: "ስልኪ",
-      phoneOptional: "ብዘይ ግድን",
+      emailOptional: "ብዘይ ግድን",
       submit: "ናብ ክፍሊት ቀጽል",
       submitting: "ክፍሊት ይጅምር ኣሎ…",
       summaryTitle: "ትእዛዝኩም",
@@ -3424,7 +3424,7 @@ export const ti: Dictionaries = {
       network: "ጸገም ኔትዎርክ። በጃኹም እንደገና ፈትኑ።",
       noItems: "በጃኹም እንተ ወሓደ ሓደ መጠን ምረጹ።",
       generic: "ክፍሊት ክንጅምር ኣይከኣልናን። በጃኹም እንደገና ፈትኑ።",
-      contactRequired: "በጃኹም ስምኩምን ኢመይልኩምን ኣእትዉ።"
+      contactRequired: "በጃኹም ስምኩምን ቁጽሪ ስልክኹምን ኣእትዉ።"
     },
     thankYou: {
       title: "ስለ ትእዛዝኩም የቐንየልና!",

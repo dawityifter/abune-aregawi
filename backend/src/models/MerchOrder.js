@@ -50,12 +50,13 @@ module.exports = (sequelize) => {
     },
     purchaser_email: {
       type: DataTypes.STRING(255),
-      allowNull: false,
-      comment: 'Where the pickup instructions and receipt go.'
+      allowNull: true,
+      comment: 'Optional. Stripe Checkout collects its own email for the receipt, which the webhook backfills here when the purchaser did not give one.'
     },
     purchaser_phone: {
       type: DataTypes.STRING(32),
-      allowNull: true
+      allowNull: false,
+      comment: 'Required: the parish rings people when their shirts are ready to collect.'
     },
     status: {
       type: DataTypes.ENUM('pending', 'paid', 'canceled', 'expired'),

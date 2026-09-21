@@ -1,6 +1,6 @@
 'use strict';
 
-const { getEventProduct, findSize, sizeNames } = require('../config/merchCatalog');
+const { getEvent, findProduct, findSize, sizeNames, productKeys } = require('../config/merchCatalog');
 
 /**
  * A caller's fault, not ours: every throw from buildOrderDraft is something the
@@ -22,12 +22,12 @@ class MerchValidationError extends Error {
  *
  * @param {object} args
  * @param {string} args.eventKey
- * @param {Array<{size: string, quantity: number}>} args.items
- * @returns {{product: object, lineItems: Array, subtotalCents: number}}
+ * @param {Array<{product_key: string, size: string, quantity: number}>} args.items
+ * @returns {{event: object, lineItems: Array, subtotalCents: number}}
  */
 function buildOrderDraft({ eventKey, items }) {
-  const product = getEventProduct(eventKey);
-  if (!product) {
+  const event = getEvent(eventKey);
+  if (!event) {
     throw new MerchValidationError(`Unknown event: ${eventKey}`);
   }
 
@@ -35,40 +35,57 @@ function buildOrderDraft({ eventKey, items }) {
     throw new MerchValidationError('Please choose at least one size.');
   }
 
-  const seenSizes = new Set();
+  const seen = new Set();
   const lineItems = items.map((item) => {
+    const productKey = String(item && item.product_key ? item.product_key : '').trim();
     const size = String(item && item.size ? item.size : '').trim();
+
+    // Required, never defaulted to the first product. Youth and adult shirts
+    // share size letters, so guessing here would ship the wrong garment while
+    // charging correctly and looking entirely fine in every total.
+    const product = findProduct(event, productKey);
+    if (!product) {
+      throw new MerchValidationError(
+        `Unavailable item "${productKey}". Available items: ${productKeys(event).join(', ')}.`
+      );
+    }
 
     // The size entry carries this line's price. No entry means no shirt and no
     // price — never a fallback to some other size's cost.
     const sizeEntry = findSize(product, size);
     if (!sizeEntry) {
       throw new MerchValidationError(
-        `Unavailable size "${size}". Available sizes: ${sizeNames(product).join(', ')}.`
+        `Unavailable size "${size}" for ${product.product_name}. ` +
+        `Available sizes: ${sizeNames(product).join(', ')}.`
       );
     }
 
-    // Two lines for one size would each be priced correctly and then billed
-    // together, so the purchaser sees a total they never chose. Reject rather
-    // than silently merge: we cannot tell which of the two they meant.
-    if (seenSizes.has(size)) {
-      throw new MerchValidationError(`Duplicate size in order: ${size}.`);
+    // Two lines for one product and size would each be priced correctly and
+    // then billed together, so the purchaser sees a total they never chose.
+    // Reject rather than silently merge: we cannot tell which of the two they
+    // meant. Keyed on both, so a youth S alongside an adult S is fine.
+    const key = `${productKey}|${size}`;
+    if (seen.has(key)) {
+      throw new MerchValidationError(`Duplicate size in order: ${product.product_name} ${size}.`);
     }
-    seenSizes.add(size);
+    seen.add(key);
 
     const quantity = Number(item.quantity);
     if (!Number.isInteger(quantity) || quantity < 1) {
-      throw new MerchValidationError(`Quantity for size ${size} must be a whole number of at least 1.`);
+      throw new MerchValidationError(
+        `Quantity for ${product.product_name} size ${size} must be a whole number of at least 1.`
+      );
     }
     if (quantity > product.max_quantity_per_size) {
       throw new MerchValidationError(
-        `Quantity for size ${size} may not exceed ${product.max_quantity_per_size}. ` +
+        `Quantity for ${product.product_name} size ${size} may not exceed ${product.max_quantity_per_size}. ` +
         'For a larger order, please contact the church office.'
       );
     }
 
     // item.unit_amount is NOT read. See the note in config/merchCatalog.js.
     return {
+      product_key: product.product_key,
       product_name: product.product_name,
       size,
       quantity,
@@ -79,7 +96,7 @@ function buildOrderDraft({ eventKey, items }) {
 
   const subtotalCents = lineItems.reduce((sum, line) => sum + line.total_amount, 0);
 
-  return { product, lineItems, subtotalCents };
+  return { event, lineItems, subtotalCents };
 }
 
 module.exports = { buildOrderDraft, MerchValidationError };

@@ -13,22 +13,34 @@ export interface MerchSize {
 }
 
 export interface MerchProduct {
-  event_key: string;
+  /**
+   * Stable identifier for the garment, sent with every order line. Not the
+   * display name: that carries a ™ and is the sort of string that gets
+   * reworded, and an order must not change meaning because copy was tidied.
+   */
+  product_key: string;
   product_name: string;
-  description: string;
-  currency: string;
-  // Deliberately no product-level unit_amount: there is no single price, and a
-  // default here would silently misprice every larger shirt.
+  // Deliberately no product-level unit_amount: a default here would silently
+  // misprice any size that ever differs from the others.
   sizes: MerchSize[];
   max_quantity_per_size: number;
 }
 
 export interface MerchCatalog {
-  product: MerchProduct;
+  event_key: string;
+  description: string;
+  currency: string;
+  /**
+   * Every garment the event sells. Youth and adult shirts are different items
+   * that share size letters, so the page renders a picker per product and a
+   * line is identified by product AND size.
+   */
+  products: MerchProduct[];
   tax_applies: boolean;
 }
 
 export interface MerchOrderItemRequest {
+  product_key: string;
   size: string;
   quantity: number;
   // No price field, deliberately. The server prices every line from its own
@@ -38,8 +50,14 @@ export interface MerchOrderItemRequest {
 export interface MerchCheckoutRequest {
   event_key: string;
   purchaser_name: string;
-  purchaser_email: string;
-  purchaser_phone?: string;
+  /** Required: pickup is arranged by phone. */
+  purchaser_phone: string;
+  /**
+   * Optional. Stripe Checkout collects its own email for the receipt, so an
+   * order without one here is still reachable — the webhook stores whatever
+   * Stripe gathered.
+   */
+  purchaser_email?: string;
   items: MerchOrderItemRequest[];
 }
 

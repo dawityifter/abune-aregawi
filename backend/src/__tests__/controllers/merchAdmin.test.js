@@ -26,10 +26,20 @@ jest.mock('stripe', () => jest.fn(() => ({
 const { sequelize, MerchOrder, MerchOrderItem } = require('../../models');
 const merchController = require('../../controllers/merchController');
 const merchRoutes = require('../../routes/merchRoutes');
-const { OCTOBER_5K_EVENT_KEY, getEventProduct, findSize } = require('../../config/merchCatalog');
+const {
+  OCTOBER_5K_EVENT_KEY, getEvent, findProduct, findSize
+} = require('../../config/merchCatalog');
 
-// Dollars, matching the DECIMAL columns. Sizes cost different amounts.
-const priceFor = (size) => findSize(getEventProduct(OCTOBER_5K_EVENT_KEY), size).unit_amount / 100;
+const EVENT = getEvent(OCTOBER_5K_EVENT_KEY);
+const YOUTH = EVENT.products[0];
+const ADULT = EVENT.products[1];
+
+// Dollars, matching the DECIMAL columns. Price is per product and size.
+const priceFor = (product, size) => findSize(product, size).unit_amount / 100;
+
+/** One (product, size) cell out of a size-summary response. */
+const qty = (res, product, size) =>
+  res.body.sizes.find((s) => s.product_name === product.product_name && s.size === size).quantity;
 
 /** The real router, guards included — used to prove the guards are wired. */
 function buildGuardedApp() {
@@ -54,26 +64,34 @@ function buildStaffApp(user = { id: 1, role: 'admin' }) {
 }
 
 /** Synthetic purchasers only — never real member data. */
-async function seedOrder({ status, sizes, name = 'Test Purchaser', email = 'buyer@example.org' }) {
+async function seedOrder({
+  status, sizes, name = 'Test Purchaser', email = 'buyer@example.org', phone = '+12145550000'
+}) {
+  // A line defaults to the adult shirt so existing cases read unchanged; the
+  // youth/adult cases pass `product` explicitly.
+  const lines = sizes.map((s) => ({ product: s.product || ADULT, size: s.size, quantity: s.quantity }));
+  const total = lines.reduce((n, l) => n + priceFor(l.product, l.size) * l.quantity, 0);
+
   const order = await MerchOrder.create({
     purchaser_name: name,
     purchaser_email: email,
+    purchaser_phone: phone,
     status,
     fulfillment_status: 'unfulfilled',
-    subtotal: sizes.reduce((n, s) => n + priceFor(s.size) * s.quantity, 0),
+    subtotal: total,
     tax: 0,
-    total: sizes.reduce((n, s) => n + priceFor(s.size) * s.quantity, 0),
+    total,
     currency: 'usd',
     event_key: OCTOBER_5K_EVENT_KEY,
     stripe_checkout_session_id: `cs_${status}_${Math.random().toString(36).slice(2)}`
   });
-  await MerchOrderItem.bulkCreate(sizes.map((s) => ({
+  await MerchOrderItem.bulkCreate(lines.map((l) => ({
     order_id: order.id,
-    product_name: '5K Fundraiser T-Shirt',
-    size: s.size,
-    quantity: s.quantity,
-    unit_amount: priceFor(s.size),
-    total_amount: priceFor(s.size) * s.quantity
+    product_name: l.product.product_name,
+    size: l.size,
+    quantity: l.quantity,
+    unit_amount: priceFor(l.product, l.size),
+    total_amount: priceFor(l.product, l.size) * l.quantity
   })));
   return order;
 }
@@ -110,7 +128,7 @@ describe('merchandise admin routes are not public', () => {
   it('leaves the catalog public', async () => {
     const res = await request(buildGuardedApp()).get('/api/merch/catalog');
     expect(res.status).toBe(200);
-    expect(res.body.product.sizes.length).toBeGreaterThan(0);
+    expect(res.body.products.length).toBeGreaterThan(0);
   });
 });
 
@@ -125,7 +143,7 @@ describe('GET /orders/size-summary', () => {
     const res = await request(buildStaffApp()).get('/orders/size-summary');
 
     expect(res.status).toBe(200);
-    expect(res.body.sizes.find((s) => s.size === 'S').quantity).toBe(2);
+    expect(qty(res, ADULT, 'S')).toBe(2);
     expect(res.body.total_shirts).toBe(2);
   });
 
@@ -135,20 +153,41 @@ describe('GET /orders/size-summary', () => {
 
     const res = await request(buildStaffApp()).get('/orders/size-summary');
 
-    expect(res.body.sizes.find((s) => s.size === 'L').quantity).toBe(4);
-    expect(res.body.sizes.find((s) => s.size === 'S').quantity).toBe(2);
+    expect(qty(res, ADULT, 'L')).toBe(4);
+    expect(qty(res, ADULT, 'S')).toBe(2);
     expect(res.body.total_shirts).toBe(6);
+  });
+
+  // The whole reason the summary is keyed on product: these are different
+  // garments that share a letter. Summed together, whoever places the supplier
+  // order buys three adult smalls and no youth shirts at all.
+  it('counts a youth small apart from an adult small', async () => {
+    await seedOrder({ status: 'paid', sizes: [{ product: YOUTH, size: 'S', quantity: 2 }] });
+    await seedOrder({ status: 'paid', sizes: [{ product: ADULT, size: 'S', quantity: 1 }] });
+
+    const res = await request(buildStaffApp()).get('/orders/size-summary');
+
+    expect(qty(res, YOUTH, 'S')).toBe(2);
+    expect(qty(res, ADULT, 'S')).toBe(1);
+    expect(res.body.total_shirts).toBe(3);
   });
 
   // Whoever places the print order wants a complete size run to read down, not
   // just the sizes that happened to sell.
-  it('lists every catalog size, including those with no orders', async () => {
+  it('lists every catalog product and size, including those with no orders', async () => {
     await seedOrder({ status: 'paid', sizes: [{ size: 'S', quantity: 1 }] });
 
     const res = await request(buildStaffApp()).get('/orders/size-summary');
 
-    expect(res.body.sizes.map((s) => s.size)).toEqual(['S', 'L']);
-    expect(res.body.sizes.find((s) => s.size === 'L').quantity).toBe(0);
+    expect(res.body.sizes.map((s) => `${s.product_name} ${s.size}`)).toEqual([
+      `${YOUTH.product_name} S`,
+      `${YOUTH.product_name} M`,
+      `${YOUTH.product_name} L`,
+      `${ADULT.product_name} S`,
+      `${ADULT.product_name} L`
+    ]);
+    expect(qty(res, ADULT, 'L')).toBe(0);
+    expect(qty(res, YOUTH, 'M')).toBe(0);
   });
 
   it('reports zero for an event with no paid orders', async () => {

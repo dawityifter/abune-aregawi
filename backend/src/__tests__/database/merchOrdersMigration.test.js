@@ -3,7 +3,10 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'sqlite::memory:';
 
 const { Sequelize, DataTypes } = require('sequelize');
-const migration = require('../../../migrations/20260919000002-create-merch-orders');
+// Both migrations, in order. Running only the first would build a schema no
+// environment actually has, and the notNull the second adds would go untested.
+const createMerchOrders = require('../../../migrations/20260919000002-create-merch-orders');
+const phoneRequired = require('../../../migrations/20260921000001-merch-phone-required-email-optional');
 const defineMerchOrder = require('../../models/MerchOrder');
 const defineMerchOrderItem = require('../../models/MerchOrderItem');
 
@@ -33,7 +36,8 @@ describe('merch_orders migration matches what the code writes', () => {
       id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true }
     });
 
-    await migration.up(sequelize.getQueryInterface(), Sequelize);
+    await createMerchOrders.up(sequelize.getQueryInterface(), Sequelize);
+    await phoneRequired.up(sequelize.getQueryInterface(), Sequelize);
 
     // A real Model, not a stand-in object: MerchOrder.associate calls belongsTo,
     // which rejects anything that is not a Model subclass.
@@ -56,6 +60,7 @@ describe('merch_orders migration matches what the code writes', () => {
     const order = await MerchOrder.create({
       purchaser_name: 'Test Purchaser',
       purchaser_email: 'buyer@example.org',
+      purchaser_phone: '+12145550000',
       status: 'pending',
       fulfillment_status: 'unfulfilled',
       subtotal: 25.0,
@@ -73,6 +78,7 @@ describe('merch_orders migration matches what the code writes', () => {
   it('accepts the session id once Stripe returns one', async () => {
     const order = await MerchOrder.create({
       purchaser_name: 'Test Purchaser',
+      purchaser_phone: '+12145550000',
       purchaser_email: 'buyer2@example.org',
       status: 'pending',
       fulfillment_status: 'unfulfilled',
@@ -95,6 +101,7 @@ describe('merch_orders migration matches what the code writes', () => {
   it('allows several pending orders to hold a null session id at once', async () => {
     const base = {
       purchaser_name: 'Test Purchaser',
+      purchaser_phone: '+12145550000',
       status: 'pending',
       fulfillment_status: 'unfulfilled',
       subtotal: 25.0,
@@ -115,6 +122,7 @@ describe('merch_orders migration matches what the code writes', () => {
   it('refuses two orders sharing one checkout session id', async () => {
     const base = {
       purchaser_name: 'Test Purchaser',
+      purchaser_phone: '+12145550000',
       status: 'pending',
       fulfillment_status: 'unfulfilled',
       subtotal: 25.0,
@@ -132,9 +140,43 @@ describe('merch_orders migration matches what the code writes', () => {
     ).rejects.toThrow();
   });
 
+  // The point of 20260921000001: pickup is arranged by phone, so that column is
+  // the one the schema insists on. Asserted against a migration-built table
+  // because sync() would agree with the model no matter what the migration says.
+  it('takes an order with no email, because email is optional', async () => {
+    const order = await MerchOrder.create({
+      purchaser_name: 'Test Purchaser',
+      purchaser_phone: '+12145550000',
+      status: 'pending',
+      fulfillment_status: 'unfulfilled',
+      subtotal: 30, tax: 0, total: 30,
+      currency: 'usd',
+      event_key: 'october_5k_fundraiser'
+    });
+
+    expect(order.id).toBeDefined();
+    // Reloaded, not the in-memory instance: an attribute never set reads back
+    // as undefined there, which would pass whatever the column allows.
+    const stored = await MerchOrder.findByPk(order.id);
+    expect(stored.purchaser_email).toBeNull();
+  });
+
+  it('refuses an order with no phone', async () => {
+    await expect(MerchOrder.create({
+      purchaser_name: 'Test Purchaser',
+      purchaser_email: 'buyer@example.org',
+      status: 'pending',
+      fulfillment_status: 'unfulfilled',
+      subtotal: 30, tax: 0, total: 30,
+      currency: 'usd',
+      event_key: 'october_5k_fundraiser'
+    })).rejects.toThrow(/purchaser_phone/i);
+  });
+
   it('cascades items from the migration-built schema', async () => {
     const order = await MerchOrder.create({
       purchaser_name: 'Test Purchaser',
+      purchaser_phone: '+12145550000',
       purchaser_email: 'items@example.org',
       status: 'pending',
       fulfillment_status: 'unfulfilled',

@@ -102,8 +102,7 @@ const MerchPage: React.FC = () => {
           </figure>
 
           <ShirtOrderForm
-            product={catalog.product}
-            taxApplies={catalog.tax_applies}
+            catalog={catalog}
             submitting={submitting}
             error={error}
             onSubmit={handleCheckout}

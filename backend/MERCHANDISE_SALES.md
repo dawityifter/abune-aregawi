@@ -88,18 +88,39 @@ entry and a deliberate decision — it is not what this does today.
 
 `src/config/merchCatalog.js` is the **only** place a price lives. The checkout
 endpoint is public, so the server prices every line from the catalog and ignores
-any price in the request body — otherwise anyone could buy a $25 shirt for a penny
+any price in the request body — otherwise anyone could buy a $30 shirt for a penny
 by editing the request. Prices are in cents; `max_quantity_per_size` is a sanity
 ceiling, not a stock count (nothing here reserves inventory).
 
-**Price is per SIZE, not per product.** There is deliberately no product-level
-`unit_amount` — sizes cost different amounts, and a product-wide default is the
-field a caller reaches for by habit and silently misprices larger shirts with.
+**An event carries several products, and a line is identified by product AND
+size.** Youth and adult shirts are different garments that share size letters, so
+`product_key` is required on every order line and is never defaulted to the first
+product — guessing would ship the wrong shirt at the right price, and look
+entirely correct in every total. The same keying runs through the admin size
+summary, which groups by product: summed on size alone it would tell whoever
+places the supplier order to buy the wrong garments in exactly the right
+quantities.
 
-Current run for the October 5K: **S $25.00, L $30.00**. Changing the prices or the
-size run is an edit to the `sizes` array in that file and nothing else. Past orders
-keep the price they were sold at — `merch_order_items.unit_amount` is a per-line
-snapshot, which is what made per-size pricing a no-migration change.
+**Price is per SIZE, not per product.** There is deliberately no product-level
+`unit_amount`. Every shirt currently costs the same, which is precisely when
+such a default looks harmless and gets added — and it would misprice the first
+size that ever differs.
+
+Current run for the October 5K, all at **$30.00**:
+
+| Product | `product_key` | Sizes |
+| --- | --- | --- |
+| Youth Heavy Cotton™ T-Shirt | `youth_heavy_cotton` | S, M, L |
+| Heavy Cotton™ T-Shirt (adult) | `adult_heavy_cotton` | S, L |
+
+The adult cut has **no medium** — that gap is the catalog telling the truth
+about what is stocked, not an omission to be helpfully filled in.
+
+Changing prices, sizes or products is an edit to `products` in that file and
+nothing else. Past orders keep the price they were sold at, and the garment they
+were sold as — `merch_order_items.unit_amount` and `.product_name` are per-line
+snapshots, which is what made both per-size pricing and the second product
+no-migration changes.
 
 ## Payment methods on the Checkout page
 
@@ -135,6 +156,18 @@ embedded Elements and putting card fields back on our own domain.
 
 **Pickup only.** No shipping address is collected and no shipping is offered;
 shirts are handed over at the church or at the event.
+
+**Phone is required, email is optional.** Pickup is arranged by phone, so that is
+the contact the order form and the `merch_orders` schema both insist on
+(`20260921000001`). Email is welcome but not demanded.
+
+That leaves a gap worth knowing about: Stripe Checkout collects an email of its
+own before taking payment, and that is where the receipt goes. The webhook
+copies it onto the order (`stripeEmail(session)`) **only when the purchaser left
+ours blank** — an address typed on the parish's own form is the one they chose to
+give the church, and Stripe's must not overwrite it. So a phone-only order still
+shows an email in the admin list once it is paid, and it is the address the
+receipt actually went to.
 
 Admin UI: AdminDashboard → **Merchandise** tab (`components/admin/MerchOrders.tsx`).
 Roles mirror `merchAdminRoles` in `routes/merchRoutes.js`: admin, treasurer,

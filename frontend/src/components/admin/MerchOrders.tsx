@@ -27,7 +27,7 @@ interface MerchOrder {
 }
 
 interface SizeSummary {
-  sizes: { size: string; quantity: number }[];
+  sizes: { product_name: string; size: string; quantity: number }[];
   total_shirts: number;
 }
 
@@ -39,6 +39,20 @@ const statusChip: Record<string, string> = {
 };
 
 const dollars = (value: string) => formatMoney(Math.round(parseFloat(value || '0') * 100));
+
+/**
+ * Rows grouped under their garment, first-seen order preserved so the catalog's
+ * size run still reads top to bottom rather than alphabetically.
+ */
+function groupByProduct<T extends { product_name: string }>(rows: T[]): [string, T[]][] {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const existing = groups.get(row.product_name);
+    if (existing) existing.push(row);
+    else groups.set(row.product_name, [row]);
+  }
+  return Array.from(groups.entries());
+}
 
 /**
  * Fulfillment worklist for event merchandise.
@@ -127,17 +141,27 @@ const MerchOrders: React.FC = () => {
           <h3 className="font-semibold text-gray-900">
             Shirts to order <span className="font-normal text-gray-500">(paid orders only)</span>
           </h3>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {summary.sizes.map((s) => (
-              <div
-                key={s.size}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-center min-w-[72px]"
-              >
-                <div className="text-xs uppercase tracking-wide text-gray-500">{s.size}</div>
-                <div className="text-xl font-bold text-gray-900">{s.quantity}</div>
+          {/* Grouped by garment. A single row of S / M / L tiles would add a
+              youth small to an adult small and tell whoever places the supplier
+              order to buy the wrong shirts in exactly the right quantity. */}
+          <div className="mt-4 space-y-4">
+            {groupByProduct(summary.sizes).map(([productName, rows]) => (
+              <div key={productName}>
+                <div className="text-sm font-medium text-gray-700">{productName}</div>
+                <div className="mt-2 flex flex-wrap gap-3">
+                  {rows.map((s) => (
+                    <div
+                      key={`${productName}|${s.size}`}
+                      className="rounded-lg border border-gray-200 px-4 py-2 text-center min-w-[72px]"
+                    >
+                      <div className="text-xs uppercase tracking-wide text-gray-500">{s.size}</div>
+                      <div className="text-xl font-bold text-gray-900">{s.quantity}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
-            <div className="rounded-lg bg-primary-50 border border-primary-200 px-4 py-2 text-center min-w-[72px]">
+            <div className="inline-block rounded-lg bg-primary-50 border border-primary-200 px-4 py-2 text-center min-w-[72px]">
               <div className="text-xs uppercase tracking-wide text-primary-700">Total</div>
               <div className="text-xl font-bold text-primary-900">{summary.total_shirts}</div>
             </div>
@@ -212,7 +236,12 @@ const MerchOrders: React.FC = () => {
                     )}
                   </td>
                   <td className="px-4 py-3 text-gray-700">
-                    {order.items.map((i) => `${i.size}×${i.quantity}`).join(', ')}
+                    {groupByProduct(order.items).map(([productName, rows]) => (
+                      <div key={productName}>
+                        <span className="text-gray-500">{productName}:</span>{' '}
+                        {rows.map((i) => `${i.size}×${i.quantity}`).join(', ')}
+                      </div>
+                    ))}
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <div className="font-medium text-gray-900">{dollars(order.total)}</div>
