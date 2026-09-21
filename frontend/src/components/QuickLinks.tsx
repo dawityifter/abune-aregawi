@@ -42,28 +42,8 @@ const QuickLinks: React.FC = () => {
   return (
     <section className="max-w-7xl mx-auto px-4 py-8">
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-        <div>
-          <Card
-            icon="fas fa-church"
-            title={t('priest.title') || "Our Church Father"}
-            desc={(
-              <div className="flex flex-col h-full">
-                <div className="relative w-full aspect-[3/4] overflow-hidden rounded-md shadow mt-3">
-                  <img
-                    src={`${process.env.PUBLIC_URL || ''}/meleakeTsehay-Tadesse.png`}
-                    alt="Keshi Tadesse"
-                    className="absolute inset-0 w-full h-full object-cover object-top"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="mt-4 text-center">
-                  <div className="text-base font-bold text-accent-700">{t('priest.name')}</div>
-                </div>
-              </div>
-            )}
-            to="#priest"
-          />
-        </div>
+        {/* The priest is no longer one of these. He leads the page now — see
+            ChurchFather, rendered above the parish's news. */}
         <div>
           <Card
             icon="fas fa-map-marker"

@@ -10,6 +10,20 @@ const {
   TransactionServiceError
 } = require('../services/transactionService');
 
+// Money, as opposed to rows. A cancelled or failed payment must not reach any
+// figure that claims to report what the parish collected — a payment keyed
+// three times by mistake and cancelled twice was being reported at three times
+// its value.
+//
+// `pending` stays in: ACH gifts are recorded as pending and settle later, so
+// excluding them would hide a payment the treasurer had just entered.
+//
+// This deliberately does NOT belong on the receipt-book queries. A cancelled
+// payment still consumed a receipt number, and getSkippedReceipts exists to
+// find numbers genuinely missing from the book; hiding cancelled rows there
+// would send a treasurer hunting for a payment that was never lost.
+const SETTLED = { [Op.notIn]: ['failed', 'canceled'] };
+
 // Get all transactions with optional filtering
 // Sort columns the member payments list accepts, mapped to ORDER BY clauses.
 // A whitelist, not interpolation: sort_by arrives from the query string and
@@ -761,7 +775,7 @@ const getTransactionStats = async (req, res) => {
     // Total Collected (All income)
     const totalCollectedResult = await Transaction.sum('amount', {
       where: {
-        status: { [Op.notIn]: ['failed', 'canceled'] }, // Exclude failed/cancelled
+        status: SETTLED,
         ...dateFilter
       }
     });
@@ -771,7 +785,7 @@ const getTransactionStats = async (req, res) => {
     const totalMembershipCollectedResult = await Transaction.sum('amount', {
       where: {
         payment_type: 'membership_due',
-        status: { [Op.notIn]: ['failed', 'canceled'] },
+        status: SETTLED,
         ...dateFilter
       }
     });
@@ -790,7 +804,7 @@ const getTransactionStats = async (req, res) => {
     const contributingMembersCount = await Transaction.count({
       where: {
         amount: { [Op.gt]: 0 },
-        status: { [Op.notIn]: ['failed', 'canceled'] },
+        status: SETTLED,
         ...dateFilter
       },
       distinct: true,
@@ -831,6 +845,7 @@ const getTransactionStats = async (req, res) => {
         where: {
           member_id: pledgedMemberIds,
           payment_type: 'membership_due',
+          status: SETTLED,
           ...dateFilter
         },
         attributes: [
@@ -970,7 +985,8 @@ const getMemberPaymentSummaries = async (req, res) => {
     const memberIds = members.map(member => member.id);
     const transactionSummaries = await Transaction.findAll({
       where: {
-        member_id: memberIds
+        member_id: memberIds,
+        status: SETTLED
       },
       attributes: [
         'member_id',
@@ -991,6 +1007,7 @@ const getMemberPaymentSummaries = async (req, res) => {
       where: {
         member_id: memberIds,
         payment_type: 'membership_due',
+        status: SETTLED,
         payment_date: { [Op.gte]: yearStart, [Op.lte]: yearEnd }
       },
       attributes: [
@@ -1281,6 +1298,8 @@ const generateTransactionReport = async (req, res) => {
       }
       if (payment_type) whereClause.payment_type = payment_type;
 
+      whereClause.status = SETTLED;
+
       const totalTransactions = await Transaction.count({ where: whereClause });
       const totalAmount = await Transaction.sum('amount', { where: whereClause });
       const totalMembers = await Member.count();
@@ -1313,7 +1332,7 @@ const generateTransactionReport = async (req, res) => {
 
       const memberIds = members.map(m => m.id);
       const txSums = await Transaction.findAll({
-        where: { member_id: memberIds, payment_type: 'membership_due' },
+        where: { member_id: memberIds, payment_type: 'membership_due', status: SETTLED },
         attributes: [
           'member_id',
           [sequelize.fn('SUM', sequelize.col('amount')), 'totalCollected']
@@ -1358,7 +1377,7 @@ const generateTransactionReport = async (req, res) => {
       const end = new Date(year, 11, 31, 23, 59, 59, 999);
 
       const txs = await Transaction.findAll({
-        where: { payment_date: { [Op.gte]: start, [Op.lte]: end } },
+        where: { payment_date: { [Op.gte]: start, [Op.lte]: end }, status: SETTLED },
         attributes: ['id', 'amount', 'payment_date']
       });
 
@@ -1390,7 +1409,7 @@ const generateTransactionReport = async (req, res) => {
 
     if (reportType === 'fundraiser') {
       const fundraiserTransactions = await Transaction.findAll({
-        where: { payment_type: 'tigray_hunger_fundraiser' },
+        where: { payment_type: 'tigray_hunger_fundraiser', status: SETTLED },
         include: [
           {
             model: Member,

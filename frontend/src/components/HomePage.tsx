@@ -4,6 +4,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import Hero from './Hero';
 import LiveStreamBanner from './LiveStreamBanner';
 import QuickLinks from './QuickLinks';
+import ChurchFather from './ChurchFather';
 import ParishAnnouncements from './ParishAnnouncements';
 import LiturgicalToday from './LiturgicalToday';
 import NextService from './NextService';
@@ -42,13 +43,20 @@ const HomePage: React.FC = () => {
       <NextService />
       <FullSchedule />
 
+      {/* Who leads this parish, answered before the news it publishes. */}
+      <ChurchFather />
+
       <ParishAnnouncements />
-      <WhatsHappeningSection />
       <CalendarSection />
       <GrowSpirituallySection />
-      {/* Demoted below the parish's own news: the priest, the map and the
-          survey are things a visitor looks up once, not what a returning
-          member came for. */}
+      {/* The standing announcement boards — Sunday school, the teaching
+          document — sit at the foot of the page. They change rarely, so a
+          returning member has already seen them; ParishAnnouncements above
+          carries what is actually new. */}
+      <WhatsHappeningSection />
+      {/* Demoted below the parish's own news: the map and the survey are
+          things a visitor looks up once, not what a returning member came
+          for. */}
       <QuickLinks />
       <Footer />
       <PromoPopup />

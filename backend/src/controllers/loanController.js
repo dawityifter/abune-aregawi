@@ -368,7 +368,9 @@ const getLoanStats = async (req, res) => {
     });
 
     const recentRepayments = await Transaction.findAll({
-      where: { payment_type: 'loan_repayment' },
+      // A cancelled repayment is not a repayment. Listing one here showed a
+      // loan being paid down by money that had been taken back.
+      where: { payment_type: 'loan_repayment', status: { [Op.notIn]: ['failed', 'canceled'] } },
       include: [{ model: Member, as: 'member', attributes: ['id', 'first_name', 'last_name'] }],
       order: [['payment_date', 'DESC']],
       limit: 5

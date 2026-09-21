@@ -6,6 +6,13 @@ export interface MemberDuesSummary {
   totalAmountDue: number;
   duesCollected: number;
   outstandingDues: number;
+  /**
+   * Everything received in the year — dues plus donations, tithes and
+   * offerings — which is what "Given in {year}" on the dashboard means.
+   * `duesCollected` covers membership dues alone and is the wrong figure to
+   * put under that label.
+   */
+  totalGiven: number;
 }
 
 interface State {
@@ -76,6 +83,7 @@ export function useMemberDues(year: number = new Date().getFullYear()): State {
               totalAmountDue: Number(payment.totalAmountDue) || 0,
               duesCollected: Number(payment.duesCollected) || 0,
               outstandingDues: Number(payment.outstandingDues) || 0,
+              totalGiven: Number(payment.grandTotal) || 0,
             },
             loading: false,
           });

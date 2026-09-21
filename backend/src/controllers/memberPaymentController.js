@@ -2,6 +2,17 @@ const { MemberPayment, Member, Transaction, Dependent, LedgerEntry, Title, BankT
 const { Op, literal, fn, col, where, cast } = require('sequelize');
 const { getReconcileThresholdValue } = require('./churchSettingController');
 
+// A cancelled or failed payment is not money, so it counts for nothing that
+// reports what the parish collected: not the ledger a member's screen lists,
+// not Total Received, not the surplus carried between years. A payment entered
+// three times by mistake and cancelled twice was being reported at three times
+// its value on every figure at once.
+//
+// `pending` stays in. ACH gifts are recorded as pending and settle later, and
+// dropping them would hide a payment the treasurer had just entered. This
+// matches the church-wide totals in transactionController.
+const SETTLED = { [Op.notIn]: ['failed', 'canceled'] };
+
 // Compare the ledger totals for a year against the bank statement totals so the
 // Payment Overview can flag when reconciliation is required. Receipts compare to
 // bank deposits (amount > 0); expenses compare to bank debits (|amount < 0|).
@@ -233,9 +244,9 @@ const generatePaymentReport = async (req, res) => {
       const now = new Date();
       const start = new Date(now.getFullYear(), 0, 1);
       const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-      const totalAmount = await Transaction.sum('amount', { where: { payment_date: { [Op.gte]: start, [Op.lte]: end } } }).catch(() => 0);
+      const totalAmount = await Transaction.sum('amount', { where: { payment_date: { [Op.gte]: start, [Op.lte]: end }, status: SETTLED } }).catch(() => 0);
       const uniqueMembers = await Transaction.findAll({
-        where: { payment_date: { [Op.gte]: start, [Op.lte]: end } },
+        where: { payment_date: { [Op.gte]: start, [Op.lte]: end }, status: SETTLED },
         attributes: [[literal('DISTINCT "member_id"'), 'member_id']],
         raw: true
       }).catch(() => []);
@@ -852,7 +863,8 @@ async function computeAndReturnDues(res, member, requestedYear) {
   const allDuesTransactions = await Transaction.findAll({
     where: {
       member_id: { [Op.in]: familyMemberIds },
-      payment_type: 'membership_due'
+      payment_type: 'membership_due',
+      status: SETTLED
     },
     raw: true
   });
@@ -918,7 +930,8 @@ async function computeAndReturnDues(res, member, requestedYear) {
   const memberTransactions = await Transaction.findAll({
     where: {
       member_id: { [Op.in]: familyMemberIds },
-      payment_date: { [Op.gte]: `${year}-01-01`, [Op.lte]: `${year}-12-31` }
+      payment_date: { [Op.gte]: `${year}-01-01`, [Op.lte]: `${year}-12-31` },
+      status: SETTLED
     },
     include: [
       {
@@ -931,8 +944,12 @@ async function computeAndReturnDues(res, member, requestedYear) {
   });
 
   // Calculate Allocated Dues for THIS Year (Accrual View)
-  const duesAllocatedForYear = allDuesTransactions.filter(t => {
-    const tDate = new Date(t.payment_date);
+  // Kept as rows, not just a total, because the no-pledge branch below needs
+  // the same set to build its month grid. `for_year` used to decide the answer
+  // only for members who had pledged; everyone else was credited by payment
+  // date, so identical data read differently depending on whether a member
+  // had a pledge.
+  const duesAllocatedRows = allDuesTransactions.filter(t => {
     const tY = t.payment_date instanceof Date
       ? t.payment_date.getFullYear()
       : parseInt(String(t.payment_date).split('-')[0]);
@@ -940,7 +957,8 @@ async function computeAndReturnDues(res, member, requestedYear) {
     if (t.for_year === year) return true;
     if (!t.for_year && tY === year) return true;
     return false;
-  }).reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  });
+  const duesAllocatedForYear = duesAllocatedRows.reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
   if (yearlyPledge > 0) {
     monthlyPayment = Math.round((yearlyPledge / 12) * 100) / 100;
@@ -984,8 +1002,21 @@ async function computeAndReturnDues(res, member, requestedYear) {
     futureDues = monthStatuses.filter(ms => ms.isFutureMonth && ms.status !== 'pre-membership').reduce((s, m) => s + m.due, 0);
   } else {
     // ... No Pledge Logic (Keep existing simple view) ...
+    // The dues allocated to this year, exactly as the pledge branch above.
+    //
+    // This loop used to take every transaction dated in the year. That was
+    // wrong twice over: it counted donations and tithes as dues (and since
+    // grandTotal was duesCollected + totalOtherContributions, it counted them
+    // a second time), and it ignored `for_year`, so a payment earmarked to
+    // another year still credited this one for a pledge-less member while
+    // correctly crediting the earmarked year for a pledged one.
+    //
+    // Bucketing by the payment's own month keeps the grid summing to the
+    // total. A payment dated in another year but earmarked to this one lands
+    // in its own calendar month, which is the same liberty the pledge branch
+    // already takes when it waterfalls a total across months.
     const totalsByCalendarMonth = new Array(12).fill(0);
-    for (const t of memberTransactions) { // Use the strictly-this-year ledger
+    for (const t of duesAllocatedRows) {
       const parts = String(t.payment_date).split('-');
       const transMonth = parseInt(parts[1]) - 1;
       totalsByCalendarMonth[transMonth] += Number(t.amount || 0);
@@ -1042,7 +1073,17 @@ async function computeAndReturnDues(res, member, requestedYear) {
   });
 
   const totalOtherContributions = Object.values(contributionsByType).reduce((sum, val) => sum + val, 0);
-  const grandTotal = totalCollected + totalOtherContributions;
+
+  // "Total Received" is cash that arrived during `year` — so it is exactly the
+  // ledger printed beneath it on the screen, and is derived from the same rows.
+  //
+  // It deliberately does not reuse `totalCollected`. That figure is the accrual
+  // view of membership dues: it carries surplus forward from earlier years, and
+  // it counts a payment dated in another year that was earmarked `for_year`.
+  // Both are right for the dues progress bar and wrong here — a member who
+  // overpaid by $100 in the previous year and paid $100 in this one was shown
+  // $200 received against a ledger listing a single $100 payment.
+  const grandTotal = memberTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
   return res.json({
     success: true,
