@@ -65,6 +65,13 @@ interface MemberDuesData {
     receipt_number: string;
     note: string;
     paid_by?: string;
+    /**
+     * The year this payment pays for, when it is not the year it was made in.
+     * The ledger lists by payment date but dues are credited by for_year, so
+     * without this the two figures disagree with nothing on screen to explain
+     * why. The API has always sent it; nothing used to read it.
+     */
+    for_year?: number | null;
   }>;
 }
 
@@ -195,6 +202,15 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
   if (!duesData) return null;
 
   const { member, payment, transactions } = duesData;
+
+  // Dues received in the year on screen that pay some other year's dues. This
+  // is the gap between the ledger below and Paid To Date above, and naming it
+  // is the whole point: the money is not missing, it is credited elsewhere.
+  const earmarkedElsewhere = transactions
+    .filter(tx => tx.payment_type === 'membership_due'
+      && tx.for_year != null
+      && tx.for_year !== payment.year)
+    .reduce((sum, tx) => sum + tx.amount, 0);
   const { monthStatuses } = payment;
 
   const getStatusColor = (status: string) => {
@@ -319,6 +335,16 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-blue-600 uppercase">{t('memberDues.paidToDate')}</p>
                   <p className="text-2xl font-black text-green-600">${payment.duesCollected.toLocaleString()}</p>
+                  {/* Without this, a payment sitting in the ledger below that
+                      pays another year's dues reads as money gone missing. */}
+                  {earmarkedElsewhere > 0 && (
+                    <p className="text-[11px] font-medium leading-snug text-amber-700">
+                      {t('memberDues.earmarkedNote', {
+                        amount: `$${earmarkedElsewhere.toLocaleString()}`,
+                        year: payment.year
+                      })}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-500 uppercase">{t('memberDues.balanceDue')}</p>
@@ -474,6 +500,14 @@ const MemberDuesViewer: React.FC<MemberDuesViewerProps> = ({ memberId, onClose, 
                         <span className="px-2 py-1 rounded-md text-[10px] font-black uppercase bg-gray-100 text-gray-700">
                           {tx.payment_type.replace('_', ' ')}
                         </span>
+                        {/* Earmarked to a different year than the one on screen:
+                            it is cash received here, but it pays that year's
+                            dues, so it does not move Paid To Date above. */}
+                        {tx.for_year != null && tx.for_year !== payment.year && (
+                          <span className="ml-2 px-2 py-1 rounded-md text-[10px] font-black uppercase bg-amber-100 text-amber-800">
+                            {t('memberDues.appliedToYear', { year: tx.for_year })}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500 capitalize">
                         {tx.payment_method.replace('_', ' ')}

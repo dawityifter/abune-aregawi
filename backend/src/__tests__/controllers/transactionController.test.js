@@ -115,6 +115,84 @@ describe('updateTransaction — edit type/receipt/note', () => {
     expect(ledger.type).toBe('membership_due');
   });
 
+  // The earmark decides which year a dues payment is credited to, and it used
+  // to be unreachable after entry: not shown anywhere, not editable, so a wrong
+  // year could only be corrected by deleting and re-keying the payment.
+  it('saves a corrected earmark year', async () => {
+    const member = await Member.create({
+      first_name: 'Ear',
+      last_name: 'Mark',
+      role: 'member',
+      phone_number: '+15550008003'
+    });
+    const tx = await Transaction.create({
+      member_id: member.id, collected_by: editCollector.id, payment_date: '2026-09-08',
+      amount: 1000, payment_type: 'membership_due', payment_method: 'cash',
+      status: 'succeeded', receipt_number: '901', for_year: 2025
+    });
+
+    const res = mockRes();
+    await updateTransaction(
+      { params: { id: String(tx.id) }, body: { payment_type: 'membership_due', receipt_number: '901', for_year: 2026 } },
+      res
+    );
+    expect(res.body.success).toBe(true);
+
+    const updated = await Transaction.findByPk(tx.id);
+    expect(updated.for_year).toBe(2026);
+  });
+
+  it('clears the earmark back to the payment date year', async () => {
+    const member = await Member.create({
+      first_name: 'Clear',
+      last_name: 'Mark',
+      role: 'member',
+      phone_number: '+15550008004'
+    });
+    const tx = await Transaction.create({
+      member_id: member.id, collected_by: editCollector.id, payment_date: '2026-09-08',
+      amount: 1000, payment_type: 'membership_due', payment_method: 'cash',
+      status: 'succeeded', receipt_number: '902', for_year: 2025
+    });
+
+    const res = mockRes();
+    await updateTransaction(
+      { params: { id: String(tx.id) }, body: { payment_type: 'membership_due', receipt_number: '902', for_year: null } },
+      res
+    );
+    expect(res.body.success).toBe(true);
+
+    const updated = await Transaction.findByPk(tx.id);
+    expect(updated.for_year).toBeNull();
+  });
+
+  it('drops the earmark when a due is reclassified to another type', async () => {
+    // Only membership dues obey for_year, so a reclassified row must not keep
+    // one lying in wait should it ever be classified back.
+    const member = await Member.create({
+      first_name: 'Reclass',
+      last_name: 'Mark',
+      role: 'member',
+      phone_number: '+15550008005'
+    });
+    const tx = await Transaction.create({
+      member_id: member.id, collected_by: editCollector.id, payment_date: '2026-09-08',
+      amount: 1000, payment_type: 'membership_due', payment_method: 'cash',
+      status: 'succeeded', receipt_number: '903', for_year: 2025
+    });
+
+    const res = mockRes();
+    await updateTransaction(
+      { params: { id: String(tx.id) }, body: { payment_type: 'donation', receipt_number: '903', for_year: null } },
+      res
+    );
+    expect(res.body.success).toBe(true);
+
+    const updated = await Transaction.findByPk(tx.id);
+    expect(updated.payment_type).toBe('donation');
+    expect(updated.for_year).toBeNull();
+  });
+
   it('rejects a receipt number already used by another transaction', async () => {
     const a = await Transaction.create({
       collected_by: editCollector.id, payment_date: '2026-08-01', amount: 10,

@@ -490,6 +490,9 @@ export interface Dictionaries {
         edit: string;
         save: string;
         cancel: string;
+        forYear: string;
+        forYearAuto: string;
+        forYearHelp: string;
       };
       status: {
         pending: string;
@@ -1344,7 +1347,10 @@ export const en: Dictionaries = {
       edit: {
         edit: "Edit",
         save: "Save",
-        cancel: "Cancel"
+        cancel: "Cancel",
+        forYear: "Applies To Year",
+        forYearAuto: "Default (from payment date)",
+        forYearHelp: "Use this when the payment pays a different year's dues."
       },
       status: {
         pending: "Pending",
@@ -2986,6 +2992,8 @@ export const en: Dictionaries = {
   "memberDues.annualPledge": "Annual Pledge",
   "memberDues.monthlyValue": "Monthly Value",
   "memberDues.paidToDate": "Paid To Date",
+  "memberDues.appliedToYear": "for {year}",
+  "memberDues.earmarkedNote": "{amount} received in {year} pays an earlier year's dues — see the ledger below.",
   "memberDues.balanceDue": "Balance Due",
   "memberDues.percentComplete": "{percent}% COMPLETE",
   "memberDues.duesCalcFrom": "Dues are calculated starting from {name}'s parish join date.",
@@ -3726,7 +3734,10 @@ export const ti: Dictionaries = {
       edit: {
         edit: "ኣርም",
         save: "ኣቐምጥ",
-        cancel: "ሰርዝ"
+        cancel: "ሰርዝ",
+        forYear: "ዓመት ክፍሊት",
+        forYearAuto: "ነባሪ (ካብ ዕለት ክፍሊት)",
+        forYearHelp: "ናይ ዝሓለፈ ዓመት ክፍሊት ንምኽፋል ተጠቐመሉ።"
       },
       status: {
         pending: "Pending",
@@ -5369,6 +5380,8 @@ export const ti: Dictionaries = {
   "memberDues.annualPledge": "ዓመታዊ ቃል",
   "memberDues.monthlyValue": "ወርሓዊ ዋጋ",
   "memberDues.paidToDate": "ክሳብ ሕጂ ዝተኸፍለ",
+  "memberDues.appliedToYear": "ናይ {year}",
+  "memberDues.earmarkedNote": "ኣብ {year} እተቐበለ {amount} ናይ ዝሓለፈ ዓመት ክፍሊት እዩ ዝኸፍል — ኣብ ታሕቲ ዘሎ መዝገብ ርአ።",
   "memberDues.balanceDue": "ዝተረፈ ክፍሊት",
   "memberDues.percentComplete": "{percent}% ተዛዚሙ",
   "memberDues.duesCalcFrom": "ክፍሊት ካብ ዕለት ምጽንባር {name} ናብ ደብሪ ጀሚሩ ይሕሰብ።",

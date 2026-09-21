@@ -944,8 +944,12 @@ async function computeAndReturnDues(res, member, requestedYear) {
   });
 
   // Calculate Allocated Dues for THIS Year (Accrual View)
-  const duesAllocatedForYear = allDuesTransactions.filter(t => {
-    const tDate = new Date(t.payment_date);
+  // Kept as rows, not just a total, because the no-pledge branch below needs
+  // the same set to build its month grid. `for_year` used to decide the answer
+  // only for members who had pledged; everyone else was credited by payment
+  // date, so identical data read differently depending on whether a member
+  // had a pledge.
+  const duesAllocatedRows = allDuesTransactions.filter(t => {
     const tY = t.payment_date instanceof Date
       ? t.payment_date.getFullYear()
       : parseInt(String(t.payment_date).split('-')[0]);
@@ -953,7 +957,8 @@ async function computeAndReturnDues(res, member, requestedYear) {
     if (t.for_year === year) return true;
     if (!t.for_year && tY === year) return true;
     return false;
-  }).reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  });
+  const duesAllocatedForYear = duesAllocatedRows.reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
   if (yearlyPledge > 0) {
     monthlyPayment = Math.round((yearlyPledge / 12) * 100) / 100;
@@ -997,15 +1002,21 @@ async function computeAndReturnDues(res, member, requestedYear) {
     futureDues = monthStatuses.filter(ms => ms.isFutureMonth && ms.status !== 'pre-membership').reduce((s, m) => s + m.due, 0);
   } else {
     // ... No Pledge Logic (Keep existing simple view) ...
-    // Dues only, exactly as the pledge branch above. This loop used to take
-    // every transaction in the year, which made `duesCollected` mean "all
-    // giving" for a pledge-less member — and since grandTotal is
-    // duesCollected + totalOtherContributions, every donation, tithe and
-    // offering was then added a second time. A lone $100 donation reported as
-    // $200 received.
+    // The dues allocated to this year, exactly as the pledge branch above.
+    //
+    // This loop used to take every transaction dated in the year. That was
+    // wrong twice over: it counted donations and tithes as dues (and since
+    // grandTotal was duesCollected + totalOtherContributions, it counted them
+    // a second time), and it ignored `for_year`, so a payment earmarked to
+    // another year still credited this one for a pledge-less member while
+    // correctly crediting the earmarked year for a pledged one.
+    //
+    // Bucketing by the payment's own month keeps the grid summing to the
+    // total. A payment dated in another year but earmarked to this one lands
+    // in its own calendar month, which is the same liberty the pledge branch
+    // already takes when it waterfalls a total across months.
     const totalsByCalendarMonth = new Array(12).fill(0);
-    for (const t of memberTransactions) { // Use the strictly-this-year ledger
-      if (String(t.payment_type) !== 'membership_due') continue;
+    for (const t of duesAllocatedRows) {
       const parts = String(t.payment_date).split('-');
       const transMonth = parseInt(parts[1]) - 1;
       totalsByCalendarMonth[transMonth] += Number(t.amount || 0);

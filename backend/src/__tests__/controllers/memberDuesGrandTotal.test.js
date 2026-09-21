@@ -238,3 +238,74 @@ describe('member dues and cancelled transactions', () => {
     expect(data.payment.grandTotal).toBe(50);
   });
 });
+
+describe('dues earmarked to another year (for_year)', () => {
+  // The reported case: a membership payment made in September and earmarked to
+  // the previous year. It is cash received this year, so the ledger lists it
+  // and Total Received counts it — but it pays last year's dues, so Paid To
+  // Date for this year is correctly nil. The two figures disagreeing is the
+  // point; the screen has to say why.
+  const earmarkedToLastYear = [{
+    id: 1, member_id: 1, payment_date: `${YEAR}-09-08`, amount: 1000,
+    payment_type: 'membership_due', for_year: YEAR - 1, status: 'succeeded'
+  }];
+
+  it('credits a pledged member\'s earmarked payment to the year it names', async () => {
+    const data = await capture(
+      makeMember({ yearly_pledge: 1200, date_joined_parish: '2020-01-15' }),
+      earmarkedToLastYear
+    );
+
+    expect(data.payment.duesCollected).toBe(0);
+    // Still cash that arrived this year, and still listed.
+    expect(data.payment.grandTotal).toBe(1000);
+    expect(data.transactions).toHaveLength(1);
+    expect(data.transactions[0].for_year).toBe(YEAR - 1);
+  });
+
+  it('credits a pledge-less member\'s earmarked payment the same way', async () => {
+    // Previously for_year was honoured only for members who had pledged, so
+    // this same row credited the current year instead.
+    const data = await capture(makeMember({ yearly_pledge: 0 }), earmarkedToLastYear);
+
+    expect(data.payment.duesCollected).toBe(0);
+    expect(data.payment.grandTotal).toBe(1000);
+  });
+
+  it('credits a payment earmarked forward, whichever year it was made in', async () => {
+    const rows = [{
+      id: 1, member_id: 1, payment_date: `${YEAR - 1}-12-01`, amount: 400,
+      payment_type: 'membership_due', for_year: YEAR, status: 'succeeded'
+    }];
+    const member = makeMember({ yearly_pledge: 0 });
+
+    Member.findAll.mockResolvedValue([member]);
+    Transaction.findAll.mockImplementation(async (opts = {}) => {
+      const where = opts.where || {};
+      const visible = applyStatusFilter(rows, where);
+      if (where.payment_type === 'membership_due') return visible;
+      // The ledger lists cash received in the viewed year: nothing here.
+      return visible
+        .filter(r => String(r.payment_date).startsWith(String(YEAR)))
+        .map(r => ({ ...r, member: { first_name: 'Testmember' } }));
+    });
+    const res = { json: jest.fn() };
+    await computeAndReturnDues(res, member, YEAR);
+    const data = res.json.mock.calls[0][0].data;
+
+    expect(data.payment.duesCollected).toBe(400);
+    expect(data.payment.grandTotal).toBe(0);
+    expect(data.transactions).toHaveLength(0);
+  });
+
+  it('keeps the month grid summing to the dues total for a pledge-less member', async () => {
+    const data = await capture(makeMember({ yearly_pledge: 0 }), [
+      { id: 1, member_id: 1, payment_date: `${YEAR}-04-01`, amount: 120, payment_type: 'membership_due', for_year: null, status: 'succeeded' },
+      { id: 2, member_id: 1, payment_date: `${YEAR}-09-08`, amount: 80, payment_type: 'membership_due', for_year: YEAR, status: 'succeeded' }
+    ]);
+
+    const gridTotal = data.payment.monthStatuses.reduce((s, m) => s + m.paid, 0);
+    expect(data.payment.duesCollected).toBe(200);
+    expect(gridTotal).toBe(200);
+  });
+});

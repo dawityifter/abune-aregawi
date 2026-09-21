@@ -17,6 +17,12 @@ interface Transaction {
   note?: string;
   /** Set for non-member gifts. Authoritative over the note's donor block. */
   donor_name?: string | null;
+  /**
+   * The year this payment's dues are credited to, when that is not the
+   * year it was made in. Dues are allocated by this; the ledger lists by
+   * payment date. Null means "use the payment date's year".
+   */
+  for_year?: number | null;
   income_category_id?: number | null;
   external_id?: string | null;
   donation_id?: number | null;
@@ -57,7 +63,7 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
   const [isEditing, setIsEditing] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
-  const [editDraft, setEditDraft] = useState({ payment_type: '', receipt_number: '', note: '' });
+  const [editDraft, setEditDraft] = useState({ payment_type: '', receipt_number: '', note: '', for_year: '' });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [receiptNumberFilter, setReceiptNumberFilter] = useState('');
@@ -323,12 +329,29 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
     'building_fund', 'event', 'religious_item_sales', 'tigray_hunger_fundraiser', 'other'
   ];
 
+  // Years a dues payment may be earmarked to. 2025 is the first year the parish
+  // tracked dues this way; the current year is offered explicitly because
+  // "default" derives the year from the payment date, which is not the same
+  // thing for a payment made in December for the year after.
+  //
+  // `current` is folded in so that opening a row earmarked outside this range —
+  // the Square review screen writes its own year — cannot silently reset it to
+  // default on save.
+  const earmarkYearOptions = (current?: number | null) => {
+    const thisYear = new Date().getFullYear();
+    const years: number[] = [];
+    for (let y = thisYear; y >= 2025; y--) years.push(y);
+    if (current != null && !years.includes(current)) years.push(current);
+    return years.sort((a, b) => b - a);
+  };
+
   const startEdit = () => {
     if (!selectedTransaction) return;
     setEditDraft({
       payment_type: selectedTransaction.payment_type,
       receipt_number: selectedTransaction.receipt_number || '',
-      note: selectedTransaction.note || ''
+      note: selectedTransaction.note || '',
+      for_year: selectedTransaction.for_year != null ? String(selectedTransaction.for_year) : ''
     });
     setEditError('');
     setIsEditing(true);
@@ -349,7 +372,10 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
         body: JSON.stringify({
           payment_type: editDraft.payment_type,
           receipt_number: editDraft.receipt_number.trim() || null,
-          note: editDraft.note
+          note: editDraft.note,
+          for_year: editDraft.payment_type === 'membership_due' && editDraft.for_year
+            ? parseInt(editDraft.for_year, 10)
+            : null
         })
       });
       const data = await resp.json().catch(() => ({}));
@@ -878,6 +904,40 @@ const TransactionList: React.FC<TransactionListProps> = ({ onTransactionAdded, r
                       <dd className="mt-1 text-sm text-slate-900">{selectedTransaction.receipt_number || '-'}</dd>
                     )}
                   </div>
+                  {/* Only membership dues obey an earmark, so the field appears
+                      only for them — and when a row is being reclassified away
+                      from dues it disappears, matching what saveEdit sends.
+                      Shown read-only too: a payment crediting another year is
+                      exactly what makes a member's Paid To Date look wrong, and
+                      that was previously invisible everywhere. */}
+                  {(isEditing ? editDraft.payment_type : selectedTransaction.payment_type) === 'membership_due' && (
+                    <div>
+                      <dt className="text-xs font-medium text-slate-500">
+                        {t('treasurerDashboard.transactionList.edit.forYear')}
+                      </dt>
+                      {isEditing ? (
+                        <>
+                          <select
+                            value={editDraft.for_year}
+                            onChange={(e) => setEditDraft(d => ({ ...d, for_year: e.target.value }))}
+                            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                          >
+                            <option value="">{t('treasurerDashboard.transactionList.edit.forYearAuto')}</option>
+                            {earmarkYearOptions(selectedTransaction.for_year).map(y => (
+                              <option key={y} value={String(y)}>{y}</option>
+                            ))}
+                          </select>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {t('treasurerDashboard.transactionList.edit.forYearHelp')}
+                          </p>
+                        </>
+                      ) : (
+                        <dd className="mt-1 text-sm text-slate-900">
+                          {selectedTransaction.for_year ?? t('treasurerDashboard.transactionList.edit.forYearAuto')}
+                        </dd>
+                      )}
+                    </div>
+                  )}
                   <div>
                     <dt className="text-xs font-medium text-slate-500">Collected By</dt>
                     <dd className="mt-1 text-sm text-slate-900">
