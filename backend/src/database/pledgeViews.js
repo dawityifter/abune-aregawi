@@ -28,6 +28,12 @@ const LEGACY_PAID =
   `CASE WHEN p.is_historical = TRUE AND p.legacy_status = 'fulfilled' ` +
   `THEN p.amount ELSE ${ALLOCATED} END`;
 
+// outstanding vs outstanding_positive: a pledge can be over-fulfilled (a payment
+// lands on it in full even when it overshoots), so remaining_amount goes negative
+// and `outstanding` nets one member's overshoot against another's shortfall.
+// outstanding_positive is money actually still owed; overpaid_amount is the
+// overshoot as a positive number. UI surfaces read those two, never `outstanding`
+// raw — this is the one definition of the rule.
 const PLEDGE_BALANCES = (securityInvoker) => `
 CREATE VIEW pledge_balances ${securityInvoker ? 'WITH (security_invoker = true) ' : ''}AS
 SELECT
@@ -65,6 +71,10 @@ SELECT
   COALESCE(SUM(b.pledged_amount), 0)   AS total_pledged,
   COALESCE(SUM(b.paid_amount), 0)      AS total_collected,
   COALESCE(SUM(b.remaining_amount), 0) AS outstanding,
+  COALESCE(SUM(CASE WHEN b.remaining_amount > 0
+                    THEN b.remaining_amount ELSE 0 END), 0) AS outstanding_positive,
+  COALESCE(SUM(CASE WHEN b.remaining_amount < 0
+                    THEN -b.remaining_amount ELSE 0 END), 0) AS overpaid_amount,
   CASE WHEN c.goal_amount > 0
        THEN ROUND(COALESCE(SUM(b.paid_amount), 0) * 100.0 / c.goal_amount, 1)
        ELSE 0 END AS percent_to_goal

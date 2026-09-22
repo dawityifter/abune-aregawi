@@ -19,6 +19,8 @@ module.exports = (sequelize) => {
     total_pledged: DataTypes.DECIMAL(10, 2),
     total_collected: DataTypes.DECIMAL(10, 2),
     outstanding: DataTypes.DECIMAL(10, 2),
+    outstanding_positive: DataTypes.DECIMAL(10, 2),
+    overpaid_amount: DataTypes.DECIMAL(10, 2),
     percent_to_goal: DataTypes.DECIMAL(5, 1)
   }, {
     sequelize,
