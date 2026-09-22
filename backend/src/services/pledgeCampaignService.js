@@ -1,7 +1,7 @@
 'use strict';
 
-const { Op } = require('sequelize');
-const { PledgeCampaign } = require('../models');
+const { Op, fn, col, literal } = require('sequelize');
+const { PledgeCampaign, Member } = require('../models');
 const { now, formatForDB } = require('../config/timezone');
 
 /**
@@ -56,4 +56,43 @@ const findOverlappingActive = async ({ id, start_date, end_date }) => {
   return PledgeCampaign.findOne({ where });
 };
 
-module.exports = { todayInChurchTz, isLive, findLiveCampaign, findOverlappingActive };
+/**
+ * The participation denominator for the pledge dashboard.
+ *
+ * The household key is COALESCE(family_id, id) — the SAME key campaign_totals
+ * uses for the numerator. It has to be: a head of household is either
+ * family_id IS NULL or family_id = own id (both forms exist; see
+ * memberReportController's `isHead`), so counting only the NULL form would drop
+ * every self-pointing head from the denominator while the numerator still
+ * counts it, and push participation above 100%.
+ *
+ * familyIdPopulated is the honesty check. It requires family_id to be non-null
+ * AND to point at someone else, because a self-pointing head links nobody. When
+ * it is false, every member reads as their own household and this figure is a
+ * member count wearing a household label — callers must relabel the metric
+ * rather than publish a precise-looking number that is not what it says.
+ *
+ * One aggregate query, no GROUP BY, so it returns exactly one row even against
+ * an empty members table (COUNT 0, SUM NULL).
+ */
+const countActiveHouseholds = async () => {
+  const row = await Member.findOne({
+    attributes: [
+      [fn('COUNT', fn('DISTINCT', fn('COALESCE', col('family_id'), col('id')))), 'households'],
+      [fn('COUNT', col('id')), 'active_members'],
+      [fn('SUM', literal(
+        'CASE WHEN family_id IS NOT NULL AND family_id <> id THEN 1 ELSE 0 END'
+      )), 'linked']
+    ],
+    where: { is_active: true },
+    raw: true
+  });
+
+  return {
+    households: Number(row?.households) || 0,
+    activeMembers: Number(row?.active_members) || 0,
+    familyIdPopulated: (Number(row?.linked) || 0) > 0
+  };
+};
+
+module.exports = { todayInChurchTz, isLive, findLiveCampaign, findOverlappingActive, countActiveHouseholds };
