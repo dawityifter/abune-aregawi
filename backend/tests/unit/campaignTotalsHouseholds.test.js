@@ -1,6 +1,7 @@
 const {
   CampaignTotal, PledgeAllocation, Pledge, PledgeCampaign, Member, Transaction, sequelize
 } = require('../../src/models');
+const { countActiveHouseholds } = require('../../src/services/pledgeCampaignService');
 
 describe('campaign_totals household and anonymous counts', () => {
   let campaign, head, spouse;
@@ -24,12 +25,12 @@ describe('campaign_totals household and anonymous counts', () => {
     // family_id NULL marks the implicit head of household — the same convention
     // statementController.js uses via `member.family_id || member.id`.
     head = await Member.create({
-      first_name: 'Abraham', last_name: 'Tesfaye', phone_number: '+15550000011',
+      first_name: 'Abraham', last_name: 'Tesfaye', phone_number: '+15555550120',
       email: 'abraham@example.com', is_active: true, role: 'member',
       firebase_uid: 'uid-abraham', family_id: null
     });
     spouse = await Member.create({
-      first_name: 'Selam', last_name: 'Tesfaye', phone_number: '+15550000012',
+      first_name: 'Selam', last_name: 'Tesfaye', phone_number: '+15555550121',
       email: 'selam@example.com', is_active: true, role: 'member',
       firebase_uid: 'uid-selam', family_id: head.id
     });
@@ -73,7 +74,7 @@ describe('campaign_totals household and anonymous counts', () => {
 
   it('counts a member with no family_id as their own household', async () => {
     const solo = await Member.create({
-      first_name: 'Yonas', last_name: 'Gebre', phone_number: '+15550000013',
+      first_name: 'Yonas', last_name: 'Gebre', phone_number: '+15555550122',
       email: 'yonas@example.com', is_active: true, role: 'member',
       firebase_uid: 'uid-yonas', family_id: null
     });
@@ -114,5 +115,70 @@ describe('campaign_totals household and anonymous counts', () => {
     const t = await totals();
     expect(t.pledge_count).toBe(1);
     expect(t.household_count).toBe(1);
+  });
+
+  it('counts an unpaid anonymous pledge, and collects nothing for it', async () => {
+    await anonymousPledge(400, 'Welde Mariam');   // pledged, never paid
+
+    const t = await totals();
+    expect(t.anonymous_pledge_count).toBe(1);
+    expect(parseFloat(t.anonymous_collected)).toBe(0);
+    // Counting the intent while collecting nothing is the point: the attention
+    // panel needs unpaid anonymous pledges to be visible, not invisible.
+    expect(t.household_count).toBe(0);
+  });
+
+  // ── The participation-rate invariant ─────────────────────────────────────────
+  //
+  // participation = campaign_totals.household_count / countActiveHouseholds().households
+  //
+  // The two are computed by different engines — SQL in pledgeViews.js, Sequelize in
+  // pledgeCampaignService.js — over the same population. If they ever disagree on the
+  // household key or on the active scope, the dashboard publishes a rate above 100%.
+  // Before the `m.is_active = true` filter was added to HOUSEHOLD_COUNT this case
+  // measured numerator 2 against denominator 1: 200%.
+  describe('participation numerator never exceeds the denominator', () => {
+    it('drops a deactivated pledger from household_count, as the denominator does', async () => {
+      const departed = await Member.create({
+        first_name: 'Tekle', last_name: 'Haile', phone_number: '+15555550123',
+        email: 'tekle@example.com', is_active: false, role: 'member',
+        firebase_uid: 'uid-tekle', family_id: null
+      });
+      await pledgeFor(head.id, 1000);
+      await pledgeFor(departed.id, 1000);
+
+      const t = await totals();
+      const { households } = await countActiveHouseholds();
+
+      // head + spouse are one active household; `departed` is not counted anywhere.
+      expect(households).toBe(1);
+      expect(t.household_count).toBe(1);
+      expect(t.household_count).toBeLessThanOrEqual(households);
+    });
+
+    it('holds when every pledging household is active', async () => {
+      await pledgeFor(head.id, 1000);
+      await pledgeFor(spouse.id, 500);
+
+      const t = await totals();
+      const { households } = await countActiveHouseholds();
+
+      expect(t.household_count).toBe(1);
+      expect(t.household_count).toBeLessThanOrEqual(households);
+    });
+
+    it('holds when a whole family is deactivated after pledging', async () => {
+      await pledgeFor(head.id, 1000);
+      await pledgeFor(spouse.id, 500);
+      await head.update({ is_active: false });
+      await spouse.update({ is_active: false });
+
+      const t = await totals();
+      const { households } = await countActiveHouseholds();
+
+      expect(households).toBe(0);
+      expect(t.household_count).toBe(0);
+      expect(t.household_count).toBeLessThanOrEqual(households);
+    });
   });
 });

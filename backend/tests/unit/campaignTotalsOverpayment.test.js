@@ -22,7 +22,7 @@ describe('campaign_totals over-payment columns', () => {
       goal_amount: 100000, status: 'active'
     });
     member = await Member.create({
-      first_name: 'Ann', last_name: 'Giver', phone_number: '+15550000010',
+      first_name: 'Ann', last_name: 'Giver', phone_number: '+15555550110',
       email: 'ann@example.com', is_active: true, role: 'member', firebase_uid: 'uid-ann'
     });
   });

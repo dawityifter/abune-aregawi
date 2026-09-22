@@ -3,8 +3,9 @@ const { countActiveHouseholds } = require('../../src/services/pledgeCampaignServ
 
 describe('countActiveHouseholds', () => {
   beforeAll(async () => {
+    // No recreatePledgeViews() here on purpose: countActiveHouseholds() queries the
+    // members table directly and touches no view.
     await sequelize.sync({ force: true });
-    await global.recreatePledgeViews();
   });
 
   beforeEach(async () => {
@@ -18,15 +19,15 @@ describe('countActiveHouseholds', () => {
 
   it('counts heads of household, not people', async () => {
     const head = await member({
-      phone_number: '+15550000021', email: 'h1@example.com',
+      phone_number: '+15555550130', email: 'h1@example.com',
       firebase_uid: 'uid-h1', family_id: null
     });
     await member({
-      phone_number: '+15550000022', email: 's1@example.com',
+      phone_number: '+15555550131', email: 's1@example.com',
       firebase_uid: 'uid-s1', family_id: head.id
     });
     await member({
-      phone_number: '+15550000023', email: 'h2@example.com',
+      phone_number: '+15555550132', email: 'h2@example.com',
       firebase_uid: 'uid-h2', family_id: null
     });
 
@@ -40,12 +41,12 @@ describe('countActiveHouseholds', () => {
     // Both forms of "head" exist in this data: family_id IS NULL, and
     // family_id = own id. memberReportController treats them identically.
     const selfHead = await member({
-      phone_number: '+15550000031', email: 'self@example.com',
+      phone_number: '+15555550133', email: 'self@example.com',
       firebase_uid: 'uid-self', family_id: null
     });
     await selfHead.update({ family_id: selfHead.id });
     await member({
-      phone_number: '+15550000032', email: 'dep@example.com',
+      phone_number: '+15555550134', email: 'dep@example.com',
       firebase_uid: 'uid-dep', family_id: selfHead.id
     });
 
@@ -58,7 +59,7 @@ describe('countActiveHouseholds', () => {
 
   it('does not treat a self-pointing head as a populated family_id', async () => {
     const solo = await member({
-      phone_number: '+15550000033', email: 'solo@example.com',
+      phone_number: '+15555550135', email: 'solo@example.com',
       firebase_uid: 'uid-solo', family_id: null
     });
     await solo.update({ family_id: solo.id });
@@ -71,11 +72,11 @@ describe('countActiveHouseholds', () => {
 
   it('excludes inactive members from both counts', async () => {
     await member({
-      phone_number: '+15550000024', email: 'a@example.com',
+      phone_number: '+15555550136', email: 'a@example.com',
       firebase_uid: 'uid-a', family_id: null
     });
     await member({
-      phone_number: '+15550000025', email: 'b@example.com',
+      phone_number: '+15555550137', email: 'b@example.com',
       firebase_uid: 'uid-b', family_id: null, is_active: false
     });
 
@@ -86,11 +87,11 @@ describe('countActiveHouseholds', () => {
 
   it('flags an unpopulated family_id so callers can relabel the metric', async () => {
     await member({
-      phone_number: '+15550000026', email: 'c@example.com',
+      phone_number: '+15555550138', email: 'c@example.com',
       firebase_uid: 'uid-c', family_id: null
     });
     await member({
-      phone_number: '+15550000027', email: 'd@example.com',
+      phone_number: '+15555550139', email: 'd@example.com',
       firebase_uid: 'uid-d', family_id: null
     });
 

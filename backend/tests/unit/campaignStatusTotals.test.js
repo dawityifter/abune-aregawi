@@ -22,7 +22,7 @@ describe('campaign_status_totals view', () => {
       goal_amount: 100000, status: 'active'
     });
     member = await Member.create({
-      first_name: 'Ann', last_name: 'Giver', phone_number: '+15550000010',
+      first_name: 'Ann', last_name: 'Giver', phone_number: '+15555550100',
       email: 'ann@example.com', is_active: true, role: 'member', firebase_uid: 'uid-ann'
     });
   });
@@ -60,25 +60,28 @@ describe('campaign_status_totals view', () => {
     expect(s.fulfilled.pledge_count).toBe(1);
     expect(parseFloat(s.fulfilled.total_pledged)).toBe(1000);
     expect(parseFloat(s.fulfilled.total_collected)).toBe(1000);
-    expect(parseFloat(s.fulfilled.outstanding)).toBe(0);
+    expect(parseFloat(s.fulfilled.outstanding_positive)).toBe(0);
 
     expect(s.partially_fulfilled.pledge_count).toBe(1);
     expect(parseFloat(s.partially_fulfilled.total_pledged)).toBe(5000);
     expect(parseFloat(s.partially_fulfilled.total_collected)).toBe(2000);
-    expect(parseFloat(s.partially_fulfilled.outstanding)).toBe(3000);
+    expect(parseFloat(s.partially_fulfilled.outstanding_positive)).toBe(3000);
 
     expect(s.not_started.pledge_count).toBe(1);
     expect(parseFloat(s.not_started.total_collected)).toBe(0);
-    expect(parseFloat(s.not_started.outstanding)).toBe(800);
+    expect(parseFloat(s.not_started.outstanding_positive)).toBe(800);
   });
 
-  it('reports cancelled pledges as their own row', async () => {
+  it('reports cancelled pledges as their own row, owing nothing', async () => {
     const doomed = await pledgeFor(1000);
     await doomed.update({ lifecycle: 'cancelled' });
 
     const s = await byStatus();
     expect(s.cancelled.pledge_count).toBe(1);
     expect(parseFloat(s.cancelled.total_pledged)).toBe(1000);
+    // A cancelled pledge owes nothing. Its $1000 unpaid remainder must not be
+    // reported as money the drive is still waiting on.
+    expect(parseFloat(s.cancelled.outstanding_positive)).toBe(0);
   });
 
   it('emits no rows for a campaign with no pledges', async () => {
@@ -91,12 +94,12 @@ describe('campaign_status_totals view', () => {
     await pay(over, 1200);
 
     const s = await byStatus();
-    expect(parseFloat(s.fulfilled.outstanding)).toBe(0);
+    expect(parseFloat(s.fulfilled.outstanding_positive)).toBe(0);
   });
 
   it('counts a family once per status bucket', async () => {
     const spouse = await Member.create({
-      first_name: 'Selam', last_name: 'Giver', phone_number: '+15550000012',
+      first_name: 'Selam', last_name: 'Giver', phone_number: '+15555550101',
       email: 'selam@example.com', is_active: true, role: 'member',
       firebase_uid: 'uid-selam2', family_id: member.id
     });

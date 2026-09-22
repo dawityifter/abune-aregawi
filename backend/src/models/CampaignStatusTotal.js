@@ -21,7 +21,11 @@ module.exports = (sequelize) => {
     household_count: DataTypes.INTEGER,
     total_pledged: DataTypes.DECIMAL(10, 2),
     total_collected: DataTypes.DECIMAL(10, 2),
-    outstanding: DataTypes.DECIMAL(10, 2)
+    // Clamped at zero, and zero on the cancelled row — matching
+    // campaign_totals.outstanding_positive. There is deliberately no `outstanding`
+    // column here: that name belongs to the raw signed net, which this view does
+    // not produce. One name per rule.
+    outstanding_positive: DataTypes.DECIMAL(10, 2)
   }, {
     sequelize,
     modelName: 'CampaignStatusTotal',
