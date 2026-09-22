@@ -28,12 +28,6 @@ const LEGACY_PAID =
   `CASE WHEN p.is_historical = TRUE AND p.legacy_status = 'fulfilled' ` +
   `THEN p.amount ELSE ${ALLOCATED} END`;
 
-// outstanding vs outstanding_positive: a pledge can be over-fulfilled (a payment
-// lands on it in full even when it overshoots), so remaining_amount goes negative
-// and `outstanding` nets one member's overshoot against another's shortfall.
-// outstanding_positive is money actually still owed; overpaid_amount is the
-// overshoot as a positive number. UI surfaces read those two, never `outstanding`
-// raw — this is the one definition of the rule.
 const PLEDGE_BALANCES = (securityInvoker) => `
 CREATE VIEW pledge_balances ${securityInvoker ? 'WITH (security_invoker = true) ' : ''}AS
 SELECT
@@ -60,6 +54,28 @@ LEFT JOIN transactions t ON t.id = a.transaction_id
 GROUP BY p.id, p.campaign_id, p.member_id, p.amount, p.lifecycle, p.is_historical, p.legacy_status
 `;
 
+// outstanding vs outstanding_positive: a pledge can be over-fulfilled (a payment
+// lands on it in full even when it overshoots), so remaining_amount goes negative
+// and `outstanding` nets one member's overshoot against another's shortfall.
+// outstanding_positive is money actually still owed; overpaid_amount is the
+// overshoot as a positive number. UI surfaces read those two, never `outstanding`
+// raw — this is the one definition of the rule.
+
+// Three counts, three different questions:
+//   donor_count      - distinct member rows. KEPT AS-IS for existing callers, but
+//                      it silently skips anonymous pledges, because SQL
+//                      COUNT(DISTINCT x) ignores NULLs and an anonymous pledge has
+//                      no member_id. Do not build a participation rate on it.
+//   household_count  - distinct families. A spouse or promoted dependent pledges
+//                      against their OWN member row, so distinct members is not
+//                      distinct households. COALESCE(family_id, id) is the house
+//                      pattern (statementController.js) where family_id IS NULL
+//                      means implicit head.
+//   anonymous_*      - anonymous gifts are not attributable to a household, so they
+//                      are reported BESIDE the participation rate, never inside it.
+//                      The `b.pledge_id IS NOT NULL` guard matters: an empty drive
+//                      still yields one all-NULL row from the LEFT JOIN, which
+//                      would otherwise count as one anonymous pledge.
 const CAMPAIGN_TOTALS = (securityInvoker) => `
 CREATE VIEW campaign_totals ${securityInvoker ? 'WITH (security_invoker = true) ' : ''}AS
 SELECT
@@ -68,6 +84,12 @@ SELECT
   c.goal_amount       AS goal_amount,
   COUNT(b.pledge_id)  AS pledge_count,
   COUNT(DISTINCT b.member_id) AS donor_count,
+  COUNT(DISTINCT CASE WHEN b.member_id IS NOT NULL
+                      THEN COALESCE(m.family_id, m.id) END) AS household_count,
+  SUM(CASE WHEN b.pledge_id IS NOT NULL AND b.member_id IS NULL
+           THEN 1 ELSE 0 END) AS anonymous_pledge_count,
+  COALESCE(SUM(CASE WHEN b.member_id IS NULL
+                    THEN b.paid_amount ELSE 0 END), 0) AS anonymous_collected,
   COALESCE(SUM(b.pledged_amount), 0)   AS total_pledged,
   COALESCE(SUM(b.paid_amount), 0)      AS total_collected,
   COALESCE(SUM(b.remaining_amount), 0) AS outstanding,
@@ -81,6 +103,7 @@ SELECT
 FROM pledge_campaigns c
 LEFT JOIN pledge_balances b
   ON b.campaign_id = c.id AND b.derived_status <> 'cancelled'
+LEFT JOIN members m ON m.id = b.member_id
 GROUP BY c.id, c.slug, c.goal_amount
 `;
 
