@@ -36,7 +36,7 @@ Over-payment already happens in production: a payment can land on a pledge in fu
 - Consumes: nothing — first task.
 - Produces: `campaign_totals.outstanding_positive` and `campaign_totals.overpaid_amount`, both `DECIMAL(10,2)`, both `>= 0`, exposed as `CampaignTotal.outstanding_positive` / `CampaignTotal.overpaid_amount`. Later tasks and plans read these instead of clamping `outstanding` themselves.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `backend/tests/unit/campaignTotalsOverpayment.test.js`:
 
@@ -121,13 +121,13 @@ describe('campaign_totals over-payment columns', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest tests/unit/campaignTotalsOverpayment.test.js`
 
 Expected: FAIL. The first two cases fail because `t.outstanding_positive` is `undefined`, so `parseFloat` yields `NaN`.
 
-- [ ] **Step 3: Add the columns to the view SQL**
+- [x] **Step 3: Add the columns to the view SQL**
 
 In `backend/src/database/pledgeViews.js`, inside the `CAMPAIGN_TOTALS` template, add two lines immediately after the existing `outstanding` line:
 
@@ -150,7 +150,7 @@ Add this comment directly above the `CAMPAIGN_TOTALS` constant:
 // raw — this is the one definition of the rule.
 ```
 
-- [ ] **Step 4: Add the fields to the model**
+- [x] **Step 4: Add the fields to the model**
 
 In `backend/src/models/CampaignTotal.js`, inside `CampaignTotal.init({...})`, after the existing `outstanding` line:
 
@@ -160,19 +160,19 @@ In `backend/src/models/CampaignTotal.js`, inside `CampaignTotal.init({...})`, af
     overpaid_amount: DataTypes.DECIMAL(10, 2),
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [x] **Step 5: Run the test to verify it passes**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest tests/unit/campaignTotalsOverpayment.test.js`
 
 Expected: PASS, 3 tests.
 
-- [ ] **Step 6: Run the existing pledge suite to confirm nothing regressed**
+- [x] **Step 6: Run the existing pledge suite to confirm nothing regressed**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest --testPathPattern="pledge|campaign"`
 
 Expected: PASS. Every pre-existing test must still pass — `outstanding` and `donor_count` were not modified.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /Users/dawit/development/church/abune-aregawi
@@ -197,7 +197,7 @@ Two confirmed defects, from spec §3. `donor_count` is `COUNT(DISTINCT b.member_
 - Consumes: Task 1's edits to the same template — add to it, do not replace it.
 - Produces: `campaign_totals.household_count` (INTEGER, attributable households only), `campaign_totals.anonymous_pledge_count` (INTEGER), `campaign_totals.anonymous_collected` (DECIMAL(10,2)). The participation numerator is `household_count`; `anonymous_pledge_count` is reported beside the rate, never inside it.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `backend/tests/unit/campaignTotalsHouseholds.test.js`:
 
@@ -322,13 +322,13 @@ describe('campaign_totals household and anonymous counts', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest tests/unit/campaignTotalsHouseholds.test.js`
 
 Expected: FAIL — `household_count` and `anonymous_pledge_count` are `undefined`.
 
-- [ ] **Step 3: Add the join and the three columns**
+- [x] **Step 3: Add the join and the three columns**
 
 In `backend/src/database/pledgeViews.js`, in the `CAMPAIGN_TOTALS` template:
 
@@ -373,7 +373,7 @@ Add this comment above the `CAMPAIGN_TOTALS` constant:
 //                      would otherwise count as one anonymous pledge.
 ```
 
-- [ ] **Step 4: Add the fields to the model**
+- [x] **Step 4: Add the fields to the model**
 
 In `backend/src/models/CampaignTotal.js`, after `donor_count`:
 
@@ -384,19 +384,19 @@ In `backend/src/models/CampaignTotal.js`, after `donor_count`:
     anonymous_collected: DataTypes.DECIMAL(10, 2),
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [x] **Step 5: Run the test to verify it passes**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest tests/unit/campaignTotalsHouseholds.test.js`
 
 Expected: PASS, 5 tests.
 
-- [ ] **Step 6: Run the full pledge suite**
+- [x] **Step 6: Run the full pledge suite**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest --testPathPattern="pledge|campaign"`
 
 Expected: PASS, including Task 1's file.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /Users/dawit/development/church/abune-aregawi
@@ -426,7 +426,7 @@ The dashboard's fulfillment breakdown (spec §7) needs, per status, both a count
 - Consumes: nothing from Tasks 1–2 — a separate view over `pledge_balances`.
 - Produces: model `CampaignStatusTotal`, table `campaign_status_totals`, one row per `(campaign_id, status)` where status is one of `fulfilled` / `partially_fulfilled` / `not_started` / `cancelled`. Columns: `campaign_id` BIGINT, `status` STRING (composite PK with campaign_id), `pledge_count` INTEGER, `household_count` INTEGER, `total_pledged` / `total_collected` / `outstanding` DECIMAL(10,2). **Cancelled is included as its own row** — admins need to see it, matching what `getPledgeStats` already does.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `backend/tests/unit/campaignStatusTotals.test.js`:
 
@@ -546,13 +546,13 @@ describe('campaign_status_totals view', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest tests/unit/campaignStatusTotals.test.js`
 
 Expected: FAIL with a `TypeError` — `CampaignStatusTotal` is `undefined`, so `.findAll` cannot be called.
 
-- [ ] **Step 3: Add the view template and wire it in**
+- [x] **Step 3: Add the view template and wire it in**
 
 In `backend/src/database/pledgeViews.js`, add this template after `CAMPAIGN_TOTALS`:
 
@@ -606,7 +606,7 @@ async function dropPledgeViews(queryInterface) {
 }
 ```
 
-- [ ] **Step 4: Create the model**
+- [x] **Step 4: Create the model**
 
 Create `backend/src/models/CampaignStatusTotal.js`:
 
@@ -652,7 +652,7 @@ module.exports = (sequelize) => {
 };
 ```
 
-- [ ] **Step 5: Register the model**
+- [x] **Step 5: Register the model**
 
 In `backend/src/models/index.js`, add after the `CampaignTotal` require at line 99:
 
@@ -668,19 +668,19 @@ and add it to the returned object after `CampaignTotal` at line 140:
     CampaignStatusTotal,
 ```
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [x] **Step 6: Run the test to verify it passes**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest tests/unit/campaignStatusTotals.test.js`
 
 Expected: PASS, 5 tests.
 
-- [ ] **Step 7: Run the whole backend suite**
+- [x] **Step 7: Run the whole backend suite**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest`
 
 Expected: PASS. This step is broader than the earlier tasks on purpose — registering a new model touches `models/index.js`, which every test file loads, and the drop order in `dropPledgeViews` now matters for the ~30 files that call `recreatePledgeViews()`.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 cd /Users/dawit/development/church/abune-aregawi
@@ -713,7 +713,7 @@ This task also ships the diagnostic the spec flags as unverified — if `family_
 - Consumes: nothing from Tasks 1–3.
 - Produces: `countActiveHouseholds()` exported from `src/services/pledgeCampaignService.js`, returning `Promise<{ households: number, activeMembers: number, familyIdPopulated: boolean }>`. `familyIdPopulated` is false when no active member has a non-null `family_id`, which is the signal that the UI must say "members" rather than "households". Plan 2's endpoint consumes this.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `backend/tests/unit/activeHouseholdCount.test.js`:
 
@@ -828,13 +828,13 @@ describe('countActiveHouseholds', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest tests/unit/activeHouseholdCount.test.js`
 
 Expected: FAIL — `countActiveHouseholds is not a function`.
 
-- [ ] **Step 3: Implement the function**
+- [x] **Step 3: Implement the function**
 
 In `backend/src/services/pledgeCampaignService.js`, change the imports on lines 3-4 and add the function above `module.exports`:
 
@@ -890,19 +890,19 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest tests/unit/activeHouseholdCount.test.js`
 
 Expected: PASS, 6 tests.
 
-- [ ] **Step 5: Run the pledge suite**
+- [x] **Step 5: Run the pledge suite**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest --testPathPattern="pledge|campaign"`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /Users/dawit/development/church/abune-aregawi
@@ -926,7 +926,7 @@ Tests build their schema with `sequelize.sync()` plus `createPledgeViews()`, so 
 - Consumes: `createPledgeViews` / `dropPledgeViews` from `src/database/pledgeViews.js`, as amended by Tasks 1–3.
 - Produces: nothing consumed by later code. Ends the plan.
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
 
 Create `backend/migrations/20260921120000-pledge-dashboard-metric-views.js`:
 
@@ -954,7 +954,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 2: Verify the migration runs against a throwaway sqlite file**
+- [x] **Step 2: Verify the migration runs against a throwaway sqlite file**
 
 ```bash
 cd /Users/dawit/development/church/abune-aregawi/backend
@@ -965,13 +965,13 @@ DATABASE_URL=sqlite:/tmp/pledge-migration-check.sqlite NODE_ENV=development npx 
 
 Expected: the migration is listed as executed with no error. If earlier migrations fail on sqlite (several are Postgres-specific), that is pre-existing and not caused by this plan — in that case skip to Step 3 and rely on the Jest suite, which exercises the same `createPledgeViews()` path on every run.
 
-- [ ] **Step 3: Run the full suite one more time**
+- [x] **Step 3: Run the full suite one more time**
 
 Run: `cd backend && DATABASE_URL=sqlite::memory: NODE_ENV=test npx jest`
 
 Expected: PASS, all files.
 
-- [ ] **Step 4: Write the verification runbook**
+- [x] **Step 4: Write the verification runbook**
 
 Create `docs/superpowers/plans/2026-09-21-pledge-metric-integrity-verification.md`:
 
@@ -1030,7 +1030,7 @@ pledge is is_historical and therefore binary (spec §3). Its absence is correct,
 not a bug.
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /Users/dawit/development/church/abune-aregawi
@@ -1040,7 +1040,7 @@ git commit -m "feat(pledges): migration and verification runbook for dashboard m
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ```
 
-- [ ] **Step 6: Stop and hand back**
+- [x] **Step 6: Stop and hand back**
 
 Do **not** push and do **not** run anything against production. The user tests locally before any deploy and asks to be consulted before a push. Report: which tests pass, what the four verification queries need to be run against, and that `family_id` population is still unverified.
 

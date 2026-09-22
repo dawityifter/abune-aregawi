@@ -153,8 +153,18 @@ numerator without inventing one — and should not, since the rate measures know
 participation. It must not vanish either. Hence two numbers on one card. This is the
 only reading that reconciles to `pledge_count`.
 
-- Numerator: distinct `COALESCE(m.family_id, m.id)` with ≥1 active non-cancelled pledge.
-- Denominator: `COUNT(*) WHERE family_id IS NULL AND is_active = true`.
+- Numerator: distinct `COALESCE(m.family_id, m.id)` over active members with ≥1
+  non-cancelled pledge (`campaign_totals.household_count`).
+- Denominator: `COUNT(DISTINCT COALESCE(family_id, id)) WHERE is_active = true`
+  (`countActiveHouseholds()` in `backend/src/services/pledgeCampaignService.js`).
+
+**Invariant: the numerator and the denominator must agree on BOTH the household key
+and the `is_active` scope.** Either disagreement pushes participation above 100% —
+counting only `family_id IS NULL` in the denominator drops every self-pointing head
+while the numerator still counts it, and omitting `is_active` from the numerator
+leaves a deactivated donor in the top of a fraction they are absent from the bottom
+of (measured: 2/1 = 200%). Both halves are asserted against each other in
+`backend/tests/unit/campaignTotalsHouseholds.test.js`.
 
 **Unverified:** how populated `family_id` actually is in production. If it was added but
 rarely filled, nearly every member reads as an implicit head and "households" silently
