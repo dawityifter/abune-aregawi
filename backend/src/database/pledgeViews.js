@@ -107,6 +107,30 @@ LEFT JOIN members m ON m.id = b.member_id
 GROUP BY c.id, c.slug, c.goal_amount
 `;
 
+// One row per (campaign, derived status), carrying BOTH a count and a dollar sum.
+// The dashboard's fulfillment breakdown needs both to show that e.g. 40% of donors
+// account for 24% of dollars — a single figure cannot express that.
+//
+// `cancelled` gets its own row rather than being filtered out: campaign_totals
+// deliberately excludes cancelled pledges from headline money, but admins still
+// need to see them, which is what getPledgeStats already does in JS today.
+const CAMPAIGN_STATUS_TOTALS = (securityInvoker) => `
+CREATE VIEW campaign_status_totals ${securityInvoker ? 'WITH (security_invoker = true) ' : ''}AS
+SELECT
+  b.campaign_id       AS campaign_id,
+  b.derived_status    AS status,
+  COUNT(b.pledge_id)  AS pledge_count,
+  COUNT(DISTINCT CASE WHEN b.member_id IS NOT NULL
+                      THEN COALESCE(m.family_id, m.id) END) AS household_count,
+  COALESCE(SUM(b.pledged_amount), 0) AS total_pledged,
+  COALESCE(SUM(b.paid_amount), 0)    AS total_collected,
+  COALESCE(SUM(CASE WHEN b.remaining_amount > 0
+                    THEN b.remaining_amount ELSE 0 END), 0) AS outstanding
+FROM pledge_balances b
+LEFT JOIN members m ON m.id = b.member_id
+GROUP BY b.campaign_id, b.derived_status
+`;
+
 async function shouldUseSecurityInvoker(queryInterface) {
   if (queryInterface.sequelize.getDialect() !== 'postgres') return false;
 
@@ -135,9 +159,11 @@ async function createPledgeViews(queryInterface) {
   // would bypass the RLS we enabled on pledges. SQLite has no such concept.
   await queryInterface.sequelize.query(PLEDGE_BALANCES(securityInvoker));
   await queryInterface.sequelize.query(CAMPAIGN_TOTALS(securityInvoker));
+  await queryInterface.sequelize.query(CAMPAIGN_STATUS_TOTALS(securityInvoker));
 }
 
 async function dropPledgeViews(queryInterface) {
+  await queryInterface.sequelize.query('DROP VIEW IF EXISTS campaign_status_totals;');
   await queryInterface.sequelize.query('DROP VIEW IF EXISTS campaign_totals;');
   await queryInterface.sequelize.query('DROP VIEW IF EXISTS pledge_balances;');
 }

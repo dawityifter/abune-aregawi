@@ -97,6 +97,7 @@ try {
   const PledgeAllocation = require('./PledgeAllocation')(sequelize);
   const PledgeBalance = require('./PledgeBalance')(sequelize);
   const CampaignTotal = require('./CampaignTotal')(sequelize);
+  const CampaignStatusTotal = require('./CampaignStatusTotal')(sequelize);
   const SmsLog = require('./SmsLog')(sequelize);
   const Group = require('./Group')(sequelize);
   const MemberGroup = require('./MemberGroup')(sequelize);
@@ -138,6 +139,7 @@ try {
     PledgeAllocation,
     PledgeBalance,
     CampaignTotal,
+    CampaignStatusTotal,
     SmsLog,
     Group,
     MemberGroup,
