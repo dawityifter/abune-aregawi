@@ -322,6 +322,7 @@ export interface Dictionaries {
     clearFilter: string;
     filterUnavailable: string;
     refreshFailed: string;
+    sectionFailed: string;
     monthly: {
       title: string; restricted: string; unavailable: string; empty: string; partial: string;
     };
@@ -2392,6 +2393,7 @@ export const en: Dictionaries = {
     clearFilter: 'Clear filter',
     filterUnavailable: "This group can't be picked out in the table yet — all pledges are shown",
     refreshFailed: "Couldn't refresh — these figures are from the time shown above.",
+    sectionFailed: "This section couldn't be loaded. Close and reopen it to try again.",
     monthly: {
       title: 'Monthly collections',
       restricted: 'Monthly collections are available to treasurers and bookkeepers. The month-by-month figures can expose an individual gift, so they are not shown at this access level.',
@@ -4863,6 +4865,7 @@ export const ti: Dictionaries = {
     clearFilter: 'መጽረዪ ኣወግድ',
     filterUnavailable: 'እዚ ጉጅለ ገና ኣብ ሰሌዳ ተመሪጹ ክርአ ኣይክእልን፣ ኵሎም መብጽዓታት እዮም ዝርኣዩ ዘለዉ',
     refreshFailed: 'ምሕዳስ ኣይተኻእለን፣ እዞም ቁጽርታት ካብቲ ኣብ ላዕሊ ዘሎ ግዜ እዮም',
+    sectionFailed: 'ናይዚ ክፋል ምጽዓን ኣይተኻእለን። ደጊምካ ንምፍታን ዕጸዎ እሞ ከፍቶ',
     monthly: {
       title: 'ወርሓዊ ዝእከብ ገንዘብ',
       restricted: 'ወርሓዊ ዝእከብ ገንዘብ ንተንብለቲ ገንዘብን ሓለውቲ ደብተርን ጥራይ እዩ ዝርአ። እዞም ብወርሒ ዝተኸፋፈሉ ቁጽርታት ናይ ሓደ ውልቀ ሰብ ወፈያ ክሕብሩ ስለ ዝኽእሉ፣ ኣብዚ ደረጃ ኣይርኣዩን',

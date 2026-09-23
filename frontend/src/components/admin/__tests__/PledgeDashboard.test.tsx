@@ -182,5 +182,73 @@ describe('PledgeDashboard', () => {
       await waitFor(() => expect(screen.getByTestId('yoy-no-prior')).toBeInTheDocument());
       expect(fetchComparison).not.toHaveBeenCalled();
     });
+
+    // Fix round 1, finding 1: fetchMonthly rejects on a non-403 failure
+    // (readError throws for a 500). The container must catch it — an
+    // unhandled rejection here would otherwise leave the section stuck on
+    // its loading note forever, with no sign anything went wrong.
+    it('shows an error note when the monthly fetch fails, instead of hanging on the loading note', async () => {
+      jest.spyOn(api, 'fetchDashboard').mockResolvedValue(snapshot);
+      const fetchMonthly = jest.spyOn(api, 'fetchMonthly')
+        .mockRejectedValue(new Error('Failed to load monthly collections'));
+      render(<PledgeDashboard onFilterChange={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('monthly-toggle')).toBeInTheDocument());
+
+      await userEvent.click(screen.getByTestId('monthly-toggle'));
+      // If this promise rejection went uncaught, Jest/jsdom would report it
+      // as a test failure (or an "unhandled promise rejection" warning) —
+      // reaching the assertion below at all is part of what this test checks.
+      await waitFor(() => expect(screen.getByTestId('monthly-error')).toBeInTheDocument());
+      expect(fetchMonthly).toHaveBeenCalledTimes(1);
+    });
+
+    // Fix round 1, finding 2: the prior drive is the LATEST campaign whose
+    // start_date is strictly before the current one's — a drive starting on
+    // the exact same date must be excluded, and among several qualifying
+    // drives the later one wins.
+    it('picks the later of two earlier drives and excludes one starting the same day', async () => {
+      jest.spyOn(api, 'fetchDashboard').mockResolvedValue(snapshot);
+      const olderDrive = { id: 1, slug: '2024-pledge-drive', name: '2024', name_ti: null,
+        description: null, description_ti: null, start_date: '2024-09-01',
+        end_date: '2025-01-01', goal_amount: null, currency: 'USD',
+        status: 'closed' as const, default_payment_type: null, income_category_id: null, totals: null };
+      const laterEarlierDrive = { id: 2, slug: '2025-pledge-drive', name: '2025', name_ti: null,
+        description: null, description_ti: null, start_date: '2025-09-13',
+        end_date: '2026-01-12', goal_amount: null, currency: 'USD',
+        status: 'closed' as const, default_payment_type: null, income_category_id: null, totals: null };
+      const sameDayDrive = { id: 3, slug: 'same-day-drive', name: 'Same day', name_ti: null,
+        description: null, description_ti: null, start_date: snapshot.campaign.start_date,
+        end_date: null, goal_amount: null, currency: 'USD',
+        status: 'closed' as const, default_payment_type: null, income_category_id: null, totals: null };
+      jest.spyOn(campaignApi, 'fetchAllCampaigns')
+        .mockResolvedValue([olderDrive, laterEarlierDrive, sameDayDrive]);
+      const fetchComparison = jest.spyOn(api, 'fetchComparison').mockResolvedValue(null);
+      render(<PledgeDashboard onFilterChange={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('yoy-toggle')).toBeInTheDocument());
+
+      await userEvent.click(screen.getByTestId('yoy-toggle'));
+      await waitFor(() =>
+        expect(fetchComparison).toHaveBeenCalledWith(mockCampaign.id, laterEarlierDrive.id));
+      expect(fetchComparison).not.toHaveBeenCalledWith(mockCampaign.id, olderDrive.id);
+      expect(fetchComparison).not.toHaveBeenCalledWith(mockCampaign.id, sameDayDrive.id);
+    });
+
+    // Fix round 1, finding 1 (year-over-year side): fetchComparison rejects
+    // on a non-403 failure. Same contract as the monthly section.
+    it('shows an error note when the comparison fetch fails', async () => {
+      jest.spyOn(api, 'fetchDashboard').mockResolvedValue(snapshot);
+      jest.spyOn(campaignApi, 'fetchAllCampaigns').mockResolvedValue([
+        { id: 1, slug: '2025-pledge-drive', name: '2025', name_ti: null,
+          description: null, description_ti: null, start_date: '2025-09-13',
+          end_date: '2026-01-12', goal_amount: null, currency: 'USD',
+          status: 'closed', default_payment_type: null, income_category_id: null, totals: null }
+      ]);
+      jest.spyOn(api, 'fetchComparison').mockRejectedValue(new Error('Failed to load the comparison'));
+      render(<PledgeDashboard onFilterChange={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('yoy-toggle')).toBeInTheDocument());
+
+      await userEvent.click(screen.getByTestId('yoy-toggle'));
+      await waitFor(() => expect(screen.getByTestId('yoy-error')).toBeInTheDocument());
+    });
   });
 });

@@ -36,6 +36,13 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
   // number: the id of the earlier drive to compare against.
   const [priorCampaignId, setPriorCampaignId] = useState<number | null | undefined>(undefined);
   const [openSection, setOpenSection] = useState<'monthly' | 'yoy' | null>(null);
+  // A 500 (or any non-403 failure) must not be cached as a loaded value —
+  // `monthly`/`comparison` stay `undefined` so the section retries on the
+  // next open — but it also must not sit on the loading note forever with an
+  // unhandled rejection. These flags carry "the last attempt failed" so the
+  // section can say so and offer a retry via close/reopen.
+  const [monthlyError, setMonthlyError] = useState(false);
+  const [comparisonError, setComparisonError] = useState(false);
 
   // Keyed on the id rather than the campaign object: useActiveCampaign (and,
   // in tests, a mock of it) may hand back a new object identity on every
@@ -87,28 +94,54 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
 
   // Fetched on first open rather than with the band: both are collapsed by
   // default, and for a tier-2 role both return 403. `undefined` means not yet
-  // fetched; `null` means fetched and withheld.
+  // fetched; `null` means fetched and withheld. `fetchMonthly` rejects on a
+  // non-403 failure (`readError` throws) — that must not be left unhandled,
+  // and must not be cached as `monthly` staying `undefined` forever with no
+  // sign anything went wrong, so it's caught here and flagged separately.
   const openMonthly = async () => {
     setOpenSection(openSection === 'monthly' ? null : 'monthly');
-    if (monthly === undefined && campaignId) setMonthly(await fetchMonthly(campaignId));
+    if (monthly === undefined && campaignId) {
+      setMonthlyError(false);
+      try {
+        setMonthly(await fetchMonthly(campaignId));
+      } catch {
+        // Leave `monthly` at `undefined` so the next open retries instead of
+        // treating this failure as a loaded (and withheld) value.
+        setMonthlyError(true);
+      }
+    }
   };
 
   // The prior drive is whichever campaign has the latest start_date strictly
   // before this one's — looked up lazily, once, the first time this section
   // opens. If none exists there is nothing to fetch a comparison against.
+  // Both `fetchAllCampaigns` and `fetchComparison` reject on a non-403
+  // failure; caught here for the same reason as `openMonthly`, and without
+  // caching a failed `fetchComparison` behind an already-resolved
+  // `priorCampaignId` — otherwise a retry would skip straight past it.
   const openComparison = async () => {
     setOpenSection(openSection === 'yoy' ? null : 'yoy');
-    if (priorCampaignId !== undefined || !campaignId) return;
+    if (!campaignId || priorCampaignId === null) return;
+    // Already have a comparison (or a withheld 403) for the known prior drive.
+    if (priorCampaignId !== undefined && comparison !== undefined) return;
 
-    const campaigns = await fetchAllCampaigns();
-    const prior = campaigns
-      .filter((c) => c.start_date < snapshot.campaign.start_date)
-      .reduce<AdminCampaign | null>(
-        (latest, c) => (!latest || c.start_date > latest.start_date ? c : latest), null
-      );
-
-    setPriorCampaignId(prior ? prior.id : null);
-    if (prior) setComparison(await fetchComparison(campaignId, prior.id));
+    setComparisonError(false);
+    try {
+      let prior: number | null = priorCampaignId ?? null;
+      if (priorCampaignId === undefined) {
+        const campaigns = await fetchAllCampaigns();
+        const found = campaigns
+          .filter((c) => c.start_date < snapshot.campaign.start_date)
+          .reduce<AdminCampaign | null>(
+            (latest, c) => (!latest || c.start_date > latest.start_date ? c : latest), null
+          );
+        prior = found ? found.id : null;
+        setPriorCampaignId(prior);
+      }
+      if (prior !== null) setComparison(await fetchComparison(campaignId, prior));
+    } catch {
+      setComparisonError(true);
+    }
   };
 
   const loadingNote = <p className="font-sans text-caption text-accent-500">…</p>;
@@ -208,7 +241,13 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
           </button>
           {openSection === 'monthly' && (
             <div className="mt-3">
-              {monthly === undefined ? loadingNote : <MonthlyCollections series={monthly} />}
+              {monthlyError
+                ? (
+                  <p data-testid="monthly-error" className="font-sans text-caption text-primary-700">
+                    {t('pledgeDashboard.sectionFailed')}
+                  </p>
+                )
+                : monthly === undefined ? loadingNote : <MonthlyCollections series={monthly} />}
             </div>
           )}
         </div>
@@ -226,17 +265,23 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
           </button>
           {openSection === 'yoy' && (
             <div className="mt-3">
-              {priorCampaignId === undefined
-                ? loadingNote
-                : priorCampaignId === null
-                  ? (
-                    <p data-testid="yoy-no-prior" className="font-sans text-caption text-accent-500">
-                      {t('pledgeDashboard.yoy.noPrior')}
-                    </p>
-                  )
-                  : comparison === undefined
-                    ? loadingNote
-                    : <YearOverYear comparison={comparison} />}
+              {comparisonError
+                ? (
+                  <p data-testid="yoy-error" className="font-sans text-caption text-primary-700">
+                    {t('pledgeDashboard.sectionFailed')}
+                  </p>
+                )
+                : priorCampaignId === undefined
+                  ? loadingNote
+                  : priorCampaignId === null
+                    ? (
+                      <p data-testid="yoy-no-prior" className="font-sans text-caption text-accent-500">
+                        {t('pledgeDashboard.yoy.noPrior')}
+                      </p>
+                    )
+                    : comparison === undefined
+                      ? loadingNote
+                      : <YearOverYear comparison={comparison} />}
             </div>
           )}
         </div>
