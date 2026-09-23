@@ -195,6 +195,12 @@ const buildMonthlySeries = async (campaignId) => {
  * all, so a collections curve cannot be built for it and must never be faked;
  * created_at is a real pledge date on both drives, which makes this the one
  * curve that compares honestly. Cancelled pledges are excluded.
+ *
+ * A pledge dated before `startDate` is clamped to day 1, deliberately: a
+ * cumulative series at day N means "everything pledged on or before day N",
+ * and day 1 is the earliest day the series has. Filtering such pledges out
+ * instead would desync the curve's final value from `figures.total_pledged`,
+ * which counts every non-cancelled pledge regardless of date.
  */
 const buildPledgingCurve = (pledges, startDate) => {
   const points = pledges
@@ -287,6 +293,8 @@ const buildComparison = async (currentId, priorId) => {
       goal: currentCampaign.goal_amount != null && priorCampaign.goal_amount != null,
       collections: allocationBacked,
       partial: allocationBacked,
+      // Structurally guaranteed, unlike its siblings: created_at is a
+      // non-nullable timestamp on every pledge, so this curve can always be built.
       pledging_curve: true
     },
     campaigns: {
@@ -297,6 +305,9 @@ const buildComparison = async (currentId, priorId) => {
       const [cur, pri] = await Promise.all([
         summarise(currentCampaign), summarise(priorCampaign)
       ]);
+      // Keyed off `cur` only — safe because summarise() always returns the
+      // same unconditional 8-key literal. If any key there ever becomes
+      // conditional, a prior-only key could be silently dropped here.
       return Object.fromEntries(
         Object.keys(cur).map((key) => [key, { current: cur[key], prior: pri[key] }])
       );

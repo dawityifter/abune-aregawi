@@ -99,6 +99,17 @@ describe('GET /api/pledge-campaigns/:id/compare', () => {
     ]);
   });
 
+  it('clamps a pledge dated before the campaign start into day 1, without disagreeing with the totals', async () => {
+    await pledgeIn(current, 200, { created_at: '2026-08-15T12:00:00Z' }); // before start_date
+    await pledgeIn(current, 300, { created_at: '2026-09-05T12:00:00Z' }); // normal in-window day
+
+    const c = await compare();
+    expect(c.pledging_curve.current[0]).toEqual({ day: 1, cumulative_pledged: 200 });
+
+    const last = c.pledging_curve.current[c.pledging_curve.current.length - 1];
+    expect(last.cumulative_pledged).toBe(c.figures.total_pledged.current);
+  });
+
   it('excludes cancelled pledges from the figures and the curve', async () => {
     const doomed = await pledgeIn(current, 9999);
     await doomed.update({ lifecycle: 'cancelled' });
