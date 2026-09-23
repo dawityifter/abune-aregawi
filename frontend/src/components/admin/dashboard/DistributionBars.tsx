@@ -4,6 +4,13 @@ import { DashboardBreakdownRow, formatFigure } from '../../../utils/pledgeDashbo
 
 interface DistributionBarsProps {
   rows: DashboardBreakdownRow[];
+  /**
+   * money.pledged — the drive's total over the three live statuses (the
+   * backend's campaign_totals already excludes cancelled). The dollars bar
+   * divides by this rather than by the visible buckets, so a withheld bucket
+   * cannot inflate the ones a reader is shown.
+   */
+  pledgedTotal: number;
   onSelectStatus: (status: string) => void;
 }
 
@@ -20,10 +27,15 @@ const FILL: Record<string, string> = {
   not_started: 'bg-accent-300'
 };
 
+// Brana accent-300 / accent-50 (tailwind.config.js). A hatch rather than a
+// flat fill: "withheld" must not read as a fourth status on the ramp.
+const WITHHELD_HATCH = 
+  'repeating-linear-gradient(45deg, #cfc4ac, #cfc4ac 4px, #fbf8f1 4px, #fbf8f1 8px)';
+
 const sum = (rows: DashboardBreakdownRow[], pick: (r: DashboardBreakdownRow) => number | null) =>
   rows.reduce((total, row) => total + (pick(row) ?? 0), 0);
 
-const DistributionBars: React.FC<DistributionBarsProps> = ({ rows, onSelectStatus }) => {
+const DistributionBars: React.FC<DistributionBarsProps> = ({ rows, pledgedTotal, onSelectStatus }) => {
   const { t } = useLanguage();
 
   // Cancelled is listed but never plotted: a retired pledge is not part of the
@@ -35,7 +47,12 @@ const DistributionBars: React.FC<DistributionBarsProps> = ({ rows, onSelectStatu
   const cancelled = rows.find((row) => row.status === 'cancelled');
 
   const householdTotal = sum(live, (r) => r.household_count);
-  const dollarTotal = sum(live, (r) => r.total_pledged);
+  const visibleDollars = sum(live, (r) => r.total_pledged);
+  const dollarsWithheld = live.some((r) => r.total_pledged === null);
+  const householdsWithheld = live.some((r) => r.household_count === null);
+  // The part of the pledged total nobody is shown. Only its width is drawn;
+  // printing the figure would spell out what suppression protects.
+  const withheldDollars = dollarsWithheld ? Math.max(pledgedTotal - visibleDollars, 0) : 0;
 
   if (live.length === 0) {
     return (
@@ -49,7 +66,8 @@ const DistributionBars: React.FC<DistributionBarsProps> = ({ rows, onSelectStatu
     testId: string,
     pick: (r: DashboardBreakdownRow) => number | null,
     total: number,
-    kind: 'count' | 'money'
+    kind: 'count' | 'money',
+    withheld = 0
   ) => (
     <div data-testid={testId} className="flex h-7 w-full overflow-hidden rounded-md border border-accent-200">
       {live.map((row) => {
@@ -57,7 +75,7 @@ const DistributionBars: React.FC<DistributionBarsProps> = ({ rows, onSelectStatu
         // A withheld bucket has no honest width. Omitting the segment is
         // correct; drawing it at zero would assert that it is empty.
         if (value === null) return null;
-        const width = total > 0 ? (value / total) * 100 : 0;
+        const width = total > 0 ? Math.min((value / total) * 100, 100) : 0;
         return (
           <button
             key={row.status}
@@ -69,6 +87,14 @@ const DistributionBars: React.FC<DistributionBarsProps> = ({ rows, onSelectStatu
           />
         );
       })}
+      {withheld > 0 && total > 0 && (
+        <div
+          data-testid={`${testId}-withheld`}
+          style={{ width: `${(withheld / total) * 100}%`, backgroundImage: WITHHELD_HATCH }}
+          title={t('pledgeDashboard.breakdown.withheld')}
+          className="h-full"
+        />
+      )}
     </div>
   );
 
@@ -78,13 +104,19 @@ const DistributionBars: React.FC<DistributionBarsProps> = ({ rows, onSelectStatu
         <p className="font-sans text-caption text-accent-500">
           {t('pledgeDashboard.breakdown.households')}
         </p>
-        {bar('dist-households', (r) => r.household_count, householdTotal, 'count')}
+        {/* Households have no drive-level total to divide by, so a withheld
+            bucket would silently re-proportion the others. Show no bar. */}
+        {householdsWithheld ? (
+          <p data-testid="dist-households-withheld" className="font-sans text-caption text-accent-500">
+            {t('pledgeDashboard.breakdown.householdsWithheld')}
+          </p>
+        ) : bar('dist-households', (r) => r.household_count, householdTotal, 'count')}
       </div>
       <div>
         <p className="font-sans text-caption text-accent-500">
           {t('pledgeDashboard.breakdown.dollars')}
         </p>
-        {bar('dist-dollars', (r) => r.total_pledged, dollarTotal, 'money')}
+        {bar('dist-dollars', (r) => r.total_pledged, pledgedTotal, 'money', withheldDollars)}
       </div>
 
       <ul className="flex flex-wrap gap-x-5 gap-y-1 font-sans text-caption">
@@ -93,11 +125,18 @@ const DistributionBars: React.FC<DistributionBarsProps> = ({ rows, onSelectStatu
             <span className={`inline-block h-3 w-3 rounded-sm ${FILL[row.status]}`} aria-hidden="true" />
             <span className="text-accent-500">{t(`pledgeDashboard.status.${row.status}`)}</span>
             <strong className="text-accent-700">{formatFigure(row.household_count, 'count')}</strong>
-            <span className="text-accent-400">{formatFigure(row.total_pledged, 'money')}</span>
+            <span className="text-accent-500">{formatFigure(row.total_pledged, 'money')}</span>
           </li>
         ))}
+        {dollarsWithheld && (
+          <li className="flex items-center gap-2">
+            <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundImage: WITHHELD_HATCH }}
+              aria-hidden="true" />
+            <span className="text-accent-500">{t('pledgeDashboard.breakdown.withheld')}</span>
+          </li>
+        )}
         {cancelled && (
-          <li className="flex items-center gap-2 text-accent-400">
+          <li className="flex items-center gap-2 text-accent-500">
             <span>{t('pledgeDashboard.status.cancelled')}</span>
             <span>{formatFigure(cancelled.pledge_count, 'count')}</span>
           </li>

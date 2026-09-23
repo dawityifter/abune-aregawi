@@ -150,6 +150,7 @@ describe('PledgeDashboard', () => {
   // would leave the treasurer looking at stale numbers with no indication
   // anything went wrong.
   it('keeps showing the last snapshot and flags a failed refresh', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(api, 'fetchDashboard')
       .mockResolvedValueOnce(snapshot)
       .mockRejectedValueOnce(new Error('Failed to load the dashboard'));

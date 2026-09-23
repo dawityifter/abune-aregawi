@@ -310,7 +310,10 @@ export interface Dictionaries {
       fulfillment: string; fulfillmentNote: string;
       receivedDefinition: string; goalReached: string;
     };
-    breakdown: { title: string; households: string; dollars: string; empty: string };
+    breakdown: {
+      title: string; households: string; dollars: string; empty: string;
+      withheld: string; householdsWithheld: string;
+    };
     status: {
       fulfilled: string; partially_fulfilled: string;
       not_started: string; cancelled: string;
@@ -2378,7 +2381,9 @@ export const en: Dictionaries = {
       title: 'Fulfilment breakdown',
       households: 'Households',
       dollars: 'Dollars',
-      empty: 'No pledges recorded for this drive yet'
+      empty: 'No pledges recorded for this drive yet',
+      withheld: 'Withheld to protect a small group',
+      householdsWithheld: 'Household split withheld to protect a small group'
     },
     status: {
       fulfilled: 'Paid in full',
@@ -4854,7 +4859,9 @@ export const ti: Dictionaries = {
       title: 'ኣፈጻጽማ ብዝርዝር',
       households: 'ስድራቤታት',
       dollars: 'ገንዘብ',
-      empty: 'ነዚ ወፈያ ገና ዝተመዝገበ መብጽዓ የለን'
+      empty: 'ነዚ ወፈያ ገና ዝተመዝገበ መብጽዓ የለን',
+      withheld: 'ንንእሽቶ ጉጅለ ንምሕላው ተሓቢኡ',
+      householdsWithheld: 'ምክፍፋል ስድራቤታት ንንእሽቶ ጉጅለ ንምሕላው ተሓቢኡ'
     },
     status: {
       fulfilled: 'ምሉእ ተኸፊሉ',

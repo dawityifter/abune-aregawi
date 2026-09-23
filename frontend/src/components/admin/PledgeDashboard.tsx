@@ -232,7 +232,11 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
           <h3 className="mb-3 font-serif text-h4 text-accent-700">
             {t('pledgeDashboard.breakdown.title')}
           </h3>
-          <DistributionBars rows={snapshot.breakdown} onSelectStatus={onFilterChange} />
+          <DistributionBars
+            rows={snapshot.breakdown}
+            pledgedTotal={money.pledged}
+            onSelectStatus={onFilterChange}
+          />
         </div>
         <div className="rounded-md border border-accent-200 bg-accent-50 p-4">
           <h3 className="mb-3 font-serif text-h4 text-accent-700">
