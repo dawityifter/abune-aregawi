@@ -25,9 +25,42 @@ describe('MonthlyCollections', () => {
 
   it('scales columns against the largest month', () => {
     renderWithLanguage(<MonthlyCollections series={series} />);
-    const tall = Number(screen.getByTestId('month-2026-11').getAttribute('height'));
-    const short = Number(screen.getByTestId('month-2026-09').getAttribute('height'));
+    const tall = parseFloat(screen.getByTestId('month-2026-11').style.height);
+    const short = parseFloat(screen.getByTestId('month-2026-09').style.height);
     expect(tall).toBeGreaterThan(short);
+  });
+
+  // Final review I4: the API returns only months with allocations. A month
+  // with none is a real, known $0 — a stall — and must be drawn, not skipped.
+  it('fills a month with no payments as an honest zero column', () => {
+    renderWithLanguage(<MonthlyCollections series={series} />);
+    const gap = screen.getByTestId('month-2026-10');
+    expect(parseFloat(gap.style.height)).toBe(0);
+    expect(screen.getByTestId('month-2026-10-zero')).toBeInTheDocument();
+    expect(screen.getByTestId('month-2026-10-value')).toHaveTextContent('$0');
+  });
+
+  it('shows each month\'s figure and a short month name as visible text', () => {
+    renderWithLanguage(<MonthlyCollections series={series} />);
+    expect(screen.getByTestId('month-2026-09-value')).toHaveTextContent('$1,500');
+    expect(screen.getByTestId('month-2026-11-value')).toHaveTextContent('$2,000');
+    expect(screen.getByText('Sep')).toBeInTheDocument();
+    expect(screen.getByText('Oct')).toBeInTheDocument();
+    expect(screen.getByText('Nov')).toBeInTheDocument();
+  });
+
+  it('fills across a year boundary', () => {
+    renderWithLanguage(<MonthlyCollections series={{ ...series, months: [
+      { month: '2026-11', collected: 100, cumulative: 100 },
+      { month: '2027-02', collected: 200, cumulative: 300 }
+    ] }} />);
+    ['2026-11', '2026-12', '2027-01', '2027-02']
+      .forEach((m) => expect(screen.getByTestId(`month-${m}`)).toBeInTheDocument());
+  });
+
+  it('does not set axis text in the low-contrast accent-400', () => {
+    const { container } = renderWithLanguage(<MonthlyCollections series={series} />);
+    expect(container.querySelector('.text-accent-400')).toBeNull();
   });
 
   // 403 is the designed answer for a role that may not see donor detail, not a
