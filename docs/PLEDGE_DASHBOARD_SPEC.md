@@ -311,6 +311,27 @@ which is a design question for the dashboard UI plan, not a privacy patch. This 
 deliberate restriction recorded here, not an oversight — widening it later, once a
 coarsening design exists, is straightforward.
 
+### Known residual: a campaign with one non-empty status bucket (2026-09-22)
+
+Suppression of small status buckets uses **complementary suppression** — when one bucket
+would be withheld from tier 2, a second is withheld with it, so the residual against the
+visible campaign total resolves to a *sum* of two buckets rather than one identifiable
+figure. That closes the reconstruction path in the ordinary case.
+
+It does not close one edge, and cannot. When only **one** status bucket is non-empty —
+most plausibly at launch, when every pledge is `not_started` and nothing has been paid —
+that bucket's total *is* the campaign total. Suppressing the bucket row blanks a number
+the headline figure still displays. There is no arrangement that hides a value identical
+to one that must remain visible, short of suppressing the campaign totals themselves,
+which would blank the dashboard's headline figures for a coincidental reason.
+
+Recorded so this is not later mistaken for full closure. The exposure is narrow: it
+reveals a campaign-wide aggregate that tier 2 is already entitled to see, not any
+individual's amount — a single-bucket campaign discloses "everyone is in this state",
+not who or how much each gave. If that changes, the remedies are a minimum campaign size
+before any breakdown is returned to tier 2, or moving the breakdown to tier 3 as the two
+series were.
+
 ### Why the executive dashboard must not go to members
 
 Not primarily privacy — it is the wrong document for that audience.
