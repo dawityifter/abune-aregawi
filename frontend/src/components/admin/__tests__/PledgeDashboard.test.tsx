@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import PledgeDashboard from '../PledgeDashboard';
 import * as api from '../../../utils/pledgeDashboardApi';
 
@@ -62,6 +63,26 @@ describe('PledgeDashboard', () => {
     render(<PledgeDashboard onFilterChange={jest.fn()} />);
     await waitFor(() =>
       expect(screen.getByTestId('kpi-participation')).toHaveTextContent(/members/i));
+  });
+
+  // A refresh can fail after a snapshot has already loaded. load() keeps the
+  // last-good snapshot rather than clearing it, so a silent failure here
+  // would leave the treasurer looking at stale numbers with no indication
+  // anything went wrong.
+  it('keeps showing the last snapshot and flags a failed refresh', async () => {
+    jest.spyOn(api, 'fetchDashboard')
+      .mockResolvedValueOnce(snapshot)
+      .mockRejectedValueOnce(new Error('Failed to load the dashboard'));
+    render(<PledgeDashboard onFilterChange={jest.fn()} />);
+
+    await waitFor(() => expect(screen.getAllByText('$45,581')).toHaveLength(2));
+
+    await userEvent.click(screen.getByRole('button', { name: 'pledgeDashboard.header.refresh' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('dashboard-refresh-error')).toBeInTheDocument());
+    // The figures from the successful load are still on screen.
+    expect(screen.getAllByText('$45,581')).toHaveLength(2);
   });
 
   it('raises the chosen filter to its parent', async () => {

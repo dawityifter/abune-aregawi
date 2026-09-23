@@ -321,6 +321,7 @@ export interface Dictionaries {
     };
     clearFilter: string;
     filterUnavailable: string;
+    refreshFailed: string;
   };
 
   dashboard: {
@@ -2375,7 +2376,8 @@ export const en: Dictionaries = {
       endingSoon: 'This drive closes within 30 days'
     },
     clearFilter: 'Clear filter',
-    filterUnavailable: "This group can't be picked out in the table yet — all pledges are shown"
+    filterUnavailable: "This group can't be picked out in the table yet — all pledges are shown",
+    refreshFailed: "Couldn't refresh — these figures are from the time shown above."
   },
 
   // ==== PledgeTracker (Phase 2a) ====
@@ -4816,7 +4818,8 @@ export const ti: Dictionaries = {
       endingSoon: 'እዚ ወፈያ ኣብ ውሽጢ 30 መዓልቲ ይዕጾ'
     },
     clearFilter: 'መጽረዪ ኣወግድ',
-    filterUnavailable: 'እዚ ጉጅለ ገና ኣብ ሰሌዳ ተመሪጹ ክርአ ኣይክእልን፣ ኵሎም መብጽዓታት እዮም ዝርኣዩ ዘለዉ'
+    filterUnavailable: 'እዚ ጉጅለ ገና ኣብ ሰሌዳ ተመሪጹ ክርአ ኣይክእልን፣ ኵሎም መብጽዓታት እዮም ዝርኣዩ ዘለዉ',
+    refreshFailed: 'ምሕዳስ ኣይተኻእለን፣ እዞም ቁጽርታት ካብቲ ኣብ ላዕሊ ዘሎ ግዜ እዮም'
   },
 
   // ==== PledgeTracker (Phase 2a) — DRAFT, pending native review ====

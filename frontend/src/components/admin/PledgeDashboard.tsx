@@ -79,6 +79,18 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
         onRefresh={load}
       />
 
+      {/* A refresh can fail after a snapshot has already loaded — load()
+          keeps the last-good snapshot on screen rather than clearing it, so
+          the failure must be said out loud here or the treasurer would just
+          see stale numbers with no sign anything went wrong. Clears itself on
+          the next successful load, since load() resets error to null first. */}
+      {error && (
+        <p data-testid="dashboard-refresh-error"
+          className="font-sans text-caption text-primary-700">
+          {t('pledgeDashboard.refreshFailed')}
+        </p>
+      )}
+
       <MoneyBar money={money} timeline={timeline} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -88,7 +100,7 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
           secondary={money.required_run_rate != null && timeline.days_remaining != null
             ? t('pledgeDashboard.kpi.runRate', {
                 amount: formatFigure(money.required_run_rate, 'money'),
-                days: String(timeline.days_remaining)
+                days: formatFigure(timeline.days_remaining, 'count')
               })
             : undefined}
         />
