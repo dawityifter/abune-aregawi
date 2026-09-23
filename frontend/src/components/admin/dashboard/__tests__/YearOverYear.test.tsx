@@ -69,6 +69,69 @@ describe('YearOverYear', () => {
     expect(screen.getByTestId('yoy-curve')).toBeInTheDocument();
   });
 
+  // Final review I5: the caveat is composed from this pair's data, not a
+  // fixed sentence about one particular pair of drives.
+  describe('caveat', () => {
+    it('states both windows and each incomparable dimension from the data', () => {
+      renderWithLanguage(<YearOverYear comparison={comparison} />);
+      const caveat = screen.getByTestId('yoy-caveat');
+      expect(caveat).toHaveTextContent('This drive runs 122 days; the previous one ran 122 days.');
+      expect(caveat).toHaveTextContent('The previous drive set no goal, so goal progress is not compared.');
+      expect(caveat).toHaveTextContent(
+        "The previous drive's payments carry no dates, so collection timing is not compared.");
+      expect(caveat).not.toHaveTextContent(/autumn/);
+    });
+
+    it('drops the sentences that do not apply', () => {
+      renderWithLanguage(<YearOverYear comparison={{
+        ...comparison,
+        comparable: { ...comparison.comparable, goal: true, collections: true },
+        campaigns: {
+          ...comparison.campaigns,
+          current: { ...comparison.campaigns.current, total_days: 90 },
+          prior: { ...comparison.campaigns.prior, total_days: null }
+        }
+      }} />);
+      expect(screen.queryByTestId('yoy-caveat')).not.toBeInTheDocument();
+    });
+
+    it('uses each drive\'s own length', () => {
+      renderWithLanguage(<YearOverYear comparison={{
+        ...comparison,
+        campaigns: {
+          ...comparison.campaigns,
+          current: { ...comparison.campaigns.current, total_days: 90 },
+          prior: { ...comparison.campaigns.prior, total_days: 60 }
+        }
+      }} />);
+      expect(screen.getByTestId('yoy-caveat'))
+        .toHaveTextContent('This drive runs 90 days; the previous one ran 60 days.');
+    });
+  });
+
+  // Final review I6: the curve names its lines and its scale.
+  it('names both drives in the curve legend and shows the top-of-chart figure', () => {
+    renderWithLanguage(<YearOverYear comparison={comparison} />);
+    const legend = screen.getByTestId('yoy-curve-legend');
+    expect(legend).toHaveTextContent('2026');
+    expect(legend).toHaveTextContent('2025');
+    expect(screen.getByTestId('yoy-curve-peak')).toHaveTextContent('$69,949');
+  });
+
+  // Spec section 6 rule 5: the in-progress column looks provisional.
+  it('styles the in-progress column differently from the final one', () => {
+    renderWithLanguage(<YearOverYear comparison={comparison} />);
+    const row = screen.getByTestId('yoy-row-total_pledged');
+    const [, current, prior] = Array.from(row.querySelectorAll('td'));
+    expect(current).toHaveClass('italic');
+    expect(prior).not.toHaveClass('italic');
+  });
+
+  it('does not set caption text in the low-contrast accent-400', () => {
+    const { container } = renderWithLanguage(<YearOverYear comparison={comparison} />);
+    expect(container.querySelector('.text-accent-400')).toBeNull();
+  });
+
   it('explains the restriction instead of erroring when withheld', () => {
     renderWithLanguage(<YearOverYear comparison={null} />);
     expect(screen.getByTestId('yoy-restricted')).toBeInTheDocument();

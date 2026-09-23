@@ -333,7 +333,9 @@ export interface Dictionaries {
       title: string; restricted: string; unavailable: string; empty: string; partial: string;
     };
     yoy: {
-      title: string; restricted: string; caveat: string;
+      title: string; restricted: string;
+      caveatDays: string; caveatNoGoal: string; caveatNoCollections: string;
+      curvePeak: string;
       inProgress: string; inProgressNoTotal: string;
       final: string; finalNoDays: string;
       curveTitle: string; curveCaveat: string; noPrior: string;
@@ -2417,7 +2419,10 @@ export const en: Dictionaries = {
     yoy: {
       title: 'Compared with the previous drive',
       restricted: 'The year-over-year comparison is available to treasurers and bookkeepers. The day-by-day figures can expose an individual gift, so they are not shown at this access level.',
-      caveat: 'Both drives ran 122 days in autumn, so the totals compare directly. The previous drive recorded payments without dates and set no goal, so timing and goal progress are not shown.',
+      caveatDays: 'This drive runs {current} days; the previous one ran {prior} days.',
+      caveatNoGoal: 'The previous drive set no goal, so goal progress is not compared.',
+      caveatNoCollections: "The previous drive's payments carry no dates, so collection timing is not compared.",
+      curvePeak: 'Top of chart: {amount}',
       inProgress: 'in progress, day {day} of {total}',
       inProgressNoTotal: 'in progress, day {day}',
       final: 'final, {days}-day drive',
@@ -4896,7 +4901,10 @@ export const ti: Dictionaries = {
     yoy: {
       title: 'ምስ ዝሓለፈ ወፈያ ምንጽጻር',
       restricted: 'ምንጽጻር ካብ ዓመት ናብ ዓመት ንተንብለቲ ገንዘብን ሓለውቲ ደብተርን ጥራይ እዩ ዝርአ። እዞም ብመዓልቲ ዝተኸፋፈሉ ቁጽርታት ናይ ሓደ ውልቀ ሰብ ወፈያ ክሕብሩ ስለ ዝኽእሉ፣ ኣብዚ ደረጃ ኣይርኣዩን',
-      caveat: 'ክልቲኦም ወፈያታት ን122 መዓልትታት ኣብ ቀውዒ እዮም ተኻይዶም፣ ስለዚ ድምር ቁጽርታት ብቐጥታ ይነጻጸሩ። እቲ ዝሓለፈ ወፈያ ክፍሊታት ብዘይ ዕለት እዩ ተመዝጊቡ፣ ከምኡ ድማ ዕላማ ኣይነበሮን፣ ስለዚ ግዜን ናይ ዕላማ ደረጃን ኣይርአዩን',
+      caveatDays: 'እዚ ወፈያ {current} መዓልትታት ይኸይድ፣ እቲ ዝሓለፈ ድማ {prior} መዓልትታት ከይዱ።',
+      caveatNoGoal: 'እቲ ዝሓለፈ ወፈያ ዕላማ ኣይነበሮን፣ ስለዚ ናይ ዕላማ ደረጃ ኣይነጻጸርን።',
+      caveatNoCollections: 'ክፍሊታት ናይቲ ዝሓለፈ ወፈያ ዕለት የብሎምን፣ ስለዚ ግዜ ምእካብ ኣይነጻጸርን።',
+      curvePeak: 'ላዕለዋይ ደረት ግራፍ: {amount}',
       inProgress: 'ኣብ ምቕጻል ዘሎ፣ መዓልቲ {day} ካብ {total}',
       inProgressNoTotal: 'ኣብ ምቕጻል ዘሎ፣ መዓልቲ {day}',
       final: 'ተዛዚሙ፣ ናይ {days} መዓልቲ ወፈያ',

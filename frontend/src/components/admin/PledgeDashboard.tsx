@@ -136,8 +136,9 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange, activ
     }
   };
 
-  // The prior drive is whichever campaign has the latest start_date strictly
-  // before this one's — looked up lazily, once, the first time this section
+  // The prior drive is whichever non-draft campaign has the latest
+  // start_date strictly before this one's (a draft never ran, so it is not
+  // "the previous drive") — looked up lazily, once, the first time this section
   // opens. If none exists there is nothing to fetch a comparison against.
   // Both `fetchAllCampaigns` and `fetchComparison` reject on a non-403
   // failure; caught here for the same reason as `openMonthly`, and without
@@ -155,7 +156,7 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange, activ
       if (priorCampaignId === undefined) {
         const campaigns = await fetchAllCampaigns();
         const found = campaigns
-          .filter((c) => c.start_date < snapshot.campaign.start_date)
+          .filter((c) => c.status !== 'draft' && c.start_date < snapshot.campaign.start_date)
           .reduce<AdminCampaign | null>(
             (latest, c) => (!latest || c.start_date > latest.start_date ? c : latest), null
           );

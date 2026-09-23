@@ -49,6 +49,23 @@ const YearOverYear: React.FC<YearOverYearProps> = ({ comparison }) => {
   const kind = (key: string): 'money' | 'count' | 'percent' =>
     MONEY_ROWS.includes(key) ? 'money' : PERCENT_ROWS.includes(key) ? 'percent' : 'count';
 
+  // Composed from this pair's own data. A fixed sentence was true of one
+  // pair of drives only and would go quietly wrong on the next.
+  const caveat = [
+    campaigns.current.total_days != null && campaigns.prior.total_days != null
+      ? t('pledgeDashboard.yoy.caveatDays', {
+          current: String(campaigns.current.total_days),
+          prior: String(campaigns.prior.total_days)
+        })
+      : null,
+    comparable.goal === false ? t('pledgeDashboard.yoy.caveatNoGoal') : null,
+    comparable.collections === false ? t('pledgeDashboard.yoy.caveatNoCollections') : null
+  ].filter(Boolean).join(' ');
+
+  // Spec section 6 rule 5: the running drive's figures are provisional and
+  // should look it.
+  const currentCell = campaigns.current.in_progress ? 'italic' : '';
+
   const peak = Math.max(
     ...curve.current.map((p) => p.cumulative_pledged),
     ...curve.prior.map((p) => p.cumulative_pledged),
@@ -62,15 +79,15 @@ const YearOverYear: React.FC<YearOverYearProps> = ({ comparison }) => {
 
   return (
     <div className="space-y-4">
-      <p className="font-sans text-caption text-accent-500">
-        {t('pledgeDashboard.yoy.caveat')}
-      </p>
+      {caveat && (
+        <p data-testid="yoy-caveat" className="font-sans text-caption text-accent-500">{caveat}</p>
+      )}
 
       <table className="w-full font-sans text-caption">
         <thead>
           <tr className="text-left text-accent-500">
             <th className="py-1 font-normal" />
-            <th data-testid="yoy-header-current" className="py-1 font-normal">
+            <th data-testid="yoy-header-current" className={`py-1 font-normal ${currentCell}`}>
               {campaigns.current.name}
               {campaigns.current.in_progress && ` · ${
                 campaigns.current.total_days != null
@@ -97,7 +114,9 @@ const YearOverYear: React.FC<YearOverYearProps> = ({ comparison }) => {
           {rowKeys.map((key) => (
             <tr key={key} data-testid={`yoy-row-${key}`} className="border-t border-accent-200">
               <td className="py-1.5 text-accent-500">{t(`pledgeDashboard.yoy.rows.${key}`)}</td>
-              <td className="py-1.5 tabular-nums">{formatFigure(figures[key].current, kind(key))}</td>
+              <td className={`py-1.5 tabular-nums ${currentCell}`}>
+                {formatFigure(figures[key].current, kind(key))}
+              </td>
               <td className="py-1.5 tabular-nums">{formatFigure(figures[key].prior, kind(key))}</td>
             </tr>
           ))}
@@ -108,6 +127,10 @@ const YearOverYear: React.FC<YearOverYearProps> = ({ comparison }) => {
         <div>
           <p className="font-sans text-caption text-accent-500">
             {t('pledgeDashboard.yoy.curveTitle')}
+          </p>
+          {/* The top of the plot, so the curve has a scale to read against. */}
+          <p data-testid="yoy-curve-peak" className="mt-1 font-sans text-caption tabular-nums text-accent-500">
+            {t('pledgeDashboard.yoy.curvePeak', { amount: formatFigure(peak, 'money') })}
           </p>
           <svg
             data-testid="yoy-curve"
@@ -124,7 +147,23 @@ const YearOverYear: React.FC<YearOverYearProps> = ({ comparison }) => {
             <path d={path(curve.current)} fill="none" strokeWidth={2}
               className="stroke-tsaeda-600" vectorEffect="non-scaling-stroke" />
           </svg>
-          <p className="font-sans text-caption text-accent-400">
+          <ul data-testid="yoy-curve-legend"
+            className="mt-1 flex flex-wrap gap-x-5 gap-y-1 font-sans text-caption text-accent-600">
+            <li className="flex items-center gap-2">
+              <svg width="20" height="4" aria-hidden="true">
+                <line x1="0" y1="2" x2="20" y2="2" strokeWidth={2} className="stroke-tsaeda-600" />
+              </svg>
+              {campaigns.current.name}
+            </li>
+            <li className="flex items-center gap-2">
+              <svg width="20" height="4" aria-hidden="true">
+                <line x1="0" y1="2" x2="20" y2="2" strokeWidth={2} strokeDasharray="4 3"
+                  className="stroke-accent-400" />
+              </svg>
+              {campaigns.prior.name}
+            </li>
+          </ul>
+          <p className="font-sans text-caption text-accent-500">
             {t('pledgeDashboard.yoy.curveCaveat')}
           </p>
         </div>

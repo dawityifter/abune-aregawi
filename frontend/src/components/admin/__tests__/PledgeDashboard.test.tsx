@@ -321,6 +321,26 @@ describe('PledgeDashboard', () => {
       expect(fetchComparison).not.toHaveBeenCalledWith(mockCampaign.id, sameDayDrive.id);
     });
 
+    // Final review I5 / R7 amended: a draft drive never ran, so it is not
+    // "the previous drive" even when it starts later than a closed one.
+    it('skips a later draft drive in favour of an earlier closed one', async () => {
+      jest.spyOn(api, 'fetchDashboard').mockResolvedValue(snapshot);
+      const closedDrive = { id: 1, slug: '2024-pledge-drive', name: '2024', name_ti: null,
+        description: null, description_ti: null, start_date: '2024-09-01',
+        end_date: '2025-01-01', goal_amount: null, currency: 'USD',
+        status: 'closed' as const, default_payment_type: null, income_category_id: null, totals: null };
+      const draftDrive = { ...closedDrive, id: 4, slug: 'draft-drive', name: 'Draft',
+        start_date: '2025-09-13', status: 'draft' as const };
+      jest.spyOn(campaignApi, 'fetchAllCampaigns').mockResolvedValue([closedDrive, draftDrive]);
+      const fetchComparison = jest.spyOn(api, 'fetchComparison').mockResolvedValue(null);
+      render(<PledgeDashboard onFilterChange={jest.fn()} />);
+      await waitFor(() => expect(screen.getByTestId('yoy-toggle')).toBeInTheDocument());
+
+      await userEvent.click(screen.getByTestId('yoy-toggle'));
+      await waitFor(() => expect(fetchComparison).toHaveBeenCalledWith(mockCampaign.id, closedDrive.id));
+      expect(fetchComparison).not.toHaveBeenCalledWith(mockCampaign.id, draftDrive.id);
+    });
+
     // Fix round 1, finding 1 (year-over-year side): fetchComparison rejects
     // on a non-403 failure. Same contract as the monthly section.
     it('shows an error note when the comparison fetch fails', async () => {
