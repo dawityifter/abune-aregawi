@@ -299,6 +299,18 @@ and cancel a pledge. A no-names tier makes that work impossible: you cannot corr
 cancel a specific pledge without knowing whose it is. Hiding the table in the UI while
 the API still permits the write is a product incoherence, not a security control.
 
+### Deferred: tier 2 on the monthly and year-over-year series (2026-09-22)
+
+`GET /:id/monthly` and `GET /:id/compare` are restricted to tier 3 for now, not tiered
+down to tier 2 like the dashboard snapshot. Both payloads carry a running cumulative
+(month-over-month collections; day-over-day cumulative pledged), and small-number
+suppression does not protect a cumulative series — a suppressed point is recoverable
+from the delta between its unsuppressed neighbours. Safely exposing either series to
+tier 2 requires coarsening (weekly buckets, or a campaign-wide minimum bucket size),
+which is a design question for the dashboard UI plan, not a privacy patch. This is a
+deliberate restriction recorded here, not an oversight — widening it later, once a
+coarsening design exists, is straightforward.
+
 ### Why the executive dashboard must not go to members
 
 Not primarily privacy — it is the wrong document for that audience.
