@@ -1,7 +1,7 @@
 'use strict';
 
 const {
-  PledgeCampaign, CampaignTotal, CampaignStatusTotal
+  PledgeCampaign, CampaignTotal, CampaignStatusTotal, PledgeBalance
 } = require('../models');
 const { countActiveHouseholds, todayInChurchTz } = require('./pledgeCampaignService');
 const { suppressSmall } = require('./pledgeDashboardPrivacy');
@@ -89,6 +89,42 @@ const buildBreakdown = (rows, canSee) => rows.map((row) => {
   };
 });
 
+const STALLED_AFTER_DAYS = 60;
+const ENDING_SOON_DAYS = 30;
+
+/**
+ * Five operational counts, derived from pledge_balances. Counts only — the
+ * names behind them stay on the tier-3 detail route, so this payload is safe
+ * for every view role (small buckets are still blanked for tier 2).
+ *
+ * Cancelled pledges are excluded from all of them: a retired pledge owes
+ * nothing and needs no chasing.
+ */
+const buildAttention = async (campaignId, timeline, canSee) => {
+  const balances = await PledgeBalance.findAll({ where: { campaign_id: campaignId } });
+
+  const live = balances.filter((b) => b.derived_status !== 'cancelled');
+  const cutoff = Date.now() - STALLED_AFTER_DAYS * DAY_MS;
+
+  const stalled = live.filter((b) =>
+    b.derived_status === 'partially_fulfilled'
+    && b.last_payment_at
+    && Date.parse(b.last_payment_at) < cutoff).length;
+
+  const neverStarted = live.filter((b) => b.derived_status === 'not_started').length;
+  const overpaid = live.filter((b) => num(b.remaining_amount) < 0).length;
+  const unlinked = live.filter((b) => b.member_id == null).length;
+
+  return {
+    stalled: suppressSmall(stalled, stalled, canSee),
+    never_started: suppressSmall(neverStarted, neverStarted, canSee),
+    overpaid: suppressSmall(overpaid, overpaid, canSee),
+    unlinked: suppressSmall(unlinked, unlinked, canSee),
+    ending_soon: timeline.days_remaining != null
+      && timeline.days_remaining <= ENDING_SOON_DAYS
+  };
+};
+
 /** Returns null when the campaign does not exist, so the controller can 404. */
 const buildSnapshot = async (campaignId, { canSee }) => {
   const campaign = await PledgeCampaign.findByPk(campaignId);
@@ -116,8 +152,9 @@ const buildSnapshot = async (campaignId, { canSee }) => {
     money: buildMoney(totals, campaign, timeline),
     participation: await buildParticipation(totals),
     breakdown: buildBreakdown(statusRows, canSee),
+    attention: await buildAttention(campaignId, timeline, canSee),
     as_of: new Date().toISOString()
   };
 };
 
-module.exports = { buildSnapshot, buildTimeline, num, round2, dayCount };
+module.exports = { buildSnapshot, buildTimeline, buildAttention, num, round2, dayCount };
