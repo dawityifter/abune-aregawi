@@ -308,7 +308,7 @@ export interface Dictionaries {
       participationHouseholds: string; participationMembers: string;
       participationValue: string; anonymous: string;
       fulfillment: string; fulfillmentNote: string;
-      receivedDefinition: string;
+      receivedDefinition: string; goalReached: string;
     };
     breakdown: { title: string; households: string; dollars: string; empty: string };
     status: {
@@ -323,6 +323,7 @@ export interface Dictionaries {
     clearFilter: string;
     filterUnavailable: string;
     refreshFailed: string;
+    loadFailed: string;
     sectionFailed: string;
     monthly: {
       title: string; restricted: string; unavailable: string; empty: string; partial: string;
@@ -2370,7 +2371,8 @@ export const en: Dictionaries = {
       anonymous: 'plus {count} anonymous gifts',
       fulfillment: 'Fulfilment',
       fulfillmentNote: 'of pledged dollars received',
-      receivedDefinition: 'Payments allocated to pledges in this drive'
+      receivedDefinition: 'Payments allocated to pledges in this drive',
+      goalReached: 'Goal reached'
     },
     breakdown: {
       title: 'Fulfilment breakdown',
@@ -2396,6 +2398,7 @@ export const en: Dictionaries = {
     clearFilter: 'Clear filter',
     filterUnavailable: "This group can't be picked out in the table yet — all pledges are shown",
     refreshFailed: "Couldn't refresh — these figures are from the time shown above.",
+    loadFailed: "The dashboard couldn't be loaded.",
     sectionFailed: "This section couldn't be loaded. Close and reopen it to try again.",
     monthly: {
       title: 'Monthly collections',
@@ -4844,7 +4847,8 @@ export const ti: Dictionaries = {
       anonymous: 'ከምኡ ድማ {count} ስም ዘይተጠቕሰ ወፈያታት',
       fulfillment: 'ኣፈጻጽማ',
       fulfillmentNote: 'ካብ እተመባጽዐ ገንዘብ እተቐበለ',
-      receivedDefinition: 'ኣብዚ ወፈያ ንመብጽዓታት ዝተመደበ ክፍሊት'
+      receivedDefinition: 'ኣብዚ ወፈያ ንመብጽዓታት ዝተመደበ ክፍሊት',
+      goalReached: 'ዕላማ ተበጺሑ'
     },
     breakdown: {
       title: 'ኣፈጻጽማ ብዝርዝር',
@@ -4870,6 +4874,7 @@ export const ti: Dictionaries = {
     clearFilter: 'መጽረዪ ኣወግድ',
     filterUnavailable: 'እዚ ጉጅለ ገና ኣብ ሰሌዳ ተመሪጹ ክርአ ኣይክእልን፣ ኵሎም መብጽዓታት እዮም ዝርኣዩ ዘለዉ',
     refreshFailed: 'ምሕዳስ ኣይተኻእለን፣ እዞም ቁጽርታት ካብቲ ኣብ ላዕሊ ዘሎ ግዜ እዮም',
+    loadFailed: 'እዚ ዳሽቦርድ ክጽዓን ኣይከኣለን',
     sectionFailed: 'ናይዚ ክፋል ምጽዓን ኣይተኻእለን። ደጊምካ ንምፍታን ዕጸዎ እሞ ከፍቶ',
     monthly: {
       title: 'ወርሓዊ ዝእከብ ገንዘብ',

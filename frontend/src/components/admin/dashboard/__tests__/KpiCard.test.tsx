@@ -10,6 +10,13 @@ describe('KpiCard', () => {
     expect(screen.getByText('needs $545/day for 100 days')).toBeInTheDocument();
   });
 
+  it('renders an optional note as a second visible line', () => {
+    render(<KpiCard label="Received" value="$45,581"
+      secondary="needs $545/day for 100 days" note="Payments allocated to pledges in this drive" />);
+    expect(screen.getByText('needs $545/day for 100 days')).toBeInTheDocument();
+    expect(screen.getByText('Payments allocated to pledges in this drive')).toBeInTheDocument();
+  });
+
   it('renders without a secondary line', () => {
     render(<KpiCard label="Received" value="$45,581" />);
     expect(screen.getByText('$45,581')).toBeInTheDocument();

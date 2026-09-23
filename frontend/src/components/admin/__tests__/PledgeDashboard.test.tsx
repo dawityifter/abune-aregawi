@@ -14,8 +14,14 @@ jest.mock('../../../hooks/useActiveCampaign', () => ({
   useActiveCampaign: () => ({ campaign: mockCampaign, loading: false })
 }));
 
+// Returns the key, followed by any interpolated values, so a test can see
+// what a formatted figure was rendered as (e.g. a withheld "—").
 jest.mock('../../../contexts/LanguageContext', () => ({
-  useLanguage: () => ({ t: (key: string) => key, language: 'en' })
+  useLanguage: () => ({
+    t: (key: string, params?: Record<string, string>) =>
+      params ? `${key} ${Object.values(params).join(' ')}` : key,
+    language: 'en'
+  })
 }));
 
 const snapshot: api.DashboardSnapshot = {
@@ -47,10 +53,83 @@ describe('PledgeDashboard', () => {
   });
 
   it('reports a failure without pretending the numbers are zero', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(api, 'fetchDashboard').mockRejectedValue(new Error('Failed to load the dashboard'));
     render(<PledgeDashboard onFilterChange={jest.fn()} />);
     await waitFor(() => expect(screen.getByTestId('dashboard-error')).toBeInTheDocument());
     expect(screen.queryByText('$0')).not.toBeInTheDocument();
+  });
+
+  // Final review M3: the box shows a translated message; the server's own
+  // (English, possibly technical) message goes to the console, not the page.
+  it('shows a translated load failure and logs the server message', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(api, 'fetchDashboard').mockRejectedValue(new Error('relation "x" does not exist'));
+    render(<PledgeDashboard onFilterChange={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('dashboard-error')).toBeInTheDocument());
+    expect(screen.getByTestId('dashboard-error')).toHaveTextContent('pledgeDashboard.loadFailed');
+    expect(screen.queryByText(/relation "x"/)).not.toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledWith(expect.anything(), 'relation "x" does not exist');
+  });
+
+  // Final review I3 + M9: Received is defined on its own card. With a
+  // run-rate line the definition is a second line; at goal the run-rate line
+  // says so instead of "needs $0/day".
+  describe('Received KPI', () => {
+    const receivedCard = () =>
+      screen.getAllByText('pledgeDashboard.kpi.received')
+        .map((el) => el.closest('div') as HTMLElement)
+        .find((card) => card.textContent?.includes('kpi.receivedDefinition')) as HTMLElement;
+
+    it('keeps the run-rate line and adds the definition beneath it', async () => {
+      jest.spyOn(api, 'fetchDashboard').mockResolvedValue(snapshot);
+      render(<PledgeDashboard onFilterChange={jest.fn()} />);
+      await waitFor(() => expect(screen.getByText('2026 Pledge Drive')).toBeInTheDocument());
+      expect(receivedCard()).toHaveTextContent('pledgeDashboard.kpi.runRate $545 100');
+      expect(receivedCard()).toHaveTextContent('pledgeDashboard.kpi.receivedDefinition');
+    });
+
+    it('shows the definition alone when no run-rate applies', async () => {
+      jest.spyOn(api, 'fetchDashboard').mockResolvedValue({
+        ...snapshot, money: { ...snapshot.money, required_run_rate: null }
+      });
+      render(<PledgeDashboard onFilterChange={jest.fn()} />);
+      await waitFor(() => expect(screen.getByText('2026 Pledge Drive')).toBeInTheDocument());
+      expect(receivedCard()).not.toHaveTextContent('kpi.runRate');
+      expect(receivedCard()).toHaveTextContent('pledgeDashboard.kpi.receivedDefinition');
+    });
+
+    it('says the goal is reached instead of "needs $0/day"', async () => {
+      jest.spyOn(api, 'fetchDashboard').mockResolvedValue({
+        ...snapshot, money: { ...snapshot.money, required_run_rate: 0, gap_to_goal: 0 }
+      });
+      render(<PledgeDashboard onFilterChange={jest.fn()} />);
+      await waitFor(() => expect(screen.getByText('2026 Pledge Drive')).toBeInTheDocument());
+      expect(receivedCard()).toHaveTextContent('pledgeDashboard.kpi.goalReached');
+      expect(receivedCard()).not.toHaveTextContent('kpi.runRate');
+    });
+  });
+
+  // Final review I8: a withheld (null) anonymous or overpaid figure keeps its
+  // secondary line and shows "—", matching AttentionPanel — dropping it would
+  // read as "none".
+  it('keeps the anonymous line with an em dash when the count is withheld', async () => {
+    jest.spyOn(api, 'fetchDashboard').mockResolvedValue({
+      ...snapshot,
+      participation: { ...snapshot.participation, anonymous_pledges: null, anonymous_collected: null }
+    });
+    render(<PledgeDashboard onFilterChange={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('kpi-participation')).toBeInTheDocument());
+    expect(screen.getByTestId('kpi-participation')).toHaveTextContent('pledgeDashboard.kpi.anonymous —');
+  });
+
+  it('keeps the overpaid line with an em dash when the figure is withheld', async () => {
+    jest.spyOn(api, 'fetchDashboard').mockResolvedValue({
+      ...snapshot, money: { ...snapshot.money, overpaid: null }
+    });
+    render(<PledgeDashboard onFilterChange={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText('2026 Pledge Drive')).toBeInTheDocument());
+    expect(screen.getByText('pledgeDashboard.kpi.overpaid —')).toBeInTheDocument();
   });
 
   // Spec section 5: participation must say "members" when family_id is not

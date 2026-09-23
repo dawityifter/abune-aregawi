@@ -58,7 +58,11 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
     try {
       setSnapshot(await fetchDashboard(campaignId));
     } catch (err: any) {
-      setError(err.message || 'Failed to load the dashboard');
+      // The server's message is for the developer console, not the page: it
+      // is English-only and can be technical. The page says it in the
+      // reader's language (see the error box below).
+      console.error('Pledge dashboard failed to load:', err?.message);
+      setError(err?.message || 'Failed to load the dashboard');
     } finally {
       setLoading(false);
     }
@@ -78,13 +82,31 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
     return (
       <div data-testid="dashboard-error"
         className="rounded-md border border-primary-200 bg-primary-50 p-4 font-sans text-caption text-primary-800">
-        {error}
+        {t('pledgeDashboard.loadFailed')}
       </div>
     );
   }
   if (!snapshot) return null;
 
   const { money, participation, timeline } = snapshot;
+
+  // At goal the run-rate is 0 — "needs $0/day" is true but reads as a
+  // glitch, so it says the goal is reached instead.
+  const runRateLine = money.required_run_rate === 0
+    ? t('pledgeDashboard.kpi.goalReached')
+    : money.required_run_rate != null && timeline.days_remaining != null
+      ? t('pledgeDashboard.kpi.runRate', {
+          amount: formatFigure(money.required_run_rate, 'money'),
+          days: formatFigure(timeline.days_remaining, 'count')
+        })
+      : undefined;
+  // Spec section 11 rule 2: "Received" is defined on the card itself — as
+  // the only secondary line, or beneath the run-rate line when there is one.
+  const receivedDefinition = t('pledgeDashboard.kpi.receivedDefinition');
+
+  // A withheld (null) figure keeps its line and shows "—", as AttentionPanel
+  // does: dropping the line would let a protected figure read as "none".
+  const shown = (value: number | null) => value === null || value > 0;
 
   // When family_id is not populated, every member reads as their own household
   // and the figure is a member count wearing a household label. Say "members".
@@ -173,17 +195,13 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
         <KpiCard
           label={t('pledgeDashboard.kpi.received')}
           value={formatFigure(money.collected, 'money')}
-          secondary={money.required_run_rate != null && timeline.days_remaining != null
-            ? t('pledgeDashboard.kpi.runRate', {
-                amount: formatFigure(money.required_run_rate, 'money'),
-                days: formatFigure(timeline.days_remaining, 'count')
-              })
-            : undefined}
+          secondary={runRateLine ?? receivedDefinition}
+          note={runRateLine ? receivedDefinition : undefined}
         />
         <KpiCard
           label={t('pledgeDashboard.kpi.owed')}
           value={formatFigure(money.outstanding_owed, 'money')}
-          secondary={money.overpaid != null && money.overpaid > 0
+          secondary={shown(money.overpaid)
             ? t('pledgeDashboard.kpi.overpaid', { amount: formatFigure(money.overpaid, 'money') })
             : undefined}
         />
@@ -195,7 +213,7 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
               total: formatFigure(participation.active_households, 'count'),
               rate: formatFigure(participation.rate, 'percent')
             })}
-            secondary={participation.anonymous_pledges != null && participation.anonymous_pledges > 0
+            secondary={shown(participation.anonymous_pledges)
               ? t('pledgeDashboard.kpi.anonymous', {
                   count: formatFigure(participation.anonymous_pledges, 'count')
                 })
