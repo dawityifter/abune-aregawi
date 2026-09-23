@@ -299,6 +299,10 @@ export interface Dictionaries {
       label: string; goal: string; noGoal: string;
       received: string; owed: string; gap: string; paceNote: string;
     };
+    header: {
+      dayOf: string; remaining: string; asOf: string; refresh: string;
+      status: { active: string; draft: string; closed: string };
+    };
   };
 
   dashboard: {
@@ -2311,6 +2315,13 @@ export const en: Dictionaries = {
       owed: 'Still owed',
       gap: 'Not yet pledged',
       paceNote: 'Linear pace at day {day} would be {amount}'
+    },
+    header: {
+      dayOf: 'Day {day} of {total}',
+      remaining: '{days} days remaining',
+      asOf: 'as of {time}',
+      refresh: 'Refresh',
+      status: { active: 'Active', draft: 'Draft', closed: 'Closed' }
     }
   },
 
@@ -4710,6 +4721,13 @@ export const ti: Dictionaries = {
       owed: 'ዝተረፈ',
       gap: 'ገና ዘይተመባጽዐ',
       paceNote: 'ብቐጥታዊ ኣሰራርሓ ኣብ መዓልቲ {day} {amount} ምዃኑ ይግመት'
+    },
+    header: {
+      dayOf: 'መዓልቲ {day} ካብ {total}',
+      remaining: '{days} መዓልትታት ተሪፉ',
+      asOf: 'ክሳብ {time}',
+      refresh: 'ኣሓድስ',
+      status: { active: 'ንጡፍ', draft: 'ንድፊ', closed: 'ዝተዓጸወ' }
     }
   },
 
