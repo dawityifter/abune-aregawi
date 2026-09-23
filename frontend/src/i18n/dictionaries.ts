@@ -303,6 +303,11 @@ export interface Dictionaries {
       dayOf: string; remaining: string; asOf: string; refresh: string;
       status: { active: string; draft: string; closed: string };
     };
+    breakdown: { households: string; dollars: string; empty: string };
+    status: {
+      fulfilled: string; partially_fulfilled: string;
+      not_started: string; cancelled: string;
+    };
   };
 
   dashboard: {
@@ -2322,6 +2327,17 @@ export const en: Dictionaries = {
       asOf: 'as of {time}',
       refresh: 'Refresh',
       status: { active: 'Active', draft: 'Draft', closed: 'Closed' }
+    },
+    breakdown: {
+      households: 'Households',
+      dollars: 'Dollars',
+      empty: 'No pledges recorded for this drive yet'
+    },
+    status: {
+      fulfilled: 'Paid in full',
+      partially_fulfilled: 'Part paid',
+      not_started: 'Nothing received',
+      cancelled: 'Cancelled'
     }
   },
 
@@ -4728,6 +4744,17 @@ export const ti: Dictionaries = {
       asOf: 'ክሳብ {time}',
       refresh: 'ኣሓድስ',
       status: { active: 'ንጡፍ', draft: 'ንድፊ', closed: 'ዝተዓጸወ' }
+    },
+    breakdown: {
+      households: 'ስድራቤታት',
+      dollars: 'ገንዘብ',
+      empty: 'ነዚ ወፈያ ገና ዝተመዝገበ መብጽዓ የለን'
+    },
+    status: {
+      fulfilled: 'ምሉእ ተኸፊሉ',
+      partially_fulfilled: 'ብኸፊል ተኸፊሉ',
+      not_started: 'ዝኾነ ኣይተቐበለን',
+      cancelled: 'ተሰሪዙ'
     }
   },
 
