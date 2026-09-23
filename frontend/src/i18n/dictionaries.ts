@@ -308,6 +308,10 @@ export interface Dictionaries {
       fulfilled: string; partially_fulfilled: string;
       not_started: string; cancelled: string;
     };
+    attention: {
+      clear: string; stalled: string; never_started: string;
+      overpaid: string; unlinked: string; endingSoon: string;
+    };
   };
 
   dashboard: {
@@ -2338,6 +2342,14 @@ export const en: Dictionaries = {
       partially_fulfilled: 'Part paid',
       not_started: 'Nothing received',
       cancelled: 'Cancelled'
+    },
+    attention: {
+      clear: 'Nothing needs attention right now',
+      stalled: 'part paid, nothing received in 60 days',
+      never_started: 'pledged but nothing received',
+      overpaid: 'paid more than they pledged',
+      unlinked: 'not linked to a member record',
+      endingSoon: 'This drive closes within 30 days'
     }
   },
 
@@ -4755,6 +4767,14 @@ export const ti: Dictionaries = {
       partially_fulfilled: 'ብኸፊል ተኸፊሉ',
       not_started: 'ዝኾነ ኣይተቐበለን',
       cancelled: 'ተሰሪዙ'
+    },
+    attention: {
+      clear: 'ሕጂ ኣቓልቦ ዘድልዮ የለን',
+      stalled: 'ብኸፊል ተኸፊሉ፣ ኣብ 60 መዓልቲ ዝኾነ ኣይተቐበለን',
+      never_started: 'መብጽዓ ኣለዎ፣ ግን ዝኾነ ኣይተቐበለን',
+      overpaid: 'ካብ ዝኣተዎ መብጽዓ ንላዕሊ ከፊሉ',
+      unlinked: 'ምስ መዝገብ ኣባል ኣይተኣሳሰረን',
+      endingSoon: 'እዚ ወፈያ ኣብ ውሽጢ 30 መዓልቲ ይዕጾ'
     }
   },
 
