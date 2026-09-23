@@ -328,6 +328,7 @@ export interface Dictionaries {
     refreshFailed: string;
     loadFailed: string;
     sectionFailed: string;
+    chipPledges: string;
     monthly: {
       title: string; restricted: string; unavailable: string; empty: string; partial: string;
     };
@@ -2404,6 +2405,7 @@ export const en: Dictionaries = {
     filterUnavailable: "This group can't be picked out in the table yet — all pledges are shown",
     refreshFailed: "Couldn't refresh — these figures are from the time shown above.",
     loadFailed: "The dashboard couldn't be loaded.",
+    chipPledges: '{count} pledges',
     sectionFailed: "This section couldn't be loaded. Close and reopen it to try again.",
     monthly: {
       title: 'Monthly collections',
@@ -4882,6 +4884,7 @@ export const ti: Dictionaries = {
     filterUnavailable: 'እዚ ጉጅለ ገና ኣብ ሰሌዳ ተመሪጹ ክርአ ኣይክእልን፣ ኵሎም መብጽዓታት እዮም ዝርኣዩ ዘለዉ',
     refreshFailed: 'ምሕዳስ ኣይተኻእለን፣ እዞም ቁጽርታት ካብቲ ኣብ ላዕሊ ዘሎ ግዜ እዮም',
     loadFailed: 'እዚ ዳሽቦርድ ክጽዓን ኣይከኣለን',
+    chipPledges: '{count} መብጽዓታት',
     sectionFailed: 'ናይዚ ክፋል ምጽዓን ኣይተኻእለን። ደጊምካ ንምፍታን ዕጸዎ እሞ ከፍቶ',
     monthly: {
       title: 'ወርሓዊ ዝእከብ ገንዘብ',

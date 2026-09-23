@@ -175,6 +175,14 @@ describe('PledgeDashboard', () => {
     await waitFor(() => expect(onFilterChange).toHaveBeenCalledWith('stalled'));
   });
 
+  it('passes the active filter down so the band can mark it', async () => {
+    jest.spyOn(api, 'fetchDashboard').mockResolvedValue(snapshot);
+    render(<PledgeDashboard onFilterChange={jest.fn()} activeFilter="fulfilled" />);
+    await waitFor(() => expect(screen.getByTestId('dist-dollars-fulfilled')).toBeInTheDocument());
+    expect(screen.getByTestId('dist-dollars-fulfilled')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('attention-stalled')).toHaveAttribute('aria-pressed', 'false');
+  });
+
   // Task 7 / R8: both below-the-fold sections start collapsed, and their
   // endpoints (tier-3 only) must not be called until a caller actually opens
   // the section — a tier-2 role would otherwise pay for two 403s on every

@@ -73,6 +73,8 @@ const renderTab = (
 );
 
 const rowFor = (name: string) => screen.getByText(name).closest('tr') as HTMLElement;
+const rowForAsync = async (name: string) =>
+  (await screen.findByText(name)).closest('tr') as HTMLElement;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -186,14 +188,36 @@ describe('TreasurerPledges', () => {
     expect(await screen.findByText(/failed to load donors/i)).toBeInTheDocument();
   });
 
+  // Final review M2: the status column speaks the reader's language, not the
+  // database enum.
+  it('shows each row status in words rather than the raw enum', async () => {
+    renderTab();
+    expect(within(await rowForAsync('Test DonorOne')).getByText('Paid in full')).toBeInTheDocument();
+    expect(within(rowFor('Test DonorTwo')).getByText('Part paid')).toBeInTheDocument();
+    expect(screen.queryByText('partially_fulfilled')).not.toBeInTheDocument();
+  });
+
+  it('falls back to the raw status for one it does not know', async () => {
+    mockFetchDonors.mockResolvedValue([{ ...DONORS[0], status: 'some_new_status' }]);
+    renderTab();
+    expect(await screen.findByText('some_new_status')).toBeInTheDocument();
+  });
+
   describe('filtering from the dashboard band', () => {
     it('narrows to a chosen status and shows a count chip', async () => {
       renderTab(true, 'fulfilled');
 
       expect(await screen.findByText('Test DonorOne')).toBeInTheDocument();
       expect(screen.queryByText('Test DonorTwo')).not.toBeInTheDocument();
-      expect(screen.getByText(/paid in full/i)).toBeInTheDocument();
-      expect(screen.getByText(/· 1/)).toBeInTheDocument();
+      // Final review M1: the chip says what it is counting.
+      expect(screen.getByTestId('pledge-filter-chip')).toHaveTextContent('Paid in full · 1 pledges');
+    });
+
+    // Final review M10: the Tigrigna "can't filter" note is long and must wrap.
+    it('lets the chip row wrap', async () => {
+      renderTab(true, 'stalled');
+      await screen.findByText('Test DonorOne');
+      expect(screen.getByTestId('pledge-filter-chip').parentElement).toHaveClass('flex-wrap');
     });
 
     it('maps never_started to the not_started rows the table actually has', async () => {
@@ -210,7 +234,7 @@ describe('TreasurerPledges', () => {
       expect(await screen.findByText('Test DonorThree')).toBeInTheDocument();
       expect(screen.queryByText('Test DonorOne')).not.toBeInTheDocument();
       expect(screen.queryByText('Test DonorTwo')).not.toBeInTheDocument();
-      expect(screen.getByText(/nothing received/i)).toBeInTheDocument();
+      expect(screen.getByTestId('pledge-filter-chip')).toHaveTextContent(/nothing received/i);
     });
 
     // stalled/overpaid/unlinked name donor-level groups this table cannot yet
@@ -221,7 +245,8 @@ describe('TreasurerPledges', () => {
 
       expect(await screen.findByText('Test DonorOne')).toBeInTheDocument();
       expect(screen.getByText('Test DonorTwo')).toBeInTheDocument();
-      expect(screen.getByText(/part paid, nothing received in 60 days/i)).toBeInTheDocument();
+      expect(screen.getByTestId('pledge-filter-chip'))
+        .toHaveTextContent(/part paid, nothing received in 60 days/i);
       expect(screen.getByText(/can't be picked out in the table yet/i)).toBeInTheDocument();
     });
 

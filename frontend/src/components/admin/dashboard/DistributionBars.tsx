@@ -11,6 +11,8 @@ interface DistributionBarsProps {
    * cannot inflate the ones a reader is shown.
    */
   pledgedTotal: number;
+  /** The filter the donor table is on, so its segments can be marked. */
+  activeStatus?: string | null;
   onSelectStatus: (status: string) => void;
 }
 
@@ -35,7 +37,9 @@ const WITHHELD_HATCH =
 const sum = (rows: DashboardBreakdownRow[], pick: (r: DashboardBreakdownRow) => number | null) =>
   rows.reduce((total, row) => total + (pick(row) ?? 0), 0);
 
-const DistributionBars: React.FC<DistributionBarsProps> = ({ rows, pledgedTotal, onSelectStatus }) => {
+const DistributionBars: React.FC<DistributionBarsProps> = ({
+  rows, pledgedTotal, activeStatus = null, onSelectStatus
+}) => {
   const { t } = useLanguage();
 
   // Cancelled is listed but never plotted: a retired pledge is not part of the
@@ -45,6 +49,11 @@ const DistributionBars: React.FC<DistributionBarsProps> = ({ rows, pledgedTotal,
     .map((status) => rows.find((row) => row.status === status))
     .filter((row): row is DashboardBreakdownRow => Boolean(row));
   const cancelled = rows.find((row) => row.status === 'cancelled');
+  // Only dim when the active filter is one of these segments; an attention
+  // filter (stalled, overpaid...) has no segment here to single out.
+  const hasActive = live.some((row) => row.status === activeStatus);
+  const emphasis = (status: string) =>
+    !hasActive ? '' : status === activeStatus ? 'ring-2 ring-accent-700 ring-inset' : 'opacity-40';
 
   const householdTotal = sum(live, (r) => r.household_count);
   const visibleDollars = sum(live, (r) => r.total_pledged);
@@ -81,9 +90,10 @@ const DistributionBars: React.FC<DistributionBarsProps> = ({ rows, pledgedTotal,
             key={row.status}
             data-testid={`${testId}-${row.status}`}
             style={{ width: `${width}%` }}
+            aria-pressed={row.status === activeStatus}
             onClick={() => onSelectStatus(row.status)}
             title={`${t(`pledgeDashboard.status.${row.status}`)} ${formatFigure(value, kind)}`}
-            className={`h-full border-r-2 border-accent-50 last:border-r-0 ${FILL[row.status]}`}
+            className={`h-full border-r-2 border-accent-50 last:border-r-0 ${FILL[row.status]} ${emphasis(row.status)}`}
           />
         );
       })}

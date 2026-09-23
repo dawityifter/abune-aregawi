@@ -4,6 +4,8 @@ import { DashboardAttention, formatFigure } from '../../../utils/pledgeDashboard
 
 interface AttentionPanelProps {
   attention: DashboardAttention;
+  /** The filter the donor table is on, so its row can be marked. */
+  activeFilter?: string | null;
   onSelect: (filter: string) => void;
 }
 
@@ -18,7 +20,7 @@ const ROWS: Array<keyof Omit<DashboardAttention, 'ending_soon'>> =
  * "we are not showing you this" is different from "there is nothing here", and
  * dropping it would let a protected figure read as a clean bill of health.
  */
-const AttentionPanel: React.FC<AttentionPanelProps> = ({ attention, onSelect }) => {
+const AttentionPanel: React.FC<AttentionPanelProps> = ({ attention, activeFilter = null, onSelect }) => {
   const { t } = useLanguage();
 
   const visible = ROWS.filter((key) => attention[key] === null || (attention[key] as number) > 0);
@@ -38,8 +40,11 @@ const AttentionPanel: React.FC<AttentionPanelProps> = ({ attention, onSelect }) 
         <li key={key}>
           <button
             data-testid={`attention-${key.replace('_', '-')}`}
+            aria-pressed={key === activeFilter}
             onClick={() => onSelect(key)}
-            className="flex w-full items-baseline gap-3 rounded-md px-2 py-1.5 text-left hover:bg-accent-100"
+            className={`flex w-full items-baseline gap-3 rounded-md px-2 py-1.5 text-left hover:bg-accent-100 ${
+              key === activeFilter ? 'bg-accent-100 ring-2 ring-accent-700 ring-inset' : ''
+            }`}
           >
             <strong className="font-sans tabular-nums text-accent-700">
               {formatFigure(attention[key], 'count')}

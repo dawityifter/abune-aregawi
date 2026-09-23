@@ -17,9 +17,11 @@ import YearOverYear from './dashboard/YearOverYear';
 interface PledgeDashboardProps {
   /** Raises a chosen status or attention filter so the donor table can scope to it. */
   onFilterChange: (filter: string | null) => void;
+  /** The filter the donor table is currently on, marked in the band. */
+  activeFilter?: string | null;
 }
 
-const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => {
+const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange, activeFilter = null }) => {
   const { t } = useLanguage();
   const { campaign } = useActiveCampaign();
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
@@ -235,6 +237,7 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
           <DistributionBars
             rows={snapshot.breakdown}
             pledgedTotal={money.pledged}
+            activeStatus={activeFilter}
             onSelectStatus={onFilterChange}
           />
         </div>
@@ -242,7 +245,11 @@ const PledgeDashboard: React.FC<PledgeDashboardProps> = ({ onFilterChange }) => 
           <h3 className="mb-3 font-serif text-h4 text-accent-700">
             {t('pledgeDashboard.attention.title')}
           </h3>
-          <AttentionPanel attention={snapshot.attention} onSelect={onFilterChange} />
+          <AttentionPanel
+            attention={snapshot.attention}
+            activeFilter={activeFilter}
+            onSelect={onFilterChange}
+          />
         </div>
       </div>
 

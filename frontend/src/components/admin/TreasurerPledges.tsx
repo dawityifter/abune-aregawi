@@ -130,10 +130,12 @@ const TreasurerPledges: React.FC<TreasurerPledgesProps> = ({ canRecord, filter =
       )}
 
       {filter && (
-        <div className="mb-3 flex items-center gap-2">
-          <span className="rounded-full bg-accent-100 px-3 py-1 font-sans text-caption text-accent-600">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span data-testid="pledge-filter-chip"
+            className="rounded-full bg-accent-100 px-3 py-1 font-sans text-caption text-accent-600">
             {isDerivedStatus
-              ? `${t(`pledgeDashboard.status.${mappedFilter}`)} · ${visibleRows.length}`
+              ? `${t(`pledgeDashboard.status.${mappedFilter}`)} · ${
+                  t('pledgeDashboard.chipPledges', { count: String(visibleRows.length) })}`
               : t(`pledgeDashboard.attention.${filter}`)}
           </span>
           {!isDerivedStatus && (
@@ -176,7 +178,9 @@ const TreasurerPledges: React.FC<TreasurerPledgesProps> = ({ canRecord, filter =
                   <td className="px-3 py-2">{money(row.remaining_amount)}</td>
                   <td className="px-3 py-2">
                     <span className={`px-2 py-1 rounded-full text-xs ${STATUS_STYLES[row.status] || 'bg-gray-100 text-gray-700'}`}>
-                      {row.status}
+                      {DERIVED_STATUSES.includes(row.status)
+                        ? t(`pledgeDashboard.status.${row.status}`)
+                        : row.status}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">

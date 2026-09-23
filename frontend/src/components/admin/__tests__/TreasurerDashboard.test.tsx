@@ -43,6 +43,17 @@ jest.mock('../VendorList', () => () => <div />);
 jest.mock('../LoansPage', () => () => <div />);
 jest.mock('../LedgerSheetsPanel', () => () => <div />);
 jest.mock('../ExpenseList', () => () => <div data-testid="expense-list" />);
+// The pledge band and table are stubbed to their filter contract: the band
+// raises a filter and echoes the active one; the table echoes what it got.
+jest.mock('../PledgeDashboard', () => (props: any) => (
+  <div>
+    <button data-testid="band-pick-fulfilled" onClick={() => props.onFilterChange('fulfilled')} />
+    <span data-testid="band-active-filter">{String(props.activeFilter)}</span>
+  </div>
+));
+jest.mock('../TreasurerPledges', () => (props: any) => (
+  <div data-testid="pledge-table">{String(props.filter)}</div>
+));
 
 // Exposes the modal's success callback so a save can be simulated from a test.
 let triggerExpenseSuccess: (() => void) | null = null;
@@ -204,5 +215,39 @@ describe('TreasurerDashboard — refresh scoping', () => {
     await act(async () => {
       releaseStats();
     });
+  });
+});
+
+// Final review I2: choosing a filter in the band marks it in the band and
+// brings the donor table into view — without that, the table changes below
+// the fold and the click appears to do nothing.
+describe('TreasurerDashboard — pledge band filter', () => {
+  const originalScroll = Element.prototype.scrollIntoView;
+  afterEach(() => { Element.prototype.scrollIntoView = originalScroll; });
+
+  const goToPledgesTab = async () => {
+    render(<TreasurerDashboard />);
+    fireEvent.click(await screen.findByText('treasurerDashboard.tabs.pledges'));
+    await screen.findByTestId('pledge-table');
+  };
+
+  it('hands the chosen filter to both the band and the table, and scrolls the table into view', async () => {
+    const scrollIntoView = jest.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    await goToPledgesTab();
+
+    fireEvent.click(screen.getByTestId('band-pick-fulfilled'));
+
+    expect(screen.getByTestId('band-active-filter')).toHaveTextContent('fulfilled');
+    expect(screen.getByTestId('pledge-table')).toHaveTextContent('fulfilled');
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+    expect(scrollIntoView.mock.instances[0]).toContainElement(screen.getByTestId('pledge-table'));
+  });
+
+  it('does not throw where scrollIntoView is unavailable', async () => {
+    (Element.prototype as any).scrollIntoView = undefined;
+    await goToPledgesTab();
+    fireEvent.click(screen.getByTestId('band-pick-fulfilled'));
+    expect(screen.getByTestId('pledge-table')).toHaveTextContent('fulfilled');
   });
 });

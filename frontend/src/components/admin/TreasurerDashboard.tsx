@@ -104,6 +104,17 @@ const TreasurerDashboard: React.FC = () => {
   // status or attention group. Spec section 10: one page, the band filters the
   // table beneath it.
   const [pledgeFilter, setPledgeFilter] = useState<string | null>(null);
+  const pledgeTableRef = useRef<HTMLDivElement>(null);
+  // A filter chosen in the band changes the table below the fold; bring it
+  // into view or the click looks like it did nothing. No smooth behaviour —
+  // no motion. jsdom (and very old browsers) lack scrollIntoView.
+  const choosePledgeFilter = (filter: string | null) => {
+    setPledgeFilter(filter);
+    const table = pledgeTableRef.current;
+    if (filter && table && typeof table.scrollIntoView === 'function') {
+      table.scrollIntoView({ block: 'start' });
+    }
+  };
 
   // Stats are only rendered on the Overview tab. When something changes them
   // while another tab is open, flag them instead of paying for a fetch nobody sees.
@@ -620,15 +631,17 @@ const TreasurerDashboard: React.FC = () => {
 
           {activeTab === 'pledges' && (
             <div className="space-y-6">
-              <PledgeDashboard onFilterChange={setPledgeFilter} />
+              <PledgeDashboard onFilterChange={choosePledgeFilter} activeFilter={pledgeFilter} />
               {/* Entry is admin/treasurer only: POST /api/pledges honors an
                   explicit member_id for those roles and silently files the
                   pledge under the caller for anyone else. */}
-              <TreasurerPledges
-                canRecord={userRoles.some((r) => ['admin', 'treasurer'].includes(r))}
-                filter={pledgeFilter}
-                onClearFilter={() => setPledgeFilter(null)}
-              />
+              <div ref={pledgeTableRef}>
+                <TreasurerPledges
+                  canRecord={userRoles.some((r) => ['admin', 'treasurer'].includes(r))}
+                  filter={pledgeFilter}
+                  onClearFilter={() => setPledgeFilter(null)}
+                />
+              </div>
             </div>
           )}
 

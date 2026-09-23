@@ -47,6 +47,15 @@ describe('AttentionPanel', () => {
     expect(screen.getByTestId('attention-ending-soon')).toBeInTheDocument();
   });
 
+  // Final review I2: the row the table is filtered to is marked.
+  it('marks the active row as pressed and leaves the others unpressed', () => {
+    renderWithLanguage(<AttentionPanel attention={attention} activeFilter="stalled" onSelect={jest.fn()} />);
+    expect(screen.getByTestId('attention-stalled')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('attention-stalled')).toHaveClass('ring-2', 'ring-accent-700');
+    expect(screen.getByTestId('attention-never-started')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('attention-never-started')).not.toHaveClass('ring-2');
+  });
+
   it('calls back with the filter name when a row is chosen', async () => {
     const onSelect = jest.fn();
     renderWithLanguage(<AttentionPanel attention={attention} onSelect={onSelect} />);

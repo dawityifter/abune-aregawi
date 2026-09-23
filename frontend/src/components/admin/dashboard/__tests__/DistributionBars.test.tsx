@@ -116,6 +116,28 @@ describe('DistributionBars', () => {
     expect(container.querySelector('.text-accent-400')).toBeNull();
   });
 
+  // Final review I2: the band shows which filter the table below is on.
+  it('rings the active status and dims the others in both bars', () => {
+    renderWithLanguage(<DistributionBars rows={rows} pledgedTotal={PLEDGED}
+      activeStatus="fulfilled" onSelectStatus={jest.fn()} />);
+    for (const bar of ['dist-households', 'dist-dollars']) {
+      const active = screen.getByTestId(`${bar}-fulfilled`);
+      const other = screen.getByTestId(`${bar}-not_started`);
+      expect(active).toHaveClass('ring-2', 'ring-accent-700', 'ring-inset');
+      expect(active).toHaveAttribute('aria-pressed', 'true');
+      expect(other).not.toHaveClass('ring-2');
+      expect(other).toHaveClass('opacity-40');
+      expect(other).toHaveAttribute('aria-pressed', 'false');
+    }
+  });
+
+  it('dims nothing when the active filter is not a status in the bars', () => {
+    renderWithLanguage(<DistributionBars rows={rows} pledgedTotal={PLEDGED}
+      activeStatus="stalled" onSelectStatus={jest.fn()} />);
+    expect(screen.getByTestId('dist-dollars-fulfilled')).not.toHaveClass('opacity-40');
+    expect(screen.getByTestId('dist-dollars-not_started')).not.toHaveClass('opacity-40');
+  });
+
   it('calls back with the status when a segment is chosen', async () => {
     const onSelectStatus = jest.fn();
     renderWithLanguage(<DistributionBars rows={rows} pledgedTotal={PLEDGED} onSelectStatus={onSelectStatus} />);
