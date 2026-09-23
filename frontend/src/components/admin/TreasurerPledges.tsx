@@ -14,7 +14,16 @@ interface TreasurerPledgesProps {
    * pledges against the wrong person.
    */
   canRecord: boolean;
+  /** A status or attention group chosen in the dashboard band above. */
+  filter?: string | null;
+  onClearFilter?: () => void;
 }
+
+// The table's row status is a derived_status; the dashboard's attention panel
+// speaks a different vocabulary (stalled/overpaid/unlinked) for groups this
+// table cannot yet identify a row as belonging to. `never_started` is the one
+// attention term that does map onto a derived status.
+const DERIVED_STATUSES = ['fulfilled', 'partially_fulfilled', 'not_started', 'cancelled'];
 
 const money = (value: number) =>
   new Intl.NumberFormat('en-US', {
@@ -28,7 +37,7 @@ const STATUS_STYLES: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-800'
 };
 
-const TreasurerPledges: React.FC<TreasurerPledgesProps> = ({ canRecord }) => {
+const TreasurerPledges: React.FC<TreasurerPledgesProps> = ({ canRecord, filter = null, onClearFilter }) => {
   const { t } = useLanguage();
   const { campaign } = useActiveCampaign();
 
@@ -70,6 +79,18 @@ const TreasurerPledges: React.FC<TreasurerPledgesProps> = ({ canRecord }) => {
     await load();
   };
 
+  // never_started is the dashboard's name for the same group the table calls
+  // not_started; every other attention group (stalled, overpaid, unlinked)
+  // names something this table cannot yet evaluate per row — see Plan 4.
+  const mappedFilter = filter === 'never_started' ? 'not_started' : filter;
+  const isDerivedStatus = mappedFilter !== null && DERIVED_STATUSES.includes(mappedFilter);
+  // Filtering by an attention group the table can't evaluate would show a
+  // false "0 rows" instead of admitting the table can't answer yet. Keep all
+  // rows and say so, rather than invent a client-side approximation.
+  const visibleRows = filter && isDerivedStatus
+    ? rows.filter((row) => row.status === mappedFilter)
+    : rows;
+
   if (!campaign) {
     return (
       <div className="bg-white rounded-lg shadow p-6 text-center text-gray-600">
@@ -108,9 +129,30 @@ const TreasurerPledges: React.FC<TreasurerPledgesProps> = ({ canRecord }) => {
         />
       )}
 
+      {filter && (
+        <div className="mb-3 flex items-center gap-2">
+          <span className="rounded-full bg-accent-100 px-3 py-1 font-sans text-caption text-accent-600">
+            {isDerivedStatus
+              ? `${t(`pledgeDashboard.status.${mappedFilter}`)} · ${visibleRows.length}`
+              : t(`pledgeDashboard.attention.${filter}`)}
+          </span>
+          {!isDerivedStatus && (
+            <span className="font-sans text-caption text-accent-500">
+              {t('pledgeDashboard.filterUnavailable')}
+            </span>
+          )}
+          <button
+            onClick={onClearFilter}
+            className="font-sans text-caption text-accent-500 underline"
+          >
+            {t('pledgeDashboard.clearFilter')}
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="py-8 text-center text-gray-500">…</div>
-      ) : rows.length === 0 ? (
+      ) : visibleRows.length === 0 ? (
         <div className="py-8 text-center text-gray-500">{t('fundraising.noPledges')}</div>
       ) : (
         <div className="overflow-x-auto">
@@ -126,7 +168,7 @@ const TreasurerPledges: React.FC<TreasurerPledgesProps> = ({ canRecord }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {rows.map((row) => (
+              {visibleRows.map((row) => (
                 <tr key={row.id}>
                   <td className="px-3 py-2 text-gray-900">{row.name}</td>
                   <td className="px-3 py-2">{money(row.amount)}</td>

@@ -60,10 +60,14 @@ const DONORS = [
   }
 ];
 
-const renderTab = (canRecord = true) => render(
+const renderTab = (
+  canRecord = true,
+  filter: string | null = null,
+  onClearFilter: () => void = jest.fn()
+) => render(
   <I18nProvider>
     <LanguageProvider>
-      <TreasurerPledges canRecord={canRecord} />
+      <TreasurerPledges canRecord={canRecord} filter={filter} onClearFilter={onClearFilter} />
     </LanguageProvider>
   </I18nProvider>
 );
@@ -180,5 +184,55 @@ describe('TreasurerPledges', () => {
     renderTab();
 
     expect(await screen.findByText(/failed to load donors/i)).toBeInTheDocument();
+  });
+
+  describe('filtering from the dashboard band', () => {
+    it('narrows to a chosen status and shows a count chip', async () => {
+      renderTab(true, 'fulfilled');
+
+      expect(await screen.findByText('Test DonorOne')).toBeInTheDocument();
+      expect(screen.queryByText('Test DonorTwo')).not.toBeInTheDocument();
+      expect(screen.getByText(/paid in full/i)).toBeInTheDocument();
+      expect(screen.getByText(/· 1/)).toBeInTheDocument();
+    });
+
+    it('maps never_started to the not_started rows the table actually has', async () => {
+      mockFetchDonors.mockResolvedValue([
+        ...DONORS,
+        {
+          id: 3, name: 'Test DonorThree', amount: 400, paid_amount: 0, remaining_amount: 400,
+          status: 'not_started', is_historical: false, pledge_type: 'one_time',
+          created_at: '2026-02-03T00:00:00Z'
+        }
+      ]);
+      renderTab(true, 'never_started');
+
+      expect(await screen.findByText('Test DonorThree')).toBeInTheDocument();
+      expect(screen.queryByText('Test DonorOne')).not.toBeInTheDocument();
+      expect(screen.queryByText('Test DonorTwo')).not.toBeInTheDocument();
+      expect(screen.getByText(/nothing received/i)).toBeInTheDocument();
+    });
+
+    // stalled/overpaid/unlinked name donor-level groups this table cannot yet
+    // evaluate per row — filtering to them would show a false "0 rows" instead
+    // of admitting the table can't answer that question yet.
+    it('keeps all rows for an attention group the table cannot evaluate, and says so', async () => {
+      renderTab(true, 'stalled');
+
+      expect(await screen.findByText('Test DonorOne')).toBeInTheDocument();
+      expect(screen.getByText('Test DonorTwo')).toBeInTheDocument();
+      expect(screen.getByText(/part paid, nothing received in 60 days/i)).toBeInTheDocument();
+      expect(screen.getByText(/can't be picked out in the table yet/i)).toBeInTheDocument();
+    });
+
+    it('calls onClearFilter when the chip is dismissed', async () => {
+      const onClearFilter = jest.fn();
+      renderTab(true, 'fulfilled', onClearFilter);
+      await screen.findByText('Test DonorOne');
+
+      await userEvent.click(screen.getByRole('button', { name: /clear filter/i }));
+
+      expect(onClearFilter).toHaveBeenCalled();
+    });
   });
 });

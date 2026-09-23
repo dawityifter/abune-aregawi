@@ -303,15 +303,24 @@ export interface Dictionaries {
       dayOf: string; remaining: string; asOf: string; refresh: string;
       status: { active: string; draft: string; closed: string };
     };
-    breakdown: { households: string; dollars: string; empty: string };
+    kpi: {
+      received: string; owed: string; overpaid: string; runRate: string;
+      participationHouseholds: string; participationMembers: string;
+      participationValue: string; anonymous: string;
+      fulfillment: string; fulfillmentNote: string;
+    };
+    breakdown: { title: string; households: string; dollars: string; empty: string };
     status: {
       fulfilled: string; partially_fulfilled: string;
       not_started: string; cancelled: string;
     };
     attention: {
+      title: string;
       clear: string; stalled: string; never_started: string;
       overpaid: string; unlinked: string; endingSoon: string;
     };
+    clearFilter: string;
+    filterUnavailable: string;
   };
 
   dashboard: {
@@ -2332,7 +2341,20 @@ export const en: Dictionaries = {
       refresh: 'Refresh',
       status: { active: 'Active', draft: 'Draft', closed: 'Closed' }
     },
+    kpi: {
+      received: 'Received',
+      owed: 'Still owed',
+      overpaid: '{amount} paid over',
+      runRate: 'needs {amount}/day for {days} days',
+      participationHouseholds: 'Households giving',
+      participationMembers: 'Members giving',
+      participationValue: '{count} of {total} ({rate})',
+      anonymous: 'plus {count} anonymous gifts',
+      fulfillment: 'Fulfilment',
+      fulfillmentNote: 'of pledged dollars received'
+    },
     breakdown: {
+      title: 'Fulfilment breakdown',
       households: 'Households',
       dollars: 'Dollars',
       empty: 'No pledges recorded for this drive yet'
@@ -2344,13 +2366,16 @@ export const en: Dictionaries = {
       cancelled: 'Cancelled'
     },
     attention: {
+      title: 'Needs attention',
       clear: 'Nothing needs attention right now',
       stalled: 'part paid, nothing received in 60 days',
       never_started: 'pledged but nothing received',
       overpaid: 'paid more than they pledged',
       unlinked: 'not linked to a member record',
       endingSoon: 'This drive closes within 30 days'
-    }
+    },
+    clearFilter: 'Clear filter',
+    filterUnavailable: "This group can't be picked out in the table yet — all pledges are shown"
   },
 
   // ==== PledgeTracker (Phase 2a) ====
@@ -4757,7 +4782,20 @@ export const ti: Dictionaries = {
       refresh: 'ኣሓድስ',
       status: { active: 'ንጡፍ', draft: 'ንድፊ', closed: 'ዝተዓጸወ' }
     },
+    kpi: {
+      received: 'እተቐበለ',
+      owed: 'ዝተረፈ',
+      overpaid: '{amount} ተወሳኺ ተኸፊሉ',
+      runRate: 'ኣብ መዓልቲ {amount} ን{days} መዓልትታት የድሊ',
+      participationHouseholds: 'ዝወፈያ ስድራቤታት',
+      participationMembers: 'ዝወፈዩ ኣባላት',
+      participationValue: '{count} ካብ {total} ({rate})',
+      anonymous: 'ከምኡ ድማ {count} ስም ዘይተጠቕሰ ወፈያታት',
+      fulfillment: 'ኣፈጻጽማ',
+      fulfillmentNote: 'ካብ እተመባጽዐ ገንዘብ እተቐበለ'
+    },
     breakdown: {
+      title: 'ኣፈጻጽማ ብዝርዝር',
       households: 'ስድራቤታት',
       dollars: 'ገንዘብ',
       empty: 'ነዚ ወፈያ ገና ዝተመዝገበ መብጽዓ የለን'
@@ -4769,13 +4807,16 @@ export const ti: Dictionaries = {
       cancelled: 'ተሰሪዙ'
     },
     attention: {
+      title: 'ኣቓልቦ የድልዮ',
       clear: 'ሕጂ ኣቓልቦ ዘድልዮ የለን',
       stalled: 'ብኸፊል ተኸፊሉ፣ ኣብ 60 መዓልቲ ዝኾነ ኣይተቐበለን',
       never_started: 'መብጽዓ ኣለዎ፣ ግን ዝኾነ ኣይተቐበለን',
       overpaid: 'ካብ ዝኣተዎ መብጽዓ ንላዕሊ ከፊሉ',
       unlinked: 'ምስ መዝገብ ኣባል ኣይተኣሳሰረን',
       endingSoon: 'እዚ ወፈያ ኣብ ውሽጢ 30 መዓልቲ ይዕጾ'
-    }
+    },
+    clearFilter: 'መጽረዪ ኣወግድ',
+    filterUnavailable: 'እዚ ጉጅለ ገና ኣብ ሰሌዳ ተመሪጹ ክርአ ኣይክእልን፣ ኵሎም መብጽዓታት እዮም ዝርኣዩ ዘለዉ'
   },
 
   // ==== PledgeTracker (Phase 2a) — DRAFT, pending native review ====

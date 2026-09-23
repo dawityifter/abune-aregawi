@@ -22,6 +22,7 @@ import LoansPage from './LoansPage';
 import LedgerSheetsPanel from './LedgerSheetsPanel';
 import SkippedNumbersModal from './SkippedNumbersModal';
 import TreasurerPledges from './TreasurerPledges';
+import PledgeDashboard from './PledgeDashboard';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PaymentStatsData {
@@ -99,6 +100,10 @@ const TreasurerDashboard: React.FC = () => {
   const [showSkippedChecksModal, setShowSkippedChecksModal] = useState(false);
   const [skippedChecks, setSkippedChecks] = useState<number[]>([]);
   const [checkRange, setCheckRange] = useState<{ start: number; end: number } | null>(null);
+  // Raised by the dashboard band so the donor table can scope to a chosen
+  // status or attention group. Spec section 10: one page, the band filters the
+  // table beneath it.
+  const [pledgeFilter, setPledgeFilter] = useState<string | null>(null);
 
   // Stats are only rendered on the Overview tab. When something changes them
   // while another tab is open, flag them instead of paying for a fetch nobody sees.
@@ -614,12 +619,15 @@ const TreasurerDashboard: React.FC = () => {
           )}
 
           {activeTab === 'pledges' && (
-            <div>
+            <div className="space-y-6">
+              <PledgeDashboard onFilterChange={setPledgeFilter} />
               {/* Entry is admin/treasurer only: POST /api/pledges honors an
                   explicit member_id for those roles and silently files the
                   pledge under the caller for anyone else. */}
               <TreasurerPledges
                 canRecord={userRoles.some((r) => ['admin', 'treasurer'].includes(r))}
+                filter={pledgeFilter}
+                onClearFilter={() => setPledgeFilter(null)}
               />
             </div>
           )}
