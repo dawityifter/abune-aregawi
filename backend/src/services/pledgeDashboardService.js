@@ -39,13 +39,18 @@ const buildTimeline = (campaign, today = todayInChurchTz()) => {
   };
 };
 
-const buildMoney = (totals, campaign, timeline) => {
+/**
+ * `overpaidCount` must be the same count `attention.overpaid` is suppressed
+ * against — `money.overpaid` is the dollar total over exactly those pledges,
+ * so the two figures have to be blanked together or one leaks the other.
+ */
+const buildMoney = (totals, campaign, timeline, overpaidCount, canSee) => {
   const pledged = num(totals?.total_pledged);
   const collected = num(totals?.total_collected);
   // outstanding_positive, never the netted `outstanding` — that one lets one
   // member's over-payment cancel another member's shortfall.
   const outstandingOwed = num(totals?.outstanding_positive);
-  const overpaid = num(totals?.overpaid_amount);
+  const overpaid = suppressSmall(num(totals?.overpaid_amount), overpaidCount, canSee);
   const goal = campaign.goal_amount == null ? null : num(campaign.goal_amount);
 
   const gapToGoal = goal == null ? null : round2(Math.max(goal - collected, 0));
@@ -65,43 +70,120 @@ const buildMoney = (totals, campaign, timeline) => {
   };
 };
 
-const buildParticipation = async (totals) => {
+/**
+ * households/active_households/rate stay unsuppressed — parish-scale figures,
+ * not small groups. anonymous_pledges and anonymous_collected are the
+ * sharpest risk in the spec: at anonymous_pledges: 1, anonymous_collected IS
+ * that donor's gift, no inference required — so both are suppressed together
+ * against the same anonymous-pledge count.
+ */
+const buildParticipation = async (totals, canSee) => {
   const { households: active, familyIdPopulated } = await countActiveHouseholds();
   const households = Number(totals?.household_count) || 0;
+  const anonymousPledges = Number(totals?.anonymous_pledge_count) || 0;
   return {
     households,
     active_households: active,
     rate: active ? round2((households / active) * 100) : 0,
-    anonymous_pledges: Number(totals?.anonymous_pledge_count) || 0,
-    anonymous_collected: num(totals?.anonymous_collected),
+    anonymous_pledges: suppressSmall(anonymousPledges, anonymousPledges, canSee),
+    anonymous_collected: suppressSmall(num(totals?.anonymous_collected), anonymousPledges, canSee),
     family_id_populated: familyIdPopulated
   };
 };
 
-const buildBreakdown = (rows, canSee) => rows.map((row) => {
-  const size = Number(row.pledge_count) || 0;
-  return {
-    status: row.status,
-    pledge_count: suppressSmall(size, size, canSee),
-    household_count: suppressSmall(Number(row.household_count) || 0, size, canSee),
-    total_pledged: suppressSmall(num(row.total_pledged), size, canSee),
-    total_collected: suppressSmall(num(row.total_collected), size, canSee),
-    outstanding_owed: suppressSmall(num(row.outstanding_positive), size, canSee)
-  };
-});
+// The three non-cancelled statuses whose per-pledge amounts sum, unsuppressed,
+// into money.pledged/collected/outstanding_owed (campaign_totals excludes
+// cancelled pledges entirely — see pledgeViews.js). Cancelled carries no such
+// relationship and is suppressed independently, exactly as before.
+const ADDITIVE_STATUSES = ['not_started', 'partially_fulfilled', 'fulfilled'];
+
+/**
+ * Per-pledge amounts are additive across the three ADDITIVE_STATUSES, and the
+ * campaign-level totals report their sum unsuppressed (deliberately — they
+ * are the headline figures the dashboard exists to show). Blanking exactly
+ * one small bucket would therefore let a tier-2 caller recover it exactly:
+ * total - (every other visible bucket) = the hidden figure.
+ *
+ * Complementary suppression closes that: whenever any additive bucket would
+ * be suppressed on its own, at least one more non-zero additive bucket is
+ * suppressed alongside it — the next-smallest one not already suppressed —
+ * so the residual resolves to a sum of two-or-more buckets, not one value.
+ *
+ * Only non-zero buckets are candidates: suppressing an empty bucket protects
+ * nothing and hides a legitimate zero (spec's rule: zero is never withheld).
+ */
+const complementarySuppressionTargets = (rows, canSee) => {
+  const targets = new Set();
+  if (canSee) return targets;
+
+  const sizeOf = (row) => Number(row.pledge_count) || 0;
+  const triggersSuppression = (row) => suppressSmall(1, sizeOf(row), canSee) === null;
+
+  const candidates = rows.filter(
+    (row) => ADDITIVE_STATUSES.includes(row.status) && sizeOf(row) > 0
+  );
+  const triggered = candidates.filter(triggersSuppression);
+  if (triggered.length === 0) return targets;
+
+  triggered.forEach((row) => targets.add(row.status));
+
+  if (targets.size < 2) {
+    if (candidates.length < 2) {
+      // Fewer than two non-zero buckets exist at all — suppress every one.
+      candidates.forEach((row) => targets.add(row.status));
+    } else {
+      const nextSmallest = candidates
+        .filter((row) => !targets.has(row.status))
+        .sort((a, b) => sizeOf(a) - sizeOf(b))[0];
+      if (nextSmallest) targets.add(nextSmallest.status);
+    }
+  }
+  return targets;
+};
+
+const buildBreakdown = (rows, canSee) => {
+  const targets = complementarySuppressionTargets(rows, canSee);
+
+  return rows.map((row) => {
+    const size = Number(row.pledge_count) || 0;
+    const suppressed = ADDITIVE_STATUSES.includes(row.status)
+      ? targets.has(row.status)
+      : suppressSmall(1, size, canSee) === null; // cancelled: independent rule
+
+    if (suppressed) {
+      return {
+        status: row.status,
+        pledge_count: null,
+        household_count: null,
+        total_pledged: null,
+        total_collected: null,
+        outstanding_owed: null
+      };
+    }
+    return {
+      status: row.status,
+      pledge_count: size,
+      household_count: Number(row.household_count) || 0,
+      total_pledged: num(row.total_pledged),
+      total_collected: num(row.total_collected),
+      outstanding_owed: num(row.outstanding_positive)
+    };
+  });
+};
 
 const STALLED_AFTER_DAYS = 60;
 const ENDING_SOON_DAYS = 30;
 
 /**
- * Five operational counts, derived from pledge_balances. Counts only — the
- * names behind them stay on the tier-3 detail route, so this payload is safe
- * for every view role (small buckets are still blanked for tier 2).
+ * Five operational counts, derived from pledge_balances once here and shared
+ * with buildMoney — money.overpaid is the dollar total behind exactly the
+ * pledges this overpaid count counts, and the two must be suppressed
+ * together or one leaks the other (see buildMoney).
  *
  * Cancelled pledges are excluded from all of them: a retired pledge owes
  * nothing and needs no chasing.
  */
-const buildAttention = async (campaignId, timeline, canSee) => {
+const computeAttentionCounts = async (campaignId) => {
   const balances = await PledgeBalance.findAll({ where: { campaign_id: campaignId } });
 
   const live = balances.filter((b) => b.derived_status !== 'cancelled');
@@ -116,15 +198,22 @@ const buildAttention = async (campaignId, timeline, canSee) => {
   const overpaid = live.filter((b) => num(b.remaining_amount) < 0).length;
   const unlinked = live.filter((b) => b.member_id == null).length;
 
-  return {
-    stalled: suppressSmall(stalled, stalled, canSee),
-    never_started: suppressSmall(neverStarted, neverStarted, canSee),
-    overpaid: suppressSmall(overpaid, overpaid, canSee),
-    unlinked: suppressSmall(unlinked, unlinked, canSee),
-    ending_soon: timeline.days_remaining != null
-      && timeline.days_remaining <= ENDING_SOON_DAYS
-  };
+  return { stalled, neverStarted, overpaid, unlinked };
 };
+
+/**
+ * Counts only — the names behind them stay on the tier-3 detail route, so
+ * this payload is safe for every view role (small buckets are still blanked
+ * for tier 2).
+ */
+const buildAttention = (counts, timeline, canSee) => ({
+  stalled: suppressSmall(counts.stalled, counts.stalled, canSee),
+  never_started: suppressSmall(counts.neverStarted, counts.neverStarted, canSee),
+  overpaid: suppressSmall(counts.overpaid, counts.overpaid, canSee),
+  unlinked: suppressSmall(counts.unlinked, counts.unlinked, canSee),
+  ending_soon: timeline.days_remaining != null
+    && timeline.days_remaining <= ENDING_SOON_DAYS
+});
 
 /**
  * Money received per calendar month for one drive.
@@ -324,9 +413,10 @@ const buildSnapshot = async (campaignId, { canSee }) => {
   const campaign = await PledgeCampaign.findByPk(campaignId);
   if (!campaign) return null;
 
-  const [totals, statusRows] = await Promise.all([
+  const [totals, statusRows, attentionCounts] = await Promise.all([
     CampaignTotal.findByPk(campaignId),
-    CampaignStatusTotal.findAll({ where: { campaign_id: campaignId }, order: [['status', 'ASC']] })
+    CampaignStatusTotal.findAll({ where: { campaign_id: campaignId }, order: [['status', 'ASC']] }),
+    computeAttentionCounts(campaignId)
   ]);
 
   const timeline = buildTimeline(campaign);
@@ -343,15 +433,15 @@ const buildSnapshot = async (campaignId, { canSee }) => {
       goal_amount: campaign.goal_amount == null ? null : num(campaign.goal_amount)
     },
     timeline,
-    money: buildMoney(totals, campaign, timeline),
-    participation: await buildParticipation(totals),
+    money: buildMoney(totals, campaign, timeline, attentionCounts.overpaid, canSee),
+    participation: await buildParticipation(totals, canSee),
     breakdown: buildBreakdown(statusRows, canSee),
-    attention: await buildAttention(campaignId, timeline, canSee),
+    attention: buildAttention(attentionCounts, timeline, canSee),
     as_of: new Date().toISOString()
   };
 };
 
 module.exports = {
-  buildSnapshot, buildTimeline, buildAttention, buildMonthlySeries,
+  buildSnapshot, buildTimeline, buildAttention, computeAttentionCounts, buildMonthlySeries,
   buildComparison, buildPledgingCurve, num, round2, dayCount
 };
