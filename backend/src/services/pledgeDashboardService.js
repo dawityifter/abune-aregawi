@@ -188,6 +188,126 @@ const buildMonthlySeries = async (campaignId) => {
   return { available: true, reason: null, partial_historical: partialHistorical, months };
 };
 
+/**
+ * Cumulative pledged dollars by day-of-campaign, from pledges.created_at.
+ *
+ * This is PLEDGING, not collections. The 2025 drive has no payment dates at
+ * all, so a collections curve cannot be built for it and must never be faked;
+ * created_at is a real pledge date on both drives, which makes this the one
+ * curve that compares honestly. Cancelled pledges are excluded.
+ */
+const buildPledgingCurve = (pledges, startDate) => {
+  const points = pledges
+    .filter((p) => p.lifecycle !== 'cancelled')
+    .map((p) => ({
+      day: Math.max(1, dayCount(startDate, new Date(p.created_at).toISOString().slice(0, 10))),
+      amount: num(p.amount)
+    }))
+    .sort((a, b) => a.day - b.day);
+
+  const byDay = new Map();
+  points.forEach(({ day, amount }) => byDay.set(day, (byDay.get(day) || 0) + amount));
+
+  let running = 0;
+  return [...byDay.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([day, amount]) => {
+      running = round2(running + amount);
+      return { day, cumulative_pledged: running };
+    });
+};
+
+const summarise = async (campaign) => {
+  const totals = await CampaignTotal.findByPk(campaign.id);
+  const statusRows = await CampaignStatusTotal.findAll({
+    where: { campaign_id: campaign.id }
+  });
+  const byStatus = Object.fromEntries(statusRows.map((r) => [r.status, r]));
+  const pledged = num(totals?.total_pledged);
+  const collected = num(totals?.total_collected);
+
+  return {
+    total_pledged: pledged,
+    total_collected: collected,
+    outstanding_owed: num(totals?.outstanding_positive),
+    pledge_count: Number(totals?.pledge_count) || 0,
+    household_count: Number(totals?.household_count) || 0,
+    fulfillment_rate: pledged ? round2((collected / pledged) * 100) : 0,
+    fully_paid: Number(byStatus.fulfilled?.pledge_count) || 0,
+    never_paid: Number(byStatus.not_started?.pledge_count) || 0
+  };
+};
+
+const describeWindow = (campaign, today = todayInChurchTz()) => {
+  const timeline = buildTimeline(campaign, today);
+  const ended = campaign.end_date ? Date.parse(campaign.end_date) < Date.parse(today) : false;
+  return {
+    id: String(campaign.id),
+    slug: campaign.slug,
+    name: campaign.name,
+    start_date: campaign.start_date,
+    end_date: campaign.end_date,
+    total_days: timeline.total_days,
+    in_progress: !ended,
+    day: timeline.day
+  };
+};
+
+/**
+ * Returns null when either campaign is missing, so the controller can 404.
+ *
+ * `comparable` is the contract that keeps this honest. Plan 3 reads it to
+ * decide which rows to render at all — a comparison it cannot compute must be
+ * OMITTED, never drawn as a zero, because a zero bar reads as "we did badly"
+ * rather than "we do not know" (spec section 6, rule 3).
+ */
+const buildComparison = async (currentId, priorId) => {
+  const [currentCampaign, priorCampaign] = await Promise.all([
+    PledgeCampaign.findByPk(currentId),
+    PledgeCampaign.findByPk(priorId)
+  ]);
+  if (!currentCampaign || !priorCampaign) return null;
+
+  const [currentPledges, priorPledges] = await Promise.all([
+    Pledge.findAll({
+      where: { campaign_id: currentId },
+      attributes: ['amount', 'created_at', 'lifecycle', 'is_historical']
+    }),
+    Pledge.findAll({
+      where: { campaign_id: priorId },
+      attributes: ['amount', 'created_at', 'lifecycle', 'is_historical']
+    })
+  ]);
+
+  const anyHistorical = (rows) => rows.some((p) => p.is_historical);
+  const allocationBacked = !anyHistorical(currentPledges) && !anyHistorical(priorPledges);
+
+  return {
+    comparable: {
+      goal: currentCampaign.goal_amount != null && priorCampaign.goal_amount != null,
+      collections: allocationBacked,
+      partial: allocationBacked,
+      pledging_curve: true
+    },
+    campaigns: {
+      current: describeWindow(currentCampaign),
+      prior: describeWindow(priorCampaign)
+    },
+    figures: await (async () => {
+      const [cur, pri] = await Promise.all([
+        summarise(currentCampaign), summarise(priorCampaign)
+      ]);
+      return Object.fromEntries(
+        Object.keys(cur).map((key) => [key, { current: cur[key], prior: pri[key] }])
+      );
+    })(),
+    pledging_curve: {
+      current: buildPledgingCurve(currentPledges, currentCampaign.start_date),
+      prior: buildPledgingCurve(priorPledges, priorCampaign.start_date)
+    }
+  };
+};
+
 /** Returns null when the campaign does not exist, so the controller can 404. */
 const buildSnapshot = async (campaignId, { canSee }) => {
   const campaign = await PledgeCampaign.findByPk(campaignId);
@@ -222,5 +342,5 @@ const buildSnapshot = async (campaignId, { canSee }) => {
 
 module.exports = {
   buildSnapshot, buildTimeline, buildAttention, buildMonthlySeries,
-  num, round2, dayCount
+  buildComparison, buildPledgingCurve, num, round2, dayCount
 };

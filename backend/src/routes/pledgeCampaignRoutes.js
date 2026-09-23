@@ -23,6 +23,7 @@ router.get('/:id/totals', roleMiddleware(viewRoles), c.getTotals);
 // additionally get small buckets blanked; see pledgeDashboardPrivacy.
 router.get('/:id/dashboard', roleMiddleware(viewRoles), dashboard.getDashboard);
 router.get('/:id/monthly', roleMiddleware(viewRoles), dashboard.getMonthly);
+router.get('/:id/compare', roleMiddleware(viewRoles), dashboard.getComparison);
 router.post('/', roleMiddleware(adminRoles), c.create);
 router.patch('/:id', roleMiddleware(adminRoles), c.update);
 
