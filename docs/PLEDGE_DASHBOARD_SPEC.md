@@ -54,7 +54,12 @@ Open: which specific roles map to the leadership (no-names) tier — see §8.
 - 2025 has no `goal_amount`. Goal progress is undefined, not zero.
 - 2025 has no allocations, therefore no `transactions.payment_date`. **There is no 2025
   collections curve and no way to build one** — confirmed, no offline record either.
-- Windows differ: 122 days (Sep 13 2025 – Jan 12 2026) vs 365 (Jan 1 – Dec 31 2026).
+- **Windows are near-identical — verified against the database, not the seed migration.**
+  2025: Sep 13 2025 – Jan 12 2026. 2026: Sep 1 2026 – Dec 31 2026. **Both 122 days**, both
+  autumn drives, offset about twelve days in the calendar. An earlier draft of this spec
+  read the seed migration and claimed 2026 ran Jan 1 – Dec 31 (365 days); the campaign was
+  edited after seeding, and that claim was wrong. This materially *helps* the comparison —
+  see §6.
 - Six members hold duplicate 2025 pledges (up to 3 each), so pledges ≠ donors.
 
 **What survives as honest comparison:** total pledged, total collected, outstanding,
@@ -102,8 +107,8 @@ would duplicate the existing `CampaignDonors` panel.
 
 ## 5. Executive band
 
-**Band 1 — identity + money bar.** Campaign name, status pill, window, "Day 264 of 365 ·
-101 days remaining". Then one full-width stacked horizontal bar:
+**Band 1 — identity + money bar.** Campaign name, status pill, window, "Day 22 of 122 ·
+100 days remaining". Then one full-width stacked horizontal bar:
 
 ```
 [■ Collected ■][░ Outstanding ░][   gap to goal   ]
@@ -119,7 +124,7 @@ glance with no reading. Pledged is the first two segments summed.
 
 | Card | Primary | Secondary |
 |---|---|---|
-| Collected | `$38,400` | `needs $612/day for 101 days` |
+| Collected | `$38,400` | `needs $545/day for 100 days` |
 | Outstanding | `$12,100` | `across 47 donors` |
 | Participation | `94 of 310 households (30%)` | `+ 26 anonymous gifts` |
 | Fulfillment | `76%` | `of pledged dollars received` |
@@ -135,14 +140,23 @@ on the bar it scales); **year-over-year** (see §6).
 
 ### Pace marker must be factual, not evaluative
 
-$100,000 is roughly 1.8× the ~$55k collected in 2025 (figure documented in
-`backend/migrations/20260822130000-credit-legacy-fulfilled-pledges.js`), over a window
-three times as long. A naive red/amber/green marker will read "behind" for most of the
-year, and a signal that is red for eight months stops being a signal.
+$100,000 against the $61,599 collected by the 2025 drive is roughly **1.6× over the same
+122-day window** — a real stretch in daily terms, not a gentler one spread over a longer
+year as an earlier draft of this spec assumed.
 
-- Neutral tick plus a factual caption: "linear pace at day 264 would be $72,300".
-- Replace the verdict with the action: **required run-rate** on the Collected card.
-- Reserve amber/red for the final 60 days, where "behind" is decision-relevant.
+But the live data cuts the other way, and the design has to survive both cases. At day 22
+of 122 the drive has already collected $45,581 — about **2.5× linear pace**, and 74% of
+what the whole 2025 drive collected. A marker calibrated on the assumption that a stretch
+goal means "behind all year" would be wrong today in the opposite direction, and a green
+light held for three months is as uninformative as a red one.
+
+So the marker stays **factual rather than evaluative**, which is correct whichever side of
+pace the drive sits on:
+
+- Neutral tick plus a factual caption: "linear pace at day 22 would be $18,000".
+- Replace the verdict with the action: **required run-rate** on the Collected card. When
+  the drive is ahead, that number falls and says so without a congratulatory colour.
+- Reserve amber/red for the final 30 days — in a 122-day drive, not 60.
 - Show pledged-vs-goal as well as collected-vs-pledged: the first is the recruitment
   question, the second is the follow-up question.
 
@@ -178,7 +192,7 @@ grouped-bar chart.**
 
 Bullet-bar table over the seven comparable figures, with:
 
-1. Asymmetry in the column headers themselves — "2026 (in progress, day 264 of 365)" vs
+1. Asymmetry in the column headers themselves — "2026 (in progress, day 22 of 122)" vs
    "2025 (final, 122-day drive)". Never let a bar imply parity the caption has to walk
    back.
 2. A **persistent** comparability notice, not a dismissible tooltip.
@@ -201,9 +215,17 @@ Two captions, visible and not hidden in a tooltip:
 
 - **This is pledging, not collections.** Axis label "cumulative pledged". Same chart
   shape either way, so a reader who assumes otherwise draws the wrong conclusion.
-- **Seasonal mismatch.** 2025 ran Sep→Jan across the holiday and year-end giving
-  season; 2026 runs Jan→Dec. Day-of-campaign alignment is mathematically sound and
-  seasonally apples-to-oranges.
+- **Seasonal alignment is good, not a problem.** Both drives are 122-day autumn
+  campaigns offset by about twelve days (2025: Sep 13 – Jan 12; 2026: Sep 1 – Dec 31),
+  so day-of-campaign comparison lines up nearly like-for-like. The only real caveat is
+  that 2025's tail ran into January and 2026's does not, so the last ~12 days of the
+  2025 curve cover a different part of the giving calendar. Note it; do not hedge the
+  whole chart over it. (An earlier draft called this "apples-to-oranges" on the strength
+  of the wrong 2026 window — see §3.)
+
+Because the two windows line up, the cumulative-pledged curve is the strongest element
+of the year-over-year section — not a grudging concession. Give it the space §6's
+bullet-bar table would otherwise take.
 
 ### Forward design
 
@@ -251,30 +273,31 @@ dashboard later leaks downward by default, and eventually one of them shouldn't.
 | 2 | Leadership, no names | Full executive band: participation, fulfillment %, status counts, pace, attention summary |
 | 3 | Treasurer / admin | Tier 2 + donor table + anonymity piercing (as today) |
 
-### Role mapping (decided 2026-09-21)
+### Role mapping (RESOLVED 2026-09-22)
 
-Requested: **`bookkeeper`, `ar_team`, `ap_team` → tier 2** (no names). Remaining
-`viewRoles` (`church_leadership`, `secretary`, `auditor`, `budget_committee`) stay as
-they are today until reviewed; `admin` and `treasurer` are tier 3.
+**Tier 2 (aggregates, no donor names): `ap_team`**, alongside the other view roles that
+carry no edit rights — `church_leadership`, `secretary`, `auditor`, `budget_committee`.
 
-**Unresolved conflict — Plan 2 must settle this before it ships.**
+**Tier 3 (aggregates + donor table): `admin`, `treasurer`, `bookkeeper`, `ar_team`.**
+
+The original answer put `bookkeeper` and `ar_team` in tier 2 as well. They were moved to
+tier 3 because `pledgeRoutes.js:58` already grants them `editRoles` — they can change a
+pledge amount and cancel a pledge, which is impossible without knowing whose pledge it
+is. The governing principle: **if you can change a record, you can see it.** `ap_team`
+holds no edit rights and maps to tier 2 cleanly.
+
+Rejected alternatives: stripping `bookkeeper`/`ar_team` from `editRoles` to make the
+original mapping coherent (removes a capability someone may rely on, and is a bigger
+change than this plan warrants); and applying the tier to the dashboard band only while
+leaving the donor table on today's roles (hides names above the fold and shows them below
+it, on one screen, to the same user).
+
+Historical note — the conflict this resolves:
 `pledgeRoutes.js:58` defines `editRoles = ['admin', 'treasurer', 'bookkeeper', 'ar_team']`,
 so `bookkeeper` and `ar_team` can already `PUT /api/pledges/:id` — change a pledge amount
 and cancel a pledge. A no-names tier makes that work impossible: you cannot correct or
 cancel a specific pledge without knowing whose it is. Hiding the table in the UI while
 the API still permits the write is a product incoherence, not a security control.
-
-`ap_team` has no edit rights and maps to tier 2 cleanly.
-
-Three ways out, for the owner to pick:
-
-1. **`ap_team` only → tier 2**; `bookkeeper` and `ar_team` stay tier 3 because they hold
-   edit duties. Smallest change, preserves current workflows.
-2. **All three → tier 2 and remove `bookkeeper`/`ar_team` from `editRoles`.** Coherent,
-   but removes an existing capability — confirm nobody relies on it first.
-3. **All three → tier 2 for the dashboard band only**, leaving table and edit access on
-   today's `viewRoles`/`editRoles`. Honors the request literally; means "tier" governs the
-   executive band rather than donor-level access, which weakens the tiering concept.
 
 ### Why the executive dashboard must not go to members
 
