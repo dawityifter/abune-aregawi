@@ -322,6 +322,20 @@ export interface Dictionaries {
     clearFilter: string;
     filterUnavailable: string;
     refreshFailed: string;
+    monthly: {
+      title: string; restricted: string; unavailable: string; empty: string; partial: string;
+    };
+    yoy: {
+      title: string; restricted: string; caveat: string;
+      inProgress: string; inProgressNoTotal: string;
+      final: string; finalNoDays: string;
+      curveTitle: string; curveCaveat: string; noPrior: string;
+      rows: {
+        total_pledged: string; total_collected: string; outstanding_owed: string;
+        pledge_count: string; household_count: string; fulfillment_rate: string;
+        fully_paid: string; never_paid: string;
+      };
+    };
   };
 
   dashboard: {
@@ -2377,7 +2391,36 @@ export const en: Dictionaries = {
     },
     clearFilter: 'Clear filter',
     filterUnavailable: "This group can't be picked out in the table yet — all pledges are shown",
-    refreshFailed: "Couldn't refresh — these figures are from the time shown above."
+    refreshFailed: "Couldn't refresh — these figures are from the time shown above.",
+    monthly: {
+      title: 'Monthly collections',
+      restricted: 'Monthly collections are available to treasurers and bookkeepers. The month-by-month figures can expose an individual gift, so they are not shown at this access level.',
+      unavailable: 'This drive predates payment records, so there is no month-by-month history to show.',
+      empty: 'No payments received yet.',
+      partial: 'Some pledges in this drive predate payment records and are not in this chart.'
+    },
+    yoy: {
+      title: 'Compared with the previous drive',
+      restricted: 'The year-over-year comparison is available to treasurers and bookkeepers. The day-by-day figures can expose an individual gift, so they are not shown at this access level.',
+      caveat: 'Both drives ran 122 days in autumn, so the totals compare directly. The previous drive recorded payments without dates and set no goal, so timing and goal progress are not shown.',
+      inProgress: 'in progress, day {day} of {total}',
+      inProgressNoTotal: 'in progress, day {day}',
+      final: 'final, {days}-day drive',
+      finalNoDays: 'final drive',
+      curveTitle: 'Cumulative pledged, by day of campaign',
+      curveCaveat: 'This is money pledged, not money received.',
+      noPrior: 'There is no earlier drive to compare with yet.',
+      rows: {
+        total_pledged: 'Total pledged',
+        total_collected: 'Total received',
+        outstanding_owed: 'Still owed',
+        pledge_count: 'Pledges',
+        household_count: 'Households',
+        fulfillment_rate: 'Fulfilment',
+        fully_paid: 'Paid in full',
+        never_paid: 'Nothing received'
+      }
+    }
   },
 
   // ==== PledgeTracker (Phase 2a) ====
@@ -4819,7 +4862,36 @@ export const ti: Dictionaries = {
     },
     clearFilter: 'መጽረዪ ኣወግድ',
     filterUnavailable: 'እዚ ጉጅለ ገና ኣብ ሰሌዳ ተመሪጹ ክርአ ኣይክእልን፣ ኵሎም መብጽዓታት እዮም ዝርኣዩ ዘለዉ',
-    refreshFailed: 'ምሕዳስ ኣይተኻእለን፣ እዞም ቁጽርታት ካብቲ ኣብ ላዕሊ ዘሎ ግዜ እዮም'
+    refreshFailed: 'ምሕዳስ ኣይተኻእለን፣ እዞም ቁጽርታት ካብቲ ኣብ ላዕሊ ዘሎ ግዜ እዮም',
+    monthly: {
+      title: 'ወርሓዊ ዝእከብ ገንዘብ',
+      restricted: 'ወርሓዊ ዝእከብ ገንዘብ ንተንብለቲ ገንዘብን ሓለውቲ ደብተርን ጥራይ እዩ ዝርአ። እዞም ብወርሒ ዝተኸፋፈሉ ቁጽርታት ናይ ሓደ ውልቀ ሰብ ወፈያ ክሕብሩ ስለ ዝኽእሉ፣ ኣብዚ ደረጃ ኣይርኣዩን',
+      unavailable: 'እዚ ወፈያ ቅድሚ መዝገብ ክፍሊት ዝጀመረ እዩ፣ ስለዚ ብወርሒ ዝተኸፋፈለ ታሪኽ የለን',
+      empty: 'ክሳብ ሕጂ ዝኾነ ክፍሊት ኣይተቐበለን',
+      partial: 'ገለ መብጽዓታት ናይዚ ወፈያ ቅድሚ መዝገብ ክፍሊት ዝጀመሩ ስለ ዝኾኑ፣ ኣብዚ ግራፍ ኣይተኻተቱን'
+    },
+    yoy: {
+      title: 'ምስ ዝሓለፈ ወፈያ ምንጽጻር',
+      restricted: 'ምንጽጻር ካብ ዓመት ናብ ዓመት ንተንብለቲ ገንዘብን ሓለውቲ ደብተርን ጥራይ እዩ ዝርአ። እዞም ብመዓልቲ ዝተኸፋፈሉ ቁጽርታት ናይ ሓደ ውልቀ ሰብ ወፈያ ክሕብሩ ስለ ዝኽእሉ፣ ኣብዚ ደረጃ ኣይርኣዩን',
+      caveat: 'ክልቲኦም ወፈያታት ን122 መዓልትታት ኣብ ቀውዒ እዮም ተኻይዶም፣ ስለዚ ድምር ቁጽርታት ብቐጥታ ይነጻጸሩ። እቲ ዝሓለፈ ወፈያ ክፍሊታት ብዘይ ዕለት እዩ ተመዝጊቡ፣ ከምኡ ድማ ዕላማ ኣይነበሮን፣ ስለዚ ግዜን ናይ ዕላማ ደረጃን ኣይርአዩን',
+      inProgress: 'ኣብ ምቕጻል ዘሎ፣ መዓልቲ {day} ካብ {total}',
+      inProgressNoTotal: 'ኣብ ምቕጻል ዘሎ፣ መዓልቲ {day}',
+      final: 'ተዛዚሙ፣ ናይ {days} መዓልቲ ወፈያ',
+      finalNoDays: 'ተዛዚሙ ወፈያ',
+      curveTitle: 'ድምር እተመባጽዐ ገንዘብ፣ ብመዓልቲ ወፈያ',
+      curveCaveat: 'እዚ እተመባጽዐ ገንዘብ እዩ፣ ዘይኮነ እተቐበለ ገንዘብ',
+      noPrior: 'ክሳብ ሕጂ ዝነጻጸር ቀዳማይ ወፈያ የለን',
+      rows: {
+        total_pledged: 'ጠቕላላ እተመባጽዐ',
+        total_collected: 'ጠቕላላ እተቐበለ',
+        outstanding_owed: 'ዝተረፈ',
+        pledge_count: 'መብጽዓታት',
+        household_count: 'ስድራቤታት',
+        fulfillment_rate: 'ኣፈጻጽማ',
+        fully_paid: 'ምሉእ ተኸፊሉ',
+        never_paid: 'ዝኾነ ኣይተቐበለን'
+      }
+    }
   },
 
   // ==== PledgeTracker (Phase 2a) — DRAFT, pending native review ====
