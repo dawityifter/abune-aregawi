@@ -297,7 +297,7 @@ export interface Dictionaries {
   pledgeDashboard: {
     moneyBar: {
       label: string; goal: string; noGoal: string;
-      received: string; owed: string; gap: string; paceNote: string;
+      received: string; owed: string; gap: string; paceNote: string; pledged: string;
     };
     header: {
       dayOf: string; remaining: string; asOf: string; refresh: string;
@@ -308,6 +308,7 @@ export interface Dictionaries {
       participationHouseholds: string; participationMembers: string;
       participationValue: string; anonymous: string;
       fulfillment: string; fulfillmentNote: string;
+      receivedDefinition: string;
     };
     breakdown: { title: string; households: string; dollars: string; empty: string };
     status: {
@@ -2348,7 +2349,8 @@ export const en: Dictionaries = {
       received: 'Received',
       owed: 'Still owed',
       gap: 'Not yet pledged',
-      paceNote: 'Linear pace at day {day} would be {amount}'
+      paceNote: 'Linear pace at day {day} would be {amount}',
+      pledged: 'Pledged'
     },
     header: {
       dayOf: 'Day {day} of {total}',
@@ -2367,7 +2369,8 @@ export const en: Dictionaries = {
       participationValue: '{count} of {total} ({rate})',
       anonymous: 'plus {count} anonymous gifts',
       fulfillment: 'Fulfilment',
-      fulfillmentNote: 'of pledged dollars received'
+      fulfillmentNote: 'of pledged dollars received',
+      receivedDefinition: 'Payments allocated to pledges in this drive'
     },
     breakdown: {
       title: 'Fulfilment breakdown',
@@ -4820,7 +4823,8 @@ export const ti: Dictionaries = {
       received: 'እተቐበለ',
       owed: 'ዝተረፈ',
       gap: 'ገና ዘይተመባጽዐ',
-      paceNote: 'ብቐጥታዊ ኣሰራርሓ ኣብ መዓልቲ {day} {amount} ምዃኑ ይግመት'
+      paceNote: 'ብቐጥታዊ ኣሰራርሓ ኣብ መዓልቲ {day} {amount} ምዃኑ ይግመት',
+      pledged: 'እተመባጽዐ'
     },
     header: {
       dayOf: 'መዓልቲ {day} ካብ {total}',
@@ -4839,7 +4843,8 @@ export const ti: Dictionaries = {
       participationValue: '{count} ካብ {total} ({rate})',
       anonymous: 'ከምኡ ድማ {count} ስም ዘይተጠቕሰ ወፈያታት',
       fulfillment: 'ኣፈጻጽማ',
-      fulfillmentNote: 'ካብ እተመባጽዐ ገንዘብ እተቐበለ'
+      fulfillmentNote: 'ካብ እተመባጽዐ ገንዘብ እተቐበለ',
+      receivedDefinition: 'ኣብዚ ወፈያ ንመብጽዓታት ዝተመደበ ክፍሊት'
     },
     breakdown: {
       title: 'ኣፈጻጽማ ብዝርዝር',

@@ -60,6 +60,67 @@ describe('MoneyBar', () => {
     expect(screen.getByTestId('moneybar-nogoal')).toBeInTheDocument();
   });
 
+  // Final review C1: "Not yet pledged" is goal − pledged. The API's
+  // gap_to_goal is goal − collected (a run-rate gap) and must not be shown
+  // under this label; the grey segment and its figure have to agree.
+  it('labels "Not yet pledged" as goal minus pledged, not the run-rate gap', () => {
+    renderWithLanguage(<MoneyBar money={money} timeline={timeline} />);
+    const gapLegend = screen.getByTestId('moneybar-legend-gap');
+    expect(gapLegend).toHaveTextContent('Not yet pledged');
+    expect(gapLegend).toHaveTextContent('$46,119');
+    expect(gapLegend).not.toHaveTextContent('$54,419');
+    // The segment is goal − pledged too, clamped to what received + owed
+    // leave: this fixture's $700 over-payment puts received + owed $700 past
+    // pledged, so the grey segment gives up that 0.7% rather than overflow.
+    expect(widthOf('moneybar-gap')).toBeCloseTo(100 - 45.581 - 9, 1);
+  });
+
+  it('shows the total pledged as a figure in the legend', () => {
+    renderWithLanguage(<MoneyBar money={money} timeline={timeline} />);
+    expect(screen.getByTestId('moneybar-legend-pledged')).toHaveTextContent('Pledged');
+    expect(screen.getByTestId('moneybar-legend-pledged')).toHaveTextContent('$53,881');
+  });
+
+  // Spec section 11 rule 2: "Received" is defined where it is shown.
+  it('defines "Received" in a visible caption under the legend', () => {
+    renderWithLanguage(<MoneyBar money={money} timeline={timeline} />);
+    expect(screen.getByText('Payments allocated to pledges in this drive')).toBeInTheDocument();
+  });
+
+  // An over-pledged drive: pledged and owed together run past the goal.
+  // Scaled to the goal alone, the owed segment would be clipped off the end.
+  describe('when pledges exceed the goal', () => {
+    const over: DashboardMoney = {
+      ...money, goal: 50000, pledged: 60000, collected: 45000, outstanding_owed: 15000,
+      gap_to_goal: 5000
+    };
+
+    it('rescales so received + owed + gap never pass 100% and owed is not clipped', () => {
+      renderWithLanguage(<MoneyBar money={over} timeline={timeline} />);
+      const total = widthOf('moneybar-collected') + widthOf('moneybar-outstanding')
+        + widthOf('moneybar-gap');
+      expect(total).toBeLessThanOrEqual(100.0001);
+      expect(widthOf('moneybar-collected')).toBeCloseTo(75, 1);   // 45000 / 60000
+      expect(widthOf('moneybar-outstanding')).toBeCloseTo(25, 1); // 15000 / 60000
+      expect(widthOf('moneybar-gap')).toBe(0);
+    });
+
+    it('marks the goal with a tick inside the bar, and scales the pace marker to match', () => {
+      renderWithLanguage(<MoneyBar money={over} timeline={timeline} />);
+      const tick = screen.getByTestId('moneybar-goal-tick');
+      expect(parseFloat(tick.style.left)).toBeCloseTo(50000 / 60000 * 100, 1);
+      // elapsed 0.18 of a 50k goal, on a 60k scale.
+      expect(parseFloat(screen.getByTestId('moneybar-pace').style.left))
+        .toBeCloseTo(0.18 * 50000 / 60000 * 100, 1);
+      expect(screen.getByText(/\$50,000/)).toBeInTheDocument();
+    });
+  });
+
+  it('draws no goal tick when the goal is the scale', () => {
+    renderWithLanguage(<MoneyBar money={money} timeline={timeline} />);
+    expect(screen.queryByTestId('moneybar-goal-tick')).not.toBeInTheDocument();
+  });
+
   it('never renders a negative or overflowing segment when collection exceeds the goal', () => {
     const over = { ...money, collected: 120000, gap_to_goal: 0 };
     renderWithLanguage(<MoneyBar money={over} timeline={timeline} />);
