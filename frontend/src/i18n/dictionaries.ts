@@ -294,6 +294,13 @@ export interface Dictionaries {
     pledgeNeedsMember: string;
   };
 
+  pledgeDashboard: {
+    moneyBar: {
+      label: string; goal: string; noGoal: string;
+      received: string; owed: string; gap: string; paceNote: string;
+    };
+  };
+
   dashboard: {
     greeting: string;
     greetingNoName: string;
@@ -2295,6 +2302,17 @@ export const en: Dictionaries = {
     pledgeNeedsMember: "Select a member to record this pledge, or mark the payment anonymous and give a baptism or church name."
   },
 
+  pledgeDashboard: {
+    moneyBar: {
+      label: 'Progress toward the fundraising goal',
+      goal: 'Goal',
+      noGoal: 'No goal set for this drive',
+      received: 'Received',
+      owed: 'Still owed',
+      gap: 'Not yet pledged',
+      paceNote: 'Linear pace at day {day} would be {amount}'
+    }
+  },
 
   // ==== PledgeTracker (Phase 2a) ====
   pledgeTracker: {
@@ -4683,6 +4701,17 @@ export const ti: Dictionaries = {
     pledgeNeedsMember: "እዚ መብጽዓ ንምምዝጋብ ኣባል ምረጹ፣ ወይ ነቲ ክፍሊት ስም ብዘይምግላጽ ኣምልክቱ እሞ ስም ጥምቀት ወይ ናይ ቤተ ክርስቲያን ስም ሃቡ።"
   },
 
+  pledgeDashboard: {
+    moneyBar: {
+      label: 'ናብ ዕላማ ምእካብ ገንዘብ ዘሎ ኣፈጻጽማ',
+      goal: 'ዕላማ',
+      noGoal: 'ነዚ ወፈያ ዕላማ ኣይተቐመጠን',
+      received: 'እተቐበለ',
+      owed: 'ዝተረፈ',
+      gap: 'ገና ዘይተመባጽዐ',
+      paceNote: 'ብቐጥታዊ ኣሰራርሓ ኣብ መዓልቲ {day} {amount} ምዃኑ ይግመት'
+    }
+  },
 
   // ==== PledgeTracker (Phase 2a) — DRAFT, pending native review ====
   pledgeTracker: {
