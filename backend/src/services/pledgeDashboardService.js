@@ -1,7 +1,8 @@
 'use strict';
 
 const {
-  PledgeCampaign, CampaignTotal, CampaignStatusTotal, PledgeBalance
+  PledgeCampaign, CampaignTotal, CampaignStatusTotal, PledgeBalance, Pledge,
+  PledgeAllocation, Transaction
 } = require('../models');
 const { countActiveHouseholds, todayInChurchTz } = require('./pledgeCampaignService');
 const { suppressSmall } = require('./pledgeDashboardPrivacy');
@@ -125,6 +126,55 @@ const buildAttention = async (campaignId, timeline, canSee) => {
   };
 };
 
+/**
+ * Money received per calendar month for one drive.
+ *
+ * Grouped in JavaScript rather than SQL on purpose: month extraction is
+ * `to_char` on Postgres and `strftime` on SQLite, and this file has to run on
+ * both. The row count is one per allocation for a single campaign — a few
+ * hundred at parish scale — so the cost is irrelevant.
+ *
+ * Pre-allocation drives return available:false rather than an empty chart:
+ * their fulfilment was a flag on the pledge with no payment date anywhere, so
+ * an empty series would read as "nothing was collected" when in fact tens of
+ * thousands were.
+ */
+const buildMonthlySeries = async (campaignId) => {
+  const pledges = await Pledge.findAll({
+    where: { campaign_id: campaignId },
+    attributes: ['id', 'is_historical']
+  });
+
+  if (pledges.length && pledges.every((p) => p.is_historical)) {
+    return { available: false, reason: 'historical_campaign', months: [] };
+  }
+
+  const allocations = await PledgeAllocation.findAll({
+    where: { pledge_id: pledges.map((p) => p.id) },
+    include: [{
+      model: Transaction, as: 'transaction',
+      attributes: ['payment_date', 'status'], required: true
+    }]
+  });
+
+  const byMonth = new Map();
+  allocations.forEach((a) => {
+    if (a.transaction.status !== 'succeeded') return;
+    const month = String(a.transaction.payment_date).slice(0, 7); // YYYY-MM
+    byMonth.set(month, (byMonth.get(month) || 0) + num(a.amount));
+  });
+
+  let running = 0;
+  const months = [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, collected]) => {
+      running = round2(running + collected);
+      return { month, collected: round2(collected), cumulative: running };
+    });
+
+  return { available: true, reason: null, months };
+};
+
 /** Returns null when the campaign does not exist, so the controller can 404. */
 const buildSnapshot = async (campaignId, { canSee }) => {
   const campaign = await PledgeCampaign.findByPk(campaignId);
@@ -157,4 +207,7 @@ const buildSnapshot = async (campaignId, { canSee }) => {
   };
 };
 
-module.exports = { buildSnapshot, buildTimeline, buildAttention, num, round2, dayCount };
+module.exports = {
+  buildSnapshot, buildTimeline, buildAttention, buildMonthlySeries,
+  num, round2, dayCount
+};

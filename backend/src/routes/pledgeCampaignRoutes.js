@@ -22,6 +22,7 @@ router.get('/:id/totals', roleMiddleware(viewRoles), c.getTotals);
 // Aggregates only — donor names never appear in this payload. Tier 2 callers
 // additionally get small buckets blanked; see pledgeDashboardPrivacy.
 router.get('/:id/dashboard', roleMiddleware(viewRoles), dashboard.getDashboard);
+router.get('/:id/monthly', roleMiddleware(viewRoles), dashboard.getMonthly);
 router.post('/', roleMiddleware(adminRoles), c.create);
 router.patch('/:id', roleMiddleware(adminRoles), c.update);
 
