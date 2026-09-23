@@ -5,7 +5,7 @@ const {
 
 jest.mock('../../src/middleware/auth', () => ({
   firebaseAuthMiddleware: (req, res, next) => {
-    req.user = { role: 'treasurer', roles: ['treasurer'] };
+    req.user = global.__TEST_USER__ || { role: 'treasurer', roles: ['treasurer'] };
     next();
   },
   authMiddleware: (req, res, next) => next()
@@ -22,6 +22,7 @@ describe('GET /api/pledge-campaigns/:id/monthly', () => {
   });
 
   beforeEach(async () => {
+    global.__TEST_USER__ = { role: 'treasurer', roles: ['treasurer'] };
     await PledgeAllocation.destroy({ where: {} });
     await Transaction.destroy({ where: {} });
     await Pledge.destroy({ where: {} });
@@ -136,5 +137,19 @@ describe('GET /api/pledge-campaigns/:id/monthly', () => {
   it('404s for a campaign that does not exist', async () => {
     const res = await request(app).get('/api/pledge-campaigns/999999/monthly');
     expect(res.status).toBe(404);
+  });
+
+  // The series carries a running cumulative, so suppressing an individual
+  // point would not protect it — the value is recoverable from its
+  // neighbours' deltas. Restricted to tier 3 until a coarsening design
+  // exists (see docs/PLEDGE_DASHBOARD_SPEC.md §8).
+  it('403s a tier-2 role and 200s a tier-3 role', async () => {
+    global.__TEST_USER__ = { role: 'ap_team', roles: ['ap_team'] };
+    const denied = await request(app).get(`/api/pledge-campaigns/${campaign.id}/monthly`);
+    expect(denied.status).toBe(403);
+
+    global.__TEST_USER__ = { role: 'treasurer', roles: ['treasurer'] };
+    const allowed = await request(app).get(`/api/pledge-campaigns/${campaign.id}/monthly`);
+    expect(allowed.status).toBe(200);
   });
 });

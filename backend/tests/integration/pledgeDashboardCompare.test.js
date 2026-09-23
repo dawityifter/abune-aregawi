@@ -5,7 +5,7 @@ const {
 
 jest.mock('../../src/middleware/auth', () => ({
   firebaseAuthMiddleware: (req, res, next) => {
-    req.user = { role: 'treasurer', roles: ['treasurer'] };
+    req.user = global.__TEST_USER__ || { role: 'treasurer', roles: ['treasurer'] };
     next();
   },
   authMiddleware: (req, res, next) => next()
@@ -22,6 +22,7 @@ describe('GET /api/pledge-campaigns/:id/compare', () => {
   });
 
   beforeEach(async () => {
+    global.__TEST_USER__ = { role: 'treasurer', roles: ['treasurer'] };
     await PledgeAllocation.destroy({ where: {} });
     await Transaction.destroy({ where: {} });
     await Pledge.destroy({ where: {} });
@@ -86,6 +87,19 @@ describe('GET /api/pledge-campaigns/:id/compare', () => {
     expect(c.figures.total_collected.current).toBe(0);
     expect(c.figures.pledge_count.prior).toBe(1);
     expect(c.figures.pledge_count.current).toBe(2);
+    // prior: 1 historical pledge, fully paid -> nothing owed, 100% fulfilled.
+    expect(c.figures.outstanding_owed.prior).toBe(0);
+    expect(c.figures.fulfillment_rate.prior).toBe(100);
+    expect(c.figures.fully_paid.prior).toBe(1);
+    expect(c.figures.never_paid.prior).toBe(0);
+    // current: 2 pledges, same member, neither paid -> full amount owed, 0%.
+    expect(c.figures.outstanding_owed.current).toBe(4000);
+    expect(c.figures.fulfillment_rate.current).toBe(0);
+    expect(c.figures.fully_paid.current).toBe(0);
+    expect(c.figures.never_paid.current).toBe(2);
+    // one household ("Ann Giver") holds every pledge in both campaigns.
+    expect(c.figures.household_count.prior).toBe(1);
+    expect(c.figures.household_count.current).toBe(1);
   });
 
   it('builds a cumulative pledged curve keyed on day of campaign', async () => {
@@ -129,5 +143,21 @@ describe('GET /api/pledge-campaigns/:id/compare', () => {
     const res = await request(app)
       .get(`/api/pledge-campaigns/${current.id}/compare?to=999999`);
     expect(res.status).toBe(404);
+  });
+
+  // The pledging curve carries a running cumulative, so suppressing an
+  // individual day would not protect it — the value is recoverable from its
+  // neighbours' deltas. Restricted to tier 3 until a coarsening design
+  // exists (see docs/PLEDGE_DASHBOARD_SPEC.md §8).
+  it('403s a tier-2 role and 200s a tier-3 role', async () => {
+    global.__TEST_USER__ = { role: 'ap_team', roles: ['ap_team'] };
+    const denied = await request(app)
+      .get(`/api/pledge-campaigns/${current.id}/compare?to=${prior.id}`);
+    expect(denied.status).toBe(403);
+
+    global.__TEST_USER__ = { role: 'treasurer', roles: ['treasurer'] };
+    const allowed = await request(app)
+      .get(`/api/pledge-campaigns/${current.id}/compare?to=${prior.id}`);
+    expect(allowed.status).toBe(200);
   });
 });

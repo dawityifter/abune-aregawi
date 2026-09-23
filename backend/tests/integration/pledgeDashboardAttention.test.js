@@ -96,10 +96,29 @@ describe('dashboard attention counts', () => {
   });
 
   it('excludes cancelled pledges from every attention count', async () => {
-    const doomed = await pledgeFor(800);
-    await doomed.update({ lifecycle: 'cancelled' });
+    const neverStartedDoomed = await pledgeFor(800);
+    await neverStartedDoomed.update({ lifecycle: 'cancelled' });
+
+    const stalledDoomed = await pledgeFor(5000);
+    await pay(stalledDoomed, 1000, '2026-01-05'); // would be stalled
+    await stalledDoomed.update({ lifecycle: 'cancelled' });
+
+    const overpaidDoomed = await pledgeFor(1000);
+    await pay(overpaidDoomed, 1200, todayISO()); // would be overpaid
+    await overpaidDoomed.update({ lifecycle: 'cancelled' });
+
+    await Pledge.create({
+      amount: 400, first_name: 'Anonymous', last_name: 'Giver',
+      pledge_type: 'fundraising', campaign_id: campaign.id, member_id: null,
+      is_anonymous: true, fulfillment_intent: 'immediate', baptism_name: 'Gebre Mesqel',
+      lifecycle: 'cancelled' // would be unlinked
+    });
+
     const a = await attention();
     expect(a.never_started).toBe(0);
+    expect(a.stalled).toBe(0);
+    expect(a.overpaid).toBe(0);
+    expect(a.unlinked).toBe(0);
   });
 
   it('flags a drive inside its final 30 days', async () => {
