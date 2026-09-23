@@ -69,6 +69,7 @@ describe('GET /api/pledge-campaigns/:id/monthly', () => {
 
     const s = await series();
     expect(s.available).toBe(true);
+    expect(s.partial_historical).toBe(false);
     expect(s.months).toEqual([
       { month: '2026-09', collected: 1500, cumulative: 1500 },
       { month: '2026-11', collected: 2000, cumulative: 3500 }
@@ -110,7 +111,19 @@ describe('GET /api/pledge-campaigns/:id/monthly', () => {
     const s = await series();
     expect(s.available).toBe(false);
     expect(s.reason).toBe('historical_campaign');
+    expect(s.partial_historical).toBe(false);
     expect(s.months).toEqual([]);
+  });
+
+  it('flags a partial series when only some of the drive\'s pledges are historical', async () => {
+    await pledgeFor(5000, { is_historical: true, legacy_status: 'fulfilled' });
+    const modern = await pledgeFor(10000);
+    await pay(modern, 1000, '2026-09-10');
+
+    const s = await series();
+    expect(s.available).toBe(true);
+    expect(s.partial_historical).toBe(true);
+    expect(s.months).toEqual([{ month: '2026-09', collected: 1000, cumulative: 1000 }]);
   });
 
   it('returns an empty but available series for a drive with no payments yet', async () => {

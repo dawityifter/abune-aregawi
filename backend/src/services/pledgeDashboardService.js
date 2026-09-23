@@ -138,6 +138,14 @@ const buildAttention = async (campaignId, timeline, canSee) => {
  * their fulfilment was a flag on the pledge with no payment date anywhere, so
  * an empty series would read as "nothing was collected" when in fact tens of
  * thousands were.
+ *
+ * A campaign can also mix historical and modern pledges (e.g. a handful of
+ * legacy pledges carried into an otherwise-current drive). Those historical
+ * pledges have no allocations, so the months below are real but do not add up
+ * to the campaign's full collections — flipping `available` to false would
+ * hide an otherwise useful chart over a minority of pledges, so instead we
+ * surface `partial_historical: true` and let the consumer caption the chart
+ * rather than presenting its total as complete.
  */
 const buildMonthlySeries = async (campaignId) => {
   const pledges = await Pledge.findAll({
@@ -146,8 +154,13 @@ const buildMonthlySeries = async (campaignId) => {
   });
 
   if (pledges.length && pledges.every((p) => p.is_historical)) {
-    return { available: false, reason: 'historical_campaign', months: [] };
+    return {
+      available: false, reason: 'historical_campaign', partial_historical: false, months: []
+    };
   }
+  // Reaching here already means not every pledge is historical (the all-historical
+  // case returned above), so the only thing left to check is whether any are.
+  const partialHistorical = pledges.some((p) => p.is_historical);
 
   const allocations = await PledgeAllocation.findAll({
     where: { pledge_id: pledges.map((p) => p.id) },
@@ -172,7 +185,7 @@ const buildMonthlySeries = async (campaignId) => {
       return { month, collected: round2(collected), cumulative: running };
     });
 
-  return { available: true, reason: null, months };
+  return { available: true, reason: null, partial_historical: partialHistorical, months };
 };
 
 /** Returns null when the campaign does not exist, so the controller can 404. */
