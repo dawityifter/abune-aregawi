@@ -3,6 +3,7 @@ const router = express.Router();
 const { firebaseAuthMiddleware } = require('../middleware/auth');
 const roleMiddleware = require('../middleware/role');
 const c = require('../controllers/pledgeCampaignController');
+const dashboard = require('../controllers/pledgeDashboardController');
 
 // Same vocabulary as pledgeRoutes.js / transactionRoutes.js — do not invent new role names.
 const viewRoles = ['admin', 'treasurer', 'church_leadership', 'secretary',
@@ -18,6 +19,9 @@ router.get('/active', c.listActive);
 router.use(firebaseAuthMiddleware);
 router.get('/', roleMiddleware(viewRoles), c.listAll);
 router.get('/:id/totals', roleMiddleware(viewRoles), c.getTotals);
+// Aggregates only — donor names never appear in this payload. Tier 2 callers
+// additionally get small buckets blanked; see pledgeDashboardPrivacy.
+router.get('/:id/dashboard', roleMiddleware(viewRoles), dashboard.getDashboard);
 router.post('/', roleMiddleware(adminRoles), c.create);
 router.patch('/:id', roleMiddleware(adminRoles), c.update);
 
