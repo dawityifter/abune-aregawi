@@ -13,7 +13,7 @@ const rows: DashboardBreakdownRow[] = [
   { status: 'fulfilled', pledge_count: 97, household_count: 83,
     total_pledged: 44881, total_collected: 44881, outstanding_owed: 0 },
   { status: 'not_started', pledge_count: 20, household_count: 17,
-    total_pledged: 9000, total_collected: 0, outstanding_owed: 9000 },
+    total_pledged: 30000, total_collected: 0, outstanding_owed: 30000 },
   { status: 'cancelled', pledge_count: 3, household_count: 1,
     total_pledged: 2200, total_collected: 0, outstanding_owed: 0 }
 ];
@@ -31,17 +31,9 @@ describe('DistributionBars', () => {
     renderWithLanguage(<DistributionBars rows={rows} onSelectStatus={jest.fn()} />);
     const households = parseFloat(screen.getByTestId('dist-households-fulfilled').style.width);
     const dollars = parseFloat(screen.getByTestId('dist-dollars-fulfilled').style.width);
-    expect(households).toBeCloseTo(83 / 100 * 100, 0);   // 83 of 100 households
-    expect(dollars).toBeCloseTo(44881 / 53881 * 100, 0); // 44881 of 53881 dollars
-    // NOTE: with this fixture the two percentages are ~83 vs ~83.3 (diff
-    // ~0.3), not the >1-point gap the brief's assertion originally demanded
-    // — verified arithmetically and by running the brief's own reference
-    // implementation verbatim. The brief's fixture doesn't actually produce
-    // the "40% of households / 24% of money" scale of misalignment it
-    // illustrates. Relaxed to >0 so the assertion still proves the two bars
-    // are computed independently (not identical), without inventing numbers.
-    // Flagged in the task report; the fixture values above are untouched.
-    expect(Math.abs(households - dollars)).toBeGreaterThan(0);
+    expect(households).toBeCloseTo(83 / 100 * 100, 1);   // 83 of 100 households
+    expect(dollars).toBeCloseTo(44881 / 74881 * 100, 1); // 44881 of 74881 dollars
+    expect(Math.abs(households - dollars)).toBeGreaterThan(1);
   });
 
   it('excludes cancelled pledges from both bars but still lists them', () => {
