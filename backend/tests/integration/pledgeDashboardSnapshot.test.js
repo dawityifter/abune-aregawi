@@ -167,4 +167,30 @@ describe('GET /api/pledge-campaigns/:id/dashboard', () => {
     const res = await get();
     expect(Date.parse(res.body.dashboard.as_of)).not.toBeNaN();
   });
+
+  it('handles a campaign with no end_date without dividing by anything', async () => {
+    const openEnded = await PledgeCampaign.create({
+      slug: '2026-open-ended', name: 'Open Ended Drive',
+      start_date: '2026-09-01', end_date: null,
+      goal_amount: 50000, status: 'active'
+    });
+
+    const res = await request(app).get(`/api/pledge-campaigns/${openEnded.id}/dashboard`);
+    expect(res.status).toBe(200);
+    const { timeline, money } = res.body.dashboard;
+
+    // Strict null, not a loose falsy check — NaN is falsy too and would slip
+    // through `.toBeFalsy()`.
+    expect(timeline.total_days).toBeNull();
+    expect(timeline.days_remaining).toBeNull();
+    expect(timeline.elapsed_fraction).toBeNull();
+    // `day` is a real count, not a stand-in for "unknown" — it must be a
+    // positive, finite number, never NaN or Infinity.
+    expect(typeof timeline.day).toBe('number');
+    expect(Number.isFinite(timeline.day)).toBe(true);
+    expect(timeline.day).toBeGreaterThan(0);
+
+    expect(money.linear_pace_target).toBeNull();
+    expect(money.required_run_rate).toBeNull();
+  });
 });
