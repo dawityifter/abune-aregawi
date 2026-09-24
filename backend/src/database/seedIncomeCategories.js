@@ -90,6 +90,14 @@ const INCOME_CATEGORIES = [
     display_order: 11
   },
   {
+    gl_code: 'INC012',
+    name: 'Event Merchandise Sales',
+    description: 'Sales of merchandise at church events (e.g. fundraiser t-shirts). Not a charitable donation.',
+    payment_type_mapping: 'event_merchandise',
+    is_active: true,
+    display_order: 12
+  },
+  {
     gl_code: 'INC999',
     name: 'Other Income',
     description: 'Miscellaneous income not covered by other categories',

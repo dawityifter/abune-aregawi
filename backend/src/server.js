@@ -63,6 +63,7 @@ const settingRoutes = require('./routes/settingRoutes');
 const statementRoutes = require('./routes/statementRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const surveyRoutes = require('./routes/surveyRoutes');
+const merchRoutes = require('./routes/merchRoutes');
 const { assertDemoModeNotEnabledInProduction } = require('./config/demoMode');
 const { reportError } = require('./utils/telemetry');
 const { startLedgerSheetsScheduler } = require('./jobs/ledgerSheets/scheduler');
@@ -154,6 +155,10 @@ app.post('/api/donations/webhook', express.raw({ type: 'application/json' }), do
 
 // Mount Square webhook BEFORE body parsers to preserve raw body for signature verification
 app.post('/api/square/webhook', express.raw({ type: 'application/json' }), require('./controllers/squareController').handleWebhook);
+
+// Mount merchandise Checkout webhook BEFORE body parsers, same reason. Its own
+// endpoint and its own signing secret, so donation webhook behaviour is untouched.
+app.post('/api/merch/webhook', express.raw({ type: 'application/json' }), require('./controllers/merchController').handleWebhook);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -290,6 +295,7 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/loans', loanRoutes);
 app.use('/api/survey', surveyRoutes);
+app.use('/api/merch', merchRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

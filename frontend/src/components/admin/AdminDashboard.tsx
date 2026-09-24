@@ -12,11 +12,12 @@ import VoicemailInbox from './VoicemailInbox';
 import MemberReports from './MemberReports';
 import SurveyReportPage from './SurveyReportPage';
 import FundraisingCampaigns from './FundraisingCampaigns';
+import MerchOrders from './MerchOrders';
 
 const AdminDashboard: React.FC = () => {
   const { currentUser, getUserProfile } = useAuth();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'departments' | 'activity-logs' | 'voicemails' | 'reports' | 'survey-report' | 'fundraising'>('members');
+  const [activeTab, setActiveTab] = useState<'members' | 'roles' | 'departments' | 'activity-logs' | 'voicemails' | 'reports' | 'survey-report' | 'fundraising' | 'merch'>('members');
   const [canAccess, setCanAccess] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
@@ -60,6 +61,13 @@ const AdminDashboard: React.FC = () => {
   const canViewFundraising = userRoles.some((r) => [
     'admin', 'treasurer', 'church_leadership', 'secretary', 'bookkeeper',
     'auditor', 'budget_committee', 'ar_team', 'ap_team'
+  ].includes(r));
+
+  // Mirrors merchAdminRoles in backend/src/routes/merchRoutes.js. Narrower than
+  // the fundraising list: this is a fulfillment worklist carrying purchaser
+  // contact details, not a financial report.
+  const canViewMerch = userRoles.some((r) => [
+    'admin', 'treasurer', 'church_leadership', 'secretary', 'bookkeeper'
   ].includes(r));
 
   useEffect(() => {
@@ -145,6 +153,10 @@ const AdminDashboard: React.FC = () => {
         return canViewFundraising
           ? <FundraisingCampaigns canManage={isAdmin} />
           : <div className="p-4 text-center text-gray-500">Access Denied</div>;
+      case 'merch':
+        return canViewMerch
+          ? <MerchOrders />
+          : <div className="p-4 text-center text-gray-500">Access Denied</div>;
       default: // 'members' is the default tab
         return (
           <MemberList
@@ -207,6 +219,19 @@ const AdminDashboard: React.FC = () => {
               >
                 <i className="fas fa-hand-holding-heart mr-2"></i>
                 {t('fundraising.tab')}
+              </button>
+            )}
+
+            {canViewMerch && (
+              <button
+                onClick={() => setActiveTab('merch')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'merch'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                <i className="fas fa-tshirt mr-2"></i>
+                Merchandise
               </button>
             )}
 

@@ -158,6 +158,28 @@ export interface Dictionaries {
       blessing: string;
     };
   };
+  // Event merchandise (t-shirt) sales. A purchase, not a gift — the wording
+  // here deliberately avoids the language of giving used under `pledge`.
+  merch?: {
+    hero: { title: string; subtitle: string; tagline: string };
+    product: { sizeLabel: string; quantityLabel: string; soldOutNote: string; imageAlt: string; imageCaption: string };
+    pickup: { title: string; body: string };
+    tax: { note: string };
+    form: {
+      nameLabel: string;
+      emailLabel: string;
+      phoneLabel: string;
+      emailOptional: string;
+      submit: string;
+      submitting: string;
+      summaryTitle: string;
+      subtotal: string;
+      taxAtCheckout: string;
+      empty: string;
+    };
+    errors: { network: string; noItems: string; generic: string; contactRequired: string };
+    thankYou: { title: string; body: string; pickupReminder: string; home: string };
+  };
   pledge: {
     homeCard: {
       title: string;
@@ -990,6 +1012,51 @@ export interface Dictionaries {
 }
 
 export const en: Dictionaries = {
+  merch: {
+    hero: {
+      title: "5K Fundraiser T-Shirts",
+      subtitle: "Wear it on race day and support the parish.",
+      tagline: "October 5K Fundraiser"
+    },
+    product: {
+      sizeLabel: "Size",
+      quantityLabel: "Quantity",
+      soldOutNote: "Sizes are limited — order early.",
+      imageAlt: "Navy 5K t-shirt, front and back. Front: 1st Annual 5K Run/Walk, D.T. Abune Aregawi O.T.C. — Faith, Unity, Community, Health. Back: a gold cross above the words \u201CLet us run with perseverance the race marked out for us\u201D, Hebrews 12:1.",
+      imageCaption: "Front and back of the 1st Annual 5K Run/Walk shirt."
+    },
+    pickup: {
+      title: "Pickup only",
+      body: "Shirts are collected at the church or at the event. We do not ship."
+    },
+    tax: {
+      note: "Sales tax is calculated at checkout."
+    },
+    form: {
+      nameLabel: "Full name",
+      emailLabel: "Email",
+      phoneLabel: "Phone",
+      emailOptional: "optional",
+      submit: "Continue to payment",
+      submitting: "Starting checkout…",
+      summaryTitle: "Your order",
+      subtotal: "Subtotal",
+      taxAtCheckout: "Tax calculated at checkout",
+      empty: "Choose a size to get started."
+    },
+    errors: {
+      network: "Network error. Please try again.",
+      noItems: "Please choose at least one size.",
+      generic: "We could not start checkout. Please try again.",
+      contactRequired: "Please enter your name and phone number."
+    },
+    thankYou: {
+      title: "Thank you for your order!",
+      body: "A receipt is on its way to your email.",
+      pickupReminder: "We will let you know when your shirts are ready to collect at the church.",
+      home: "Back to home"
+    }
+  },
   common: {
     nav: {
       worship: "Worship",
@@ -3468,6 +3535,51 @@ export const en: Dictionaries = {
 };
 
 export const ti: Dictionaries = {
+  merch: {
+    hero: {
+      title: "ናይ 5ኪ.ሜ ምውጻእ ገንዘብ ማልያታት",
+      subtitle: "በዕለተ ውድድር ተኸዲንኩም ንቤተ ክርስቲያን ደግፉ።",
+      tagline: "ናይ ጥቅምቲ 5ኪ.ሜ ምውጻእ ገንዘብ"
+    },
+    product: {
+      sizeLabel: "መጠን",
+      quantityLabel: "ብዝሒ",
+      soldOutNote: "መጠናት ውሱናት እዮም — ኣቐዲምኩም ኣዙዙ።",
+      imageAlt: "ሰማያዊ ማልያ 5ኪ.ሜ፡ ቅድሚትን ድሕሪትን። ቅድሚት፡ 1ይ ዓመታዊ 5ኪ.ሜ ጉያ/ምጓዓዝ፡ ዲ.ት. ኣቡነ ኣረጋዊ — እምነት፡ ሓድነት፡ ማሕበረሰብ፡ ጥዕና። ድሕሪት፡ ወርቃዊ መስቀል ምስ \u201Cነቲ ኣብ ቅድሜና ተቐሚጡ ዘሎ ጉያ ብትዕግስቲ ንጉየ\u201D፡ ዕብራውያን 12፡1።",
+      imageCaption: "ቅድሚትን ድሕሪትን ናይ 1ይ ዓመታዊ 5ኪ.ሜ ጉያ/ምጓዓዝ ማልያ።"
+    },
+    pickup: {
+      title: "ኣብ ቤተ ክርስቲያን ጥራይ ይውሰድ",
+      body: "ማልያታት ኣብ ቤተ ክርስቲያን ወይ ኣብ በዓል ይውሰዱ። ኣይንልእኽን ኢና።"
+    },
+    tax: {
+      note: "ግብሪ ሽያጥ ኣብ ክፍሊት ይሕሰብ።"
+    },
+    form: {
+      nameLabel: "ምሉእ ስም",
+      emailLabel: "ኢመይል",
+      phoneLabel: "ስልኪ",
+      emailOptional: "ብዘይ ግድን",
+      submit: "ናብ ክፍሊት ቀጽል",
+      submitting: "ክፍሊት ይጅምር ኣሎ…",
+      summaryTitle: "ትእዛዝኩም",
+      subtotal: "ድምር",
+      taxAtCheckout: "ግብሪ ኣብ ክፍሊት ይሕሰብ",
+      empty: "ንምጅማር መጠን ምረጹ።"
+    },
+    errors: {
+      network: "ጸገም ኔትዎርክ። በጃኹም እንደገና ፈትኑ።",
+      noItems: "በጃኹም እንተ ወሓደ ሓደ መጠን ምረጹ።",
+      generic: "ክፍሊት ክንጅምር ኣይከኣልናን። በጃኹም እንደገና ፈትኑ።",
+      contactRequired: "በጃኹም ስምኩምን ቁጽሪ ስልክኹምን ኣእትዉ።"
+    },
+    thankYou: {
+      title: "ስለ ትእዛዝኩም የቐንየልና!",
+      body: "ደረሰኝ ናብ ኢመይልኩም ይመጽእ ኣሎ።",
+      pickupReminder: "ማልያታትኩም ኣብ ቤተ ክርስቲያን ንምውሳድ ድሉዋት ምስ ኮኑ ክንሕብረኩም ኢና።",
+      home: "ናብ መበገሲ ተመለስ"
+    }
+  },
   common: {
     nav: {
       worship: "ስግደ",

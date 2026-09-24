@@ -81,9 +81,9 @@ module.exports = (sequelize) => {
       comment: 'Payment amount in dollars and cents (minimum $1.00)'
     },
     payment_type: {
-      type: DataTypes.ENUM('membership_due', 'tithe', 'offering', 'donation', 'vow', 'building_fund', 'event', 'religious_item_sales', 'tigray_hunger_fundraiser', 'other', 'loan_received', 'loan_repayment', 'pledge_drive'),
+      type: DataTypes.ENUM('membership_due', 'tithe', 'offering', 'donation', 'vow', 'building_fund', 'event', 'religious_item_sales', 'event_merchandise', 'tigray_hunger_fundraiser', 'other', 'loan_received', 'loan_repayment', 'pledge_drive'),
       allowNull: false,
-      comment: 'Type of payment (membership dues, tithes, offerings, donations, vows, building fund, events, religious item sales, fundraiser, etc.)'
+      comment: 'Type of payment (membership dues, tithes, offerings, donations, vows, building fund, events, religious item sales, event merchandise, fundraiser, etc.)'
     },
     payment_method: {
       type: DataTypes.ENUM('cash', 'check', 'zelle', 'credit_card', 'debit_card', 'ach', 'other'),
