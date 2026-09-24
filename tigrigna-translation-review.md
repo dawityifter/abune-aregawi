@@ -838,3 +838,55 @@ there is none.
 | smsBroadcast.targetingDrive | Targeting {campaign} | ዕላማ፦ {campaign} | ⚠️ confirm `ዕላማ` reads as "this is who/what it is aimed at" and not "purpose" |
 | smsBroadcast.owesOfPledged | ${remaining} still owed of ${pledged} pledged | ካብ ${pledged} መብጽዓ ${remaining} ተሪፉ | ⚠️ the two amounts are swapped relative to English so the sentence reads naturally — confirm the order is not confusing |
 | smsBroadcast.paidInFull | ${pledged} pledged, paid in full | ${pledged} መብጽዓ፡ ምሉእ ብምሉእ ተኸፊሉ | |
+
+## Merch t-shirt page and admin Merchandise tab (Sep 2026)
+
+The public `/merch` order page and the admin **Merchandise** tab (orders list and
+inventory panel). Drafts by a non-native speaker, reusing established terms:
+`ተኸፊሉ` (paid), `ተሰሪዙ` (canceled), `ይጽበ ኣሎ` (pending), `ጠቕላላ` (total),
+`ኣቐምጥ` (save), `ጥረ ገንዘብ` (cash), `ማልያ` (t-shirt, from the existing merch
+strings). The public-page strings are seen by every visitor, so review those first.
+
+**Public order page** (`merch.*`)
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| catalog `product_name_ti` (youth) | Youth Heavy Cotton™ T-Shirt | ናይ ቆልዑ ማልያ (Heavy Cotton™) | ⚠️ lives in `backend/src/config/merchCatalog.js`, not the dictionary. "Youth" rendered as children's (`ቆልዑ`); confirm, and whether the brand in brackets should stay |
+| catalog `product_name_ti` (adult) | Heavy Cotton™ T-Shirt | ናይ ዓበይቲ ማልያ (Heavy Cotton™) | ⚠️ same file; confirm `ዓበይቲ` for "adult" |
+| merch.product.sizeNames.S / M / L | Small / Medium / Large | ንኡስ / ማእከላይ / ዓቢ | ⚠️ confirm these are the words used for clothing sizes |
+| merch.product.soldOut | Sold out | ተወዲኡ | ⚠️ "it is finished"; confirm it reads as sold out for a size |
+| merch.product.onlyLeft | Only {count} left | {count} ጥራይ ተሪፉ | |
+| merch.product.addOne / removeOne | Add one / Remove one | ሓደ ወስኽ / ሓደ ኣጉድል | screen-reader labels on the + / − buttons |
+| merch.product.maxReached | That is the most you can order in this size. | ካብዚ መጠን ክትእዝዙ እትኽእሉ እዚ እዩ ዝለዓለ። | ⚠️ confirm word order reads naturally |
+| merch.product.quantityFor | Quantity for {product} size {size} | ብዝሒ ናይ {product} መጠን {size} | screen-reader label on the number box |
+| merch.errors.phoneInvalid | Please enter a 10-digit phone number. | በጃኹም 10 ኣሃዝ ዘለዎ ቁጽሪ ስልኪ ኣእትዉ። | |
+| merch.errors.outOfStock | Only {count} left of {product} size {size}. Please lower the quantity. | ካብ {product} መጠን {size} {count} ጥራይ ተሪፉ። በጃኹም ብዝሒ ኣጉድሉ። | |
+| merch.errors.soldOutSize | {product} size {size} just sold out. Please choose another size. | {product} መጠን {size} ሕጂ ተወዲኡ። በጃኹም ካልእ መጠን ምረጹ። | |
+| merch.errors.rateLimited | Too many attempts from this network. Please wait a few minutes and try again. | ካብዚ ኔትዎርክ ብዙሕ ፈተነታት ተገይሩ። በጃኹም ቁሩብ ደቓይቕ ተጸቢኹም እንደገና ፈትኑ። | |
+| merch.errors.unavailable | Online ordering is unavailable right now. Please try again later. | ሕጂ ብኦንላይን ምእዛዝ ኣይከኣልን እዩ። በጃኹም ጸኒሕኩም ፈትኑ። | |
+| merch.errors.checkDetails | Please check your details and try again. | በጃኹም ዝርዝራትኩም ተቐጺጽኩም እንደገና ፈትኑ። | shown instead of the server's English validation message |
+
+**Admin Merchandise tab** (`merchAdmin.*`) — staff only.
+
+| Key | English | Tigrigna (draft) | Flag |
+|-----|---------|------------------|------|
+| merchAdmin.tab | Merchandise | ሸቐጥ | ⚠️ `ሸቐጥ` (goods for sale) chosen over `ንብረት` (property); confirm |
+| merchAdmin.title | Merchandise Orders | ትእዛዛት ሸቐጥ | |
+| merchAdmin.intro | Event merchandise sales. These are purchases, not donations… | ሽያጥ ሸቐጥ በዓል። እዚኣቶም ዕድጊ እዮም እምበር ወፈያ ኣይኮኑን… | ⚠️ "event" as `በዓል` (feast/celebration); confirm it fits a 5K run |
+| merchAdmin.soldOnline | Shirts sold online via Stripe | ብኦንላይን (Stripe) ዝተሸጡ ማልያታት | |
+| merchAdmin.status.expired | Expired | ግዜኡ ሓሊፉ | ⚠️ the existing `statusExpired` is `ገደፍ` (abandoned); deliberately not reused — confirm |
+| merchAdmin.unfulfilled / fulfilled | Unfulfilled / Fulfilled | ዘይተረከበ / ተረኪቡ | ⚠️ "fulfilled" here means the buyer collected the shirts; rendered as received/collected |
+| merchAdmin.markFulfilled | Mark fulfilled | ከም ዝተረከበ ምልክት ግበር | ⚠️ long for a button; a shorter form welcome |
+| merchAdmin.col.* | Ordered / Purchaser / Sizes / Total / Payment / Fulfillment | ዝተኣዘዘሉ ዕለት / ዓዳጊ / መጠናት / ጠቕላላ / ክፍሊት / ምርካብ | |
+| merchAdmin.inclTax | incl. {amount} tax | {amount} ግብሪ ሓዊሱ | |
+| merchAdmin.inv.title | Inventory | ዕቑር ማልያ | ⚠️ `ዕቑር` (stored/kept) for stock on hand; confirm, or suggest the usual shop word |
+| merchAdmin.inv.awaiting | Awaiting payment | ክፍሊት ይጽበ | |
+| merchAdmin.inv.awaitingHelp | shirts someone is paying for on Stripe right now… | ሕጂ ሓደ ሰብ ብStripe ዝኸፍለሎም ዘሎ ማልያታት… | ⚠️ longest admin string; confirm it explains that the shirts return after 30 minutes |
+| merchAdmin.inv.col.left / cash / setCount | Left to sell / Sold for cash / Set count | ንሽያጥ ዝተረፈ / ብጥረ ገንዘብ ዝተሸጠ / ቍጽሪ ኣቐምጥ | |
+| merchAdmin.inv.subtract | Subtract | ኣጉድል | button |
+| merchAdmin.inv.soldOut | Sold out — off sale | ተወዲኡ — ካብ ሽያጥ ወጺኡ | |
+| merchAdmin.inv.conflict | The count changed to {count} while you were editing… | ኣብ እተመዓራርዩሉ ዝነበርኩም እዋን ቍጽሪ ናብ {count} ተቐይሩ… | ⚠️ confirm `እተመዓራርዩሉ` (while editing) |
+| merchAdmin.inv.tooMany / enterCash / enterCount / recorded / setTo | (validation and confirmation messages) | see `dictionaries.ts` | `መደርደሪ` used for "shelf" |
+
+Order lines, receipts, Stripe and the ledger keep the English product names; the
+Tigrigna names are display-only.

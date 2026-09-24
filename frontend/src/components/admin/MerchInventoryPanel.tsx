@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface InventoryItem {
   product_key: string;
@@ -39,6 +40,7 @@ function groupByProduct(rows: InventoryItem[]): [string, InventoryItem[]][] {
  */
 const MerchInventoryPanel: React.FC = () => {
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [cashSold, setCashSold] = useState<Record<string, string>>({});
   const [setTo, setSetTo] = useState<Record<string, string>>({});
@@ -54,15 +56,17 @@ const MerchInventoryPanel: React.FC = () => {
       const res = await fetch(`${process.env.REACT_APP_API_URL}/api/merch/inventory`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error('Failed to load inventory');
+      if (!res.ok) throw new Error(t('merchAdmin.inv.loadFailed'));
       const data = await res.json();
       setItems(data.items || []);
     } catch (err) {
       console.error('Failed to load merchandise inventory:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load inventory');
+      setError(err instanceof Error ? err.message : t('merchAdmin.inv.loadFailed'));
     } finally {
       setLoading(false);
     }
+    // t is unstable; adding it would refetch on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firebaseUser]);
 
   useEffect(() => { load(); }, [load]);
@@ -88,10 +92,10 @@ const MerchInventoryPanel: React.FC = () => {
         // Show the real number and leave the admin's input in place, so they
         // can check it against the new count and save again.
         setItems((prev) => prev.map((i) => (cellKey(i) === key ? { ...i, quantity: data.current } : i)));
-        setError(data.message);
+        setError(t('merchAdmin.inv.conflict', { count: data.current }));
         return;
       }
-      if (!res.ok) throw new Error(data.message || 'Failed to update inventory');
+      if (!res.ok) throw new Error(t('merchAdmin.inv.updateFailed'));
 
       setItems((prev) => prev.map((i) => (cellKey(i) === key ? { ...i, quantity: data.item.quantity } : i)));
       setCashSold((prev) => ({ ...prev, [key]: '' }));
@@ -99,7 +103,7 @@ const MerchInventoryPanel: React.FC = () => {
       setNotice(successMessage);
     } catch (err) {
       console.error('Failed to update merchandise inventory:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update inventory');
+      setError(err instanceof Error ? err.message : t('merchAdmin.inv.updateFailed'));
     } finally {
       setSaving(null);
     }
@@ -111,26 +115,29 @@ const MerchInventoryPanel: React.FC = () => {
     return Number.isInteger(n) && n >= 0 ? n : null;
   };
 
+  const labelOf = (item: InventoryItem) =>
+    t('merchAdmin.inv.label', { product: item.product_name, size: item.size });
+
   const recordCashSale = (item: InventoryItem) => {
     const sold = parseCount(cashSold[cellKey(item)]);
     if (sold === null || sold === 0) {
-      setError('Enter how many shirts were sold for cash.');
+      setError(t('merchAdmin.inv.enterCash'));
       return;
     }
     if (sold > item.quantity) {
-      setError(`Only ${item.quantity} ${item.product_name} ${item.size} are on the count. Use "Set count" if the shelf says otherwise.`);
+      setError(t('merchAdmin.inv.tooMany', { count: item.quantity, label: labelOf(item) }));
       return;
     }
-    save(item, item.quantity - sold, `Recorded ${sold} × ${item.product_name} ${item.size} sold for cash.`);
+    save(item, item.quantity - sold, t('merchAdmin.inv.recorded', { count: sold, label: labelOf(item) }));
   };
 
   const setCount = (item: InventoryItem) => {
     const next = parseCount(setTo[cellKey(item)]);
     if (next === null) {
-      setError('Enter the number of shirts on the shelf, 0 or more.');
+      setError(t('merchAdmin.inv.enterCount'));
       return;
     }
-    save(item, next, `${item.product_name} ${item.size} set to ${next}.`);
+    save(item, next, t('merchAdmin.inv.setTo', { label: labelOf(item), count: next }));
   };
 
   const inputClass = 'h-10 w-20 rounded-md border-gray-300 text-center text-sm focus:border-primary-500 focus:ring-primary-500';
@@ -138,15 +145,11 @@ const MerchInventoryPanel: React.FC = () => {
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="font-semibold text-gray-900">Inventory</h3>
+      <h3 className="font-semibold text-gray-900">{t('merchAdmin.inv.title')}</h3>
+      <p className="mt-1 text-sm text-gray-600">{t('merchAdmin.inv.intro')}</p>
       <p className="mt-1 text-sm text-gray-600">
-        Shirts left to sell. Online orders come off automatically; record cash sales here.
-        A size at 0 can no longer be ordered online.
-      </p>
-      <p className="mt-1 text-sm text-gray-600">
-        <span className="font-medium text-gray-700">Awaiting payment</span> is shirts someone is
-        paying for on Stripe right now. They are already off the count; if the purchaser does not
-        finish paying within 30 minutes, they go back on sale automatically.
+        <span className="font-medium text-gray-700">{t('merchAdmin.inv.awaiting')}</span>:{' '}
+        {t('merchAdmin.inv.awaitingHelp')}
       </p>
 
       {error && (
@@ -173,18 +176,18 @@ const MerchInventoryPanel: React.FC = () => {
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="text-left text-gray-500">
-                      <th className="py-2 pr-4 font-medium">Size</th>
-                      <th className="py-2 pr-4 font-medium">Left to sell</th>
-                      <th className="py-2 pr-4 font-medium">Awaiting payment</th>
-                      <th className="py-2 pr-4 font-medium">Sold for cash</th>
-                      <th className="py-2 font-medium">Set count</th>
+                      <th className="py-2 pr-4 font-medium">{t('merchAdmin.inv.col.size')}</th>
+                      <th className="py-2 pr-4 font-medium">{t('merchAdmin.inv.col.left')}</th>
+                      <th className="py-2 pr-4 font-medium">{t('merchAdmin.inv.awaiting')}</th>
+                      <th className="py-2 pr-4 font-medium">{t('merchAdmin.inv.col.cash')}</th>
+                      <th className="py-2 font-medium">{t('merchAdmin.inv.col.setCount')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {rows.map((item) => {
                       const key = cellKey(item);
                       const busy = saving === key;
-                      const label = `${item.product_name} size ${item.size}`;
+                      const label = labelOf(item);
                       return (
                         <tr key={key}>
                           <td className="py-3 pr-4 font-semibold text-gray-900">{item.size}</td>
@@ -200,7 +203,7 @@ const MerchInventoryPanel: React.FC = () => {
                             </span>
                             {item.quantity === 0 && (
                               <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
-                                Sold out — off sale
+                                {t('merchAdmin.inv.soldOut')}
                               </span>
                             )}
                           </td>
@@ -211,7 +214,7 @@ const MerchInventoryPanel: React.FC = () => {
                                 type="number"
                                 inputMode="numeric"
                                 min={1}
-                                aria-label={`Shirts sold for cash, ${label}`}
+                                aria-label={t('merchAdmin.inv.cashAria', { label })}
                                 value={cashSold[key] ?? ''}
                                 onChange={(e) => setCashSold((prev) => ({ ...prev, [key]: e.target.value }))}
                                 onWheel={(e) => (e.target as HTMLInputElement).blur()}
@@ -224,7 +227,7 @@ const MerchInventoryPanel: React.FC = () => {
                                 disabled={busy || !cashSold[key]}
                                 className={`${buttonClass} bg-primary-600 text-white hover:bg-primary-700`}
                               >
-                                Subtract
+                                {t('merchAdmin.inv.subtract')}
                               </button>
                             </div>
                           </td>
@@ -234,7 +237,7 @@ const MerchInventoryPanel: React.FC = () => {
                                 type="number"
                                 inputMode="numeric"
                                 min={0}
-                                aria-label={`New count, ${label}`}
+                                aria-label={t('merchAdmin.inv.countAria', { label })}
                                 value={setTo[key] ?? ''}
                                 placeholder={String(item.quantity)}
                                 onChange={(e) => setSetTo((prev) => ({ ...prev, [key]: e.target.value }))}
@@ -248,7 +251,7 @@ const MerchInventoryPanel: React.FC = () => {
                                 disabled={busy || setTo[key] === undefined || setTo[key] === ''}
                                 className={`${buttonClass} bg-gray-100 text-gray-800 hover:bg-gray-200`}
                               >
-                                Save
+                                {t('merchAdmin.inv.save')}
                               </button>
                             </div>
                           </td>

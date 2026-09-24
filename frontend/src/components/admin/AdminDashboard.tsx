@@ -231,7 +231,7 @@ const AdminDashboard: React.FC = () => {
                   }`}
               >
                 <i className="fas fa-tshirt mr-2"></i>
-                Merchandise
+                {t('merchAdmin.tab')}
               </button>
             )}
 

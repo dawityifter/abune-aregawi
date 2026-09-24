@@ -2,6 +2,16 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MerchInventoryPanel from '../MerchInventoryPanel';
+import { I18nProvider } from '../../../i18n/I18nProvider';
+import { LanguageProvider } from '../../../contexts/LanguageContext';
+
+const renderPanel = () => render(
+  <I18nProvider>
+    <LanguageProvider>
+      <MerchInventoryPanel />
+    </LanguageProvider>
+  </I18nProvider>
+);
 
 // Stable identity, or the load callback is re-created and re-fires every render.
 const FIREBASE_USER = { getIdToken: () => Promise.resolve('mock-token') };
@@ -23,6 +33,7 @@ type PutReply = { status: number; body: any };
 let putReply: PutReply;
 
 beforeEach(() => {
+  localStorage.setItem('app.lang', 'en');
   putReply = { status: 200, body: {} };
   global.fetch = jest.fn().mockImplementation((url: string, opts?: any) => {
     if (opts?.method === 'PUT') {
@@ -45,7 +56,7 @@ const stock = (key: string) => screen.getByTestId(`stock-${key}`);
 
 describe('MerchInventoryPanel', () => {
   it('shows what is left of every size, grouped by shirt', async () => {
-    render(<MerchInventoryPanel />);
+    renderPanel();
 
     await waitFor(() => expect(stock('youth_test|M')).toHaveTextContent('100'));
     expect(screen.getByText(YOUTH)).toBeInTheDocument();
@@ -54,14 +65,14 @@ describe('MerchInventoryPanel', () => {
   });
 
   it('flags a size at zero as off sale', async () => {
-    render(<MerchInventoryPanel />);
+    renderPanel();
 
-    await waitFor(() => expect(screen.getByText(/sold out — off sale/i)).toBeInTheDocument());
+    await screen.findByText(/sold out — off sale/i);
   });
 
   it('subtracts a cash sale from the count it was looking at', async () => {
     putReply = { status: 200, body: { success: true, item: { quantity: 94 } } };
-    render(<MerchInventoryPanel />);
+    renderPanel();
     await waitFor(() => expect(stock('youth_test|M')).toHaveTextContent('100'));
 
     fireEvent.change(screen.getByLabelText(`Shirts sold for cash, ${YOUTH} size M`), { target: { value: '6' } });
@@ -75,7 +86,7 @@ describe('MerchInventoryPanel', () => {
   });
 
   it('will not subtract more than the count holds', async () => {
-    render(<MerchInventoryPanel />);
+    renderPanel();
     await waitFor(() => expect(stock('adult_test|S')).toHaveTextContent('4'));
 
     fireEvent.change(screen.getByLabelText(`Shirts sold for cash, ${ADULT} size S`), { target: { value: '5' } });
@@ -87,7 +98,7 @@ describe('MerchInventoryPanel', () => {
 
   it('sets a count outright after a recount', async () => {
     putReply = { status: 200, body: { success: true, item: { quantity: 12 } } };
-    render(<MerchInventoryPanel />);
+    renderPanel();
     await waitFor(() => expect(stock('adult_test|L')).toHaveTextContent('0'));
 
     fireEvent.change(screen.getByLabelText(`New count, ${ADULT} size L`), { target: { value: '12' } });
@@ -104,7 +115,7 @@ describe('MerchInventoryPanel', () => {
       status: 409,
       body: { success: false, current: 98, message: 'The count changed to 98 while you were editing.' }
     };
-    render(<MerchInventoryPanel />);
+    renderPanel();
     await waitFor(() => expect(stock('youth_test|M')).toHaveTextContent('100'));
 
     fireEvent.change(screen.getByLabelText(`Shirts sold for cash, ${YOUTH} size M`), { target: { value: '6' } });
@@ -114,5 +125,38 @@ describe('MerchInventoryPanel', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/changed to 98/i);
     // Left in place so the admin can save again against the new count.
     expect(screen.getByLabelText(`Shirts sold for cash, ${YOUTH} size M`)).toHaveValue(6);
+  });
+});
+
+// A green parity test cannot see English left in the markup, so render the
+// panel in Tigrigna and look for it.
+describe('MerchInventoryPanel in Tigrigna', () => {
+  beforeEach(() => localStorage.setItem('app.lang', 'ti'));
+  afterEach(() => localStorage.setItem('app.lang', 'en'));
+
+  it('shows no English labels', async () => {
+    renderPanel();
+    await waitFor(() => expect(stock('youth_test|M')).toHaveTextContent('100'));
+
+    for (const phrase of [
+      'Inventory', 'Shirts left to sell', 'Awaiting payment', 'Left to sell',
+      'Sold for cash', 'Set count', 'Subtract', 'Save', 'Sold out'
+    ]) {
+      expect(screen.queryAllByText(new RegExp(phrase, 'i'))).toHaveLength(0);
+    }
+    expect(screen.getByText('ዕቑር ማልያ')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'ኣጉድል' }).length).toBeGreaterThan(0);
+  });
+
+  it('explains a conflicting edit in Tigrigna', async () => {
+    putReply = { status: 409, body: { success: false, current: 98, message: 'The count changed to 98.' } };
+    renderPanel();
+    await waitFor(() => expect(stock('youth_test|M')).toHaveTextContent('100'));
+
+    fireEvent.change(screen.getAllByRole('spinbutton')[2], { target: { value: '6' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'ኣጉድል' })[1]);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('98'));
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/changed/i);
   });
 });

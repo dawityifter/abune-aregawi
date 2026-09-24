@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
-import { MerchCatalog, MerchCheckoutRequest, formatMoney } from '../../config/merch';
+import { MerchCatalog, MerchCheckoutRequest, formatMoney, productDisplayName } from '../../config/merch';
 import SizeQuantityPicker from './SizeQuantityPicker';
 import {
   formatPhoneNumber, formatE164ToDisplay, isValidPhoneNumber, normalizePhoneNumber
@@ -46,7 +46,7 @@ const cellKey = (productKey: string, size: string) => `${productKey}|${size}`;
  * and the redirect. That split is what makes this testable without a network.
  */
 const ShirtOrderForm: React.FC<Props> = ({ catalog, submitting, error, onSubmit, prefill }) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { products, currency, tax_applies: taxApplies } = catalog;
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [name, setName] = useState('');
@@ -75,13 +75,13 @@ const ShirtOrderForm: React.FC<Props> = ({ catalog, submitting, error, onSubmit,
       product.sizes
         .map(({ size, unit_amount: unitAmount }) => ({
           productKey: product.product_key,
-          productName: product.product_name,
+          productName: productDisplayName(product, lang),
           size,
           quantity: quantities[cellKey(product.product_key, size)] || 0,
           unitAmount
         }))
         .filter((item) => item.quantity > 0)),
-    [products, quantities]
+    [products, quantities, lang]
   );
 
   const subtotalCents = chosen.reduce((sum, item) => sum + item.quantity * item.unitAmount, 0);

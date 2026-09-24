@@ -530,3 +530,28 @@ describe('ShirtOrderForm — phone number', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });
+
+describe('ShirtOrderForm in Tigrigna', () => {
+  beforeEach(() => localStorage.setItem('app.lang', 'ti'));
+  afterEach(() => localStorage.setItem('app.lang', 'en'));
+
+  const tiCatalog: MerchCatalog = {
+    ...catalog,
+    products: catalog.products.map((p) => ({ ...p, product_name_ti: `ትግርኛ ${p.product_key}` }))
+  };
+
+  it('names the shirts and labels the controls in Tigrigna', () => {
+    renderForm({ catalog: tiCatalog });
+
+    expect(screen.getByText(/ትግርኛ youth_test/)).toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(YOUTH))).not.toBeInTheDocument();
+    expect(screen.getByLabelText('ብዝሒ ናይ ትግርኛ youth_test መጠን S')).toBeInTheDocument();
+    expect(screen.getAllByText('ንኡስ').length).toBeGreaterThan(0);
+  });
+
+  it('falls back to the English name when there is no Tigrigna one', () => {
+    renderForm();
+
+    expect(screen.getByText(new RegExp(YOUTH))).toBeInTheDocument();
+  });
+});

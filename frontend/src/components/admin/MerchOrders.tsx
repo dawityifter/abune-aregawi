@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { formatMoney } from '../../config/merch';
 import MerchInventoryPanel from './MerchInventoryPanel';
 
@@ -39,6 +40,8 @@ const statusChip: Record<string, string> = {
   expired: 'bg-gray-100 text-gray-700'
 };
 
+const PAYMENT_STATUSES = ['paid', 'pending', 'canceled', 'expired'] as const;
+
 const dollars = (value: string) => formatMoney(Math.round(parseFloat(value || '0') * 100));
 
 /**
@@ -63,6 +66,7 @@ function groupByProduct<T extends { product_name: string }>(rows: T[]): [string,
  */
 const MerchOrders: React.FC = () => {
   const { firebaseUser } = useAuth();
+  const { t } = useLanguage();
   const [orders, setOrders] = useState<MerchOrder[]>([]);
   const [summary, setSummary] = useState<SizeSummary | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('paid');
@@ -87,7 +91,7 @@ const MerchOrders: React.FC = () => {
         fetch(`${process.env.REACT_APP_API_URL}/api/merch/orders/size-summary`, { headers })
       ]);
 
-      if (!ordersRes.ok || !summaryRes.ok) throw new Error('Failed to load merchandise orders');
+      if (!ordersRes.ok || !summaryRes.ok) throw new Error(t('merchAdmin.loadFailed'));
 
       const ordersData = await ordersRes.json();
       const summaryData = await summaryRes.json();
@@ -95,10 +99,12 @@ const MerchOrders: React.FC = () => {
       setSummary(summaryData);
     } catch (err) {
       console.error('Failed to load merchandise orders:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load merchandise orders');
+      setError(err instanceof Error ? err.message : t('merchAdmin.loadFailed'));
     } finally {
       setLoading(false);
     }
+    // t is unstable; adding it would refetch on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firebaseUser, statusFilter, fulfillmentFilter]);
 
   useEffect(() => { load(); }, [load]);
@@ -116,23 +122,19 @@ const MerchOrders: React.FC = () => {
           body: JSON.stringify({ fulfillment_status: next })
         }
       );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to update fulfillment');
+      if (!res.ok) throw new Error(t('merchAdmin.updateFailed'));
       await load();
     } catch (err) {
       console.error('Failed to update fulfillment:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update fulfillment');
+      setError(err instanceof Error ? err.message : t('merchAdmin.updateFailed'));
     }
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Merchandise Orders</h2>
-        <p className="text-sm text-gray-600">
-          Event merchandise sales. These are purchases, not donations — they are booked to
-          Event Merchandise Sales (INC012) and never appear on a giving statement.
-        </p>
+        <h2 className="text-2xl font-bold text-gray-900">{t('merchAdmin.title')}</h2>
+        <p className="text-sm text-gray-600">{t('merchAdmin.intro')}</p>
       </div>
 
       <MerchInventoryPanel />
@@ -141,7 +143,7 @@ const MerchOrders: React.FC = () => {
       {summary && (
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-semibold text-gray-900">
-            Shirts sold online via Stripe
+            {t('merchAdmin.soldOnline')}
           </h3>
           {/* Grouped by garment. A single row of S / M / L tiles would add a
               youth small to an adult small and tell whoever places the supplier
@@ -164,7 +166,7 @@ const MerchOrders: React.FC = () => {
               </div>
             ))}
             <div className="inline-block rounded-lg bg-primary-50 border border-primary-200 px-4 py-2 text-center min-w-[72px]">
-              <div className="text-xs uppercase tracking-wide text-primary-700">Total</div>
+              <div className="text-xs uppercase tracking-wide text-primary-700">{t('merchAdmin.total')}</div>
               <div className="text-xl font-bold text-primary-900">{summary.total_shirts}</div>
             </div>
           </div>
@@ -175,25 +177,24 @@ const MerchOrders: React.FC = () => {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          aria-label="Filter by payment status"
+          aria-label={t('merchAdmin.filterPayment')}
           className="rounded-md border-gray-300 text-sm"
         >
-          <option value="">All payment statuses</option>
-          <option value="paid">Paid</option>
-          <option value="pending">Pending</option>
-          <option value="canceled">Canceled</option>
-          <option value="expired">Expired</option>
+          <option value="">{t('merchAdmin.allPayment')}</option>
+          {PAYMENT_STATUSES.map((s) => (
+            <option key={s} value={s}>{t(`merchAdmin.status.${s}`)}</option>
+          ))}
         </select>
 
         <select
           value={fulfillmentFilter}
           onChange={(e) => setFulfillmentFilter(e.target.value)}
-          aria-label="Filter by fulfillment status"
+          aria-label={t('merchAdmin.filterFulfillment')}
           className="rounded-md border-gray-300 text-sm"
         >
-          <option value="">All fulfillment states</option>
-          <option value="unfulfilled">Unfulfilled</option>
-          <option value="fulfilled">Fulfilled</option>
+          <option value="">{t('merchAdmin.allFulfillment')}</option>
+          <option value="unfulfilled">{t('merchAdmin.unfulfilled')}</option>
+          <option value="fulfilled">{t('merchAdmin.fulfilled')}</option>
         </select>
       </div>
 
@@ -209,19 +210,19 @@ const MerchOrders: React.FC = () => {
         </div>
       ) : orders.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center text-gray-600">
-          No orders match these filters.
+          {t('merchAdmin.noOrders')}
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">Ordered</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">Purchaser</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">Sizes</th>
-                <th className="px-4 py-3 text-right font-semibold text-gray-700">Total</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">Payment</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-700">Fulfillment</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700">{t('merchAdmin.col.ordered')}</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700">{t('merchAdmin.col.purchaser')}</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700">{t('merchAdmin.col.sizes')}</th>
+                <th className="px-4 py-3 text-right font-semibold text-gray-700">{t('merchAdmin.col.total')}</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700">{t('merchAdmin.col.payment')}</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700">{t('merchAdmin.col.fulfillment')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -248,12 +249,12 @@ const MerchOrders: React.FC = () => {
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <div className="font-medium text-gray-900">{dollars(order.total)}</div>
                     {parseFloat(order.tax) > 0 && (
-                      <div className="text-xs text-gray-500">incl. {dollars(order.tax)} tax</div>
+                      <div className="text-xs text-gray-500">{t('merchAdmin.inclTax', { amount: dollars(order.tax) })}</div>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusChip[order.status]}`}>
-                      {order.status}
+                      {t(`merchAdmin.status.${order.status}`)}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -269,7 +270,7 @@ const MerchOrders: React.FC = () => {
                           : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                       }`}
                     >
-                      {order.fulfillment_status === 'fulfilled' ? 'Fulfilled' : 'Mark fulfilled'}
+                      {order.fulfillment_status === 'fulfilled' ? t('merchAdmin.fulfilled') : t('merchAdmin.markFulfilled')}
                     </button>
                   </td>
                 </tr>

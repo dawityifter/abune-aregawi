@@ -750,3 +750,15 @@ describe('inventory', () => {
     expect(sizeOf(product.product_key, 'L').available).toBe(0);
   });
 });
+
+describe('GET /api/merch/catalog — Tigrigna', () => {
+  it('names every product in Tigrigna as well as English', async () => {
+    const res = await request(buildPublicApp()).get('/api/merch/catalog');
+
+    for (const p of res.body.products) {
+      expect(p.product_name).toBeTruthy();
+      expect(p.product_name_ti).toBeTruthy();
+      expect(p.product_name_ti).not.toBe(p.product_name);
+    }
+  });
+});

@@ -25,6 +25,8 @@ export interface MerchProduct {
    */
   product_key: string;
   product_name: string;
+  /** Tigrigna display name. Order lines and receipts keep the English one. */
+  product_name_ti?: string | null;
   // Deliberately no product-level unit_amount: a default here would silently
   // misprice any size that ever differs from the others.
   sizes: MerchSize[];
@@ -73,6 +75,23 @@ export interface MerchCheckoutResponse {
   order_id: number;
 }
 
+/** The product's name in the page's language, falling back to English. */
+export const productDisplayName = (product: MerchProduct, lang: string): string =>
+  (lang === 'ti' && product.product_name_ti) || product.product_name;
+
+/**
+ * A failed checkout, with what the page needs to explain it in the purchaser's
+ * language: the HTTP status, and for a stock refusal (409) which size and how
+ * many are left.
+ */
+export interface MerchCheckoutError extends Error {
+  status?: number;
+  detail?: string;
+  product_key?: string;
+  size?: string;
+  available?: number;
+}
+
 /** Cents to a displayable amount, e.g. 2500 -> "$25.00". */
 export const formatMoney = (cents: number, currency = 'usd'): string =>
   new Intl.NumberFormat('en-US', {
@@ -110,7 +129,13 @@ export const createMerchCheckoutSession = async (
       message = `${message}: ${data.errors.map((e: any) => e.msg).join(', ')}`;
     }
 
-    const error = new Error(message);
+    const error: MerchCheckoutError = new Error(message);
+    error.status = response.status;
+    if (response.status === 409) {
+      error.product_key = data.product_key;
+      error.size = data.size;
+      error.available = data.available;
+    }
     // A 500 carries the real cause in `data.error` — a Sequelize or Stripe
     // message. It stays OFF `message`, because that string is rendered to the
     // purchaser and raw database internals are not theirs to read, but it is
@@ -118,7 +143,7 @@ export const createMerchCheckoutSession = async (
     // Dropping it entirely (as this once did) made a not-null constraint
     // violation indistinguishable from any other failure.
     if (data.error) {
-      (error as Error & { detail?: string }).detail = data.error;
+      error.detail = data.error;
       console.error('[merch] checkout-session failed:', data.error);
     }
     throw error;

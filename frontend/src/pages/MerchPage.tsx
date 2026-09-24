@@ -6,6 +6,8 @@ import ShirtOrderForm, { PurchaserPrefill } from '../components/merch/ShirtOrder
 import {
   MerchCatalog,
   MerchCheckoutRequest,
+  MerchCheckoutError,
+  productDisplayName,
   fetchMerchCatalog,
   createMerchCheckoutSession
 } from '../config/merch';
@@ -19,7 +21,7 @@ import {
  * Stripe.js is never loaded.
  */
 const MerchPage: React.FC = () => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [catalog, setCatalog] = useState<MerchCatalog | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -52,6 +54,28 @@ const MerchPage: React.FC = () => {
     return () => { active = false; };
   }, [t]);
 
+  /**
+   * A failed checkout, in the purchaser's language. The server's own message is
+   * English, so it is only shown as-is for an English reader's 400 — where it
+   * names the field to fix. Everything else is mapped from the status code.
+   */
+  const describeCheckoutError = (err: unknown): string => {
+    const e = err as MerchCheckoutError;
+    if (e?.status === 409) {
+      const product = catalog?.products.find((p) => p.product_key === e.product_key);
+      const name = product ? productDisplayName(product, lang) : '';
+      const key = e.available ? 'merch.errors.outOfStock' : 'merch.errors.soldOutSize';
+      return t(key)
+        .replace('{product}', name)
+        .replace('{size}', e.size || '')
+        .replace('{count}', String(e.available ?? 0));
+    }
+    if (e?.status === 429) return t('merch.errors.rateLimited');
+    if (e?.status === 503) return t('merch.errors.unavailable');
+    if (e?.status === 400) return lang === 'en' && e.message ? e.message : t('merch.errors.checkDetails');
+    return t('merch.errors.generic');
+  };
+
   const handleCheckout = async (payload: MerchCheckoutRequest) => {
     setSubmitting(true);
     setError(null);
@@ -62,7 +86,7 @@ const MerchPage: React.FC = () => {
       window.location.assign(url);
     } catch (err) {
       console.error('Merchandise checkout failed:', err);
-      setError(err instanceof Error ? err.message : t('merch.errors.generic'));
+      setError(describeCheckoutError(err));
       // The usual failure is a size selling out while the form was open. Fresh
       // counts let the pickers show that, instead of the purchaser guessing.
       fetchMerchCatalog().then(setCatalog).catch(() => {});

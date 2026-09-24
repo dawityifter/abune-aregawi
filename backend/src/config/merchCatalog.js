@@ -44,6 +44,8 @@ const CATALOG = Object.freeze({
         // meaning because someone tidied the copy.
         product_key: 'youth_heavy_cotton',
         product_name: 'Youth Heavy Cotton™ T-Shirt',
+        // Display only. Order lines, the ledger and Stripe keep the English name.
+        product_name_ti: 'ናይ ቆልዑ ማልያ (Heavy Cotton™)',
         // Order matters: the public picker and the admin size summary both
         // render in this order, so it reads as a size run, not alphabetically.
         sizes: sizesAt(SHIRT_PRICE_CENTS, 'S', 'M', 'L'),
@@ -55,6 +57,7 @@ const CATALOG = Object.freeze({
       Object.freeze({
         product_key: 'adult_heavy_cotton',
         product_name: 'Heavy Cotton™ T-Shirt',
+        product_name_ti: 'ናይ ዓበይቲ ማልያ (Heavy Cotton™)',
         // Small and Large only. The adult cut is genuinely not stocked in a
         // medium, so there is no M here to order — this gap is the catalog
         // telling the truth, not an omission to be helpfully filled in.

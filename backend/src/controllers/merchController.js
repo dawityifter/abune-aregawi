@@ -697,6 +697,7 @@ const getCatalog = async (req, res) => {
     products: event.products.map((product) => ({
       product_key: product.product_key,
       product_name: product.product_name,
+      product_name_ti: product.product_name_ti || null,
       // Each size carries its own price; there is no product-wide unit_amount.
       // `available` lets the page grey out a sold-out size and stop the
       // quantity box at what is left. The server still re-checks at checkout:

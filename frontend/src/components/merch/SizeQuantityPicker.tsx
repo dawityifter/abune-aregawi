@@ -1,6 +1,6 @@
 import React from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
-import { MerchProduct, formatMoney } from '../../config/merch';
+import { MerchProduct, formatMoney, productDisplayName } from '../../config/merch';
 
 interface Props {
   product: MerchProduct;
@@ -33,7 +33,8 @@ const LOW_STOCK = 10;
 const SizeQuantityPicker: React.FC<Props> = ({
   product, currency, quantities, onChange, disabled
 }) => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const productName = productDisplayName(product, lang);
   const cell = (size: string) => `${product.product_key}|${size}`;
   // Ids must be unique across the page now that there are several pickers, or
   // a label would point at whichever input rendered first.
@@ -77,7 +78,7 @@ const SizeQuantityPicker: React.FC<Props> = ({
           reading only "Size & Quantity" twice leaves a purchaser — and a screen
           reader working through the form — with no way to tell which is which. */}
       <legend className="text-sm font-semibold text-gray-900">
-        {product.product_name}
+        {productName}
         <span className="ml-2 font-normal text-gray-600">
           ({t('merch.product.sizeLabel')} &amp; {t('merch.product.quantityLabel')})
         </span>
@@ -91,7 +92,7 @@ const SizeQuantityPicker: React.FC<Props> = ({
           const atMax = !soldOut && quantity >= max;
           const rowDisabled = disabled || soldOut;
           const stockId = `${inputId(size)}-stock`;
-          const described = `${product.product_name}, ${sizeName(size)}`;
+          const described = `${productName}, ${sizeName(size)}`;
 
           return (
             <div
@@ -149,7 +150,7 @@ const SizeQuantityPicker: React.FC<Props> = ({
                   disabled={rowDisabled}
                   // The visible label is the size alone, which would read as
                   // "Small" to a screen reader with no hint of what the box does.
-                  aria-label={`Quantity for ${product.product_name} size ${size}`}
+                  aria-label={t('merch.product.quantityFor').replace('{product}', productName).replace('{size}', size)}
                   aria-describedby={soldOut || available <= LOW_STOCK ? stockId : undefined}
                   value={quantity}
                   onChange={(e) => handleTyped(size, available, e.target.value)}

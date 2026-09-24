@@ -166,6 +166,7 @@ export interface Dictionaries {
       sizeLabel: string; quantityLabel: string; soldOutNote: string;
       sizeNames: { S: string; M: string; L: string };
       soldOut: string; onlyLeft: string; addOne: string; removeOne: string; maxReached: string;
+      quantityFor: string;
       imageAlt: string; imageCaption: string;
     };
     pickup: { title: string; body: string };
@@ -182,7 +183,10 @@ export interface Dictionaries {
       taxAtCheckout: string;
       empty: string;
     };
-    errors: { network: string; noItems: string; generic: string; contactRequired: string; phoneInvalid: string };
+    errors: {
+      network: string; noItems: string; generic: string; contactRequired: string; phoneInvalid: string;
+      outOfStock: string; soldOutSize: string; rateLimited: string; unavailable: string; checkDetails: string;
+    };
     thankYou: { title: string; body: string; pickupReminder: string; home: string };
   };
   pledge: {
@@ -1033,6 +1037,7 @@ export const en: Dictionaries = {
       addOne: "Add one",
       removeOne: "Remove one",
       maxReached: "That is the most you can order in this size.",
+      quantityFor: "Quantity for {product} size {size}",
       imageAlt: "Navy 5K t-shirt, front and back. Front: 1st Annual 5K Run/Walk, D.T. Abune Aregawi O.T.C. — Faith, Unity, Community, Health. Back: a gold cross above the words \u201CLet us run with perseverance the race marked out for us\u201D, Hebrews 12:1.",
       imageCaption: "Front and back of the 1st Annual 5K Run/Walk shirt."
     },
@@ -1060,7 +1065,12 @@ export const en: Dictionaries = {
       noItems: "Please choose at least one size.",
       generic: "We could not start checkout. Please try again.",
       contactRequired: "Please enter your name and phone number.",
-      phoneInvalid: "Please enter a 10-digit phone number."
+      phoneInvalid: "Please enter a 10-digit phone number.",
+      outOfStock: "Only {count} left of {product} size {size}. Please lower the quantity.",
+      soldOutSize: "{product} size {size} just sold out. Please choose another size.",
+      rateLimited: "Too many attempts from this network. Please wait a few minutes and try again.",
+      unavailable: "Online ordering is unavailable right now. Please try again later.",
+      checkDetails: "Please check your details and try again."
     },
     thankYou: {
       title: "Thank you for your order!",
@@ -3273,6 +3283,54 @@ export const en: Dictionaries = {
   "smsBroadcast.accessDenied": "Access Denied",
   "smsBroadcast.noPermission": "You don't have permission to send SMS communications.",
   "smsBroadcast.title": "SMS Communications",
+  "merchAdmin.tab": "Merchandise",
+  "merchAdmin.title": "Merchandise Orders",
+  "merchAdmin.intro": "Event merchandise sales. These are purchases, not donations — they are booked to Event Merchandise Sales (INC012) and never appear on a giving statement.",
+  "merchAdmin.soldOnline": "Shirts sold online via Stripe",
+  "merchAdmin.total": "Total",
+  "merchAdmin.filterPayment": "Filter by payment status",
+  "merchAdmin.allPayment": "All payment statuses",
+  "merchAdmin.filterFulfillment": "Filter by fulfillment status",
+  "merchAdmin.allFulfillment": "All fulfillment states",
+  "merchAdmin.status.paid": "Paid",
+  "merchAdmin.status.pending": "Pending",
+  "merchAdmin.status.canceled": "Canceled",
+  "merchAdmin.status.expired": "Expired",
+  "merchAdmin.unfulfilled": "Unfulfilled",
+  "merchAdmin.fulfilled": "Fulfilled",
+  "merchAdmin.markFulfilled": "Mark fulfilled",
+  "merchAdmin.noOrders": "No orders match these filters.",
+  "merchAdmin.col.ordered": "Ordered",
+  "merchAdmin.col.purchaser": "Purchaser",
+  "merchAdmin.col.sizes": "Sizes",
+  "merchAdmin.col.total": "Total",
+  "merchAdmin.col.payment": "Payment",
+  "merchAdmin.col.fulfillment": "Fulfillment",
+  "merchAdmin.inclTax": "incl. {amount} tax",
+  "merchAdmin.loadFailed": "Failed to load merchandise orders",
+  "merchAdmin.updateFailed": "Failed to update fulfillment",
+  "merchAdmin.inv.title": "Inventory",
+  "merchAdmin.inv.intro": "Shirts left to sell. Online orders come off automatically; record cash sales here. A size at 0 can no longer be ordered online.",
+  "merchAdmin.inv.awaiting": "Awaiting payment",
+  "merchAdmin.inv.awaitingHelp": "shirts someone is paying for on Stripe right now. They are already off the count; if the purchaser does not finish paying within 30 minutes, they go back on sale automatically.",
+  "merchAdmin.inv.col.size": "Size",
+  "merchAdmin.inv.col.left": "Left to sell",
+  "merchAdmin.inv.col.cash": "Sold for cash",
+  "merchAdmin.inv.col.setCount": "Set count",
+  "merchAdmin.inv.soldOut": "Sold out — off sale",
+  "merchAdmin.inv.subtract": "Subtract",
+  "merchAdmin.inv.save": "Save",
+  "merchAdmin.inv.label": "{product} size {size}",
+  "merchAdmin.inv.cashAria": "Shirts sold for cash, {label}",
+  "merchAdmin.inv.countAria": "New count, {label}",
+  "merchAdmin.inv.enterCash": "Enter how many shirts were sold for cash.",
+  "merchAdmin.inv.tooMany": "Only {count} {label} are on the count. Use \"Set count\" if the shelf says otherwise.",
+  "merchAdmin.inv.enterCount": "Enter the number of shirts on the shelf, 0 or more.",
+  "merchAdmin.inv.recorded": "Recorded {count} × {label} sold for cash.",
+  "merchAdmin.inv.setTo": "{label} set to {count}.",
+  "merchAdmin.inv.conflict": "The count changed to {count} while you were editing — an online order came in. Check the number and save again.",
+  "merchAdmin.inv.loadFailed": "Failed to load inventory",
+  "merchAdmin.inv.updateFailed": "Failed to update inventory",
   "smsBroadcast.selectRecipientType": "Select Recipient Type",
   "smsBroadcast.typeIndividual": "Individual",
   "smsBroadcast.typeDepartment": "Department",
@@ -3563,6 +3621,7 @@ export const ti: Dictionaries = {
       addOne: "ሓደ ወስኽ",
       removeOne: "ሓደ ኣጉድል",
       maxReached: "ካብዚ መጠን ክትእዝዙ እትኽእሉ እዚ እዩ ዝለዓለ።",
+      quantityFor: "ብዝሒ ናይ {product} መጠን {size}",
       imageAlt: "ሰማያዊ ማልያ 5ኪ.ሜ፡ ቅድሚትን ድሕሪትን። ቅድሚት፡ 1ይ ዓመታዊ 5ኪ.ሜ ጉያ/ምጓዓዝ፡ ዲ.ት. ኣቡነ ኣረጋዊ — እምነት፡ ሓድነት፡ ማሕበረሰብ፡ ጥዕና። ድሕሪት፡ ወርቃዊ መስቀል ምስ \u201Cነቲ ኣብ ቅድሜና ተቐሚጡ ዘሎ ጉያ ብትዕግስቲ ንጉየ\u201D፡ ዕብራውያን 12፡1።",
       imageCaption: "ቅድሚትን ድሕሪትን ናይ 1ይ ዓመታዊ 5ኪ.ሜ ጉያ/ምጓዓዝ ማልያ።"
     },
@@ -3590,7 +3649,12 @@ export const ti: Dictionaries = {
       noItems: "በጃኹም እንተ ወሓደ ሓደ መጠን ምረጹ።",
       generic: "ክፍሊት ክንጅምር ኣይከኣልናን። በጃኹም እንደገና ፈትኑ።",
       contactRequired: "በጃኹም ስምኩምን ቁጽሪ ስልክኹምን ኣእትዉ።",
-      phoneInvalid: "በጃኹም 10 ኣሃዝ ዘለዎ ቁጽሪ ስልኪ ኣእትዉ።"
+      phoneInvalid: "በጃኹም 10 ኣሃዝ ዘለዎ ቁጽሪ ስልኪ ኣእትዉ።",
+      outOfStock: "ካብ {product} መጠን {size} {count} ጥራይ ተሪፉ። በጃኹም ብዝሒ ኣጉድሉ።",
+      soldOutSize: "{product} መጠን {size} ሕጂ ተወዲኡ። በጃኹም ካልእ መጠን ምረጹ።",
+      rateLimited: "ካብዚ ኔትዎርክ ብዙሕ ፈተነታት ተገይሩ። በጃኹም ቁሩብ ደቓይቕ ተጸቢኹም እንደገና ፈትኑ።",
+      unavailable: "ሕጂ ብኦንላይን ምእዛዝ ኣይከኣልን እዩ። በጃኹም ጸኒሕኩም ፈትኑ።",
+      checkDetails: "በጃኹም ዝርዝራትኩም ተቐጺጽኩም እንደገና ፈትኑ።"
     },
     thankYou: {
       title: "ስለ ትእዛዝኩም የቐንየልና!",
@@ -5807,6 +5871,54 @@ export const ti: Dictionaries = {
   "smsBroadcast.accessDenied": "መእተዊ ተኸልኪሉ",
   "smsBroadcast.noPermission": "SMS መልእኽትታት ንምስዳድ ፍቓድ የብልኩምን።",
   "smsBroadcast.title": "SMS መራኸቢ",
+  "merchAdmin.tab": "ሸቐጥ",
+  "merchAdmin.title": "ትእዛዛት ሸቐጥ",
+  "merchAdmin.intro": "ሽያጥ ሸቐጥ በዓል። እዚኣቶም ዕድጊ እዮም እምበር ወፈያ ኣይኮኑን — ኣብ ሽያጥ ሸቐጥ በዓል (INC012) ይምዝገቡ፡ ኣብ ጸብጻብ ወፈያ ድማ ፈጺሞም ኣይርኣዩን።",
+  "merchAdmin.soldOnline": "ብኦንላይን (Stripe) ዝተሸጡ ማልያታት",
+  "merchAdmin.total": "ጠቕላላ",
+  "merchAdmin.filterPayment": "ብኩነታት ክፍሊት ኣጻሪ",
+  "merchAdmin.allPayment": "ኩሎም ኩነታት ክፍሊት",
+  "merchAdmin.filterFulfillment": "ብኩነታት ምርካብ ኣጻሪ",
+  "merchAdmin.allFulfillment": "ኩሎም ኩነታት ምርካብ",
+  "merchAdmin.status.paid": "ተኸፊሉ",
+  "merchAdmin.status.pending": "ይጽበ ኣሎ",
+  "merchAdmin.status.canceled": "ተሰሪዙ",
+  "merchAdmin.status.expired": "ግዜኡ ሓሊፉ",
+  "merchAdmin.unfulfilled": "ዘይተረከበ",
+  "merchAdmin.fulfilled": "ተረኪቡ",
+  "merchAdmin.markFulfilled": "ከም ዝተረከበ ምልክት ግበር",
+  "merchAdmin.noOrders": "ምስዚ መጻረዪ ዝሰማማዕ ትእዛዝ የለን።",
+  "merchAdmin.col.ordered": "ዝተኣዘዘሉ ዕለት",
+  "merchAdmin.col.purchaser": "ዓዳጊ",
+  "merchAdmin.col.sizes": "መጠናት",
+  "merchAdmin.col.total": "ጠቕላላ",
+  "merchAdmin.col.payment": "ክፍሊት",
+  "merchAdmin.col.fulfillment": "ምርካብ",
+  "merchAdmin.inclTax": "{amount} ግብሪ ሓዊሱ",
+  "merchAdmin.loadFailed": "ትእዛዛት ሸቐጥ ክጽዓኑ ኣይከኣሉን",
+  "merchAdmin.updateFailed": "ኩነታት ምርካብ ክሕደስ ኣይከኣለን",
+  "merchAdmin.inv.title": "ዕቑር ማልያ",
+  "merchAdmin.inv.intro": "ንሽያጥ ዝተረፉ ማልያታት። ኦንላይን ትእዛዛት ብኣውቶማቲክ ይጐድሉ፤ ብጥረ ገንዘብ ዝተሸጡ ኣብዚ መዝግቡ። 0 ዝበጽሐ መጠን ብኦንላይን ክእዘዝ ኣይክእልን።",
+  "merchAdmin.inv.awaiting": "ክፍሊት ይጽበ",
+  "merchAdmin.inv.awaitingHelp": "ሕጂ ሓደ ሰብ ብStripe ዝኸፍለሎም ዘሎ ማልያታት። ካብ ቍጽሪ ድሮ ጎዲሎም እዮም፤ ዓዳጊ ኣብ ውሽጢ 30 ደቒቕ ክፍሊት እንተዘይወዲኡ፡ ብኣውቶማቲክ ናብ ሽያጥ ይምለሱ።",
+  "merchAdmin.inv.col.size": "መጠን",
+  "merchAdmin.inv.col.left": "ንሽያጥ ዝተረፈ",
+  "merchAdmin.inv.col.cash": "ብጥረ ገንዘብ ዝተሸጠ",
+  "merchAdmin.inv.col.setCount": "ቍጽሪ ኣቐምጥ",
+  "merchAdmin.inv.soldOut": "ተወዲኡ — ካብ ሽያጥ ወጺኡ",
+  "merchAdmin.inv.subtract": "ኣጉድል",
+  "merchAdmin.inv.save": "ኣቐምጥ",
+  "merchAdmin.inv.label": "{product} መጠን {size}",
+  "merchAdmin.inv.cashAria": "ብጥረ ገንዘብ ዝተሸጡ ማልያታት፡ {label}",
+  "merchAdmin.inv.countAria": "ሓድሽ ቍጽሪ፡ {label}",
+  "merchAdmin.inv.enterCash": "ክንደይ ማልያታት ብጥረ ገንዘብ ከም ዝተሸጡ ኣእትዉ።",
+  "merchAdmin.inv.tooMany": "ኣብ ቍጽሪ {count} {label} ጥራይ ኣለዉ። ኣብ መደርደሪ ካልእ እንተሃልዩ \"ቍጽሪ ኣቐምጥ\" ተጠቐሙ።",
+  "merchAdmin.inv.enterCount": "ኣብ መደርደሪ ዘለዉ ማልያታት ቍጽሪ ኣእትዉ፡ 0 ወይ ልዕሊኡ።",
+  "merchAdmin.inv.recorded": "{count} × {label} ብጥረ ገንዘብ ከም ዝተሸጠ ተመዝጊቡ።",
+  "merchAdmin.inv.setTo": "{label} ናብ {count} ተቐሚጡ።",
+  "merchAdmin.inv.conflict": "ኣብ እተመዓራርዩሉ ዝነበርኩም እዋን ቍጽሪ ናብ {count} ተቐይሩ — ኦንላይን ትእዛዝ ኣትዩ። ቍጽሪ ተቐጺጽኩም እንደገና ኣቐምጡ።",
+  "merchAdmin.inv.loadFailed": "ዕቑር ክጽዓን ኣይከኣለን",
+  "merchAdmin.inv.updateFailed": "ዕቑር ክሕደስ ኣይከኣለን",
   "smsBroadcast.selectRecipientType": "ዓይነት ተቐባሊ ምረጽ",
   "smsBroadcast.typeIndividual": "ውልቀሰብ",
   "smsBroadcast.typeDepartment": "ክፍሊ ስራሕ",
