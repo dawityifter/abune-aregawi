@@ -128,6 +128,7 @@ try {
   const SurveyResponse = require('./SurveyResponse')(sequelize);
   const MerchOrder = require('./MerchOrder')(sequelize);
   const MerchOrderItem = require('./MerchOrderItem')(sequelize);
+  const MerchInventory = require('./MerchInventory')(sequelize);
 
   // Define models object
   const models = {
@@ -170,7 +171,8 @@ try {
     SquarePayment,
     SurveyResponse,
     MerchOrder,
-    MerchOrderItem
+    MerchOrderItem,
+    MerchInventory
   };
 
   // Call associate on each model

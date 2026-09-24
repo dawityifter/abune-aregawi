@@ -161,13 +161,17 @@ shirts are handed over at the church or at the event.
 the contact the order form and the `merch_orders` schema both insist on
 (`20260921000001`). Email is welcome but not demanded.
 
-That leaves a gap worth knowing about: Stripe Checkout collects an email of its
-own before taking payment, and that is where the receipt goes. The webhook
-copies it onto the order (`stripeEmail(session)`) **only when the purchaser left
-ours blank** — an address typed on the parish's own form is the one they chose to
-give the church, and Stripe's must not overwrite it. So a phone-only order still
-shows an email in the admin list once it is paid, and it is the address the
-receipt actually went to.
+**The Stripe page is always pre-filled with an email.** It uses the purchaser's own
+address if they gave one; otherwise it uses the parish inbox (`MERCH_FALLBACK_EMAIL`,
+default `abunearegawitx@gmail.com`). Stripe locks a pre-filled email, so for an
+order with no email **the receipt goes to the parish inbox, not the purchaser**.
+The fallback is never stored on the order as the purchaser's email.
+
+The webhook still copies Stripe's email onto an order that has none
+(`stripeEmail(session)`), but skips the parish fallback address. It never
+overwrites an address the purchaser typed on the parish form. Because every
+session is now pre-filled, this only matters for sessions opened before the
+fallback existed.
 
 Admin UI: AdminDashboard → **Merchandise** tab (`components/admin/MerchOrders.tsx`).
 Roles mirror `merchAdminRoles` in `routes/merchRoutes.js`: admin, treasurer,
@@ -180,13 +184,42 @@ church_leadership, secretary, bookkeeper.
 | `GET /api/merch/orders` | Staff. Filter by `status`, `fulfillment_status`, `event_key`. |
 | `GET /api/merch/orders/size-summary` | Staff. **How many of each size to have printed.** Paid orders only. |
 | `PATCH /api/merch/orders/:id/fulfillment` | Staff. Mark collected / undo. Refuses unpaid orders. |
+| `GET /api/merch/inventory` | Staff. Shirts left per size, and how many are awaiting payment (`held`). |
+| `PUT /api/merch/inventory/:product_key/:size` | Staff. Set a count (`quantity`, `expected_quantity`). |
 
 The size summary counts **paid orders only** — printing shirts for a pending order
 (a browser tab someone left open at the payment screen) is a real cost.
 
+## Inventory
+
+Stock lives in `merch_inventory`, one row per (event, product, size), seeded by
+`20260923000001` with the opening count (youth S 50 / M 100 / L 50, adult S 150 /
+L 50). `quantity` is **what is left to sell online**.
+
+- **Reserved when checkout starts**, not when payment lands, so two people cannot
+  both pay for the last shirt of a size. Each line is one conditional UPDATE
+  (`quantity - n WHERE quantity >= n`) inside the transaction that writes the
+  order; any line short → 409 with how many are left, and nothing is taken.
+- **Returned** when the session expires (`checkout.session.expired`) or Stripe
+  failed to open it. Guarded by a `pending → expired/canceled` status change, so
+  a redelivered webhook cannot return the stock twice.
+- Sessions are opened with `expires_at` ≈ 31 minutes (Stripe's minimum is 30),
+  instead of the 24-hour default, so an abandoned tab frees its shirts quickly.
+- **Cash sales** are recorded by staff on the admin Merchandise tab ("Sold for
+  cash" subtracts; "Set count" is for a recount). Every change carries the count
+  the admin was looking at and is refused (409) if an online order moved it.
+- A (product, size) with **no row is sold out**, never unlimited. Adding a size to
+  the catalog therefore also needs a stock count before it goes on sale.
+- At 0 the public page shows the size as sold out and disables it.
+
+Cash sales change the count only — they do not create a transaction or ledger
+entry. Cash taken for shirts is recorded the usual way, separately.
+
 ## Frontend
 
-- `/merch` — public order page (`pages/MerchPage.tsx`)
+- `/merch` — public order page (`pages/MerchPage.tsx`). Signed-in members get
+  their name, phone and email pre-filled. Each size has a − / + stepper and shows
+  "Only N left" at 10 or fewer, "Sold out" at 0.
 - `/merch/thank-you` — Stripe's `success_url` return
 
 Hosted Checkout, so no card details are entered on the site and Stripe.js is never
@@ -198,6 +231,8 @@ loaded on these routes — unlike `/donate` and `/pledge`, which use Stripe Elem
 |---|---|
 | `20260919000001-add-event-merchandise-payment-type.js` | Adds `event_merchandise` to the `transactions` (and `ledger_entries`) payment-type enums and seeds INC012. Postgres only; no transaction wrapper — a new enum value is not usable until commit. |
 | `20260919000002-create-merch-orders.js` | `merch_orders` + `merch_order_items`. |
+| `20260921000001-merch-phone-required-email-optional.js` | Phone required, email optional. |
+| `20260923000001-create-merch-inventory.js` | `merch_inventory` seeded with the opening stock; `product_key` on `merch_order_items`. |
 
 The ledger-enum `ALTER TYPE` is inside a `try/catch` (same precedent as the
 pledge_drive migration). **If it fails in production, merchandise ledger entries

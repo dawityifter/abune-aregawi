@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useI18n } from '../i18n/I18nProvider';
-import ShirtOrderForm from '../components/merch/ShirtOrderForm';
+import { useAuth } from '../contexts/AuthContext';
+import ShirtOrderForm, { PurchaserPrefill } from '../components/merch/ShirtOrderForm';
 import {
   MerchCatalog,
   MerchCheckoutRequest,
@@ -23,6 +24,21 @@ const MerchPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  // Public page, so a visitor who is not signed in simply gets empty boxes.
+  // `_temp` is the placeholder AuthContext holds before the member record is
+  // loaded — same guard, same field names as DonatePage.
+  const prefill = useMemo<PurchaserPrefill | undefined>(() => {
+    if (!user || user._temp) return undefined;
+    const first = user.first_name || user.firstName || '';
+    const last = user.last_name || user.lastName || '';
+    return {
+      name: `${first} ${last}`.trim(),
+      phone: user.phone_number || user.phoneNumber || '',
+      email: user.email || ''
+    };
+  }, [user]);
 
   useEffect(() => {
     let active = true;
@@ -47,6 +63,9 @@ const MerchPage: React.FC = () => {
     } catch (err) {
       console.error('Merchandise checkout failed:', err);
       setError(err instanceof Error ? err.message : t('merch.errors.generic'));
+      // The usual failure is a size selling out while the form was open. Fresh
+      // counts let the pickers show that, instead of the purchaser guessing.
+      fetchMerchCatalog().then(setCatalog).catch(() => {});
       // Only cleared on failure: on success the browser is already leaving, and
       // re-enabling the button would invite a second click and a second order.
       setSubmitting(false);
@@ -106,6 +125,7 @@ const MerchPage: React.FC = () => {
             submitting={submitting}
             error={error}
             onSubmit={handleCheckout}
+            prefill={prefill}
           />
 
           <p className="mt-4 text-center text-sm text-gray-500">

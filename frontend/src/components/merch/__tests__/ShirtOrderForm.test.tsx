@@ -23,8 +23,8 @@ const catalog: MerchCatalog = {
       product_key: 'youth_test',
       product_name: YOUTH,
       sizes: [
-        { size: 'S', unit_amount: 2500 },
-        { size: 'M', unit_amount: 2700 }
+        { size: 'S', unit_amount: 2500, available: 50 },
+        { size: 'M', unit_amount: 2700, available: 50 }
       ],
       max_quantity_per_size: 20
     },
@@ -32,8 +32,8 @@ const catalog: MerchCatalog = {
       product_key: 'adult_test',
       product_name: ADULT,
       sizes: [
-        { size: 'S', unit_amount: 3000 },
-        { size: 'L', unit_amount: 3500 }
+        { size: 'S', unit_amount: 3000, available: 50 },
+        { size: 'L', unit_amount: 3500, available: 50 }
       ],
       max_quantity_per_size: 20
     }
@@ -318,5 +318,215 @@ describe('ShirtOrderForm — checkout', () => {
     renderForm();
 
     expect(screen.getByText(/tax .*(calculated|checkout)/i)).toBeInTheDocument();
+  });
+});
+
+describe('ShirtOrderForm — prefill for a signed-in member', () => {
+  const member = { name: 'Test Member', phone: '+12145550101', email: 'member@example.com' };
+
+  it('fills name, phone and email from the member record', () => {
+    renderForm({ prefill: member });
+
+    expect(screen.getByLabelText(/full name/i)).toHaveValue('Test Member');
+    expect(screen.getByLabelText(/phone/i)).toHaveValue('(214) 555-0101');
+    expect(screen.getByLabelText(/email/i)).toHaveValue('member@example.com');
+  });
+
+  it('leaves a field blank when the member record has nothing for it', () => {
+    renderForm({ prefill: { name: 'Test Member', phone: '+12145550101' } });
+
+    expect(screen.getByLabelText(/email/i)).toHaveValue('');
+  });
+
+  it('fills in when the member record arrives after the form is shown', () => {
+    const { rerender, onSubmit } = renderForm();
+    expect(screen.getByLabelText(/full name/i)).toHaveValue('');
+
+    rerender(
+      <I18nProvider>
+        <LanguageProvider>
+          <ShirtOrderForm catalog={catalog} submitting={false} error={null} onSubmit={onSubmit} prefill={member} />
+        </LanguageProvider>
+      </I18nProvider>
+    );
+
+    expect(screen.getByLabelText(/full name/i)).toHaveValue('Test Member');
+  });
+
+  it('does not overwrite what the purchaser already typed', () => {
+    const { rerender, onSubmit } = renderForm();
+    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Someone Else' } });
+
+    rerender(
+      <I18nProvider>
+        <LanguageProvider>
+          <ShirtOrderForm catalog={catalog} submitting={false} error={null} onSubmit={onSubmit} prefill={member} />
+        </LanguageProvider>
+      </I18nProvider>
+    );
+
+    expect(screen.getByLabelText(/full name/i)).toHaveValue('Someone Else');
+    expect(screen.getByLabelText(/phone/i)).toHaveValue('(214) 555-0101');
+  });
+
+  it('keeps prefilled fields editable', () => {
+    renderForm({ prefill: member });
+
+    fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: '+12145550199' } });
+
+    expect(screen.getByLabelText(/phone/i)).toHaveValue('(214) 555-0199');
+  });
+});
+
+describe('ShirtOrderForm — stepper and stock', () => {
+  // A copy of the fixture with the given stock on one size of the youth shirt.
+  const withYouthStock = (size: string, available: number): MerchCatalog => ({
+    ...catalog,
+    products: catalog.products.map((p) => p.product_key !== youth.product_key ? p : {
+      ...p,
+      sizes: p.sizes.map((s) => (s.size === size ? { ...s, available } : s))
+    })
+  });
+  const addOne = (productName: string, sizeName: string) =>
+    screen.getByRole('button', { name: new RegExp(`add one: ${productName}, ${sizeName}`, 'i') });
+  const removeOne = (productName: string, sizeName: string) =>
+    screen.getByRole('button', { name: new RegExp(`remove one: ${productName}, ${sizeName}`, 'i') });
+
+  it('adds and removes one at a time with the + and − buttons', async () => {
+    renderForm();
+
+    fireEvent.click(addOne(YOUTH, 'Small'));
+    fireEvent.click(addOne(YOUTH, 'Small'));
+    expect(qtyInput(YOUTH, 'S')).toHaveValue(2);
+
+    fireEvent.click(removeOne(YOUTH, 'Small'));
+    expect(qtyInput(YOUTH, 'S')).toHaveValue(1);
+    await waitFor(() => expect(subtotal()).toHaveTextContent('$25.00'));
+  });
+
+  it('cannot go below zero', () => {
+    renderForm();
+
+    expect(removeOne(ADULT, 'Large')).toBeDisabled();
+  });
+
+  it('spells out the size name as well as the letter', () => {
+    renderForm();
+
+    expect(screen.getAllByText('Small').length).toBeGreaterThan(0);
+    expect(screen.getByText('Medium')).toBeInTheDocument();
+  });
+
+  it('marks a sold-out size and will not let it be chosen', () => {
+    renderForm({ catalog: withYouthStock('M', 0) });
+
+    expect(screen.getByText(/sold out/i)).toBeInTheDocument();
+    expect(qtyInput(YOUTH, 'M')).toBeDisabled();
+    expect(addOne(YOUTH, 'Medium')).toBeDisabled();
+  });
+
+  it('says how many are left when stock is low', () => {
+    renderForm({ catalog: withYouthStock('S', 3) });
+
+    expect(screen.getByText(/only 3 left/i)).toBeInTheDocument();
+  });
+
+  it('does not show a count while stock is plentiful', () => {
+    renderForm();
+
+    expect(screen.queryByText(/left/i)).not.toBeInTheDocument();
+  });
+
+  it('stops at what is left, below the per-order maximum', () => {
+    renderForm({ catalog: withYouthStock('S', 2) });
+
+    fireEvent.click(addOne(YOUTH, 'Small'));
+    fireEvent.click(addOne(YOUTH, 'Small'));
+
+    expect(qtyInput(YOUTH, 'S')).toHaveValue(2);
+    expect(addOne(YOUTH, 'Small')).toBeDisabled();
+  });
+
+  it('clamps a typed quantity to what is left', () => {
+    renderForm({ catalog: withYouthStock('S', 4) });
+
+    fireEvent.change(qtyInput(YOUTH, 'S'), { target: { value: '15' } });
+
+    expect(qtyInput(YOUTH, 'S')).toHaveValue(4);
+  });
+});
+
+describe('ShirtOrderForm — phone number', () => {
+  const phone = () => screen.getByLabelText(/phone/i);
+  const type = (value: string) => fireEvent.change(phone(), { target: { value } });
+
+  it('formats the number as it is typed', () => {
+    renderForm();
+
+    type('214');
+    expect(phone()).toHaveValue('(214');
+    type('214555');
+    expect(phone()).toHaveValue('(214) 555');
+    type('2145550000');
+    expect(phone()).toHaveValue('(214) 555-0000');
+  });
+
+  it('stops at ten digits', () => {
+    renderForm();
+
+    type('214555000099');
+
+    expect(phone()).toHaveValue('(214) 555-0000');
+  });
+
+  it('ignores anything that is not a digit', () => {
+    renderForm();
+
+    type('214-abc-555.0000');
+
+    expect(phone()).toHaveValue('(214) 555-0000');
+  });
+
+  // A number pasted with its country code must not lose its last digit to
+  // the leading 1.
+  it('drops a leading US country code', () => {
+    renderForm();
+
+    type('+1 214 555 0000');
+
+    expect(phone()).toHaveValue('(214) 555-0000');
+  });
+
+  it('can be cleared', () => {
+    renderForm();
+
+    type('2145550000');
+    type('');
+
+    expect(phone()).toHaveValue('');
+  });
+
+  it('sends the number in international form', async () => {
+    const { onSubmit } = renderForm();
+    fireEvent.change(qtyInput(ADULT, 'S'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Test Purchaser' } });
+    type('(214) 555-0000');
+
+    fireEvent.click(screen.getByRole('button', { name: /continue to payment/i }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0][0].purchaser_phone).toBe('+12145550000');
+  });
+
+  it('refuses a number that is not ten digits', async () => {
+    const { onSubmit } = renderForm();
+    fireEvent.change(qtyInput(ADULT, 'S'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Test Purchaser' } });
+    type('214555');
+
+    fireEvent.click(screen.getByRole('button', { name: /continue to payment/i }));
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/10-digit/i));
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

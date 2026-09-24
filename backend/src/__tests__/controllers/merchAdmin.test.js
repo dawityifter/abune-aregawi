@@ -23,7 +23,7 @@ jest.mock('stripe', () => jest.fn(() => ({
   webhooks: { constructEvent: jest.fn() }
 })));
 
-const { sequelize, MerchOrder, MerchOrderItem } = require('../../models');
+const { sequelize, MerchOrder, MerchOrderItem, MerchInventory } = require('../../models');
 const merchController = require('../../controllers/merchController');
 const merchRoutes = require('../../routes/merchRoutes');
 const {
@@ -60,6 +60,8 @@ function buildStaffApp(user = { id: 1, role: 'admin' }) {
   app.get('/orders', merchController.listOrders);
   app.get('/orders/size-summary', merchController.getSizeSummary);
   app.patch('/orders/:id/fulfillment', merchController.updateFulfillment);
+  app.get('/inventory', merchController.listInventory);
+  app.put('/inventory/:product_key/:size', merchController.updateInventory);
   return app;
 }
 
@@ -88,6 +90,7 @@ async function seedOrder({
   await MerchOrderItem.bulkCreate(lines.map((l) => ({
     order_id: order.id,
     product_name: l.product.product_name,
+    product_key: l.product.product_key,
     size: l.size,
     quantity: l.quantity,
     unit_amount: priceFor(l.product, l.size),
@@ -103,6 +106,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await MerchOrderItem.destroy({ where: {}, truncate: true });
   await MerchOrder.destroy({ where: {}, truncate: true });
+  await MerchInventory.destroy({ where: {}, truncate: true });
 });
 
 describe('merchandise admin routes are not public', () => {
@@ -125,6 +129,18 @@ describe('merchandise admin routes are not public', () => {
 
   // The catalog has no purchaser data in it and the order page needs it before
   // anyone signs in.
+  it('refuses an anonymous request for the inventory', async () => {
+    const res = await request(buildGuardedApp()).get('/api/merch/inventory');
+    expect(res.status).toBe(401);
+  });
+
+  it('refuses an anonymous inventory change', async () => {
+    const res = await request(buildGuardedApp())
+      .put('/api/merch/inventory/youth_heavy_cotton/S')
+      .send({ quantity: 0 });
+    expect(res.status).toBe(401);
+  });
+
   it('leaves the catalog public', async () => {
     const res = await request(buildGuardedApp()).get('/api/merch/catalog');
     expect(res.status).toBe(200);
@@ -278,6 +294,95 @@ describe('PATCH /orders/:id/fulfillment', () => {
       .patch('/orders/999999/fulfillment')
       .send({ fulfillment_status: 'fulfilled' });
 
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('inventory', () => {
+  const stock = (product, size, quantity) => MerchInventory.create({
+    event_key: OCTOBER_5K_EVENT_KEY, product_key: product.product_key, size, quantity
+  });
+  const row = (res, product, size) =>
+    res.body.items.find((i) => i.product_key === product.product_key && i.size === size);
+  const put = (product, size, body, user) =>
+    request(buildStaffApp(user)).put(`/inventory/${product.product_key}/${size}`).send(body);
+
+  it('lists every catalog size with what is left, in catalog order', async () => {
+    await stock(YOUTH, 'M', 100);
+    await stock(ADULT, 'S', 150);
+
+    const res = await request(buildStaffApp()).get('/inventory');
+
+    expect(res.status).toBe(200);
+    expect(res.body.items.map((i) => `${i.product_key}|${i.size}`)).toEqual([
+      'youth_heavy_cotton|S', 'youth_heavy_cotton|M', 'youth_heavy_cotton|L',
+      'adult_heavy_cotton|S', 'adult_heavy_cotton|L'
+    ]);
+    expect(row(res, YOUTH, 'M').quantity).toBe(100);
+    expect(row(res, ADULT, 'S').quantity).toBe(150);
+    // No record yet reads as none, not as a missing row.
+    expect(row(res, YOUTH, 'S').quantity).toBe(0);
+  });
+
+  // Shirts in open checkouts are already off the count; showing them explains
+  // a drop that no paid order accounts for yet.
+  it('shows what open checkouts are holding, and nothing for paid orders', async () => {
+    await stock(ADULT, 'S', 140);
+    await seedOrder({ status: 'pending', sizes: [{ size: 'S', quantity: 2 }] });
+    await seedOrder({ status: 'paid', sizes: [{ size: 'S', quantity: 5 }] });
+    await seedOrder({ status: 'pending', sizes: [{ product: YOUTH, size: 'S', quantity: 1 }] });
+
+    const res = await request(buildStaffApp()).get('/inventory');
+
+    expect(row(res, ADULT, 'S').held).toBe(2);
+    expect(row(res, YOUTH, 'S').held).toBe(1);
+    expect(row(res, ADULT, 'L').held).toBe(0);
+  });
+
+  it('sets a count after cash sales, and records who set it', async () => {
+    await stock(YOUTH, 'M', 100);
+
+    const res = await put(YOUTH, 'M', { quantity: 94, expected_quantity: 100 },
+      { id: 7, role: 'treasurer', email: 'treasurer@example.org' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.item.quantity).toBe(94);
+    const saved = await MerchInventory.findOne({ where: { product_key: YOUTH.product_key, size: 'M' } });
+    expect(saved.quantity).toBe(94);
+    expect(saved.updated_by).toBe('treasurer@example.org');
+  });
+
+  it('can set a size to zero, which takes it off sale', async () => {
+    await stock(ADULT, 'L', 3);
+
+    const res = await put(ADULT, 'L', { quantity: 0, expected_quantity: 3 });
+
+    expect(res.status).toBe(200);
+    expect((await MerchInventory.findOne({ where: { product_key: ADULT.product_key, size: 'L' } })).quantity).toBe(0);
+  });
+
+  it('creates the record for a size that had none', async () => {
+    const res = await put(YOUTH, 'L', { quantity: 12, expected_quantity: 0 });
+
+    expect(res.status).toBe(200);
+    expect((await MerchInventory.findOne({ where: { product_key: YOUTH.product_key, size: 'L' } })).quantity).toBe(12);
+  });
+
+  // The admin typed their figure while looking at 100; an online order took
+  // two in the meantime. Writing 94 over 98 would silently undo that sale.
+  it('refuses a change made against a count that has since moved', async () => {
+    await stock(YOUTH, 'M', 98);
+
+    const res = await put(YOUTH, 'M', { quantity: 94, expected_quantity: 100 });
+
+    expect(res.status).toBe(409);
+    expect(res.body.current).toBe(98);
+    expect((await MerchInventory.findOne({ where: { product_key: YOUTH.product_key, size: 'M' } })).quantity).toBe(98);
+  });
+
+  it('404s for a size the catalog does not sell', async () => {
+    // The adult cut is not stocked in a medium.
+    const res = await put(ADULT, 'M', { quantity: 5 });
     expect(res.status).toBe(404);
   });
 });

@@ -33,6 +33,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(255),
       allowNull: false
     },
+    product_key: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'Catalog product_key, used to return stock when a checkout expires. Null on lines written before inventory tracking.'
+    },
     size: {
       type: DataTypes.STRING(20),
       allowNull: false,

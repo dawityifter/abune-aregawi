@@ -1,13 +1,36 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { MerchCatalog, MerchCheckoutRequest, formatMoney } from '../../config/merch';
 import SizeQuantityPicker from './SizeQuantityPicker';
+import {
+  formatPhoneNumber, formatE164ToDisplay, isValidPhoneNumber, normalizePhoneNumber
+} from '../../utils/formatPhoneNumber';
+
+/**
+ * What is typed, shown as (XXX) XXX-XXXX and capped at ten digits. A leading
+ * country code is dropped first — no US area code starts with 1 — so a number
+ * pasted as "+1 214 555 0000" keeps its last digit instead of losing it to the
+ * cap.
+ */
+const formatTypedPhone = (raw: string) => {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
+  return digits ? formatPhoneNumber(digits) : '';
+};
+
+export interface PurchaserPrefill {
+  name?: string;
+  phone?: string;
+  email?: string;
+}
 
 interface Props {
   catalog: MerchCatalog;
   submitting: boolean;
   error?: string | null;
   onSubmit: (payload: MerchCheckoutRequest) => Promise<void> | void;
+  /** A signed-in member's contact details, if we have them. */
+  prefill?: PurchaserPrefill;
 }
 
 /**
@@ -22,7 +45,7 @@ const cellKey = (productKey: string, size: string) => `${productKey}|${size}`;
  * API and does not know what a Checkout Session is — MerchPage owns the request
  * and the redirect. That split is what makes this testable without a network.
  */
-const ShirtOrderForm: React.FC<Props> = ({ catalog, submitting, error, onSubmit }) => {
+const ShirtOrderForm: React.FC<Props> = ({ catalog, submitting, error, onSubmit, prefill }) => {
   const { t } = useI18n();
   const { products, currency, tax_applies: taxApplies } = catalog;
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -30,6 +53,19 @@ const ShirtOrderForm: React.FC<Props> = ({ catalog, submitting, error, onSubmit 
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+
+  // The member record can land after the form is on screen (auth resolves
+  // asynchronously), so this runs on every change to it — but only ever fills
+  // a box that is still empty. Whatever the purchaser typed wins; a member
+  // buying for someone else must not have their edits snapped back.
+  const prefillName = prefill?.name?.trim() || '';
+  const prefillPhone = prefill?.phone?.trim() || '';
+  const prefillEmail = prefill?.email?.trim() || '';
+  useEffect(() => {
+    if (prefillName) setName((current) => current || prefillName);
+    if (prefillPhone) setPhone((current) => current || formatE164ToDisplay(prefillPhone));
+    if (prefillEmail) setEmail((current) => current || prefillEmail);
+  }, [prefillName, prefillPhone, prefillEmail]);
 
   // Each chosen line carries its own unit price, taken from its own size entry
   // rather than from any product-wide figure. Every shirt costs $30 today,
@@ -72,11 +108,17 @@ const ShirtOrderForm: React.FC<Props> = ({ catalog, submitting, error, onSubmit 
       return;
     }
 
+    if (!isValidPhoneNumber(phone)) {
+      setLocalError(t('merch.errors.phoneInvalid'));
+      return;
+    }
+
     setLocalError(null);
     await onSubmit({
       event_key: catalog.event_key,
       purchaser_name: name.trim(),
-      purchaser_phone: phone.trim(),
+      // E.164 for the server, whatever the box shows.
+      purchaser_phone: normalizePhoneNumber(phone),
       // Omitted rather than sent empty: the server validates it only when present.
       ...(email.trim() ? { purchaser_email: email.trim() } : {}),
       // Product, size and quantity only. `chosen` also carries the display
@@ -140,7 +182,10 @@ const ShirtOrderForm: React.FC<Props> = ({ catalog, submitting, error, onSubmit 
             required
             value={phone}
             disabled={submitting}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => setPhone(formatTypedPhone(e.target.value))}
+            inputMode="tel"
+            autoComplete="tel-national"
+            placeholder="(214) 555-0123"
             className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
           />
         </div>

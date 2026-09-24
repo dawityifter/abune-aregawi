@@ -21,7 +21,7 @@ jest.mock('stripe', () => jest.fn(() => ({
 })));
 
 const {
-  sequelize, MerchOrder, MerchOrderItem, Transaction, LedgerEntry, IncomeCategory, Donation
+  sequelize, MerchOrder, MerchOrderItem, MerchInventory, Transaction, LedgerEntry, IncomeCategory, Donation
 } = require('../../models');
 const merchController = require('../../controllers/merchController');
 const merchRoutes = require('../../routes/merchRoutes');
@@ -133,6 +133,12 @@ beforeEach(async () => {
   await MerchOrder.destroy({ where: {}, truncate: true });
   await LedgerEntry.destroy({ where: {}, truncate: true });
   await Transaction.destroy({ where: {}, truncate: true });
+  await MerchInventory.destroy({ where: {}, truncate: true });
+  // Plenty of every size, so the cases below are about what they say they are
+  // about and not about stock. The inventory cases set their own counts.
+  await MerchInventory.bulkCreate(EVENT.products.flatMap((p) => p.sizes.map((s) => ({
+    event_key: OCTOBER_5K_EVENT_KEY, product_key: p.product_key, size: s.size, quantity: 100
+  }))));
   mockSessionCreate.mockResolvedValue({
     id: 'cs_test_merch_1',
     url: 'https://checkout.stripe.com/c/pay/cs_test_merch_1'
@@ -190,16 +196,35 @@ describe('POST /api/merch/checkout-session — validation', () => {
     expect(order.purchaser_phone).toBe('+12145550000');
   });
 
-  // Stripe rejects an empty customer_email outright, and Checkout collects one
-  // on its own page anyway, so the field is left off rather than sent blank.
-  it('leaves customer_email off the Stripe session when none was given', async () => {
+  // No email on the form: the Stripe page is pre-filled with the parish's own
+  // address, so the purchaser is not asked for one there either.
+  it('pre-fills Stripe with the parish address when no email was given', async () => {
     await post({
       purchaser_email: '',
       items: [{ product_key: product.product_key, size: 'S', quantity: 1 }]
     });
 
     const args = mockSessionCreate.mock.calls[0][0];
-    expect(args).not.toHaveProperty('customer_email');
+    expect(args.customer_email).toBe('abunearegawitx@gmail.com');
+  });
+
+  it('pre-fills Stripe with the email the purchaser gave', async () => {
+    await post({
+      purchaser_email: 'buyer@example.org',
+      items: [{ product_key: product.product_key, size: 'S', quantity: 1 }]
+    });
+
+    const args = mockSessionCreate.mock.calls[0][0];
+    expect(args.customer_email).toBe('buyer@example.org');
+  });
+
+  it('does not record the parish address as the purchaser\'s email', async () => {
+    await post({
+      purchaser_email: '',
+      items: [{ product_key: product.product_key, size: 'S', quantity: 1 }]
+    });
+
+    expect((await MerchOrder.findOne()).purchaser_email).toBeNull();
   });
 
   it('rejects an order with no items', async () => {
@@ -348,9 +373,8 @@ describe('POST /api/merch/webhook', () => {
     return MerchOrder.findOne();
   }
 
-  // Email is optional on the form, but Stripe Checkout collects one before it
-  // takes payment. Keeping it is the difference between a phone-only order the
-  // parish can follow up and one with no address on record at all.
+  // Only reachable if a session is ever opened without customer_email; kept so
+  // a phone-only order still ends up with the address the receipt went to.
   it('stores the email Stripe collected when the purchaser gave none', async () => {
     await post({
       purchaser_email: '',
@@ -366,6 +390,25 @@ describe('POST /api/merch/webhook', () => {
     await order.reload();
     expect(order.status).toBe('paid');
     expect(order.purchaser_email).toBe('collected.at.stripe@example.org');
+  });
+
+  // The session was pre-filled with the parish's address, so that is what
+  // Stripe reports back. It is not the purchaser's, and the admin list must not
+  // show it as though it were.
+  it('does not store the parish fallback address as the purchaser\'s', async () => {
+    await post({
+      purchaser_email: '',
+      items: [{ product_key: product.product_key, size: 'S', quantity: 1 }]
+    });
+    const order = await MerchOrder.findOne();
+
+    await deliver(completedEvent(order, {
+      customer_details: { name: order.purchaser_name, email: 'AbuneAregawiTX@gmail.com' }
+    }));
+
+    await order.reload();
+    expect(order.status).toBe('paid');
+    expect(order.purchaser_email).toBeNull();
   });
 
   // The address someone typed on the parish's own form is the one they chose to
@@ -542,5 +585,168 @@ describe('POST /api/merch/webhook', () => {
     await order.reload();
     expect(order.status).toBe('pending');
     expect(await Transaction.count()).toBe(0);
+  });
+});
+
+describe('inventory', () => {
+  const stockOf = async (productKey, size) =>
+    (await MerchInventory.findOne({
+      where: { event_key: OCTOBER_5K_EVENT_KEY, product_key: productKey, size }
+    })).quantity;
+  const setStock = (productKey, size, quantity) => MerchInventory.update(
+    { quantity },
+    { where: { event_key: OCTOBER_5K_EVENT_KEY, product_key: productKey, size } }
+  );
+  const expiredEvent = (order) => ({
+    id: 'evt_merch_expired',
+    type: 'checkout.session.expired',
+    data: {
+      object: {
+        id: order.stripe_checkout_session_id,
+        object: 'checkout.session',
+        status: 'expired',
+        payment_status: 'unpaid',
+        metadata: { order_id: String(order.id), event_key: OCTOBER_5K_EVENT_KEY, purpose: 'merchandise_sale' }
+      }
+    }
+  });
+
+  // Taken when checkout STARTS, not when payment lands: otherwise two people
+  // could both be paying for the last shirt of a size.
+  it('takes the shirts off the count when checkout starts', async () => {
+    await post({ items: [
+      { product_key: product.product_key, size: 'S', quantity: 3 },
+      { product_key: YOUTH.product_key, size: 'M', quantity: 2 }
+    ] });
+
+    expect(await stockOf(product.product_key, 'S')).toBe(97);
+    expect(await stockOf(YOUTH.product_key, 'M')).toBe(98);
+    expect(await stockOf(product.product_key, 'L')).toBe(100);
+  });
+
+  it('records which product each order line is, so its stock can be returned', async () => {
+    await post({ items: [{ product_key: YOUTH.product_key, size: 'S', quantity: 1 }] });
+
+    const item = await MerchOrderItem.findOne();
+    expect(item.product_key).toBe(YOUTH.product_key);
+  });
+
+  it('refuses more than are left, says how many are, and takes nothing', async () => {
+    await setStock(product.product_key, 'L', 2);
+
+    const res = await post({ items: [{ product_key: product.product_key, size: 'L', quantity: 3 }] });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/only 2 left/i);
+    expect(res.body.available).toBe(2);
+    expect(await stockOf(product.product_key, 'L')).toBe(2);
+    expect(await MerchOrder.count()).toBe(0);
+    expect(mockSessionCreate).not.toHaveBeenCalled();
+  });
+
+  it('refuses a sold-out size', async () => {
+    await setStock(YOUTH.product_key, 'L', 0);
+
+    const res = await post({ items: [{ product_key: YOUTH.product_key, size: 'L', quantity: 1 }] });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/sold out/i);
+  });
+
+  it('sells the very last shirt of a size', async () => {
+    await setStock(YOUTH.product_key, 'L', 1);
+
+    const res = await post({ items: [{ product_key: YOUTH.product_key, size: 'L', quantity: 1 }] });
+
+    expect(res.status).toBe(200);
+    expect(await stockOf(YOUTH.product_key, 'L')).toBe(0);
+  });
+
+  // The first line's stock was already taken when the second line failed; the
+  // transaction has to put it back, or a refused order still eats shirts.
+  it('puts back every line of an order that one sold-out line refused', async () => {
+    await setStock(YOUTH.product_key, 'L', 0);
+
+    const res = await post({ items: [
+      { product_key: product.product_key, size: 'S', quantity: 4 },
+      { product_key: YOUTH.product_key, size: 'L', quantity: 1 }
+    ] });
+
+    expect(res.status).toBe(409);
+    expect(await stockOf(product.product_key, 'S')).toBe(100);
+  });
+
+  it('treats a size with no stock record as sold out, not unlimited', async () => {
+    await MerchInventory.destroy({ where: { product_key: product.product_key, size: 'S' } });
+
+    const res = await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 1 }] });
+
+    expect(res.status).toBe(409);
+  });
+
+  it('gives the shirts back when Stripe could not open the checkout', async () => {
+    mockSessionCreate.mockRejectedValueOnce(new Error('Stripe is down'));
+
+    const res = await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 5 }] });
+
+    expect(res.status).toBe(500);
+    expect(await stockOf(product.product_key, 'S')).toBe(100);
+    expect((await MerchOrder.findOne()).status).toBe('canceled');
+  });
+
+  it('holds the shirts for about half an hour, not Stripe\'s default day', async () => {
+    const before = Math.floor(Date.now() / 1000);
+    await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 1 }] });
+
+    const { expires_at: expiresAt } = mockSessionCreate.mock.calls[0][0];
+    // Stripe refuses anything under 30 minutes.
+    expect(expiresAt - before).toBeGreaterThanOrEqual(30 * 60);
+    expect(expiresAt - before).toBeLessThanOrEqual(35 * 60);
+  });
+
+  it('puts an abandoned checkout\'s shirts back on sale when it expires', async () => {
+    await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 3 }] });
+    const order = await MerchOrder.findOne();
+
+    const res = await deliver(expiredEvent(order));
+
+    expect(res.status).toBe(200);
+    expect((await MerchOrder.findByPk(order.id)).status).toBe('expired');
+    expect(await stockOf(product.product_key, 'S')).toBe(100);
+  });
+
+  // Stripe delivers at least once. Returning stock twice would conjure shirts.
+  it('returns the stock only once when the expiry is delivered twice', async () => {
+    await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 3 }] });
+    const order = await MerchOrder.findOne();
+
+    await deliver(expiredEvent(order));
+    await deliver(expiredEvent(order));
+
+    expect(await stockOf(product.product_key, 'S')).toBe(100);
+  });
+
+  it('keeps a paid order\'s shirts sold', async () => {
+    await post({ items: [{ product_key: product.product_key, size: 'S', quantity: 3 }] });
+    const order = await MerchOrder.findOne();
+
+    await deliver(completedEvent(order));
+    await deliver(expiredEvent(order));
+
+    expect((await MerchOrder.findByPk(order.id)).status).toBe('paid');
+    expect(await stockOf(product.product_key, 'S')).toBe(97);
+  });
+
+  it('tells the order page what is left of every size', async () => {
+    await setStock(YOUTH.product_key, 'M', 7);
+    await MerchInventory.destroy({ where: { product_key: product.product_key, size: 'L' } });
+
+    const res = await request(buildPublicApp()).get('/api/merch/catalog');
+
+    const sizeOf = (productKey, size) =>
+      res.body.products.find((p) => p.product_key === productKey).sizes.find((s) => s.size === size);
+    expect(sizeOf(YOUTH.product_key, 'M').available).toBe(7);
+    expect(sizeOf(product.product_key, 'S').available).toBe(100);
+    expect(sizeOf(product.product_key, 'L').available).toBe(0);
   });
 });

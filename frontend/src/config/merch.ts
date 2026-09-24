@@ -10,6 +10,11 @@ export interface MerchSize {
   size: string;
   /** Price in CENTS, as the server holds it. */
   unit_amount: number;
+  /**
+   * Shirts left to sell online. 0 is sold out. A snapshot from when the page
+   * loaded — the server re-checks at checkout.
+   */
+  available: number;
 }
 
 export interface MerchProduct {

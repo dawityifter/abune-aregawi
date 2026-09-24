@@ -20,7 +20,18 @@ const {
 const { validationResult } = require('express-validator');
 const { buildOrderDraft, MerchValidationError } = require('../services/merchPricingService');
 const { getTaxConfig, computeTaxCents } = require('../config/merchTax');
-const { OCTOBER_5K_EVENT_KEY, getEvent, productSizePairs } = require('../config/merchCatalog');
+const {
+  OCTOBER_5K_EVENT_KEY, getEvent, findProduct, findSize, productSizePairs
+} = require('../config/merchCatalog');
+const inventory = require('../services/merchInventoryService');
+
+/**
+ * How long a checkout holds its shirts. Stripe's minimum, plus a minute of
+ * slack for clock skew — Stripe rejects anything under 30 minutes. The default
+ * would be 24 hours, which on the last few of a size means a single abandoned
+ * tab keeps them off sale for a day.
+ */
+const CHECKOUT_HOLD_SECONDS = 31 * 60;
 
 /**
  * Marks a Checkout Session as ours. The donation webhook and this one are
@@ -36,6 +47,16 @@ const MERCH_PURPOSE = 'merchandise_sale';
 const MERCH_PAYMENT_TYPE = 'event_merchandise';
 
 const centsToDollars = (cents) => Math.round(cents) / 100;
+
+/**
+ * Pre-filled on the Stripe page when the purchaser gave no email, so they are
+ * not asked for one there either. Stripe locks a pre-filled email, so the
+ * receipt for such an order goes to this parish inbox rather than to the
+ * purchaser. Never stored on the order as the purchaser's own address.
+ */
+const FALLBACK_RECEIPT_EMAIL = (process.env.MERCH_FALLBACK_EMAIL || 'abunearegawitx@gmail.com').trim();
+const isFallbackEmail = (email) =>
+  Boolean(email) && String(email).trim().toLowerCase() === FALLBACK_RECEIPT_EMAIL.toLowerCase();
 
 /**
  * The email Stripe Checkout collected, whichever field it lands in. Null rather
@@ -105,33 +126,51 @@ const createCheckoutSession = async (req, res) => {
     const { mode: taxMode, rateBps } = getTaxConfig();
     const totalCents = subtotalCents + taxCents;
 
-    // The order and its lines commit together: a header with no sizes on it is
-    // useless to whoever is packing shirts.
-    const order = await sequelize.transaction(async (t) => {
-      const created = await MerchOrder.create({
-        purchaser_name: purchaserName.trim(),
-        purchaser_email: purchaserEmail ? String(purchaserEmail).trim() : null,
-        purchaser_phone: String(purchaserPhone).trim(),
-        status: 'pending',
-        fulfillment_status: 'unfulfilled',
-        subtotal: centsToDollars(subtotalCents),
-        tax: centsToDollars(taxCents),
-        total: centsToDollars(totalCents),
-        currency: event.currency,
-        event_key: event.event_key
-      }, { transaction: t });
+    // The order, its lines and the stock they take all commit together: a header
+    // with no sizes on it is useless to whoever is packing shirts, and a shirt
+    // taken off the shelf for an order that was never written is lost for good.
+    let order;
+    try {
+      order = await sequelize.transaction(async (t) => {
+        await inventory.reserve(event.event_key, lineItems, t);
 
-      await MerchOrderItem.bulkCreate(lineItems.map((line) => ({
-        order_id: created.id,
-        product_name: line.product_name,
-        size: line.size,
-        quantity: line.quantity,
-        unit_amount: centsToDollars(line.unit_amount),
-        total_amount: centsToDollars(line.total_amount)
-      })), { transaction: t });
+        const created = await MerchOrder.create({
+          purchaser_name: purchaserName.trim(),
+          purchaser_email: purchaserEmail ? String(purchaserEmail).trim() : null,
+          purchaser_phone: String(purchaserPhone).trim(),
+          status: 'pending',
+          fulfillment_status: 'unfulfilled',
+          subtotal: centsToDollars(subtotalCents),
+          tax: centsToDollars(taxCents),
+          total: centsToDollars(totalCents),
+          currency: event.currency,
+          event_key: event.event_key
+        }, { transaction: t });
 
-      return created;
-    });
+        await MerchOrderItem.bulkCreate(lineItems.map((line) => ({
+          order_id: created.id,
+          product_name: line.product_name,
+          product_key: line.product_key,
+          size: line.size,
+          quantity: line.quantity,
+          unit_amount: centsToDollars(line.unit_amount),
+          total_amount: centsToDollars(line.total_amount)
+        })), { transaction: t });
+
+        return created;
+      });
+    } catch (err) {
+      if (err instanceof inventory.MerchOutOfStockError) {
+        return res.status(409).json({
+          success: false,
+          message: err.message,
+          product_key: err.product_key,
+          size: err.size,
+          available: err.available
+        });
+      }
+      throw err;
+    }
 
     const stripeLineItems = lineItems.map((line) => ({
       quantity: line.quantity,
@@ -187,14 +226,14 @@ const createCheckoutSession = async (req, res) => {
       // at all and is turned off in the Stripe Dashboard (Checkout settings →
       // Use Apple Pay), since it rides along with the `card` type.
       wallet_options: { link: { display: 'never' } },
-      // Omitted rather than sent empty when the purchaser gave no email. Stripe
-      // Checkout always collects one on its own page, so the receipt still
-      // reaches them; passing '' would be rejected outright.
-      ...(purchaserEmail ? { customer_email: String(purchaserEmail).trim() } : {}),
+      // The purchaser's own email when they gave one, otherwise the parish
+      // inbox — see FALLBACK_RECEIPT_EMAIL.
+      customer_email: purchaserEmail ? String(purchaserEmail).trim() : FALLBACK_RECEIPT_EMAIL,
       // Pickup only — no shipping_address_collection, deliberately. The parish
       // hands these over at the church or at the event.
       success_url: `${frontendBaseUrl()}/merch/thank-you?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${frontendBaseUrl()}/merch?canceled=1`,
+      expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_HOLD_SECONDS,
       metadata: {
         order_id: String(order.id),
         event_key: event.event_key,
@@ -211,8 +250,11 @@ const createCheckoutSession = async (req, res) => {
       session = await stripe.checkout.sessions.create(sessionParams);
     } catch (stripeErr) {
       // The pending row would otherwise sit in the admin list forever looking
-      // like an order someone abandoned at the payment screen.
-      await order.update({ status: 'canceled' }).catch(() => {});
+      // like an order someone abandoned at the payment screen — and, worse,
+      // keep its shirts off sale with no Stripe session ever coming to expire.
+      await inventory.releasePendingOrder(order.id, 'canceled').catch((releaseErr) => {
+        console.error(`❌ Could not return stock for merch order ${order.id}:`, releaseErr.message);
+      });
       throw stripeErr;
     }
 
@@ -415,7 +457,11 @@ async function handleCheckoutCompleted(session) {
       //
       // Only ever fills a blank — an address the purchaser typed on our form is
       // the one they chose to give the church, and Stripe's must not overwrite it.
-      purchaser_email: order.purchaser_email || stripeEmail(session),
+      //
+      // Nor is the parish's own fallback address: that is what Stripe reports
+      // back for an order whose purchaser gave no email, and it is not theirs.
+      purchaser_email: order.purchaser_email
+        || (isFallbackEmail(stripeEmail(session)) ? null : stripeEmail(session)),
       subtotal,
       tax,
       total,
@@ -464,11 +510,11 @@ async function handleCheckoutExpired(session) {
   const metadata = session.metadata || {};
   if (metadata.purpose !== MERCH_PURPOSE) return;
 
-  const order = await MerchOrder.findByPk(metadata.order_id);
-  // Only a pending order expires. A paid one that Stripe later calls expired is
-  // not something to un-pay.
-  if (order && order.status === 'pending') {
-    await order.update({ status: 'expired' });
+  // Only a pending order expires, and only then do its shirts go back on sale.
+  // A paid one that Stripe later calls expired is not something to un-pay.
+  const released = await inventory.releasePendingOrder(metadata.order_id, 'expired');
+  if (released) {
+    console.log(`ℹ️  Merch order ${metadata.order_id} expired; its shirts are back on sale.`);
   }
 }
 
@@ -634,6 +680,13 @@ const getCatalog = async (req, res) => {
     return res.status(404).json({ success: false, message: 'Unknown event' });
   }
   const { mode } = getTaxConfig();
+  let available;
+  try {
+    available = await inventory.getAvailability(eventKey);
+  } catch (error) {
+    console.error('Error reading merchandise inventory:', error);
+    return res.status(500).json({ success: false, message: 'Failed to load the catalog' });
+  }
   return res.status(200).json({
     success: true,
     event_key: event.event_key,
@@ -645,7 +698,14 @@ const getCatalog = async (req, res) => {
       product_key: product.product_key,
       product_name: product.product_name,
       // Each size carries its own price; there is no product-wide unit_amount.
-      sizes: product.sizes.map((s) => ({ size: s.size, unit_amount: s.unit_amount })),
+      // `available` lets the page grey out a sold-out size and stop the
+      // quantity box at what is left. The server still re-checks at checkout:
+      // this number can be stale by the time the purchaser presses the button.
+      sizes: product.sizes.map((s) => ({
+        size: s.size,
+        unit_amount: s.unit_amount,
+        available: available.get(inventory.cellKey(product.product_key, s.size)) || 0
+      })),
       max_quantity_per_size: product.max_quantity_per_size
     })),
     // The page says "tax calculated at checkout" rather than showing a number
@@ -654,8 +714,104 @@ const getCatalog = async (req, res) => {
   });
 };
 
+/**
+ * GET /api/merch/inventory — staff only.
+ *
+ * Every catalog size with what is left to sell and what open checkouts are
+ * holding. Catalog order, and every size present even at zero.
+ */
+const listInventory = async (req, res) => {
+  try {
+    const eventKey = req.query.event_key || OCTOBER_5K_EVENT_KEY;
+    const event = getEvent(eventKey);
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Unknown event' });
+    }
+
+    const [available, held] = await Promise.all([
+      inventory.getAvailability(eventKey),
+      inventory.getHeld(eventKey)
+    ]);
+
+    const items = productSizePairs(event).map(({ product_key: productKey, product_name: productName, size }) => {
+      const key = inventory.cellKey(productKey, size);
+      return {
+        product_key: productKey,
+        product_name: productName,
+        size,
+        quantity: available.get(key) || 0,
+        held: held.get(key) || 0
+      };
+    });
+
+    return res.status(200).json({ success: true, event_key: eventKey, items });
+  } catch (error) {
+    console.error('Error listing merchandise inventory:', error);
+    return res.status(500).json({ success: false, message: 'Failed to load inventory' });
+  }
+};
+
+/**
+ * PUT /api/merch/inventory/:product_key/:size — staff only.
+ *
+ * Body: { quantity, expected_quantity }. Sets the count outright — after cash
+ * sales or a recount. `expected_quantity` is the number the admin was looking
+ * at; if an online sale moved it since, the write is refused with a 409 and the
+ * current count, so a cash-sale adjustment never silently undoes a card sale.
+ */
+const updateInventory = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false, message: 'Validation failed', errors: errors.array()
+      });
+    }
+
+    const eventKey = req.body.event_key || OCTOBER_5K_EVENT_KEY;
+    const { product_key: productKey, size } = req.params;
+    const event = getEvent(eventKey);
+    const product = findProduct(event, productKey);
+    if (!product || !findSize(product, size)) {
+      return res.status(404).json({ success: false, message: 'That product and size is not in the catalog.' });
+    }
+
+    const result = await inventory.setQuantity({
+      eventKey,
+      productKey,
+      size,
+      quantity: Number(req.body.quantity),
+      expectedQuantity: req.body.expected_quantity,
+      updatedBy: (req.user && (req.user.email || req.user.phone_number || String(req.user.id))) || null
+    });
+
+    if (!result.ok) {
+      return res.status(409).json({
+        success: false,
+        message: `The count changed to ${result.current} while you were editing — an online order came in. Check the number and save again.`,
+        current: result.current
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      item: {
+        product_key: productKey,
+        product_name: product.product_name,
+        size,
+        quantity: result.row.quantity
+      }
+    });
+  } catch (error) {
+    console.error('Error updating merchandise inventory:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update inventory' });
+  }
+};
+
 module.exports = {
   createCheckoutSession,
+  listInventory,
+  updateInventory,
   handleWebhook,
   listOrders,
   getSizeSummary,

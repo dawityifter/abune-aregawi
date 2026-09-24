@@ -47,9 +47,9 @@ const CATALOG = Object.freeze({
         // Order matters: the public picker and the admin size summary both
         // render in this order, so it reads as a size run, not alphabetically.
         sizes: sizesAt(SHIRT_PRICE_CENTS, 'S', 'M', 'L'),
-        // A per-size ceiling, not a stock count: nothing here reserves
-        // inventory. It exists so a typo (or a bot) cannot open a $50,000
-        // checkout session.
+        // A per-ORDER ceiling, not a stock count — stock lives in the
+        // merch_inventory table (see merchInventoryService). This exists so a
+        // typo (or a bot) cannot open a $50,000 checkout session.
         max_quantity_per_size: 20
       }),
       Object.freeze({

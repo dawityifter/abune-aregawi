@@ -3,12 +3,14 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = process.env.DATABASE_URL || 'sqlite::memory:';
 
 const { Sequelize, DataTypes } = require('sequelize');
-// Both migrations, in order. Running only the first would build a schema no
-// environment actually has, and the notNull the second adds would go untested.
+// Every merch migration, in order. Running only some would build a schema no
+// environment actually has, and whatever the later ones add would go untested.
 const createMerchOrders = require('../../../migrations/20260919000002-create-merch-orders');
 const phoneRequired = require('../../../migrations/20260921000001-merch-phone-required-email-optional');
+const createInventory = require('../../../migrations/20260923000001-create-merch-inventory');
 const defineMerchOrder = require('../../models/MerchOrder');
 const defineMerchOrderItem = require('../../models/MerchOrderItem');
+const defineMerchInventory = require('../../models/MerchInventory');
 
 /**
  * Every other merch test builds its schema with sequelize.sync(), which always
@@ -26,6 +28,7 @@ describe('merch_orders migration matches what the code writes', () => {
   let sequelize;
   let MerchOrder;
   let MerchOrderItem;
+  let MerchInventory;
 
   beforeAll(async () => {
     sequelize = new Sequelize('sqlite::memory:', { logging: false });
@@ -38,6 +41,7 @@ describe('merch_orders migration matches what the code writes', () => {
 
     await createMerchOrders.up(sequelize.getQueryInterface(), Sequelize);
     await phoneRequired.up(sequelize.getQueryInterface(), Sequelize);
+    await createInventory.up(sequelize.getQueryInterface(), Sequelize);
 
     // A real Model, not a stand-in object: MerchOrder.associate calls belongsTo,
     // which rejects anything that is not a Model subclass.
@@ -47,6 +51,7 @@ describe('merch_orders migration matches what the code writes', () => {
 
     MerchOrder = defineMerchOrder(sequelize);
     MerchOrderItem = defineMerchOrderItem(sequelize);
+    MerchInventory = defineMerchInventory(sequelize);
     MerchOrder.associate({ MerchOrderItem, Transaction });
     MerchOrderItem.associate({ MerchOrder });
   });
@@ -201,5 +206,53 @@ describe('merch_orders migration matches what the code writes', () => {
     });
     expect(withItems.items).toHaveLength(1);
     expect(withItems.items[0].size).toBe('M');
+  });
+
+  it('opens with the stock the parish has on hand', async () => {
+    const rows = await MerchInventory.findAll({ where: { event_key: 'october_5k_fundraiser' } });
+    const count = (productKey, size) =>
+      rows.find((r) => r.product_key === productKey && r.size === size).quantity;
+
+    expect(rows).toHaveLength(5);
+    expect(count('youth_heavy_cotton', 'S')).toBe(50);
+    expect(count('youth_heavy_cotton', 'M')).toBe(100);
+    expect(count('youth_heavy_cotton', 'L')).toBe(50);
+    expect(count('adult_heavy_cotton', 'S')).toBe(150);
+    expect(count('adult_heavy_cotton', 'L')).toBe(50);
+  });
+
+  it('seeds a count for every size the catalog sells', async () => {
+    const { getEvent, productSizePairs } = require('../../config/merchCatalog');
+    const rows = await MerchInventory.findAll();
+    const stocked = new Set(rows.map((r) => `${r.product_key}|${r.size}`));
+
+    for (const { product_key: productKey, size } of productSizePairs(getEvent('october_5k_fundraiser'))) {
+      expect(stocked).toContain(`${productKey}|${size}`);
+    }
+  });
+
+  it('stores the product key on an order line', async () => {
+    const order = await MerchOrder.create({
+      purchaser_name: 'Test Purchaser',
+      purchaser_phone: '+12145550000',
+      status: 'pending',
+      fulfillment_status: 'unfulfilled',
+      subtotal: 30.0,
+      tax: 0,
+      total: 30.0,
+      currency: 'usd',
+      event_key: 'october_5k_fundraiser'
+    });
+    const item = await MerchOrderItem.create({
+      order_id: order.id,
+      product_name: 'Youth Heavy Cotton™ T-Shirt',
+      product_key: 'youth_heavy_cotton',
+      size: 'S',
+      quantity: 1,
+      unit_amount: 30.0,
+      total_amount: 30.0
+    });
+
+    expect((await MerchOrderItem.findByPk(item.id)).product_key).toBe('youth_heavy_cotton');
   });
 });

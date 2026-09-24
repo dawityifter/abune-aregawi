@@ -162,7 +162,12 @@ export interface Dictionaries {
   // here deliberately avoids the language of giving used under `pledge`.
   merch?: {
     hero: { title: string; subtitle: string; tagline: string };
-    product: { sizeLabel: string; quantityLabel: string; soldOutNote: string; imageAlt: string; imageCaption: string };
+    product: {
+      sizeLabel: string; quantityLabel: string; soldOutNote: string;
+      sizeNames: { S: string; M: string; L: string };
+      soldOut: string; onlyLeft: string; addOne: string; removeOne: string; maxReached: string;
+      imageAlt: string; imageCaption: string;
+    };
     pickup: { title: string; body: string };
     tax: { note: string };
     form: {
@@ -177,7 +182,7 @@ export interface Dictionaries {
       taxAtCheckout: string;
       empty: string;
     };
-    errors: { network: string; noItems: string; generic: string; contactRequired: string };
+    errors: { network: string; noItems: string; generic: string; contactRequired: string; phoneInvalid: string };
     thankYou: { title: string; body: string; pickupReminder: string; home: string };
   };
   pledge: {
@@ -1022,6 +1027,12 @@ export const en: Dictionaries = {
       sizeLabel: "Size",
       quantityLabel: "Quantity",
       soldOutNote: "Sizes are limited — order early.",
+      sizeNames: { S: "Small", M: "Medium", L: "Large" },
+      soldOut: "Sold out",
+      onlyLeft: "Only {count} left",
+      addOne: "Add one",
+      removeOne: "Remove one",
+      maxReached: "That is the most you can order in this size.",
       imageAlt: "Navy 5K t-shirt, front and back. Front: 1st Annual 5K Run/Walk, D.T. Abune Aregawi O.T.C. — Faith, Unity, Community, Health. Back: a gold cross above the words \u201CLet us run with perseverance the race marked out for us\u201D, Hebrews 12:1.",
       imageCaption: "Front and back of the 1st Annual 5K Run/Walk shirt."
     },
@@ -1048,7 +1059,8 @@ export const en: Dictionaries = {
       network: "Network error. Please try again.",
       noItems: "Please choose at least one size.",
       generic: "We could not start checkout. Please try again.",
-      contactRequired: "Please enter your name and phone number."
+      contactRequired: "Please enter your name and phone number.",
+      phoneInvalid: "Please enter a 10-digit phone number."
     },
     thankYou: {
       title: "Thank you for your order!",
@@ -3545,6 +3557,12 @@ export const ti: Dictionaries = {
       sizeLabel: "መጠን",
       quantityLabel: "ብዝሒ",
       soldOutNote: "መጠናት ውሱናት እዮም — ኣቐዲምኩም ኣዙዙ።",
+      sizeNames: { S: "ንኡስ", M: "ማእከላይ", L: "ዓቢ" },
+      soldOut: "ተወዲኡ",
+      onlyLeft: "{count} ጥራይ ተሪፉ",
+      addOne: "ሓደ ወስኽ",
+      removeOne: "ሓደ ኣጉድል",
+      maxReached: "ካብዚ መጠን ክትእዝዙ እትኽእሉ እዚ እዩ ዝለዓለ።",
       imageAlt: "ሰማያዊ ማልያ 5ኪ.ሜ፡ ቅድሚትን ድሕሪትን። ቅድሚት፡ 1ይ ዓመታዊ 5ኪ.ሜ ጉያ/ምጓዓዝ፡ ዲ.ት. ኣቡነ ኣረጋዊ — እምነት፡ ሓድነት፡ ማሕበረሰብ፡ ጥዕና። ድሕሪት፡ ወርቃዊ መስቀል ምስ \u201Cነቲ ኣብ ቅድሜና ተቐሚጡ ዘሎ ጉያ ብትዕግስቲ ንጉየ\u201D፡ ዕብራውያን 12፡1።",
       imageCaption: "ቅድሚትን ድሕሪትን ናይ 1ይ ዓመታዊ 5ኪ.ሜ ጉያ/ምጓዓዝ ማልያ።"
     },
@@ -3571,7 +3589,8 @@ export const ti: Dictionaries = {
       network: "ጸገም ኔትዎርክ። በጃኹም እንደገና ፈትኑ።",
       noItems: "በጃኹም እንተ ወሓደ ሓደ መጠን ምረጹ።",
       generic: "ክፍሊት ክንጅምር ኣይከኣልናን። በጃኹም እንደገና ፈትኑ።",
-      contactRequired: "በጃኹም ስምኩምን ቁጽሪ ስልክኹምን ኣእትዉ።"
+      contactRequired: "በጃኹም ስምኩምን ቁጽሪ ስልክኹምን ኣእትዉ።",
+      phoneInvalid: "በጃኹም 10 ኣሃዝ ዘለዎ ቁጽሪ ስልኪ ኣእትዉ።"
     },
     thankYou: {
       title: "ስለ ትእዛዝኩም የቐንየልና!",

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatMoney } from '../../config/merch';
+import MerchInventoryPanel from './MerchInventoryPanel';
 
 interface MerchOrderItem {
   id: number;
@@ -134,12 +135,13 @@ const MerchOrders: React.FC = () => {
         </p>
       </div>
 
-      {/* Paid orders only — see the backend note: printing shirts for a pending
-          order is a real cost. */}
+      <MerchInventoryPanel />
+
+      {/* Paid orders only: a checkout still awaiting payment is not a sale. */}
       {summary && (
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="font-semibold text-gray-900">
-            Shirts to order <span className="font-normal text-gray-500">(paid orders only)</span>
+            Shirts sold online via Stripe
           </h3>
           {/* Grouped by garment. A single row of S / M / L tiles would add a
               youth small to an adult small and tell whoever places the supplier

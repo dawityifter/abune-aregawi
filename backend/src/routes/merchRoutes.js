@@ -98,6 +98,27 @@ router.patch('/orders/:id/fulfillment',
   merchController.updateFulfillment
 );
 
+// Stock on hand. Staff set it by hand after cash sales at the church; online
+// sales move it on their own.
+router.get('/inventory',
+  firebaseAuthMiddleware,
+  roleMiddleware(merchAdminRoles),
+  merchController.listInventory
+);
+
+router.put('/inventory/:product_key/:size',
+  firebaseAuthMiddleware,
+  roleMiddleware(merchAdminRoles),
+  body('quantity')
+    .isInt({ min: 0, max: 100000 })
+    .withMessage('Quantity must be a whole number, 0 or more'),
+  body('expected_quantity')
+    .optional({ nullable: true })
+    .isInt({ min: 0 })
+    .withMessage('expected_quantity must be a whole number'),
+  merchController.updateInventory
+);
+
 // Webhook is mounted in server.js before the body parsers to preserve the raw
 // body for signature verification.
 
