@@ -71,19 +71,44 @@ describe('PromoPopup', () => {
   });
 
   it('renders nothing when no promos are active', () => {
-    // August 21, 2026: all promos (including debretabor, expiring the evening
-    // of Aug 19 CDT / early Aug 20 UTC) are expired
-    const futureDate = new Date('2026-08-21T00:00:00Z').getTime();
+    // October 18, 2026: the 5K (expiring Oct 17 at noon CDT) and Demera
+    // (expiring Sep 26 at 9 PM CDT) have both expired
+    const futureDate = new Date('2026-10-18T00:00:00Z').getTime();
     dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(futureDate);
 
     renderWithProviders(<PromoPopup />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('shows both promos, soonest-ending first, while both are active', () => {
+    // September 25, 2026: Demera and the 5K are both still running
+    const testDate = new Date('2026-09-25T10:00:00-05:00').getTime();
+    dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(testDate);
+
+    renderWithProviders(<PromoPopup />);
+
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/demera-26.jpeg');
+    expect(screen.getAllByRole('button', { name: /go to slide/i })).toHaveLength(2);
+  });
+
+  it('keeps Demera up until 9 PM CDT on September 26 and drops it after', () => {
+    const justBefore = new Date('2026-09-26T20:59:00-05:00').getTime();
+    dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(justBefore);
+    const { unmount } = renderWithProviders(<PromoPopup />);
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/demera-26.jpeg');
+    unmount();
+    dateNowSpy.mockRestore();
+    window.localStorage.clear();
+
+    const atExpiry = new Date('2026-09-26T21:00:00-05:00').getTime();
+    dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(atExpiry);
+    renderWithProviders(<PromoPopup />);
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/5k-run-26.jpeg');
+  });
+
   it('renders the single active promo without navigation controls', () => {
-    // August 1, 2026: graduation has expired (July 26) but debretabor
-    // (expiring Aug 19) is still active — exactly one eligible promo
-    const testDate = new Date('2026-08-01T10:00:00-05:00').getTime();
+    // October 1, 2026: Demera has ended; only the 5K (until Oct 17) remains
+    const testDate = new Date('2026-10-01T10:00:00-05:00').getTime();
     dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(testDate);
 
     renderWithProviders(<PromoPopup />);
@@ -91,15 +116,30 @@ describe('PromoPopup', () => {
     const dialog = screen.getByRole('dialog');
     expect(dialog).toBeInTheDocument();
 
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/debretabor.jpeg');
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/5k-run-26.jpeg');
 
     // With only one active promo, the carousel controls are not rendered.
     expect(screen.queryByTitle('Next Image')).not.toBeInTheDocument();
     expect(screen.queryByTitle('Previous Image')).not.toBeInTheDocument();
   });
 
+  it('keeps the 5K up until noon CDT on October 17 and drops it after', () => {
+    const justBefore = new Date('2026-10-17T11:59:00-05:00').getTime();
+    dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(justBefore);
+    const { unmount } = renderWithProviders(<PromoPopup />);
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/5k-run-26.jpeg');
+    unmount();
+    dateNowSpy.mockRestore();
+    window.localStorage.clear();
+
+    const atExpiry = new Date('2026-10-17T12:00:00-05:00').getTime();
+    dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(atExpiry);
+    renderWithProviders(<PromoPopup />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('honors daily frequency capping using localStorage', () => {
-    const testDate = new Date('2026-06-29T15:15:43-05:00').getTime();
+    const testDate = new Date('2026-09-25T15:15:43-05:00').getTime();
     dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(testDate);
 
     // Simulate shown already today
@@ -111,7 +151,7 @@ describe('PromoPopup', () => {
 
   it('forces display when forcePromoPopup=1 is active', () => {
     // Expired dates
-    const futureDate = new Date('2026-08-01T00:00:00Z').getTime();
+    const futureDate = new Date('2026-11-01T00:00:00Z').getTime();
     dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(futureDate);
 
     // Shown today already
@@ -124,22 +164,22 @@ describe('PromoPopup', () => {
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     const img = screen.getByRole('img');
-    expect(img).toHaveAttribute('src', '/images/promo/july26-graduation.jpeg');
+    expect(img).toHaveAttribute('src', '/images/promo/demera-26.jpeg');
   });
 
   it('does not auto-rotate when only one promo is active', () => {
     jest.useFakeTimers();
-    // August 1, 2026: only debretabor is active (see comment above)
-    const testDate = new Date('2026-08-01T10:00:00-05:00').getTime();
+    // October 1, 2026: only the 5K is active (see comment above)
+    const testDate = new Date('2026-10-01T10:00:00-05:00').getTime();
     dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(testDate);
 
     renderWithProviders(<PromoPopup />);
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/debretabor.jpeg');
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/5k-run-26.jpeg');
 
     act(() => {
       jest.advanceTimersByTime(15000);
     });
     // A single promo has nothing to rotate to; it stays put.
-    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/debretabor.jpeg');
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/images/promo/5k-run-26.jpeg');
   });
 });

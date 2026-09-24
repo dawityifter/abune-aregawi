@@ -11,18 +11,18 @@ interface Promo {
 
 const PROMOS: Promo[] = [
   {
-    id: 'graduation',
-    src: '/images/promo/july26-graduation.jpeg',
-    alt: 'Graduation July 26',
-    // July 26, 2026 at 12:00 PM CST (Daylight time CDT is UTC-5)
-    expiry: new Date('2026-07-26T12:00:00-05:00').getTime()
+    id: 'demera-2026',
+    src: '/images/promo/demera-26.jpeg',
+    alt: 'Demera, the Finding of the True Cross — Saturday September 26 at 5 PM',
+    // September 26, 2026 at 9:00 PM CST (Daylight time CDT is UTC-5)
+    expiry: new Date('2026-09-26T21:00:00-05:00').getTime()
   },
   {
-    id: 'debretabor',
-    src: '/images/promo/debretabor.jpeg',
-    alt: 'Debre Tabor',
-    // August 19, 2026 at 9:00 PM CST (Daylight time CDT is UTC-5)
-    expiry: new Date('2026-08-19T21:00:00-05:00').getTime()
+    id: '5k-run-2026',
+    src: '/images/promo/5k-run-26.jpeg',
+    alt: '1st Annual 5K Run Walk — Saturday October 17 at 6 AM',
+    // October 17, 2026 at 12:00 PM CST (Daylight time CDT is UTC-5)
+    expiry: new Date('2026-10-17T12:00:00-05:00').getTime()
   }
 ];
 
