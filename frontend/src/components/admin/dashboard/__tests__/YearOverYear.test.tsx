@@ -76,9 +76,12 @@ describe('YearOverYear', () => {
       renderWithLanguage(<YearOverYear comparison={comparison} />);
       const caveat = screen.getByTestId('yoy-caveat');
       expect(caveat).toHaveTextContent('This drive runs 122 days; the previous one ran 122 days.');
-      expect(caveat).toHaveTextContent('The previous drive set no goal, so goal progress is not compared.');
+      // The flags are false when EITHER drive lacks a goal or dated payments,
+      // so the sentence must not name which one.
+      expect(caveat).toHaveTextContent('One of the two drives set no goal, so goal progress is not compared.');
       expect(caveat).toHaveTextContent(
-        "The previous drive's payments carry no dates, so collection timing is not compared.");
+        'One of the two drives has payments without dates, so collection timing is not compared.');
+      expect(caveat).not.toHaveTextContent(/previous drive/);
       expect(caveat).not.toHaveTextContent(/autumn/);
     });
 
