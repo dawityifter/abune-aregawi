@@ -70,6 +70,11 @@ const AdminDashboard: React.FC = () => {
     'admin', 'treasurer', 'church_leadership', 'secretary', 'bookkeeper'
   ].includes(r));
 
+  // Mirrors the roleMiddleware on GET /api/activity-logs
+  // (backend/src/routes/activityLogRoutes.js). Other roles that can open this
+  // dashboard would only get a 403, so the tab is hidden from them.
+  const canViewActivityLogs = userRoles.some((r) => ['admin', 'church_leadership'].includes(r));
+
   useEffect(() => {
     // Only admins, leadership, and secretary can access the dashboard generally, 
     // but we can refine access per tab via permissions.
@@ -83,7 +88,7 @@ const AdminDashboard: React.FC = () => {
   // Handle URL hash for tab navigation
   useEffect(() => {
     const hash = window.location.hash.replace('#', '');
-    if (hash === 'members' || hash === 'roles' || hash === 'departments' || hash === 'activity-logs' || hash === 'voicemails' || hash === 'reports' || hash === 'survey-report') {
+    if (hash === 'members' || hash === 'roles' || hash === 'departments' || hash === 'activity-logs' || hash === 'voicemails' || hash === 'reports' || hash === 'survey-report' || hash === 'fundraising' || hash === 'merch') {
       setActiveTab(hash as any);
     }
   }, []);
@@ -131,15 +136,14 @@ const AdminDashboard: React.FC = () => {
       case 'departments':
         return <DepartmentList />;
       case 'activity-logs':
-        // The log data itself is admin-only at the API (roleMiddleware(['admin'])),
-        // so the analytics link beside it is gated the same way rather than
-        // being offered to every role that can open this dashboard.
-        return (
+        // The analytics link rides on the same gate as the log data, rather
+        // than being offered to every role that can open this dashboard.
+        return canViewActivityLogs ? (
           <>
-            {isAdmin && <AnalyticsDashboardLink />}
+            <AnalyticsDashboardLink />
             <ActivityLogViewer />
           </>
-        );
+        ) : <div className="p-4 text-center text-gray-500">Access Denied</div>;
       case 'voicemails':
         return <VoicemailInbox />;
       case 'survey-report':
@@ -259,16 +263,18 @@ const AdminDashboard: React.FC = () => {
               {t('admin.departments')}
             </button>
 
-            <button
-              onClick={() => setActiveTab('activity-logs')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'activity-logs'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-            >
-              <i className="fas fa-history mr-2"></i>
-              {t('admin.activity.logs')}
-            </button>
+            {canViewActivityLogs && (
+              <button
+                onClick={() => setActiveTab('activity-logs')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'activity-logs'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                <i className="fas fa-history mr-2"></i>
+                {t('admin.activity.logs')}
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('voicemails')}
               className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'voicemails'

@@ -10,11 +10,12 @@ router.use(firebaseAuthMiddleware);
 /**
  * @route   GET /api/activity-logs
  * @desc    Get system activity logs
- * @access  Private (Admin only)
+ * @access  Private (admin, church_leadership) — mirrored by canViewActivityLogs
+ *          in frontend/src/components/admin/AdminDashboard.tsx
  */
 router.get(
     '/',
-    roleMiddleware(['admin']),
+    roleMiddleware(['admin', 'church_leadership']),
     activityLogController.getActivityLogs
 );
 
