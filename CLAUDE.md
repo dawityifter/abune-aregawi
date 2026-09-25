@@ -33,7 +33,8 @@ transactions, reconciliation tables like `bank_transactions`, `zelle_email_queue
 - `backend/*.md` — topic docs (API testing, DB setup, Zelle ingestion, expense tracking,
   GL codes, payment mappings). Listed in `backend/CLAUDE.md`.
 - `frontend/FIREBASE_SETUP.md`, `frontend/docs/` — frontend-specific setup notes.
-- `.claude/skills/` — reusable procedures, once created; check there before re-deriving a workflow.
+- `.claude/skills/` — reusable procedures (db-migrations, ledger-sheets-export,
+  payment-reconciliation); check there before re-deriving a workflow.
 
 ## Conventions
 

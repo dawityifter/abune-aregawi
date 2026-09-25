@@ -8,7 +8,7 @@ Node.js/Express REST API with Sequelize ORM. Production DB: PostgreSQL on Supaba
 
 ## Two migration systems — know which one you want
 
-- `backend/migrations/` (top level, ~65 files) — the **real** one: `sequelize-cli`,
+- `backend/migrations/` (top level) — the **real** one: `sequelize-cli`,
   tracked in `SequelizeMeta`, run automatically by the deploy pipeline. New schema
   changes go here.
 - `backend/src/database/migrations/` — legacy ad-hoc scripts (see folder map below).
@@ -19,7 +19,7 @@ The `db-migrations` skill covers when to use each.
 
 - `routes/` -> `controllers/` -> `services/` -> `models/` (Sequelize)
 - `middleware/` — auth, roles, etc.
-- `database/migrations/` — ~15 ad-hoc scripts run by hand/npm script, NOT tracked in
+- `database/migrations/` — ad-hoc scripts run by hand/npm script, NOT tracked in
   `SequelizeMeta`. Legacy; don't add new ones here.
 - `scripts/` — operational/one-off scripts
 - `jobs/ledgerSheets/` — Google Sheets ledger export job
