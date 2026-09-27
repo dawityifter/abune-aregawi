@@ -153,11 +153,68 @@ describe('BankTransactionDetail — field display', () => {
     };
     renderDetail(<BankTransactionDetail txn={duplicateCandidate} onClose={jest.fn()} onSuccess={jest.fn()} />);
     expect(screen.getByText('Possible Existing Entry')).toBeInTheDocument();
-    expect(screen.getByText('Same amount, same payment method, transaction date within 2 days, and similar payer/member name.')).toBeInTheDocument();
+    expect(screen.getByText(/dated within 5 days/)).toBeInTheDocument();
     expect(screen.getByText('Entry #77 - Dawit Yifter')).toBeInTheDocument();
     expect(screen.getByText('2026-03-27 · Membership Due · Zelle')).toBeInTheDocument();
     expect(screen.getByText('Receipt: R-77')).toBeInTheDocument();
     expect(screen.getByText('Already entered from Sunday collection')).toBeInTheDocument();
+  });
+});
+
+describe('BankTransactionDetail — linking an existing entry', () => {
+  const withEmailEntry: BankTransaction = {
+    ...mockTxn,
+    suggested_match: { type: 'donation', member: { id: 5, first_name: 'Dawit', last_name: 'Yifter' } },
+    potential_matches: [{
+      id: 91, amount: 200, payment_date: '2026-03-26', payment_type: 'donation', payment_method: 'zelle',
+      member: { first_name: 'Dawit', last_name: 'Yifter' }, source: 'zelle_email', zelle_payer_name: 'RELATIVE NAME',
+    }],
+  };
+
+  beforeEach(() => (global.fetch as jest.Mock).mockReset());
+
+  test('marks entries created from the Zelle email', () => {
+    renderDetail(<BankTransactionDetail txn={withEmailEntry} onClose={jest.fn()} onSuccess={jest.fn()} />);
+    expect(screen.getByText('Created from Zelle email · payer RELATIVE NAME')).toBeInTheDocument();
+  });
+
+  test('"Link to this entry" posts existing_transaction_id and no member', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve({ success: true }) });
+    const onSuccess = jest.fn();
+    renderDetail(<BankTransactionDetail txn={withEmailEntry} onClose={jest.fn()} onSuccess={onSuccess} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Link to this entry' }));
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(body).toEqual({ transaction_id: 42, existing_transaction_id: 91 });
+  });
+
+  test('a LINK_EXISTING refusal is shown with Link and create-anyway choices', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        json: () => Promise.resolve({
+          success: false, code: 'LINK_EXISTING', message: 'Already recorded from its email.',
+          candidates: [{ transaction_id: 91, amount: '200.00', payment_date: '2026-03-26', payment_type: 'donation' }],
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ success: true }) });
+    const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
+    const onSuccess = jest.fn();
+    renderDetail(<BankTransactionDetail txn={withEmailEntry} onClose={jest.fn()} onSuccess={onSuccess} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Dawit Yifter/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Approve$/i }));
+    const alert = await screen.findByRole('alert');
+    expect(within(alert).getByText('Already recorded from its email.')).toBeInTheDocument();
+    expect(onSuccess).not.toHaveBeenCalled();
+
+    fireEvent.click(within(alert).getByText(/create a new entry anyway/));
+    await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+    const retry = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body);
+    expect(retry.force).toBe(true);
+    expect(retry.member_id).toBe(5);
+    confirmSpy.mockRestore();
   });
 });
 

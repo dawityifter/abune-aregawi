@@ -21,5 +21,7 @@ router.post('/reconcile/batch-create', require('../controllers/zelleController')
 router.get('/queue', require('../controllers/zelleController').getQueue);
 router.post('/queue/:id/ignore', require('../controllers/zelleController').ignoreQueueItem);
 router.post('/queue/:id/match', require('../controllers/zelleController').matchQueueItem);
+router.post('/queue/:id/create-transaction', require('../controllers/zelleController').createQueueTransaction);
+router.post('/queue/:id/attach', require('../controllers/zelleController').attachQueueTransaction);
 
 module.exports = router;

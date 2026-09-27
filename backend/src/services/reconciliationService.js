@@ -261,7 +261,7 @@ exports.findPotentialMatches = async (bankTxn, { dayWindow = 2 } = {}) => {
  * - Updates LedgerEntry
  * - Learns Zelle Match
  */
-exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user, existingTransactionId, forYear, receiptNumber, pledgeAmount = null }) => {
+exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user, existingTransactionId, forYear, receiptNumber, pledgeAmount = null, force = false }) => {
     const { BankTransaction, Transaction, LedgerEntry, IncomeCategory, ZelleMemoMatch, sequelize } = require('../models');
     const { validateReceiptNumber } = require('../utils/receiptNumber');
 
@@ -290,6 +290,28 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
 
         if (duplicateReceipt) {
             throw new Error(`Receipt number "${normalizedReceiptNumber}" has already been used. Please use a unique receipt number.`);
+        }
+    }
+
+    // A Zelle credit whose payment the treasurer already recorded from the
+    // Zelle email must be LINKED to that transaction, not posted again.
+    // Refused unless the caller insists it is a separate payment (force).
+    const zelleCorrelation = require('./zelleBankCorrelationService');
+    if (!existingTransactionId && !force) {
+        const email = await zelleCorrelation.findEmailPaymentsForBankRow(txn);
+        if (email.matches.length > 0) {
+            const err = new Error('This Zelle payment was already recorded from its email. Link this bank row to that entry instead of creating a new one.');
+            err.status = 409;
+            err.code = 'LINK_EXISTING';
+            err.candidates = email.matches.map(({ transaction }) => ({
+                transaction_id: transaction.id,
+                amount: transaction.amount,
+                payment_date: transaction.payment_date,
+                payment_type: transaction.payment_type,
+                member_id: transaction.member_id,
+                receipt_number: transaction.receipt_number || null
+            }));
+            throw err;
         }
     }
 
@@ -347,6 +369,34 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
     txn.reconciled_source = 'MANUAL'; // Auto pass overwrites with AUTO_* afterwards
     txn.reconciled_at = new Date();
     await txn.save();
+
+    // 2b. Keep the Zelle email in step with the bank. Linking an
+    // email-created transaction records which bank row confirmed it; creating
+    // one marks the matching unposted email as posted by the bank, so the
+    // Zelle Review screen stops offering Create for it.
+    try {
+        const { ZelleEmailQueue } = require('../models');
+        if (existingTransactionId) {
+            await ZelleEmailQueue.update(
+                { bank_transaction_id: txn.id },
+                { where: { transaction_id: donation.id, bank_transaction_id: null } }
+            );
+        } else {
+            const email = await zelleCorrelation.findUnpostedEmailForBankRow(txn);
+            if (email) {
+                await email.update({
+                    transaction_id: donation.id,
+                    bank_transaction_id: txn.id,
+                    matched_member_id: donation.member_id || email.matched_member_id,
+                    status: 'BANK_POSTED',
+                    processed_at: new Date()
+                });
+            }
+        }
+    } catch (queueErr) {
+        // Never fails the reconciliation: the money is recorded either way.
+        console.error('⚠️ Zelle email write-back failed:', queueErr.message);
+    }
 
     // 3. Learn memo/description associations for future suggestions.
     // Only learn if we have a direct member association and it's not a generic manual link.
@@ -457,6 +507,13 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
                     source: 'treasurer_manual',
                     allocatedBy: user.id
                 }, { transaction: t });
+            } else if (existingTransactionId && await require('../models').PledgeAllocation.count({
+                where: { transaction_id: donation.id }, transaction: t
+            })) {
+                // Linking a payment that was already allocated when it was
+                // recorded (e.g. created from its Zelle email, possibly with a
+                // new pledge). Allocating again would either fail as
+                // over-allocated or re-credit a payment a treasurer reversed.
             } else {
                 // Self-gating: a no-op unless payment_type is 'pledge_drive',
                 // the payment succeeded, and the member holds an open pledge.

@@ -14,6 +14,12 @@ jest.mock('../../../contexts/LanguageContext', () => ({
     useLanguage: () => ({ t: (key: string) => key }),
 }));
 
+jest.mock('../../../utils/pledgeBalanceApi', () => ({
+    fetchPledgeBalance: jest.fn(() => Promise.resolve(null)),
+}));
+// eslint-disable-next-line import/first
+import { fetchPledgeBalance } from '../../../utils/pledgeBalanceApi';
+
 global.fetch = jest.fn();
 
 const queueItem = {
@@ -88,6 +94,20 @@ describe('ZelleReview (match-only)', () => {
         expect(screen.getByText(/sent you/)).toBeInTheDocument();
     });
 
+    test('alternates row backgrounds so each payment is easy to follow', async () => {
+        mockQueue([
+            { ...queueItem, id: 'r1', payer_name: 'ROW ONE' },
+            { ...queueItem, id: 'r2', payer_name: 'ROW TWO' },
+            { ...queueItem, id: 'r3', payer_name: 'ROW THREE' },
+        ]);
+        render(<ZelleReview />);
+
+        await waitFor(() => screen.getByText('ROW THREE'));
+        const rows = screen.getAllByTestId('zelle-row');
+        expect(rows.map(r => r.classList.contains('bg-slate-200'))).toEqual([false, true, false]);
+        expect(rows.map(r => r.classList.contains('bg-white'))).toEqual([true, false, true]);
+    });
+
     test('reads from the queue endpoint, not the Gmail preview endpoint', async () => {
         mockQueue();
         render(<ZelleReview />);
@@ -98,13 +118,85 @@ describe('ZelleReview (match-only)', () => {
         expect(urls.some(u => u.includes('/api/zelle/preview/gmail'))).toBe(false);
     });
 
-    test('offers no transaction-creating controls', async () => {
-        mockQueue();
+    test('Create stays disabled on a suggested (unconfirmed) member until one is selected', async () => {
+        mockQueue([{ ...queueItem, matchedMember: { id: 7, first_name: 'Suggested', last_name: 'Member' } }]);
         render(<ZelleReview />);
 
         await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
-        expect(screen.queryByRole('button', { name: /^create$/i })).not.toBeInTheDocument();
-        expect(screen.queryByText(/receipt/i)).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'zelleReview.createTransaction' })).toBeDisabled();
+    });
+
+    test('creates from a treasurer-confirmed match with the chosen payment type', async () => {
+        const matched = { ...queueItem, status: 'MATCHED', matchedMember: { id: 7, first_name: 'Test', last_name: 'Member' } };
+        mockQueueAndSearch([matched], []);
+        render(<ZelleReview />);
+
+        await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
+        fireEvent.change(screen.getByLabelText('zelleReview.paymentType'), { target: { value: 'tithe' } });
+        fireEvent.change(screen.getByLabelText('zelleReview.receiptOptional'), { target: { value: '1234' } });
+        fireEvent.click(screen.getByRole('button', { name: 'zelleReview.createTransaction' }));
+
+        await waitFor(() => {
+            const call = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('/create-transaction'));
+            expect(call).toBeTruthy();
+        });
+        const call = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('/create-transaction'))!;
+        expect(String(call[0])).toContain('/api/zelle/queue/q-1/create-transaction');
+        expect(JSON.parse(call[1].body)).toMatchObject({ member_id: 7, payment_type: 'tithe', receipt_number: '1234' });
+        // Amount and date are never sent: the server reads them from the queue row.
+        expect(JSON.parse(call[1].body).amount).toBeUndefined();
+    });
+
+    test('a possible duplicate lists candidates and attaches on request', async () => {
+        const matched = { ...queueItem, status: 'MATCHED', matchedMember: { id: 7, first_name: 'Test', last_name: 'Member' } };
+        (global.fetch as jest.Mock).mockImplementation((url: string, init?: any) => {
+            if (String(url).includes('/create-transaction')) {
+                return Promise.resolve({
+                    ok: false, status: 409,
+                    json: () => Promise.resolve({
+                        success: false, code: 'POSSIBLE_DUPLICATE',
+                        candidates: [{ transaction_id: 55, amount: '75.00', payment_date: '2026-08-19', origin: 'manual' }]
+                    })
+                });
+            }
+            if (String(url).includes('/attach')) {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
+            }
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ success: true, items: [matched], pagination: { total: 1, page: 1, pages: 1 } })
+            });
+        });
+        render(<ZelleReview />);
+
+        await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
+        fireEvent.click(screen.getByRole('button', { name: 'zelleReview.createTransaction' }));
+        await waitFor(() => screen.getByText('zelleReview.duplicate.title'));
+        expect(screen.getByText(/#55/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'zelleReview.duplicate.attach' }));
+        await waitFor(() => {
+            const call = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('/attach'));
+            expect(call && JSON.parse(call[1].body)).toEqual({ transaction_id: 55 });
+        });
+    });
+
+    test('shows where a posted email stands against the bank', async () => {
+        mockQueue([
+            { ...queueItem, id: 'a', status: 'BANK_POSTED', transaction_id: 1, payer_name: 'P ONE' },
+            { ...queueItem, id: 'b', status: 'CREATED', transaction_id: 2, bank_transaction_id: 9, payer_name: 'P TWO' },
+            { ...queueItem, id: 'c', status: 'CREATED', transaction_id: 3, payment_date: new Date().toISOString().slice(0, 10), payer_name: 'P THREE',
+              transaction: { id: 3, external_id: 'zelle:X' } },
+            { ...queueItem, id: 'd', status: 'CREATED', transaction_id: 4, payment_date: '2020-01-01', payer_name: 'P FOUR',
+              transaction: { id: 4, external_id: 'zelle:Y' } },
+        ]);
+        render(<ZelleReview />);
+
+        await waitFor(() => screen.getByText('P ONE'));
+        expect(screen.getByText('zelleReview.status.postedByBank')).toBeInTheDocument();
+        expect(screen.getByText('zelleReview.status.bankConfirmed')).toBeInTheDocument();
+        expect(screen.getByText('zelleReview.status.awaitingBank')).toBeInTheDocument();
+        expect(screen.getByText('zelleReview.status.awaitingBankDays')).toBeInTheDocument();
     });
 
     test('shows an existing match as text with no edit control when already posted', async () => {
@@ -260,5 +352,91 @@ describe('ZelleReview (match-only)', () => {
         } finally {
             jest.useRealTimers();
         }
+    });
+
+    describe('Pledge Drive', () => {
+        const matched = { ...queueItem, status: 'MATCHED', matchedMember: { id: 7, first_name: 'Test', last_name: 'Member' } };
+        const createBody = () => {
+            const call = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('/create-transaction'));
+            return call ? JSON.parse(call[1].body) : null;
+        };
+
+        beforeEach(() => (fetchPledgeBalance as jest.Mock).mockReset());
+
+        test('shows the open pledge and credits it without opening another', async () => {
+            (fetchPledgeBalance as jest.Mock).mockResolvedValue({
+                id: 1, campaign_id: 1, campaign_name: 'Building Drive', pledged_amount: 1000, paid_amount: 200, remaining_amount: 800,
+            });
+            mockQueueAndSearch([matched], []);
+            render(<ZelleReview />);
+
+            await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
+            fireEvent.change(screen.getByLabelText('zelleReview.paymentType'), { target: { value: 'pledge_drive' } });
+            await waitFor(() => screen.getByTestId('zelle-open-pledge'));
+            expect(fetchPledgeBalance).toHaveBeenCalledWith(7);
+            expect(screen.getByText('Building Drive')).toBeInTheDocument();
+            expect(screen.queryByText('fundraising.alsoRecordPledge')).not.toBeInTheDocument();
+
+            fireEvent.click(screen.getByRole('button', { name: 'zelleReview.createTransaction' }));
+            await waitFor(() => expect(createBody()).not.toBeNull());
+            expect(createBody()).toMatchObject({ member_id: 7, payment_type: 'pledge_drive' });
+            expect(createBody().pledge_amount).toBeUndefined();
+        });
+
+        test('with no open pledge, can record one with the payment', async () => {
+            (fetchPledgeBalance as jest.Mock).mockResolvedValue(null);
+            mockQueueAndSearch([matched], []);
+            render(<ZelleReview />);
+
+            await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
+            fireEvent.change(screen.getByLabelText('zelleReview.paymentType'), { target: { value: 'pledge_drive' } });
+            await waitFor(() => screen.getByText('zelleReview.pledge.noOpenPledge'));
+
+            fireEvent.click(screen.getByLabelText('fundraising.alsoRecordPledge'));
+            // Defaults to the payment amount: paid in full.
+            expect(screen.getByLabelText('fundraising.pledgeAmountLabel')).toHaveValue(75);
+            expect(screen.getByText('zelleReview.pledge.paidInFull')).toBeInTheDocument();
+
+            fireEvent.change(screen.getByLabelText('fundraising.pledgeAmountLabel'), { target: { value: '1000' } });
+            expect(screen.getByText('zelleReview.pledge.leavesOutstanding')).toBeInTheDocument();
+
+            fireEvent.click(screen.getByRole('button', { name: 'zelleReview.createTransaction' }));
+            await waitFor(() => expect(createBody()).not.toBeNull());
+            expect(createBody().pledge_amount).toBe(1000);
+        });
+
+        test('does not look up a pledge for other payment types', async () => {
+            mockQueueAndSearch([matched], []);
+            render(<ZelleReview />);
+            await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
+            expect(fetchPledgeBalance).not.toHaveBeenCalled();
+        });
+
+        test('reports a pledge that could not be recorded, separately from the payment', async () => {
+            (fetchPledgeBalance as jest.Mock).mockResolvedValue(null);
+            (global.fetch as jest.Mock).mockImplementation((url: string) => {
+                if (String(url).includes('/create-transaction')) {
+                    return Promise.resolve({
+                        ok: true, status: 201,
+                        json: () => Promise.resolve({ success: true, data: { id: 1 }, pledge_error: 'No pledge drive is currently open' }),
+                    });
+                }
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ success: true, items: [matched], pagination: { total: 1, page: 1, pages: 1 } }),
+                });
+            });
+            render(<ZelleReview />);
+
+            await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
+            fireEvent.change(screen.getByLabelText('zelleReview.paymentType'), { target: { value: 'pledge_drive' } });
+            await waitFor(() => screen.getByText('zelleReview.pledge.noOpenPledge'));
+            fireEvent.click(screen.getByLabelText('fundraising.alsoRecordPledge'));
+            fireEvent.click(screen.getByRole('button', { name: 'zelleReview.createTransaction' }));
+
+            await waitFor(() => screen.getByText('zelleReview.pledge.notRecorded'));
+            expect(screen.getByText('No pledge drive is currently open')).toBeInTheDocument();
+            expect(screen.getByText('zelleReview.created')).toBeInTheDocument();
+        });
     });
 });

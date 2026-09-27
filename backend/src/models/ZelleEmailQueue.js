@@ -12,8 +12,9 @@ module.exports = (sequelize) => {
    *  - CREATED      : transaction created manually by treasurer
    *  - IGNORED      : treasurer dismissed this email
    *  - ERROR        : processing failed (see error column)
-   *  - MATCHED      : treasurer associated this payer with a member; NO transaction
-   *                   was created (bank reconciliation is the only path that posts money)
+   *  - MATCHED      : treasurer associated this payer with a member; no transaction yet
+   *  - BANK_POSTED  : bank reconciliation created the transaction for this payment
+   *                   before anyone created it from the email
    */
   class ZelleEmailQueue extends Model {
     static associate(models) {
@@ -24,6 +25,10 @@ module.exports = (sequelize) => {
       ZelleEmailQueue.belongsTo(models.Transaction, {
         foreignKey: 'transaction_id',
         as: 'transaction'
+      });
+      ZelleEmailQueue.belongsTo(models.BankTransaction, {
+        foreignKey: 'bank_transaction_id',
+        as: 'bankTransaction'
       });
     }
   }
@@ -55,6 +60,12 @@ module.exports = (sequelize) => {
       type: DataTypes.DATEONLY,
       allowNull: true
     },
+    // When Gmail received the email. payment_date is this instant cut to a
+    // Chicago date; this keeps the time so same-day payments sort correctly.
+    email_received_at: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
     subject: {
       type: DataTypes.TEXT,
       allowNull: true
@@ -84,6 +95,12 @@ module.exports = (sequelize) => {
       type: DataTypes.BIGINT,
       allowNull: true
     },
+    // The bank row this payment was confirmed against. Unique: one bank row
+    // can never satisfy two emails.
+    bank_transaction_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
     error: {
       type: DataTypes.TEXT,
       allowNull: true
@@ -110,7 +127,9 @@ module.exports = (sequelize) => {
     indexes: [
       { unique: true, fields: ['external_id'] },
       { fields: ['status'] },
-      { fields: ['matched_member_id'] }
+      { fields: ['matched_member_id'] },
+      { unique: true, fields: ['bank_transaction_id'], name: 'zelle_email_queue_bank_transaction_id_unique' },
+      { fields: ['payment_date', 'email_received_at'], name: 'zelle_email_queue_payment_date_received_at' }
     ]
   });
 

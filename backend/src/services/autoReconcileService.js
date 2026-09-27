@@ -4,6 +4,11 @@
  *
  * Processes PENDING bank transactions in three tiers, most confident first:
  *
+ *  Tier 0.5 (Zelle credits, AUTO_LINKED):  the treasurer already created this
+ *    payment's transaction from its Zelle email, and the pairing is certain
+ *    (same transaction number, or payer + amount + date window unique both
+ *    ways — see zelleBankCorrelationService). Link it, create nothing.
+ *
  *  Tier 1 (credits, AUTO_LINKED):  exactly one existing system transaction
  *    matches (amount, method, date ±2 days, payer name) — typically a Zelle
  *    payment already created by the Gmail automation. Link it, create nothing.
@@ -41,6 +46,7 @@ const {
   ExpenseCategory,
   BankMemoMatch,
   ZelleMemoMatch,
+  ZelleEmailQueue,
   sequelize
 } = require('../models');
 const {
@@ -230,6 +236,22 @@ async function findManualCheckExpense(bankTxn) {
 async function autoReconcileCredit(txn, user, { linkOnly = false } = {}) {
   const plain = txn.get({ plain: true });
   const { findPotentialMatches, processReconciliation } = require('./reconciliationService');
+
+  // Tier 0.5: a transaction the treasurer created from this payment's Zelle
+  // email. Links (never creates) when the pairing is certain: the same
+  // transaction number, or payer + amount + date window unique in both
+  // directions. Runs before Tier 0 so the email records its bank row.
+  // Anything less certain stays PENDING and is shown as a candidate.
+  {
+    const { findEmailPaymentsForBankRow } = require('./zelleBankCorrelationService');
+    const email = await findEmailPaymentsForBankRow(txn);
+    if (email.tier === 'EXACT_REF' || email.tier === 'ANCHORED') {
+      const { linkEmailPaymentToBankRow } = require('./zelleBankLinkService');
+      const { queueRow, transaction } = email.matches[0];
+      await linkEmailPaymentToBankRow({ queueRow, transaction, bankRow: txn, tier: email.tier, user });
+      return 'AUTO_LINKED';
+    }
+  }
 
   // Tier 0: exact Zelle reference match. The bank CSV carries the Zelle
   // transaction number (external_ref_id) and email-created transactions are
@@ -673,7 +695,9 @@ async function undoAutoReconciliation(bankTxnId) {
   const source = txn.reconciled_source;
 
   if (source === 'AUTO_LINKED') {
-    // The system transaction pre-existed — just unlink it.
+    // The system transaction pre-existed — just unlink it. A Zelle email
+    // confirmed by this row goes back to awaiting the bank.
+    await ZelleEmailQueue.update({ bank_transaction_id: null }, { where: { bank_transaction_id: txn.id } });
     const donation = meta.transaction_id ? await Transaction.findByPk(meta.transaction_id) : null;
     if (donation && donation.external_id === txn.transaction_hash) {
       await donation.update({ external_id: meta.prev_external_id || null });

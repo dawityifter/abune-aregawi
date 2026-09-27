@@ -459,8 +459,40 @@ exports.getBankTransactions = asyncHandler(async (req, res) => {
                 // view of a possible existing entry.
                 const { sourceTypeFor } = require('../services/bankMemoMatchService');
                 const dayWindow = sourceTypeFor(plain) === 'ZELLE' ? 5 : 2;
-                const potentialMatches = await findPotentialMatches(plain, { dayWindow });
-                if (potentialMatches && potentialMatches.length > 0) {
+                const potentialMatches = (await findPotentialMatches(plain, { dayWindow }))
+                    .map((m) => (m.get ? m.get({ plain: true }) : m));
+
+                // Transactions created from this payment's Zelle email. Found by
+                // payer name on the email, not the member's name, so gifts sent
+                // from a relative's account still surface. Listed first.
+                const { findEmailPaymentsForBankRow } = require('../services/zelleBankCorrelationService');
+                const email = await findEmailPaymentsForBankRow(txn);
+                if (email.matches.length > 0) {
+                    const emailIds = new Set(email.matches.map(({ transaction }) => String(transaction.id)));
+                    const members = await Member.findAll({
+                        where: { id: email.matches.map(({ transaction }) => transaction.member_id).filter(Boolean) },
+                        attributes: ['id', 'first_name', 'last_name']
+                    });
+                    const memberById = new Map(members.map((m) => [String(m.id), m.get({ plain: true })]));
+                    const fromEmail = email.matches.map(({ transaction, queueRow }) => ({
+                        id: transaction.id,
+                        amount: transaction.amount,
+                        payment_date: transaction.payment_date,
+                        payment_type: transaction.payment_type,
+                        payment_method: transaction.payment_method,
+                        receipt_number: transaction.receipt_number,
+                        note: transaction.note,
+                        external_id: transaction.external_id,
+                        member: memberById.get(String(transaction.member_id)) || null,
+                        source: 'zelle_email',
+                        match_tier: email.tier,
+                        zelle_payer_name: queueRow.payer_name
+                    }));
+                    potentialMatches.splice(0, potentialMatches.length,
+                        ...fromEmail,
+                        ...potentialMatches.filter((m) => !emailIds.has(String(m.id))));
+                }
+                if (potentialMatches.length > 0) {
                     plain.potential_matches = potentialMatches;
                 }
 
@@ -596,11 +628,20 @@ exports.reconcileTransaction = asyncHandler(async (req, res) => {
             existingTransactionId: existing_transaction_id,
             forYear: req.body.for_year, // Pass year override if provided
             receiptNumber: receipt_number,
-            pledgeAmount: pledge_amount ?? null
+            pledgeAmount: pledge_amount ?? null,
+            force: req.body.force === true
         });
 
         res.json({ success: true, ...results });
     } catch (error) {
+        if (error.code === 'LINK_EXISTING') {
+            return res.status(409).json({
+                success: false,
+                code: error.code,
+                message: error.message,
+                candidates: error.candidates || []
+            });
+        }
         console.error('Reconciliation error:', error);
         res.status(500);
         throw new Error(error.message);
@@ -676,7 +717,7 @@ exports.reconcileBulkTransactions = asyncHandler(async (req, res) => {
             results.success.push(id);
         } catch (error) {
             console.error(`Failed to reconcile txn ${id}:`, error);
-            results.errors.push({ id, message: error.message });
+            results.errors.push({ id, message: error.message, ...(error.code ? { code: error.code } : {}) });
         }
     }
 

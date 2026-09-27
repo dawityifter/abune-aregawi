@@ -37,6 +37,16 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
   const [recordPledge, setRecordPledge] = useState(false);
   const [pledgeAmount, setPledgeAmount] = useState('');
   const [pledgeWarning, setPledgeWarning] = useState<string | null>(null);
+  // A refused reconcile. LINK_EXISTING carries the entry already recorded from
+  // the Zelle email, so the treasurer can link it or insist on a new one.
+  const [reconcileError, setReconcileError] = useState<{
+    message: string;
+    code?: string;
+    candidates?: { transaction_id: number; amount: number | string; payment_date: string; payment_type?: string }[];
+    retry?: { memberId: number; paymentType: string };
+  } | null>(null);
+  const [reconcileBusy, setReconcileBusy] = useState(false);
+  useEffect(() => { setReconcileError(null); }, [txn?.id]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
@@ -202,9 +212,37 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
     setExpPayeeName((prev) => prev || suggested.payee_name || '');
   }, [txn?.id, txn?.status, txn?.suggested_expense]);
 
-  const handleReconcile = async (memberId: number, paymentType: string = selectedPaymentType) => {
+  const postReconcile = async (payload: any) => {
     const token = await firebaseUser?.getIdToken();
+    return fetch(`${apiUrl}/api/bank/reconcile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+  };
+
+  // Link this bank row to an entry that already records the payment (for
+  // example one created from the Zelle email). Nothing new is posted.
+  const handleLinkExisting = async (existingTransactionId: number) => {
+    setReconcileBusy(true);
+    setReconcileError(null);
+    try {
+      const res = await postReconcile({ transaction_id: txn!.id, existing_transaction_id: existingTransactionId });
+      const data = await res.json().catch(() => ({} as any));
+      if (!res.ok || data?.success === false) {
+        setReconcileError({ message: data?.message || `Link failed (${res.status})` });
+        return;
+      }
+      onSuccess();
+      onClose();
+    } finally {
+      setReconcileBusy(false);
+    }
+  };
+
+  const handleReconcile = async (memberId: number, paymentType: string = selectedPaymentType, force = false) => {
     const payload: any = { transaction_id: txn!.id, action: 'MATCH', member_id: memberId, payment_type: paymentType };
+    if (force) payload.force = true;
     if (selectedForYear) payload.for_year = selectedForYear;
     if (receiptNumber.trim()) payload.receipt_number = receiptNumber.trim();
     // Only when opening a new pledge. An existing pledge needs nothing here —
@@ -213,11 +251,18 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
       payload.pledge_amount = parseFloat(pledgeAmount);
     }
     setPledgeWarning(null);
-    const res = await fetch(`${apiUrl}/api/bank/reconcile`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(payload),
-    });
+    setReconcileError(null);
+    const res = await postReconcile(payload);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({} as any));
+      setReconcileError({
+        message: data?.message || `Reconcile failed (${res.status})`,
+        code: data?.code,
+        candidates: data?.candidates,
+        retry: { memberId, paymentType }
+      });
+      return;
+    }
     if (res.ok) {
       const data = await res.json().catch(() => ({} as any));
       // The payment is recorded either way; the pledge side is allowed to fail
@@ -458,7 +503,9 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
               <p className="text-xs text-amber-800 font-bold mb-1">Possible Existing Entry</p>
               <p className="text-xs text-amber-800 mb-3">
-                Same amount, same payment method, transaction date within 2 days, and similar payer/member name.
+                Same amount and payment method, dated within {txn.type === 'ZELLE' ? '5' : '2'} days, and a similar
+                payer/member name — or created from this payment&apos;s Zelle email. If it is the same payment,
+                link it instead of creating a new entry.
               </p>
               <div className="space-y-2">
                 {txn.potential_matches.map((match) => (
@@ -469,6 +516,11 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
                           Entry #{match.id}
                           {match.member && ` - ${match.member.first_name} ${match.member.last_name}`}
                         </p>
+                        {match.source === 'zelle_email' && (
+                          <p className="text-xs text-indigo-700">
+                            Created from Zelle email{match.zelle_payer_name ? ` · payer ${match.zelle_payer_name}` : ''}
+                          </p>
+                        )}
                         <p className="text-xs text-gray-500">
                           {match.payment_date} · {formatPaymentLabel(match.payment_type)} · {formatPaymentLabel(match.payment_method)}
                         </p>
@@ -481,6 +533,14 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
                     {match.note && (
                       <p className="mt-1 text-xs text-gray-600">{match.note}</p>
                     )}
+                    <button
+                      type="button"
+                      disabled={reconcileBusy}
+                      onClick={() => handleLinkExisting(match.id)}
+                      className="mt-2 px-3 py-1 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded disabled:opacity-50"
+                    >
+                      Link to this entry
+                    </button>
                   </div>
                 ))}
               </div>
@@ -491,6 +551,47 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
           {txn.status === 'PENDING' && txn.amount >= 0 && (
             <div className="border-t border-gray-200 pt-4">
               <p className="text-xs text-gray-400 uppercase font-semibold mb-3">Actions</p>
+
+              {reconcileError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3" role="alert">
+                  <p className="text-xs text-red-800">{reconcileError.message}</p>
+                  {reconcileError.code === 'LINK_EXISTING' && (
+                    <div className="mt-2 space-y-2">
+                      {(reconcileError.candidates || []).map((c) => (
+                        <div key={c.transaction_id} className="flex items-center justify-between gap-2 bg-white border border-red-100 rounded px-2 py-1">
+                          <span className="text-xs text-gray-700">
+                            Entry #{c.transaction_id} · {formatCurrency(Number(c.amount))} · {c.payment_date}
+                            {c.payment_type ? ` · ${formatPaymentLabel(c.payment_type)}` : ''}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={reconcileBusy}
+                            onClick={() => handleLinkExisting(c.transaction_id)}
+                            className="px-2 py-1 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded disabled:opacity-50"
+                          >
+                            Link
+                          </button>
+                        </div>
+                      ))}
+                      {reconcileError.retry && (
+                        <button
+                          type="button"
+                          disabled={reconcileBusy}
+                          onClick={() => {
+                            const { memberId, paymentType } = reconcileError.retry!;
+                            if (window.confirm('Create a NEW entry anyway? Only do this if this bank row is a separate payment from the one already recorded.')) {
+                              handleReconcile(memberId, paymentType, true);
+                            }
+                          }}
+                          className="text-xs text-red-700 underline"
+                        >
+                          It&apos;s a separate payment — create a new entry anyway
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {suggestedMatches.length > 0 && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">

@@ -469,7 +469,360 @@ async function matchQueueRowToMember({ queueId, memberId, payerName = null, user
   return { success: true, data: row };
 }
 
+// Payments the Zelle Review screen may record. Loans carry their own records
+// (member_loans) and are entered from the Loans screen.
+const QUEUE_CREATE_PAYMENT_TYPES = new Set([
+  'membership_due', 'tithe', 'offering', 'donation', 'vow', 'building_fund', 'event',
+  'religious_item_sales', 'event_merchandise', 'tigray_hunger_fundraiser', 'other', 'pledge_drive'
+]);
+
+// Window for "this member already has a Zelle payment of this amount"; wide
+// enough to cover the email-to-posting delay in either direction.
+const DUPLICATE_WINDOW_DAYS = 5;
+
+function shiftDate(dateOnly, days) {
+  const d = new Date(`${String(dateOnly).slice(0, 10)}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function describeTransaction(tx, bankRow = null) {
+  const { isBankHash } = require('./zelleBankCorrelationService');
+  const ext = String(tx.external_id || '');
+  return {
+    transaction_id: tx.id,
+    amount: tx.amount,
+    payment_date: tx.payment_date,
+    payment_type: tx.payment_type,
+    member_id: tx.member_id,
+    receipt_number: tx.receipt_number || null,
+    origin: isBankHash(ext) ? 'bank' : (ext.startsWith('zelle:') || ext.startsWith('gmail:') ? 'zelle_email' : 'manual'),
+    bank_row: bankRow ? { id: bankRow.id, date: bankRow.date, payer_name: bankRow.payer_name, status: bankRow.status } : null
+  };
+}
+
+/**
+ * Other transactions this payment might already be: the member's Zelle
+ * payments of the same amount around the email date. Transactions that belong
+ * to a different email are a different payment and are left out.
+ */
+async function findMemberDuplicateCandidates(queueRow, memberId) {
+  const txs = await Transaction.findAll({
+    where: {
+      member_id: memberId,
+      amount: queueRow.amount,
+      payment_method: 'zelle',
+      payment_date: {
+        [Op.between]: [shiftDate(queueRow.payment_date, -DUPLICATE_WINDOW_DAYS), shiftDate(queueRow.payment_date, DUPLICATE_WINDOW_DAYS)]
+      },
+      status: { [Op.ne]: 'failed' }
+    },
+    order: [['payment_date', 'ASC'], ['id', 'ASC']]
+  });
+  if (txs.length === 0) return [];
+
+  const owned = await ZelleEmailQueue.findAll({
+    where: { transaction_id: txs.map((t) => t.id), id: { [Op.ne]: queueRow.id } },
+    attributes: ['transaction_id']
+  });
+  const ownedIds = new Set(owned.map((q) => String(q.transaction_id)));
+  return txs.filter((t) => !ownedIds.has(String(t.id)));
+}
+
+/**
+ * Record the transaction for a queued Zelle email — the Zelle Review "Create"
+ * action. Amount, date and payer come from the queue row, never the client.
+ *
+ * Duplicate prevention, checked before anything is written:
+ *  - the row already has a transaction                        -> ALREADY_POSTED
+ *  - the bank already posted this exact payment (reference or
+ *    unique payer/amount/date anchor)                          -> the row is
+ *    attached to that transaction, POSTED_BY_BANK (not overridable)
+ *  - a plausible but uncertain existing transaction            -> POSSIBLE_DUPLICATE,
+ *    unless the treasurer re-submits with force
+ *
+ * On success, a bank row that is already uploaded and certainly this payment
+ * is confirmed immediately, so Bank Reconciliation shows it matched.
+ *
+ * Returns { success, code?, message?, data?, candidates?, bank_link?, pledge_error? }.
+ */
+async function createTransactionFromQueueRow({
+  queueId, memberId, paymentType, forYear = null, receiptNumber = null,
+  payerName = null, force = false, pledgeAmount = null, user
+}) {
+  const { findBankRowsForQueueRow } = require('./zelleBankCorrelationService');
+  const fail = (code, message, extra = {}) => ({ success: false, code, message, ...extra });
+
+  if (!user?.id) throw new Error('Missing collector context');
+  if (!memberId) return fail('MEMBER_REQUIRED', 'Select the member this payment is from.');
+  const finalPaymentType = paymentType || 'donation';
+  if (!QUEUE_CREATE_PAYMENT_TYPES.has(finalPaymentType)) {
+    return fail('INVALID_PAYMENT_TYPE', `Payment type "${finalPaymentType}" cannot be recorded from a Zelle email.`);
+  }
+  // Opening a pledge with the payment, as Bank Reconciliation and Add Payment
+  // offer when the member has no open pledge in the drive.
+  if (pledgeAmount != null) {
+    if (finalPaymentType !== 'pledge_drive') {
+      return fail('INVALID_PLEDGE', 'A pledge can only be recorded with a Pledge Drive payment.');
+    }
+    if (!(parseFloat(pledgeAmount) >= 1)) {
+      return fail('INVALID_PLEDGE', 'Pledge amount must be at least $1.00');
+    }
+  }
+
+  const row = await ZelleEmailQueue.findByPk(queueId);
+  if (!row) return fail('NOT_FOUND', 'Queue item not found');
+  if (row.transaction_id) {
+    // The transaction may have been deleted since (e.g. undo of a bank
+    // auto-create); the email is then unposted again.
+    if (await Transaction.findByPk(row.transaction_id, { attributes: ['id'] })) {
+      return fail('ALREADY_POSTED', 'This payment already has a transaction.', { transaction_id: row.transaction_id });
+    }
+    await row.update({ transaction_id: null, bank_transaction_id: null, status: row.matched_member_id ? 'MATCHED' : 'NEEDS_REVIEW' });
+  }
+  if (row.status === 'IGNORED') return fail('IGNORED', 'This email was ignored; it cannot be posted.');
+  if (row.amount == null || !row.payment_date) {
+    return fail('INCOMPLETE', 'This email has no amount or date on file.');
+  }
+
+  const member = await Member.findByPk(memberId, { attributes: ['id'] });
+  if (!member) return fail('MEMBER_NOT_FOUND', 'Member not found');
+
+  const effectivePayerName = String(payerName || '').trim() || String(row.payer_name || '').trim() || null;
+  if (!effectivePayerName) {
+    return fail('PAYER_NAME_REQUIRED', 'This email has no payer name on file. Enter the payer name exactly as it appears on the bank statement.');
+  }
+  if (effectivePayerName !== row.payer_name) {
+    // Correlation with the bank row keys off this name.
+    await row.update({ payer_name: effectivePayerName });
+  }
+
+  const receiptValidation = validateReceiptNumber(receiptNumber);
+  if (!receiptValidation.valid) return fail('INVALID_RECEIPT', receiptValidation.message);
+  const normalizedReceiptNumber = receiptValidation.normalized || null;
+  if (normalizedReceiptNumber && normalizedReceiptNumber !== '000') {
+    const dup = await Transaction.findOne({ where: { receipt_number: normalizedReceiptNumber } });
+    if (dup) return fail('DUPLICATE_RECEIPT', `Receipt number "${normalizedReceiptNumber}" has already been used.`);
+  }
+
+  // A legacy transaction already keyed by this email: adopt it.
+  const legacy = await Transaction.findOne({ where: { external_id: row.external_id } });
+  if (legacy) {
+    await row.update({ transaction_id: legacy.id, status: 'CREATED', matched_member_id: legacy.member_id, processed_at: new Date() });
+    return fail('ALREADY_POSTED', 'This payment already has a transaction.', { transaction_id: legacy.id });
+  }
+
+  // Bank already posted this payment?
+  const bank = await findBankRowsForQueueRow(row);
+  const certain = bank.tier === 'EXACT_REF' || bank.tier === 'ANCHORED';
+  if (certain && bank.matches[0].transaction) {
+    const { bankRow, transaction } = bank.matches[0];
+    await row.update({
+      transaction_id: transaction.id,
+      bank_transaction_id: bankRow.id,
+      matched_member_id: transaction.member_id || row.matched_member_id,
+      status: 'BANK_POSTED',
+      processed_at: new Date()
+    });
+    return fail('POSTED_BY_BANK', 'Bank reconciliation already recorded this payment; the email is now linked to it.', {
+      transaction_id: transaction.id,
+      candidates: [describeTransaction(transaction, bankRow)]
+    });
+  }
+
+  if (!force) {
+    const candidates = [];
+    const seen = new Set();
+    for (const m of bank.matches) {
+      if (m.transaction && !seen.has(String(m.transaction.id))) {
+        seen.add(String(m.transaction.id));
+        candidates.push(describeTransaction(m.transaction, m.bankRow));
+      }
+    }
+    for (const tx of await findMemberDuplicateCandidates(row, member.id)) {
+      if (!seen.has(String(tx.id))) {
+        seen.add(String(tx.id));
+        candidates.push(describeTransaction(tx));
+      }
+    }
+    if (candidates.length > 0) {
+      return fail('POSSIBLE_DUPLICATE', 'This payment may already be recorded. Attach the email to the existing entry, or create anyway if it is a separate payment.', { candidates });
+    }
+  }
+
+  const incomeCategory = await resolveIncomeCategory(finalPaymentType);
+  const glCode = incomeCategory?.gl_code || 'INC999';
+
+  let tx;
+  try {
+    tx = await sequelize.transaction(async (t) => {
+      // Re-read under lock: a second click or a second treasurer loses here.
+      const locked = await ZelleEmailQueue.findByPk(row.id, { transaction: t, lock: t.LOCK.UPDATE });
+      if (locked.transaction_id) {
+        const err = new Error('ALREADY_POSTED');
+        err.code = 'ALREADY_POSTED';
+        err.transactionId = locked.transaction_id;
+        throw err;
+      }
+
+      const created = await Transaction.create({
+        member_id: member.id,
+        collected_by: user.id,
+        payment_date: row.payment_date,
+        amount: row.amount,
+        payment_type: finalPaymentType,
+        payment_method: 'zelle',
+        status: 'succeeded',
+        receipt_number: normalizedReceiptNumber,
+        note: row.note || null,
+        external_id: row.external_id,
+        donation_id: null,
+        income_category_id: incomeCategory?.id || null,
+        for_year: forYear || (finalPaymentType === 'membership_due' ? Number(String(row.payment_date).slice(0, 4)) : null)
+      }, { transaction: t });
+
+      await LedgerEntry.create({
+        type: finalPaymentType,
+        category: glCode,
+        amount: parseFloat(row.amount),
+        entry_date: row.payment_date,
+        member_id: member.id,
+        payment_method: 'zelle',
+        receipt_number: normalizedReceiptNumber,
+        memo: `${glCode} - Zelle payment ${row.external_id}`,
+        transaction_id: created.id,
+        collected_by: user.id
+      }, { transaction: t });
+
+      await locked.update({
+        transaction_id: created.id,
+        status: 'CREATED',
+        matched_member_id: member.id,
+        match_confidence: 'high',
+        match_source: 'TREASURER_CREATE',
+        matched_by: user.id,
+        matched_at: new Date(),
+        processed_at: new Date(),
+        error: null
+      }, { transaction: t });
+
+      return created;
+    });
+  } catch (err) {
+    if (err.code === 'ALREADY_POSTED') {
+      return fail('ALREADY_POSTED', 'This payment already has a transaction.', { transaction_id: err.transactionId });
+    }
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      return fail('ALREADY_POSTED', 'This payment already has a transaction.');
+    }
+    throw err;
+  }
+
+  // Everything below is best-effort: the payment is recorded.
+  await learnZelleAssociation({ payerName: effectivePayerName, note: row.note, memberId: member.id });
+
+  // Pledge side, exactly as Bank Reconciliation does it: a supplied
+  // pledgeAmount opens a pledge credited with this payment; otherwise the
+  // payment is credited to the member's open pledge, if any. Its own
+  // transaction, and never fatal — the payment is recorded either way, and a
+  // failure comes back as pledge_error for the treasurer to see.
+  let pledgeError = null;
+  try {
+    await sequelize.transaction(async (t) => {
+      if (pledgeAmount != null) {
+        const { createPledgeWithPayment } = require('./pledgeFulfillmentService');
+        const { findLiveCampaign } = require('./pledgeCampaignService');
+        const campaign = await findLiveCampaign();
+        if (!campaign) throw new Error('No pledge drive is currently open');
+        const pledger = await Member.findByPk(member.id, { transaction: t });
+        await createPledgeWithPayment({
+          campaignId: campaign.id,
+          amount: parseFloat(pledgeAmount),
+          paymentAmount: parseFloat(tx.amount),
+          transactionId: tx.id,
+          memberId: member.id,
+          firstName: pledger.first_name,
+          lastName: pledger.last_name,
+          source: 'treasurer_manual',
+          allocatedBy: user.id
+        }, { transaction: t });
+      } else {
+        const { maybeAllocateToPledge } = require('./pledgeAllocationService');
+        await maybeAllocateToPledge(tx, { source: 'treasurer_manual', allocatedBy: user.id }, { transaction: t });
+      }
+    });
+  } catch (e) {
+    pledgeError = e.message;
+    console.error('⚠️ Pledge allocation failed for Zelle transaction:', e.message);
+  }
+
+  // Bank row already uploaded and certainly this payment: confirm now.
+  let bankLink = null;
+  if (certain && bank.matches[0].bankRow.status === 'PENDING') {
+    try {
+      const { linkEmailPaymentToBankRow } = require('./zelleBankLinkService');
+      await row.reload();
+      bankLink = await linkEmailPaymentToBankRow({
+        queueRow: row, transaction: tx, bankRow: bank.matches[0].bankRow, tier: bank.tier, user
+      });
+    } catch (e) {
+      console.error('⚠️ Bank link failed for Zelle transaction:', e.message);
+    }
+  }
+
+  await tx.reload();
+  return { success: true, data: tx, bank_link: bankLink, pledge_error: pledgeError };
+}
+
+/**
+ * Attach a queued email to a transaction that already exists — the answer to
+ * POSSIBLE_DUPLICATE when the treasurer confirms "this is that payment".
+ */
+async function attachQueueRowToTransaction({ queueId, transactionId, userId = null }) {
+  const { isBankHash } = require('./zelleBankCorrelationService');
+  const fail = (code, message, extra = {}) => ({ success: false, code, message, ...extra });
+
+  const row = await ZelleEmailQueue.findByPk(queueId);
+  if (!row) return fail('NOT_FOUND', 'Queue item not found');
+  if (row.transaction_id) return fail('ALREADY_POSTED', 'This payment already has a transaction.', { transaction_id: row.transaction_id });
+
+  const tx = await Transaction.findByPk(transactionId);
+  if (!tx) return fail('TRANSACTION_NOT_FOUND', 'Transaction not found');
+  if (row.amount != null && Math.abs(Number(tx.amount) - Number(row.amount)) >= 0.005) {
+    return fail('AMOUNT_MISMATCH', 'That transaction is for a different amount.');
+  }
+  const owner = await ZelleEmailQueue.findOne({ where: { transaction_id: tx.id } });
+  if (owner) return fail('TRANSACTION_CLAIMED', 'That transaction already belongs to another Zelle email.');
+
+  let bankRowId = null;
+  if (isBankHash(tx.external_id)) {
+    const { BankTransaction } = require('../models');
+    const bankRow = await BankTransaction.findOne({ where: { transaction_hash: tx.external_id } });
+    const claimed = bankRow && await ZelleEmailQueue.findOne({ where: { bank_transaction_id: bankRow.id } });
+    if (bankRow && !claimed) bankRowId = bankRow.id;
+  }
+
+  await row.update({
+    transaction_id: tx.id,
+    bank_transaction_id: bankRowId,
+    matched_member_id: tx.member_id || row.matched_member_id,
+    status: isBankHash(tx.external_id) ? 'BANK_POSTED' : 'CREATED',
+    match_source: 'TREASURER_ATTACH',
+    matched_by: userId,
+    matched_at: new Date(),
+    processed_at: new Date(),
+    error: null
+  });
+
+  if (tx.member_id && row.payer_name) {
+    await learnZelleAssociation({ payerName: row.payer_name, note: row.note, memberId: tx.member_id });
+  }
+  return { success: true, data: row };
+}
+
 module.exports = {
+  createTransactionFromQueueRow,
+  attachQueueRowToTransaction,
   sanitizeNote,
   extractPayerName,
   extractZelleReference,

@@ -392,12 +392,8 @@ describe('Zelle match-only mode', () => {
 
     describe('GET /api/zelle/queue', () => {
         beforeEach(async () => {
-            // L1 (MATCHED) deliberately carries the NEWEST payment_date, and the two
-            // NEEDS_REVIEW rows the two OLDEST. This is load-bearing for "orders
-            // unmatched rows first" below: under plain payment_date-DESC ordering
-            // (i.e. without the matched_member_id-IS-NULL term), L1 would sort first
-            // and that test would fail. Only the unmatched-first clause can put a
-            // NEEDS_REVIEW row ahead of L1.
+            // L1 is MATCHED and the newest: the queue is strictly newest first,
+            // regardless of match status (the status filter isolates unmatched work).
             await ZelleEmailQueue.bulkCreate([
                 { external_id: 'zelle:L1', payer_name: 'ALPHA PAYER', amount: 10, payment_date: '2026-08-03', status: 'MATCHED', matched_member_id: member.id },
                 { external_id: 'zelle:L2', payer_name: 'BETA PAYER', amount: 20, payment_date: '2026-08-01', status: 'NEEDS_REVIEW' },
@@ -417,14 +413,31 @@ describe('Zelle match-only mode', () => {
             expect(res.body.pagination.page).toBe(1);
         });
 
-        test('orders unmatched rows first', async () => {
+        test('orders newest payment first, whatever the match status', async () => {
             const res = await request(app)
                 .get('/api/zelle/queue')
                 .set('Authorization', 'Bearer valid-token')
                 .expect(200);
 
-            expect(res.body.items[0].status).toBe('NEEDS_REVIEW');
-            expect(res.body.items[res.body.items.length - 1].status).toBe('MATCHED');
+            expect(res.body.items.map((i) => i.external_id)).toEqual(['zelle:L1', 'zelle:L3', 'zelle:L2']);
+        });
+
+        test('orders same-day emails by Gmail arrival time, untimed rows last', async () => {
+            // Inserted oldest-arrival LAST, the way the sync inserts Gmail's
+            // newest-first list — created_at order would come out backwards.
+            await ZelleEmailQueue.bulkCreate([
+                { external_id: 'zelle:D-UNTIMED', amount: 5, payment_date: '2026-08-05', status: 'NEEDS_REVIEW' },
+                { external_id: 'zelle:D-LATE', amount: 5, payment_date: '2026-08-05', email_received_at: new Date('2026-08-05T21:30:00Z'), status: 'NEEDS_REVIEW' },
+                { external_id: 'zelle:D-EARLY', amount: 5, payment_date: '2026-08-05', email_received_at: new Date('2026-08-05T14:10:00Z'), status: 'NEEDS_REVIEW' }
+            ]);
+
+            const res = await request(app)
+                .get('/api/zelle/queue')
+                .set('Authorization', 'Bearer valid-token')
+                .expect(200);
+
+            expect(res.body.items.slice(0, 3).map((i) => i.external_id))
+                .toEqual(['zelle:D-LATE', 'zelle:D-EARLY', 'zelle:D-UNTIMED']);
         });
 
         test('filters by search across payer name', async () => {

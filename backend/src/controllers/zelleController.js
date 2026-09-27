@@ -2,7 +2,9 @@ const { syncZelleFromGmail, previewZelleFromGmail } = require('../services/gmail
 const {
   createZelleTransaction,
   extractPayerName,
-  matchQueueRowToMember
+  matchQueueRowToMember,
+  createTransactionFromQueueRow,
+  attachQueueRowToTransaction
 } = require('../services/zelleTransactionService');
 const { ZelleEmailQueue, Member, Transaction, sequelize } = require('../models');
 const { isZelleGmailCreateEnabled } = require('../config/featureFlags');
@@ -174,20 +176,24 @@ async function getQueue(req, res) {
 
     const { count, rows } = await ZelleEmailQueue.findAndCountAll({
       where,
-      // Unmatched work first, then most recent payments. `matched_member_id IS
-      // NULL` sorts DESC in both dialects: Postgres puts TRUE first, sqlite
-      // puts 1 first. A CASE expression would need dialect-specific quoting.
+      // Newest email first. payment_date is the Gmail arrival cut to a date,
+      // so it leads (and covers rows never backfilled); email_received_at
+      // orders within the day. created_at is NOT a tiebreak: the sync inserts
+      // Gmail's newest-first list in order, so it runs backwards.
+      // Postgres sorts NULLs first on DESC, sqlite last; the IS NULL key pins
+      // rows without a time below timed rows of the same day in both.
       order: [
-        [sequelize.literal('matched_member_id IS NULL'), 'DESC'],
         ['payment_date', 'DESC'],
-        ['created_at', 'DESC']
+        [sequelize.literal('email_received_at IS NULL'), 'ASC'],
+        ['email_received_at', 'DESC'],
+        ['id', 'DESC']
       ],
       limit,
       offset: (page - 1) * limit,
       distinct: true,
       include: [
         { model: Member, as: 'matchedMember', attributes: ['id', 'first_name', 'last_name'] },
-        { model: Transaction, as: 'transaction', attributes: ['id', 'amount', 'payment_type', 'payment_date', 'receipt_number'] }
+        { model: Transaction, as: 'transaction', attributes: ['id', 'amount', 'payment_type', 'payment_date', 'receipt_number', 'external_id'] }
       ]
     });
 
@@ -210,7 +216,7 @@ async function ignoreQueueItem(req, res) {
     if (!row) {
       return res.status(404).json({ success: false, message: 'Queue item not found' });
     }
-    if (['CREATED', 'AUTO_CREATED'].includes(row.status)) {
+    if (row.transaction_id || ['CREATED', 'AUTO_CREATED', 'BANK_POSTED'].includes(row.status)) {
       return res.status(400).json({ success: false, message: 'Cannot ignore an item that already has a transaction' });
     }
     await row.update({ status: 'IGNORED', processed_at: new Date() });
@@ -250,7 +256,82 @@ async function matchQueueItem(req, res) {
   }
 }
 
+const QUEUE_STATUS_BY_CODE = {
+  NOT_FOUND: 404,
+  TRANSACTION_NOT_FOUND: 404,
+  MEMBER_NOT_FOUND: 400,
+  MEMBER_REQUIRED: 400,
+  PAYER_NAME_REQUIRED: 400,
+  INVALID_PAYMENT_TYPE: 400,
+  INVALID_PLEDGE: 400,
+  INVALID_RECEIPT: 400,
+  INCOMPLETE: 400,
+  AMOUNT_MISMATCH: 400,
+  IGNORED: 409,
+  DUPLICATE_RECEIPT: 409,
+  ALREADY_POSTED: 409,
+  POSTED_BY_BANK: 409,
+  POSSIBLE_DUPLICATE: 409,
+  TRANSACTION_CLAIMED: 409
+};
+
+// POST /api/zelle/queue/:id/create-transaction
+// Body: { member_id, payment_type, for_year?, receipt_number?, payer_name?, force?, pledge_amount? }
+// pledge_amount (pledge_drive only) opens a pledge credited with this payment.
+// Records the payment from a queued email. Amount and date come from the
+// queue row. 409 POSSIBLE_DUPLICATE lists candidates; re-send with
+// force: true only for a genuinely separate payment.
+async function createQueueTransaction(req, res) {
+  try {
+    const body = req.body || {};
+    const result = await createTransactionFromQueueRow({
+      queueId: req.params.id,
+      memberId: body.member_id,
+      paymentType: body.payment_type,
+      forYear: body.for_year || null,
+      receiptNumber: body.receipt_number || null,
+      payerName: body.payer_name || null,
+      force: body.force === true,
+      pledgeAmount: body.pledge_amount ?? null,
+      user: req.user
+    });
+    if (!result.success) {
+      return res.status(QUEUE_STATUS_BY_CODE[result.code] || 400).json(result);
+    }
+    return res.status(201).json(result);
+  } catch (error) {
+    console.error('Zelle queue create-transaction error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+// POST /api/zelle/queue/:id/attach
+// Body: { transaction_id }
+// Links the email to a transaction that already records this payment.
+async function attachQueueTransaction(req, res) {
+  try {
+    const { transaction_id } = req.body || {};
+    if (!transaction_id) {
+      return res.status(400).json({ success: false, message: 'transaction_id is required' });
+    }
+    const result = await attachQueueRowToTransaction({
+      queueId: req.params.id,
+      transactionId: transaction_id,
+      userId: req.user?.id || null
+    });
+    if (!result.success) {
+      return res.status(QUEUE_STATUS_BY_CODE[result.code] || 400).json(result);
+    }
+    return res.json(result);
+  } catch (error) {
+    console.error('Zelle queue attach error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
+  createQueueTransaction,
+  attachQueueTransaction,
   syncFromGmail,
   previewFromGmail,
   createTransactionFromPreview,

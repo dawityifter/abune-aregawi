@@ -94,12 +94,14 @@ function parseCandidatesFromMessage(msg) {
   // Date - ensure timezone is CST
   const dt = internalDate ? moment(internalDate).tz(tz.TIMEZONE) : (dateHeader ? moment(new Date(dateHeader)).tz(tz.TIMEZONE) : moment().tz(tz.TIMEZONE));
   const payment_date = dt.isValid() ? dt.format('YYYY-MM-DD') : moment().tz(tz.TIMEZONE).format('YYYY-MM-DD');
+  // Only a time Gmail or the sender actually reported — never the sync's "now".
+  const emailReceivedAt = (internalDate || dateHeader) && dt.isValid() ? dt.toDate() : null;
 
   const externalId = buildZelleExternalId({ zelleReference, messageId });
   const legacyExternalId = messageId ? `gmail:${messageId}` : null;
 
   return {
-    amount, phoneE164, senderEmail, messageId, note, payment_date,
+    amount, phoneE164, senderEmail, messageId, note, payment_date, emailReceivedAt,
     subject, bodyText, payerName, zelleReference, externalId, legacyExternalId
   };
 }
@@ -136,11 +138,18 @@ async function upsertQueueRow(parsed, fields) {
       payer_name: parsed.payerName || null,
       amount: parsed.amount || null,
       payment_date: parsed.payment_date || null,
+      email_received_at: parsed.emailReceivedAt || null,
       subject: parsed.subject || null,
       note: parsed.note || null,
       ...fields
     }
   });
+  // Several emails can describe one payment; the row keeps the earliest
+  // arrival, whatever its status, since it only affects ordering.
+  if (parsed.emailReceivedAt && (!row.email_received_at
+    || new Date(parsed.emailReceivedAt) < new Date(row.email_received_at))) {
+    await row.update({ email_received_at: parsed.emailReceivedAt });
+  }
   // Refresh parse fields + status on existing rows (unless already finalized).
   // MATCHED counts as finalized too: it carries a treasurer's audit stamp
   // (matched_by/matched_at) and a learned key already written elsewhere;
@@ -405,4 +414,4 @@ async function previewZelleFromGmail({ limit = 5 } = {}) {
   return { count: results.length, items: results };
 }
 
-module.exports = { syncZelleFromGmail, previewZelleFromGmail };
+module.exports = { syncZelleFromGmail, previewZelleFromGmail, parseCandidatesFromMessage, getOAuth2Client };

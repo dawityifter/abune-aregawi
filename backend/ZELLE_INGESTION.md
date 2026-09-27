@@ -1,18 +1,27 @@
 # Zelle Ingestion Guide
 
-This document explains how Zelle payments are ingested from Gmail, matched to members, and
-posted to the ledger via bank reconciliation.
+This document explains how Zelle payments are ingested from Gmail, matched to members,
+posted to the ledger — from the Zelle Review screen or by bank reconciliation — and
+confirmed against the bank without ever being posted twice.
 
 - Audience: Treasurer/Admin
 - Source: Gmail account receiving Chase/Zelle notifications, plus the Chase CSV uploaded to
   Bank Reconciliation
-- Destination: `transactions` table (canonical ledger) — created only by bank reconciliation
+- Destination: `transactions` table (canonical ledger) — created by a treasurer on the Zelle
+  Review screen, or by bank reconciliation when nobody created it from the email
 
 ## Overview
 
-- **Match-only mode**: while `ZELLE_GMAIL_CREATE_ENABLED` is `false` (the default — see
-  `backend/env.example`), the Gmail path never creates a Transaction. It only records every
-  parsed email in `zelle_email_queue` and computes a suggested member match.
+- **Two ways to post, one transaction per payment.** A treasurer can create the transaction
+  straight from the Zelle Review screen (`POST /api/zelle/queue/:id/create-transaction`).
+  When the Chase CSV later arrives, bank reconciliation recognizes that payment and links
+  the existing transaction instead of creating another — see "Creating from the Zelle
+  Review screen" below. A payment nobody created from its email is posted by bank
+  reconciliation as before.
+- **Automatic creation stays off**: while `ZELLE_GMAIL_CREATE_ENABLED` is `false` (the default — see
+  `backend/env.example`), the Gmail *sync* never creates a Transaction. It only records every
+  parsed email in `zelle_email_queue` and computes a suggested member match. The flag does
+  not gate the treasurer's Create on Zelle Review, which is always available.
 - **Turning `ZELLE_GMAIL_CREATE_ENABLED` on has a cost**: it restores the pre-match-only
   behavior where the Gmail sync creates transactions directly, which reopens the
   cross-path duplicate this queue exists to prevent. If a treasurer approves the bank CSV
@@ -22,9 +31,9 @@ posted to the ledger via bank reconciliation.
   match it creates a second transaction for the same payment. Only enable the flag
   temporarily and with this tradeoff in mind (e.g. a backlog catch-up window), and prefer
   reconciling any pending bank rows for the affected period first.
-- **Bank reconciliation is the only path that posts money.** A Transaction (and its
-  LedgerEntry) is created when a treasurer approves a matching row after the Chase CSV is
-  uploaded — see "Bank reconciliation and Zelle credits" below.
+- **Nothing posts money without a treasurer.** The sync never creates transactions (flag
+  off). A transaction comes from a treasurer's Create on Zelle Review, or a treasurer's
+  approval in Bank Reconciliation.
 - Preview: Safe, read-only list of parsed candidates (no DB writes).
 - Sync: Upserts every parsed email into `zelle_email_queue` with a suggested member; creates
   no Transactions while the flag above is false.
@@ -56,7 +65,13 @@ GET /api/zelle/queue
 // Assign a member to a queued payer (creates no Transaction)
 POST /api/zelle/queue/:id/match
 
-// Disabled by default — 403 while ZELLE_GMAIL_CREATE_ENABLED is false
+// Record the transaction for a queued email (duplicate-guarded)
+POST /api/zelle/queue/:id/create-transaction
+
+// Attach a queued email to a transaction that already records its payment
+POST /api/zelle/queue/:id/attach
+
+// Legacy, disabled by default — 403 while ZELLE_GMAIL_CREATE_ENABLED is false
 POST /api/zelle/reconcile/create-transaction
 ```
 
@@ -77,13 +92,76 @@ Service: `backend/src/services/gmailZelleIngest.js`
   high-confidence — this is off by default, so in normal operation sync creates nothing.
   Every other row is queued as `NEEDS_REVIEW`.
 - Queue statuses: `NEEDS_REVIEW`, `MATCHED` (a treasurer associated a payer with a member —
-  no Transaction exists yet), `AUTO_CREATED` / `CREATED` (a Transaction exists), `IGNORED`,
-  `ERROR`.
-- A `MATCHED` row stays `MATCHED` indefinitely, even after the payment is later posted
-  through bank reconciliation: nothing writes back to `zelle_email_queue` from the bank
-  reconciliation or auto-reconcile services, so `transaction_id` stays `null` and the status
-  never becomes `CREATED`. The Zelle Review screen does not reflect whether a matched
-  payment was subsequently approved elsewhere.
+  no Transaction exists yet), `CREATED` (a treasurer created the Transaction from the email,
+  or attached the email to an existing one), `BANK_POSTED` (bank reconciliation created the
+  Transaction first; the email was linked to it), `AUTO_CREATED` (legacy automatic
+  creation), `IGNORED`, `ERROR`.
+- `bank_transaction_id` records the bank row that confirmed the payment (unique: one bank
+  row can confirm only one email). A `CREATED` row with no `bank_transaction_id` is
+  "awaiting bank"; the screen flags it once it is more than 10 days old, since the Zelle may
+  have been reversed or never posted.
+- `email_received_at` is Gmail's `internalDate` — when the email arrived. `payment_date` is
+  the same instant cut to a Chicago date. The queue lists newest first by `payment_date`,
+  then `email_received_at`; rows recorded before the column existed can be filled with
+  `node scripts/backfill-zelle-email-received-at.js` (dry run by default, `--apply` to
+  write).
+
+## Creating from the Zelle Review screen
+
+`POST /api/zelle/queue/:id/create-transaction` with `{ member_id, payment_type, for_year?,
+receipt_number?, payer_name?, force?, pledge_amount? }`. Amount, date and the Zelle key come from the queue
+row — the client never sends them. The payer name is required (it is what bank
+reconciliation matches on). Loan payment types are refused; loans are entered from the
+Loans screen.
+
+Before writing anything it asks whether this payment is already recorded:
+
+| Finding | Response |
+|---|---|
+| The row already has a transaction | 409 `ALREADY_POSTED` |
+| The bank already posted this exact payment | 409 `POSTED_BY_BANK`; the email is linked to that transaction (`BANK_POSTED`). Not overridable. |
+| A plausible but uncertain existing transaction — a bank row that might be this payment, or the member's Zelle payment of the same amount within 5 days | 409 `POSSIBLE_DUPLICATE` with `candidates`. The treasurer attaches the email to one (`POST /api/zelle/queue/:id/attach { transaction_id }`), or re-sends with `force: true` for a genuinely separate payment. |
+
+Otherwise the Transaction and LedgerEntry are written in one database transaction under a
+lock on the queue row (double clicks lose), and the payer→member key is learned.
+
+A **Pledge Drive** payment is handled exactly as in Bank Reconciliation and Add Payment:
+the screen shows the member's open pledge in the live drive and the payment is credited to
+it; with no open pledge, the treasurer may tick "Also record this as a pledge" and send
+`pledge_amount` (≥ $1, `pledge_drive` only — otherwise 400 `INVALID_PLEDGE`), which opens a
+pledge credited with this payment (`createPledgeWithPayment`; a pledge larger than the
+payment stays open for the balance). As there, the payment is recorded even if the pledge
+side fails — the reason comes back as `pledge_error`. When the bank row later links, the
+payment is not credited again: `processReconciliation` skips allocation for a linked
+transaction that already has allocation rows. If the bank row is already uploaded and certainly this
+payment, it is confirmed on the spot.
+
+### How an email and a bank row are recognized as one payment
+
+`backend/src/services/zelleBankCorrelationService.js`, used in both directions:
+
+- **Exact reference** — the bank row's reference equals the email's Transaction number.
+  Chase prints the same 11-digit number on both only when the sender banks with Chase;
+  other senders get a 12-character network id on the statement that appears nowhere in
+  the email (verified against 40 emails). So this covers a minority of payments.
+- **Anchored** — same amount, the email's payer name equals the bank's payer name (both are
+  Chase's rendering of the sender), and the bank posted between 1 day before and 5 days
+  after the email date — **and** the pairing is unique in both directions. Two payments
+  from one payer for one amount in the same week are never decided automatically.
+- Anything else plausible is a **candidate** for the treasurer.
+
+The payer name is compared, not the member's name, so a gift sent from a relative's account
+still pairs with its email.
+
+### Confirming against the bank
+
+When the bank row arrives (or is already there), the email-created transaction is **updated
+in place**, never duplicated: its `external_id` becomes the bank hash (the system-wide
+"bank-confirmed" marker, with the email key kept in `reconciled_meta.prev_external_id` for
+undo); member, payment type, year, receipt and `payment_date` stay as the treasurer set
+them — `payment_date` is when the donor gave, which matters at year end; the ledger entry
+gets the bank posting date as `statement_date`; the queue row gets `bank_transaction_id`.
+Undoing that automatic link restores all of it.
 
 ## Reconciliation Workflow
 
@@ -94,15 +172,22 @@ Service: `backend/src/services/gmailZelleIngest.js`
 3) Submit the match (`POST /api/zelle/queue/:id/match`). This marks the row `MATCHED` and
    writes a learned payer→member key (`bank_memo_matches`, plus the legacy memo table). **No
    Transaction is created by this step.**
-4) When the Chase bank CSV is uploaded to Bank Reconciliation, the matched payer's row
-   surfaces as a PENDING credit with the member suggested. The treasurer reviews and approves
-   it there — that approval is what creates the Transaction and LedgerEntry.
+4) Optionally, choose the payment type (and receipt) and click **Create transaction** to
+   post it now — see "Creating from the Zelle Review screen" above.
+5) When the Chase bank CSV is uploaded to Bank Reconciliation: a payment already created
+   from its email is linked automatically when certain (Tier 0.5), or shown under
+   "Possible Existing Entry" with a **Link to this entry** button. A payment nobody created
+   surfaces as a PENDING credit with the member suggested; approving it creates the
+   Transaction and LedgerEntry, and marks the email `BANK_POSTED`.
 
 ## Bank reconciliation and Zelle credits
 
-Zelle credits always stay `PENDING` in Bank Reconciliation for treasurer approval — they are
-never auto-created by the automatic reconciliation pass, regardless of match confidence. Two
-exceptions to be aware of:
+Zelle credits are never auto-*created* by the automatic reconciliation pass, regardless of
+match confidence. They are auto-*linked* in two cases:
+
+- **Tier 0.5 (email-created transaction)**: the treasurer already created this payment from
+  its Zelle email and the pairing is certain (exact reference, or anchored — see above).
+  The existing transaction is confirmed in place; nothing is created.
 
 - **Tier 0 (exact reference match)** still runs automatically: if the bank CSV row's
   reference exactly matches an existing Transaction's `zelle:<reference>` external ID, the
@@ -117,6 +202,11 @@ exceptions to be aware of:
   on the PENDING bank row.
 - Everything else Zelle-shaped (heuristic name/amount linking, learned-payer creation) is
   skipped for Zelle credits and left `PENDING` with suggestions for the treasurer.
+- **Approving a Zelle row that was already created from its email is refused** —
+  `POST /api/bank/reconcile` returns 409 `LINK_EXISTING` with `candidates`. Link with
+  `existing_transaction_id` instead, or send `force: true` if the bank row really is a
+  separate payment. Bulk reconcile never forces; such rows come back in `errors` with
+  `code: 'LINK_EXISTING'`.
 
 ACH and check credits, and expense debits, are unaffected by match-only mode — the automatic
 reconciliation pass (`backend/src/services/autoReconcileService.js`) continues to
@@ -159,9 +249,24 @@ auto-link/auto-create/auto-expense those the same way it always has.
   - 409 `ALREADY_POSTED`: this queue row already has a Transaction; its member association is
     settled by that Transaction, not by matching.
 
+- `POST /api/zelle/queue/:id/create-transaction`
+  - Auth: Firebase, roles `treasurer|admin`
+  - Body: `{ member_id, payment_type, for_year?, receipt_number?, payer_name?, force? }`
+  - `pledge_amount` (Pledge Drive only): open a pledge credited with this payment.
+  - 201 `{ success, data, bank_link, pledge_error }`. 409 `ALREADY_POSTED` /
+    `POSTED_BY_BANK` / `POSSIBLE_DUPLICATE` (with `candidates`) / `DUPLICATE_RECEIPT` /
+    `IGNORED`. 400 `PAYER_NAME_REQUIRED` / `MEMBER_REQUIRED` / `MEMBER_NOT_FOUND` /
+    `INVALID_PAYMENT_TYPE` / `INVALID_PLEDGE` / `INVALID_RECEIPT` / `INCOMPLETE`. 404 unknown row.
+
+- `POST /api/zelle/queue/:id/attach`
+  - Auth: Firebase, roles `treasurer|admin`
+  - Body: `{ transaction_id }`. 400 `AMOUNT_MISMATCH`; 409 `TRANSACTION_CLAIMED` (another
+    email owns it) or `ALREADY_POSTED`; 404 unknown row or transaction.
+
 - `POST /api/zelle/queue/:id/ignore`
   - Auth: Firebase, roles `treasurer|admin`
-  - Marks the row `IGNORED`. 400 if the row already has a Transaction.
+  - Marks the row `IGNORED`. 400 if the row already has a Transaction (including
+    `BANK_POSTED`).
 
 - `POST /api/zelle/reconcile/create-transaction`
   - Auth: Firebase, roles `treasurer|admin`
@@ -184,8 +289,9 @@ auto-link/auto-create/auto-expense those the same way it always has.
 
 ## Payer name parsing
 
-The payer name is the Gmail path's only output — it becomes the `ZELLE:PAYER:<name>` key
-that carries a treasurer's match across to bank reconciliation — so `extractPayerName` (in
+The payer name carries the email across to the bank: it becomes the `ZELLE:PAYER:<name>`
+learned key, and it is what pairs an email-created transaction with its bank row when the
+reference numbers differ — so `extractPayerName` (in
 `backend/src/services/zelleTransactionService.js`) is worth understanding before changing.
 
 Chase's current notification puts the payer on its own line and the amount further down in a
@@ -278,7 +384,13 @@ been settled here.
 - Auth errors: Ensure you are signed in and your role is Treasurer or Admin.
 - 403/401: Firebase token missing/expired or insufficient role.
 - 403 `CREATE_DISABLED` on `reconcile/create-transaction` or `reconcile/batch-create`: expected
-  while `ZELLE_GMAIL_CREATE_ENABLED` is false — use the match workflow instead.
+  while `ZELLE_GMAIL_CREATE_ENABLED` is false — use `queue/:id/create-transaction`.
+- An email-created payment stays "awaiting bank": the bank row may not be uploaded yet, or
+  the pairing was not certain (two same-amount payments from one payer that week, a payer
+  name that differs between email and statement). Open the PENDING bank row and use **Link
+  to this entry**.
+- 409 `LINK_EXISTING` in Bank Reconciliation: working as intended — the payment was already
+  recorded from its email. Link it rather than creating a second entry.
 - 409 `ALREADY_POSTED` on `/queue/:id/match`: the queue row already has a Transaction; nothing
   to do.
 - A matched payer isn't linking during bank reconciliation: confirm the payer name typed

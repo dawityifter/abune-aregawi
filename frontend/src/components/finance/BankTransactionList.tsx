@@ -106,6 +106,10 @@ export interface BankTransaction {
             first_name: string;
             last_name: string;
         };
+        // Set when the entry was created from this payment's Zelle email.
+        source?: 'zelle_email';
+        match_tier?: 'EXACT_REF' | 'ANCHORED' | 'CANDIDATES';
+        zelle_payer_name?: string | null;
     }[];
 }
 
@@ -349,7 +353,8 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         const memberName = match.member ? `${match.member.first_name} ${match.member.last_name}` : 'No member';
         const receipt = match.receipt_number ? `, receipt ${match.receipt_number}` : '';
         const more = txn.potential_matches && txn.potential_matches.length > 1 ? ` +${txn.potential_matches.length - 1} more` : '';
-        return `Existing entry #${match.id}: ${memberName}, ${match.payment_date}${receipt}${more}`;
+        const origin = match.source === 'zelle_email' ? ' (from Zelle email)' : '';
+        return `Existing entry #${match.id}${origin}: ${memberName}, ${match.payment_date}${receipt}${more}`;
     };
 
     // Which way the money went decides what a bulk selection can even mean.
