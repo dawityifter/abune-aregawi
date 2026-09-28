@@ -85,6 +85,12 @@ describe('rematch-payment-member', () => {
     expect(reversal.reason).toMatch(/wrong member/);
     expect(String(reversal.allocated_by)).toBe(String(treasurer.id));
 
+    // Who the sender is was not part of the correction: learned keys stay.
+    expect((await BankMemoMatch.findAll()).every((m) => String(m.member_id) === String(wrong.id))).toBe(true);
+  });
+
+  it('--remember-sender re-points the learned keys at the right member', async () => {
+    await run({ rememberSender: true });
     // Future payments from this payer are suggested for the right member.
     const learned = await BankMemoMatch.findAll();
     expect(learned.every((m) => String(m.member_id) === String(right.id))).toBe(true);
@@ -131,9 +137,10 @@ describe('rematch-payment-member', () => {
     expect(Number(await netFor(wrongPledge.id))).toBe(0);
   });
 
-  it('--keep-learned leaves the learned keys alone', async () => {
-    await run({ keepLearned: true });
+  it('leaves the learned keys alone by default (the payment may have been paid on behalf)', async () => {
+    const log = await run();
     expect((await BankMemoMatch.findAll()).every((m) => String(m.member_id) === String(wrong.id))).toBe(true);
+    expect(log.join('\n')).toMatch(/--remember-sender/);
   });
 
   it('a rolled-back run (dry run) changes nothing', async () => {

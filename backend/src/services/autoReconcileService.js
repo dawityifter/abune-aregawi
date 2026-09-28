@@ -527,7 +527,7 @@ async function autoReconcileDebit(txn, user) {
  * its usual certainty rules. linkOnly prevents Tier 2 from creating
  * transactions for unrelated learned payers that share the amount.
  */
-async function linkPendingBankRowsForTransaction(tx, user, { dayWindow = 7, maxCandidates = 10, payerName = null } = {}) {
+async function linkPendingBankRowsForTransaction(tx, user, { dayWindow = 7, maxCandidates = 10, payerName = null, remember } = {}) {
   const paymentDate = new Date(tx.payment_date);
   if (Number.isNaN(paymentDate.getTime())) return { linked: 0, examined: 0 };
   const start = new Date(paymentDate.getTime() - dayWindow * 24 * 60 * 60 * 1000);
@@ -601,10 +601,11 @@ async function linkPendingBankRowsForTransaction(tx, user, { dayWindow = 7, maxC
   }
 
   // Learn payer → member from the row we actually linked, so the payer's
-  // remaining and future rows surface suggestions / Tier-2 auto-creation.
+  // remaining and future rows surface suggestions / Tier-2 auto-creation —
+  // within the treasurer's choice for this payment (decideSenderLearning).
   if (linkedRow && tx.member_id) {
     try {
-      await learnBankMemoMatch(linkedRow.get({ plain: true }), tx.member_id);
+      await learnBankMemoMatch(linkedRow.get({ plain: true }), tx.member_id, { remember });
     } catch (e) {
       console.warn('Targeted link learning warning:', e.message || e);
     }

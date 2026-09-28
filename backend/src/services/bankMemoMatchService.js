@@ -236,7 +236,21 @@ async function findFuzzyMemberCandidates(nameText) {
 
 async function findSuggestionCandidates(transaction) {
   const sourceType = sourceTypeFor(transaction);
-  const candidates = [...await findLearnedCandidates(transaction)];
+  const learnedCandidates = await findLearnedCandidates(transaction);
+
+  // Learned records that name different members for one sender (e.g. a key
+  // re-pointed by a one-off "paid on behalf" payment while the legacy memo
+  // still names the sender) are evidence of nothing. Neither may drive a
+  // high-confidence pre-fill or an automatic action; both are shown.
+  if (new Set(learnedCandidates.map((c) => String(c.member.id))).size > 1) {
+    for (const candidate of learnedCandidates) {
+      candidate.confidence = 'medium';
+      candidate.conflict = true;
+      candidate.reason = `${candidate.reason} (learned records disagree)`;
+    }
+  }
+
+  const candidates = [...learnedCandidates];
   const fuzzyName = transaction.payer_name || (sourceType === 'ACH' ? extractAchIndividualName(transaction.description) : null);
 
   if (fuzzyName) {
@@ -284,12 +298,110 @@ async function findSuggestionCandidates(transaction) {
   });
 }
 
-async function learnBankMemoMatch(transaction, memberId) {
-  if (!transaction || !memberId) return [];
+/**
+ * Whether a payer name looks like the member's own name: some word of the
+ * member's first name AND some word of their last name appear in it
+ * ("MENGISTU Y ALEMAYEHU" resembles Mengistu Alemayehu). A differently
+ * spelled registration fails, which errs on the side of not learning.
+ */
+function payerResemblesMember(payerName, member) {
+  if (!payerName || !member) return false;
+  const payerWords = new Set(normalizeWords(payerName).split(' ').filter((w) => w.length >= 2));
+  const appears = (name) => normalizeWords(name).split(' ').some((w) => w.length >= 2 && payerWords.has(w));
+  return appears(member.first_name) && appears(member.last_name);
+}
 
+/**
+ * The payer name a transaction's keys are built from, for the resemblance
+ * check (the same name getBankMatchKeys uses).
+ */
+function payerNameFor(transaction) {
+  const sourceType = sourceTypeFor(transaction);
+  return transaction?.payer_name
+    || (sourceType === 'ACH' ? extractAchIndividualName(transaction?.description) : null)
+    || (sourceType === 'ZELLE' ? normalizeDescriptionForKey(transaction?.description, sourceType) : null);
+}
+
+/**
+ * Decide whether confirming THIS payment for memberId may teach the matcher
+ * that the payer IS memberId.
+ *
+ * Crediting a payment to a member is a fact about one transaction. A learned
+ * key is a standing claim about who a sender is, and it steers every future
+ * payment from that sender. The two used to be the same write — so a friend
+ * paying another member's pledge once silently re-pointed the friend's own
+ * key at the other member. They are now separate:
+ *
+ *   remember: true   the treasurer said "remember this sender for this
+ *                    member": create keys, and re-point keys held by someone
+ *                    else.
+ *   remember: false  "this payment only": write nothing.
+ *   remember omitted automatic and bulk paths: create keys only when the
+ *                    payer name resembles the member AND no key for this
+ *                    payer belongs to anyone else. Never re-point a key.
+ *
+ * Returns { sender_link, reason, write, overwrite, prior_member_id }:
+ *   sender_link  'REMEMBERED' (the sender is, or now is, known as this
+ *                member) or 'THIS_PAYMENT_ONLY'
+ *   reason       ALREADY_KNOWN | EXPLICIT | NAME_MATCHES_MEMBER |
+ *                EXPLICIT_THIS_PAYMENT | SENDER_KNOWN_AS_OTHER |
+ *                NAME_DOES_NOT_MATCH
+ */
+async function decideSenderLearning(transaction, memberId, { remember } = {}) {
   const keys = getBankMatchKeys(transaction);
+  const existing = keys.length > 0
+    ? await BankMemoMatch.findAll({ where: { match_key: keys.map((k) => k.matchKey) }, attributes: ['member_id'] })
+    : [];
+  const owners = existing.map((m) => String(m.member_id));
+
+  // The legacy memo table is read as a learned signal too; a payer it holds
+  // for someone else is just as much "known as another member".
+  if (sourceTypeFor(transaction) === 'ZELLE') {
+    const legacyMemo = normalizeLegacyMemo(transaction.description, 'ZELLE');
+    if (legacyMemo) {
+      const legacy = await ZelleMemoMatch.findOne({
+        where: sequelize.where(sequelize.fn('lower', sequelize.col('memo')), legacyMemo.toLowerCase()),
+        attributes: ['member_id']
+      });
+      if (legacy) owners.push(String(legacy.member_id));
+    }
+  }
+
+  const other = owners.find((id) => id !== String(memberId));
+  const known = owners.length > 0 && !other;
+  const decision = (sender_link, reason, write, overwrite) => ({
+    sender_link, reason, write, overwrite, prior_member_id: other || null
+  });
+
+  if (remember === true) return decision('REMEMBERED', known ? 'ALREADY_KNOWN' : 'EXPLICIT', true, true);
+  if (known) {
+    // Filling in a missing sibling key for a sender already known as this
+    // member is not new knowledge — unless the treasurer said this payment only.
+    return remember === false
+      ? decision('REMEMBERED', 'ALREADY_KNOWN', false, false)
+      : decision('REMEMBERED', 'ALREADY_KNOWN', true, false);
+  }
+  if (remember === false) return decision('THIS_PAYMENT_ONLY', 'EXPLICIT_THIS_PAYMENT', false, false);
+  if (other) return decision('THIS_PAYMENT_ONLY', 'SENDER_KNOWN_AS_OTHER', false, false);
+
+  const member = await Member.findByPk(memberId, { attributes: ['id', 'first_name', 'last_name'] });
+  return payerResemblesMember(payerNameFor(transaction), member)
+    ? decision('REMEMBERED', 'NAME_MATCHES_MEMBER', true, false)
+    : decision('THIS_PAYMENT_ONLY', 'NAME_DOES_NOT_MATCH', false, false);
+}
+
+/**
+ * Learn payer -> member keys from a confirmed payment, as far as
+ * decideSenderLearning allows. Returns the decision plus the keys written.
+ */
+async function learnBankMemoMatch(transaction, memberId, { remember } = {}) {
+  if (!transaction || !memberId) return { sender_link: null, reason: null, write: false, learned: [] };
+
+  const decision = await decideSenderLearning(transaction, memberId, { remember });
   const learned = [];
-  for (const key of keys) {
+  if (!decision.write) return { ...decision, learned };
+
+  for (const key of getBankMatchKeys(transaction)) {
     const [match] = await BankMemoMatch.findOrCreate({
       where: { match_key: key.matchKey },
       defaults: {
@@ -302,6 +414,7 @@ async function learnBankMemoMatch(transaction, memberId) {
     });
 
     if (String(match.member_id) !== String(memberId)) {
+      if (!decision.overwrite) continue;
       await match.update({
         member_id: memberId,
         raw_description: transaction.description || match.raw_description,
@@ -312,14 +425,68 @@ async function learnBankMemoMatch(transaction, memberId) {
     learned.push(match);
   }
 
-  return learned;
+  return { ...decision, learned };
+}
+
+/**
+ * Who each Zelle payer name is currently remembered as — the members its
+ * learned payer key and legacy memo row point at (more than one means the
+ * records disagree). One round trip per table for a whole page of names.
+ * Returns Map(normalized payer name -> [{ id, first_name, last_name }]).
+ */
+async function findRememberedZelleSenders(payerNames) {
+  const words = [...new Set((payerNames || []).map(normalizeWords).filter(Boolean))];
+  const result = new Map(words.map((w) => [w, []]));
+  if (words.length === 0) return result;
+
+  const memberAttrs = ['id', 'first_name', 'last_name'];
+  const add = (payer, member) => {
+    const list = result.get(payer);
+    if (list && member && !list.some((m) => String(m.id) === String(member.id))) {
+      list.push({ id: member.id, first_name: member.first_name, last_name: member.last_name });
+    }
+  };
+
+  const keys = await BankMemoMatch.findAll({
+    where: { match_key: words.map((w) => `ZELLE:PAYER:${w}`) },
+    include: [{ model: Member, as: 'member', attributes: memberAttrs }]
+  });
+  keys.forEach((k) => add(k.match_key.slice('ZELLE:PAYER:'.length), k.member));
+
+  const legacy = await ZelleMemoMatch.findAll({
+    where: sequelize.where(sequelize.fn('upper', sequelize.col('memo')), { [Op.in]: words }),
+    include: [{ model: Member, as: 'member', attributes: memberAttrs }]
+  });
+  legacy.forEach((row) => add(normalizeWords(row.memo), row.member));
+  return result;
+}
+
+/**
+ * Write the legacy zelle_memo_matches row for a payer, obeying a decision
+ * from decideSenderLearning: created only when writing is allowed, re-pointed
+ * at another member only when overwriting is.
+ */
+async function learnLegacyZelleMemo(memo, memberId, decision, names = {}) {
+  if (!decision?.write || !memo || memo.length < 3) return;
+  const existing = await ZelleMemoMatch.findOne({
+    where: sequelize.where(sequelize.fn('lower', sequelize.col('memo')), memo.toLowerCase())
+  });
+  if (!existing) {
+    await ZelleMemoMatch.create({ member_id: memberId, memo, ...names });
+  } else if (String(existing.member_id) !== String(memberId) && decision.overwrite) {
+    await existing.update({ member_id: memberId, ...names });
+  }
 }
 
 module.exports = {
+  decideSenderLearning,
   extractAchIndividualName,
+  findRememberedZelleSenders,
   findSuggestionCandidates,
   getBankMatchKeys,
   learnBankMemoMatch,
+  learnLegacyZelleMemo,
+  payerResemblesMember,
   normalizeDescriptionForKey,
   normalizeWords,
   sourceTypeFor

@@ -182,7 +182,7 @@ describe('Zelle Transaction Service', () => {
                 type: 'ZELLE',
                 payer_name: 'TEKEA BEYENE',
                 description: 'Zelle payment from TEKEA BEYENE 99887766'
-            }, member.id);
+            }, member.id, { remember: true });
 
             // Looked up from the email side
             const match = await matchZelleSender({ payerName: 'TEKEA BEYENE', note: 'ignored' });

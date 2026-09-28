@@ -2121,39 +2121,6 @@ export const en: Dictionaries = {
       methodCard: "credit card",
       methodAch: "ACH"
     },
-    zelleReview: {
-      paymentType: "Payment type",
-      forYear: "For year",
-      receiptOptional: "Receipt # (optional)",
-      createTransaction: "Create transaction",
-      createTitle: "Record this payment now; bank reconciliation will confirm it when the statement arrives",
-      created: "Transaction created.",
-      postedByBankNotice: "Bank reconciliation had already recorded this payment; the email is now linked to it.",
-      pledge: {
-        credits: "Creating credits {amount} to this pledge.",
-        noOpenPledge: "No open pledge in this drive",
-        leavesOutstanding: "Paying {paid} now — leaves {remaining} outstanding.",
-        paidInFull: "Paid in full by this {amount} payment.",
-        notRecorded: "Payment recorded, pledge was not"
-      },
-      status: {
-        awaitingBank: "Created · awaiting bank",
-        awaitingBankDays: "Created · awaiting bank ({days} days)",
-        bankConfirmed: "Bank-confirmed",
-        postedByBank: "Posted by bank"
-      },
-      duplicate: {
-        title: "This payment may already be recorded",
-        attach: "Attach to this entry",
-        createAnyway: "It's a separate payment — create anyway",
-        confirmCreateAnyway: "Create a NEW transaction anyway? Only do this if it is a different payment from the one already recorded.",
-        origin: {
-          bank: "Bank reconciliation",
-          zelle_email: "Zelle email",
-          manual: "Entered manually"
-        }
-      }
-    },
     zelle: {
       title: "Donate via Zelle",
       qrAlt: "Zelle QR code for Abune Aregawi Church",
@@ -2185,6 +2152,48 @@ export const en: Dictionaries = {
     },
     applyToPledge: "Apply to my pledge",
     pledgeRemaining: "{amount} still outstanding on your {campaign} pledge",
+  },
+
+  // ==== Treasurer: Zelle Review (top level so t('zelleReview.*') resolves) ====
+  zelleReview: {
+    paymentType: "Payment type",
+    forYear: "For year",
+    receiptOptional: "Receipt # (optional)",
+    createTransaction: "Create transaction",
+    createTitle: "Record this payment now; bank reconciliation will confirm it when the statement arrives",
+    created: "Transaction created.",
+    postedByBankNotice: "Bank reconciliation had already recorded this payment; the email is now linked to it.",
+    pledge: {
+      credits: "Creating credits {amount} to this pledge.",
+      noOpenPledge: "No open pledge in this drive",
+      leavesOutstanding: "Paying {paid} now — leaves {remaining} outstanding.",
+      paidInFull: "Paid in full by this {amount} payment.",
+      notRecorded: "Payment recorded, pledge was not"
+    },
+    status: {
+      awaitingBank: "Created · awaiting bank",
+      awaitingBankDays: "Created · awaiting bank ({days} days)",
+      bankConfirmed: "Bank-confirmed",
+      postedByBank: "Posted by bank"
+    },
+    duplicate: {
+      title: "This payment may already be recorded",
+      attach: "Attach to this entry",
+      createAnyway: "It's a separate payment — create anyway",
+      confirmCreateAnyway: "Create a NEW transaction anyway? Only do this if it is a different payment from the one already recorded.",
+      origin: {
+        bank: "Bank reconciliation",
+        zelle_email: "Zelle email",
+        manual: "Entered manually"
+      }
+    },
+    senderLink: {
+      title: "Who is the sender?",
+      thisPaymentOnly: "This payment only — {payer} paid on behalf of {member}",
+      remember: "Remember — future payments from {payer} are {member}'s",
+      knownAs: "{payer} is remembered as {known}. \"This payment only\" keeps it that way.",
+      help: "Choose \"Remember\" only if this account always pays for this member, such as a shared household account."
+    }
   },
 
   // ==== DependentsManagement (Phase 2a) ====
@@ -4740,39 +4749,6 @@ export const ti: Dictionaries = {
       methodCard: "ክረዲት ካርድ",
       methodAch: "ACH"
     },
-    zelleReview: {
-      paymentType: "ዓይነት ክፍሊት",
-      forYear: "ዓመት",
-      receiptOptional: "ቁጽሪ ቅብሊት (ግዴታ ኣይኮነን)",
-      createTransaction: "ክፍሊት መዝግብ",
-      createTitle: "ነዚ ክፍሊት ሕጂ መዝግቦ፤ መግለጺ ባንኪ ምስ መጸ ምትዕርራይ ባንኪ ከረጋግጾ እዩ",
-      created: "ክፍሊት ተመዝጊቡ።",
-      postedByBankNotice: "ምትዕርራይ ባንኪ ነዚ ክፍሊት ድሮ መዝጊቡዎ ነይሩ፤ እቲ ኢመይል ሕጂ ምስኡ ተተሓሒዙ ኣሎ።",
-      pledge: {
-        credits: "ምምዝጋብ ነዚ መብጽዓ {amount} የእቱ።",
-        noOpenPledge: "ኣብዚ ዘመተ ክፉት መብጽዓ የለን",
-        leavesOutstanding: "ሕጂ {paid} ይኽፈል — {remaining} ይተርፍ።",
-        paidInFull: "ብዚ {amount} ክፍሊት ምሉእ ብምሉእ ተኸፊሉ።",
-        notRecorded: "ክፍሊት ተመዝጊቡ፣ መብጽዓ ግን ኣይተመዝገበን"
-      },
-      status: {
-        awaitingBank: "ተመዝጊቡ · ንባንኪ ይጽበ ኣሎ",
-        awaitingBankDays: "ተመዝጊቡ · ንባንኪ ይጽበ ኣሎ ({days} መዓልቲ)",
-        bankConfirmed: "ብባንኪ ተረጋጊጹ",
-        postedByBank: "ብባንኪ ተመዝጊቡ"
-      },
-      duplicate: {
-        title: "እዚ ክፍሊት ድሮ ተመዝጊቡ ክኸውን ይኽእል እዩ",
-        attach: "ምስዚ መዝገብ ኣተሓሕዝ",
-        createAnyway: "ፍሉይ ክፍሊት እዩ — ብዝኾነ መዝግብ",
-        confirmCreateAnyway: "ሓድሽ ክፍሊት ብዝኾነ ክምዝገብ? ካብቲ ድሮ ዝተመዝገበ ዝተፈልየ ክፍሊት እንተኾይኑ ጥራይ።",
-        origin: {
-          bank: "ምትዕርራይ ባንኪ",
-          zelle_email: "ኢመይል ዘለ",
-          manual: "ብኢድ ዝኣተወ"
-        }
-      }
-    },
     zelle: {
       title: "ብዘለ ውፈዩ",
       qrAlt: "ናይ ኣቡነ ኣረጋዊ ቤተ ክርስቲያን ዘለ QR ኮድ",
@@ -4804,6 +4780,48 @@ export const ti: Dictionaries = {
     },
     applyToPledge: "ናብ መብጽዓይ የውዕሎ",
     pledgeRemaining: "ካብ መብጽዓኹም ናይ {campaign} {amount} ተሪፉ ኣሎ",
+  },
+
+  // ==== Treasurer: Zelle Review (top level so t('zelleReview.*') resolves) ====
+  zelleReview: {
+    paymentType: "ዓይነት ክፍሊት",
+    forYear: "ዓመት",
+    receiptOptional: "ቁጽሪ ቅብሊት (ግዴታ ኣይኮነን)",
+    createTransaction: "ክፍሊት መዝግብ",
+    createTitle: "ነዚ ክፍሊት ሕጂ መዝግቦ፤ መግለጺ ባንኪ ምስ መጸ ምትዕርራይ ባንኪ ከረጋግጾ እዩ",
+    created: "ክፍሊት ተመዝጊቡ።",
+    postedByBankNotice: "ምትዕርራይ ባንኪ ነዚ ክፍሊት ድሮ መዝጊቡዎ ነይሩ፤ እቲ ኢመይል ሕጂ ምስኡ ተተሓሒዙ ኣሎ።",
+    pledge: {
+      credits: "ምምዝጋብ ነዚ መብጽዓ {amount} የእቱ።",
+      noOpenPledge: "ኣብዚ ዘመተ ክፉት መብጽዓ የለን",
+      leavesOutstanding: "ሕጂ {paid} ይኽፈል — {remaining} ይተርፍ።",
+      paidInFull: "ብዚ {amount} ክፍሊት ምሉእ ብምሉእ ተኸፊሉ።",
+      notRecorded: "ክፍሊት ተመዝጊቡ፣ መብጽዓ ግን ኣይተመዝገበን"
+    },
+    status: {
+      awaitingBank: "ተመዝጊቡ · ንባንኪ ይጽበ ኣሎ",
+      awaitingBankDays: "ተመዝጊቡ · ንባንኪ ይጽበ ኣሎ ({days} መዓልቲ)",
+      bankConfirmed: "ብባንኪ ተረጋጊጹ",
+      postedByBank: "ብባንኪ ተመዝጊቡ"
+    },
+    duplicate: {
+      title: "እዚ ክፍሊት ድሮ ተመዝጊቡ ክኸውን ይኽእል እዩ",
+      attach: "ምስዚ መዝገብ ኣተሓሕዝ",
+      createAnyway: "ፍሉይ ክፍሊት እዩ — ብዝኾነ መዝግብ",
+      confirmCreateAnyway: "ሓድሽ ክፍሊት ብዝኾነ ክምዝገብ? ካብቲ ድሮ ዝተመዝገበ ዝተፈልየ ክፍሊት እንተኾይኑ ጥራይ።",
+      origin: {
+        bank: "ምትዕርራይ ባንኪ",
+        zelle_email: "ኢመይል ዘለ",
+        manual: "ብኢድ ዝኣተወ"
+      }
+    },
+    senderLink: {
+      title: "ለኣኺ መን እዩ?",
+      thisPaymentOnly: "ነዚ ክፍሊት ጥራይ — {payer} ኣብ ክንዲ {member} ከፊሉ",
+      remember: "ዘክር — ካብ {payer} ዝመጽእ ክፍሊታት ናይ {member} እዩ",
+      knownAs: "{payer} ከም {known} ተዘኪሩ ኣሎ። \"ነዚ ክፍሊት ጥራይ\" ከምኡ የጽንዖ።",
+      help: "እዚ ሕሳብ ኩሉ ግዜ ነዚ ኣባል ዝኸፍል እንተኾይኑ ጥራይ \"ዘክር\" ምረጹ፣ ንኣብነት ናይ ስድራ ሓባራዊ ሕሳብ።"
+    }
   },
 
   // ==== DependentsManagement (Phase 2a) — DRAFT, pending native review ====

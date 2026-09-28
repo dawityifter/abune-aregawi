@@ -440,3 +440,57 @@ describe('ZelleReview (match-only)', () => {
         });
     });
 });
+
+// "Paid on behalf of": crediting this payment to a member must not teach the
+// matcher who the sender is unless the treasurer says so.
+describe('ZelleReview — who is the sender?', () => {
+    const createBody = async () => {
+        await waitFor(() => {
+            expect((global.fetch as jest.Mock).mock.calls.some(c => String(c[0]).includes('/create-transaction'))).toBe(true);
+        });
+        const call = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('/create-transaction'))!;
+        return JSON.parse(call[1].body);
+    };
+
+    const onBehalfRow = {
+        ...queueItem,
+        status: 'MATCHED',
+        match_source: 'TREASURER_MATCH:THIS_PAYMENT_ONLY',
+        matchedMember: { id: 8, first_name: 'Hana', last_name: 'Pledger' },
+        sender_known_as: [{ id: 3, first_name: 'Abel', last_name: 'Sender' }],
+    };
+
+    test('a row matched "this payment only" creates without teaching the matcher', async () => {
+        mockQueueAndSearch([onBehalfRow], []);
+        render(<ZelleReview />);
+
+        await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
+        expect(screen.getByLabelText('zelleReview.senderLink.thisPaymentOnly')).toBeChecked();
+        fireEvent.click(screen.getByRole('button', { name: 'zelleReview.createTransaction' }));
+
+        expect(await createBody()).toMatchObject({ member_id: 8, remember_sender: false });
+    });
+
+    test('"Remember" is sent when the treasurer chooses it', async () => {
+        mockQueueAndSearch([onBehalfRow], []);
+        render(<ZelleReview />);
+
+        await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
+        fireEvent.click(screen.getByLabelText('zelleReview.senderLink.remember'));
+        fireEvent.click(screen.getByRole('button', { name: 'zelleReview.createTransaction' }));
+
+        expect(await createBody()).toMatchObject({ member_id: 8, remember_sender: true });
+    });
+
+    test('no question when the sender is already remembered as the member', async () => {
+        const own = { ...onBehalfRow, match_source: 'TREASURER_MATCH', sender_known_as: [{ id: 8, first_name: 'Hana', last_name: 'Pledger' }] };
+        mockQueueAndSearch([own], []);
+        render(<ZelleReview />);
+
+        await waitFor(() => screen.getByText('SYNTHETIC PAYER'));
+        expect(screen.queryByText('zelleReview.senderLink.title')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'zelleReview.createTransaction' }));
+
+        expect(await createBody()).not.toHaveProperty('remember_sender');
+    });
+});

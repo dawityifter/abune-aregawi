@@ -77,6 +77,10 @@ export interface BankTransaction {
         source?: string;
         reason?: string;
         confidence?: string;
+        /** Learned records for this sender disagree: shown, never pre-selected. */
+        conflict?: boolean;
+        /** A Zelle-email suggestion whose member the sender is also remembered as. */
+        sender_known?: boolean;
         member: {
             id: number;
             first_name: string;
@@ -88,6 +92,9 @@ export interface BankTransaction {
         source?: string;
         reason?: string;
         confidence?: string;
+        /** Learned records for this sender disagree: shown, never pre-selected. */
+        conflict?: boolean;
+        sender_known?: boolean;
         member: {
             id: number;
             first_name: string;
@@ -378,7 +385,11 @@ const BankTransactionList: React.FC<{ refreshTrigger: number }> = ({ refreshTrig
         const selectedTransactions = transactions.filter(txn => selectedTxnIds.includes(txn.id));
         if (selectedTransactions.length === 0) return null;
 
-        const suggestedMembers = selectedTransactions.map(txn => txn.suggested_match?.member || txn.suggested_matches?.[0]?.member);
+        // Learned records that disagree about a sender propose nobody.
+        const suggestedMembers = selectedTransactions.map(txn => {
+            const top = txn.suggested_match || txn.suggested_matches?.[0];
+            return top && !top.conflict ? top.member : undefined;
+        });
         if (suggestedMembers.some(member => !member)) return null;
 
         const firstMember = suggestedMembers[0]!;

@@ -217,7 +217,7 @@ describe('Automatic Bank Reconciliation', () => {
             });
 
             // Learn the association (as if the treasurer reconciled this payer once before)
-            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id);
+            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id, { remember: true });
 
             const stats = await autoReconcilePending({ user: adminUser });
             expect(stats.autoMember).toBe(1);
@@ -268,7 +268,7 @@ describe('Automatic Bank Reconciliation', () => {
                 transaction_hash: 'bankhash-t2u',
                 raw_data: {}
             });
-            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id);
+            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id, { remember: true });
 
             await autoReconcilePending({ user: adminUser });
             await undoAutoReconciliation(bankTxn.id);
@@ -976,7 +976,7 @@ describe('Automatic Bank Reconciliation', () => {
                 transaction_hash: 'bankhash-target2',
                 raw_data: {}
             });
-            await learnBankMemoMatch(unrelated.get({ plain: true }), member.id);
+            await learnBankMemoMatch(unrelated.get({ plain: true }), member.id, { remember: true });
 
             await request(app)
                 .post('/api/zelle/reconcile/create-transaction')
@@ -1091,7 +1091,10 @@ describe('Automatic Bank Reconciliation', () => {
                     payment_date: '2026-07-12',
                     member_id: zerihun.id,
                     payment_type: 'donation',
-                    note: 'MULUBIRHAN REDA member bank'
+                    note: 'MULUBIRHAN REDA member bank',
+                    // A sender whose name differs from the member is learned
+                    // only when the treasurer asks to remember them.
+                    remember_sender: true
                 })
                 .expect(200);
 
@@ -1148,7 +1151,7 @@ describe('Automatic Bank Reconciliation', () => {
                 raw_data: {}
             });
             // Learned association: BERHE KIDANE pays for Almaz
-            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id);
+            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id, { remember: true });
 
             const stats = await autoReconcilePending({ user: adminUser });
 
@@ -1176,7 +1179,7 @@ describe('Automatic Bank Reconciliation', () => {
                 transaction_hash: 'bankhash-approve-1',
                 raw_data: {}
             });
-            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id);
+            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id, { remember: true });
 
             const stats = await autoReconcilePending({ user: adminUser });
 
@@ -1264,7 +1267,7 @@ describe('Automatic Bank Reconciliation', () => {
                 transaction_hash: 'bankhash-approve-4',
                 raw_data: {}
             });
-            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id);
+            await learnBankMemoMatch(bankTxn.get({ plain: true }), member.id, { remember: true });
 
             const stats = await autoReconcilePending({ user: adminUser });
 

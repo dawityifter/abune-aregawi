@@ -21,7 +21,8 @@ const {
 } = require('../models');
 const {
   findSuggestionCandidates,
-  learnBankMemoMatch
+  learnBankMemoMatch,
+  learnLegacyZelleMemo
 } = require('./bankMemoMatchService');
 const { validateReceiptNumber } = require('../utils/receiptNumber');
 
@@ -177,8 +178,11 @@ async function matchZelleSender({ payerName, note }) {
     return result;
   }
 
-  // 2. Exact legacy memo match on cleaned note
-  const cleaned = cleanLegacyMemo(note, payerName);
+  // 2. Exact legacy memo match on cleaned note — skipped when learned records
+  // disagree about this sender, since the legacy row is one of the disagreeing
+  // voices and must not win by being asked last.
+  const conflict = suggestions.some((s) => s.conflict);
+  const cleaned = conflict ? null : cleanLegacyMemo(note, payerName);
   if (cleaned) {
     const legacy = await ZelleMemoMatch.findOne({
       where: sequelize.where(sequelize.fn('lower', sequelize.col('memo')), cleaned.toLowerCase())
@@ -207,12 +211,17 @@ async function matchZelleSender({ payerName, note }) {
 }
 
 /**
- * Learn payer->member association from a confirmed transaction.
+ * Learn payer->member association from a confirmed transaction, as far as
+ * the treasurer's choice allows (see decideSenderLearning):
+ *   remember true   "remember this sender for this member"
+ *   remember false  "this payment only" — the payment is credited, nothing learned
+ *   omitted         learn only a new sender whose name resembles the member
  * Writes both the new bank_memo_matches keys and the legacy memo table
  * so the Bank Reconciliation screen and the email flow share knowledge.
+ * Returns the decision ({ sender_link, reason, ... }) or null.
  */
-async function learnZelleAssociation({ payerName, note, memberId }) {
-  if (!memberId) return;
+async function learnZelleAssociation({ payerName, note, memberId, remember }) {
+  if (!memberId) return null;
 
   const pseudoTxn = {
     id: null,
@@ -220,29 +229,33 @@ async function learnZelleAssociation({ payerName, note, memberId }) {
     payer_name: payerName || null,
     description: payerName ? `Zelle payment from ${payerName} 0000000` : sanitizeNote(note || '')
   };
+  let decision = null;
   try {
-    await learnBankMemoMatch(pseudoTxn, memberId);
+    decision = await learnBankMemoMatch(pseudoTxn, memberId, { remember });
   } catch (e) {
     console.warn('learnBankMemoMatch warning:', e.message || e);
+    return null;
   }
 
   try {
-    const memo = cleanLegacyMemo(note, payerName);
-    if (!memo || memo.length < 3) return;
-    const existing = await ZelleMemoMatch.findOne({
-      where: sequelize.where(sequelize.fn('lower', sequelize.col('memo')), memo.toLowerCase())
-    });
     const m = await Member.findByPk(memberId, { attributes: ['first_name', 'last_name'] });
-    const first_name = m?.first_name || null;
-    const last_name = m?.last_name || null;
-    if (!existing) {
-      await ZelleMemoMatch.create({ member_id: memberId, first_name, last_name, memo });
-    } else if (String(existing.member_id) !== String(memberId)) {
-      await existing.update({ member_id: memberId, first_name, last_name });
-    }
+    await learnLegacyZelleMemo(cleanLegacyMemo(note, payerName), memberId, decision, {
+      first_name: m?.first_name || null,
+      last_name: m?.last_name || null
+    });
   } catch (e) {
     console.warn('Zelle legacy memo upsert warning:', e.message || e);
   }
+  return decision;
+}
+
+/**
+ * The match_source recorded on a queue row: the action, marked when the
+ * treasurer credited the payment without teaching the matcher who the sender
+ * is — the audit trail for "paid on behalf of".
+ */
+function auditedMatchSource(action, decision) {
+  return decision?.sender_link === 'THIS_PAYMENT_ONLY' ? `${action}:THIS_PAYMENT_ONLY` : action;
 }
 
 /**
@@ -301,7 +314,8 @@ async function createZelleTransaction({
   payment_type,
   for_year,
   receipt_number,
-  payer_name
+  payer_name,
+  remember
 }, collectedBy) {
   if (!external_id || !amount || !payment_date) {
     throw new Error('external_id, amount, and payment_date are required');
@@ -365,7 +379,7 @@ async function createZelleTransaction({
 
   // Learn payer -> member association (never fails the transaction)
   if (member_id) {
-    await learnZelleAssociation({ payerName: payer_name, note, memberId: member_id });
+    await learnZelleAssociation({ payerName: payer_name, note, memberId: member_id, remember });
   }
 
   // Ledger entry
@@ -393,7 +407,7 @@ async function createZelleTransaction({
   let bankLink = null;
   try {
     const { linkPendingBankRowsForTransaction } = require('./autoReconcileService');
-    bankLink = await linkPendingBankRowsForTransaction(tx, { id: collectedBy }, { payerName: payer_name || null });
+    bankLink = await linkPendingBankRowsForTransaction(tx, { id: collectedBy }, { payerName: payer_name || null, remember });
   } catch (linkErr) {
     console.error('⚠️ Targeted bank-row linking failed for Zelle transaction:', linkErr.message);
   }
@@ -404,15 +418,16 @@ async function createZelleTransaction({
 /**
  * Associate a queued Zelle email with a member WITHOUT creating a transaction.
  *
- * This is the whole point of match-only mode: it writes the learned payer keys
- * (bank_memo_matches + the legacy memo row) that bank reconciliation will find
- * when the corresponding Chase CSV row is uploaded, so the treasurer approves a
- * pre-filled suggestion instead of identifying the giver from scratch.
+ * Bank reconciliation suggests this member for the bank row that is certainly
+ * this email's payment (see suggestMatches). Whether the sender is ALSO
+ * remembered for future payments is the treasurer's separate choice —
+ * `remember` (see learnZelleAssociation); a one-off "paid on behalf of"
+ * match credits this payment without teaching the matcher anything.
  *
- * Re-runnable: matching again updates the learned keys, which is how a
- * treasurer corrects a mistake.
+ * Re-runnable: matching again re-points this email; the learned keys move
+ * only when the treasurer asks to remember the sender.
  */
-async function matchQueueRowToMember({ queueId, memberId, payerName = null, userId = null }) {
+async function matchQueueRowToMember({ queueId, memberId, payerName = null, userId = null, remember }) {
   const row = await ZelleEmailQueue.findByPk(queueId);
   if (!row) {
     return { success: false, code: 'NOT_FOUND', message: 'Queue item not found' };
@@ -449,24 +464,25 @@ async function matchQueueRowToMember({ queueId, memberId, payerName = null, user
     };
   }
 
-  await learnZelleAssociation({
+  const decision = await learnZelleAssociation({
     payerName: effectivePayerName,
     note: row.note,
-    memberId: member.id
+    memberId: member.id,
+    remember
   });
 
   await row.update({
     payer_name: effectivePayerName,
     matched_member_id: member.id,
     match_confidence: 'high',
-    match_source: 'TREASURER_MATCH',
+    match_source: auditedMatchSource('TREASURER_MATCH', decision),
     status: 'MATCHED',
     matched_by: userId || null,
     matched_at: new Date(),
     error: null
   });
 
-  return { success: true, data: row };
+  return { success: true, data: row, sender_link: decision?.sender_link || null };
 }
 
 // Payments the Zelle Review screen may record. Loans carry their own records
@@ -548,7 +564,7 @@ async function findMemberDuplicateCandidates(queueRow, memberId) {
  */
 async function createTransactionFromQueueRow({
   queueId, memberId, paymentType, forYear = null, receiptNumber = null,
-  payerName = null, force = false, pledgeAmount = null, user
+  payerName = null, force = false, pledgeAmount = null, remember, user
 }) {
   const { findBankRowsForQueueRow } = require('./zelleBankCorrelationService');
   const fail = (code, message, extra = {}) => ({ success: false, code, message, ...extra });
@@ -719,7 +735,17 @@ async function createTransactionFromQueueRow({
   }
 
   // Everything below is best-effort: the payment is recorded.
-  await learnZelleAssociation({ payerName: effectivePayerName, note: row.note, memberId: member.id });
+  const decision = await learnZelleAssociation({ payerName: effectivePayerName, note: row.note, memberId: member.id, remember });
+  if (decision?.sender_link === 'THIS_PAYMENT_ONLY') {
+    try {
+      await ZelleEmailQueue.update(
+        { match_source: auditedMatchSource('TREASURER_CREATE', decision) },
+        { where: { id: row.id } }
+      );
+    } catch (e) {
+      console.warn('Zelle match_source audit warning:', e.message || e);
+    }
+  }
 
   // Pledge side, exactly as Bank Reconciliation does it: a supplied
   // pledgeAmount opens a pledge credited with this payment; otherwise the
@@ -771,14 +797,16 @@ async function createTransactionFromQueueRow({
   }
 
   await tx.reload();
-  return { success: true, data: tx, bank_link: bankLink, pledge_error: pledgeError };
+  return {
+    success: true, data: tx, bank_link: bankLink, pledge_error: pledgeError, sender_link: decision?.sender_link || null
+  };
 }
 
 /**
  * Attach a queued email to a transaction that already exists — the answer to
  * POSSIBLE_DUPLICATE when the treasurer confirms "this is that payment".
  */
-async function attachQueueRowToTransaction({ queueId, transactionId, userId = null }) {
+async function attachQueueRowToTransaction({ queueId, transactionId, userId = null, remember }) {
   const { isBankHash } = require('./zelleBankCorrelationService');
   const fail = (code, message, extra = {}) => ({ success: false, code, message, ...extra });
 
@@ -814,10 +842,14 @@ async function attachQueueRowToTransaction({ queueId, transactionId, userId = nu
     error: null
   });
 
+  let decision = null;
   if (tx.member_id && row.payer_name) {
-    await learnZelleAssociation({ payerName: row.payer_name, note: row.note, memberId: tx.member_id });
+    decision = await learnZelleAssociation({ payerName: row.payer_name, note: row.note, memberId: tx.member_id, remember });
+    if (decision?.sender_link === 'THIS_PAYMENT_ONLY') {
+      await row.update({ match_source: auditedMatchSource('TREASURER_ATTACH', decision) });
+    }
   }
-  return { success: true, data: row };
+  return { success: true, data: row, sender_link: decision?.sender_link || null };
 }
 
 module.exports = {

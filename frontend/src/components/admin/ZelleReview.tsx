@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { formatDateTimeForDisplay } from '../../utils/dateUtils';
 import { fetchPledgeBalance, PledgeBalance } from '../../utils/pledgeBalanceApi';
+import SenderLinkChoice, { KnownSender, senderLinkState } from '../finance/SenderLinkChoice';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -24,6 +25,9 @@ interface QueueItem {
   matched_by?: number | null;
   matched_at?: string | null;
   matchedMember?: { id: number; first_name?: string; last_name?: string } | null;
+  // Who this payer is already remembered as (learned keys); more than one
+  // means the learned records disagree.
+  sender_known_as?: KnownSender[];
   transaction?: { id: number; amount?: string; payment_type?: string; receipt_number?: string | null; external_id?: string | null } | null;
 }
 
@@ -89,6 +93,9 @@ const ZelleReview: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [busyIds, setBusyIds] = useState<Record<string, boolean>>({});
   const [matchInputs, setMatchInputs] = useState<Record<string, { payerName?: string }>>({});
+  // Per-row "this payment only" (false) vs "remember this sender" (true);
+  // absent = the default for the chosen member.
+  const [rememberChoices, setRememberChoices] = useState<Record<string, boolean>>({});
   // Per-row Create form, the duplicate candidates a refused Create returned,
   // and a one-line outcome notice.
   // recordPledge/pledgeAmount: open a pledge with this payment, offered (as in
@@ -204,6 +211,7 @@ const ZelleReview: React.FC = () => {
   }, [firebaseUser]);
 
   const handleSelectMember = useCallback((itemId: string, result: SearchResult) => {
+    setRememberChoices(prev => { const next = { ...prev }; delete next[itemId]; return next; });
     setRowSearch(prev => ({
       ...prev,
       [itemId]: { ...(prev[itemId] || { results: [], query: '' }), selectedId: result.id, selectedName: result.name, query: result.name, results: [] }
@@ -235,7 +243,8 @@ const ZelleReview: React.FC = () => {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             member_id: memberId,
-            payer_name: matchInputs[item.id]?.payerName || undefined
+            payer_name: matchInputs[item.id]?.payerName || undefined,
+            remember_sender: rememberSenderFor(item)
           })
         }
       );
@@ -248,6 +257,28 @@ const ZelleReview: React.FC = () => {
     } finally {
       setBusyIds(prev => ({ ...prev, [item.id]: false }));
     }
+  };
+
+  // The sender question for a row: asked only when crediting the chosen member
+  // would say something new about who the sender is. A row a treasurer already
+  // matched "this payment only" keeps that answer by default.
+  const senderLinkFor = (item: QueueItem) => {
+    const selectedId = rowSearch[item.id]?.selectedId;
+    const matched = item.status === 'MATCHED' ? item.matchedMember : null;
+    const member = selectedId
+      ? { id: selectedId, name: rowSearch[item.id]?.selectedName || '' }
+      : matched
+        ? { id: matched.id, name: `${matched.first_name || ''} ${matched.last_name || ''}`.trim() }
+        : null;
+    const payerName = (matchInputs[item.id]?.payerName || '').trim() || item.payer_name || null;
+    const state = senderLinkState(payerName, member, item.sender_known_as || []);
+    const matchedOnce = !selectedId && String(item.match_source || '').endsWith(':THIS_PAYMENT_ONLY');
+    const remember = rememberChoices[item.id] ?? (matchedOnce ? false : state.defaultRemember);
+    return { ...state, member, payerName, remember };
+  };
+  const rememberSenderFor = (item: QueueItem) => {
+    const link = senderLinkFor(item);
+    return link.visible ? link.remember : undefined;
   };
 
   const createInputFor = (itemId: string): CreateInput => createInputs[itemId] || { paymentType: 'donation' };
@@ -316,6 +347,7 @@ const ZelleReview: React.FC = () => {
             receipt_number: input.receipt?.trim() || undefined,
             payer_name: matchInputs[item.id]?.payerName || undefined,
             pledge_amount: pledgeAmountFor(item),
+            remember_sender: rememberSenderFor(item),
             force: force || undefined
           })
         }
@@ -582,6 +614,22 @@ const ZelleReview: React.FC = () => {
                               )}
                             </>
                           )}
+                          {(() => {
+                            const link = senderLinkFor(item);
+                            if (!link.visible || !link.member || !link.payerName) return null;
+                            return (
+                              <div className="w-64">
+                                <SenderLinkChoice
+                                  idPrefix={`zelle-${item.id}`}
+                                  payerName={link.payerName}
+                                  memberName={link.member.name}
+                                  others={link.others}
+                                  remember={link.remember}
+                                  onChange={(remember) => setRememberChoices(prev => ({ ...prev, [item.id]: remember }))}
+                                />
+                              </div>
+                            );
+                          })()}
                           <button
                             type="button"
                             title={

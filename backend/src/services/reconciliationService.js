@@ -4,6 +4,7 @@ const {
     extractAchIndividualName,
     findSuggestionCandidates,
     learnBankMemoMatch,
+    learnLegacyZelleMemo,
     normalizeWords,
     sourceTypeFor
 } = require('./bankMemoMatchService');
@@ -148,7 +149,52 @@ exports.suggestMatch = async (transaction) => {
     return null;
 };
 
-exports.suggestMatches = async (transaction) => findSuggestionCandidates(transaction);
+/**
+ * The member a treasurer already matched this exact payment to on Zelle
+ * Review — transaction-level evidence, not a learned rule, so a one-off
+ * "paid on behalf of" match still pre-fills this one bank row and no other.
+ * Only when the pairing is certain (see findUnpostedEmailForBankRow).
+ */
+async function emailMatchCandidate(transaction) {
+    if (!transaction?.id || transaction.status !== 'PENDING') return null;
+    if (sourceTypeFor(transaction) !== 'ZELLE' || !(Number(transaction.amount) > 0)) return null;
+    // Runs for every pending row the bank list shows: skip the correlation
+    // queries unless a treasurer-matched, unposted email of this amount exists.
+    const { ZelleEmailQueue } = require('../models');
+    const anyMatched = await ZelleEmailQueue.findOne({
+        where: { status: 'MATCHED', transaction_id: null, amount: transaction.amount },
+        attributes: ['id']
+    });
+    if (!anyMatched) return null;
+    const { findUnpostedEmailForBankRow } = require('./zelleBankCorrelationService');
+    const email = await findUnpostedEmailForBankRow(transaction);
+    if (!email || email.status !== 'MATCHED' || !email.matched_member_id) return null;
+    const member = await Member.findByPk(email.matched_member_id, { attributes: ['id', 'first_name', 'last_name'] });
+    if (!member) return null;
+    return {
+        type: 'ZELLE_EMAIL_MATCH',
+        source: 'ZELLE_EMAIL_MATCH',
+        reason: 'Matched to this member on Zelle Review for this payment',
+        confidence: 'high',
+        member: { id: member.id, first_name: member.first_name, last_name: member.last_name }
+    };
+}
+
+exports.suggestMatches = async (transaction) => {
+    const candidates = await findSuggestionCandidates(transaction);
+    let fromEmail = null;
+    try {
+        fromEmail = await emailMatchCandidate(transaction);
+    } catch (e) {
+        console.warn('Zelle email match suggestion warning:', e.message || e);
+    }
+    if (!fromEmail) return candidates;
+    const sameMember = (c) => String(c.member?.id) === String(fromEmail.member.id);
+    // One entry per member; keep the fact that the sender is also remembered
+    // as this member, which the screen needs to skip the sender question.
+    fromEmail.sender_known = candidates.some((c) => sameMember(c) && String(c.source || '').startsWith('LEARNED'));
+    return [fromEmail, ...candidates.filter((c) => !sameMember(c))];
+};
 
 function inferPaymentMethodFromBankTxn(bankTxn) {
     const sourceType = sourceTypeFor(bankTxn);
@@ -261,8 +307,8 @@ exports.findPotentialMatches = async (bankTxn, { dayWindow = 2 } = {}) => {
  * - Updates LedgerEntry
  * - Learns Zelle Match
  */
-exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user, existingTransactionId, forYear, receiptNumber, pledgeAmount = null, force = false }) => {
-    const { BankTransaction, Transaction, LedgerEntry, IncomeCategory, ZelleMemoMatch, sequelize } = require('../models');
+exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user, existingTransactionId, forYear, receiptNumber, pledgeAmount = null, force = false, rememberSender }) => {
+    const { BankTransaction, Transaction, LedgerEntry, IncomeCategory, sequelize } = require('../models');
     const { validateReceiptNumber } = require('../utils/receiptNumber');
 
     const txn = await BankTransaction.findByPk(bankTxnId);
@@ -398,25 +444,29 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
         console.error('⚠️ Zelle email write-back failed:', queueErr.message);
     }
 
-    // 3. Learn memo/description associations for future suggestions.
-    // Only learn if we have a direct member association and it's not a generic manual link.
-    let cleanMemo = normalizeDescription(txn.description, txn.type);
-
+    // 3. Learn the payer -> member association for future suggestions, only
+    // as far as the treasurer's choice allows: crediting this payment to a
+    // member is not, by itself, evidence that the sender IS that member
+    // ("paid on behalf of"). See decideSenderLearning.
     if (memberId) {
-        await learnBankMemoMatch(txn, memberId);
-    }
-
-    if (sourceTypeFor(txn) === 'ZELLE' && cleanMemo && cleanMemo.length > 2 && memberId) {
-        const existingMatch = await ZelleMemoMatch.findOne({
-            where: sequelize.where(sequelize.fn('lower', sequelize.col('memo')), cleanMemo.toLowerCase())
-        });
-
-        if (!existingMatch) {
-            await ZelleMemoMatch.create({
-                member_id: memberId,
-                memo: cleanMemo
-            });
+        const decision = await learnBankMemoMatch(txn, memberId, { remember: rememberSender });
+        if (sourceTypeFor(txn) === 'ZELLE') {
+            await learnLegacyZelleMemo(normalizeDescription(txn.description, txn.type), memberId, decision);
         }
+
+        // The audit trail for why no rule was learned: the sender stays on the
+        // row (payer_name); this records that the credit was for this payment
+        // only. The automatic pass replaces this with its own meta.
+        await txn.update({
+            reconciled_meta: {
+                ...(txn.reconciled_meta || {}),
+                transaction_id: donation.id,
+                member_id: memberId,
+                sender_link: decision.sender_link,
+                sender_reason: decision.reason,
+                ...(decision.prior_member_id ? { sender_known_as_member_id: decision.prior_member_id } : {})
+            }
+        });
     }
 
     // 4. Create/Sync Ledger Entry

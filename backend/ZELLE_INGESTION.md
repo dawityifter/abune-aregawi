@@ -37,8 +37,8 @@ confirmed against the bank without ever being posted twice.
 - Preview: Safe, read-only list of parsed candidates (no DB writes).
 - Sync: Upserts every parsed email into `zelle_email_queue` with a suggested member; creates
   no Transactions while the flag above is false.
-- Match: Treasurer assigns/confirms the member for a queued email; this writes a learned
-  payer→member key but still creates no Transaction.
+- Match: Treasurer assigns/confirms the member for a queued email; creates no Transaction.
+  It writes a learned payer→member key only as far as "Remembering senders" below allows.
 - Idempotency: Enforced by `transactions.external_id` uniqueness, and by
   `zelle_email_queue.external_id` for queue rows.
 
@@ -123,7 +123,8 @@ Before writing anything it asks whether this payment is already recorded:
 | A plausible but uncertain existing transaction — a bank row that might be this payment, or the member's Zelle payment of the same amount within 5 days | 409 `POSSIBLE_DUPLICATE` with `candidates`. The treasurer attaches the email to one (`POST /api/zelle/queue/:id/attach { transaction_id }`), or re-sends with `force: true` for a genuinely separate payment. |
 
 Otherwise the Transaction and LedgerEntry are written in one database transaction under a
-lock on the queue row (double clicks lose), and the payer→member key is learned.
+lock on the queue row (double clicks lose). The payer→member key is learned only as far as
+"Remembering senders" below allows.
 
 A **Pledge Drive** payment is handled exactly as in Bank Reconciliation and Add Payment:
 the screen shows the member's open pledge in the live drive and the payment is credited to
@@ -169,9 +170,9 @@ Undoing that automatic link restores all of it.
 2) For each queued email, confirm or correct the suggested member. If the email's payer name
    could not be parsed, type the payer name exactly as it appears on the bank statement — the
    match cannot be used for bank reconciliation without one.
-3) Submit the match (`POST /api/zelle/queue/:id/match`). This marks the row `MATCHED` and
-   writes a learned payer→member key (`bank_memo_matches`, plus the legacy memo table). **No
-   Transaction is created by this step.**
+3) Submit the match (`POST /api/zelle/queue/:id/match`). This marks the row `MATCHED`; the
+   bank row that is certainly this payment will suggest the member. Answer **Who is the
+   sender?** when asked (see "Remembering senders"). **No Transaction is created by this step.**
 4) Optionally, choose the payment type (and receipt) and click **Create transaction** to
    post it now — see "Creating from the Zelle Review screen" above.
 5) When the Chase bank CSV is uploaded to Bank Reconciliation: a payment already created
@@ -212,6 +213,43 @@ ACH and check credits, and expense debits, are unaffected by match-only mode —
 reconciliation pass (`backend/src/services/autoReconcileService.js`) continues to
 auto-link/auto-create/auto-expense those the same way it always has.
 
+## Remembering senders ("paid on behalf of")
+
+Crediting a payment to a member and remembering who its sender is are separate decisions.
+A friend or relative paying another member's pledge once is a fact about **that payment**; it
+must not teach the matcher that the sender's future payments belong to that member.
+
+Learned keys (`bank_memo_matches`, and the legacy `zelle_memo_matches`) are the only
+persistent matching memory. They are written by one gate, `decideSenderLearning` in
+`bankMemoMatchService.js`, driven by the treasurer's answer (`remember_sender` on bank
+approve, Zelle Match, Create and Attach):
+
+| `remember_sender` | Effect |
+|---|---|
+| `true` ("Remember") | Keys are created for this member, and re-pointed from anyone else. |
+| `false` ("This payment only") | Nothing is written. The payment is still credited normally. |
+| omitted (bulk approve, automatic paths, Square) | Keys are created only for a **new** sender whose name resembles the member (first and last name both appear). A key held by someone else is **never** re-pointed. |
+
+- The screens ask **Who is the sender?** only when the answer would say something new: the
+  question is hidden when the sender is already remembered as the chosen member. "This
+  payment only" is pre-selected when the name doesn't resemble the member or the sender is
+  remembered as someone else.
+- Audit trail: the bank row's `reconciled_meta` records `sender_link`
+  (`REMEMBERED` | `THIS_PAYMENT_ONLY`), `sender_reason`, and `sender_known_as_member_id`;
+  the sender stays on the row as `payer_name`. A Zelle email's `match_source` gets a
+  `:THIS_PAYMENT_ONLY` suffix (e.g. `TREASURER_CREATE:THIS_PAYMENT_ONLY`).
+- Transaction-level evidence stays transaction-level: a Zelle email matched "this payment only"
+  pre-fills **its own** bank row (suggestion source `ZELLE_EMAIL_MATCH`, certain pairings only)
+  and no other.
+- Learned records that disagree about one sender (e.g. the key names one member, the legacy
+  memo another) are shown with "(learned records disagree)", never high confidence, never
+  pre-selected, and never drive automatic creation.
+- Scripts: `scripts/unlearn-on-behalf-payment.js` returns a sender's keys wrongly re-pointed by
+  an on-behalf payment (payment, ledger and pledge credit untouched; dry run by default);
+  `scripts/report-learned-sender-mismatches.js` lists learned senders worth reviewing
+  (read-only); `scripts/rematch-payment-member.js` moves learned keys only with
+  `--remember-sender`.
+
 ## Backfill Strategy
 
 - After member data is fully populated, re-run ingestion over a larger window (e.g., by month) to capture older payments.
@@ -239,9 +277,9 @@ auto-link/auto-create/auto-expense those the same way it always has.
 
 - `POST /api/zelle/queue/:id/match`
   - Auth: Firebase, roles `treasurer|admin`
-  - Body: `{ member_id, payer_name? }`
-  - Associates the payer with a member and writes a learned payer→member key. Creates **no**
-    Transaction.
+  - Body: `{ member_id, payer_name?, remember_sender? }`
+  - Associates this email with a member. Writes a learned payer→member key only as
+    `remember_sender` allows (see "Remembering senders"). Creates **no** Transaction.
   - 400 `PAYER_NAME_REQUIRED`: neither `payer_name` nor a previously-parsed payer name exists
     on the row — bank reconciliation would have nothing to match against.
   - 400: `member_id` missing, or `MEMBER_NOT_FOUND` if it doesn't resolve to a member.

@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { digitsOnly } from '../../utils/receiptNumber';
 import { fetchPledgeBalance, PledgeBalance } from '../../utils/pledgeBalanceApi';
+import SenderLinkChoice, { senderLinkState } from './SenderLinkChoice';
 
 interface Props {
   txn: BankTransaction | null;
@@ -29,6 +30,10 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
   const [selectedForYear, setSelectedForYear] = useState<number | ''>('');
   const [receiptNumber, setReceiptNumber] = useState('');
   const [selectedMember, setSelectedMember] = useState<{ id: number; name: string; phoneNumber?: string | null } | null>(null);
+  // "This payment only" vs "remember this sender"; null = not chosen yet, so
+  // the default for the selected member applies.
+  const [rememberChoice, setRememberChoice] = useState<boolean | null>(null);
+  useEffect(() => { setRememberChoice(null); }, [txn?.id, selectedMember?.id]);
   // Pledge side of a pledge_drive reconciliation. `pledgeChecked` distinguishes
   // "not looked up yet" from "looked up, none found" — without it the panel
   // flashes "no open pledge" before the answer arrives.
@@ -94,6 +99,14 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
 
   const isZelle = (txn?.type || '').toUpperCase().includes('ZELLE');
 
+  // Who this sender is already remembered as (learned suggestions), and
+  // whether approving for the selected member needs the sender question.
+  const knownSenders = suggestedMatches
+    .filter((match) => String(match.source || match.type || '').startsWith('LEARNED') || match.sender_known)
+    .map((match) => match.member);
+  const senderLink = senderLinkState(txn?.payer_name, selectedMember, knownSenders);
+  const rememberSender = rememberChoice ?? senderLink.defaultRemember;
+
   const formatConfidence = (confidence?: string) => {
     if (!confidence) return 'suggested';
     return `${confidence.charAt(0).toUpperCase()}${confidence.slice(1)} confidence`;
@@ -154,8 +167,10 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
   // payer that was already matched on the Zelle screen. Never overwrite a
   // selection the treasurer has already made by hand (functional update
   // keeps whatever is currently selected).
+  // Learned records that disagree about the sender pre-select nobody.
   useEffect(() => {
     if (!txn || txn.status !== 'PENDING') return;
+    if (txn.suggested_match?.conflict) return;
     const suggested = txn.suggested_match?.member;
     if (!suggested) return;
     setSelectedMember((prev) =>
@@ -245,6 +260,8 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
     if (force) payload.force = true;
     if (selectedForYear) payload.for_year = selectedForYear;
     if (receiptNumber.trim()) payload.receipt_number = receiptNumber.trim();
+    // Sent only when asked; omitted, the server learns nothing it can't vouch for.
+    if (senderLink.visible) payload.remember_sender = rememberSender;
     // Only when opening a new pledge. An existing pledge needs nothing here —
     // the server finds it from the live campaign and the payer.
     if (paymentType === 'pledge_drive' && !pledgeBalance && recordPledge && parseFloat(pledgeAmount) >= 1) {
@@ -788,6 +805,17 @@ const BankTransactionDetail: React.FC<Props> = ({ txn, onClose, onSuccess }) => 
                       <p className="text-xs text-gray-500 mt-1">{selectedMember.phoneNumber}</p>
                     )}
                   </div>
+                )}
+
+                {senderLink.visible && selectedMember && txn.payer_name && (
+                  <SenderLinkChoice
+                    idPrefix={`bank-${txn.id}`}
+                    payerName={txn.payer_name}
+                    memberName={selectedMember.name}
+                    others={senderLink.others}
+                    remember={rememberSender}
+                    onChange={setRememberChoice}
+                  />
                 )}
 
                 <button

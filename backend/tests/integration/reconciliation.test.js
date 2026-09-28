@@ -106,7 +106,34 @@ describe('Bank Reconciliation API', () => {
         expect(donation.payment_type).toBe('donation');
     });
 
-    test('should learn ACH association after manual reconciliation', async () => {
+    test('learns nothing when a payer whose name differs from the member is credited without "remember"', async () => {
+        // "Paid on behalf of": crediting this payment is not evidence that
+        // BERHE, SELAMAWIT is this member.
+        const achTxn = await BankTransaction.create({
+            date: new Date('2025-01-02'),
+            amount: 150.00,
+            description: 'ORIG CO NAME:PAYPAL IND NAME:BERHE,SELAMAWIT WEB ID:123456',
+            type: 'ACH_CREDIT',
+            status: 'PENDING',
+            payer_name: 'BERHE, SELAMAWIT',
+            transaction_hash: 'achhash-onbehalf',
+            raw_data: {}
+        });
+
+        await request(app)
+            .post('/api/bank/reconcile')
+            .set('Authorization', 'Bearer valid-token')
+            .send({ transaction_id: achTxn.id, member_id: memberToLink.id, action: 'MATCH', payment_type: 'donation' })
+            .expect(200);
+
+        expect(await BankMemoMatch.count({ where: { member_id: memberToLink.id } })).toBe(0);
+        await achTxn.reload();
+        expect(achTxn.status).toBe('MATCHED');
+        expect(achTxn.reconciled_meta.sender_link).toBe('THIS_PAYMENT_ONLY');
+        expect(achTxn.reconciled_meta.sender_reason).toBe('NAME_DOES_NOT_MATCH');
+    });
+
+    test('should learn ACH association after manual reconciliation when asked to remember the sender', async () => {
         const achTxn = await BankTransaction.create({
             date: new Date('2025-01-02'),
             amount: 150.00,
@@ -125,7 +152,8 @@ describe('Bank Reconciliation API', () => {
                 transaction_id: achTxn.id,
                 member_id: memberToLink.id,
                 action: 'MATCH',
-                payment_type: 'donation'
+                payment_type: 'donation',
+                remember_sender: true
             })
             .expect(200);
 
@@ -156,7 +184,7 @@ describe('Bank Reconciliation API', () => {
             raw_data: {}
         });
         const { learnBankMemoMatch } = require('../../src/services/bankMemoMatchService');
-        await learnBankMemoMatch(priorTxn.get({ plain: true }), tekea.id);
+        await learnBankMemoMatch(priorTxn.get({ plain: true }), tekea.id, { remember: true });
 
         const pendingTxn = await BankTransaction.create({
             date: new Date('2025-02-02'),

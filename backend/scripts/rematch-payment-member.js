@@ -11,9 +11,13 @@
  *     and the payment is credited to the right member's open pledge in the
  *     same drive. With no open pledge it is left unallocated, where it shows
  *     in the Unallocated queue for the treasurer.
- *   - the learned payer -> member keys this payment's bank row teaches
- *     (bank_memo_matches, zelle_memo_matches), so the next payment from the
- *     same payer is suggested for the right member. --keep-learned skips this.
+ *   - ONLY with --remember-sender: the learned payer -> member keys this
+ *     payment's bank row teaches (bank_memo_matches, zelle_memo_matches), so
+ *     the next payment from the same payer is suggested for the right member.
+ *     Off by default: a payment credited to someone other than the sender
+ *     ("paid on behalf of") says nothing about who the sender is. Use it when
+ *     the sender really is the right member (the old match was a mistake
+ *     about identity). --keep-learned is accepted and is now the default.
  *
  * Why not the Edit Transaction screen: it changes transactions.member_id only,
  * rebuilds the ledger entry without its bank reference, and leaves the pledge
@@ -25,6 +29,7 @@
  * From backend/:
  *   node scripts/rematch-payment-member.js --transaction 1668 --to 267 --by 3
  *   node scripts/rematch-payment-member.js --transaction 1668 --to 267 --by 3 --apply
+ *   node scripts/rematch-payment-member.js --transaction 1668 --to 267 --by 3 --remember-sender --apply
  *
  *   --by   member id of the treasurer making the correction (audit trail)
  */
@@ -52,7 +57,7 @@ const name = (m) => (m ? `${m.first_name} ${m.last_name} (#${m.id})` : 'nobody')
  * The correction itself, inside the caller's transaction `t`. Returns the
  * list of changes made. Exported for tests.
  */
-async function rematchPayment({ transactionId, toMemberId, byMemberId, keepLearned = false }, t) {
+async function rematchPayment({ transactionId, toMemberId, byMemberId, rememberSender = false }, t) {
   const log = [];
   const opt = { transaction: t };
 
@@ -187,8 +192,12 @@ async function rematchPayment({ transactionId, toMemberId, byMemberId, keepLearn
       + ` — from ${contributing(credited)} payment(s)`);
   }
 
-  // 6. Learned payer -> member keys taught by this payment's bank row.
-  if (!keepLearned && bankRow) {
+  // 6. Learned payer -> member keys taught by this payment's bank row — only
+  // when the treasurer says the sender IS the right member.
+  if (!rememberSender && bankRow) {
+    log.push('learned sender keys left alone (pass --remember-sender to re-point them)');
+  }
+  if (rememberSender && bankRow) {
     const plain = bankRow.get({ plain: true });
     const keys = getBankMatchKeys(plain).map((k) => k.matchKey);
     if (keys.length > 0) {
@@ -226,14 +235,14 @@ async function main() {
   const toMemberId = arg('to');
   const byMemberId = arg('by');
   if (!transactionId || !toMemberId || !byMemberId) {
-    console.error('Usage: node scripts/rematch-payment-member.js --transaction <id> --to <memberId> --by <yourMemberId> [--keep-learned] [--apply]');
+    console.error('Usage: node scripts/rematch-payment-member.js --transaction <id> --to <memberId> --by <yourMemberId> [--remember-sender] [--apply]');
     process.exit(1);
   }
 
   const t = await sequelize.transaction();
   try {
     const log = await rematchPayment({
-      transactionId, toMemberId, byMemberId, keepLearned: process.argv.includes('--keep-learned')
+      transactionId, toMemberId, byMemberId, rememberSender: process.argv.includes('--remember-sender')
     }, t);
     console.log(`${apply ? 'APPLY' : 'DRY RUN'}: transaction ${transactionId}\n`);
     log.forEach((line) => console.log(`  ${line}`));

@@ -77,7 +77,7 @@ describe('POST /api/zelle/queue/:id/create-transaction', () => {
 
     test('records the transaction and ledger entry from the queue row, not the client', async () => {
         const row = await queueRow();
-        const res = await create(row, { amount: 9999, payment_date: '2020-01-01' }).expect(201);
+        const res = await create(row, { amount: 9999, payment_date: '2020-01-01', remember_sender: true }).expect(201);
 
         const tx = await Transaction.findByPk(res.body.data.id);
         expect(Number(tx.amount)).toBe(75);
@@ -94,7 +94,7 @@ describe('POST /api/zelle/queue/:id/create-transaction', () => {
         expect(String(row.transaction_id)).toBe(String(tx.id));
         expect(row.match_source).toBe('TREASURER_CREATE');
 
-        // The payer is learned, as a Match would.
+        // The treasurer asked to remember the sender, so the payer is learned.
         expect(await BankMemoMatch.count({ where: { member_id: giver.id } })).toBeGreaterThan(0);
     });
 

@@ -629,7 +629,10 @@ exports.reconcileTransaction = asyncHandler(async (req, res) => {
             forYear: req.body.for_year, // Pass year override if provided
             receiptNumber: receipt_number,
             pledgeAmount: pledge_amount ?? null,
-            force: req.body.force === true
+            force: req.body.force === true,
+            // true = remember this sender for the member, false = this payment
+            // only (paid on behalf of); omitted = the safe default rule.
+            rememberSender: typeof req.body.remember_sender === 'boolean' ? req.body.remember_sender : undefined
         });
 
         res.json({ success: true, ...results });

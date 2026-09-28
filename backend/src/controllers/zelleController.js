@@ -8,6 +8,7 @@ const {
 } = require('../services/zelleTransactionService');
 const { ZelleEmailQueue, Member, Transaction, sequelize } = require('../models');
 const { isZelleGmailCreateEnabled } = require('../config/featureFlags');
+const { findRememberedZelleSenders, normalizeWords } = require('../services/bankMemoMatchService');
 const { Op } = require('sequelize');
 
 async function syncFromGmail(req, res) {
@@ -55,7 +56,8 @@ async function processTransactionCreation(item, user) {
     receipt_number,
     // Fall back to extracting the payer from the note so learning still
     // produces stable keys when the client doesn't send payer_name
-    payer_name: payer_name || extractPayerName(note || '')
+    payer_name: payer_name || extractPayerName(note || ''),
+    remember: rememberSenderOf(item)
   }, collected_by);
 
   // Keep the email queue in sync when the treasurer creates manually.
@@ -197,10 +199,19 @@ async function getQueue(req, res) {
       ]
     });
 
+    // Who each sender is already remembered as, so the review screen can ask
+    // "this payment only, or remember?" only when crediting the chosen member
+    // would say something new about the sender.
+    const remembered = await findRememberedZelleSenders(rows.map((r) => r.payer_name));
+    const items = rows.map((r) => ({
+      ...r.toJSON(),
+      sender_known_as: r.payer_name ? remembered.get(normalizeWords(r.payer_name)) || [] : []
+    }));
+
     return res.json({
       success: true,
       count: rows.length,
-      items: rows,
+      items,
       pagination: { total: count, page, pages: Math.ceil(count / limit) }
     });
   } catch (error) {
@@ -227,8 +238,16 @@ async function ignoreQueueItem(req, res) {
   }
 }
 
+// remember_sender: true = remember this sender for the member, false = this
+// payment only (paid on behalf of), omitted = learn only a new sender whose
+// name resembles the member. Anything but a real boolean counts as omitted.
+function rememberSenderOf(body) {
+  const value = body?.remember_sender;
+  return typeof value === 'boolean' ? value : undefined;
+}
+
 // POST /api/zelle/queue/:id/match
-// Body: { member_id, payer_name? }
+// Body: { member_id, payer_name?, remember_sender? }
 // Associates a payer with a member for later bank reconciliation.
 // Creates NO transaction.
 async function matchQueueItem(req, res) {
@@ -242,7 +261,8 @@ async function matchQueueItem(req, res) {
       queueId: req.params.id,
       memberId: member_id,
       payerName: payer_name,
-      userId: req.user?.id || null
+      userId: req.user?.id || null,
+      remember: rememberSenderOf(req.body)
     });
 
     if (!result.success) {
@@ -276,7 +296,7 @@ const QUEUE_STATUS_BY_CODE = {
 };
 
 // POST /api/zelle/queue/:id/create-transaction
-// Body: { member_id, payment_type, for_year?, receipt_number?, payer_name?, force?, pledge_amount? }
+// Body: { member_id, payment_type, for_year?, receipt_number?, payer_name?, force?, pledge_amount?, remember_sender? }
 // pledge_amount (pledge_drive only) opens a pledge credited with this payment.
 // Records the payment from a queued email. Amount and date come from the
 // queue row. 409 POSSIBLE_DUPLICATE lists candidates; re-send with
@@ -293,6 +313,7 @@ async function createQueueTransaction(req, res) {
       payerName: body.payer_name || null,
       force: body.force === true,
       pledgeAmount: body.pledge_amount ?? null,
+      remember: rememberSenderOf(body),
       user: req.user
     });
     if (!result.success) {
@@ -306,7 +327,7 @@ async function createQueueTransaction(req, res) {
 }
 
 // POST /api/zelle/queue/:id/attach
-// Body: { transaction_id }
+// Body: { transaction_id, remember_sender? }
 // Links the email to a transaction that already records this payment.
 async function attachQueueTransaction(req, res) {
   try {
@@ -317,7 +338,8 @@ async function attachQueueTransaction(req, res) {
     const result = await attachQueueRowToTransaction({
       queueId: req.params.id,
       transactionId: transaction_id,
-      userId: req.user?.id || null
+      userId: req.user?.id || null,
+      remember: rememberSenderOf(req.body)
     });
     if (!result.success) {
       return res.status(QUEUE_STATUS_BY_CODE[result.code] || 400).json(result);

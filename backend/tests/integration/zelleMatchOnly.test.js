@@ -93,7 +93,7 @@ describe('Zelle match-only mode', () => {
             type: 'ZELLE',
             payer_name: 'SYNTHETIC PAYER',
             description: 'Zelle payment from SYNTHETIC PAYER 0000000'
-        }, member.id);
+        }, member.id, { remember: true });
 
         const stats = await syncZelleFromGmail({ dryRun: false });
 
@@ -118,7 +118,7 @@ describe('Zelle match-only mode', () => {
             type: 'ZELLE',
             payer_name: 'SYNTHETIC PAYER',
             description: 'Zelle payment from SYNTHETIC PAYER 0000000'
-        }, member.id);
+        }, member.id, { remember: true });
 
         const stats = await syncZelleFromGmail({ dryRun: false });
 
@@ -233,7 +233,7 @@ describe('Zelle match-only mode', () => {
             expect(await Transaction.count()).toBe(0);
         });
 
-        test('is idempotent and re-matching moves the learned key to the new member', async () => {
+        test('is idempotent and re-matching with "remember" moves the learned key to the new member', async () => {
             const other = await Member.create({
                 first_name: 'Other', last_name: 'Member',
                 phone_number: '+15550004444', is_active: true
@@ -241,10 +241,10 @@ describe('Zelle match-only mode', () => {
 
             await request(app).post(`/api/zelle/queue/${queueRow.id}/match`)
                 .set('Authorization', 'Bearer valid-token')
-                .send({ member_id: member.id }).expect(200);
+                .send({ member_id: member.id, remember_sender: true }).expect(200);
             await request(app).post(`/api/zelle/queue/${queueRow.id}/match`)
                 .set('Authorization', 'Bearer valid-token')
-                .send({ member_id: other.id }).expect(200);
+                .send({ member_id: other.id, remember_sender: true }).expect(200);
 
             const suggestions = await findSuggestionCandidates({
                 type: 'ZELLE',
@@ -269,7 +269,7 @@ describe('Zelle match-only mode', () => {
             await request(app)
                 .post(`/api/zelle/queue/${unparsed.id}/match`)
                 .set('Authorization', 'Bearer valid-token')
-                .send({ member_id: member.id, payer_name: 'OVERRIDE PAYER' })
+                .send({ member_id: member.id, payer_name: 'OVERRIDE PAYER', remember_sender: true })
                 .expect(200);
 
             await unparsed.reload();
