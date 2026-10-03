@@ -1,4 +1,7 @@
 process.env.NODE_ENV = 'test';
+// The fixtures' receipts (4001-4010) belong to this book; not whatever the
+// developer's .env says the current book starts at.
+process.env.START_RECEIPT_NUMBER = '4000';
 
 // A cancelled payment is not money. It must not reach any figure that claims to
 // report what the parish collected — but it MUST still reach the receipt-book
