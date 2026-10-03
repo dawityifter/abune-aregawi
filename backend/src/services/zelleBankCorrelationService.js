@@ -19,7 +19,10 @@
  *             email, and that email fits one bank row. Two payments from one
  *             payer for one amount in the same week are left to the treasurer.
  *
- *  CANDIDATES More than one plausible pairing. Never acted on automatically.
+ *  CANDIDATES More than one plausible pairing, or (bank side only) an
+ *             email-created transaction of the same amount in the window
+ *             whose payer name is missing or differs. Never acted on
+ *             automatically; shown to the treasurer and blocks a plain create.
  *
  * Pure lookups: nothing here writes.
  */
@@ -174,7 +177,22 @@ async function findEmailPaymentsForBankRow(bankRow) {
   const fitting = await emailsFittingBankRow(bankRow);
   const unconfirmed = fitting.filter((q) => q.transaction_id && q.transaction
     && !isBankHash(q.transaction.external_id) && q.transaction.status !== 'failed');
-  if (unconfirmed.length === 0) return none;
+  if (unconfirmed.length === 0) {
+    // No payer anchor: the email has no name (older auto-created rows) or
+    // spells it differently. Same amount in the window is still offered, so
+    // the treasurer links instead of approving a second transaction.
+    const range = emailDateRangeForBank(bankRow.date);
+    if (!range) return none;
+    const sameAmount = await unconfirmedEmailPayments({
+      amount: bankRow.amount,
+      payment_date: { [Op.between]: range },
+      status: { [Op.ne]: 'IGNORED' }
+    });
+    return sameAmount.length === 0 ? none : {
+      tier: 'CANDIDATES',
+      matches: sameAmount.map((q) => ({ queueRow: q, transaction: q.transaction }))
+    };
+  }
 
   const matches = unconfirmed.map((q) => ({ queueRow: q, transaction: q.transaction }));
   if (fitting.length > 1) return { tier: 'CANDIDATES', matches };

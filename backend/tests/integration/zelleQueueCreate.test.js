@@ -315,6 +315,39 @@ describe('bank reconciliation meets an email-created payment', () => {
         expect(await Transaction.count()).toBe(1);
     });
 
+    test('older auto-created email with no payer name: stays pending, refuses a new transaction, links and learns the name', async () => {
+        // Shape of the Jul–Aug 2026 rows the Gmail sync auto-created.
+        const tx = await Transaction.create({
+            member_id: giver.id, collected_by: treasurer.id, amount: 60, payment_date: '2026-08-20',
+            payment_type: 'donation', payment_method: 'zelle', status: 'succeeded', external_id: 'gmail:<legacy@example.com>'
+        });
+        const row = await ZelleEmailQueue.create({
+            external_id: 'gmail:<legacy@example.com>', payer_name: null, amount: 60, payment_date: '2026-08-20',
+            status: 'AUTO_CREATED', match_source: 'LEARNED_ZELLE', transaction_id: tx.id
+        });
+        const bank = await upload();
+
+        await autoReconcilePending({ user: treasurer, transactionIds: [bank.id] });
+        await bank.reload();
+        expect(bank.status).toBe('PENDING');
+
+        const list = await request(app).get('/api/bank/transactions?status=PENDING').set(AUTH).expect(200);
+        const listed = list.body.data.transactions.find((t) => t.id === bank.id);
+        expect(listed.potential_matches[0]).toMatchObject({ id: tx.id, source: 'zelle_email' });
+
+        const refused = await request(app).post('/api/bank/reconcile').set(AUTH)
+            .send({ transaction_id: bank.id, member_id: giver.id, payment_type: 'donation' }).expect(409);
+        expect(refused.body.code).toBe('LINK_EXISTING');
+        expect(await Transaction.count()).toBe(1);
+
+        await request(app).post('/api/bank/reconcile').set(AUTH)
+            .send({ transaction_id: bank.id, existing_transaction_id: tx.id }).expect(200);
+        await row.reload();
+        expect(row.bank_transaction_id).toBe(bank.id);
+        expect(row.payer_name).toBe('RELATIVE OF GIVER');
+        expect(await Transaction.count()).toBe(1);
+    });
+
     test('force creates a separate payment when the treasurer insists', async () => {
         await emailCreated();
         const b1 = await upload({ date: '2026-08-21' });

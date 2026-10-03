@@ -208,6 +208,14 @@ match confidence. They are auto-*linked* in two cases:
   `existing_transaction_id` instead, or send `force: true` if the bank row really is a
   separate payment. Bulk reconcile never forces; such rows come back in `errors` with
   `code: 'LINK_EXISTING'`.
+- **This check does not depend on the payer name.** An email-created transaction of the
+  same amount, with the email dated 1 day after to 5 days before the bank posting, counts
+  as a candidate even when the email has no payer name or spells it differently. It is
+  shown under "Possible Existing Entry" and blocks a plain approve, but is never linked
+  automatically. Before 2026-10, emails without a name were invisible here and their bank
+  rows were approved into duplicates. Linking fills an empty email payer name from the
+  bank row. `scripts/resolve-zelle-bank-duplicates.js` lists and resolves the duplicates
+  that already exist (report by default, `--bank <id>` dry run, `--apply`).
 
 ACH and check credits, and expense debits, are unaffected by match-only mode — the automatic
 reconciliation pass (`backend/src/services/autoReconcileService.js`) continues to
@@ -425,8 +433,11 @@ been settled here.
   while `ZELLE_GMAIL_CREATE_ENABLED` is false — use `queue/:id/create-transaction`.
 - An email-created payment stays "awaiting bank": the bank row may not be uploaded yet, or
   the pairing was not certain (two same-amount payments from one payer that week, a payer
-  name that differs between email and statement). Open the PENDING bank row and use **Link
-  to this entry**.
+  name that differs between email and statement, or an email with no payer name). Open the
+  PENDING bank row and use **Link to this entry**.
+- The same Zelle payment shows up twice: once from the email and once from bank
+  reconciliation. Run `node scripts/resolve-zelle-bank-duplicates.js` (read-only report),
+  then each listed command as a dry run and again with `--apply`.
 - 409 `LINK_EXISTING` in Bank Reconciliation: working as intended — the payment was already
   recorded from its email. Link it rather than creating a second entry.
 - 409 `ALREADY_POSTED` on `/queue/:id/match`: the queue row already has a Transaction; nothing

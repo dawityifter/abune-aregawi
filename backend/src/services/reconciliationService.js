@@ -427,6 +427,14 @@ exports.processReconciliation = async ({ bankTxnId, memberId, paymentType, user,
                 { bank_transaction_id: txn.id },
                 { where: { transaction_id: donation.id, bank_transaction_id: null } }
             );
+            // Older emails were stored without a payer name; the bank's is
+            // the same sender, so later matching has a name to work with.
+            if (txn.payer_name) {
+                await ZelleEmailQueue.update(
+                    { payer_name: txn.payer_name },
+                    { where: { transaction_id: donation.id, bank_transaction_id: txn.id, payer_name: null } }
+                );
+            }
         } else {
             const email = await zelleCorrelation.findUnpostedEmailForBankRow(txn);
             if (email) {

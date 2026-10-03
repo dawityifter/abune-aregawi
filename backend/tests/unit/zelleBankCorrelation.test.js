@@ -116,6 +116,26 @@ describe('bank row -> email-created transaction', () => {
     expect((await findEmailPaymentsForBankRow(await bankRow())).tier).toBeNull();
   });
 
+  test('CANDIDATES (never auto-linked) when the email has no payer name', async () => {
+    const q = await emailPayment({ ref: '12121212121', payer: null });
+    const res = await findEmailPaymentsForBankRow(await bankRow({ ref: 'NOPAYER12345' }));
+    expect(res.tier).toBe('CANDIDATES');
+    expect(String(res.matches[0].transaction.id)).toBe(String(q.transaction_id));
+  });
+
+  test('CANDIDATES when the email payer is spelled differently', async () => {
+    const q = await emailPayment({ ref: '13131313131', payer: 'JANE SAMPLE' });
+    const res = await findEmailPaymentsForBankRow(await bankRow({ ref: 'MIDNAME12345', payer: 'JANE Q SAMPLE' }));
+    expect(res.tier).toBe('CANDIDATES');
+    expect(String(res.matches[0].transaction.id)).toBe(String(q.transaction_id));
+  });
+
+  test('no amount-only candidate outside the window or for another amount', async () => {
+    await emailPayment({ ref: '14141414141', payer: null, date: '2026-08-03' });
+    expect((await findEmailPaymentsForBankRow(await bankRow({ date: '2026-08-09' }))).tier).toBeNull();
+    expect((await findEmailPaymentsForBankRow(await bankRow({ amount: 51 }))).tier).toBeNull();
+  });
+
   test('ignores debits and non-Zelle credits', async () => {
     await emailPayment({ ref: '55555555551' });
     const ach = await bankRow();
