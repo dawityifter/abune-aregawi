@@ -438,6 +438,11 @@ been settled here.
 - The same Zelle payment shows up twice: once from the email and once from bank
   reconciliation. Run `node scripts/resolve-zelle-bank-duplicates.js` (read-only report),
   then each listed command as a dry run and again with `--apply`.
+- One bank deposit with several transactions, none of them tied to a Zelle Review email
+  (Gmail-era `gmail:<id>` entries, Add Payment entries with a receipt, the 2026-07-14
+  automatic pass over the old CSV backlog): `node scripts/resolve-bank-deposit-duplicates.js`.
+  It keeps the entry with a real receipt, else the first one recorded, moves the deposit onto
+  it, and lists type disagreements for `--type`.
 - 409 `LINK_EXISTING` in Bank Reconciliation: working as intended — the payment was already
   recorded from its email. Link it rather than creating a second entry.
 - 409 `ALREADY_POSTED` on `/queue/:id/match`: the queue row already has a Transaction; nothing
